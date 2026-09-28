@@ -15,30 +15,98 @@ ShellRoot {
     property string lockviewScreen: ""
     property string workflow: "default"
     property string themeName: ""
-    property string layoutName: "sidebar"
+    property string layoutName: "top"
     property string sunsetEnabled: ""
     property bool keepAwakeManual: false
     property bool keepAwakeAudio: true
     property bool keepAwakeFullscreen: false
+    property bool notificationsPaused: false
+    property string animation: "default"
+    property string colorSource: "theme"
+    property string colorMode: ""
+    property string windowLayout: ""
     property bool caffeineFullscreenActive: false
     property bool caffeineGameActive: false
     property string indicatorRefreshTarget: "all"
     property int indicatorRefreshSerial: 0
     property bool powerProfileRestorePending: false
     property bool stateReady: false
-    property string mode: workflow === "gaming" ? "hidden" : String(barLayout.panel || "")
+    property string mode: workflow === "gaming" ? "hidden" : style.ready ? String(barLayout.panel || "") : ""
     property bool userHidden: false
     property string popupName: ""
+    property string dragKey: ""
     readonly property var distroGlyphs: ["", "", "󰕈", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]
     property int distroGlyphIndex: 0
     readonly property string distroGlyph: distroGlyphs[distroGlyphIndex]
     property var barLayout: ({})
     property var layoutData: ({})
-    readonly property var barModules: ["modules", "left", "center", "right"].reduce((all, key) => all.concat(Array.isArray(barLayout[key]) ? barLayout[key] : []), []).map(item => typeof item === "string" ? item : String(item.id || ""))
-    readonly property string clockKind: mode === "winbar" ? "winbar" : mode === "horizontal" ? "top" : "main"
+    readonly property var barSections: ["left", "center", "right", "tray"]
+    readonly property var barModules: barSections.reduce((all, key) => all.concat(Array.isArray(barLayout[key]) ? barLayout[key] : []), []).map(item => typeof item === "string" ? item : String(item.id || ""))
+    readonly property var trayHidden: parseTrayList(prefs.trayHidden)
+    readonly property var trayPinned: parseTrayList(prefs.trayPinned)
+    function parseTrayList(raw) {
+        try { const value = JSON.parse(raw); return Array.isArray(value) ? value : [] }
+        catch (error) { return [] }
+    }
+    function trayKey(section, entry) {
+        const id = typeof entry === "string" ? entry : String(entry.id || "")
+        const instance = typeof entry === "string" || entry.trayInstance == null ? "" : String(entry.trayInstance)
+        return layoutName + ":" + section + ":" + id + (instance ? ":instance:" + instance : "")
+    }
+    function assignTrayInstances(data) {
+        if (data.panel !== "winbar") return false
+        let changed = false
+        for (const section of barSections) {
+            if (!Array.isArray(data[section])) continue
+            const seen = new Set()
+            const used = new Set(data[section].filter(entry => typeof entry === "object" && entry && entry.trayInstance != null)
+                .map(entry => String(entry.trayInstance)))
+            let next = 1
+            for (let index = 0; index < data[section].length; index++) {
+                let entry = data[section][index]
+                let key = trayKey(section, entry)
+                if (seen.has(key)) {
+                    let instance
+                    do { instance = "auto-" + next++ } while (used.has(instance))
+                    used.add(instance)
+                    entry = typeof entry === "string" ? { id: entry, trayInstance: instance }
+                        : Object.assign({}, entry, { trayInstance: instance })
+                    data[section][index] = entry
+                    key = trayKey(section, entry)
+                    changed = true
+                }
+                seen.add(key)
+            }
+        }
+        return changed
+    }
+    function moveBarModule(key, section, target, after) {
+        if (layoutName !== "winbar" || !barSections.includes(section) || target === key) return
+        const from = key.split(":")[1], data = JSON.parse(JSON.stringify(layoutData))
+        const index = (data[from] || []).findIndex(entry => trayKey(from, entry) === key)
+        const unlistedIcon = key.split(":").slice(2).join(":")
+        if (index < 0 && !unlistedIcon.startsWith("icon:")) return
+        const entry = index < 0 ? unlistedIcon : data[from].splice(index, 1)[0]
+        data[section] = data[section] || []
+        let position = data[section].findIndex(item => trayKey(section, item) === target)
+        if (position < 0) position = data[section].length
+        else if (after) position++
+        data[section].splice(position, 0, entry)
+        assignTrayInstances(data)
+        layoutData = data; barLayout = data
+        layoutFile.setText(JSON.stringify(data, null, 2) + "\n")
+    }
+    function toggleTrayIcon(id) {
+        prefs.trayHidden = JSON.stringify(trayHidden.includes(id) ? trayHidden.filter(item => item !== id) : trayHidden.concat(id))
+    }
+    function toggleTrayPin(id) {
+        prefs.trayPinned = JSON.stringify(trayPinned.includes(id) ? trayPinned.filter(item => item !== id) : trayPinned.concat(id))
+    }
+    readonly property string clockKind: barLayout.clock || (mode === "winbar" ? "winbar" : "top")
     readonly property var selectedClockFormat: ClockFormats.selected(clockKind, prefs[clockKind + "Clock"])
-    readonly property bool dateModuleVisible: !userHidden && (barModules.includes("date") || barModules.includes("datetime") && selectedClockFormat.hasDate)
-    readonly property bool clockModuleVisible: !userHidden && barModules.includes("datetime") && selectedClockFormat.hasTime
+    readonly property bool clockOnBar: !userHidden && ["datetime", "notification-center"].some(id => barModules.includes(id))
+    readonly property bool dateModuleVisible: clockOnBar && selectedClockFormat.hasDate
+    readonly property bool clockModuleVisible: clockOnBar && selectedClockFormat.hasTime
     readonly property string timeVisibility: Quickshell.processId + " " + Number(dateModuleVisible) + " " + Number(clockModuleVisible) + "\n"
     property real volumeLimit: 1
     property real volumeMinDb: -60
@@ -54,6 +122,7 @@ ShellRoot {
     readonly property alias bitwarden: bitwardenVault
     readonly property alias systemStats: systemStatsService
     readonly property var monitorPreviewCoordinator: monitorPreviewGuardLoader.item
+    readonly property var dock: dockLoader.item
     property Theme style: Theme { home: shellRoot.home; styleName: String(shellRoot.barLayout.style || shellRoot.layoutName) }
     readonly property var palette: style.palette
     readonly property color background: role("bg", "#1f2430")
@@ -79,7 +148,7 @@ ShellRoot {
     readonly property string iconFont: iconFontOverride || iconFonts[fontFamily]
         || (Qt.fontFamilies().includes(fontFamily + " Mono") ? fontFamily : "CaskaydiaCove Nerd Font")
     // hypr's vars.lua owns the terminal choice; this is only the pre-load default
-    property string terminal: "foot"
+    property string terminal: "alacritty"
     // Nerd Font ships double-width icon glyphs with a single-cell advance, and Qt
     // centres on the advance, so the ink hangs off to the right. The Mono faces
     // squeeze them into one cell, making ink and advance agree.
@@ -114,9 +183,9 @@ ShellRoot {
     // the windows behind it, and Hyprland draws those in raw pixels
     readonly property real borderWidth: style.border
     readonly property real moduleRadius: mode === "winbar" ? 0 : rounding
-    readonly property string barEdge: String(barLayout.edge || "left")
+    readonly property string barEdge: String(barLayout.edge || "top")
     property real barFloatGap: Style.popupGap
-    readonly property real barOpacity: workflow === "powersaver" ? 1 : workflow === "windows" ? .5 : mode === "vertical" ? .6 : .4
+    readonly property real barOpacity: workflow === "powersaver" ? 1 : workflow === "windows" ? .5 : .4
     readonly property color barColor: prefs.barTransparent ? "transparent" : alpha(background, barOpacity)
     property SystemClock clock: SystemClock { precision: SystemClock.Minutes }
     readonly property alias store: persistent
@@ -129,12 +198,14 @@ ShellRoot {
         JsonAdapter {
             id: prefsAdapter
             property int topClock: 2
-            property int mainClock: 3
-            property bool mainDateNumeric: false
             property int winbarClock: 0
+            property int macosClock: 0
             property bool barTransparent: false
             property bool barBlur: true
             property bool barFloating: false
+            property string trayHidden: "[]"
+            property string trayPinned: "[]"
+            property bool trayShowIcons: true
         }
     }
     readonly property var exposeDefaults: ({
@@ -170,7 +241,7 @@ ShellRoot {
     SystemStatsService { id: systemStatsService; shell: shellRoot }
 
     function alpha(color, opacity) { return Qt.rgba(color.r, color.g, color.b, opacity) }
-    function styleColor(spec, fallback) { return !spec ? fallback : Array.isArray(spec) ? alpha(role(spec[0], fallback), spec[1]) : role(spec, fallback) }
+    function styleColor(spec, fallback) { return !spec ? fallback : Array.isArray(spec) ? alpha(role(spec[0], fallback), spec[1] ?? 1) : role(spec, fallback) }
     function cycleDistroGlyph() { distroGlyphIndex = (distroGlyphIndex + 1) % distroGlyphs.length }
     function loadExposeConfig(raw) {
         try {
@@ -255,6 +326,24 @@ ShellRoot {
     function toggleBarBlur() { prefs.barBlur = !prefs.barBlur }
     function toggleBarFloating() { prefs.barFloating = !prefs.barFloating }
     function refreshBarFloatGap() { if (!barGapProbe.running) barGapProbe.running = true }
+    function refreshMenuState() { refreshBarFloatGap(); if (!pausedProbe.running) pausedProbe.running = true }
+    function menuTargetActive(target) {
+        const toggles = {
+            style_bar_transparency: prefs.barTransparent, style_bar_blur: prefs.barBlur, style_bar_floating: prefs.barFloating,
+            style_dock_transparency: !!dock?.transparent, style_dock_blur: !!dock?.blurred, style_dock_position_link: !!dock?.linkToBar,
+            trigger_toggle_nightlight: sunsetEnabled === "1", trigger_toggle_keep_awake: keepAwakeManual,
+            trigger_toggle_notifications: !notificationsPaused, trigger_toggle_bar: !userHidden, trigger_toggle_window_gaps: barFloatGap > 0
+        }
+        const choices = {
+            style_bar_layout_: layoutName, style_workflow_: workflow, style_animations_: animation, style_text_size_: Style.textSize,
+            style_color_mode_source_: colorSource, style_color_mode_: colorMode, trigger_toggle_workspace_layout_: windowLayout,
+            setup_power_profile_: PowerProfile.toString(PowerProfiles.profile).replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase(),
+            style_dock_position_: dock && !dock.linkToBar ? dock.dockEdge : null,
+            style_expose_hot_corner_: exposeConfig.hotCornerEnabled ? exposeConfig.hotCornerPosition : null
+        }
+        const prefix = Object.keys(choices).find(prefix => target.startsWith(prefix))
+        return toggles[target] ?? (prefix === undefined ? undefined : target === prefix + choices[prefix])
+    }
     function loadBarFloatGap(raw) {
         try {
             const firstCssValue = String(JSON.parse(raw).css || "").trim().split(/\s+/)[0]
@@ -262,17 +351,19 @@ ShellRoot {
             if (isFinite(gap)) barFloatGap = Math.max(0, gap)
         } catch (error) {}
     }
-    function barLayoutIcon() { return ({top:"", bottom:"", left:""})[barEdge] || "" }
+    function barLayoutIcon() { return ({top:"", bottom:""})[barEdge] || "" }
     function setBarLayout(data) {
-        const edges = data.panel === "vertical" ? ["left"] : ["top", "bottom"]
-        if (!["vertical", "horizontal", "winbar"].includes(data.panel) || !edges.includes(data.edge)) throw new Error("invalid panel or edge")
+        if (!["horizontal", "winbar"].includes(data.panel) || !["top", "bottom"].includes(data.edge)) throw new Error("invalid panel or edge")
         barLayout = data
     }
     function loadBarLayout(raw) {
         try {
-            layoutData = JSON.parse(raw)
+            const data = JSON.parse(raw)
+            const changed = assignTrayInstances(data)
+            layoutData = data
             if (layoutData.extends) { barLayout = ({}); sharedLayoutFile.reload() }
             else setBarLayout(layoutData)
+            if (changed) layoutFile.setText(JSON.stringify(data, null, 2) + "\n")
         } catch (error) { console.warn("layout " + layoutName + ": " + error); barLayout = ({}) }
     }
     function loadSharedLayout(raw) {
@@ -288,20 +379,17 @@ ShellRoot {
     }
     function loadState(raw) {
         const text = String(raw)
-        const modeMatch = text.match(/(?:^|\n)HYPR_WORKFLOW=["']?([^"'\n]+)/)
-        const themeMatch = text.match(/(?:^|\n)HYPR_THEME=["']?([^"'\n]+)/)
-        const layoutMatch = text.match(/(?:^|\n)QUICKSHELL_LAYOUT_NAME=["']?([^"'\n]+)/)
-        const sunsetMatch = text.match(/(?:^|\n)HYPRSUNSET_ENABLED=["']?([^"'\n]+)/)
-        const keepAwakeMatch = text.match(/(?:^|\n)HYPR_KEEP_AWAKE=["']?([^"'\n]+)/)
-        const keepAwakeAudioMatch = text.match(/(?:^|\n)HYPR_KEEP_AWAKE_AUDIO=["']?([^"'\n]+)/)
-        const keepAwakeFullscreenMatch = text.match(/(?:^|\n)HYPR_KEEP_AWAKE_FULLSCREEN=["']?([^"'\n]+)/)
-        workflow = modeMatch ? modeMatch[1].trim() : "default"
-        themeName = themeMatch ? themeMatch[1].trim() : ""
-        layoutName = layoutMatch ? layoutMatch[1].trim() : "sidebar"
-        sunsetEnabled = sunsetMatch ? sunsetMatch[1].trim() : ""
-        keepAwakeManual = keepAwakeMatch ? keepAwakeMatch[1].trim() === "1" : false
-        keepAwakeAudio = keepAwakeAudioMatch ? keepAwakeAudioMatch[1].trim() !== "0" : true
-        keepAwakeFullscreen = keepAwakeFullscreenMatch ? keepAwakeFullscreenMatch[1].trim() === "1" : false
+        const value = (key, fallback) => (text.match(new RegExp(`(?:^|\n)${key}=["']?([^"'\n]+)`))?.[1] ?? fallback).trim()
+        workflow = value("HYPR_WORKFLOW", "default")
+        themeName = value("HYPR_THEME", "")
+        layoutName = value("QUICKSHELL_LAYOUT_NAME", "top")
+        sunsetEnabled = value("HYPRSUNSET_ENABLED", "")
+        keepAwakeManual = value("HYPR_KEEP_AWAKE", "0") === "1"
+        keepAwakeAudio = value("HYPR_KEEP_AWAKE_AUDIO", "1") !== "0"
+        keepAwakeFullscreen = value("HYPR_KEEP_AWAKE_FULLSCREEN", "0") === "1"
+        animation = value("HYPR_ANIMATION", "default")
+        colorSource = value("selected_color_source", "theme")
+        colorMode = ({ 1: "auto", 2: "dark", 3: "light" })[value("selected_color_mode", "2")] ?? ""
         stateReady = true
     }
     function loadCaffeineWindowState(raw) {
@@ -344,7 +432,8 @@ ShellRoot {
         onFileChanged: reload()
     }
     FileView { path: Quickshell.env("XDG_RUNTIME_DIR") + "/hypr/caffeine-windows"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadCaffeineWindowState(text()); onFileChanged: reload() }
-    FileView { id: layoutFile; path: shellRoot.home + "/.config/quickshell/layouts/" + shellRoot.layoutName + ".json"; watchChanges: true; printErrors: false; onPathChanged: reload(); onLoaded: shellRoot.loadBarLayout(text()); onFileChanged: reload() }
+    FileView { path: shellRoot.home + "/.local/state/hypr/window-layout.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.windowLayout = String(text()).match(/layout\s*=\s*["']([^"']+)/)?.[1] ?? ""; onFileChanged: reload() }
+    FileView { id: layoutFile; path: shellRoot.home + "/.config/quickshell/layouts/" + shellRoot.layoutName + ".json"; watchChanges: true; atomicWrites: true; printErrors: false; onPathChanged: reload(); onLoaded: shellRoot.loadBarLayout(text()); onFileChanged: reload() }
     FileView { id: sharedLayoutFile; path: shellRoot.layoutData.extends ? shellRoot.home + "/.config/quickshell/layouts/shared/" + shellRoot.layoutData.extends + ".json" : ""; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadSharedLayout(text()); onFileChanged: reload() }
     FileView {
         id: baseFontFile
@@ -370,6 +459,7 @@ ShellRoot {
     Timer { interval: 1000; repeat: true; running: shellRoot.activeEntries.length > 0; triggeredOnStart: true; onTriggered: shellRoot.timerNowMs = Date.now() }
     Process { id: volumeRangeProbe; command: [shellRoot.home + "/.local/lib/hypr/controls/volume-control.sh", "--limits"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadVolumeRange(text) } }
     Process { id: barGapProbe; command: ["hyprctl", "-j", "getoption", "general:gaps_out"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadBarFloatGap(text) } }
+    Process { id: pausedProbe; command: ["dunstctl", "is-paused"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.notificationsPaused = text.trim() === "true" } }
     Process {
         id: powerProfileRestore
         onRunningChanged: if (!running) {
@@ -483,10 +573,6 @@ ShellRoot {
         function open(): void { shellRoot.lockviewScreen = Hyprland.focusedMonitor?.name ?? Quickshell.screens[0].name }
         function close(): void { shellRoot.lockviewScreen = "" }
         function toggle(): void { if (shellRoot.lockviewScreen) lockviewIpc.close(); else lockviewIpc.open() }
-    }
-    Variants {
-        model: shellRoot.stateReady && shellRoot.mode === "vertical" ? Quickshell.screens : []
-        delegate: Component { MainBar { required property var modelData; shell: shellRoot; screen: modelData } }
     }
     Variants {
         model: shellRoot.stateReady && (shellRoot.mode === "horizontal" || shellRoot.mode === "winbar") ? Quickshell.screens : []

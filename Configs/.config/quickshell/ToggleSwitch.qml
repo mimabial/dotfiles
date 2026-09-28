@@ -4,7 +4,7 @@ Rectangle {
     id: root
     required property var shell
     property bool checked: false
-    property bool keyboardEnabled: false
+    property bool keyboardEnabled: true
     readonly property bool navigable: keyboardEnabled && enabled
     property bool cursored: false
     signal toggled

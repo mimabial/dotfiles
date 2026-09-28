@@ -3,6 +3,7 @@
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -61,9 +62,13 @@ def iter_image_entries():
 
 
 def main() -> None:
+    wanted = sys.argv[1] if len(sys.argv) > 1 else None
     for line, entry_id, extension in iter_image_entries():
-        image_path = decode_and_cache_image(entry_id, extension)
-        print(f"{line}\0icon\x1f{image_path}")
+        if wanted is None:
+            print(f"{line}\0icon\x1f{decode_and_cache_image(entry_id, extension)}")
+        elif entry_id == wanted:
+            print(decode_and_cache_image(entry_id, extension))
+            return
 
 
 if __name__ == "__main__":

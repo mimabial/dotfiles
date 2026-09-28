@@ -1,9 +1,7 @@
 import QtQuick
 import Quickshell
 
-// Desktop-entry access for the dock. Omarchy's shell exposes an equivalent
-// service on its shell root; this config resolves entries directly, so the dock
-// owns a local one instead of reaching through `shell`.
+// Desktop-entry access for the dock, resolved locally instead of through `shell`.
 QtObject {
     id: root
 

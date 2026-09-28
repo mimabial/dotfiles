@@ -2,12 +2,10 @@
 
 Two terminals are configured, and both are themed by the pipeline.
 
-**kitty** is the default — `Super + Return`, and it opens in the current
-directory rather than in `$HOME`, which matters more than it sounds like it does.
+**Alacritty** is the default — `Super + Return` opens it in the current directory.
+`Super + Shift + Return` opens a tmux session in Alacritty from that directory.
 
-**foot** is the alternate — `Super + Shift + Return`, same directory
-behaviour. It is there for when you want a second terminal that is visibly not
-the first one, and as a fallback if kitty is unhappy.
+**kitty** is also configured and themed.
 
 `Super + H` then `K` prints kitty's keybindings, and `T` prints tmux's.
 
@@ -46,9 +44,9 @@ instead when you know exactly how wide the output is.
 
 ## Theming
 
-`render/kitty.sh` and `render/foot.sh` write the active palette into
-`~/.config/kitty/colors.conf` and `~/.cache/hypr/render/foot/colors.ini`. Both are
-generated — edit the main config files, not those.
+`render/kitty.sh` and `render/alacritty.sh` write the active palette into
+`~/.config/kitty/colors.conf` and `~/.cache/hypr/render/alacritty/colors.toml`.
+Both are generated — edit the main config files, not those.
 
 That kitty palette does more work than it looks like. Every curses TUI in this
 config — the look-and-feel panel included — just uses the terminal's default

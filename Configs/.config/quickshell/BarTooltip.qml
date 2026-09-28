@@ -46,8 +46,7 @@ PopupWindow {
         Text {
             id: label; anchors.centerIn: parent; width: Math.min(340, implicitWidth)
             color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
-            // RichText eats a literal newline, and providers emit plain \n
-            text: root.text.replace(/\n/g, "<br>"); textFormat: Text.RichText; wrapMode: Text.Wrap
+            text: root.text; textFormat: Text.PlainText; wrapMode: Text.Wrap
         }
     }
 }

@@ -8,9 +8,8 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "notifications"
-    // Never claims Exclusive keyboard focus: held open it would pin the bar
-    // surface to Exclusive (MainBar) and a click outside could not dismiss this.
-    // Typed characters reach the search field through handleKey instead.
+    keyboardHint: searching ? "Type search · ↑↓ move · Enter select · Esc" : "↑↓ move · Enter select · / search · Del · Esc"
+    // Typed characters reach the search field through handleKey.
     contentWidth: Style.px(380)
     contentHeight: Style.px(520)
 
@@ -157,10 +156,14 @@ PopupCard {
         id: headerAction
         required property string glyph
         required property string hint
+        readonly property bool navigable: true
+        property bool cursored: false
         property color glyphColor: root.shell.foreground
         signal triggered
+        signal clicked(int button)
+        onClicked: triggered()
         width: Style.px(26); height: Style.px(26); radius: root.shell.rounding
-        color: actionArea.containsMouse ? root.shell.hoverFill(3) : "transparent"
+        color: actionArea.containsMouse || cursored ? root.shell.hoverFill(3) : "transparent"
         Text {
             anchors.centerIn: parent
             text: headerAction.glyph
@@ -170,7 +173,7 @@ PopupCard {
         MouseArea {
             id: actionArea
             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: headerAction.triggered()
+            onClicked: headerAction.clicked(Qt.LeftButton)
         }
         BarTooltip { shell: root.shell; anchorItem: headerAction; text: headerAction.hint; hovered: actionArea.containsMouse }
     }

@@ -2,10 +2,10 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell.Io
 
-// Its own panel, the way omarchy separates wifiqr from the network panel.
 PopupCard {
     id: root
     popupName: "wifiqr"
+    keyboardHint: "Esc close"
     contentWidth: Style.px(260)
     contentHeight: qrColumn.implicitHeight + padding * 2
 

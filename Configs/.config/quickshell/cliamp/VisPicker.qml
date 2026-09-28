@@ -86,6 +86,9 @@ BorderSurface {
 
       Rectangle {
         id: bgToggle
+        readonly property bool navigable: true
+        property bool cursored: false
+        function activateKeyboard() { if (root.controller) root.controller.setVisBackground(!root.controller.visBackground) }
         readonly property bool active: root.controller ? root.controller.visBackground : false
         anchors.verticalCenter: parent.verticalCenter
         width: bgLabel.implicitWidth + Style.space(10); height: Style.space(17)
@@ -93,7 +96,7 @@ BorderSurface {
         color: active ? Color.menu.selectedBackground
           : (bgMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Color.menu.selectedBackground) : "transparent")
         border.width: 1
-        border.color: active ? Color.menu.selectedBorder
+        border.color: active || cursored ? Color.menu.selectedBorder
           : (root.controller ? root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.25) : Color.popups.border)
 
         Text {
@@ -110,12 +113,15 @@ BorderSurface {
         MouseArea {
           id: bgMouse
           anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-          onClicked: if (root.controller) root.controller.setVisBackground(!root.controller.visBackground)
+          onClicked: bgToggle.activateKeyboard()
         }
       }
 
       Rectangle {
         id: pulseToggle
+        readonly property bool navigable: true
+        property bool cursored: false
+        function activateKeyboard() { if (root.controller) root.controller.setVisBackgroundPulse(!root.controller.visBackgroundPulse) }
         readonly property bool active: root.controller ? root.controller.visBackgroundPulse : false
         anchors.verticalCenter: parent.verticalCenter
         width: pulseLabel.implicitWidth + Style.space(10); height: Style.space(17)
@@ -123,7 +129,7 @@ BorderSurface {
         color: active ? Color.menu.selectedBackground
           : (pulseMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Color.menu.selectedBackground) : "transparent")
         border.width: 1
-        border.color: active ? Color.menu.selectedBorder
+        border.color: active || cursored ? Color.menu.selectedBorder
           : (root.controller ? root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.25) : Color.popups.border)
 
         Text {
@@ -140,7 +146,7 @@ BorderSurface {
         MouseArea {
           id: pulseMouse
           anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-          onClicked: if (root.controller) root.controller.setVisBackgroundPulse(!root.controller.visBackgroundPulse)
+          onClicked: pulseToggle.activateKeyboard()
         }
       }
 
@@ -173,11 +179,16 @@ BorderSurface {
         delegate: Rectangle {
           required property var modelData
           id: tabPill
+          readonly property bool navigable: true
+          property bool cursored: false
+          function activateKeyboard() { root.selectedCategory = modelData.id }
           readonly property bool isSelected: root.selectedCategory === modelData.id
           width: tabLabel.implicitWidth + Style.space(10); height: Style.space(18)
           radius: Style.space(9)
           color: isSelected ? Color.menu.selectedBackground
             : (tabMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Color.menu.selectedBackground) : "transparent")
+          border.width: cursored ? 1 : 0
+          border.color: Color.menu.selectedBorder
 
           Text {
             id: tabLabel
@@ -191,7 +202,7 @@ BorderSurface {
 
           MouseArea {
             id: tabMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: root.selectedCategory = tabPill.modelData.id
+            onClicked: tabPill.activateKeyboard()
           }
         }
       }
@@ -214,6 +225,9 @@ BorderSurface {
           delegate: Rectangle {
             required property var modelData
             id: chip
+            readonly property bool navigable: true
+            property bool cursored: false
+            function activateKeyboard() { if (root.controller) root.controller.setVisMode(modelData.id) }
             readonly property bool isActive: root.controller && root.controller.visMode === modelData.id
             width: chipContent.implicitWidth + Style.space(12)
             height: Style.space(22)
@@ -222,7 +236,7 @@ BorderSurface {
               : (chipMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Color.menu.selectedBackground)
                 : (root.controller ? root.controller.shell.alpha(root.controller.surface, 0.8) : Color.popups.background))
             border.width: 1
-            border.color: isActive ? Color.menu.selectedBorder
+            border.color: isActive || cursored ? Color.menu.selectedBorder
               : (chipMouse.containsMouse ? Color.menu.selectedBorder
                 : (root.controller ? root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.25) : Color.popups.border))
 
@@ -254,11 +268,7 @@ BorderSurface {
             MouseArea {
               id: chipMouse
               anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-              onClicked: {
-                if (root.controller) {
-                  root.controller.setVisMode(chip.modelData.id)
-                }
-              }
+              onClicked: chip.activateKeyboard()
             }
           }
         }

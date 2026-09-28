@@ -9,6 +9,7 @@ import "BitwardenModel.js" as Model
 PopupCard {
     id: root
     popupName: "bitwarden"
+    keyboardHint: page === "list" ? "Type search · ↑↓ move · Tab filter · Enter copy · ⇧Enter open · Esc" : "↑↓/Tab move · Enter select · Esc back"
     contentWidth: Style.px(430)
     wantsKeyboard: true
 
@@ -90,6 +91,7 @@ PopupCard {
     function setOption(key, value) { generator = Object.assign({}, generator, { [key]: value }); regenerate() }
     function regenerate() { vault.generate(generator, value => root.generated = value) }
     function listKey(event) {
+        if (event.modifiers & Qt.ControlModifier) return false
         const row = rows[selected]
         switch (event.key) {
         case Qt.Key_Down: selected = Math.min(rows.length - 1, selected + 1); return true
@@ -103,7 +105,7 @@ PopupCard {
     }
     function handleKey(event) {
         if (event.key === Qt.Key_Escape) { back(); return true }
-        return page === "list" && listKey(event)
+        return (page === "list" && listKey(event)) || defaultKey(event)
     }
 
     onQueryChanged: selected = 0
@@ -147,30 +149,38 @@ PopupCard {
     component HeaderAction: Rectangle {
         id: headerAction
         required property var action
+        readonly property bool navigable: true
+        property bool cursored: false
+        signal clicked(int button)
+        onClicked: action.run()
         width: Style.px(26); height: Style.px(26); radius: root.shell.rounding
-        color: actionArea.containsMouse ? root.shell.hoverFill(3) : "transparent"
+        color: actionArea.containsMouse || cursored ? root.shell.hoverFill(3) : "transparent"
         Text {
             anchors.centerIn: parent; text: headerAction.action.glyph
             color: headerAction.action.alert ? root.shell.urgent : root.shell.foreground
             font.family: root.shell.fontFamily; font.pixelSize: Style.title
         }
-        MouseArea { id: actionArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: headerAction.action.run() }
+        MouseArea { id: actionArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: headerAction.clicked(Qt.LeftButton) }
         BarTooltip { shell: root.shell; anchorItem: headerAction; text: headerAction.action.hint; hovered: actionArea.containsMouse }
     }
     component Tab: Rectangle {
         id: tab
         required property string label
         required property bool selected
+        readonly property bool navigable: true
+        property bool cursored: false
         signal picked
+        signal clicked(int button)
+        onClicked: picked()
         implicitWidth: tabText.implicitWidth + Style.controlPaddingX * 2; implicitHeight: Style.px(24)
         radius: root.shell.rounding
-        color: selected ? root.shell.alpha(root.shell.role("act_bg", root.shell.accent), .25) : tabArea.containsMouse ? root.shell.hoverFill() : "transparent"
+        color: selected ? root.shell.alpha(root.shell.role("act_bg", root.shell.accent), .25) : tabArea.containsMouse || cursored ? root.shell.hoverFill() : "transparent"
         Text {
             id: tabText; anchors.centerIn: parent; text: tab.label.toUpperCase()
             color: tab.selected ? root.shell.foreground : root.dim
             font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: tab.selected; font.letterSpacing: 1
         }
-        MouseArea { id: tabArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: tab.picked() }
+        MouseArea { id: tabArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: tab.clicked(Qt.LeftButton) }
     }
     component Note: Text {
         width: parent ? parent.width : 0; wrapMode: Text.Wrap; color: root.dim
@@ -201,12 +211,16 @@ PopupCard {
     component Secret: PopupField { shell: root.shell; width: parent ? parent.width : 0; echoMode: TextInput.Password }
     component Box: Rectangle {
         id: box
+        readonly property bool navigable: true
+        property bool cursored: false
         property alias text: area.text
         property alias placeholder: area.placeholderText
         signal edited(string text)
+        function activateKeyboard() { area.forceActiveFocus() }
         width: parent ? parent.width : 0; implicitHeight: Math.max(Style.px(56), area.implicitHeight)
         radius: root.shell.rounding; color: root.shell.alpha(root.shell.foreground, .06)
-        border.width: 1; border.color: root.shell.alpha(root.shell.foreground, area.activeFocus ? .45 : .18)
+        border.width: 1; border.color: cursored ? root.shell.hoverEdge(.85)
+            : root.shell.alpha(root.shell.foreground, area.activeFocus ? .45 : .18)
         TextArea {
             id: area
             anchors.fill: parent; wrapMode: TextArea.Wrap; background: null
@@ -214,6 +228,8 @@ PopupCard {
             color: root.shell.foreground; placeholderTextColor: root.shell.alpha(root.shell.foreground, .28)
             font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
             onTextChanged: if (activeFocus) box.edited(text)
+            Keys.onTabPressed: if (root.shell.popupCard) { root.resumeKeyboard(); root.moveCursor(1) }
+            Keys.onBacktabPressed: if (root.shell.popupCard) { root.resumeKeyboard(); root.moveCursor(-1) }
         }
     }
     component Scroll: Flickable {
@@ -226,13 +242,20 @@ PopupCard {
     component Field: Rectangle {
         id: field
         required property var entry
+        readonly property bool navigable: true
+        property bool cursored: false
         readonly property bool masked: entry.secret && !root.revealed[entry.label]
         readonly property string value: entry.totp ? root.totpCode : entry.value
+        function activateKeyboard() { root.vault.copy(value, entry.label) }
+        function adjustKeyboard(direction) {
+            if (!entry.secret) return false
+            root.revealed = Object.assign({}, root.revealed, { [entry.label]: direction > 0 })
+        }
         width: parent ? parent.width : 0
         implicitHeight: valueText.y + valueText.implicitHeight + Style.controlPaddingY
         radius: root.shell.rounding
-        color: fieldArea.containsMouse ? root.shell.hoverFill() : "transparent"
-        MouseArea { id: fieldArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.vault.copy(field.value, field.entry.label) }
+        color: fieldArea.containsMouse || cursored ? root.shell.hoverFill() : "transparent"
+        MouseArea { id: fieldArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: field.activateKeyboard() }
         Text {
             id: labelText; x: Style.controlPaddingX; y: Style.controlPaddingY
             text: (field.entry.totp ? "TOTP · " + root.totpLeft + "s" : field.entry.label).toUpperCase()

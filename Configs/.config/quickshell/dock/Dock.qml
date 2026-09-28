@@ -559,6 +559,64 @@ Item {
   property var contextAppGroupData: null
   property bool appGroupEditing: false
   property bool appGroupFocusPriming: false
+  property bool menuFocusPriming: false
+  property int menuCursor: -1
+  property var menuRows: []
+
+  function clearMenuCursor() {
+    for (var row of menuRows) if (row) row.cursored = false
+    menuRows = []
+    menuCursor = -1
+  }
+  function collectMenuRows(item, rows) {
+    for (var child of item.children) {
+      if (!child.visible) continue
+      if (child.navigable === true) rows.push(child)
+      collectMenuRows(child, rows)
+    }
+  }
+  function moveMenuCursor(step) {
+    var panel = contextAppId !== "" ? contextMenu : activeStackFolder !== "" ? folderStackPopover : appGroupPopup
+    var rows = []
+    collectMenuRows(panel, rows)
+    menuRows = rows
+    if (!rows.length) return
+    menuCursor = menuCursor < 0 ? (step > 0 ? 0 : rows.length - 1)
+      : (menuCursor + step + rows.length) % rows.length
+    for (var i = 0; i < rows.length; i++) rows[i].cursored = i === menuCursor
+  }
+  function handleMenuKey(event) {
+    if (appGroupEditing || !anyPanelOpen) return false
+    if (event.key === Qt.Key_F2 && activeAppGroupId !== "") { appGroupPopup.beginRename(); return true }
+    if (event.key === Qt.Key_Escape || event.key === Qt.Key_Left) {
+      if (contextAppId === "__dock_settings__" && settingsSubmenu !== "") settingsSubmenu = ""
+      else if (contextAppId !== "") closeContext()
+      else if (activeStackFolder !== "") closeFolderStack()
+      else closeAppGroup()
+      clearMenuCursor()
+      return true
+    }
+    if (event.key === Qt.Key_Down || event.key === Qt.Key_Tab) { moveMenuCursor(1); return true }
+    if (event.key === Qt.Key_Up || event.key === Qt.Key_Backtab) { moveMenuCursor(-1); return true }
+    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter
+        || event.key === Qt.Key_Space || event.key === Qt.Key_Right) {
+      if (menuCursor < 0) moveMenuCursor(1)
+      var row = menuRows[menuCursor]
+      if (row) {
+        if (row.activateKeyboard) row.activateKeyboard()
+        else row.triggered()
+      }
+      return true
+    }
+    return false
+  }
+  function primeMenuFocus() {
+    clearMenuCursor()
+    if (!anyPanelOpen) return
+    menuKeyCatcher.forceActiveFocus()
+    menuFocusPriming = true
+    menuFocusTimer.restart()
+  }
 
 
   property bool autohide: true
@@ -625,6 +683,11 @@ Item {
     id: appGroupFocusTimer
     interval: 150
     onTriggered: root.appGroupFocusPriming = false
+  }
+  Timer {
+    id: menuFocusTimer
+    interval: 150
+    onTriggered: root.menuFocusPriming = false
   }
 
   // Dwell on the screen edge before revealing, so a pointer travelling to the
@@ -912,9 +975,10 @@ Item {
     }
   }
 
-  onContextAppIdChanged: root.syncVisibility()
-  onActiveStackFolderChanged: root.syncVisibility()
-  onActiveAppGroupIdChanged: root.syncVisibility()
+  onContextAppIdChanged: { root.syncVisibility(); root.primeMenuFocus() }
+  onActiveStackFolderChanged: { root.syncVisibility(); root.primeMenuFocus() }
+  onActiveAppGroupIdChanged: { root.syncVisibility(); root.primeMenuFocus() }
+  onSettingsSubmenuChanged: root.clearMenuCursor()
   onAppGroupEditingChanged: {
     root.appGroupFocusPriming = root.appGroupEditing
     if (root.appGroupEditing) appGroupFocusTimer.restart()
@@ -2555,8 +2619,8 @@ Item {
     color: "transparent"
     WlrLayershell.namespace: "hypr-shell-dock"
     WlrLayershell.layer: WlrLayer.Top
-    WlrLayershell.keyboardFocus: !root.appGroupEditing ? WlrKeyboardFocus.None
-      : root.appGroupFocusPriming ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
+    WlrLayershell.keyboardFocus: !(root.anyPanelOpen || root.appGroupEditing) ? WlrKeyboardFocus.None
+      : root.menuFocusPriming || root.appGroupFocusPriming ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
     exclusionMode: (!root.autohide) ? ExclusionMode.Normal : ExclusionMode.Ignore
     exclusiveZone: (!root.autohide)
       ? Math.round((root.vertical ? dockCard.width : dockCard.height) + Style.gapsOut * 2)
@@ -2572,6 +2636,12 @@ Item {
     }
     implicitWidth: 650
     implicitHeight: 650
+    Item {
+      id: menuKeyCatcher
+      anchors.fill: parent
+      focus: true
+      Keys.onPressed: event => event.accepted = root.handleMenuKey(event)
+    }
 
     // Bound explicitly rather than `item: dockCard`: the card slides on animated
     // x/y, and an item-tracking Region does not follow that. The input region
@@ -2753,11 +2823,9 @@ Item {
         id: row
         z: 1
         spacing: Style.space(root.itemSpacing)
-        // Only columns is set: Grid then derives its own row count, which is
-        // what keeps the spine a single line on either axis. Setting rows too
-        // makes Grid reserve the full rows x columns block and warn whenever
-        // the pair momentarily fails to cover the children.
-        columns: root.vertical ? 1 : Math.max(1, row.visibleChildren.length)
+        // Empty Repeaters are visible children, so counting them adds a gap
+        // after the last icon and shifts a lone button off the screen centre.
+        columns: root.vertical ? 1 : Math.max(1, root.elementTotal)
 
         anchors.left: parent.left
         anchors.leftMargin: dockCard.contentLeftInset
@@ -3047,7 +3115,7 @@ Item {
               z: 300
               color: Util.alpha(Color.tooltip.background, root.dockSurfaceOpacity)
               borderSpec: Border.surfaceSpec("tooltip", "border", Color.tooltip.border, 1)
-              radius: Style.cornerRadius > 0 ? Style.cornerRadius : 6
+              radius: Style.cornerRadius
               padding: Style.space(4)
               x: root.tipX(parent.width, width, Style.space(6))
               y: root.tipY(parent.height, height, Style.space(6))
@@ -3293,6 +3361,13 @@ Item {
             Util.execDetached("uwsm-app -- xdg-open " + Util.shellQuote(root.activeStackFolder.replace(/^~/, Quickshell.env("HOME"))))
             root.closeFolderStack()
           }
+        }
+        Text {
+          width: parent.width; text: "↑↓ move · Enter open · ←/Esc close"
+          wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter
+          fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Style.font.caption - 2)
+          color: Util.alpha(Color.menu.text, .55)
+          font.family: Style.font.family; font.pixelSize: Style.font.caption
         }
       }
     }

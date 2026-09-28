@@ -248,6 +248,22 @@ def required_rows(records, spare=2):
     return max(MIN_ROWS, needed + spare)
 
 
+def footer_hint(agent_paths):
+    return HINT + "".join(
+        f"   {spec.shortcut} {spec.name}"
+        for spec in AGENTS.values()
+        if agent_paths[spec.command]
+    )
+
+
+def installed_agent_paths():
+    return {spec.command: shutil.which(spec.command) for spec in AGENTS.values()}
+
+
+def required_columns(agent_paths):
+    return max(MIN_COLS, len(footer_hint(agent_paths)) + 2)
+
+
 def progress(value, width, divisions=1):
     width = max(1, width)
     fraction = max(0.0, min(1.0, float(value)))
@@ -323,10 +339,9 @@ class Dashboard:
         self.message_until = 0.0
         self.last_mtime = mtime_ns(CACHE_FILE)
         self.default_agent = self.read_default_agent()
-        self.agent_paths = {
-            spec.command: shutil.which(spec.command) for spec in AGENTS.values()
-        }
+        self.agent_paths = installed_agent_paths()
         self.configure_screen()
+        self.fit_window()
         if (
             not self.records
             or self.cache_age() > CACHE_MAX_AGE_SECONDS
@@ -343,6 +358,35 @@ class Dashboard:
         curses.mouseinterval(0)
         if curses.has_colors():
             init_colors()
+
+    def fit_window(self):
+        rows, columns = self.screen.getmaxyx()
+        needed_columns = required_columns(self.agent_paths)
+        needed_rows = required_rows(self.records)
+        if columns >= needed_columns and rows >= needed_rows:
+            return
+        try:
+            clients = json.loads(subprocess.check_output(
+                ["hyprctl", "clients", "-j"], stderr=subprocess.DEVNULL, timeout=1
+            ))
+            matches = [client for client in clients if client.get("class") == "org.tui.AgentHub" and client.get("floating")]
+            window = next((client for client in matches if client.get("pid") == os.getppid()), None)
+            if window is None and len(matches) == 1:
+                window = matches[0]
+            if window is None:
+                return
+            pixel_width, pixel_height = window["size"]
+            width = (pixel_width * max(columns, needed_columns) + columns - 1) // columns
+            height = (pixel_height * max(rows, needed_rows) + rows - 1) // rows
+            selector = json.dumps("address:" + window["address"])
+            resize = f"hl.dsp.window.resize({{x={width}, y={height}, exact=true, window={selector}}})"
+            center = f"hl.dsp.window.center({{window={selector}, respect_reserved=true}})"
+            subprocess.run(
+                ["hyprctl", "-q", "--batch", f"dispatch {resize};dispatch {center}"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1, check=False,
+            )
+        except (OSError, ValueError, KeyError, subprocess.SubprocessError):
+            return
 
     @staticmethod
     def read_default_agent():
@@ -407,6 +451,7 @@ class Dashboard:
                 0,
             )
             self.last_mtime = mtime
+            self.fit_window()
         if status is not None:
             self.note(
                 "Usage refreshed" if status == 0 else "Usage refresh failed",
@@ -497,12 +542,7 @@ class Dashboard:
         return y + 1 + title_gap
 
     def hint(self):
-        installed = [
-            f"{spec.shortcut} {spec.name}"
-            for spec in AGENTS.values()
-            if self.agent_paths[spec.command]
-        ]
-        return HINT + ("   " + "   ".join(installed) if installed else "")
+        return footer_hint(self.agent_paths)
 
     def draw_header(self, record, width, accent, dim):
         self.put(0, 1, "Agent Hub", accent | curses.A_BOLD)
@@ -776,12 +816,12 @@ def main():
     parser.add_argument(
         "--size",
         action="store_true",
-        help="print the terminal columns and rows needed by the launcher",
+        help="print the minimum terminal columns and rows",
     )
     args = parser.parse_args()
     records = load_records()
     if args.size:
-        print(MIN_COLS, required_rows(records))
+        print(required_columns(installed_agent_paths()), required_rows(records))
         return
     if args.snapshot:
         print(snapshot(records, args.agent))

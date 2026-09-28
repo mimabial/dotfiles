@@ -21,7 +21,7 @@ Rectangle {
     property bool interactive: true
     property real rightInset: 0
     // marks the row for PopupCard's keyboard cursor, and shows where it sits
-    readonly property bool navigable: interactive
+    readonly property bool navigable: interactive && enabled
     readonly property bool hovered: mouse.containsMouse
     property bool cursored: false
     property bool selected: false

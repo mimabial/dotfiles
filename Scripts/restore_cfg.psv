@@ -16,7 +16,7 @@ S|${HOME}/.config|wlogout|wlogout
 
  Terminals & Shell 
 S|${HOME}/.config|kitty|kitty
-S|${HOME}/.config|foot|foot
+S|${HOME}/.config|alacritty|alacritty
 S|${HOME}/.config|tmux|tmux
 S|${HOME}/.config|zsh|zsh
 S|${HOME}|.zshenv|zsh

@@ -10,16 +10,19 @@ Text {
   property string title: ""
   property string artist: ""
   readonly property bool liked: root.controller.isLiked(root.url, root.title, root.artist)
+  readonly property bool navigable: true
+  property bool cursored: false
+  function activateKeyboard() { root.controller.toggleLikeFor(url, title, artist) }
 
   z: 2
   anchors.verticalCenter: parent.verticalCenter
   text: root.liked ? "\uec04" : "\ueb05"
-  color: root.liked || likeMouse.containsMouse ? root.controller.urgent : root.controller.dim
+  color: root.liked || likeMouse.containsMouse || cursored ? root.controller.urgent : root.controller.dim
   font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption
 
   MouseArea {
     id: likeMouse
     anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-    onClicked: root.controller.toggleLikeFor(root.url, root.title, root.artist)
+    onClicked: root.activateKeyboard()
   }
 }

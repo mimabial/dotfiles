@@ -6,6 +6,7 @@ Item {
 
   property string text: ""
   property string glyph: ""
+  property string shortcut: ""
   property bool checked: false
   property color textColor: Color.menu.text
   property bool danger: false
@@ -13,6 +14,10 @@ Item {
   // Shown but not actionable: the row still says what it would do, instead of
   // vanishing and shifting every row below it.
   property bool disabled: false
+  readonly property bool navigable: enabled && !isHeader && !disabled
+  property bool cursored: false
+  property bool highlighted: false
+  readonly property bool hovered: area.containsMouse
   property bool isWindowRow: false
   property real menuWidth: 0
   property bool winFocused: false
@@ -40,7 +45,7 @@ Item {
     anchors.fill: parent
     visible: !crow.isHeader && !crow.disabled
     radius: Style.cornerRadius
-    color: area.containsMouse
+    color: (area.containsMouse || crow.cursored || crow.highlighted)
       ? (crow.danger ? Util.alpha(Color.urgent, 0.16) : Color.menu.selectedBackground)
       : (crow.checked ? Util.alpha(Color.bar.active, 0.12) : "transparent")
   }
@@ -50,7 +55,7 @@ Item {
     anchors.left: parent.left
     anchors.leftMargin: Style.space(8)
     anchors.right: parent.right
-    anchors.rightMargin: Style.space(8)
+    anchors.rightMargin: Style.space(8) + (shortcutLabel.visible ? shortcutLabel.implicitWidth + Style.space(12) : 0)
     anchors.verticalCenter: parent.verticalCenter
     spacing: Style.space(6)
 
@@ -120,7 +125,7 @@ Item {
         ? Util.alpha(Color.menu.text, 0.5)
         : (crow.checked || crow.winFocused
             ? Color.bar.active
-            : (area.containsMouse && crow.danger ? Color.urgent : crow.textColor))
+        : ((area.containsMouse || crow.cursored) && crow.danger ? Color.urgent : crow.textColor))
       font.family: Style.font.family
       font.pixelSize: crow.isHeader ? Style.font.caption : Style.font.body
       // `checked` boldens an option row to mark the current value, which is
@@ -130,6 +135,19 @@ Item {
         ? Font.DemiBold : Font.Normal
       elide: Text.ElideRight
     }
+  }
+
+  Text {
+    id: shortcutLabel
+    visible: crow.shortcut !== ""
+    anchors.right: parent.right
+    anchors.rightMargin: Style.space(8)
+    anchors.verticalCenter: parent.verticalCenter
+    text: crow.shortcut
+    textFormat: Text.PlainText
+    color: Util.alpha(Color.menu.text, 0.5)
+    font.family: Style.font.family
+    font.pixelSize: Style.font.body
   }
 
   MouseArea {

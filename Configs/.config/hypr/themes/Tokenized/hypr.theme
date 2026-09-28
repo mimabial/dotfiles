@@ -2,32 +2,37 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Tela-red
 $COLOR_SCHEME = prefer-light
+
 $NVIM_SCHEME = token
 # $NVIM_VARIANT = classic
 # $NVIM_BACKGROUND = light
 # $NVIM_TRANSPARENCY = true
+
 $CURSOR_THEME = OpenZone_Fire
 $CURSOR_SIZE = 30
-$FONT = M+1Code Nerd Font
-$BAR_FONT = M+1Code Nerd Font
-$MENU_FONT = M+1Code Nerd Font
-$MONOSPACE_FONT = M+1Code Nerd Font
-$TERMINAL_FONT = M+1Code Nerd Font
-$NOTIFICATION_FONT = M+1Code Nerd Font Mono
+
+$FONT = IosevkaTerm Nerd Font
+$BAR_FONT = IosevkaTerm Nerd Font
+$MENU_FONT = IosevkaTerm Nerd Font
+$MONOSPACE_FONT = IosevkaTerm Nerd Font
+$TERMINAL_FONT = IosevkaTerm Nerd Font
+$NOTIFICATION_FONT = IosevkaTerm Nerd Font Mono
 
 general {
-    col.active_border = rgb(a32f1a) rgba(13131dee) 45deg
+    col.active_border = rgb(e84d31)
+    col.inactive_border = rgba(dddcd6ee)
     border_size = 3
     gaps_in = 4
     gaps_out = 9
 }
 
 group {
-    col.border_active = rgb(a32f1a) rgba(13131dee) 45deg
+    col.border_active = rgb(a32f1a)
+    col.inactive_border = rgba(13131dee)
 }
 
 decoration {
-    rounding = 5
+    rounding = 3
     active_opacity = 0.9
     inactive_opacity = 0.8
     fullscreen_opacity = 1.0

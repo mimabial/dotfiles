@@ -7,11 +7,16 @@ LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell session/lid-close [--no-suspend]
-Lock the screen, wait for it to map, then suspend. Bound to the lid switch, so it
+Lock the screen, wait for it to map, then run the configured lid action. Bound to the lid switch, so it
 must not depend on hypridle: caffeine stops that daemon and would skip the lock." "$@"
 
 suspend=1
 [[ "${1:-}" == "--no-suspend" ]] && suspend=0
+action=suspend
+if ((suspend)); then
+  action="$(hyprshell system/power-manager.sh lid-action)" || exit 1
+  [[ "${action}" == ignore ]] && exit 0
+fi
 
 mkdir -p "${HYPR_RUNTIME_DIR}"
 exec {close_fd}>"${HYPR_RUNTIME_DIR}/lid-close.lock"
@@ -33,4 +38,4 @@ if ! exec {inhibitor_fd}<"${HYPR_RUNTIME_DIR}/lid-inhibitor" || flock -n "${inhi
   notify_send_safe -u critical 'Suspend cancelled' 'Lid inhibitor is not running'
   exit 1
 fi
-exec hyprshell session/suspend.sh --no-lock
+exec hyprshell system/power-manager.sh perform "${action}" --locked

@@ -5,6 +5,7 @@ import Quickshell
 PopupCard {
     id: root
     popupName: "tray"
+    keyboardHint: "↑↓ move · → open · ← back · Esc close"
     contentWidth: Style.px(260)
 
     property var handle: null
@@ -13,27 +14,27 @@ PopupCard {
     property Item openRow: null
 
     property QsMenuOpener opener: QsMenuOpener { menu: root.handle }
-    extraGrabWindows: [flyout, flyout2, flyout3]
+    extraGrabWindows: flyout.grabWindows
 
     onOpenChanged: if (!open) { openSub = null; openRow = null }
+    onHandleChanged: { openSub = null; openRow = null; cursorIndex = -1 }
+    onAnchorItemChanged: if (open) anchor.updateAnchor()
+
+    function handleKey(event) {
+        if (flyout.open) return flyout.handleKey(event)
+        if (event.key === Qt.Key_Right) {
+            const row = navigableRows[cursorIndex]
+            if (row && row.menuEntry.hasChildren) { activateCursor(); return true }
+        }
+        return defaultKey(event)
+    }
 
     property TrayFlyout flyout: TrayFlyout {
         shell: root.shell
         handle: root.openSub
         anchorItem: root.openRow
         onPicked: root.shell.closePopup()
-    }
-    property TrayFlyout flyout2: TrayFlyout {
-        shell: root.shell
-        handle: root.flyout.openSub
-        anchorItem: root.flyout.openRow
-        onPicked: root.shell.closePopup()
-    }
-    property TrayFlyout flyout3: TrayFlyout {
-        shell: root.shell
-        handle: root.flyout2.openSub
-        anchorItem: root.flyout2.openRow
-        onPicked: root.shell.closePopup()
+        onBackRequested: { root.openSub = null; root.openRow = null }
     }
 
     Column {
@@ -55,6 +56,8 @@ PopupCard {
                 PopupRow {
                     id: row
                     visible: !entry.modelData.isSeparator
+                    enabled: entry.modelData.enabled
+                    property var menuEntry: entry.modelData
                     width: parent.width; shell: root.shell
                     title: entry.modelData.text
                     iconSource: entry.modelData.icon

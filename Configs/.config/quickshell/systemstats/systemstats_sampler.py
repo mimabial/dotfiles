@@ -399,11 +399,50 @@ class CpuSampler:
         }
 
 
+# --------------------------------------------------------------------------- Power
+
+
+class RaplSampler:
+    """Turn RAPL energy counter deltas into watts without elevated privileges."""
+
+    def __init__(self, base: str = "/sys/class/powercap") -> None:
+        self.base = base
+        self.previous: dict[str, int] = {}
+        self.domains = [entry for entry in list_dir(base)
+                        if re.fullmatch(r"intel-rapl:\d+(?::\d+)?", entry)]
+
+    def sample(self, elapsed: float) -> dict:
+        domains = []
+        restricted = False
+        for entry in self.domains:
+            path = f"{self.base}/{entry}"
+            name = bounded_text(read_text(f"{path}/name") or entry)
+            energy_path = f"{path}/energy_uj"
+            energy = read_int(energy_path)
+            if energy is None:
+                restricted |= os.path.exists(energy_path)
+                self.previous.pop(entry, None)
+                continue
+            maximum = read_int(f"{path}/max_energy_range_uj") or 0
+            previous = self.previous.get(entry)
+            self.previous[entry] = energy
+            watts = None
+            if previous is not None and elapsed > 0:
+                delta = energy - previous
+                if delta < 0 and maximum > 0:
+                    delta += maximum
+                if delta >= 0:
+                    watts = round(delta / 1_000_000 / elapsed, 3)
+            domains.append({"id": entry, "name": name, "watts": watts})
+        return {"domains": domains, "restricted": restricted}
+
+
 # ----------------------------------------------------------------------------- GPU
 
 
 class GpuSampler:
-    """Sample every GPU; selection only decides which one appears in the bar."""
+    """Sample every GPU from sysfs; nvidia-smi runs only while NVIDIA is selected,
+    since each query wakes a runtime-suspended dGPU."""
 
     QUERY = (
         "name,utilization.gpu,memory.used,memory.total,temperature.gpu,"
@@ -438,8 +477,7 @@ class GpuSampler:
             for hw in list_dir(f"{device}/hwmon"):
                 self.hwmons[kind] = f"{device}/hwmon/{hw}"
                 break
-        if "nvidia" in self.devices and command_path("nvidia-smi"):
-            self._start_nvidia()
+        self._sync_nvidia()
 
     @staticmethod
     def _preferred_kind() -> str | None:
@@ -481,11 +519,17 @@ class GpuSampler:
         except OSError:
             self.proc = None
             return
-        threading.Thread(target=self._read_nvidia, daemon=True).start()
+        threading.Thread(target=self._read_nvidia, args=(self.proc,), daemon=True).start()
 
-    def _read_nvidia(self) -> None:
-        assert self.proc and self.proc.stdout
-        for line in bounded_lines(self.proc.stdout, STREAM_LINE_LIMIT):
+    def _sync_nvidia(self) -> None:
+        if self.kind != "nvidia":
+            self.stop()
+        elif not (self.proc and self.proc.poll() is None):
+            self._start_nvidia()
+
+    def _read_nvidia(self, proc: subprocess.Popen) -> None:
+        assert proc.stdout
+        for line in bounded_lines(proc.stdout, STREAM_LINE_LIMIT):
             parts = [p.strip() for p in line.strip().split(",")]
             if len(parts) < 9:
                 continue
@@ -511,7 +555,8 @@ class GpuSampler:
                 "fan": num(parts[8]),
             }
             with self.lock:
-                self.latest = snapshot
+                if self.proc is proc:
+                    self.latest = snapshot
 
     def _hwmon_value(self, kind: str, prefix: str, labels: tuple[str, ...]) -> float | None:
         hwmon = self.hwmons.get(kind)
@@ -540,8 +585,6 @@ class GpuSampler:
         base = os.path.dirname(card)
         mhz = freq / 1_000_000 if freq else read_float(f"{base}/gt_cur_freq_mhz") or read_float(f"{base}/gt/gt0/rps_cur_freq_mhz")
         max_mhz = read_float(f"{base}/gt_max_freq_mhz") or read_float(f"{base}/gt_RP0_freq_mhz")
-        if util is None and kind == "intel" and mhz and max_mhz:
-            util = round(min(100, mhz / max_mhz * 100), 1)
         return {
             "name": self.names[kind], "vendor": kind, "util": util,
             "memUsed": mem_used, "memTotal": mem_total,
@@ -573,11 +616,15 @@ class GpuSampler:
         preferred = kind or self._preferred_kind()
         if preferred in self.devices:
             self.kind = preferred
+        self._sync_nvidia()
 
     def stop(self) -> None:
         if self.proc and self.proc.poll() is None:
             kill_process_group(self.proc)
             self.proc.wait()
+        with self.lock:
+            self.proc = None
+            self.latest = None
 
 
 # -------------------------------------------------------------------------- Memory
@@ -1010,7 +1057,11 @@ class SensorSampler:
             if not temps and not fans:
                 continue
             remaining -= len(temps) + len(fans)
+            device_link = f"{path}/device"
+            device_id = (os.path.realpath(device_link) if os.path.exists(device_link)
+                         else os.path.dirname(os.path.dirname(os.path.realpath(path))))
             chips.append({"name": name, "path": path, "temps": temps, "fans": fans,
+                          "device_id": device_id,
                           "labelled": any(t["label"] for t in temps) or any(f["label"] for f in fans)})
         # Some boards expose the same super-IO chip twice (vendor + generic driver).
         # Keep the labelled instance; drop unlabelled duplicates.
@@ -1089,6 +1140,7 @@ class SensorSampler:
                 temps.append({
                     "chip": chip_label,
                     "id": f"{chip['name']}/{temp['key']}",
+                    "alertId": f"{chip['name']}|{chip['device_id']}|{temp['key']}",
                     "label": label,
                     "value": round(raw / 1000, 1),
                     "max": round(temp["max"] / 1000) if 0 < temp["max"] < 200_000 else 0,
@@ -1182,7 +1234,7 @@ def sample_battery() -> dict | None:
         system = {
             "present": present,
             "name": entry,
-            "percent": capacity if capacity is not None else 0,
+            "percent": capacity,
             "status": status,
             "energyNow": round((energy_now or 0) / 1_000_000, 2),
             "energyFull": round((energy_full or 0) / 1_000_000, 2),
@@ -1511,6 +1563,7 @@ def main() -> int:
         threading.Thread(target=controller.listen, daemon=True).start()
 
     cpu = CpuSampler()
+    power = RaplSampler()
     gpu = GpuSampler()
     disks = DiskSampler()
     net = NetworkSampler()
@@ -1586,6 +1639,7 @@ def main() -> int:
             last_slow = now_mono
         for key, fn in (
             ("cpu", cpu.sample),
+            ("power", lambda: power.sample(elapsed)),
             ("gpu", gpu.sample),
             ("mem", sample_memory),
             ("disks", lambda: disks.sample(elapsed, now)),

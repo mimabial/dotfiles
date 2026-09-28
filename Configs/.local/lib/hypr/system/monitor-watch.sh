@@ -12,6 +12,6 @@ recover_monitor_toggles() {
   "${HYPR_LIB_DIR}/system/monitor-mirror.sh" recover || true
 }
 
-nc -U "$(hypr_event_socket)" | while IFS= read -r event; do
-  [[ "${event}" != monitorremovedv2\>\>* ]] || recover_monitor_toggles
+nc -U "$(hypr_event_socket)" | grep --line-buffered '^monitorremovedv2>>' | while read -r _; do
+  recover_monitor_toggles
 done

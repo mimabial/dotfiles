@@ -54,7 +54,7 @@ hl.window_rule({
 })
 hl.window_rule({
 	["name"] = "lua:windowrules:33",
-	["match"] = { ["class"] = "^(foot)$" },
+	["match"] = { ["class"] = "^(Alacritty)$" },
 	["opacity"] = "0.80 override 0.80 override 1",
 })
 hl.window_rule({
@@ -96,11 +96,6 @@ hl.window_rule({ ["name"] = "pavucontrol-float", ["match"] = { ["class"] = "^(.*
 hl.window_rule({
 	["name"] = "lua:windowrules:41",
 	["match"] = { ["class"] = "^(blueman-manager)$" },
-	["opacity"] = "0.80 override 0.70 override 1",
-})
-hl.window_rule({
-	["name"] = "lua:windowrules:42",
-	["match"] = { ["class"] = "^(nm-applet)$" },
 	["opacity"] = "0.80 override 0.70 override 1",
 })
 hl.window_rule({
@@ -177,11 +172,6 @@ hl.window_rule({
 	["opacity"] = "0.80 0.80",
 })
 hl.window_rule({ ["name"] = "lua:windowrules:62", ["match"] = { ["class"] = "^(swappy)$" }, ["opacity"] = "0.80 0.80" })
-hl.window_rule({
-	["name"] = "lua:windowrules:64",
-	["match"] = { ["class"] = "^(org\\.kde\\.gwenview)$" },
-	["suppress_event"] = "fullscreen",
-})
 hl.window_rule({
 	["name"] = "lua:windowrules:65",
 	["match"] = { ["class"] = "^(org\\.kde\\.gwenview)$", ["modal"] = false },

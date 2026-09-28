@@ -3,11 +3,14 @@
   "style": "horizontal",
   "left": [
     { "id": "workspaces", "props": { "compactStyle": true } },
+    "taskbar",
     {
       "id": "mediaplayer",
       "props": {
         "appearance": "mpris",
         "fillAvailableWidth": true,
+        "showAlbumArt": true,
+        "maxLabelWidth": 360,
         "showControls": false,
         "showArtist": true,
         "randomizeProgressShape": true,
@@ -27,10 +30,8 @@
     "systemstats",
     "volume",
     "microphone",
+    "privacy",
     "display",
-    { "id": "bluetooth", "props": { "showReadout": true } },
-    "vpn",
-    "wifi",
     "tasks",
     {
       "id": "appearance",
@@ -39,9 +40,13 @@
         "reverse": true
       }
     },
-    { "id": "notifications", "props": { "showBadge": true } },
     "bitwarden",
-    "powerprofile",
-    { "id": "removable", "props": { "showBadge": true } }
+    "vpn",
+    "wifi",
+    { "id": "bluetooth", "props": { "showReadout": true } },
+    { "id": "removable", "props": { "showBadge": true } },
+    { "id": "notifications", "props": { "showBadge": true } },
+    "agents",
+    "powerprofile"
   ]
 }

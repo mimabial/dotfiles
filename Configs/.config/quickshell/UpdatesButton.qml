@@ -11,7 +11,6 @@ ScriptButton {
     fallback: ""
     property bool popupEnabled: true
     property bool hideWhenCurrent: true
-    // the vertical bars have room to stack the total under the glyph
     property bool showCount: false
     readonly property int pending: {
         const groups = output.packages || ({})

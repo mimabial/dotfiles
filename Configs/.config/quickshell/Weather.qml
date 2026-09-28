@@ -8,10 +8,23 @@ Singleton {
     property var output: ({ text: "", tooltip: "" })
     property var data: ({})
 
+    property var prefs: ({})
+
     function refresh() { if (!process.running) process.running = true }
-    function minMax() {
-        const match = String(output.tooltip || "").match(/Max\|Min:\s*([^\n<]+)/)
-        return match ? match[1] : ""
+    function readouts() { return Array.isArray(prefs.readouts) ? prefs.readouts : ["temp"] }
+    function savePrefs(changes) {
+        prefs = Object.assign({}, prefs, changes)
+        prefsFile.setText(JSON.stringify(prefs))
+    }
+
+    FileView {
+        id: prefsFile
+        path: Quickshell.env("HOME") + "/.local/state/quickshell/weather.json"
+        printErrors: false
+        onLoaded: {
+            try { root.prefs = JSON.parse(text()) }
+            catch (error) { root.prefs = ({}) }
+        }
     }
 
     FileView {

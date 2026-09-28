@@ -7,7 +7,10 @@ import QtQuick.Controls
 TextField {
     id: root
     required property var shell
+    readonly property bool navigable: enabled
+    property bool cursored: false
     signal submitted()
+    function activateKeyboard() { forceActiveFocus(); selectAll() }
 
     height: Style.px(24)
     leftPadding: Style.controlPaddingX; rightPadding: Style.controlPaddingX
@@ -18,7 +21,10 @@ TextField {
 
     readonly property bool masked: inputMask !== ""
     readonly property bool blank: !/\d/.test(text)
-    onActiveFocusChanged: if (activeFocus && masked && blank) cursorPosition = 0
+    onActiveFocusChanged: if (activeFocus) {
+        if (masked && blank) cursorPosition = 0
+        if (shell.popupCard) shell.popupCard.selectRow(root)
+    }
     onCursorPositionChanged: if (masked && blank && cursorPosition !== 0) cursorPosition = 0
 
     // "" until the user has actually typed a digit
@@ -34,11 +40,20 @@ TextField {
             event.accepted = true
         }
     }
+    Keys.onTabPressed: event => {
+        if (!shell.popupCard) { event.accepted = false; return }
+        shell.popupCard.resumeKeyboard(); shell.popupCard.moveCursor(1)
+    }
+    Keys.onBacktabPressed: event => {
+        if (!shell.popupCard) { event.accepted = false; return }
+        shell.popupCard.resumeKeyboard(); shell.popupCard.moveCursor(-1)
+    }
 
     background: Rectangle {
         radius: root.shell.rounding
         color: root.shell.alpha(root.shell.foreground, .06)
         border.width: 1
-        border.color: root.shell.alpha(root.shell.foreground, root.activeFocus ? .45 : .18)
+        border.color: root.cursored ? root.shell.hoverEdge(.85)
+            : root.shell.alpha(root.shell.foreground, root.activeFocus ? .45 : .18)
     }
 }

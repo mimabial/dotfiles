@@ -11,23 +11,61 @@ var MODULES = [
   { id: "network", icon: "󰛳", short: "NET", label: "Network", page: "NetworkPage.qml", graph: true,  ring: false },
   { id: "sensors", icon: "󰔏", short: "SEN", label: "Sensors", page: "SensorsPage.qml", graph: false, ring: false },
   { id: "battery", icon: "󰁹", short: "BAT", label: "Battery", page: "BatteryPage.qml", graph: false, ring: true },
+  { id: "power", icon: "󱐋", short: "PWR", label: "Power", page: "PowerPage.qml", graph: false, ring: false },
   { id: "alerts", icon: "󰀦", short: "ALT", label: "Alerts", page: "AlertsPage.qml", graph: false },
   { id: "settings", icon: "󰒓", short: "SET", label: "Settings", page: "SettingsPage.qml", graph: false }
 ]
 
-var PANEL_TABS = ["cpu", "gpu", "memory", "disks", "network", "sensors", "battery"]
+var PANEL_TABS = ["cpu", "gpu", "memory", "disks", "network", "sensors", "battery", "power"]
 
 var ALERTS = [
   { id: "cpuUsage", label: "CPU usage", threshold: 90, step: 5, min: 5, max: 100, unit: "%" },
   { id: "cpuTemp", label: "CPU temperature", threshold: 90, step: 5, min: 40, max: 110, unit: "°C" },
+  { id: "gpuUsage", label: "GPU usage", threshold: 95, step: 5, min: 5, max: 100, unit: "%" },
   { id: "gpuTemp", label: "GPU temperature", threshold: 85, step: 5, min: 40, max: 110, unit: "°C" },
+  { id: "vram", label: "VRAM usage", threshold: 90, step: 5, min: 5, max: 100, unit: "%" },
   { id: "memory", label: "Memory usage", threshold: 90, step: 5, min: 5, max: 100, unit: "%" },
+  { id: "diskUsage", label: "Disk usage", threshold: 90, step: 5, min: 5, max: 100, unit: "%" },
+  { id: "driveTemp", label: "Drive temperature", threshold: 70, step: 5, min: 40, max: 110, unit: "°C" },
+  { id: "batteryLow", label: "Battery low", threshold: 15, step: 5, min: 5, max: 50, unit: "%", low: true },
   { id: "driveHealth", label: "Drive SMART health", unit: "" }
 ]
 
 function alertDef(id) {
   for (var i = 0; i < ALERTS.length; i++) if (ALERTS[i].id === id) return ALERTS[i]
   return null
+}
+
+function alertReading(snapshot, id) {
+  var s = snapshot || {}, cpu = s.cpu || {}, gpu = s.gpu || {}, mem = s.mem || {}
+  var disks = s.disks || {}, battery = s.battery || {}
+  if (id === "cpuUsage") return { value: cpu.total, subject: "" }
+  if (id === "cpuTemp") return { value: cpu.temp, subject: "" }
+  if (id === "gpuUsage") return { value: gpu.util, subject: String(gpu.name || "") }
+  if (id === "gpuTemp") return { value: gpu.temp, subject: String(gpu.name || "") }
+  if (id === "vram") return { value: gpu.memTotal > 0 ? gpu.memUsed / gpu.memTotal * 100 : null, subject: String(gpu.name || "") }
+  if (id === "memory") return { value: mem.total > 0 ? mem.used / mem.total * 100 : null, subject: "" }
+  if (id === "batteryLow") return { value: battery.present && battery.status === "Discharging" && battery.percent !== null && battery.percent !== undefined ? battery.percent : null, subject: "" }
+  if (id === "diskUsage") {
+    var volumes = Array.isArray(disks.volumes) ? disks.volumes : [], fullest = null
+    for (var i = 0; i < volumes.length; i++) {
+      var volume = volumes[i]
+      if (!(volume.size > 0) || !isFinite(Number(volume.used))) continue
+      var percent = Number(volume.used) / Number(volume.size) * 100
+      if (!fullest || percent > fullest.value) fullest = { value: percent, subject: String(volume.mount || volume.device || "") }
+    }
+    return fullest || { value: null, subject: "" }
+  }
+  if (id === "driveTemp") {
+    var perDisk = disks.perDisk || {}, hottest = null
+    for (var name in perDisk) {
+      var temp = perDisk[name].temp
+      if (temp === null || temp === undefined || !isFinite(Number(temp))) continue
+      if (!hottest || Number(temp) > hottest.value) hottest = { value: Number(temp), subject: name }
+    }
+    return hottest || { value: null, subject: "" }
+  }
+  return { value: null, subject: "" }
 }
 
 function nextAlertState(previous, above, now) {
@@ -54,8 +92,9 @@ var SETTINGS = {
   colorTemperatureIcons: true,
   refreshSeconds: 1,
   historySeconds: 240,
+  historySpan: "live",
   publicIp: true,
-  tabs: "cpu,gpu,memory,disks,network,sensors,battery",
+  tabs: "cpu,gpu,memory,disks,network,sensors,battery,power",
   showProcesses: true,
   showCores: true, showLoad: true,
   showBreakdown: true,
@@ -230,6 +269,10 @@ function filterProcesses(list, query, key) {
 function settingValue(settings, key) {
   var value = settings ? settings[key] : undefined
   return value === undefined || value === null ? SETTINGS[key] : value
+}
+
+function historyRange(value) {
+  return value === "1h" ? 1 : value === "24h" ? 2 : 0
 }
 
 function truthy(value, fallback) {
@@ -507,19 +550,148 @@ function linkSpeedText(iface) {
 
 function emptyHistory() {
   return {
-    cpuUser: [], cpuSystem: [], cpuTotal: [], gpu: [], gpus: {},
+    cpuUser: [], cpuSystem: [], cpuTotal: [], cpuTemp: [],
+    gpu: [], gpuTemp: [], vram: [], gpus: {}, gpuTemps: {}, vrams: {},
     memUsed: [], memPressure: [],
     netRx: [], netTx: [], diskRead: [], diskWrite: [], disks: {},
     battery: [], batteryCharging: []
   }
 }
 
+function emptyPeakBucket() { return { slots: [], series: {} } }
+
+var PEAK_HISTORY_KEYS = [
+  "cpuUser", "cpuSystem", "cpuTotal", "cpuTemp", "gpu", "gpuTemp", "vram",
+  "memUsed", "memPressure", "netRx", "netTx", "diskRead", "diskWrite",
+  "batteryEmpty", "batteryCharging"
+]
+
+function validPeakKey(key) {
+  return PEAK_HISTORY_KEYS.indexOf(key) !== -1
+    || /^(gpu|gpuTemp|vram)\/(amd|intel|nvidia)$/.test(key)
+    || /^disk\/[A-Za-z0-9_-]{1,64}\/(read|write)$/.test(key)
+}
+
+function peakValue(value) {
+  if (value === null || value === undefined) return null
+  var number = Number(value)
+  return isFinite(number) && number >= 0 && number <= 1e15 ? number : null
+}
+
+function normalizePeakBucket(raw, limit) {
+  if (!raw || !Array.isArray(raw.slots) || !raw.series || typeof raw.series !== "object") return emptyPeakBucket()
+  var slots = raw.slots.slice(-limit)
+  if (slots.length === 0) return emptyPeakBucket()
+  for (var i = 0; i < slots.length; i++) {
+    if (!Number.isSafeInteger(slots[i]) || (i > 0 && slots[i] <= slots[i - 1])) return emptyPeakBucket()
+  }
+  var series = {}
+  var keys = Object.keys(raw.series).slice(0, 128)
+  for (var j = 0; j < keys.length; j++) {
+    var key = keys[j], values = raw.series[key]
+    if (!validPeakKey(key) || !Array.isArray(values) || values.length < slots.length) continue
+    series[key] = values.slice(-slots.length).map(peakValue)
+  }
+  return { slots: slots, series: series }
+}
+
+function peakBucket(previous, slot, values, limit) {
+  var old = previous || emptyPeakBucket()
+  var slots = Array.isArray(old.slots) ? old.slots.slice() : []
+  var series = {}, oldSeries = old.series || {}
+  for (var key in oldSeries) if (Array.isArray(oldSeries[key])) series[key] = oldSeries[key].slice()
+  var last = slots.length ? slots[slots.length - 1] : slot - 1
+  if (last > slot) { slots = []; series = {}; last = slot - 1 }
+  if (last < slot) {
+    for (var next = Math.max(last + 1, slot - limit + 1); next <= slot; next++) {
+      slots.push(next)
+      for (var existing in series) series[existing].push(null)
+    }
+  }
+  var index = slots.length - 1
+  for (var current in values) {
+    if (!validPeakKey(current)) continue
+    if (!series[current]) {
+      if (Object.keys(series).length >= 128) continue
+      series[current] = Array(slots.length).fill(null)
+    }
+    var value = peakValue(values[current]), prior = series[current][index]
+    if (value !== null) series[current][index] = prior === null || prior === undefined ? value : Math.max(prior, value)
+  }
+  slots = slots.slice(-limit)
+  for (var stored in series) series[stored] = series[stored].slice(-limit)
+  return { slots: slots, series: series }
+}
+
+function mergePeakBuckets(saved, current, limit) {
+  var merged = normalizePeakBucket(saved, limit)
+  var recent = normalizePeakBucket(current, limit)
+  for (var i = 0; i < recent.slots.length; i++) {
+    var values = {}
+    for (var key in recent.series) values[key] = recent.series[key][i]
+    merged = peakBucket(merged, recent.slots[i], values, limit)
+  }
+  return merged
+}
+
+function peakHistoryView(live, hour, day, range) {
+  if (range === 0) return live || emptyHistory()
+  var series = (range === 1 ? hour : day).series || {}
+  var view = emptyHistory()
+  for (var key in series) {
+    if (key === "batteryEmpty") view.battery = series[key].map(function(value) { return value === null ? null : 100 - value })
+    else if (key.indexOf("gpu/") === 0) view.gpus[key.slice(4)] = series[key]
+    else if (key.indexOf("gpuTemp/") === 0) view.gpuTemps[key.slice(8)] = series[key]
+    else if (key.indexOf("vram/") === 0) view.vrams[key.slice(5)] = series[key]
+    else if (key.indexOf("disk/") === 0) {
+      var match = /^disk\/([^/]+)\/(read|write)$/.exec(key)
+      if (match) {
+        if (!view.disks[match[1]]) view.disks[match[1]] = { read: [], write: [] }
+        view.disks[match[1]][match[2]] = series[key]
+      }
+    } else if (Object.prototype.hasOwnProperty.call(view, key)) view[key] = series[key]
+  }
+  return view
+}
+
+function historyBarWidth(width, range) {
+  return range === 0 ? 2 : Math.max(2, Math.floor(Number(width) / 60) - 1)
+}
+
+function hasReading(values) {
+  if (!Array.isArray(values)) return false
+  for (var i = 0; i < values.length; i++) if (peakValue(values[i]) !== null) return true
+  return false
+}
+
 function pushHistory(arr, value, max) {
   var list = Array.isArray(arr) ? arr : []
   var keep = Math.max(1, max - 1)
   var out = list.length > keep ? list.slice(list.length - keep) : list.slice()
-  out.push(Number(value) || 0)
+  out.push(value === null || value === undefined || !isFinite(Number(value)) ? null : Number(value))
   return out
+}
+
+function powerBucket(previous, slot, cpu, gpu, limit) {
+  var old = previous || {}
+  var slots = Array.isArray(old.slots) ? old.slots.slice() : []
+  var cpus = Array.isArray(old.cpu) ? old.cpu.slice() : []
+  var gpus = Array.isArray(old.gpu) ? old.gpu.slice() : []
+  var last = slots.length ? slots[slots.length - 1] : slot - 1
+  if (last > slot) { slots = []; cpus = []; gpus = []; last = slot - 1 }
+  if (last === slot) {
+    var end = slots.length - 1
+    var nextCpu = peakValue(cpu), nextGpu = peakValue(gpu)
+    if (nextCpu !== null) cpus[end] = peakValue(cpus[end]) === null ? nextCpu : Math.max(cpus[end], nextCpu)
+    if (nextGpu !== null) gpus[end] = peakValue(gpus[end]) === null ? nextGpu : Math.max(gpus[end], nextGpu)
+  } else {
+    for (var next = Math.max(last + 1, slot - limit + 1); next <= slot; next++) {
+      slots.push(next)
+      cpus.push(next === slot ? peakValue(cpu) : null)
+      gpus.push(next === slot ? peakValue(gpu) : null)
+    }
+  }
+  return { slots: slots.slice(-limit), cpu: cpus.slice(-limit), gpu: gpus.slice(-limit) }
 }
 
 function maxOf(arr, count) {

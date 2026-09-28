@@ -39,10 +39,11 @@ KeyboardPanel {
   open: panel.controller.opened
   centerOnBar: false
   focusTarget: keyCatcher
+  readonly property int hintHeight: Style.space(24)
   contentWidth: panel.fittedContentWidth(Style.space(panel.controller.expanded ? 1120 : 430))
   contentHeight: panel.controller.expanded
-    ? panel.fittedContentHeight(Style.space(780))
-    : panel.fittedContentHeight(compactColumn.implicitHeight)
+    ? panel.fittedContentHeight(Style.space(780) + hintHeight)
+    : panel.fittedContentHeight(compactColumn.implicitHeight + hintHeight)
 
   Item {
     width: 0
@@ -539,6 +540,7 @@ KeyboardPanel {
       id: expandedEditor
       visible: panel.controller.expanded
       anchors.fill: parent
+      anchors.bottomMargin: panel.hintHeight
 
       Item {
         id: editorNav
@@ -2060,5 +2062,13 @@ KeyboardPanel {
         }
       }
     }
+  }
+  Text {
+    width: parent.width; anchors.bottom: parent.bottom
+    text: "Tab move · Arrows adjust · Enter select · ? keys · Esc"
+    wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter
+    fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Style.font.caption - 2)
+    color: panel.controller.dim
+    font.family: panel.controller.fontFamily; font.pixelSize: Style.font.caption
   }
 }

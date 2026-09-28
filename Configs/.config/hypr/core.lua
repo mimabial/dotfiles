@@ -152,8 +152,6 @@ local startup = {
     vars.get("start.TEXT_CLIPBOARD"),
     vars.get("start.IMAGE_CLIPBOARD"),
     vars.get("start.CLIPBOARD_PERSIST"),
-    vars.get("start.NETWORK_MANAGER"),
-    vars.get("start.REMOVABLE_MEDIA"),
     vars.get("start.APPTRAY_BLUETOOTH"),
     vars.get("start.BATTERY_NOTIFY"),
     "hyprshell theme/desktop.sync",

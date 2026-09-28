@@ -5,6 +5,7 @@ import "SudokuModel.js" as Game
 PopupCard {
     id: root
     popupName: "sudoku"
+    keyboardHint: "Arrows move · 1–9 place · P pencil · E erase · Esc"
     contentWidth: Style.px(360)
     contentHeight: contentColumn.implicitHeight + padding * 2
 
@@ -75,8 +76,8 @@ PopupCard {
     component GameButton: BarButton {
         property bool selected: false
         height: Style.controlHeight; shell: root.shell; radius: root.shell.rounding
-        active: false; fill: selected ? root.shell.alpha(root.shell.foreground, .14) : "transparent"
-        outline: "transparent"; textColor: root.shell.alpha(root.shell.foreground, selected ? 1 : .8)
+        active: false; backgroundColor: selected ? root.shell.alpha(root.shell.foreground, .14) : "transparent"
+        borderColor: "transparent"; textColor: root.shell.alpha(root.shell.foreground, selected ? 1 : .8)
         fontWeight: selected ? Font.DemiBold : Font.Normal
     }
     component Stat: Column {
@@ -217,11 +218,6 @@ PopupCard {
                 }
             }
             GameButton { width: Style.px(28); text: "⌫"; tooltip: "Erase (E)"; onClicked: root.erase() }
-        }
-        Text {
-            width: parent.width; text: "Arrows / hjkl move · 1–9 place · P pencil · E erase · D difficulty · R new"
-            wrapMode: Text.Wrap; horizontalAlignment: Text.AlignHCenter
-            color: root.shell.alpha(root.shell.foreground, .45); font.family: root.shell.fontFamily; font.pixelSize: Style.caption
         }
     }
 

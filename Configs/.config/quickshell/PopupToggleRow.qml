@@ -29,7 +29,6 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         shell: root.shell
         checked: root.checked
-        keyboardEnabled: true
         onToggled: root.toggled()
     }
 }

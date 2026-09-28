@@ -1,16 +1,15 @@
 .pragma library
 
 var BY_KIND = {
-    main: [
-        { pattern: "HH\n—\nmm", hasDate: false, hasTime: true },
-        { pattern: "h\n—\nmm\nAP", hasDate: false, hasTime: true },
-        { pattern: "dd\nMMM\n''yy", hasDate: true, hasTime: false },
-        { pattern: "HH\nmm", hasDate: false, hasTime: true }
-    ],
     winbar: [
         { pattern: "HH:mm\ndd|MM", hasDate: true, hasTime: true },
         { pattern: "dd|MM\nHH:mm", hasDate: true, hasTime: true },
         { pattern: "ddd dd\nHH:mm", hasDate: true, hasTime: true },
+        { pattern: "HH:mm", hasDate: false, hasTime: true }
+    ],
+    macos: [
+        { pattern: "ddd d MMM  HH:mm", hasDate: true, hasTime: true },
+        { pattern: "ddd MMM d  h:mm AP", hasDate: true, hasTime: true },
         { pattern: "HH:mm", hasDate: false, hasTime: true }
     ],
     top: [

@@ -11,11 +11,11 @@ PanelWindow {
     readonly property bool popupsAllowed: active && (!Hyprland.focusedMonitor
         || !screen || Hyprland.focusedMonitor.name === screen.name)
     readonly property bool popupOpen: shell.popupName !== "" && popupsAllowed
-    readonly property bool popupNeedsFocus: popupOpen && (shell.popupCenteredName === shell.popupName
-        || shell.popupCard && shell.popupCard.wantsKeyboard)
+    readonly property string focusRequest: popupOpen
+        ? shell.popupName + (shell.popupCard && shell.popupCard.wantsKeyboard ? ":input" : "") : ""
     property bool exclusivePhase: false
     function floatMargin(edge) {
-        const inner = ({ top: "bottom", bottom: "top", left: "right" })[shell.barEdge]
+        const inner = ({ top: "bottom", bottom: "top" })[shell.barEdge]
         return shell.prefs.barFloating && edge !== inner ? shell.barFloatGap : 0
     }
 
@@ -30,10 +30,10 @@ PanelWindow {
 
     Rectangle { anchors.fill: parent; color: root.shell.barColor; radius: root.shell.prefs.barFloating ? root.shell.rounding : 0 }
 
-    onPopupNeedsFocusChanged: {
-        exclusivePhase = popupNeedsFocus
-        shell.focusPriming = popupNeedsFocus
-        if (popupNeedsFocus) focusPrime.restart()
+    onFocusRequestChanged: {
+        exclusivePhase = focusRequest !== ""
+        shell.focusPriming = exclusivePhase
+        if (exclusivePhase) focusPrime.restart()
     }
 
     Item {

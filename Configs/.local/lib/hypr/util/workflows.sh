@@ -74,7 +74,7 @@ apply_quickshell_workflow() {
   local last_applied
 
   layout="$(get_workflow_quickshell_layout "${current_workflow_path}")"
-  current_layout_name="$(state_get "QUICKSHELL_LAYOUT_NAME" "sidebar")"
+  current_layout_name="$(state_get "QUICKSHELL_LAYOUT_NAME" "top")"
   saved_layout="$(state_get "WORKFLOW_QUICKSHELL_PREV_LAYOUT" "")"
   last_applied="$(state_get "WORKFLOW_QUICKSHELL_LAST_APPLIED_LAYOUT" "")"
 

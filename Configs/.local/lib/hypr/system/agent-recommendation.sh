@@ -4,7 +4,7 @@ set -euo pipefail
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 
 hypr_help_guard "Usage: hyprshell system/agent-recommendation <id> <name> [usage-summary]
-Record the current AI-agent recommendation and notify only when it changes." "$@"
+Record the current AI-agent recommendation and notify on changes when enabled." "$@"
 
 [[ $# -ge 2 && $# -le 3 ]] || {
   printf 'Usage: hyprshell system/agent-recommendation <id> <name> [usage-summary]\n' >&2
@@ -33,6 +33,8 @@ trap - EXIT
 flock -u "${lock_fd}"
 
 [[ -n "${previous}" ]] || exit 0
+config_file="${XDG_CONFIG_HOME}/quickshell/agents.json"
+jq -e '.notifyRecommendation == true' "${config_file}" >/dev/null 2>&1 || exit 0
 body="Use ${agent_name}"
 [[ -n "${usage_summary}" ]] && body+=$'\n'"${usage_summary}"
 send_ephemeral_notif "agent-recommendation" -a "AI agents" -i applications-development \

@@ -46,6 +46,8 @@ Notes:
     .   Interactive actions like next/previous/random/select wait for in-flight
         wallpaper operations by default.
 
+    .   In select, Delete moves the highlighted wallpaper to Trash.
+
 EOT
   exit 0
 }
@@ -83,19 +85,10 @@ wallpaper_catalog_cache_paths() {
 wallpaper_catalog_print_cached_json_if_current() {
   local json_cache="$1"
   local cache_file="$2"
-  local json_mtime=""
-  local cache_mtime=""
 
   [[ -n "${json_cache}" && -f "${json_cache}" && -f "${cache_file}" ]] || return 1
-
-  json_mtime="$(stat -c '%Y' -- "${json_cache}" 2>/dev/null || echo 0)"
-  cache_mtime="$(stat -c '%Y' -- "${cache_file}" 2>/dev/null || echo 0)"
-  if [[ "${json_mtime}" =~ ^[0-9]+$ && "${cache_mtime}" =~ ^[0-9]+$ ]] && ((json_mtime >= cache_mtime)); then
-    cat "${json_cache}"
-    return 0
-  fi
-
-  return 1
+  [[ "${json_cache}" -nt "${cache_file}" ]] || return 1
+  cat "${json_cache}"
 }
 
 wallpaper_catalog_build_json() {
@@ -246,7 +239,10 @@ wallpaper_select_rofi_args() {
     -show-icons
     -display-column-separator ":::"
     -display-columns 1
+    -format i
     -kb-accept-entry "Control+j,Control+m,Return,KP_Enter"
+    -kb-custom-1 "Delete"
+    -kb-remove-char-forward "Control+d"
     -kb-row-select ""
     -me-select-entry ""
     -me-accept-entry MousePrimary
@@ -270,16 +266,11 @@ wallpaper_selected_row() {
 
 wallpaper_selected_fields() {
   local wall_json_file="$1"
-  local selected_row="$2"
-  local selected_path=""
-
-  selected_path="$(awk -F ':::' '{print $2}' <<<"${selected_row}")"
-  [[ -n "${selected_path}" ]] || return 1
-
-  jq -r --arg path "${selected_path}" \
-    '.[] | select(.path == $path) | [.basename, .path, .sqre] | @tsv' \
-    "${wall_json_file}" \
-    | head -n1
+  local selected_index="$2"
+  [[ "${selected_index}" =~ ^[0-9]+$ ]] || return 1
+  jq -r --argjson index "${selected_index}" \
+    '.[$index] | select(.path != null) | [.basename, .path, .sqre] | @tsv' \
+    "${wall_json_file}"
 }
 
 wallpaper_rofi_entries() {
@@ -288,40 +279,85 @@ wallpaper_rofi_entries() {
   jq -r '.[] | "\(.basename):::\(.path):::\(.sqre)\u0000icon\u001f\(.sqre)"' "${wall_json_file}"
 }
 
+wallpaper_trash_selected() {
+  local wall_json_file="$1"
+  local selected_path="$2"
+  local replacement="" remaining_json="" active_selected=0
+
+  if [[ ! -f "${selected_path}" ]]; then
+    print_log -err "wallpaper" "Wallpaper not found: ${selected_path}"
+    return 1
+  fi
+
+  replacement="$(jq -r --arg path "${selected_path}" '[.[] | select(.path != $path) | .path][0] // empty' "${wall_json_file}")"
+  if [[ -z "${replacement}" ]]; then
+    print_log -warn "wallpaper" "Cannot trash the last wallpaper in this theme"
+    [[ "${wallpaper_notifications_disabled}" -eq 1 ]] || wallpaper_notify_send 3000 -i dialog-warning "Cannot trash wallpaper" "Keep at least one wallpaper in this theme"
+    return 1
+  fi
+
+  [[ "${selected_path}" -ef "${active_wallpaper_link}" ]] && active_selected=1
+  if ((active_selected)); then
+    wallpaper_catalog_load_file "${replacement}" || return 1
+  fi
+
+  remaining_json="$(jq -c --arg path "${selected_path}" 'map(select(.path != $path))' "${wall_json_file}")" || return 1
+
+  if ! gio trash -- "${selected_path}"; then
+    print_log -err "wallpaper" "Could not move wallpaper to Trash: ${selected_path}"
+    [[ "${wallpaper_notifications_disabled}" -eq 1 ]] || wallpaper_notify_send 3000 -i dialog-error "Could not trash wallpaper" "${selected_path##*/}"
+    return 1
+  fi
+
+  printf '%s\n' "${remaining_json}" >"${wall_json_file}"
+  if ((active_selected)); then
+    apply_selected_wallpaper
+    wallpaper_apply_backend
+  fi
+
+  print_log -sec "wallpaper" "Moved to Trash: ${selected_path}"
+  [[ "${wallpaper_notifications_disabled}" -eq 1 ]] || wallpaper_notify_send 2000 -i user-trash "Wallpaper moved to Trash" "${selected_path##*/}"
+}
+
 wallpaper_pick() {
-  local font_scale="" font_name="" selected_entry="" wall_json_file="" selected_row="" rofi_status=0
-  wall_json_file="$(mktemp)"
+  local font_scale="" font_name="" selected_entry="" wall_json_file="" selected_row="" rofi_status=0 entry_count=0 deleted=0
+  wall_json_file="$(mktemp)" || return 1
   font_scale="$(rofi_effective_font_scale "${ROFI_WALLPAPER_SCALE}")"
   font_name="$(rofi_effective_font_name "${ROFI_WALLPAPER_FONT:-$ROFI_FONT}")"
-  wallpaper_json --ensure-thumbs >"${wall_json_file}"
+  wallpaper_json --ensure-thumbs >"${wall_json_file}" || { rm -f "${wall_json_file}"; return 1; }
+  entry_count="$(jq 'length' "${wall_json_file}")"
   selected_row="$(wallpaper_selected_row "${wall_json_file}")"
   local -a rofi_args
-  wallpaper_select_rofi_args "${font_scale}" "${font_name}" "${selected_row}"
+  while :; do
+    wallpaper_select_rofi_args "${font_scale}" "${font_name}" "${selected_row}"
 
-  selected_entry="$(wallpaper_rofi_entries "${wall_json_file}" | rofi_with_background_theme "${rofi_args[@]}")" || rofi_status=$?
+    rofi_status=0
+    selected_entry="$(wallpaper_rofi_entries "${wall_json_file}" | rofi_with_background_theme "${rofi_args[@]}")" || rofi_status=$?
+    if ((rofi_status != 0 && rofi_status != 10)) || [[ -z "${selected_entry}" ]]; then
+      rm -f "${wall_json_file}"
+      ((deleted)) && wallpaper_refresh_inventory_and_prune_async
+      exit 0
+    fi
 
-  if ((rofi_status != 0)) && [[ -z "${selected_entry}" ]]; then
+    IFS=$'\t' read -r selected_wallpaper selected_wallpaper_path selected_thumbnail < <(wallpaper_selected_fields "${wall_json_file}" "${selected_entry}")
+    if [[ -z "${selected_wallpaper_path}" ]]; then
+      rm -f "${wall_json_file}"
+      print_log -err "wallpaper" "Invalid wallpaper selection: ${selected_entry}"
+      return 1
+    fi
+
+    if ((rofi_status == 10)); then
+      if wallpaper_trash_selected "${wall_json_file}" "${selected_wallpaper_path}"; then
+        entry_count=$((entry_count - 1))
+        selected_row=$((selected_entry < entry_count ? selected_entry : entry_count - 1))
+        deleted=1
+      fi
+      continue
+    fi
+
     rm -f "${wall_json_file}"
-    exit 0
-  fi
-
-  [[ -z "${selected_entry}" ]] && {
-    rm -f "${wall_json_file}"
-    exit 0
-  }
-
-  if [[ "${selected_entry}" != *":::"* ]]; then
-    rm -f "${wall_json_file}"
-    print_log -err "wallpaper" " Invalid wallpaper selection: ${selected_entry}"
-    exit 1
-  fi
-
-  IFS=$'\t' read -r selected_wallpaper selected_wallpaper_path selected_thumbnail < <(wallpaper_selected_fields "${wall_json_file}" "${selected_entry}")
-  rm -f "${wall_json_file}"
-  export selected_wallpaper selected_wallpaper_path selected_thumbnail
-
-  if [[ -z "${selected_wallpaper}" || -z "${selected_wallpaper_path}" ]]; then
-    print_log -err "wallpaper" " No wallpaper selected"
-    exit 0
-  fi
+    ((deleted)) && wallpaper_refresh_inventory_and_prune_async
+    export selected_wallpaper selected_wallpaper_path selected_thumbnail
+    return 0
+  done
 }

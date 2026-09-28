@@ -4,6 +4,7 @@ import ".."
 BarButton {
     id: root
     property bool popupEnabled: true
+    property string popupName: "monitor"
     opensPopup: true
     css: "display"
     text: Backlight.icon
@@ -12,7 +13,7 @@ BarButton {
         ? "Display profile: " + root.displayPanel.activeProfile + "\nBacklight: " + Backlight.percent + "%"
         : "Backlight level: " + Backlight.percent + "%\nUsing: " + Backlight.device
     radius: shell.moduleRadius
-    onClicked: shell.togglePopup("monitor")
+    onClicked: shell.togglePopup(popupName)
     onWheeled: delta => {
         shell.run(["hyprshell", "brightness-control.sh", delta > 0 ? "i" : "d"], Backlight.refresh)
     }

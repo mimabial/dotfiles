@@ -9,6 +9,7 @@ import "Ui" as Ui
 PopupCard {
     id: root
     popupName: "language"
+    keyboardHint: deleteDialog.opened ? "←→/Tab choose · Enter confirm · Esc cancel" : view === "main" ? "↑↓/Tab move · Enter select · Esc close" : "Type to filter · ↑↓ move · Enter select · Esc back"
     contentWidth: Style.px(390)
     contentHeight: panelColumn.implicitHeight + padding * 2
     signal moduleRefreshRequested()

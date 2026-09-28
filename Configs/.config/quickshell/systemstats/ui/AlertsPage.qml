@@ -29,7 +29,7 @@ Column {
 
     Text {
       width: parent.width
-      text: "Alerts are off until enabled here. A reading must reach its limit for three samples before a notification is sent."
+      text: "Metric alerts are enabled here; individual temperature alerts are set on the Sensors page. A reading must reach its limit for three samples before a notification is sent."
       textFormat: Text.PlainText
       wrapMode: Text.WordWrap
       color: root.foreground
@@ -153,6 +153,31 @@ Column {
           font.pixelSize: Style.font.caption
         }
       }
+    }
+  }
+
+  Card {
+    foreground: root.foreground
+
+    SectionTitle { text: "Alert command"; fontFamily: root.fontFamily }
+
+    Text {
+      width: parent.width
+      text: "Optional command run when an alert fires. It receives SYSTEMSTATS_ALERT_KEY, SYSTEMSTATS_ALERT_TEXT, SYSTEMSTATS_ALERT_CRITICAL, and SYSTEMSTATS_ALERT_AT as environment variables."
+      textFormat: Text.PlainText
+      wrapMode: Text.WordWrap
+      color: root.foreground
+      opacity: 0.55
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+    }
+
+    TextField {
+      width: parent.width
+      text: root.service ? String(root.service.alertConfig.alertCommand || "") : ""
+      placeholderText: "No command configured"
+      foreground: root.foreground
+      onEditingFinished: if (root.service) root.service.setAlertCommand(text)
     }
   }
 

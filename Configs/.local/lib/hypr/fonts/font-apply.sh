@@ -45,11 +45,6 @@ resolve_font_targets() {
   TERMINAL_FONT="${TERMINAL_FONT:-${MONOSPACE_FONT}}"
 }
 
-apply_foot_font() {
-  font_sync_apply_foot_family "${TERMINAL_FONT}" || return 0
-  append_updated 'Foot base font'
-}
-
 reload_kitty_instances() {
   hypr_user_pgrep -x kitty >/dev/null 2>&1 || return 0
   hypr_user_pkill -USR1 -x kitty 2>/dev/null || true
@@ -61,9 +56,14 @@ apply_kitty_font() {
   append_updated 'Kitty base font'
 }
 
+apply_alacritty_font() {
+  font_sync_apply_alacritty_family "${TERMINAL_FONT}" || return 0
+  append_updated 'Alacritty base font'
+}
+
 apply_terminal_fonts() {
-  apply_foot_font
   apply_kitty_font
+  apply_alacritty_font
 }
 
 apply_theme_terminal_overlays() {

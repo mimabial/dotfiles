@@ -1,7 +1,8 @@
 # Lock screen and idle
 
 `Super + L` locks. `Super + Escape` or `Ctrl + Alt + Delete` opens the logout
-menu. Closing the lid locks and suspends.
+menu. Closing the lid locks and suspends unless automatic power management is
+enabled in the power popup with another lid action.
 
 ## Idle timeline
 
@@ -12,7 +13,7 @@ hypridle escalates in four steps:
 | 60s | the screen dims |
 | 120s | the session locks |
 | 300s | displays turn off |
-| 500s | the machine suspends |
+| 500s | the machine suspends while automatic power management is off |
 
 The lock comes *before* DPMS off deliberately — so the screen is already locked
 by the time it goes dark, and there is no window where waking the display shows
@@ -20,6 +21,11 @@ you an unlocked desktop.
 
 Brightness is saved before dimming and restored on activity, and only when there
 is actually a backlight device to dim.
+
+When automatic power management is enabled, its per-source sleep timer starts
+after 60 seconds of inactivity and replaces the 500-second suspend. Activity or
+caffeine cancels the timer. The popup keeps these rules in
+`~/.config/quickshell/power-manager.json`.
 
 `Super + U` then `A` toggles keep-awake when you need none of that to happen.
 

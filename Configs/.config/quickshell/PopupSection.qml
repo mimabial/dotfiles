@@ -1,8 +1,7 @@
 import QtQuick
 
-// Section label inside a popup ("AUDIO", "OUTPUT DEVICE"). Mirrors omarchy's
-// PanelSectionHeader: caption weight, darkened rather than faded, and a top
-// pad so nerd-font ascenders aren't clipped by a surrounding ListView.
+// Section label inside a popup ("AUDIO", "OUTPUT DEVICE"). The top pad keeps
+// nerd-font ascenders from being clipped by a surrounding ListView.
 Text {
     id: root
     required property var shell

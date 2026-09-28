@@ -13,6 +13,8 @@ trigger_spawn_detached() {
 }
 
 menu_register_domain_trigger() {
+  local name="" icon="" label=""
+
   menu_define trigger_insert "Insert"
   menu_add_item trigger_insert "  Emoji" action trigger_insert_emoji
   menu_add_item trigger_insert "  Glyph" action trigger_insert_glyph
@@ -61,8 +63,13 @@ menu_register_domain_trigger() {
   menu_add_item trigger_toggle "󱫖  Keep Awake" action trigger_toggle_keep_awake
   menu_add_item trigger_toggle "󰹬  Notifications" action trigger_toggle_notifications
   menu_add_item trigger_toggle "󰍜  Menu Bar" action trigger_toggle_bar
-  menu_add_item trigger_toggle "󱂬  Workspace Layout" action trigger_toggle_workspace_layout
+  menu_add_item trigger_toggle "󱂬  Workspace Layout" submenu trigger_toggle_workspace_layout
   menu_add_item trigger_toggle "󰊥  Window Gaps" action trigger_toggle_window_gaps
+
+  menu_define trigger_toggle_workspace_layout "Workspace Layout" choice
+  while IFS=$'\t' read -r name icon label; do
+    menu_add_item trigger_toggle_workspace_layout "${icon}  ${label}" action "trigger_toggle_workspace_layout_${name}"
+  done < <("${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/util/window-layout.sh" --list)
 }
 
 menu_run_action_trigger() {
@@ -95,7 +102,7 @@ menu_run_action_trigger() {
     trigger_toggle_keep_awake) hyprshell session/toggle-keep-awake.sh ;;
     trigger_toggle_notifications) hyprshell notify/notifications --toggle ;;
     trigger_toggle_bar) hyprshell quickshell/visibility.sh toggle ;;
-    trigger_toggle_workspace_layout) hyprshell window/layout-toggle.sh ;;
+    trigger_toggle_workspace_layout_*) hyprshell util/window-layout --set "${action_id#trigger_toggle_workspace_layout_}" ;;
     trigger_toggle_window_gaps) hyprshell window/gaps-toggle.sh ;;
     *) return 1 ;;
   esac
@@ -104,3 +111,24 @@ menu_run_action_trigger() {
 }
 
 menu_register_action_handler menu_run_action_trigger
+
+trigger_workspace_layout() {
+  local lua="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/window-layout.lua" pattern='layout = "([^"]+)'
+
+  [[ -r "${lua}" && "$(<"${lua}")" =~ ${pattern} ]] && printf '%s' "${BASH_REMATCH[1]}"
+}
+
+menu_active_trigger() {
+  local target="$1" gaps_on='"css": *"[1-9]'
+
+  case "${target}" in
+    trigger_toggle_nightlight) menu_state HYPRSUNSET_ENABLED state_get HYPRSUNSET_ENABLED 0 && [[ "${REPLY}" == 1 ]] ;;
+    trigger_toggle_keep_awake) menu_state HYPR_KEEP_AWAKE state_get HYPR_KEEP_AWAKE 0 && [[ "${REPLY}" == 1 ]] ;;
+    trigger_toggle_notifications) menu_state notifications_paused dunstctl is-paused && [[ "${REPLY}" == false ]] ;;
+    trigger_toggle_window_gaps) menu_state gaps_out hyprctl -j getoption general:gaps_out && [[ "${REPLY}" =~ ${gaps_on} ]] ;;
+    trigger_toggle_workspace_layout_*) menu_choice "${target}" trigger_toggle_workspace_layout_ trigger_workspace_layout ;;
+    *) return 1 ;;
+  esac
+}
+
+menu_register_active_check menu_active_trigger

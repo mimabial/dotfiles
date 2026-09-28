@@ -3,9 +3,10 @@ import "ClockFormats.js" as ClockFormats
 
 BarButton {
     id: root
-    property string kind: "main"
+    property string kind: "top"
     property bool popupEnabled: true
     property bool timerPopup: false
+    property string popupName: "clock"
     readonly property bool timing: timerPopup && (shell.activeTimers.length > 0 || shell.clockwork.active)
     readonly property int timingSeconds: shell.activeTimers.length ? Math.max(0, Number(shell.activeTimers[0].epoch) - shell.timerNow) : 0
     readonly property string timingText: shell.activeTimers.length ? statusText(timingSeconds)
@@ -31,7 +32,7 @@ BarButton {
         else if (button === Qt.MiddleButton) {
             shell.closePopup()
             shell.run(["hyprshell", "launch/tui", "--app-id", "org.tui.timezone", "--title", "Timezone", "--", "hyprshell", "system/timezone"])
-        } else shell.togglePopup("clock")
+        } else shell.togglePopup(popupName)
     }
 
     ClockPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled && !root.timerPopup }

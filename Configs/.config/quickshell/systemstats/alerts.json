@@ -1,9 +1,12 @@
 {
   "enabled": {
-    "cpuTemp": true,
-    "gpuTemp": true,
+    "cpuTemp": false,
+    "gpuTemp": false,
     "memory": true,
-    "cpuUsage": false
+    "cpuUsage": true,
+    "driveHealth": false
   },
-  "thresholds": {}
+  "thresholds": {},
+  "sensorThresholds": {},
+  "alertCommand": ""
 }

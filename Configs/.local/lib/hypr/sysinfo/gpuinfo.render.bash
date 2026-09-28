@@ -212,7 +212,6 @@ generate_json() {
   formatted_util="$(format_utilization_text)"
 
   local sep=$'\r'
-  [[ "${HYPR_SYSINFO_ALT:-0}" == "1" ]] && sep=" "
 
   local clock=""
   if [[ -n "${core_clock:-}" ]]; then

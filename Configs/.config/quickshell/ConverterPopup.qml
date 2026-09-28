@@ -70,7 +70,7 @@ PopupCard {
     }
     component TabButton: BarButton {
         required property string tab
-        active: false; radius: shell.rounding; fill: "transparent"; outline: "transparent"
+        active: false; radius: shell.rounding; backgroundColor: "transparent"; borderColor: "transparent"
         textColor: root.selectedTab === tab ? shell.accent : shell.alpha(shell.foreground, .6)
     }
 
@@ -92,14 +92,21 @@ PopupCard {
             FieldLabel { text: "AMOUNT" }
             TextField {
                 id: amountField
+                readonly property bool navigable: true
+                property bool cursored: false
+                function activateKeyboard() { forceActiveFocus(); selectAll() }
                 width: parent.width; height: Style.px(42); text: "1"; selectByMouse: true
                 color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.title
                 leftPadding: Style.controlPaddingX; rightPadding: Style.controlPaddingX
                 inputMethodHints: Qt.ImhFormattedNumbersOnly
                 validator: DoubleValidator { notation: DoubleValidator.ScientificNotation }
+                onActiveFocusChanged: if (activeFocus) root.selectRow(amountField)
+                Keys.onTabPressed: { root.resumeKeyboard(); root.moveCursor(1) }
+                Keys.onBacktabPressed: { root.resumeKeyboard(); root.moveCursor(-1) }
                 background: Rectangle {
                     radius: root.shell.rounding; color: root.shell.alpha(root.shell.foreground, .06)
-                    border.color: root.shell.alpha(root.shell.role(amountField.activeFocus ? "act_br" : "br", root.shell.foreground), amountField.activeFocus ? .55 : .3)
+                    border.color: amountField.cursored ? root.shell.hoverEdge(.85)
+                        : root.shell.alpha(root.shell.role(amountField.activeFocus ? "act_br" : "br", root.shell.foreground), amountField.activeFocus ? .55 : .3)
                 }
             }
         }
@@ -118,10 +125,15 @@ PopupCard {
             }
             Rectangle {
                 id: swapButton
+                readonly property bool navigable: true
+                property bool cursored: false
+                signal clicked(int button)
+                onClicked: root.swap()
                 anchors.bottom: parent.bottom; width: Style.px(40); height: Style.px(40); radius: root.shell.rounding
                 color: swapMouse.containsMouse ? root.shell.hoverFill() : root.shell.alpha(root.shell.foreground, .06)
+                border.color: cursored ? root.shell.hoverEdge(.85) : "transparent"
                 Text { anchors.centerIn: parent; text: "󰑃"; color: root.shell.foreground; font.family: root.shell.iconGlyphFont; font.pixelSize: Style.title }
-                MouseArea { id: swapMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.swap() }
+                MouseArea { id: swapMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: swapButton.clicked(Qt.LeftButton) }
             }
             Column {
                 width: (parent.width - swapButton.width - parent.spacing * 2) / 2; spacing: Style.xxs
@@ -130,16 +142,20 @@ PopupCard {
             }
         }
         Rectangle {
+            readonly property bool navigable: root.valid
+            property bool cursored: false
+            signal clicked(int button)
+            onClicked: root.shell.run(["wl-copy", root.result])
             width: parent.width; height: Style.px(94); radius: root.shell.rounding
             color: root.shell.alpha(root.shell.role("act_bg", root.shell.background), .22)
-            border.width: 1; border.color: root.shell.alpha(root.shell.role("act_br", root.shell.accent), .4)
+            border.width: 1; border.color: cursored ? root.shell.hoverEdge(.85) : root.shell.alpha(root.shell.role("act_br", root.shell.accent), .4)
             Column {
                 anchors.fill: parent; anchors.margins: Style.controlPaddingX; spacing: Style.xxs
                 FieldLabel { text: "RESULT" }
                 Text { width: parent.width; text: root.ratesLoading ? "Loading…" : root.result; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.display; font.bold: true; elide: Text.ElideRight }
                 Text { width: parent.width; text: root.valid ? root.number(root.amount) + " " + root.fromUnit.symbol + " → " + root.toUnit.symbol : root.rateError; color: root.shell.alpha(root.shell.foreground, .5); font.family: root.shell.fontFamily; font.pixelSize: Style.caption; elide: Text.ElideRight }
             }
-            MouseArea { anchors.fill: parent; enabled: root.valid; cursorShape: Qt.PointingHandCursor; onClicked: root.shell.run(["wl-copy", root.result]) }
+            MouseArea { anchors.fill: parent; enabled: root.valid; cursorShape: Qt.PointingHandCursor; onClicked: parent.clicked(Qt.LeftButton) }
         }
         Text {
             width: parent.width

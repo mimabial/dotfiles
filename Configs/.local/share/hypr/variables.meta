@@ -5,8 +5,8 @@ $mainMod = SUPER # windows key
 $BROWSER = firefox
 $EDITOR = nvim
 $EXPLORER = dolphin
-$TERMINAL = foot
-$TERMINAL_TUI = foot  # Terminal for TUI apps (btop, ranger, lazygit, etc)
+$TERMINAL = alacritty
+$TERMINAL_TUI = alacritty  # Terminal for TUI apps (btop, ranger, lazygit, etc)
 $LOCKSCREEN = hyprlock
 
 # // █░░ ▄▀█ █░█ █▄░█ █▀▀ █░█

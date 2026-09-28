@@ -8,7 +8,7 @@ assert_eq() { [[ "$1" == "$2" ]] || fail "$3: expected [$1], got [$2]"; }
 assert_has() { [[ "$1" == *"$2"* ]] || fail "$3: missing [$2]"; }
 
 menu_define main Root
-menu_define branch Branch
+menu_define branch Branch choice
 menu_define deep Deep
 menu_add_item main Plain action plain
 menu_add_item main Sub submenu branch
@@ -26,11 +26,19 @@ rofi_font_align_trailing() {
 options=""
 menu_render_options main options
 assert_eq $'Plain\nSub   󰄾\nHidden' "${options}" 'rendered menu'
+menu_active_special() { [[ "$1" == special ]]; }
+menu_register_active_check menu_active_special
+preselect=""
+menu_render_options branch options preselect
+assert_eq 'A&B <One>   ✓' "${preselect}" 'active choice preselected with check'
+menu_render_options main options preselect
+assert_eq 'A&B <One>   ✓' "${preselect}" 'toggle menu keeps preselect untouched'
 
 kind="" target=""
 menu_lookup_selection main 'Sub 󰄾' kind target
 assert_eq submenu "${kind}" 'submenu kind'
 assert_eq branch "${target}" 'submenu target'
+menu_lookup_selection branch 'A&B <One>   ✓' kind target && assert_eq special "${target}" 'checked row target'
 [[ "${HYPR_MENU_PARENTS[branch]}" == main ]] || fail 'submenu parent'
 menu_descendant_depth branch
 assert_eq 2 "${HYPR_MENU_DEPTHS[branch]}" 'submenu descendant depth'
@@ -73,10 +81,13 @@ assert_eq 1 "${selected}" 'preselected row'
 bytes="$(menu_emit_options "x${MENU_ROW_OPT}y" detail | od -An -t x1 | tr -d ' \n')"
 assert_eq 780079 "${bytes}" 'Rofi NUL option marker'
 
+menu_mark_active plain
 json="$(menu_dump_json)"
 assert_eq special "$(jq -r '.branch.items[0].target' <<<"${json}")" 'JSON target'
 assert_eq false "$(jq -r '.main.items[] | select(.label == "Hidden") | .searchable' <<<"${json}")" 'JSON search flag'
 assert_eq '󰄾' "$(jq -r '.main.items[] | select(.target == "branch") | .chevron' <<<"${json}")" 'JSON submenu chevron'
+assert_eq true "$(jq -r '.main.items[0].checked' <<<"${json}")" 'JSON build-time mark'
+assert_eq false "$(jq -r '.branch.items[0].checked' <<<"${json}")" 'JSON skips runtime checks'
 
 ACTION=""
 handler_miss() { return 1; }

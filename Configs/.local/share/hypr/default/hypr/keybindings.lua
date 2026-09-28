@@ -1,7 +1,7 @@
 local vars = require("vars")
 
 local mod = vars.get("mainMod", "SUPER")
-local terminal = vars.get("TERMINAL", "foot")
+local terminal = vars.get("TERMINAL", "alacritty")
 local explorer = vars.get("EXPLORER", "dolphin")
 local browser = vars.get("BROWSER", "firefox")
 local editor = vars.get("EDITOR", "nvim")

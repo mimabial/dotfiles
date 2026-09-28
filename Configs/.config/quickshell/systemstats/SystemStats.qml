@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
-import Quickshell
 import Quickshell.Io
 import qs
 import qs.Commons
@@ -13,11 +12,11 @@ Item {
   id: root
 
   required property var shell
+  property Item popupAnchor: root
   property bool popupsAllowed: true
-  property var settingsStore: ({})
-  readonly property string settingsOrientation: shell.barLayout.panel === "vertical" ? "vertical" : "horizontal"
-  readonly property var settings: settingsStore[settingsOrientation] || Model.SETTINGS
+  property var settings: ({})
   property string currentTab: "cpu"
+  readonly property int historyRange: Model.historyRange(Model.settingValue(settings, "historySpan"))
   property bool processesExpanded: false
   property string processQuery: ""
   property bool searchActive: false
@@ -31,7 +30,6 @@ Item {
   readonly property real bottomInset: box.margin[2] + box.padding[2]
   readonly property real leftInset: box.margin[3] + box.padding[3]
   readonly property var monitorCommands: ({ gpu: "nvtop", disks: "dua i " + shell.home })
-  readonly property bool vertical: shell.mode === "vertical"
   readonly property int barSize: Style.bar.sizeHorizontal
   readonly property int graphWidth: Math.round(Model.clamp(Model.settingValue(settings, "graphWidth"), 16, 120))
   readonly property string temperatureUnit: String(Model.settingValue(settings, "temperatureUnit")).toLowerCase() === "fahrenheit" ? "Fahrenheit" : "Celsius"
@@ -41,16 +39,17 @@ Item {
   readonly property bool hasBattery: !!(service && service.hasBattery)
   readonly property var configuredModules: Model.parseModules(Model.settingValue(settings, "modules"))
   readonly property var barModules: configuredModules.filter(function(module) {
-    return (module !== "gpu" || hasGpu) && (module !== "battery" || hasBattery)
+    return module !== "power" && (module !== "gpu" || hasGpu) && (module !== "battery" || hasBattery)
   })
   readonly property var moduleTabs: Model.panelTabs(hasGpu, hasBattery, Model.settingValue(settings, "tabs"))
   readonly property var panelTabs: moduleTabs.concat(["alerts", "settings"])
+  readonly property bool processesSearchable: currentTab === "cpu" || currentTab === "disks" || currentTab === "network"
   readonly property string disksSource: String(Model.settingValue(settings, "disksSource") || "all")
   readonly property string barSensors: String(Model.settingValue(settings, "barSensors") || "cpu")
   readonly property string barLabels: String(Model.settingValue(settings, "barLabels")).toLowerCase() === "icon" ? "icon" : "text"
   readonly property bool opened: panel.open
-  implicitWidth: vertical ? barSize : inlineReadouts.width + leftInset + rightInset + Style.space(2)
-  implicitHeight: (vertical && overflowReadouts.height > 0 ? overflowReadouts.height : barSize) + topInset + bottomInset
+  implicitWidth: inlineReadouts.width + leftInset + rightInset + Style.space(2)
+  implicitHeight: barSize + topInset + bottomInset
 
   function mergeSettings(value) {
     var merged = {}
@@ -61,17 +60,13 @@ Item {
 
   function loadSettings(raw) {
     try {
-      var data = JSON.parse(String(raw))
-      var legacy = data.vertical || data.horizontal ? null : data
-      settingsStore = { vertical: mergeSettings(data.vertical || legacy), horizontal: mergeSettings(data.horizontal || legacy) }
-    } catch (error) { console.warn("systemstats settings: " + error); settingsStore = ({}) }
+      settings = mergeSettings(JSON.parse(String(raw)))
+    } catch (error) { console.warn("systemstats settings: " + error); settings = ({}) }
   }
 
   function saveSettings(current) {
-    var next = { vertical: settingsStore.vertical || mergeSettings(null), horizontal: settingsStore.horizontal || mergeSettings(null) }
-    next[settingsOrientation] = current
-    settingsStore = next
-    settingsFile.setText(JSON.stringify(next, null, 2) + "\n")
+    settings = current
+    settingsFile.setText(JSON.stringify(current, null, 2) + "\n")
   }
 
   function persist(key, value) {
@@ -97,7 +92,7 @@ Item {
     var tab = Model.tabFor(id)
     if (opened && currentTab === tab) { close(); return }
     showTab(tab)
-    shell.togglePopup("systemstats")
+    if (shell.popupName !== "systemstats") shell.togglePopup("systemstats")
   }
 
   function close() {
@@ -122,7 +117,7 @@ Item {
   }
 
   function syncFull() {
-    var wanted = opened && processesExpanded
+    var wanted = opened && processesExpanded && processesSearchable
     if (!service || wanted === fullHeld) return
     fullHeld = wanted
     if (wanted) service.acquireFull()
@@ -130,6 +125,7 @@ Item {
   }
 
   function focusSearch() {
+    if (!processesSearchable) return
     if (!processesExpanded) setProcessesExpanded(true)
     Qt.callLater(function() { if (root.searchField) root.searchField.forceActiveFocus() })
   }
@@ -145,7 +141,7 @@ Item {
     if (text === "r") { if (publicIpEnabled) service.requestPublicIp(true); return true }
     if (text === "s" || text === ",") { showTab("settings"); return true }
     if (text === "a") { showTab("alerts"); return true }
-    if (text === "/") { focusSearch(); return true }
+    if (text === "/" && processesSearchable) { focusSearch(); return true }
     var digit = parseInt(text, 10)
     if (digit >= 1 && digit <= moduleTabs.length) { showTab(moduleTabs[digit - 1]); return true }
     return false
@@ -163,7 +159,10 @@ Item {
     else { service.releaseDetail(); service.setFocus(""); searchActive = false }
     syncFull()
   }
-  onCurrentTabChanged: if (opened && service) service.setFocus(currentTab)
+  onCurrentTabChanged: {
+    if (opened && service) service.setFocus(currentTab)
+    syncFull()
+  }
   onPanelTabsChanged: if (panelTabs.indexOf(currentTab) === -1) currentTab = panelTabs[0]
   onSettingsChanged: pushSettings()
 
@@ -178,9 +177,9 @@ Item {
   Component {
     id: readoutsComponent
     Grid {
-      columns: root.vertical ? 1 : Math.max(1, root.barModules.length)
-      rows: root.vertical ? Math.max(1, root.barModules.length) : 1
-      horizontalItemAlignment: root.vertical ? Grid.AlignLeft : Grid.AlignHCenter
+      columns: Math.max(1, root.barModules.length)
+      rows: 1
+      horizontalItemAlignment: Grid.AlignHCenter
 
       Repeater {
         model: root.barModules.length ? root.barModules : ["cpu"]
@@ -188,7 +187,6 @@ Item {
           required property var modelData
           shell: root.shell
           box: root.shell.style.box("systemstats." + modelData)
-          vertical: root.vertical
           barSize: root.barSize
           module: String(modelData)
           service: root.service
@@ -211,7 +209,6 @@ Item {
 
   Loader {
     id: inlineReadouts
-    active: !root.vertical
     sourceComponent: readoutsComponent
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.horizontalCenterOffset: (root.leftInset - root.rightInset) / 2
@@ -219,47 +216,15 @@ Item {
     anchors.verticalCenterOffset: (root.topInset - root.bottomInset) / 2
   }
 
-  // The bar's layer surface clips at its edge, so vertical data needs its own surface.
-  PopupWindow {
-    id: overhang
-    readonly property var anchorWindow: root.QsWindow.window
-    visible: root.vertical && !root.shell.userHidden
-    color: "transparent"
-    implicitWidth: Math.max(root.width, overflowReadouts.width + root.leftInset + root.rightInset + Style.space(2))
-    implicitHeight: root.height
-    anchor {
-      window: overhang.anchorWindow
-      adjustment: PopupAdjustment.Slide
-      edges: Edges.Top | Edges.Left
-      gravity: Edges.Bottom | Edges.Right
-      rect.width: 1; rect.height: 1
-      onAnchoring: {
-        if (!overhang.anchorWindow) return
-        const point = overhang.anchorWindow.contentItem.mapFromItem(root, 0, 0)
-        anchor.rect.x = Math.round(point.x)
-        anchor.rect.y = Math.round(point.y)
-      }
-    }
-    Loader {
-      id: overflowReadouts
-      active: root.vertical
-      sourceComponent: readoutsComponent
-      anchors.left: parent.left
-      anchors.leftMargin: root.leftInset
-      anchors.verticalCenter: parent.verticalCenter
-      anchors.verticalCenterOffset: (root.topInset - root.bottomInset) / 2
-    }
-  }
-
   PopupCard {
     id: panel
-    anchorItem: root
+    anchorItem: root.popupAnchor
     shell: root.shell
     popupName: "systemstats"
+    keyboardHint: "←→ tabs · ↑↓ scroll · 1–" + root.moduleTabs.length + " tab" + (root.processesSearchable ? " · / search" : "") + " · Esc"
     popupEnabled: root.popupsAllowed
-    extraGrabWindows: root.vertical ? [overhang] : []
     wantsKeyboard: true
-    contentWidth: Math.max(Style.space(500), Math.ceil(tabs.spelledWidth) + padding * 2)
+    contentWidth: Math.max(Style.space(420), Math.ceil(tabs.spelledWidth) + padding * 2)
     contentHeight: Style.space(680)
 
     function handleKey(event) { return root.handleKey(event) || defaultKey(event) }
@@ -316,6 +281,7 @@ Item {
       }
 
       Binding { target: pageLoader.item; property: "service"; value: root.service; when: pageLoader.status === Loader.Ready }
+      Binding { target: pageLoader.item; property: "historyRange"; value: root.historyRange; when: pageLoader.status === Loader.Ready && pageLoader.item && pageLoader.item.hasOwnProperty("historyRange") }
       Binding { target: pageLoader.item; property: "settings"; value: root.settings; when: pageLoader.status === Loader.Ready }
       Binding { target: pageLoader.item; property: "host"; value: root; when: pageLoader.status === Loader.Ready && pageLoader.item && pageLoader.item.hasOwnProperty("host") }
       Binding { target: pageLoader.item; property: "temperatureUnit"; value: root.temperatureUnit; when: pageLoader.status === Loader.Ready }

@@ -10,6 +10,7 @@ import "MediaModel.js" as MediaModel
 PopupCard {
   id: root
   popupName: "media"
+  keyboardHint: "Tab move · Space play · ↑↓ vol · ←→ seek · / search · Esc"
   padding: 0
   surfaceOpacity: 0.94
   borderOpacity: 0.45
@@ -308,6 +309,17 @@ PopupCard {
       trackList.urlInput.forceActiveFocus()
       trackList.urlInput.selectAll()
       return true
+    }
+    const row = root.navigableRows[root.cursorIndex]
+    if (event.key === Qt.Key_Q && row && row.queueKeyboard) { row.queueKeyboard(); return true }
+    if (event.key === Qt.Key_Delete && row && row.removeKeyboard) { row.removeKeyboard(); return true }
+    if (event.key === Qt.Key_E) { root.showPane(root.eqPickerOpen ? "" : "eq"); return true }
+    if (event.key === Qt.Key_V) { root.showPane(root.visPickerOpen ? "" : "vis"); return true }
+    if (event.key === Qt.Key_Y) { playerComp.toggleLyrics(); return true }
+    if (event.key === Qt.Key_S) { root.cycleSpeed(); return true }
+    if (event.key === Qt.Key_Backspace) {
+      if (root.selectedTab === "files" && !root.filesAtRoot) { root.loadFiles(root.filesParent); return true }
+      if (root.selectedTab === "playlists" && root.activePlaylist) { root.closePlaylist(); return true }
     }
     if (event.text.toLowerCase() === "m") { root.toggleMute(); return true }
     return root.defaultKey(event)

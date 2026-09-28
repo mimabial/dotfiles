@@ -1,0 +1,20 @@
+{
+  "enabled": false,
+  "batteryThreshold": 20,
+  "profiles": {
+    "ac": "balanced",
+    "batteryHigh": "balanced",
+    "batteryLow": "power-saver"
+  },
+  "idle": {
+    "ac": { "sleepAfterMinutes": 30, "action": "suspend" },
+    "batteryHigh": { "sleepAfterMinutes": 15, "action": "suspend" },
+    "batteryLow": { "sleepAfterMinutes": 5, "action": "suspend" }
+  },
+  "lid": {
+    "ignoreLidClose": false,
+    "ac": { "action": "suspend" },
+    "batteryHigh": { "action": "suspend" },
+    "batteryLow": { "action": "suspend" }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "panel": "horizontal",
+  "edge": "top",
+  "clock": "macos",
+  "left": [
+    {
+      "id": "menu",
+      "props": {
+        "dropdown": true
+      }
+    },
+    "appmenu"
+  ],
+  "right": [
+    "vpn-menu",
+    "nowplaying",
+    "display-menu",
+    "bluetooth-menu",
+    "sound-menu",
+    "wifi-menu",
+    "battery",
+    "spotlight",
+    "controlcenter",
+    "notification-center"
+  ]
+}

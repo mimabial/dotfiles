@@ -14,6 +14,12 @@ Column {
 
   width: parent ? parent.width : 0
   spacing: Style.space(6)
+  component ActionSurface: BorderSurface {
+    readonly property bool navigable: visible && enabled
+    property bool cursored: false
+    signal activated()
+    function activateKeyboard() { activated() }
+  }
 
   function showQueue() {
     root.controller.selectedTab = "queue"
@@ -140,11 +146,14 @@ Column {
 
     BorderSurface {
       visible: root.controller.selectedTab === "search" || root.controller.searchResults.length > 0 || root.controller.isSearching
+      readonly property bool navigable: visible
+      property bool cursored: false
+      function activateKeyboard() { root.controller.selectedTab = "search" }
       implicitHeight: Style.space(22)
       implicitWidth: searchTabText.implicitWidth + Style.space(14)
       radius: Style.cornerRadius
       color: root.controller.selectedTab === "search" ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.18) : "transparent"
-      borderSpec: root.controller.selectedTab === "search" ? Border.flat(Color.accent, 1) : Border.none()
+      borderSpec: cursored || root.controller.selectedTab === "search" ? Border.flat(Color.accent, 1) : Border.none()
 
       Text {
         id: searchTabText
@@ -157,16 +166,19 @@ Column {
 
       MouseArea {
         anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true
-        onClicked: root.controller.selectedTab = "search"
+        onClicked: parent.activateKeyboard()
       }
     }
 
     BorderSurface {
+      readonly property bool navigable: true
+      property bool cursored: false
+      function activateKeyboard() { root.controller.selectedTab = "history"; root.controller.loadHistory() }
       implicitHeight: Style.space(22)
       implicitWidth: recentsTabText.implicitWidth + Style.space(14)
       radius: Style.cornerRadius
       color: root.controller.selectedTab === "history" ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.18) : "transparent"
-      borderSpec: root.controller.selectedTab === "history" ? Border.flat(Color.accent, 1) : Border.none()
+      borderSpec: cursored || root.controller.selectedTab === "history" ? Border.flat(Color.accent, 1) : Border.none()
 
       Text {
         id: recentsTabText
@@ -179,16 +191,19 @@ Column {
 
       MouseArea {
         anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true
-        onClicked: { root.controller.selectedTab = "history"; root.controller.loadHistory() }
+        onClicked: parent.activateKeyboard()
       }
     }
 
     BorderSurface {
+      readonly property bool navigable: true
+      property bool cursored: false
+      function activateKeyboard() { root.showQueue() }
       implicitHeight: Style.space(22)
       implicitWidth: queueTabText.implicitWidth + Style.space(14)
       radius: Style.cornerRadius
       color: root.controller.selectedTab === "queue" ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.18) : "transparent"
-      borderSpec: root.controller.selectedTab === "queue" ? Border.flat(Color.accent, 1) : Border.none()
+      borderSpec: cursored || root.controller.selectedTab === "queue" ? Border.flat(Color.accent, 1) : Border.none()
 
       Text {
         id: queueTabText
@@ -201,16 +216,19 @@ Column {
 
       MouseArea {
         anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true
-        onClicked: root.showQueue()
+        onClicked: parent.activateKeyboard()
       }
     }
 
     BorderSurface {
+      readonly property bool navigable: true
+      property bool cursored: false
+      function activateKeyboard() { root.controller.selectedTab = "playlists"; root.controller.loadPlaylists() }
       implicitHeight: Style.space(22)
       implicitWidth: plTabText.implicitWidth + Style.space(14)
       radius: Style.cornerRadius
       color: root.controller.selectedTab === "playlists" ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.18) : "transparent"
-      borderSpec: root.controller.selectedTab === "playlists" ? Border.flat(Color.accent, 1) : Border.none()
+      borderSpec: cursored || root.controller.selectedTab === "playlists" ? Border.flat(Color.accent, 1) : Border.none()
 
       Text {
         id: plTabText
@@ -223,16 +241,19 @@ Column {
 
       MouseArea {
         anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true
-        onClicked: { root.controller.selectedTab = "playlists"; root.controller.loadPlaylists() }
+        onClicked: parent.activateKeyboard()
       }
     }
 
     BorderSurface {
+      readonly property bool navigable: true
+      property bool cursored: false
+      function activateKeyboard() { root.controller.selectedTab = "files"; root.controller.loadFiles(root.controller.filesPath) }
       implicitHeight: Style.space(22)
       implicitWidth: filesTabText.implicitWidth + Style.space(14)
       radius: Style.cornerRadius
       color: root.controller.selectedTab === "files" ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.18) : "transparent"
-      borderSpec: root.controller.selectedTab === "files" ? Border.flat(Color.accent, 1) : Border.none()
+      borderSpec: cursored || root.controller.selectedTab === "files" ? Border.flat(Color.accent, 1) : Border.none()
 
       Text {
         id: filesTabText
@@ -245,7 +266,7 @@ Column {
 
       MouseArea {
         anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true
-        onClicked: { root.controller.selectedTab = "files"; root.controller.loadFiles(root.controller.filesPath) }
+        onClicked: parent.activateKeyboard()
       }
     }
 
@@ -298,15 +319,19 @@ Column {
         delegate: BorderSurface {
           required property var modelData
           id: sRow
+          readonly property bool navigable: true
+          property bool cursored: false
+          function activateKeyboard() { root.controller.playOrToggle(isCurrent, modelData.url, modelData.title, modelData.artist) }
+          function queueKeyboard() { root.controller.queueUrl(modelData.url, modelData.title, modelData.artist) }
           readonly property bool isCurrent: (root.controller.currentUrl === modelData.url) || (root.controller.currentTrack === modelData.title && root.controller.currentTrack !== "No track loaded")
           width: parent.width; implicitHeight: Style.space(32); radius: Style.cornerRadius
           color: isCurrent ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.14) : (sRowMouse.containsMouse ? Style.hoverFillFor(root.controller.foreground, Color.accent) : "transparent")
-          borderSpec: isCurrent ? Border.flat(Color.accent, 1) : Border.none()
+          borderSpec: cursored || isCurrent ? Border.flat(Color.accent, 1) : Border.none()
 
           MouseArea {
             id: sRowMouse
             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: root.controller.playOrToggle(sRow.isCurrent, sRow.modelData.url, sRow.modelData.title, sRow.modelData.artist)
+            onClicked: sRow.activateKeyboard()
           }
 
           Row {
@@ -415,15 +440,19 @@ Column {
             delegate: BorderSurface {
               required property var modelData
               id: hRow
+              readonly property bool navigable: true
+              property bool cursored: false
+              function activateKeyboard() { root.controller.playOrToggle(isCurrent, modelData.path, modelData.title, modelData.artist) }
+              function queueKeyboard() { root.controller.queueUrl(modelData.path, modelData.title, modelData.artist) }
               readonly property bool isCurrent: (root.controller.currentUrl === modelData.path) || (root.controller.currentTrack === modelData.title && root.controller.currentTrack !== "No track loaded")
-              width: parent.width; implicitHeight: Style.space(32); radius: Style.cornerRadius
+              width: parent ? parent.width : 0; implicitHeight: Style.space(32); radius: Style.cornerRadius
               color: isCurrent ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.14) : (hRowMouse.containsMouse ? Style.hoverFillFor(root.controller.foreground, Color.accent) : "transparent")
-              borderSpec: isCurrent ? Border.flat(Color.accent, 1) : Border.none()
+              borderSpec: cursored || isCurrent ? Border.flat(Color.accent, 1) : Border.none()
 
               MouseArea {
                 id: hRowMouse
                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                onClicked: root.controller.playOrToggle(hRow.isCurrent, hGroup.modelData.path, hGroup.modelData.title, hGroup.modelData.artist)
+                onClicked: hRow.activateKeyboard()
               }
 
               Row {
@@ -435,13 +464,13 @@ Column {
                   anchors.verticalCenter: parent.verticalCenter
 
                   Image {
-                    visible: hGroup.modelData.thumb !== undefined && hGroup.modelData.thumb !== ""
+                    visible: hRow.modelData.thumb !== undefined && hRow.modelData.thumb !== ""
                     anchors.fill: parent
-                    source: root.controller.artSource(hGroup.modelData.thumb)
+                    source: root.controller.artSource(hRow.modelData.thumb)
                     fillMode: Image.PreserveAspectCrop; sourceSize.width: 48; sourceSize.height: 48
                   }
                   Text {
-                    visible: !hGroup.modelData.thumb
+                    visible: !hRow.modelData.thumb
                     anchors.centerIn: parent; text: "\uf001"; color: hRow.isCurrent ? Color.accent : root.controller.dim
                     font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption * 0.8
                   }
@@ -453,15 +482,15 @@ Column {
 
                   Text {
                     width: parent.width; textFormat: Text.PlainText
-                    text: hGroup.modelData.title || "Track"
+                    text: hRow.modelData.title || "Track"
                     color: hRow.isCurrent ? Color.accent : root.controller.foreground
                     font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption; font.bold: true
                     elide: Text.ElideRight
                   }
                   Text {
-                    visible: hGroup.modelData.artist !== ""
+                    visible: hRow.modelData.artist !== ""
                     width: parent.width; textFormat: Text.PlainText
-                    text: hGroup.modelData.artist || ""
+                    text: hRow.modelData.artist || ""
                     color: root.controller.dim; font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption * 0.82
                     elide: Text.ElideRight
                   }
@@ -470,7 +499,7 @@ Column {
                 Row { id: hTail; z: 2; spacing: parent.spacing; anchors.verticalCenter: parent.verticalCenter
                   Text {
                     id: historyLoadingSpinner
-                    visible: root.controller.loadingVid === hGroup.modelData.path
+                    visible: root.controller.loadingVid === hRow.modelData.path
                     anchors.verticalCenter: parent.verticalCenter
                     text: "\uf110"; color: Color.accent; font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption
                     RotationAnimator on rotation { running: historyLoadingSpinner.visible; from: 0; to: 360; duration: 1000; loops: Animation.Infinite }
@@ -478,7 +507,7 @@ Column {
 
                   Text {
                     z: 2
-                    visible: root.controller.loadingVid !== hGroup.modelData.path
+                    visible: root.controller.loadingVid !== hRow.modelData.path
                     anchors.verticalCenter: parent.verticalCenter
                     text: hRow.isCurrent && root.controller.isPlaying ? "\uead1" : "\ueb2c"
                     color: hRow.isCurrent ? Color.accent : (hPlayMouse.containsMouse ? Color.accent : root.controller.dim)
@@ -486,7 +515,7 @@ Column {
                     MouseArea {
                       id: hPlayMouse
                       anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                      onClicked: root.controller.playOrToggle(hRow.isCurrent, hGroup.modelData.path, hGroup.modelData.title, hGroup.modelData.artist)
+                      onClicked: hRow.activateKeyboard()
                     }
                   }
 
@@ -499,7 +528,7 @@ Column {
                     MouseArea {
                       id: hQueueMouse
                       anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                      onClicked: root.controller.queueUrl(hGroup.modelData.path, hGroup.modelData.title, hGroup.modelData.artist)
+                      onClicked: hRow.queueKeyboard()
                     }
                   }
 
@@ -508,7 +537,7 @@ Column {
                   Text {
                     visible: text !== ""; anchors.verticalCenter: parent.verticalCenter
                     text: {
-                      var s = hGroup.modelData.duration_secs || 0
+                      var s = hRow.modelData.duration_secs || 0
                       var m = Math.floor(s / 60), sec = s % 60
                       return (m > 0 || sec > 0) ? (m + ":" + (sec < 10 ? "0" + sec : sec)) : ""
                     }
@@ -542,11 +571,12 @@ Column {
               elide: Text.ElideRight
             }
 
-            BorderSurface {
+            ActionSurface {
               id: clearQ; visible: root.controller.queueSource === "cliamp"
+              onActivated: root.controller.clearQueue()
               implicitHeight: Style.space(20); implicitWidth: clearQText.implicitWidth + Style.space(10)
               radius: Style.cornerRadius
-              color: clearQMouse.containsMouse ? root.controller.shell.alpha(root.controller.urgent, 0.25) : "transparent"
+              color: clearQMouse.containsMouse || cursored ? root.controller.shell.alpha(root.controller.urgent, 0.25) : "transparent"
               borderSpec: Border.none()
               anchors.verticalCenter: parent.verticalCenter
 
@@ -558,7 +588,7 @@ Column {
               }
               MouseArea {
                 id: clearQMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                onClicked: root.controller.clearQueue()
+                onClicked: clearQ.activateKeyboard()
               }
             }
           }
@@ -580,16 +610,20 @@ Column {
             required property int index
             required property var modelData
             id: qRow
+            readonly property bool navigable: true
+            property bool cursored: false
+            function activateKeyboard() { root.controller.playQueueItem(modelData, index) }
+            function removeKeyboard() { root.controller.removeFromQueue(modelData.queueIndex === undefined ? index : modelData.queueIndex) }
             readonly property bool isCurrent: modelData.current === true
             width: parent.width; implicitHeight: Style.space(32); radius: Style.cornerRadius
             color: isCurrent ? root.controller.shell.alpha(Color.accent, 0.14)
               : qRowMouse.containsMouse ? Style.hoverFillFor(root.controller.foreground, Color.accent) : "transparent"
-            borderSpec: isCurrent ? Border.flat(Color.accent, 1) : Border.none()
+            borderSpec: cursored || isCurrent ? Border.flat(Color.accent, 1) : Border.none()
 
             MouseArea {
               id: qRowMouse
               anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-              onClicked: root.controller.playQueueItem(qRow.modelData, qRow.index)
+              onClicked: qRow.activateKeyboard()
             }
 
             Row {
@@ -643,11 +677,13 @@ Column {
               }
 
               Row { id: qTail; z: 2; spacing: parent.spacing; anchors.verticalCenter: parent.verticalCenter
-                BorderSurface {
+                ActionSurface {
+                  id: queueDeleteAction
+                  onActivated: qRow.removeKeyboard()
                   z: 2
                   visible: root.controller.queueSource === "cliamp" && !qRow.isCurrent
                   width: Style.space(20); height: Style.space(20); radius: Style.cornerRadius
-                  color: qDelMouse.containsMouse ? root.controller.shell.alpha(root.controller.urgent, 0.25) : "transparent"
+                  color: qDelMouse.containsMouse || cursored ? root.controller.shell.alpha(root.controller.urgent, 0.25) : "transparent"
                   borderSpec: Border.none()
                   anchors.verticalCenter: parent.verticalCenter
 
@@ -658,7 +694,7 @@ Column {
                   }
                   MouseArea {
                     id: qDelMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                    onClicked: root.controller.removeFromQueue(qRow.modelData.queueIndex === undefined ? qRow.index : qRow.modelData.queueIndex)
+                    onClicked: queueDeleteAction.activateKeyboard()
                   }
                 }
 
@@ -687,9 +723,11 @@ Column {
             Row {
               anchors.fill: parent; anchors.margins: Style.space(6); spacing: Style.space(8)
 
-              BorderSurface {
+              ActionSurface {
+                id: backAction
+                onActivated: root.controller.closePlaylist()
                 width: Style.space(22); height: Style.space(20); radius: Style.cornerRadius
-                color: backMouse.containsMouse ? root.controller.shell.hoverFill(1) : root.controller.shell.alpha(root.controller.foreground, 0.06)
+                color: backMouse.containsMouse || cursored ? root.controller.shell.hoverFill(1) : root.controller.shell.alpha(root.controller.foreground, 0.06)
                 borderSpec: Border.none()
                 anchors.verticalCenter: parent.verticalCenter
 
@@ -700,7 +738,7 @@ Column {
                 }
                 MouseArea {
                   id: backMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                  onClicked: root.controller.closePlaylist()
+                  onClicked: backAction.activateKeyboard()
                 }
               }
 
@@ -713,11 +751,13 @@ Column {
                 elide: Text.ElideRight
               }
 
-              BorderSurface {
+              ActionSurface {
+                id: playAllAction
+                onActivated: root.controller.playPlaylist(root.controller.activePlaylist)
                 implicitHeight: Style.space(20)
                 implicitWidth: playAllText.implicitWidth + Style.space(10)
                 radius: Style.cornerRadius
-                color: playAllMouse.containsMouse ? Color.accent : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.2)
+                color: playAllMouse.containsMouse || cursored ? Color.accent : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.2)
                 borderSpec: Border.none()
                 anchors.verticalCenter: parent.verticalCenter
 
@@ -729,14 +769,16 @@ Column {
                 }
                 MouseArea {
                   id: playAllMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                  onClicked: root.controller.playPlaylist(root.controller.activePlaylist)
+                  onClicked: playAllAction.activateKeyboard()
                 }
               }
 
-              BorderSurface {
+              ActionSurface {
+                id: activePlaylistDelete
+                onActivated: root.controller.deletePlaylist(root.controller.activePlaylist.name)
                 visible: root.controller.activePlaylist && !root.controller.activePlaylist.system
                 width: Style.space(20); height: Style.space(20); radius: Style.cornerRadius
-                color: delPlMouse.containsMouse ? root.controller.shell.alpha(root.controller.urgent, 0.25) : "transparent"
+                color: delPlMouse.containsMouse || cursored ? root.controller.shell.alpha(root.controller.urgent, 0.25) : "transparent"
                 borderSpec: Border.none()
                 anchors.verticalCenter: parent.verticalCenter
 
@@ -747,7 +789,7 @@ Column {
                 }
                 MouseArea {
                   id: delPlMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                  onClicked: root.controller.deletePlaylist(root.controller.activePlaylist.name)
+                  onClicked: activePlaylistDelete.activateKeyboard()
                 }
               }
             }
@@ -766,15 +808,19 @@ Column {
               required property int index
               required property var modelData
               id: plTrackRow
+              readonly property bool navigable: true
+              property bool cursored: false
+              function activateKeyboard() { root.controller.playOrToggle(isCurrent, modelData.url, modelData.title, modelData.artist) }
+              function queueKeyboard() { root.controller.queueUrl(modelData.url, modelData.title, modelData.artist) }
               readonly property bool isCurrent: (root.controller.currentUrl === modelData.url) || (root.controller.currentTrack === modelData.title && root.controller.currentTrack !== "No track loaded")
               width: parent.width; implicitHeight: Style.space(28); radius: Style.cornerRadius
               color: isCurrent ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.12) : (plTrackRowMouse.containsMouse ? Style.hoverFillFor(root.controller.foreground, Color.accent) : "transparent")
-              borderSpec: isCurrent ? Border.flat(Color.accent, 1) : Border.none()
+              borderSpec: cursored || isCurrent ? Border.flat(Color.accent, 1) : Border.none()
 
               MouseArea {
                 id: plTrackRowMouse
                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                onClicked: root.controller.playOrToggle(plTrackRow.isCurrent, plTrackRow.modelData.url, plTrackRow.modelData.title, plTrackRow.modelData.artist)
+                onClicked: plTrackRow.activateKeyboard()
               }
 
               Row {
@@ -869,14 +915,17 @@ Column {
             delegate: BorderSurface {
               required property var modelData
               id: plCard
+              readonly property bool navigable: true
+              property bool cursored: false
+              function activateKeyboard() { root.controller.openPlaylist(modelData) }
               width: parent.width; implicitHeight: Style.space(34); radius: Style.cornerRadius
               color: plCardMouse.containsMouse ? Style.hoverFillFor(root.controller.foreground, Color.accent) : Color.popups.background
-              borderSpec: Border.controlSpec("normal", root.controller.foreground, Color.accent)
+              borderSpec: Border.controlSpec(cursored ? "focused" : "normal", root.controller.foreground, Color.accent)
 
               MouseArea {
                 id: plCardMouse
                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                onClicked: root.controller.openPlaylist(plCard.modelData)
+                onClicked: plCard.activateKeyboard()
               }
 
               Row {
@@ -903,10 +952,17 @@ Column {
                 }
 
                 Row { id: plsTail; z: 2; spacing: parent.spacing; anchors.verticalCenter: parent.verticalCenter
-                  BorderSurface {
+                  ActionSurface {
+                    id: plPlayAction
+                    onActivated: {
+                      if (plCard.modelData.system) {
+                        root.controller.openPlaylist(plCard.modelData)
+                        root.controller.playPlaylist(root.controller.activePlaylist)
+                      } else root.controller.playPlaylist(plCard.modelData)
+                    }
                     z: 2
                     width: Style.space(22); height: Style.space(22); radius: Style.cornerRadius
-                    color: plPlayMouse.containsMouse ? Color.accent : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15)
+                    color: plPlayMouse.containsMouse || cursored ? Color.accent : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15)
                     borderSpec: Border.none()
                     anchors.verticalCenter: parent.verticalCenter
 
@@ -917,22 +973,17 @@ Column {
                     }
                     MouseArea {
                       id: plPlayMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                      onClicked: {
-                        if (plCard.modelData.system) {
-                          root.controller.openPlaylist(plCard.modelData)
-                          root.controller.playPlaylist(root.controller.activePlaylist)
-                        } else {
-                          root.controller.playPlaylist(plCard.modelData)
-                        }
-                      }
+                      onClicked: plPlayAction.activateKeyboard()
                     }
                   }
 
-                  BorderSurface {
+                  ActionSurface {
+                    id: plDeleteAction
+                    onActivated: root.controller.deletePlaylist(plCard.modelData.name)
                     z: 2
                     visible: !plCard.modelData.system
                     width: Style.space(22); height: Style.space(22); radius: Style.cornerRadius
-                    color: plDelMouse.containsMouse ? root.controller.shell.alpha(root.controller.urgent, 0.25) : "transparent"
+                    color: plDelMouse.containsMouse || cursored ? root.controller.shell.alpha(root.controller.urgent, 0.25) : "transparent"
                     borderSpec: Border.none()
                     anchors.verticalCenter: parent.verticalCenter
 
@@ -943,7 +994,7 @@ Column {
                     }
                     MouseArea {
                       id: plDelMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                      onClicked: root.controller.deletePlaylist(plCard.modelData.name)
+                      onClicked: plDeleteAction.activateKeyboard()
                     }
                   }
                 }
@@ -959,10 +1010,12 @@ Column {
         spacing: Style.space(3)
 
         // Up one level; doubles as the breadcrumb for where we are
-        BorderSurface {
+        ActionSurface {
+          id: fileUpAction
+          onActivated: root.controller.loadFiles(root.controller.filesParent)
           visible: !root.controller.filesAtRoot
           width: parent.width; implicitHeight: Style.space(26); radius: Style.cornerRadius
-          color: fUpMouse.containsMouse ? Style.hoverFillFor(root.controller.foreground, Color.accent) : "transparent"
+          color: fUpMouse.containsMouse || cursored ? Style.hoverFillFor(root.controller.foreground, Color.accent) : "transparent"
           borderSpec: Border.none()
 
           Row {
@@ -982,7 +1035,7 @@ Column {
           MouseArea {
             id: fUpMouse
             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: root.controller.loadFiles(root.controller.filesParent)
+            onClicked: fileUpAction.activateKeyboard()
           }
         }
 
@@ -1001,19 +1054,25 @@ Column {
           delegate: BorderSurface {
             required property var modelData
             id: fRow
+            readonly property bool navigable: true
+            property bool cursored: false
+            function activateKeyboard() {
+              if (isDir) root.controller.loadFiles(modelData.rel)
+              else root.controller.playOrToggle(isCurrent, modelData.url, modelData.title, modelData.artist)
+            }
+            function queueKeyboard() {
+              if (!isDir) root.controller.queueUrl(modelData.url, modelData.title, modelData.artist)
+            }
             readonly property bool isDir: modelData.kind === "dir"
             readonly property bool isCurrent: !isDir && root.controller.currentUrl === modelData.url
             width: parent.width; implicitHeight: Style.space(32); radius: Style.cornerRadius
             color: isCurrent ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.14) : (fRowMouse.containsMouse ? Style.hoverFillFor(root.controller.foreground, Color.accent) : "transparent")
-            borderSpec: isCurrent ? Border.flat(Color.accent, 1) : Border.none()
+            borderSpec: cursored || isCurrent ? Border.flat(Color.accent, 1) : Border.none()
 
             MouseArea {
               id: fRowMouse
               anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-              onClicked: {
-                if (fRow.isDir) root.controller.loadFiles(fRow.modelData.rel)
-                else root.controller.playOrToggle(fRow.isCurrent, fRow.modelData.url, fRow.modelData.title, fRow.modelData.artist)
-              }
+              onClicked: fRow.activateKeyboard()
             }
 
             Row {

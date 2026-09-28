@@ -1,0 +1,16 @@
+{
+  "": {
+    "fontSize": 11.0,
+    "margin": [2.0, 0.0, 2.0, 0.0],
+    "padding": [0.0, 8.0, 0.0, 8.0],
+    "borderRadius": 5.0,
+    "hover": { "backgroundColor": null, "color": ["fg", 1.0] },
+    "open": { "backgroundColor": ["fg", 0.2] },
+    "menuTracking": true
+  },
+  ".modules-left": { "padding": [0.0, 0.0, 0.0, 6.0] },
+  ".modules-right": { "padding": [0.0, 6.0, 0.0, 0.0] },
+  "appmenu, appmenu.app, datetime": { "fontSize": 13.0 },
+  "appmenu.app": { "fontWeight": 700 },
+  "menu": { "color": ["fg", 1.0], "padding": [0.0, 12.0, 0.0, 10.0] }
+}

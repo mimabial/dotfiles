@@ -190,7 +190,7 @@ Column {
                 font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
             }
             Column {
-                width: parent.width - 40 - Style.sm - 22; spacing: 0
+                width: parent.width - Style.px(40) - Style.sm - Style.px(22); spacing: 0
                 Text {
                     width: parent.width; text: eventItem.modelData.title; elide: Text.ElideRight
                     color: pane.popup.shell.foreground

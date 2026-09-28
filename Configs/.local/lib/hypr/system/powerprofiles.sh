@@ -77,8 +77,13 @@ restore_profile() {
   local source=""
   local state_file=""
   local profile=""
+  local manager_config="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/power-manager.json"
 
   hypr_gamemode_active && return 0
+  if [[ -f "${manager_config}" ]] && jq -e '.enabled == true' "${manager_config}" >/dev/null 2>&1; then
+    "${HYPR_LIB_DIR}/system/power-manager.sh" apply-profile
+    return
+  fi
   source="$(power_source)"
   state_file="$(profile_state_file "${source}")"
   [[ -r "${state_file}" ]] && read -r profile <"${state_file}"

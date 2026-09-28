@@ -119,6 +119,17 @@ Singleton {
             return
         }
         const diff = Model.deviceDiff(_previousDevices, next)
+        const newlyMountable = []
+        if (_seenSnapshot) {
+            for (const device of next) {
+                const previous = _previousDevices.find(item => item.path === device.path)
+                if (!previous) continue
+                for (const volume of device.volumes) {
+                    const old = previous.volumes.find(item => item.fsPath === volume.fsPath)
+                    if (Model.isMountable(volume) && (!old || !old.fstype)) newlyMountable.push({device, volume})
+                }
+            }
+        }
         if (diff.removed.length) {
             const currentHealth = Object.assign({}, health), checked = Object.assign({}, _healthChecked)
             const temperatures = Object.assign({}, temperatureHistory), history = Object.assign({}, activityHistory)
@@ -137,7 +148,10 @@ Singleton {
         if (watchClosely || healthAlertsEnabled) Qt.callLater(autoProbeHealth)
         _previousDevices = next
         loaded = true
-        if (_seenSnapshot) announceChanges(diff)
+        if (_seenSnapshot) {
+            announceChanges(diff)
+            for (const entry of newlyMountable) automountDevice(entry.device, [entry.volume])
+        }
         _seenSnapshot = true
         for (const device of next)
             if (_pendingHooks[device.key] && (device.mountedCount || !device.volumes.some(volume => Model.isMountable(volume)))) runHook(device)
@@ -245,8 +259,8 @@ Singleton {
         return runAction(mountCommand(volume, readOnly), volume.fsPath, "mount", "Mounted " + volume.title + (readOnly ? " read-only" : ""))
     }
 
-    function automountDevice(device) {
-        const volumes = device.volumes.filter(volume => Model.isMountable(volume))
+    function automountDevice(device, candidates) {
+        const volumes = (candidates || device.volumes).filter(volume => Model.isMountable(volume))
         if (!automount || !volumes.length) return
         if (Model.driveSetting(store, device, "autoOpen") ?? store.openOnMount === true) _openAfterPath = volumes[0].fsPath
         const readOnly = Model.driveSetting(store, device, "readOnly") === true
@@ -424,6 +438,7 @@ Singleton {
     function setOption(name, enabled) {
         store = Object.assign({}, store, {[name]: enabled})
         storeFile.setText(JSON.stringify(store, null, 2) + "\n")
+        if (name === "automount" && enabled) for (const device of devices) automountDevice(device)
         if (name === "showSystem" && enabled) autoProbeHealth()
     }
 

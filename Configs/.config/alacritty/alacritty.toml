@@ -1,0 +1,42 @@
+[general]
+import = ["~/.cache/hypr/render/alacritty/colors.toml", "./keybindings.toml"]
+live_config_reload = true
+working_directory = "None"
+
+[terminal.shell]
+program = "/bin/zsh"
+
+[window]
+padding = { x = 10, y = 4 }
+dynamic_padding = true
+dynamic_title = true
+decorations = "None"
+class = { instance = "Alacritty", general = "Alacritty" }
+
+[scrolling]
+history = 10000
+multiplier = 6
+
+[font]
+normal = { family = "MonaspiceRn Nerd Font" }
+bold = { style = "Bold" }
+italic = { style = "Italic" }
+bold_italic = { style = "Bold Italic" }
+builtin_box_drawing = true
+size = 15.00
+offset = { x = 0, y = 2 }
+
+[cursor]
+style.shape = "Block"
+unfocused_hollow = true
+
+[selection]
+semantic_escape_chars = ",│`|:\"' ()[]{}<>\t"
+save_to_clipboard = true
+
+[mouse]
+hide_when_typing = true
+
+[[mouse.bindings]]
+mouse = "Middle"
+action = "PasteSelection"

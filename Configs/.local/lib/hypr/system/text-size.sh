@@ -85,23 +85,10 @@ set_terminal_size() {
     pkill -USR1 -x kitty 2>/dev/null || true
   fi
 
-  if [[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/foot/foot.ini" ]]; then
-    sed -i -E "s/^(font=[^:]*:size=)[0-9.]+/\1${pt}/" \
-      "${XDG_CONFIG_HOME:-$HOME/.config}/foot/foot.ini"
+  local alacritty_conf="${XDG_CONFIG_HOME:-$HOME/.config}/alacritty/alacritty.toml"
+  if [[ -f "${alacritty_conf}" ]] && ! grep -Fxq "size = ${pt}" "${alacritty_conf}"; then
+    sed -i -E "s/^size = [0-9.]+$/size = ${pt}/" "${alacritty_conf}"
   fi
-}
-
-resize_running_foot() {
-  local delta="$1" key="KP_Add" address="" pid="" comm=""
-  ((delta != 0)) || return 0
-  ((delta > 0)) || { key="KP_Subtract"; delta=$((-delta)); }
-
-  while IFS=$'\t' read -r address pid; do
-    [[ ${address} =~ ^0x[0-9a-f]+$ && ${pid} =~ ^[0-9]+$ ]] || continue
-    IFS= read -r comm <"/proc/${pid}/comm" || continue
-    [[ ${comm} == "foot" || ${comm} == "footclient" ]] || continue
-    hyprctl eval "for _=1,${delta} do hl.dispatch(hl.dsp.send_shortcut({mods=\"CTRL\", key=\"${key}\", window=\"address:${address}\"})) end; return \"ok\"" >/dev/null 2>&1 || true
-  done < <(hyprctl clients -j 2>/dev/null | jq -r '.[] | [.address, .pid] | @tsv')
 }
 
 current_size() {
@@ -158,32 +145,25 @@ report() {
 }
 
 apply() {
-  local requested="$1" previous="" size="" applied="" lock_file="" applied_file="" lock_fd=""
+  local requested="$1" size="" lock_file="" lock_fd=""
 
   if [[ ! ${requested} =~ ^[0-9]+$ ]] || ((requested < MIN || requested > MAX)); then
     printf 'text-size: size must be an integer between %s and %s\n' "${MIN}" "${MAX}" >&2
     exit 1
   fi
 
-  previous="$(current_size)"
   # Publish before waiting so every waiter applies the newest requested value.
   state_set TEXT_SIZE "${requested}"
   lock_file="$(hypr_runtime_subdir hypr)/text-size.lock"
-  applied_file="${lock_file%.lock}.foot"
   exec {lock_fd}>"${lock_file}"
   flock -w 10 "${lock_fd}" || {
     printf 'text-size: timed out waiting for another update\n' >&2
     exit 1
   }
   size="$(current_size)"
-  applied="${previous}"
-  [[ -r ${applied_file} ]] && IFS= read -r applied <"${applied_file}"
-  [[ ${applied} =~ ^[0-9]+$ ]] || applied="${size}"
 
   gsettings set "${GKEY_SCHEMA}" "${GKEY_NAME}" "$(factor_for "${size}")" 2>/dev/null || true
   set_terminal_size "$(term_pt_for "${size}")"
-  resize_running_foot "$((size - applied))"
-  printf '%s\n' "${size}" >"${applied_file}"
   set_rofi_size "$(rofi_pt_for "${size}")"
   set_qt_fonts
   hyprshell render/dunst.py >/dev/null 2>&1 || true

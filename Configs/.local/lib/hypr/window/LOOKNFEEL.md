@@ -3,9 +3,8 @@
 A terminal UI for editing Hyprland's visual configuration by hand, with live
 preview, per-theme memory, and rows that drive the existing hyprshell pipelines.
 
-It began as a Quickshell overlay modelled on
-[Omaland](https://github.com/bobby-nicholas/omaland), and the engine is still
-that design: the same reader, renderer, fences, and per-theme resolver. What
+It began as a Quickshell overlay, and the engine still uses the same reader,
+renderer, fences, and per-theme resolver. What
 changed is the front end. The panel was ~870 lines of QML inside the bar
 process; it is now curses, and the engine moved from QML JavaScript to Python
 alongside it. Nothing about the storage contract moved with it, so overrides
@@ -18,7 +17,7 @@ editing Lua: gaps, border width, rounding, opacity, dimming, blur, shadow,
 glow, animations, groups, cursor theme and size, and the active layout engine's
 own knobs.
 
-Plus two things Omaland does not do:
+Additional capabilities:
 
 - **Per-theme memory** — overrides are keyed by theme and variant, so each
   theme keeps its own tweaks instead of one global set.
@@ -29,15 +28,13 @@ Plus two things Omaland does not do:
 ### Non-goals
 
 - **Colors.** `themes/colors.lua` and the theme pack own `general:col:*`. Writing
-  them here would pin borders and break theme switching, the same reason Omaland
-  refuses them.
+  them here would pin borders and break theme switching.
 - **Named presets.** The config already has `animations/`, `shaders/`, and
   `workflows/` preset directories; a fourth preset system is not wanted.
 - **Input, misc, gestures, layer rules, per-monitor settings.** The catalogue
   stops at visual look and feel.
-- **Omaland's "full opacity" switch.** It exists to clear Omarchy's blanket
-  `o.window(".*", {opacity = "0.985 0.96"})` rule. `windowrules.lua` here has
-  only per-class rules and no blanket rule, so the switch would be a no-op.
+- **"Full opacity" switch.** `windowrules.lua` has only per-class
+  opacity rules and no blanket rule to clear, so the switch would be a no-op.
 
 ## Surface
 
@@ -159,7 +156,7 @@ Two behaviors to code against, both verified:
 Lua reading Lua, run against recording stubs that only record and never apply.
 There is no second grammar to keep in sync with Hyprland's, and a hand-edit that
 breaks the syntax produces a real error on stderr instead of being silently
-misread. This is the idea worth taking from Omaland wholesale.
+misread.
 
 Three jobs `getoption` cannot do:
 
@@ -323,7 +320,7 @@ list has not arrived yet simply cannot be cycled.
 
 ## Keyboard model
 
-Taken from Omaland; it was well judged, and it is native in a terminal.
+The keyboard model is native to the terminal.
 
 | | |
 |---|---|

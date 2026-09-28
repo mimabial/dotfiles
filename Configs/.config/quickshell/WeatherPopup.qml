@@ -6,6 +6,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "weather"
+    keyboardHint: searching ? "Type city · ↑↓ suggestions · Enter select · Esc" : "←→ forecast · ↑↓ day · U units · R refresh · S city · Esc"
     contentWidth: Style.px(420)
     contentHeight: weatherColumn.implicitHeight + 32
     readonly property var conditions: Weather.data.current_condition ? Weather.data.current_condition[0] : ({})
@@ -94,8 +95,7 @@ PopupCard {
         return defaultKey(event)
     }
     // the producer reports both unit systems, so switching needs no refetch
-    property string unitPreference: "auto"
-    readonly property bool imperial: unitPreference === "auto" ? localeImperial : unitPreference === "imperial"
+    readonly property bool imperial: "imperial" in Weather.prefs ? Weather.prefs.imperial === true : localeImperial
     readonly property bool localeImperial: {
         const country = String(value(Weather.data.nearest_area
             ? Weather.data.nearest_area[0].country : null, "")).toLowerCase()
@@ -111,18 +111,19 @@ PopupCard {
     readonly property string windUnit: imperial ? " mph" : " km/h"
     function temp(source, key) { return (source && source[key + (imperial ? "F" : "C")]) || "--" }
     function wind() { return (conditions[imperial ? "windspeedMiles" : "windspeedKmph"] || "--") + windUnit }
-    function toggleUnits() {
-        unitPreference = imperial ? "metric" : "imperial"
-        store.setText(JSON.stringify({imperial: unitPreference === "imperial"}))
-    }
+    function toggleUnits() { Weather.savePrefs({imperial: !imperial}) }
 
-    property FileView store: FileView {
-        path: root.shell.home + "/.local/state/quickshell/weather.json"
-        printErrors: false
-        onLoaded: {
-            try { root.unitPreference = JSON.parse(text()).imperial === true ? "imperial" : "metric" }
-            catch (error) { root.unitPreference = "auto" }
-        }
+    property bool settingsOpen: false
+    readonly property var readoutLabels: ({ temp: "Temperature", minmax: "High | low", sunrise: "Sunrise", sunset: "Sunset", rain: "Rain chance", wind: "Wind", humidity: "Humidity" })
+    readonly property var shownReadouts: Weather.readouts()
+    // shown readouts first, in bar order, then the rest
+    readonly property var orderedReadouts: shownReadouts.concat(Object.keys(readoutLabels).filter(id => !shownReadouts.includes(id)))
+    function setReadouts(list) { Weather.savePrefs({readouts: list}) }
+    function toggleReadout(id) { setReadouts(shownReadouts.includes(id) ? shownReadouts.filter(shown => shown !== id) : shownReadouts.concat([id])) }
+    function moveReadout(id, step) {
+        const list = shownReadouts.filter(shown => shown !== id)
+        list.splice(shownReadouts.indexOf(id) + step, 0, id)
+        setReadouts(list)
     }
 
     readonly property var today: days.length ? days[0] : ({})
@@ -204,7 +205,7 @@ PopupCard {
     // only needs to learn whether a city is pinned
     onOpenChanged: {
         if (open) readOverride()
-        else { searching = false; cityField.text = ""; selectedDay = -1; cardIndex = -1; forecastView = "hourly" }
+        else { searching = false; settingsOpen = false; cityField.text = ""; selectedDay = -1; cardIndex = -1; forecastView = "hourly" }
     }
 
     property Process overrideProc: Process {
@@ -219,22 +220,23 @@ PopupCard {
     }
 
     function value(list, fallback) { return list && list.length ? list[0].value : fallback }
-    function location() { const area = Weather.data.nearest_area; return area && area.length ? value(area[0].areaName, "") + ", " + value(area[0].country, "") : "" }
 
     component ForecastTab: BarButton {
         required property string view
-        active: false; radius: shell.rounding; fill: "transparent"; outline: "transparent"
-        textColor: root.forecastView === view ? shell.accent : shell.alpha(shell.foreground, .6)
+        active: false; radius: shell.rounding; backgroundColor: "transparent"; borderColor: "transparent"
+        hoverOverride: ({ backgroundColor: shell.hoverFill(1.5) })
+        textColor: hovered ? shell.role("hvr_fg", shell.foreground)
+            : root.forecastView === view ? shell.accent : shell.alpha(shell.foreground, .6)
     }
 
-    component ForecastArrow: Text {
+    component GlyphButton: Text {
         required property string glyph
         text: glyph
-        color: root.shell.alpha(root.shell.foreground, arrowMouse.containsMouse ? 1 : .5)
+        color: root.shell.alpha(root.shell.foreground, glyphMouse.containsMouse ? 1 : .5)
         font.family: root.shell.fontFamily; font.pixelSize: Style.display
         signal activated
         MouseArea {
-            id: arrowMouse; anchors.fill: parent; anchors.margins: -6
+            id: glyphMouse; anchors.fill: parent; anchors.margins: -6
             hoverEnabled: true; cursorShape: Qt.PointingHandCursor
             onClicked: parent.activated()
         }
@@ -255,92 +257,101 @@ PopupCard {
         Item {
             id: hero
             width: parent.width
-            height: heroStack.implicitHeight
-            // the popup's centre line is the seam: glyph ends on it, stack starts
-            Text {
-                id: heroIcon
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.horizontalCenterOffset: -parent.width / 4
-                anchors.verticalCenter: parent.verticalCenter
-                text: String(Weather.output.text).trim().split(/\s+/)[0] || "󰖐"
-                color: root.shell.role("c2", root.shell.foreground)
-                font.family: root.shell.fontFamily; font.pixelSize: Style.heroIcon
-            }
-            Text {
-                id: refreshAction
-                anchors.top: parent.top; anchors.right: parent.right
-                text: "󰑐"
-                color: refreshMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.alpha(root.shell.foreground, .55)
-                font.family: root.shell.fontFamily; font.pixelSize: Style.title
-                MouseArea { id: refreshMouse; anchors.fill: parent; anchors.margins: -6; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.shell.run(["hyprshell", "weather", "--force", "--alt"]) }
+            height: Math.max(heroLeft.implicitHeight, heroRight.implicitHeight + heroRight.anchors.topMargin)
+            Row {
+                id: heroLeft
+                anchors.left: parent.left; anchors.leftMargin: Style.px(16)
+                anchors.verticalCenter: parent.verticalCenter; spacing: Style.px(16)
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: Style.px(5)
+                    text: String(Weather.output.text).trim().split(/\s+/)[0] || "󰖐"
+                    color: root.shell.role("c2", root.shell.foreground)
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.typePx(4.5)
+                }
+                Row {
+                    anchors.verticalCenter: parent.verticalCenter; spacing: Style.xxs
+                    Text {
+                        id: heroTemp
+                        text: root.temp(root.conditions, "temp_")
+                        color: tempMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.foreground
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.typePx(4); font.bold: true
+                        MouseArea { id: tempMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.toggleUnits() }
+                    }
+                    Text {
+                        anchors.top: heroTemp.top; anchors.topMargin: Style.px(10)
+                        text: root.degrees
+                        color: root.shell.foreground
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.typePx(1.75)
+                    }
+                }
             }
             Column {
-                    id: heroStack
-                    anchors.left: heroIcon.right; anchors.leftMargin: Style.px(12)
-                    anchors.verticalCenter: parent.verticalCenter; spacing: 2
-                    Text {
-                        text: root.temp(root.conditions, "FeelsLike") + root.degrees
-                        color: tempMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.foreground
-                        font.family: root.shell.fontFamily; font.pixelSize: Style.displayLarge; font.bold: true
-                        MouseArea {
-                            id: tempMouse; anchors.fill: parent; anchors.margins: -4
-                            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                            onClicked: root.toggleUnits()
-                        }
-                    }
-                    Text {
-                        text: root.value(root.conditions.weatherDesc, "Weather")
-                        color: root.shell.foreground
-                        font.family: root.shell.fontFamily; font.pixelSize: Style.subtitle
-                    }
-                    Item {
-                        // out to the popup's right edge
-                        width: hero.width - heroStack.x; height: Style.px(18)
-
-                        Text {
-                            id: locationLabel
-                            visible: !root.searching
-                            anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                            text: root.location()
-                            color: locationMouse.containsMouse
-                                ? root.shell.role("hvr_fg", root.shell.foreground)
-                                : root.shell.alpha(root.shell.foreground, .55)
-                            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-                        }
-                        MouseArea {
-                            id: locationMouse
-                            visible: !root.searching
-                            anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                            width: locationLabel.implicitWidth + 12; height: parent.height + 8
-                            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                            onClicked: root.openSearch()
-                        }
-
-                        TextField {
-                            id: cityField
-                            visible: root.searching
-                            anchors.left: parent.left; anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            height: Style.px(18)
-                            leftPadding: 0; rightPadding: 0; topPadding: 0; bottomPadding: 0
-                            placeholderText: "City name \u2014 Empty to auto-detect"
-                            color: root.shell.foreground
-                            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-                            background: null
-                            onTextChanged: if (root.searching) { root.pendingAccept = false; root.searchDebounce.restart() }
-                            onAccepted: {
-                                if (text === "") { root.setLocation("--clear"); root.searching = false }
-                                else if (root.suggestions.length > 0) root.pick(root.suggestions[root.suggestionIndex])
-                                // typed and hit Enter before the debounce fired:
-                                // run the search now and take the first result
-                                else { root.pendingAccept = true; root.searchCities(text) }
+                anchors.top: parent.top; anchors.right: parent.right; spacing: Style.md
+                GlyphButton { glyph: "\uf423"; onActivated: root.settingsOpen = !root.settingsOpen }
+                GlyphButton { glyph: "󰑐"; onActivated: root.shell.run(["hyprshell", "weather", "--force", "--alt"]) }
+            }
+            Column {
+                id: heroRight
+                width: Math.max(heroStats.implicitWidth, root.searching ? Style.px(230) : Style.px(150))
+                anchors.right: parent.right; anchors.rightMargin: Style.px(28)
+                anchors.top: parent.top; anchors.topMargin: Style.px(8)
+                spacing: Style.px(12)
+                Item {
+                    width: parent.width; height: cityRow.implicitHeight
+                    Row {
+                        id: cityRow
+                        visible: !root.searching; spacing: Style.px(6)
+                        Repeater {
+                            model: ["\uf450", root.cityName().toUpperCase()]
+                            Text {
+                                required property string modelData
+                                text: modelData
+                                color: cityMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.alpha(root.shell.foreground, .55)
+                                font.family: root.shell.fontFamily; font.pixelSize: Style.body; font.letterSpacing: 1
                             }
-                            Keys.onDownPressed: root.moveSuggestion(1)
-                            Keys.onUpPressed: root.moveSuggestion(-1)
-                            Keys.onEscapePressed: { text = ""; root.searching = false }
                         }
-
                     }
+                    MouseArea { id: cityMouse; visible: !root.searching; anchors.fill: cityRow; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.openSearch() }
+                    TextField {
+                        id: cityField
+                        visible: root.searching
+                        anchors.left: parent.left; anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        leftPadding: 0; rightPadding: 0; topPadding: 0; bottomPadding: 0
+                        placeholderText: "City name — Empty to auto-detect"
+                        color: root.shell.foreground
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                        background: null
+                        onTextChanged: if (root.searching) { root.pendingAccept = false; root.searchDebounce.restart() }
+                        onAccepted: {
+                            if (text === "") { root.setLocation("--clear"); root.searching = false }
+                            else if (root.suggestions.length > 0) root.pick(root.suggestions[root.suggestionIndex])
+                            // typed and hit Enter before the debounce fired:
+                            // run the search now and take the first result
+                            else { root.pendingAccept = true; root.searchCities(text) }
+                        }
+                        Keys.onDownPressed: root.moveSuggestion(1)
+                        Keys.onUpPressed: root.moveSuggestion(-1)
+                        Keys.onEscapePressed: { text = ""; root.searching = false }
+                    }
+                }
+                Row {
+                    id: heroStats
+                    spacing: Style.px(20)
+                    Repeater {
+                        model: [
+                            ["FEELS", root.temp(root.conditions, "FeelsLike") + root.degrees],
+                            ["WIND", root.wind()],
+                            ["HUMID", (root.conditions.humidity || "--") + "%"]
+                        ]
+                        Column {
+                            required property var modelData
+                            spacing: Style.px(5)
+                            Text { text: parent.modelData[0]; color: root.shell.alpha(root.shell.foreground, .45); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; font.letterSpacing: 1 }
+                            Text { text: parent.modelData[1]; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.typePx(1.17) }
+                        }
+                    }
+                }
             }
         }
         // everything is one block now: the four that matter stay visible and
@@ -348,19 +359,49 @@ PopupCard {
         property bool expanded: false
         readonly property var metrics: [
             ["MAX|MIN", root.today.maxtempC ? root.temp(root.today, "maxtemp") + "\u00b0 | " + root.temp(root.today, "mintemp") + "\u00b0" : "--"],
-            ["FEELS", root.temp(root.conditions, "FeelsLike") + root.degrees],
             ["RAIN", (root.days.length ? root.days[0].chanceofrain : "--") + "%"],
-            ["WIND", root.wind()],
-            ["UV", root.conditions.uvIndex || "--"],
-            ["HUMID", (root.conditions.humidity || "--") + "%"],
-            ["PRESSURE", root.pressure(root.conditions.pressure)],
+            ["SUNRISE", root.astronomy.sunrise || "--"],
+            ["SUNSET", root.astronomy.sunset || "--"],
             ["DEW POINT", root.conditions.DewPointC ? root.temp(root.conditions, "DewPoint") + root.degrees : "--"],
             ["VISIBILITY", root.distance(root.conditions.visibility)],
             ["CLOUD", (root.conditions.cloudcover || "--") + "%"],
-            ["SUNRISE", root.astronomy.sunrise || "--"],
-            ["SUNSET", root.astronomy.sunset || "--"]
+            ["UV", root.conditions.uvIndex || "--"],
+            ["PRESSURE", root.pressure(root.conditions.pressure)]
         ]
 
+        Column {
+            visible: root.settingsOpen
+            width: parent.width
+            Repeater {
+                model: root.orderedReadouts
+                Item {
+                    id: readoutRow
+                    required property string modelData
+                    readonly property int position: root.shownReadouts.indexOf(modelData)
+                    width: parent.width; height: Style.px(26)
+                    ToggleSwitch {
+                        id: readoutSwitch
+                        shell: root.shell; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                        checked: readoutRow.position >= 0
+                        // the bar needs one readout left to click the popup open
+                        enabled: !checked || root.shownReadouts.length > 1
+                        onToggled: root.toggleReadout(readoutRow.modelData)
+                    }
+                    Text {
+                        anchors.left: readoutSwitch.right; anchors.leftMargin: Style.px(12); anchors.verticalCenter: parent.verticalCenter
+                        text: root.readoutLabels[readoutRow.modelData]
+                        color: root.shell.foreground; opacity: readoutRow.position >= 0 ? 1 : .5
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.body
+                    }
+                    Row {
+                        anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: Style.lg
+                        visible: readoutRow.position >= 0
+                        GlyphButton { glyph: "󰁝"; enabled: readoutRow.position > 0; opacity: enabled ? 1 : .25; onActivated: root.moveReadout(readoutRow.modelData, -1) }
+                        GlyphButton { glyph: "󰁅"; enabled: readoutRow.position < root.shownReadouts.length - 1; opacity: enabled ? 1 : .25; onActivated: root.moveReadout(readoutRow.modelData, 1) }
+                    }
+                }
+            }
+        }
         Column {
             visible: root.searching && root.suggestions.length > 0
             width: parent.width; spacing: 2
@@ -451,12 +492,12 @@ PopupCard {
                     if (delta) root.scrollForecast(delta > 0 ? -Style.px(72) : Style.px(72))
                 } }
             }
-            ForecastArrow {
+            GlyphButton {
                 anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
                 glyph: "\u2039"; opacity: forecast.atXBeginning ? .25 : 1
                 onActivated: root.scrollForecast(-forecast.width)
             }
-            ForecastArrow {
+            GlyphButton {
                 anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                 glyph: "\u203a"; opacity: forecast.atXEnd ? .25 : 1
                 onActivated: root.scrollForecast(forecast.width)

@@ -8,6 +8,7 @@ import "StartMenuModel.js" as StartMenuModel
 PopupCard {
     id: root
     popupName: "start"
+    keyboardHint: placeEditorOpen ? "Enter save place · Esc cancel" : "Type to search · ↑↓ move · Enter open · Esc close"
     wantsKeyboard: true
     contentWidth: Style.px(620)
     contentHeight: layoutColumn.implicitHeight + padding * 2
@@ -173,6 +174,7 @@ PopupCard {
             searchField.forceActiveFocus()
             menuTreeProcess.running = true
             windowGeometryProcess.running = true
+            shell.refreshMenuState()
         }
     }
     onSearchQueryChanged: selectedEntryIndex = 0
@@ -265,33 +267,34 @@ PopupCard {
 
     extraGrabWindows: [flyout, flyout2, flyout3, flyout4]
 
-    // flyouts open on hover and would otherwise sit over the pinned/apps side
-    // until something else was clicked. The delay only has to outlast the
-    // leave/enter gap when the pointer crosses between the two surfaces
     readonly property bool menuChainHovered: menuPane.hovered
         || flyout.hovered || flyout2.hovered || flyout3.hovered || flyout4.hovered
     onMenuChainHoveredChanged: if (root.menuChainHovered) root.menuCloseDelay.stop(); else root.menuCloseDelay.restart()
-    property Timer menuCloseDelay: Timer { interval: 10; onTriggered: if (!root.menuChainHovered) menuPane.reset() }
+    property Timer menuCloseDelay: Timer { interval: Style.hoverDuration; onTriggered: if (!root.menuChainHovered) menuPane.reset() }
 
     property StartMenuFlyout flyout: StartMenuFlyout {
         shell: root.shell; menus: root.menus; openLeft: root.position === "right"
         menuId: menuPane.openSubId; anchorItem: menuPane.openRow
         onActionTriggered: target => root.runMenuAction(target)
+        onDismissed: menuPane.reset()
     }
     property StartMenuFlyout flyout2: StartMenuFlyout {
         shell: root.shell; menus: root.menus; openLeft: root.position === "right"
         menuId: root.flyout.openSubId; anchorItem: root.flyout.openRow
         onActionTriggered: target => root.runMenuAction(target)
+        onDismissed: root.flyout.closeSubmenu()
     }
     property StartMenuFlyout flyout3: StartMenuFlyout {
         shell: root.shell; menus: root.menus; openLeft: root.position === "right"
         menuId: root.flyout2.openSubId; anchorItem: root.flyout2.openRow
         onActionTriggered: target => root.runMenuAction(target)
+        onDismissed: root.flyout2.closeSubmenu()
     }
     property StartMenuFlyout flyout4: StartMenuFlyout {
         shell: root.shell; menus: root.menus; openLeft: root.position === "right"
         menuId: root.flyout3.openSubId; anchorItem: root.flyout3.openRow
         onActionTriggered: target => root.runMenuAction(target)
+        onDismissed: root.flyout3.closeSubmenu()
     }
 
     Column {

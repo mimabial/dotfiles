@@ -8,6 +8,8 @@ ComboBox {
     property var choices: []
     property int selectedIndex: 0
     property bool keyboardNavigation: true
+    readonly property bool navigable: keyboardNavigation && enabled
+    property bool cursored: false
     focusPolicy: keyboardNavigation ? Qt.StrongFocus : Qt.NoFocus
     model: choices
     textRole: "label"
@@ -15,6 +17,12 @@ ComboBox {
     onChoicesChanged: Qt.callLater(() => currentIndex = selectedIndex)
     Component.onCompleted: currentIndex = selectedIndex
     implicitHeight: Style.px(40)
+    function activateKeyboard() { forceActiveFocus(); popup.open() }
+    function adjustKeyboard(direction) {
+        const next = Math.max(0, Math.min(count - 1, currentIndex + direction))
+        if (next !== currentIndex) { currentIndex = next; activated(next) }
+    }
+    onActiveFocusChanged: if (activeFocus && shell.popupCard) shell.popupCard.selectRow(root)
     leftPadding: Style.controlPaddingX; rightPadding: Style.px(30)
 
     contentItem: Text {
@@ -29,7 +37,8 @@ ComboBox {
     }
     background: Rectangle {
         radius: root.shell.rounding; color: root.shell.alpha(root.shell.foreground, .06)
-        border.color: root.shell.alpha(root.shell.role(root.down ? "act_br" : "br", root.shell.foreground), root.down ? .55 : .3)
+        border.color: root.cursored ? root.shell.hoverEdge(.85)
+            : root.shell.alpha(root.shell.role(root.down ? "act_br" : "br", root.shell.foreground), root.down ? .55 : .3)
         Behavior on border.color { ColorAnimation { duration: Style.hoverDuration } }
     }
     delegate: ItemDelegate {

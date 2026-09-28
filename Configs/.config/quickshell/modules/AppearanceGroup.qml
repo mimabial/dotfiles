@@ -10,7 +10,7 @@ BarGroup {
     id: root
     property bool popupsAllowed: true
     shell: root.shell; css: "appearance"
-    Layout.fillWidth: root.vertical; Layout.fillHeight: !root.vertical
+    Layout.fillHeight: true
     holdOpen: ["wallpaper", "colormode", "colorpicker", "barlayout", "desktop"].includes(root.shell.popupName)
     // BarGroup's `reverse` only flips a drawer while it grows; an always-open
     // group keeps array order, so flip the array itself
@@ -19,8 +19,8 @@ BarGroup {
 
     // window layout and workflow share one framed box; both target the desktop popup
     Component { id: desktopSlot; BarGroup {
-        shell: root.shell; css: "desktop-group"; alwaysOpen: true; vertical: root.vertical
-        Layout.fillWidth: root.vertical; Layout.fillHeight: !root.vertical
+        shell: root.shell; css: "desktop-group"; alwaysOpen: true
+        Layout.fillHeight: true
         slots: [windowLayoutSlot, workflowsSlot]
     } }
 

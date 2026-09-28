@@ -11,6 +11,7 @@ Column {
   property var service: null
   property var host: null
   property var settings: ({})
+  property int historyRange: 0
   property string temperatureUnit: "Celsius"
   property bool publicIpEnabled: true
   property color foreground: Color.popups.text
@@ -19,7 +20,7 @@ Column {
   function flag(key) { return Model.flag(settings, key) }
 
   readonly property var snap: service ? service.snapshot : ({})
-  readonly property var hist: service ? service.history : Model.emptyHistory()
+  readonly property var hist: service ? Model.peakHistoryView(service.history, service.historyHour, service.historyDay, historyRange) : Model.emptyHistory()
   readonly property color s1: service ? service.series1 : Color.accent
   readonly property color s2: service ? service.series2 : Color.accent
   readonly property color warn: service ? service.warn : Color.urgent
@@ -250,6 +251,8 @@ Column {
       id: graph
       width: parent.width
       height: Style.space(72)
+      barWidth: Model.historyBarWidth(width, root.historyRange)
+      showGaps: root.historyRange > 0
       up: root.readHistory
       down: root.writeHistory
       upColor: root.s2

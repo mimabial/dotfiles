@@ -72,7 +72,7 @@ menu_open_argument() {
         *theme*) menu_run_action style_theme ;;
         *wallpaper*) menu_run_action style_wallpaper ;;
         *setup*) menu_show_menu setup ;;
-        *power*) menu_run_action setup_power_profile ;;
+        *power*) menu_show_menu setup_power_profile ;;
         *install*) menu_show_menu install ;;
         *remove*) menu_show_menu remove ;;
         *update*) menu_show_menu update ;;

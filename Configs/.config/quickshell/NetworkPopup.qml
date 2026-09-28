@@ -120,7 +120,8 @@ PopupCard {
                 implicitWidth: Style.px(44); implicitHeight: wifiRow.implicitHeight
                 text: "󰐲"; tooltip: "Show QR code"
                 fontSize: Style.title
-                outline: root.shell.alpha(root.shell.role("br", root.shell.foreground), .3)
+                borderWidth: 1
+                borderColor: root.shell.alpha(root.shell.role("br", root.shell.foreground), .3)
                 onClicked: root.shell.togglePopup("wifiqr")
             }
         }

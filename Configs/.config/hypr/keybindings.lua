@@ -1,7 +1,7 @@
 local vars = require("vars")
 
 local mod = vars.get("mainMod", "SUPER")
-local terminal = vars.get("TERMINAL", "foot")
+local terminal = vars.get("TERMINAL", "alacritty")
 local explorer = vars.get("EXPLORER", "dolphin")
 local browser = vars.get("BROWSER", "firefox")
 local editor = vars.get("EDITOR", "nvim")
@@ -401,7 +401,7 @@ exec("SHIFT", "Print", "[Utilities|Capture] smart screenshot", "hyprshell screen
 exec(
 	"",
 	"switch:on:Lid Switch",
-	"[Utilities|Session] lid close: lock and suspend",
+	"[Utilities|Session] lid close: configured action",
 	"hyprshell session/lid-close.sh",
 	{ locked = true }
 )
@@ -609,6 +609,7 @@ submap_leader("theming", mod, "T", function()
 	submap_exec("C", "[Theming] cycle bar layout", "hyprshell quickshell/layout next")
 	submap_exec("SHIFT + C", "[Theming] cycle bar layout backward", "hyprshell quickshell/layout previous")
 	submap_exec("H", "[Theming] toggle bar", "hyprshell quickshell/visibility toggle")
+	submap_exec("SHIFT + H", "[Theming] toggle floating bar", "quickshell ipc call bar floating")
 	submap_exec("V", "[Theming] look and feel", "hyprshell window/looknfeel.sh")
 	submap_exec(
 		"A",
@@ -661,9 +662,6 @@ submap_leader("open", mod, "O", function()
 	)
 end)
 
--- Every org.tui.* app opens the same way: focus its window if one exists, else
--- launch it in the TUI terminal profile. Agent Hub is the exception and keeps
--- its own entrypoint, because the profile leaves it too few rows.
 local function tui_app(key, name, app_id, command, category)
 	submap_exec(
 		key,
@@ -723,7 +721,7 @@ end)
 
 submap_leader("utilities", mod, "U", function()
 	submap_exec("Q", "[System] close all windows", "hyprshell window/close-all.sh")
-	submap_exec("N", "[System] toggle nightlight", "hyprshell system/hyprsunset.sh toggle")
+	submap_exec("N", "[System] toggle nightlight", "hyprshell system/hyprsunset.sh -t")
 	submap_exec("A", "[System] toggle keep awake", "hyprshell session/toggle-keep-awake.sh")
 	submap_exec("F", "[System] windows mode", "hyprshell util/workflow-toggle.sh windows")
 	submap_exec("W", "[System] select workflow", "pkill -x rofi || hyprshell workflows --select")
@@ -732,7 +730,6 @@ submap_leader("utilities", mod, "U", function()
 	submap_exec("SHIFT + S", "[System] cycle monitor scale backward", "hyprshell system/monitor-scale.sh --reverse")
 	submap_exec("D", "[System] toggle laptop display", "hyprshell system/monitor-internal.sh toggle")
 	submap_exec("M", "[System] toggle mirroring", "hyprshell system/monitor-mirror.sh toggle")
-	tui_app("L", "Display layout", "org.tui.Displays", "hyprmoncfg", "System")
 end)
 
 -- Workspaces

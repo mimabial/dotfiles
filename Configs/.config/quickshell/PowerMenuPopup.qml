@@ -7,6 +7,7 @@ import qs.Ui
 PopupCard {
     id: root
     popupName: "powermenu"
+    keyboardHint: pendingAction ? "←→/Tab choose · Enter confirm · Esc cancel" : "↑↓ move · 1–" + actions.length + " jump · Enter select · Esc"
     contentWidth: Style.px(330)
     contentHeight: menu.implicitHeight + padding * 2
     borderColor: shell.role("act_br", shell.accent)
@@ -82,11 +83,6 @@ PopupCard {
             ActionRow { required property var modelData; required property int index; action: modelData; number: root.screenActions.length + index + 1 }
         }
         PopupSeparator { shell: root.shell }
-        Text {
-            width: parent.width; text: "↑↓/jk move · 1–" + root.actions.length + " jump · enter select · esc close"
-            horizontalAlignment: Text.AlignHCenter; color: root.dim
-            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-        }
     }
 
     Process {

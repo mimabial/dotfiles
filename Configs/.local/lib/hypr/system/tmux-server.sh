@@ -20,5 +20,5 @@ fi
 
 exec tmux -D -f /dev/stdin <<EOF
 source-file -q /etc/tmux.conf ~/.tmux.conf "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf"
-new-session -d
+new-session -d -s M
 EOF

@@ -318,9 +318,11 @@ run_command() {
     fi
   fi
 
-  echo "Command not found: ${command_name}"
-  echo "Available commands:"
-  list_script
+  {
+    echo "Command not found: ${command_name}"
+    echo "Available commands:"
+    list_script
+  } >&2
 
   return 1
 }

@@ -415,7 +415,7 @@ Item {
     z: 300
     color: Util.alpha(Color.tooltip.background, item.dock.dockSurfaceOpacity)
     borderSpec: Border.surfaceSpec("tooltip", "border", Color.tooltip.border, 1)
-    radius: Style.cornerRadius > 0 ? Style.cornerRadius : 8
+    radius: Style.cornerRadius
     padding: Style.space(6)
     x: item.dock.tipX(item.width, width, Style.space(10))
     y: item.dock.tipY(item.height, height, Style.space(10))
@@ -439,120 +439,18 @@ Item {
       onTriggered: itemTooltip.shown = true
     }
 
-    Column {
+    AppTooltipContent {
       id: tooltipContent
+      appName: item.name
+      suffix: item.tooltipSuffix
+      windows: item.tooltipWindows
+      advanced: item.dock.advancedTooltips
+      selectedIndex: item.selectedWindowIdx
+      windowFocused: function(window) { return item.isWinActive(window) }
+      windowParked: function(window) { return item.dock.isWinParkedLive(window) }
+      windowLabel: function(window) { return item.dock.windowRowLabel(window) }
       x: parent.contentLeftInset
       y: parent.contentTopInset
-      spacing: Style.space(3)
-
-      Row {
-        spacing: Style.space(4)
-        anchors.horizontalCenter: parent.horizontalCenter
-
-        Text {
-          text: item.name
-          textFormat: Text.PlainText
-          color: Color.tooltip.text
-          font.family: Style.font.family
-          font.pixelSize: Style.font.caption
-          font.bold: item.dock.advancedTooltips && item.running
-          anchors.verticalCenter: parent.verticalCenter
-        }
-
-        Text {
-          visible: item.tooltipSuffix !== ""
-          text: item.tooltipSuffix
-          textFormat: Text.PlainText
-          // Matches a normal window row below, so the header's qualifier sits
-          // at the same weight as the list rather than fading out of it.
-          color: Util.alpha(Color.tooltip.text, 0.80)
-          font.family: Style.font.family
-          font.pixelSize: Style.font.caption
-          anchors.verticalCenter: parent.verticalCenter
-        }
-      }
-
-      Repeater {
-        model: (item.dock.advancedTooltips && item.tooltipWindows.length > 0)
-          ? Math.min(item.tooltipWindows.length, 8) : 0
-        delegate: Row {
-          id: tooltipRow
-          required property int index
-          spacing: Style.space(5)
-          // Window rows run left, so their dots, chevrons and titles line up
-          // in columns instead of each row drifting with its own length. The
-          // app name above stays centred.
-          readonly property bool isSelected: item.selectedWindowIdx === index
-          readonly property bool isWinFocused: item.isWinActive(item.tooltipWindows[index])
-          readonly property bool isWinParked: item.dock.isWinParkedLive(item.tooltipWindows[index])
-
-          Rectangle {
-            width: Style.space(5)
-            height: Style.space(5)
-            radius: width / 2
-            anchors.verticalCenter: parent.verticalCenter
-            // Hollow when parked, matching the running indicators under the icon.
-            color: tooltipRow.isWinParked
-              ? "transparent"
-              : (tooltipRow.isSelected ? Color.accent : (tooltipRow.isWinFocused ? Color.bar.active : Util.alpha(Color.tooltip.text, 0.5)))
-            border.color: tooltipRow.isSelected
-              ? Color.accent
-              : (tooltipRow.isWinParked ? Util.alpha(Color.tooltip.text, 0.6) : "transparent")
-            border.width: 1
-          }
-
-          // Reserved, not prefixed onto the label: putting the chevron in the
-          // text re-measured the row on every scroll step, so the tooltip
-          // changed width as the selection moved — and the selected row lost
-          // two more characters to the 32-char cut than its neighbours.
-          Item {
-            width: Style.space(6)
-            height: Style.space(6)
-            anchors.verticalCenter: parent.verticalCenter
-
-            Text {
-              anchors.centerIn: parent
-              text: "›"
-              textFormat: Text.PlainText
-              opacity: tooltipRow.isSelected ? 1 : 0
-              font.family: Style.font.family
-              font.pixelSize: Math.max(10, Style.font.caption - 1)
-              color: Color.accent
-            }
-          }
-
-          Text {
-            text: {
-              var w = item.tooltipWindows[tooltipRow.index]
-              var str = w ? item.dock.windowRowLabel(w) : ""
-              return str.length > 32 ? str.slice(0, 30) + "…" : str
-            }
-            textFormat: Text.PlainText
-            color: tooltipRow.isSelected
-              ? Color.accent
-              : (tooltipRow.isWinFocused ? Color.tooltip.text : Util.alpha(Color.tooltip.text, 0.80))
-            font.family: Style.font.family
-            font.pixelSize: Math.max(10, Style.font.caption - 1)
-            // Selection deliberately does not bolden: bold is wider, so the
-            // row would still grow under the wheel even with the chevron
-            // reserved. The chevron, the accent colour and the dot already
-            // mark it. Focus does bolden — that does not move while scrolling.
-            font.bold: tooltipRow.isWinFocused
-            elide: Text.ElideRight
-            maximumLineCount: 1
-          }
-        }
-      }
-
-      Text {
-        visible: item.dock.advancedTooltips && item.tooltipWindows.length > 8
-        anchors.horizontalCenter: parent.horizontalCenter
-        text: "+" + (item.tooltipWindows.length - 8) + " more"
-        textFormat: Text.PlainText
-        color: Util.alpha(Color.tooltip.text, 0.6)
-        font.family: Style.font.family
-        font.pixelSize: Math.max(9, Style.font.caption - 3)
-      }
     }
   }
 }

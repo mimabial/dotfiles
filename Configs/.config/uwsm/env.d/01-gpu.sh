@@ -2,13 +2,13 @@ gpu_lines=
 if command -v lspci >/dev/null 2>&1; then
   gpu_lines="$(lspci -nn 2>/dev/null | grep -E '(VGA|3D)' || :)"
 fi
-modules="$(lsmod 2>/dev/null || :)"
+kernel_modules="$(lsmod 2>/dev/null || :)"
 
 AMD=0 INTEL=0 NOUVEAU=0 NVIDIA=0 NVIDIA_VAAPI=0
 case "$gpu_lines" in *1002*) AMD=1 ;; esac
 case "$gpu_lines" in *8086*) INTEL=1 ;; esac
-case "$modules" in *nouveau*) NOUVEAU=1 ;; esac
-case "$modules" in
+case "$kernel_modules" in *nouveau*) NOUVEAU=1 ;; esac
+case "$kernel_modules" in
   *nvidia*) NVIDIA=1 ;;
   *) command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1 && NVIDIA=1 ;;
 esac
@@ -24,8 +24,6 @@ detected_gpus=
 case "${detected_gpus# }" in
 "intel nvidia")
   GPU_SETUP=hybrid-intel-nvidia
-  export __GLX_VENDOR_LIBRARY_NAME=nvidia
-  export VK_LAYER_NV_optimus=1
   [ "$NVIDIA_VAAPI" = 1 ] && export NVD_BACKEND=direct
   ;;
 "amd intel") GPU_SETUP=hybrid-amd-intel ;;

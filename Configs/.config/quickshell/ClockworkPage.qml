@@ -186,8 +186,8 @@ Column {
             visible: root.stopwatch
             width: (parent.width - parent.spacing * 2) / 3; height: Style.controlHeight
             shell: root.shell; text: "LAP"; enabled: root.clockwork.running
-            radius: shell.rounding; fill: shell.alpha(shell.accent, .18)
-            outline: "transparent"; textColor: shell.accent
+            radius: shell.rounding; backgroundColor: shell.alpha(shell.accent, .18)
+            borderColor: "transparent"; textColor: shell.accent
             opacity: enabled ? 1 : .4; onClicked: root.clockwork.lap()
         }
         BarButton {
@@ -200,7 +200,7 @@ Column {
                 ? (parent.width - parent.spacing * 2) / 3 : (parent.width - parent.spacing) / 2
             height: Style.controlHeight; shell: root.shell; text: "RESET"
             enabled: root.clockwork.active; opacity: enabled ? 1 : .4
-            fill: root.shell.alpha(root.shell.foreground, .06); outline: root.shell.alpha(root.shell.foreground, .18)
+            backgroundColor: root.shell.alpha(root.shell.foreground, .06); borderColor: root.shell.alpha(root.shell.foreground, .18); borderWidth: 1
             onClicked: root.resetRequested()
         }
     }

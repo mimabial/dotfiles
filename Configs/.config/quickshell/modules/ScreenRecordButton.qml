@@ -8,7 +8,7 @@ ScriptButton {
     css: "screenrecord"; tooltip: ""
     readonly property bool recording: output.class === "recording"
     visible: activeOnly ? recording : text !== ""
-    fill: recording ? root.shell.alpha(root.shell.role("c9", root.shell.accent), blink.phase) : "transparent"
+    backgroundColor: recording ? root.shell.alpha(root.shell.role("c9", root.shell.accent), blink.phase) : "transparent"
     textColor: recording
         ? (blink.phase > .5 ? root.shell.role("bg", root.shell.background) : root.shell.role("c9", root.shell.foreground))
         : root.shell.role("c1", root.shell.foreground)

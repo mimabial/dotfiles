@@ -11,7 +11,7 @@ Kanagawa Wave/
 ├── kitty.theme         # optional per-app overrides
 ├── rofi.theme
 ├── quickshell.theme
-├── foot.theme
+├── alacritty.theme
 ├── dunst.theme
 ├── hypr.theme
 └── tmux.theme
@@ -71,7 +71,7 @@ pywal16; in theme mode they all sit under the same `palette.toml` colors.
 
 ## Importing instead
 
-Omarchy themes convert directly, from a directory or a git URL:
+Compatible theme sources convert from a directory or a git URL:
 
 ```bash
 hyprshell theme/theme.import <source> --dry-run

@@ -69,6 +69,9 @@ BorderSurface {
 
       Rectangle {
         id: loudnormBtn
+        readonly property bool navigable: true
+        property bool cursored: false
+        function activateKeyboard() { if (root.controller) root.controller.toggleLoudnorm() }
         readonly property bool active: root.controller && root.controller.audioFx && root.controller.audioFx.loudnorm
         width: (parent.width - Style.space(6)) / 2
         height: Style.space(24)
@@ -77,7 +80,7 @@ BorderSurface {
           : (loudMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Color.menu.selectedBackground)
             : (root.controller ? root.controller.shell.alpha(root.controller.surface, 0.8) : Color.popups.background))
         border.width: 1
-        border.color: active || loudMouse.containsMouse ? Color.menu.selectedBorder : "transparent"
+        border.color: active || loudMouse.containsMouse || cursored ? Color.menu.selectedBorder : "transparent"
 
         Row {
           anchors.centerIn: parent
@@ -99,12 +102,15 @@ BorderSurface {
 
         MouseArea {
           id: loudMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-          onClicked: if (root.controller) root.controller.toggleLoudnorm()
+          onClicked: loudnormBtn.activateKeyboard()
         }
       }
 
       Rectangle {
         id: spatialBtn
+        readonly property bool navigable: true
+        property bool cursored: false
+        function activateKeyboard() { if (root.controller) root.controller.toggleSpatial() }
         readonly property bool active: root.controller && root.controller.audioFx && root.controller.audioFx.spatial
         width: (parent.width - Style.space(6)) / 2
         height: Style.space(24)
@@ -113,7 +119,7 @@ BorderSurface {
           : (spatialMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Color.menu.selectedBackground)
             : (root.controller ? root.controller.shell.alpha(root.controller.surface, 0.8) : Color.popups.background))
         border.width: 1
-        border.color: active || spatialMouse.containsMouse ? Color.menu.selectedBorder : "transparent"
+        border.color: active || spatialMouse.containsMouse || cursored ? Color.menu.selectedBorder : "transparent"
 
         Row {
           anchors.centerIn: parent
@@ -135,7 +141,7 @@ BorderSurface {
 
         MouseArea {
           id: spatialMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-          onClicked: if (root.controller) root.controller.toggleSpatial()
+          onClicked: spatialBtn.activateKeyboard()
         }
       }
     }
@@ -157,6 +163,9 @@ BorderSurface {
           delegate: Rectangle {
             required property var modelData
             id: presetRow
+            readonly property bool navigable: true
+            property bool cursored: false
+            function activateKeyboard() { if (root.controller) root.controller.setEq(modelData.id) }
             readonly property bool isActive: root.controller && root.controller.eqText === modelData.id
             width: parent.width
             height: Style.space(32)
@@ -164,7 +173,7 @@ BorderSurface {
             color: isActive ? Color.menu.selectedBackground
               : (rowMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Color.menu.selectedBackground) : "transparent")
             border.width: 1
-            border.color: isActive || rowMouse.containsMouse ? Color.menu.selectedBorder : "transparent"
+            border.color: isActive || rowMouse.containsMouse || cursored ? Color.menu.selectedBorder : "transparent"
 
             Row {
               anchors.fill: parent
@@ -217,9 +226,7 @@ BorderSurface {
             MouseArea {
               id: rowMouse
               anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-              onClicked: {
-                if (root.controller) root.controller.setEq(presetRow.modelData.id)
-              }
+              onClicked: presetRow.activateKeyboard()
             }
           }
         }

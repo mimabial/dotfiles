@@ -12,6 +12,8 @@ BarButton {
     css: live ? "microphone" : "microphone.muted"
     radius: shell.moduleRadius
     text: !root.source || root.source.audio.muted ? "" : ""
+    smoothTextColor: false
+    textColor: recordingCount ? shell.alpha(shell.role("error", shell.foreground), .25 + blink.phase * .75) : shell.foreground
     tooltip: !root.source ? "No input device"
         : "Input level: " + Math.round(root.source.audio.volume * 100) + "%"
             + (root.source.audio.muted ? " (muted)" : "")
@@ -21,6 +23,13 @@ BarButton {
         : shell.togglePopup("microphone")
 
     PwObjectTracker { objects: [root.source].filter(x => x) }
+    SequentialAnimation {
+        id: blink
+        property real phase: 0
+        running: root.recordingCount > 0; loops: Animation.Infinite
+        NumberAnimation { target: blink; property: "phase"; from: 0; to: 1; duration: 600 }
+        NumberAnimation { target: blink; property: "phase"; from: 1; to: 0; duration: 600 }
+    }
     Rectangle {
         visible: root.recordingCount > 0
         anchors.top: parent.top; anchors.right: parent.right

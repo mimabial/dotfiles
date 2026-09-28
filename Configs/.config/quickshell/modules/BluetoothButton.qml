@@ -6,6 +6,7 @@ import ".."
 BarButton {
     id: root
     property bool popupsAllowed: true
+    property string popupName: "bluetooth"
     property bool showReadout: false
     readonly property var adapters: Bluetooth.adapters.values
     readonly property var connected: Bluetooth.devices.values.filter(device => device.connected)
@@ -20,7 +21,7 @@ BarButton {
                 ? device.name + " " + Math.round(device.battery * 100) + "%" : device.name)).join("")
     // Left opens the panel; right uses the same persistent power path.
     onClicked: button => {
-        if (button !== Qt.RightButton) return shell.togglePopup("bluetooth")
+        if (button !== Qt.RightButton) return shell.togglePopup(popupName)
         shell.run(["hyprshell", "bluetooth/power", "toggle"])
     }
     BluetoothPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }

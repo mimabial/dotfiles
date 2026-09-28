@@ -4,17 +4,15 @@ import QtQuick
 import qs.Commons
 import "../Model.js" as Model
 
-// One module's compact readout: horizontal graph/figure or vertical label/figure.
 Item {
   id: root
 
   required property var shell
-  property bool vertical: false
   property int barSize: Style.bar.sizeHorizontal
   property string fontFamily: shell.fontFamily
   required property var box
   readonly property real iconSize: Style.fontPx(box.fontSize) * shell.iconFontScale
-  readonly property color foreground: shell.styleColor(box.content, shell.foreground)
+  readonly property color foreground: shell.styleColor(box.color, shell.foreground)
   property real horizontalMargin
   property real fixedWidth
   property real fixedHeight
@@ -30,26 +28,28 @@ Item {
   // Disks: "all" or a block device name. Sensors: comma list of sensor ids.
   property string disksSource: "all"
   property string barSensors: "cpu"
-  // "text" stacks the module's short name vertically, iStat style; "icon" uses a glyph.
+  // "text" stacks the module's short name; "icon" uses a glyph.
   property string labelMode: "text"
 
   signal activated(string module, int button)
   signal pressed(int button)
 
   readonly property real scaledHorizontalMargin: Style.spaceReal(horizontalMargin)
-  implicitWidth: fixedWidth > 0 ? fixedWidth : Math.max(vertical ? barSize : 0, content.implicitWidth + scaledHorizontalMargin * 2)
-  implicitHeight: fixedHeight > 0 ? fixedHeight : vertical ? Math.max(barSize, content.implicitHeight + Style.space(8)) : barSize
+  implicitWidth: fixedWidth > 0 ? fixedWidth : content.implicitWidth + scaledHorizontalMargin * 2
+  implicitHeight: fixedHeight > 0 ? fixedHeight : barSize
   visible: hasVisualContent
 
   readonly property var snap: service ? service.snapshot : ({})
   readonly property var hist: service ? service.history : ({})
   readonly property var def: Model.moduleDef(module)
   readonly property bool ready: !!(service && service.ready)
+  readonly property bool gpuMeasured: !!(gpu && gpu.util !== null && gpu.util !== undefined && isFinite(Number(gpu.util)))
   readonly property bool ringable: def.ring === true
   readonly property bool graphable: def.graph === true
-  readonly property bool showGraph: !vertical && graphable && (mode === "both" || mode === "graph")
-  readonly property bool showRing: !vertical && ringable && (mode === "ring" || mode === "ring-text")
-  readonly property bool showText: vertical || mode === "both" || mode === "text" || mode === "ring-text" || (!graphable && !ringable)
+  readonly property bool showGraph: graphable && (mode === "both" || mode === "graph") && (module !== "gpu" || gpuMeasured)
+  readonly property bool showRing: ringable && (mode === "ring" || mode === "ring-text") && (module !== "gpu" || gpuMeasured)
+  readonly property bool showText: mode === "both" || mode === "text" || mode === "ring-text" || (!graphable && !ringable)
+    || (module === "gpu" && !gpuMeasured)
   readonly property bool twoLine: module === "network" || (module === "disks" && !showRing)
   readonly property bool hovered: pointer.containsMouse
   readonly property color contentColor: hovered ? shell.role("hvr_fg", foreground) : foreground
@@ -67,6 +67,7 @@ Item {
 
   readonly property real memPercent: mem.total > 0 ? mem.used / mem.total * 100 : 0
   readonly property bool charging: !!(battery && (battery.status === "Charging" || battery.status === "Full"))
+  readonly property bool batteryPercentKnown: !!(battery && battery.percent !== null && battery.percent !== undefined && isFinite(Number(battery.percent)))
 
   // Disk activity: the selected device when present, otherwise every disk.
   readonly property bool singleDisk: disksSource !== "all" && !!(disks.perDisk && disks.perDisk[disksSource])
@@ -79,9 +80,9 @@ Item {
   readonly property real ringValue: {
     switch (module) {
       case "cpu": return Model.num(cpu.total) / 100
-      case "gpu": return gpu && isFinite(Number(gpu.util)) ? Model.num(gpu.util) / 100 : 0
+      case "gpu": return gpuMeasured ? Model.num(gpu.util) / 100 : 0
       case "memory": return memPercent / 100
-      case "battery": return battery ? Model.num(battery.percent) / 100 : 0
+      case "battery": return batteryPercentKnown ? Model.num(battery.percent) / 100 : 0
       case "disks": {
         var volumes = Array.isArray(disks.volumes) ? disks.volumes : []
         var chosen = null
@@ -124,7 +125,7 @@ Item {
     return out
   }
 
-  readonly property string glyph: module === "battery" && battery ? Model.batteryIcon(battery.percent, charging)
+  readonly property string glyph: module === "battery" && batteryPercentKnown ? Model.batteryIcon(battery.percent, charging)
     : module === "gpu" && gpu ? Model.gpuIcon(gpu.vendor) : def.icon
   readonly property var gpuTemperature: gpu && gpu.temp !== null && isFinite(Number(gpu.temp)) ? gpu.temp
     : sensors.gpuTemp !== null && isFinite(Number(sensors.gpuTemp)) ? sensors.gpuTemp : cpu.temp
@@ -139,7 +140,7 @@ Item {
       case "cpu": return Model.percentText(cpu.total)
       case "gpu": return gpu && gpu.util !== null && isFinite(Number(gpu.util)) ? Model.percentText(gpu.util) : "—"
       case "memory": return Model.percentText(memPercent)
-      case "battery": return battery ? Model.percentText(battery.percent) : "—"
+      case "battery": return batteryPercentKnown ? Model.percentText(battery.percent) : "—"
       case "network": return rateLabel("↑", net.tx)
       case "disks": return showRing ? Model.percentText(ringValue * 100) : rateLabel("R", diskRead)
     }
@@ -165,27 +166,26 @@ Item {
   labelVisible: false
   hasVisualContent: true
   text: def.icon
-  horizontalMargin: vertical ? 1 : 5
-  fixedWidth: vertical ? -1 : content.implicitWidth + scaledHorizontalMargin * 2
+  horizontalMargin: 5
+  fixedWidth: content.implicitWidth + scaledHorizontalMargin * 2
   fixedHeight: -1
   onPressed: function(button) { root.activated(root.module, button) }
 
   TextMetrics {
     id: reserve
     font.family: root.fontFamily
-    font.pixelSize: root.vertical || root.twoLine ? Style.font.caption : Style.font.body
+    font.pixelSize: root.twoLine ? Style.font.caption : Style.font.body
     text: root.reserveText
   }
 
   Grid {
     id: content
-    anchors.left: root.vertical ? parent.left : undefined
-    anchors.horizontalCenter: root.vertical ? undefined : parent.horizontalCenter
+    anchors.horizontalCenter: parent.horizontalCenter
     anchors.verticalCenter: parent.verticalCenter
-    columns: root.vertical ? 1 : 0
-    rows: root.vertical ? 0 : 1
-    spacing: root.vertical ? Style.space(2) : Style.space(4)
-    horizontalItemAlignment: root.vertical ? Grid.AlignLeft : Grid.AlignHCenter
+    columns: 0
+    rows: 1
+    spacing: Style.space(4)
+    horizontalItemAlignment: Grid.AlignHCenter
     verticalItemAlignment: Grid.AlignVCenter
 
     // Every module but sensors: one label, then graph and/or figure.
@@ -200,23 +200,12 @@ Item {
     }
 
     StackLabel {
-      visible: root.module !== "sensors" && root.labelMode === "text" && !root.vertical
+      visible: root.module !== "sensors" && root.labelMode === "text"
       text: root.def.short || root.def.label
       color: root.metricColor
       fontFamily: root.fontFamily
       letterSize: Style.spaceReal(10)
       maxHeight: root.barSize - Style.space(3)
-    }
-
-    Text {
-      visible: root.module !== "sensors" && root.labelMode === "text" && root.vertical
-      textFormat: Text.PlainText
-      text: root.def.short || root.def.label
-      color: root.metricColor
-      font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
-      font.bold: true
-      renderType: Text.NativeRendering
     }
 
     Loader {
@@ -247,10 +236,10 @@ Item {
         readonly property var reading: root.sensorReadings[index] || ({})
         readonly property color readingColor: root.hovered ? root.contentColor : reading.kind === "temp"
           ? root.temperatureColor(reading.celsius, reading.critical) : root.foreground
-        columns: root.vertical ? 1 : 0
-        rows: root.vertical ? 0 : 1
-        spacing: root.vertical ? Style.space(2) : Style.space(3)
-        horizontalItemAlignment: root.vertical ? Grid.AlignLeft : Grid.AlignHCenter
+        columns: 0
+        rows: 1
+        spacing: Style.space(3)
+        horizontalItemAlignment: Grid.AlignHCenter
         verticalItemAlignment: Grid.AlignVCenter
 
         Text {
@@ -264,23 +253,12 @@ Item {
         }
 
         StackLabel {
-          visible: root.labelMode === "text" && !root.vertical
+          visible: root.labelMode === "text"
           text: sensorPair.reading.short || "TMP"
           color: sensorPair.readingColor
           fontFamily: root.fontFamily
           letterSize: Style.spaceReal(10)
           maxHeight: root.barSize - Style.space(3)
-        }
-
-        Text {
-          visible: root.labelMode === "text" && root.vertical
-          textFormat: Text.PlainText
-          text: sensorPair.reading.short || "TMP"
-          color: sensorPair.readingColor
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          font.bold: true
-          renderType: Text.NativeRendering
         }
 
         TextMetrics {
@@ -292,8 +270,8 @@ Item {
 
         Text {
           textFormat: Text.PlainText
-          width: root.vertical ? Math.max(Math.ceil(sensorReserve.advanceWidth), implicitWidth) : Math.ceil(sensorReserve.advanceWidth)
-          horizontalAlignment: root.vertical ? Text.AlignLeft : Text.AlignRight
+          width: Math.ceil(sensorReserve.advanceWidth)
+          horizontalAlignment: Text.AlignRight
           text: root.ready ? String(sensorPair.reading.text || "") + String(sensorPair.reading.unit === "°" ? "°" : "") : "…"
           color: sensorPair.readingColor
           font.family: root.fontFamily
@@ -356,12 +334,12 @@ Item {
 
     Text {
       textFormat: Text.PlainText
-      width: root.vertical ? Math.max(Math.ceil(reserve.advanceWidth), implicitWidth) : Math.ceil(reserve.advanceWidth)
-      horizontalAlignment: root.vertical ? Text.AlignLeft : Text.AlignRight
+      width: Math.ceil(reserve.advanceWidth)
+      horizontalAlignment: Text.AlignRight
       text: root.primaryText
       color: root.metricColor
       font.family: root.fontFamily
-      font.pixelSize: root.vertical ? Style.font.caption : Style.font.body
+      font.pixelSize: Style.font.body
       renderType: Text.NativeRendering
     }
   }
@@ -374,7 +352,7 @@ Item {
 
       Text {
         textFormat: Text.PlainText
-        width: root.vertical ? Math.max(Math.ceil(reserve.advanceWidth), implicitWidth) : Math.ceil(reserve.advanceWidth)
+        width: Math.ceil(reserve.advanceWidth)
         horizontalAlignment: Text.AlignLeft
         text: root.primaryText
         color: root.contentColor
@@ -386,7 +364,7 @@ Item {
 
       Text {
         textFormat: Text.PlainText
-        width: root.vertical ? Math.max(Math.ceil(reserve.advanceWidth), implicitWidth) : Math.ceil(reserve.advanceWidth)
+        width: Math.ceil(reserve.advanceWidth)
         horizontalAlignment: Text.AlignLeft
         text: root.secondaryText
         color: root.contentColor

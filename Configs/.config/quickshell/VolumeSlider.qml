@@ -3,10 +3,11 @@ import Quickshell.Services.Pipewire
 
 BarSlider {
     id: root
-    readonly property var sink: Pipewire.defaultAudioSink
-    css: "volume-slider"
-    to: shell.volumeLimit
-    value: sink ? sink.audio.volume : 0
-    onMoved: value => { if (sink) sink.audio.volume = value }
-    PwObjectTracker { objects: [root.sink].filter(x => x) }
+    property bool microphone: false
+    readonly property var node: microphone ? Pipewire.defaultAudioSource : Pipewire.defaultAudioSink
+    css: microphone ? "microphone-slider" : "volume-slider"
+    to: microphone ? 1 : shell.volumeLimit
+    value: node?.audio?.volume ?? 0
+    onMoved: value => { if (root.node?.audio) root.node.audio.volume = value }
+    PwObjectTracker { objects: [root.node].filter(x => x) }
 }

@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import qs.Commons
+import qs.Ui
 import "../Model.js" as Model
 
 Column {
@@ -10,6 +11,7 @@ Column {
   property var service: null
   property var host: null
   property var settings: ({})
+  property int historyRange: 0
   property string temperatureUnit: "Celsius"
   property bool publicIpEnabled: true
   property color foreground: Color.popups.text
@@ -18,6 +20,7 @@ Column {
   function flag(key) { return Model.flag(settings, key) }
 
   readonly property var snap: service ? service.snapshot : ({})
+  readonly property var hist: service ? Model.peakHistoryView(service.history, service.historyHour, service.historyDay, historyRange) : Model.emptyHistory()
   readonly property color s1: service ? service.series1 : Color.accent
   readonly property color s2: service ? service.series2 : Color.accent
   readonly property color warn: service ? service.warn : Color.urgent
@@ -155,6 +158,37 @@ Column {
   }
 
   Card {
+    visible: Model.hasReading(root.hist.cpuTemp) || Model.hasReading(root.hist.gpuTemp)
+    foreground: root.foreground
+
+    CardHeader { title: "Temperature history"; detail: "Peak in each time slot"; foreground: root.foreground; fontFamily: root.fontFamily }
+    SectionTitle { visible: Model.hasReading(root.hist.cpuTemp); text: "CPU"; fontFamily: root.fontFamily }
+    HistoryGraph {
+      visible: Model.hasReading(root.hist.cpuTemp)
+      width: parent.width
+      height: Style.space(48)
+      barWidth: Model.historyBarWidth(width, root.historyRange)
+      showGaps: root.historyRange > 0
+      series: [root.hist.cpuTemp || []]
+      colors: [root.s1]
+      floor: 30
+      baselineColor: Util.alpha(root.foreground, 0.14)
+    }
+    SectionTitle { visible: Model.hasReading(root.hist.gpuTemp); text: "GPU"; fontFamily: root.fontFamily }
+    HistoryGraph {
+      visible: Model.hasReading(root.hist.gpuTemp)
+      width: parent.width
+      height: Style.space(48)
+      barWidth: Model.historyBarWidth(width, root.historyRange)
+      showGaps: root.historyRange > 0
+      series: [root.hist.gpuTemp || []]
+      colors: [root.s2]
+      floor: 30
+      baselineColor: Util.alpha(root.foreground, 0.14)
+    }
+  }
+
+  Card {
     visible: root.temps.length > 0 && root.flag("showTemperatures")
     foreground: root.foreground
     spacing: Style.space(2)
@@ -164,18 +198,76 @@ Column {
     Repeater {
       model: root.temps.length
 
-      delegate: StatRow {
+      delegate: Column {
+        id: sensorRow
         required property int index
         readonly property var modelData: root.temps[index] || ({})
-        label: root.displayLabel(modelData)
-        value: Model.tempParts(modelData.value, root.temperatureUnit).value
-        unit: "°"
-        boldValue: false
-        valueColor: root.tempTextColor(modelData.value, modelData.critical)
-        foreground: root.foreground
-        fontFamily: root.fontFamily
-        ringValue: root.fraction(modelData.value, modelData.max)
-        ringColor: root.tempColor(modelData.value, modelData.max)
+        readonly property string sensorId: String(modelData.alertId || "")
+        readonly property real threshold: root.service ? root.service.sensorThreshold(sensorId) : -1
+        width: parent.width
+        spacing: Style.space(2)
+
+        StatRow {
+          width: parent.width
+          label: root.displayLabel(sensorRow.modelData)
+          value: Model.tempParts(sensorRow.modelData.value, root.temperatureUnit).value
+          unit: "°"
+          boldValue: false
+          valueColor: sensorRow.threshold >= 0 && sensorRow.modelData.value >= sensorRow.threshold
+            ? root.danger : root.tempTextColor(sensorRow.modelData.value, sensorRow.modelData.critical)
+          foreground: root.foreground
+          fontFamily: root.fontFamily
+          ringValue: root.fraction(sensorRow.modelData.value, sensorRow.modelData.max)
+          ringColor: sensorRow.threshold >= 0 && sensorRow.modelData.value >= sensorRow.threshold
+            ? root.danger : root.tempColor(sensorRow.modelData.value, sensorRow.modelData.max)
+        }
+
+        Row {
+          x: Style.space(8)
+          spacing: Style.space(5)
+
+          PanelActionButton {
+            iconText: sensorRow.threshold < 0 ? "󰂚" : "󰂛"
+            tooltipText: sensorRow.threshold < 0 ? "Enable temperature alert" : "Disable temperature alert"
+            enabled: !!sensorRow.sensorId
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            size: Style.space(20)
+            onClicked: root.service.setSensorThreshold(sensorRow.sensorId, sensorRow.threshold < 0
+              ? Math.max(40, Math.min(120, Math.ceil((Number(sensorRow.modelData.value) + 10) / 5) * 5)) : null)
+          }
+
+          PanelActionButton {
+            visible: sensorRow.threshold >= 0
+            iconText: "−"
+            enabled: sensorRow.threshold > 40
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            size: Style.space(20)
+            onClicked: root.service.setSensorThreshold(sensorRow.sensorId, sensorRow.threshold - 5)
+          }
+
+          Text {
+            text: sensorRow.threshold < 0 ? "Alert off" : "Alert at " + sensorRow.threshold + "°C"
+            textFormat: Text.PlainText
+            color: root.foreground
+            opacity: sensorRow.threshold < 0 ? 0.45 : 0.8
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            height: Style.space(20)
+            verticalAlignment: Text.AlignVCenter
+          }
+
+          PanelActionButton {
+            visible: sensorRow.threshold >= 0
+            iconText: "+"
+            enabled: sensorRow.threshold < 120
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            size: Style.space(20)
+            onClicked: root.service.setSensorThreshold(sensorRow.sensorId, sensorRow.threshold + 5)
+          }
+        }
       }
     }
   }

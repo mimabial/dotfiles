@@ -7,26 +7,37 @@ BarButton {
     property bool popupEnabled: true
     property var records: []
     property int selected: 0
-    readonly property var provider: records.length ? records[Math.min(selected, records.length - 1)] : null
-    readonly property var alarmRecord: records.find(record => String(record.id) === panel.recommendationId) || provider
-    readonly property var headline: {
-        let best = null
-        for (const limit of (alarmRecord && alarmRecord.limits || []))
-            if (Number(limit.percent) >= 0 && (!best || Number(limit.percent) > Number(best.percent))) best = limit
-        return best
+    readonly property real highestUsage: {
+        let highest = 0
+        for (const record of records)
+            for (const limit of (record.limits || []))
+                highest = Math.max(highest, Number(limit.percent) || 0)
+        return highest
     }
-    readonly property bool alarming: headline !== null && Number(headline.percent) >= 0.9
+    readonly property bool alarming: highestUsage >= 0.9
+    readonly property bool exhausted: highestUsage >= 1
 
     css: "agents"
     readonly property bool shown: records.length > 0
-    text: "󱚣"
-    // `alarm` is the style's channel for the >=90% state; both states fall back
-    // to their own role when the rule leaves them out.
-    textColor: alarming
-        ? (box.alarm !== undefined ? styleColor("alarm") : shell.role("error", shell.foreground))
-        : box.content !== undefined ? styleColor("content")
-        : shell.role("c9", shell.foreground)
+    text: exhausted ? "󱚢" : alarming ? "󱚞" : "󱚠"
     onClicked: shell.togglePopup("agents")
+    onRecordsChanged: reportLimits()
+
+    function reportLimits() {
+        if (!panel.notifyLimit) return
+        const now = Date.now()
+        for (const record of records) {
+            const observedAt = Number(record.limitsObservedAt)
+            if (!isFinite(observedAt) || observedAt <= 0 || now - observedAt > panel.staleAfterMs) continue
+            for (const limit of (record.limits || [])) {
+                const usage = Number(limit.percent), resetAt = Date.parse(limit.resetsAt)
+                if (!isFinite(usage) || usage < 0 || isFinite(resetAt) && resetAt <= now) continue
+                shell.run(["hyprshell", "system/agent-limit-alert", String(record.id),
+                    String(record.name || record.id), String(limit.label || "Limit"),
+                    String(Math.floor(usage * 1000)), String(limit.resetsAt || ""), String(observedAt)])
+            }
+        }
+    }
 
     function refresh(force) {
         if (collect.running) return
@@ -58,5 +69,6 @@ BarButton {
         records: root.records; selected: root.selected
         onSelect: index => root.selected = index
         onRefreshRequested: root.refresh(true)
+        onLimitNotificationsEnabled: root.reportLimits()
     }
 }

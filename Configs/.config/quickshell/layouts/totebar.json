@@ -1,0 +1,22 @@
+{
+  "panel": "horizontal",
+  "edge": "top",
+  "style": "horizontal",
+  "left": ["workspaces", "submap"],
+  "right": [
+    "microphone",
+    "webcam",
+    "privacy",
+    "printers",
+    "hyprsunset",
+    "screenshot",
+    "screenrecord",
+    "colorpicker",
+    "terminal",
+    "converter",
+    "github",
+    "games",
+    "sudoku",
+    "powerbutton"
+  ]
+}

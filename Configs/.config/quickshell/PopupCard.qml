@@ -14,6 +14,8 @@ PopupWindow {
     // Reserve detached headers opposite the bar so they never create a bar gap.
     property int headerHeight: 0
     property int padding: Style.popupPadding
+    property string keyboardHint: "↑↓/Tab move · ←→ adjust · Enter · Esc"
+    readonly property int keyboardHintHeight: keyboardHint ? hintText.implicitHeight + Style.sm : 0
     property color background: shell.role("bg", "#0c1021")
     property color borderColor: shell.role("alt_br", shell.foreground)
     property real surfaceOpacity: Style.popupSurfaceOpacity
@@ -24,6 +26,7 @@ PopupWindow {
     readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null
     readonly property bool centered: shell.popupCenteredName === root.popupName
     property string position: shell.barEdge
+    property bool leftAligned: false
     // Keep controllers/timers beside visual content. Item.data accepts both
     // QObjects and Items; visual entries still become contentHost.children.
     default property alias content: contentHost.data
@@ -45,7 +48,7 @@ PopupWindow {
     }
     // a panel that sizes itself from content reads maxHeight to shrink its own panes first
     readonly property int maxHeight: span.height
-    readonly property int cardHeight: Math.min(contentHeight, maxHeight - headerHeight) + headerHeight
+    readonly property int cardHeight: Math.min(contentHeight + keyboardHintHeight, maxHeight - headerHeight) + headerHeight
     readonly property int cardY: centered ? (height - cardHeight) / 2
         : position === "top" ? 0
         : position === "bottom" ? height - cardHeight
@@ -91,9 +94,48 @@ PopupWindow {
     function moveCursor(step) {
         rebuildRows()
         if (navigableRows.length === 0) return
+        const row = navigableRows[cursorIndex]
+        const view = row ? enclosingList(row) : null
+        const next = navigableRows[cursorIndex + step]
+        if (view && (!next || enclosingList(next) !== view)) {
+            const point = row.mapToItem(view.contentItem, row.width / 2, row.height / 2)
+            const index = view.indexAt(point.x, point.y) + step
+            if (index >= 0 && index < view.count) {
+                view.positionViewAtIndex(index, ListView.Contain)
+                Qt.callLater(() => {
+                    const delegate = view.itemAtIndex(index)
+                    if (!delegate) return
+                    const rows = collectNavigableRows(view.contentItem, []).filter(item => descendsFrom(item, delegate))
+                    if (rows.length) { selectRow(rows[step > 0 ? 0 : rows.length - 1]); revealCursor() }
+                })
+                return
+            }
+        }
         cursorIndex = cursorIndex < 0
             ? (step > 0 ? 0 : navigableRows.length - 1)
             : (cursorIndex + step + navigableRows.length) % navigableRows.length
+        revealCursor()
+    }
+    function enclosingList(row) {
+        for (let item = row.parent; item && item !== contentHost; item = item.parent)
+            if (item instanceof ListView) return item
+        return null
+    }
+    function descendsFrom(item, ancestor) {
+        for (let parent = item; parent; parent = parent.parent)
+            if (parent === ancestor) return true
+        return false
+    }
+    function revealCursor() {
+        if (cursorIndex < 0) return
+        const row = navigableRows[cursorIndex]
+        for (let item = row.parent; item && item !== contentHost; item = item.parent) {
+            if (!(item instanceof Flickable)) continue
+            const top = row.mapToItem(item.contentItem, 0, 0).y
+            item.contentY = Math.max(0, Math.min(item.contentHeight - item.height,
+                Math.max(top + row.height - item.height, Math.min(top, item.contentY))))
+            break
+        }
     }
     function selectRow(item) {
         rebuildRows()
@@ -101,8 +143,15 @@ PopupWindow {
         if (index >= 0) cursorIndex = index
     }
     function activateCursor() {
-        if (cursorIndex >= 0 && cursorIndex < navigableRows.length)
-            navigableRows[cursorIndex].clicked(Qt.LeftButton)
+        if (cursorIndex < 0 || cursorIndex >= navigableRows.length) return
+        const row = navigableRows[cursorIndex]
+        if (row.activateKeyboard) row.activateKeyboard()
+        else if (row.clicked) row.clicked(Qt.LeftButton)
+    }
+    function adjustCursor(direction) {
+        const row = navigableRows[cursorIndex]
+        if (!row || !row.adjustKeyboard) return false
+        return row.adjustKeyboard(direction) !== false
     }
     function resumeKeyboard() { keyboardFocusScope.forceActiveFocus() }
     function clearCursor() {
@@ -118,10 +167,15 @@ PopupWindow {
     // override handleKey and fall back to this.
     function defaultKey(event) {
         switch (event.key) {
-        case Qt.Key_Down:   moveCursor(1);    return true
-        case Qt.Key_Up:     moveCursor(-1);   return true
+        case Qt.Key_Down:
+        case Qt.Key_Tab:    moveCursor(1);    return true
+        case Qt.Key_Up:
+        case Qt.Key_Backtab: moveCursor(-1);  return true
+        case Qt.Key_Left:   return adjustCursor(-1)
+        case Qt.Key_Right:  return adjustCursor(1)
         case Qt.Key_Return:
-        case Qt.Key_Enter:  activateCursor(); return true
+        case Qt.Key_Enter:
+        case Qt.Key_Space:  activateCursor(); return true
         case Qt.Key_Escape: shell.closePopup(); return true
         }
         return false
@@ -144,7 +198,7 @@ PopupWindow {
             // a layer surface has no x/y of its own; the compositor derives it
             // from the anchors, so redo that to express screen coordinates in window ones
             const origin = root.windowOrigin()
-            let x = root.anchorItem.width / 2 - root.width / 2
+            let x = root.leftAligned ? 0 : root.anchorItem.width / 2 - root.width / 2
             if (root.position === "left") x = root.anchorItem.width + root.margin
             else if (root.position === "right") x = -root.width - root.margin
             anchor.rect.x = Math.round(root.centered ? (root.anchorWindow.screen.width - root.width) / 2 - origin.x
@@ -169,9 +223,21 @@ PopupWindow {
             FocusScope {
                 id: keyboardFocusScope
                 anchors.fill: parent; anchors.margins: root.padding
+                anchors.bottomMargin: root.padding + root.keyboardHintHeight
                 focus: root.open
                 Keys.onPressed: event => event.accepted = root.handleKey(event)
                 Item { id: contentHost; anchors.fill: parent }
+            }
+            Text {
+                id: hintText
+                visible: root.keyboardHint !== ""
+                width: parent.width - root.padding * 2
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom; anchors.bottomMargin: Math.max(root.padding / 2, Style.sm)
+                text: root.keyboardHint; wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter
+                fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Style.caption - 2)
+                color: root.shell.alpha(root.shell.foreground, .55)
+                font.family: root.shell.fontFamily; font.pixelSize: Style.caption
             }
         }
         Item {

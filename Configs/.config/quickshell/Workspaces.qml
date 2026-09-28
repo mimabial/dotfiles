@@ -7,7 +7,6 @@ Item {
     id: root
     required property var shell
     readonly property var box: shell.style.box("workspaces")
-    property bool vertical: false
     property bool activeOnly: false
     property bool hideActive: false
     property bool popupEnabled: false
@@ -20,8 +19,7 @@ Item {
         kanji: ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十"],
         roman: ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX"]
     })
-    readonly property real trailingGap: compactStyle && !vertical ? 1.5 : 0
-    // no frame is painted here, so box.border reserves nothing
+    readonly property real trailingGap: compactStyle ? 1.5 : 0
     readonly property real horizontalInsets: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3]
     readonly property real verticalInsets: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2]
 
@@ -54,9 +52,9 @@ Item {
         anchors.rightMargin: root.box.margin[1] + root.box.padding[1] + root.trailingGap
         anchors.bottomMargin: root.box.margin[2] + root.box.padding[2]
         anchors.leftMargin: root.box.margin[3] + root.box.padding[3]
-        columns: root.vertical ? 1 : 20
-        rows: root.vertical ? 20 : 1
-        columnSpacing: root.compactStyle && !root.vertical ? Style.px(1) : 0
+        columns: 20
+        rows: 1
+        columnSpacing: root.compactStyle ? Style.px(1) : 0
         rowSpacing: 0
 
         Repeater {
@@ -73,14 +71,12 @@ Item {
                 shell: root.shell
                 opensPopup: true
                 css: focused ? "#workspaces button.active" : "#workspaces button"
-                Layout.fillWidth: root.vertical
-                Layout.fillHeight: !root.vertical
-                fixedWidth: root.compactStyle && !root.vertical ? Style.px(20 + Math.max(0, numeral.length - 1) * 7) : 0
+                Layout.fillHeight: true
+                fixedWidth: root.compactStyle ? Style.px(20 + Math.max(0, numeral.length - 1) * 7) : 0
                 text: root.compactStyle && focused ? "󱓻" : numeral
-                active: root.vertical && focused
                 fontSize: Style.fontPx(box.fontSize)
                 fontWeight: !root.compactStyle && ((ws && ws.urgent) || (root.activeOnly && root.numerals !== "roman")) ? Font.Bold : Font.Normal
-                textColor: root.compactStyle ? root.shell.foreground : ws && ws.urgent ? root.shell.role("warning", root.shell.foreground) : box.content !== undefined ? styleColor("content") : root.vertical ? (active ? root.shell.role("act_fg", root.shell.foreground) : root.shell.foreground) : root.shell.alpha(root.shell.role(hovered || root.activeOnly && root.numerals === "roman" ? "hvr_br" : root.activeOnly ? "act_br" : "br", root.shell.foreground), root.activeOnly && root.numerals === "roman" ? .7 : root.activeOnly || hovered ? .8 : .2)
+                textColor: root.compactStyle ? root.shell.foreground : ws && ws.urgent ? root.shell.role("warning", root.shell.foreground) : box.color !== undefined ? styleColor("color") : root.shell.alpha(root.shell.role(hovered || root.activeOnly && root.numerals === "roman" ? "hvr_br" : root.activeOnly ? "act_br" : "br", root.shell.foreground), root.activeOnly && root.numerals === "roman" ? .7 : root.activeOnly || hovered ? .8 : .2)
                 opacity: root.compactStyle && !occupied && !focused ? .5 : 1
                 visible: shown
                 onClicked: button => {
@@ -94,6 +90,5 @@ Item {
         }
     }
 
-    ModuleEdge { shell: root.shell; host: root }
     WorkspacePopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }
 }

@@ -4,8 +4,8 @@ import QtQuick
 import qs.Commons
 import "../Model.js" as Model
 
-// Segmented switcher across the top of the panel: one equal slot per tab,
-// Settings included, each named in full. The panel sizes itself to
+// Segmented switcher across the top of the panel, in two rows: one equal slot
+// per tab, Settings included, each named in full. The panel sizes itself to
 // `spelledWidth` so the names always fit. The active slot is filled;
 // nothing moves when you switch. Abbreviations belong to the bar, where
 // height is scarce, not here.
@@ -25,8 +25,11 @@ Item {
   readonly property int count: Array.isArray(tabs) ? tabs.length : 0
   readonly property bool hasSettings: settingsTab !== ""
   readonly property int slots: count + (hasSettings ? 1 : 0)
-  readonly property real slotWidth: slots > 0 ? width / slots : width
+  readonly property int rows: Math.min(slots, 2)
+  readonly property int columns: Math.ceil(slots / 2)
+  readonly property real slotWidth: columns > 0 ? width / columns : width
   readonly property real pillHeight: Style.space(28)
+  readonly property real rowGap: Style.space(4)
   readonly property real labelSize: Style.font.caption
 
   // The longest name decides the slot width, Settings included.
@@ -40,7 +43,7 @@ Item {
   }
   readonly property real spelledSlot: Math.ceil(fullMetrics.advanceWidth) + Style.space(14)
   // Width at which every tab can be named in full; the panel asks for it.
-  readonly property real spelledWidth: spelledSlot * slots
+  readonly property real spelledWidth: spelledSlot * columns
 
   TextMetrics {
     id: fullMetrics
@@ -51,7 +54,7 @@ Item {
   }
 
   width: parent ? parent.width : implicitWidth
-  implicitHeight: pillHeight
+  implicitHeight: rows * pillHeight + Math.max(0, rows - 1) * rowGap
   height: implicitHeight
 
   Repeater {
@@ -66,9 +69,10 @@ Item {
       readonly property bool active: root.current === tabId
       readonly property bool hot: root.cursorIndex === index || mouse.containsMouse
 
-      x: index * root.slotWidth
+      x: index % root.columns * root.slotWidth
+      y: Math.floor(index / root.columns) * (root.pillHeight + root.rowGap)
       width: root.slotWidth
-      height: root.height
+      height: root.pillHeight
 
       Rectangle {
         anchors.centerIn: parent

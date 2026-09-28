@@ -354,24 +354,6 @@ def fetch_wttr(location):
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "-m",
-    "--minmax",
-    action="store_true",
-    help="Show min/max temperature instead of current",
-)
-parser.add_argument(
-    "-s",
-    "--sunrise",
-    action="store_true",
-    help="Show sunrise time",
-)
-parser.add_argument(
-    "-S",
-    "--sunset",
-    action="store_true",
-    help="Show sunset time",
-)
-parser.add_argument(
     "-f",
     "--force",
     action="store_true",
@@ -382,17 +364,6 @@ parser.add_argument(
     "--alt",
     action="store_true",
     help="Join fields horizontally with a space instead of stacking with newlines",
-)
-parser.add_argument("--temps-only", action="store_true", help="Only show min/max temperatures")
-parser.add_argument(
-    "--no-unit",
-    action="store_true",
-    help="Drop the C/F suffix from the displayed text, keeping ° (tooltip keeps it)",
-)
-parser.add_argument(
-    "--icon-size",
-    metavar="SIZE",
-    help="Render the icon at this size (e.g. 18pt) instead of the module font size",
 )
 parser.add_argument(
     "--search",
@@ -497,19 +468,6 @@ def get_timestamp(time_str, force_24h=False):
         return datetime.strptime(time_str, "%I:%M %p").strftime("%H:%M")
 
     return time_str
-
-
-def split_time_parts(time_str):
-    time_str = time_str.strip()
-    if " " in time_str:
-        time_main, suffix = time_str.split(" ", 1)
-    else:
-        time_main, suffix = time_str, ""
-    if ":" in time_main:
-        hour, minute = time_main.split(":", 1)
-    else:
-        hour, minute = time_main, ""
-    return hour, minute, suffix
 
 
 state_home = os.environ.get("XDG_STATE_HOME") or os.path.join(
@@ -629,54 +587,48 @@ if weather is None:
 
 current_weather = weather["current_condition"][0]
 
-if args.minmax:
-    today = weather["weather"][0]
-    min_temp = get_min_temp(today).split("°")[0]
-    max_temp = get_max_temp(today).split("°")[0]
-    data["text"] = f"{max_temp}{field_sep}{min_temp}"
-    if not args.temps_only:
-        max_rain_chance = min(
-            max((int(hour.get("chanceofrain", 0)) for hour in today["hourly"]), default=0), 99
-        )
-        data["text"] += f"{field_sep}{max_rain_chance:2d}󱢋{field_sep}{get_wind_value(current_weather)}"
-elif args.sunrise:
-    today = weather["weather"][0]
-    sunrise = get_sunrise(today, args.alt)
-    sunrise_h, sunrise_m, _ = split_time_parts(sunrise)
-    data["text"] = f" {sunrise}" if args.alt else f"  \n{sunrise_h}:\n{sunrise_m} "
-elif args.sunset:
-    today = weather["weather"][0]
-    sunset = get_sunset(today, args.alt)
-    sunset_h, sunset_m, _ = split_time_parts(sunset)
-    data["text"] = f" {sunset}" if args.alt else f"  \n {sunset_h}\n:{sunset_m}"
-else:
-    data["text"] = get_feels_like(current_weather)
-    if args.no_unit:
-        value, degree, _ = data["text"].partition("°")
-        data["text"] = value + degree
-    if show_icon:
-        icon = get_weather_icon(current_weather)
-        if args.icon_size:
-            icon = f"<span size='{args.icon_size}'>{icon}</span>"
-        data["text"] = icon + field_sep + data["text"]
-    if show_location:
-        data["text"] += f" | {get_city_name(weather)}, {get_country_name(weather)}"
+today = weather["weather"][0]
+icon = get_weather_icon(current_weather) if show_icon else ""
+feels = get_feels_like(current_weather)
+data["text"] = field_sep.join(filter(None, [icon, feels]))
+if show_location:
+    data["text"] += f" | {get_city_name(weather)}, {get_country_name(weather)}"
 
-    data["tooltip"] = ""
-    if show_today_details:
-        today = weather["weather"][0]
-        data["tooltip"] += (
-            f"<b>{get_description(current_weather)} {get_temperature(current_weather)}</b>\n"
-        )
-        data["tooltip"] += (
-            f"Location: {get_city_name(weather)}, {get_country_name(weather)}\n"
-        )
-        data["tooltip"] += f"Feels like: {get_feels_like(current_weather)}\n"
-        data["tooltip"] += f"Wind: {get_wind_speed(current_weather)}\n"
-        data["tooltip"] += f"Humidity: {current_weather['humidity']}%\n"
-        data["tooltip"] += f"Sunrise: {get_sunrise(today)}\n"
-        data["tooltip"] += f"Sunset: {get_sunset(today)}\n"
-        data["tooltip"] += f"Max|Min: {get_max_temp(today)} | {get_min_temp(today)}"
 
+def readout(glyph, text):
+    return {"text": " ".join(filter(None, [glyph, text])), "icon": glyph, "value": text}
+
+
+def degrees(temp):
+    return temp.split("°")[0] + "°"
+
+
+rain = min(max((int(hour.get("chanceofrain", 0)) for hour in today["hourly"]), default=0), 99)
+sunrise, sunset = get_sunrise(today, True), get_sunset(today, True)
+high, low = degrees(get_max_temp(today)), degrees(get_min_temp(today))
+data["readouts"] = {
+    "temp": readout(icon, feels),
+    "minmax": readout("", f"{high}|{low}"),
+    "sunrise": readout("\ue34c", sunrise),
+    "sunset": readout("\ue34d", sunset),
+    "rain": readout("\U000f188b", f"{rain}%"),
+    "wind": readout("\ue34b", f"{get_wind_value(current_weather)} {windspeed_unit}"),
+    "humidity": readout("\ue373", f"{current_weather['humidity']}%"),
+}
+
+data["tooltip"] = ""
+if show_today_details:
+    data["tooltip"] += (
+        f"<b>{get_description(current_weather)} {get_temperature(current_weather)}</b>\n"
+    )
+    data["tooltip"] += (
+        f"Location: {get_city_name(weather)}, {get_country_name(weather)}\n"
+    )
+    data["tooltip"] += f"Feels like: {get_feels_like(current_weather)}\n"
+    data["tooltip"] += f"Wind: {get_wind_speed(current_weather)}\n"
+    data["tooltip"] += f"Humidity: {current_weather['humidity']}%\n"
+    data["tooltip"] += f"Sunrise: {get_sunrise(today)}\n"
+    data["tooltip"] += f"Sunset: {get_sunset(today)}\n"
+    data["tooltip"] += f"Max|Min: {get_max_temp(today)} | {get_min_temp(today)}"
 
 print(json.dumps(data))

@@ -7,39 +7,32 @@ only, so adding a module to a layout is one line and styling it is one more.
 
 ## Layouts
 
-Six ship, and they are genuinely different bars rather than variations on one:
+Four layouts ship:
 
 | layout | shape |
 | ------ | ----- |
-| `main` | vertical, right edge — the default |
-| `alt` | vertical, right edge, a different module set |
-| `left` | vertical, left edge |
-| `sidebar` | vertical, minimal — workspaces, taskbar, tray, menu |
-| `top` | horizontal, three sections |
-| `winbar` | horizontal, taskbar-led |
+| `top` | top edge, three sections |
+| `bottom` | bottom edge, three sections |
+| `winbar` | bottom edge, taskbar-led |
+| `totebar` | top edge, workspaces left and utilities right |
 
 `Super + T` then `B` opens the picker, `C` cycles forward and `Shift + C`
 backward. Switching is live — no restart, no regeneration step, no editing state
 by hand. `Super + T` then `H` hides the bar entirely.
 
-The vertical layouts are the interesting ones. A tall thin bar on the edge of a
-16:9 screen costs you pixels you were not using anyway, and it fits a clock, a
-forecast, workspaces, media, audio, network, bluetooth and a tray without any of
-it feeling crowded.
-
 ## Composition
 
-`layouts/main.json` is an ordered array. An entry is either a bare module name or
-an object with props:
+Each layout uses `left`, `center`, and `right` arrays. An entry is either a bare
+module name or an object with props:
 
 ```json
-["datetime", "spacer", {"id": "workspaces", "props": {"activeOnly": false}}]
+{"left": [{"id": "workspaces", "props": {"activeOnly": false}}], "right": ["datetime"]}
 ```
 
-`top` and `winbar` use `left`/`center`/`right` arrays instead, because they have
-three regions to fill.
+`top` and `bottom` extend `layouts/shared/horizontal.json`; `totebar` and
+`winbar` define their own module arrangement.
 
-There are 53 modules registered to draw from — clock, forecast, workspaces,
+Modules include clock, forecast, workspaces,
 taskbar, media player, audio, volume, brightness, eyecare, bluetooth, wifi, vpn,
 privacy, printers, disks, updates, notifications, power, power profile, language,
 tray, submap indicator, system readouts, a converter, even a sudoku. `spacer`

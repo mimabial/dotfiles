@@ -12,7 +12,9 @@ BorderSurface {
     property string fontFamily: Commons.Style.font.family
     property real fontSize: Commons.Style.font.caption
     property real size: Math.max(Commons.Style.space(22), fontSize + Commons.Style.space(8))
-    property bool focusable: false
+    property bool focusable: true
+    readonly property bool navigable: focusable && enabled
+    property bool cursored: false
     property bool hasCursor: false
     property bool bordered: false
     signal clicked()
@@ -25,7 +27,8 @@ BorderSurface {
     borderSpec: bordered && hot
         ? Commons.Border.flat(Commons.Util.alpha(hoverColor, 0.55), 1)
         : Commons.Border.none()
-    readonly property bool hot: enabled && (mouse.containsMouse || hasCursor || activeFocus)
+    readonly property bool hot: enabled && (mouse.containsMouse || hasCursor || cursored || activeFocus)
+    function activateKeyboard() { clicked() }
 
     Keys.onReturnPressed: if (focusable) root.clicked()
     Keys.onEnterPressed: if (focusable) root.clicked()

@@ -6,6 +6,7 @@ import "RemovableModel.js" as Model
 PopupCard {
     id: root
     popupName: "disks"
+    keyboardHint: "↑↓/Tab move · Enter select · Type action letter · Esc back/close"
     contentWidth: Style.px(410)
     contentHeight: scroll.height + padding * 2
 
@@ -777,36 +778,44 @@ PopupCard {
 
     component StorageTab: Rectangle {
         id: tab
+        readonly property bool navigable: true
+        property bool cursored: false
         required property string label
         required property string glyph
         required property int count
         required property bool selected
         signal picked
+        signal clicked(int button)
+        onClicked: picked()
         height: Style.px(32); radius: root.shell.rounding
         color: selected ? root.shell.alpha(root.shell.accent, .18) : tabArea.containsMouse ? root.shell.hoverFill() : root.shell.alpha(root.shell.foreground, .04)
-        border.width: 1; border.color: root.shell.alpha(root.shell.foreground, selected ? .22 : .08)
+        border.width: 1; border.color: cursored ? root.shell.hoverEdge(.85) : root.shell.alpha(root.shell.foreground, selected ? .22 : .08)
         Text {
             anchors.centerIn: parent
             text: tab.glyph + "  " + tab.label + " (" + tab.count + ")"
             color: tab.selected ? root.shell.foreground : root.shell.alpha(root.shell.foreground, .6)
             font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: tab.selected
         }
-        MouseArea { id: tabArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: tab.picked() }
+        MouseArea { id: tabArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: tab.clicked(Qt.LeftButton) }
     }
 
     component ActionTile: Rectangle {
         id: tile
+        readonly property bool navigable: enabled
+        property bool cursored: false
         required property string glyph
         required property string label
         property string hint: ""
         property bool danger: false
         readonly property color tint: danger ? root.shell.role("error", root.shell.foreground) : root.shell.foreground
         signal triggered
+        signal clicked(int button)
+        onClicked: triggered()
         width: tileContent.implicitWidth + Style.px(18); height: Style.px(28)
         radius: root.shell.rounding; opacity: enabled ? 1 : .35
         color: root.shell.alpha(tint, tileArea.containsMouse ? (danger ? .18 : .12) : .04)
         border.width: 1
-        border.color: root.shell.alpha(tint, tileArea.containsMouse ? (danger ? .45 : .22) : danger ? .25 : .08)
+        border.color: cursored ? root.shell.hoverEdge(.85) : root.shell.alpha(tint, tileArea.containsMouse ? (danger ? .45 : .22) : danger ? .25 : .08)
         Behavior on color { ColorAnimation { duration: 60 } }
         Row {
             id: tileContent; anchors.centerIn: parent; spacing: Style.px(6)
@@ -819,7 +828,7 @@ PopupCard {
                 font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
             }
         }
-        MouseArea { id: tileArea; anchors.fill: parent; enabled: tile.enabled; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: tile.triggered() }
+        MouseArea { id: tileArea; anchors.fill: parent; enabled: tile.enabled; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: tile.clicked(Qt.LeftButton) }
         BarTooltip { shell: root.shell; anchorItem: tile; text: tile.hint; hovered: tileArea.containsMouse && tile.hint !== "" }
     }
 
@@ -827,11 +836,15 @@ PopupCard {
         id: action
         required property string glyph
         required property string hint
+        readonly property bool navigable: enabled
+        property bool cursored: false
         property bool danger: false
         signal triggered
+        signal clicked(int button)
+        onClicked: triggered()
         width: Style.px(27); height: Style.px(27); radius: root.shell.rounding
         opacity: enabled ? 1 : .35
-        color: actionMouse.containsMouse ? root.shell.hoverFill(1.3) : "transparent"
+        color: actionMouse.containsMouse || cursored ? root.shell.hoverFill(1.3) : "transparent"
         Text {
             anchors.centerIn: parent; text: action.glyph
             color: action.danger && actionMouse.containsMouse ? root.shell.role("error", root.shell.foreground)
@@ -841,7 +854,7 @@ PopupCard {
         MouseArea {
             id: actionMouse; anchors.fill: parent; enabled: action.enabled
             hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: action.triggered()
+            onClicked: action.clicked(Qt.LeftButton)
         }
         BarTooltip { shell: root.shell; anchorItem: action; text: action.hint; hovered: actionMouse.containsMouse }
     }

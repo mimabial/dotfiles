@@ -11,6 +11,7 @@ import "BluetoothModel.js" as Model
 PopupCard {
     id: root
     popupName: "bluetooth"
+    keyboardHint: page === "devices" ? "↑↓/Tab move · ←→ adjust · X forget · Enter select · Esc close" : "↑↓/Tab move · ←→ adjust · Enter select · Esc back"
     contentWidth: Style.px(440)
     contentHeight: Style.px(570)
 

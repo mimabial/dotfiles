@@ -10,6 +10,7 @@ MENU_WIDTH_OVERRIDE_CACHE="${MENU_WIDTH_OVERRIDE_CACHE:-}"
 MENU_SUBMENU_GLYPH_1="${MENU_SUBMENU_GLYPH_1:-󰅂}"
 MENU_SUBMENU_GLYPH_2="${MENU_SUBMENU_GLYPH_2:-󰄾}"
 MENU_SUBMENU_GLYPH_3="${MENU_SUBMENU_GLYPH_3:-󰶻}"
+MENU_CHECK_GLYPH="${MENU_CHECK_GLYPH:-✓}"
 MENU_NAV_HINT="${MENU_NAV_HINT:-<span size=\"x-small\">  ← Back · → Open 
 [Tab] Search · [Esc] Close</span>}"
 MENU_COPY_HINT="${MENU_COPY_HINT:-<span size=\"x-small\">[Enter] Apply · [Alt+C] Copy</span>}"
@@ -41,7 +42,7 @@ MENU_ITEM_KEY_SEP=$'\x1d'
 MENU_SEARCH_GUARD_ROW=$'​\n​'
 
 declare -gA HYPR_MENU_PROMPTS=()
-declare -gA HYPR_MENU_DEFAULTS=()
+declare -gA HYPR_MENU_CHOICES=()
 declare -gA HYPR_MENU_LABELS=()
 declare -gA HYPR_MENU_PARENTS=()
 declare -gA HYPR_MENU_KINDS=()
@@ -49,6 +50,9 @@ declare -gA HYPR_MENU_TARGETS=()
 declare -gA HYPR_MENU_SEARCHABLE=()
 declare -gA HYPR_MENU_DEPTHS=()
 declare -ga HYPR_MENU_ACTION_HANDLERS=()
+declare -ga HYPR_MENU_ACTIVE_CHECKS=()
+declare -gA HYPR_MENU_MARKED=()
+declare -gA MENU_STATE=()
 
 menu_exit_or_show() {
   [[ "${BACK_TO_EXIT}" == "true" ]] || menu_show_menu "${1:-main}"
@@ -314,11 +318,11 @@ open_in_editor() {
 menu_define() {
   local menu_id="$1"
   local prompt="$2"
-  local default="${3:-}"
+  local kind="${3:-}"
 
   [[ -n "${menu_id}" && "${menu_id}" != *"${MENU_ITEM_KEY_SEP}"* ]] || return 2
   HYPR_MENU_PROMPTS["${menu_id}"]="${prompt}"
-  HYPR_MENU_DEFAULTS["${menu_id}"]="${default}"
+  [[ "${kind}" == choice ]] && HYPR_MENU_CHOICES["${menu_id}"]=1
   : "${HYPR_MENU_LABELS["${menu_id}"]:=}"
 }
 
@@ -341,6 +345,52 @@ menu_add_item() {
 
 menu_register_action_handler() {
   HYPR_MENU_ACTION_HANDLERS+=("$1")
+}
+
+menu_register_active_check() {
+  HYPR_MENU_ACTIVE_CHECKS+=("$1")
+}
+
+menu_mark_active() {
+  HYPR_MENU_MARKED["$1"]=1
+}
+
+menu_item_active() {
+  local check=""
+
+  [[ -v HYPR_MENU_MARKED["$1"] ]] && return 0
+  for check in "${HYPR_MENU_ACTIVE_CHECKS[@]}"; do
+    "${check}" "$1" && return 0
+  done
+  return 1
+}
+
+menu_state() {
+  local key="$1"
+
+  shift
+  [[ -v MENU_STATE["${key}"] ]] || MENU_STATE["${key}"]="$("$@" 2>/dev/null)"
+  REPLY="${MENU_STATE["${key}"]}"
+}
+
+menu_choice() {
+  local target="$1" prefix="$2"
+
+  shift 2
+  menu_state "${prefix}" "$@"
+  [[ "${target#"${prefix}"}" == "${REPLY}" ]]
+}
+
+menu_json_value() {
+  local pattern="\"$2\"[[:space:]]*:[[:space:]]*\"?([^\",}[:space:]]+)"
+
+  menu_state "$1" cat "$1"
+  [[ "${REPLY}" =~ ${pattern} ]] && REPLY="${BASH_REMATCH[1]}" || REPLY="$3"
+}
+
+menu_json_flag() {
+  menu_json_value "$@"
+  [[ "${REPLY}" == true ]]
 }
 
 menu_descendant_depth() {
@@ -371,20 +421,26 @@ menu_submenu_glyph() {
 }
 
 menu_render_options() {
-  local menu_id="$1" out_name="$2" label="" key="" target="" glyph="" output="" flagged="" aligned=""
+  local menu_id="$1" out_name="$2" preselect_name="${3:-}" label="" key="" target="" glyph="" output="" flagged="" aligned=""
+  local -i row=0 active_row=-1
+  local -a lines=()
 
   while IFS= read -r label; do
     [[ -n "${label}" ]] || continue
     key="${menu_id}${MENU_ITEM_KEY_SEP}${label}"
+    target="${HYPR_MENU_TARGETS["${key}"]}"
     output+="${label}"$'\n'
     if [[ "${HYPR_MENU_KINDS["${key}"]}" == "submenu" ]]; then
-      target="${HYPR_MENU_TARGETS["${key}"]}"
       menu_descendant_depth "${target}"
       glyph="$(menu_submenu_glyph "${HYPR_MENU_DEPTHS["${target}"]}")"
       flagged+="1"$'\t'"${label}"$'\t'"${glyph}"$'\n'
+    elif menu_item_active "${target}"; then
+      ((active_row < 0)) && active_row=row
+      flagged+="1"$'\t'"${label}"$'\t'"${MENU_CHECK_GLYPH}"$'\n'
     else
       flagged+="0"$'\t'"${label}"$'\t'$'\n'
     fi
+    row+=1
   done <<<"${HYPR_MENU_LABELS["${menu_id}"]:-}"
 
   aligned="$(printf '%s' "${flagged}" | rofi_font_align_trailing \
@@ -394,12 +450,16 @@ menu_render_options() {
     aligned="${output%$'\n'}"
   fi
   printf -v "${out_name}" '%s' "${aligned}"
+  if [[ -n "${preselect_name}" && -v HYPR_MENU_CHOICES["${menu_id}"] ]] && ((active_row >= 0)); then
+    mapfile -t lines <<<"${aligned}"
+    printf -v "${preselect_name}" '%s' "${lines[active_row]}"
+  fi
 }
 
 menu_lookup_selection() {
   local menu_id="$1" selection="$2" out_kind_name="$3" out_target_name="$4" key="" glyph=""
 
-  for glyph in "${MENU_SUBMENU_GLYPH_1}" "${MENU_SUBMENU_GLYPH_2}" "${MENU_SUBMENU_GLYPH_3}"; do
+  for glyph in "${MENU_SUBMENU_GLYPH_1}" "${MENU_SUBMENU_GLYPH_2}" "${MENU_SUBMENU_GLYPH_3}" "${MENU_CHECK_GLYPH}"; do
     [[ "${selection}" == *"${glyph}" ]] || continue
     selection="${selection%"${glyph}"}"
     selection="${selection%"${selection##*[![:space:]]}"}"
@@ -452,12 +512,13 @@ menu_show_menu() {
   local menu_id="$1"
   local prompt="${HYPR_MENU_PROMPTS["${menu_id}"]:-${menu_id}}"
   local options=""
+  local preselect=""
   local selection=""
   local rofi_exit=0
 
   menu_metrics_cache_init
-  menu_render_options "${menu_id}" options
-  selection="$(menu "${prompt}" "${options}" --select "${HYPR_MENU_DEFAULTS["${menu_id}"]:-}" --nav tree)"
+  menu_render_options "${menu_id}" options preselect
+  selection="$(menu "${prompt}" "${options}" --select "${preselect}" --nav tree)"
   rofi_exit=$?
 
   if ((rofi_exit == MENU_EXIT_SEARCH)); then
@@ -485,7 +546,7 @@ menu_show_menu() {
 }
 
 menu_dump_json() {
-  local menu_id="" label="" key="" target="" chevron=""
+  local menu_id="" label="" key="" target="" chevron="" checked=""
 
   for menu_id in "${!HYPR_MENU_PROMPTS[@]}"; do
     while IFS= read -r label; do
@@ -497,15 +558,17 @@ menu_dump_json() {
         menu_descendant_depth "${target}"
         chevron="$(menu_submenu_glyph "${HYPR_MENU_DEPTHS["${target}"]}")"
       fi
-      printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+      checked=0
+      [[ -v HYPR_MENU_MARKED["${target}"] ]] && checked=1
+      printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
         "${menu_id}" "${HYPR_MENU_PROMPTS["${menu_id}"]}" "${HYPR_MENU_PARENTS["${menu_id}"]:-}" \
         "${label}" "${HYPR_MENU_KINDS["${key}"]}" "${target}" \
-        "${HYPR_MENU_SEARCHABLE["${key}"]}" "${chevron}"
+        "${HYPR_MENU_SEARCHABLE["${key}"]}" "${chevron}" "${checked}"
     done <<<"${HYPR_MENU_LABELS["${menu_id}"]:-}"
   done | jq -Rs '
     split("\n") | map(select(length > 0) | split("\t"))
     | reduce .[] as $r ({}; .[$r[0]] = ((.[$r[0]] // {prompt: $r[1], parent: $r[2], items: []})
-        | .items += [{label: $r[3], kind: $r[4], target: $r[5], searchable: ($r[6] != "0"), chevron: $r[7]}]))'
+        | .items += [{label: $r[3], kind: $r[4], target: $r[5], searchable: ($r[6] != "0"), chevron: $r[7], checked: ($r[8] == "1")}]))'
 }
 
 menu_collect_search_rows() {

@@ -1201,5 +1201,12 @@ BorderSurface {
         }
       }
     }
+    Text {
+      width: parent.width; text: "↑↓ move · Enter select · ←/Esc back"
+      wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter
+      fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Style.font.caption - 2)
+      color: Util.alpha(Color.menu.text, .55)
+      font.family: Style.font.family; font.pixelSize: Style.font.caption
+    }
   }
 }

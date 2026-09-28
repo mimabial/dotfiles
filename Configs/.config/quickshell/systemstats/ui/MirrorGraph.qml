@@ -18,6 +18,8 @@ Canvas {
   property int barWidth: 2
   property int gap: 1
   property color midlineColor: Util.alpha(Color.popups.text, 0.18)
+  property bool showGaps: false
+  property color gapColor: Util.alpha(Color.popups.text, 0.5)
 
   readonly property int pitch: Math.max(1, barWidth + gap)
   readonly property int capacity: Math.max(1, Math.floor((width + gap) / pitch))
@@ -39,6 +41,9 @@ Canvas {
   onDownChanged: requestPaint()
   onUpColorChanged: requestPaint()
   onDownColorChanged: requestPaint()
+  onBarWidthChanged: requestPaint()
+  onShowGapsChanged: requestPaint()
+  onGapColorChanged: requestPaint()
   onWidthChanged: requestPaint()
   onHeightChanged: requestPaint()
   onMidlineColorChanged: requestPaint()
@@ -85,5 +90,16 @@ Canvas {
 
     ctx.fillStyle = root.midlineColor
     ctx.fillRect(0, mid, width, 1)
+    if (root.showGaps) {
+      ctx.fillStyle = root.gapColor
+      for (var gap = 0; gap < n; gap++) {
+        var gapIndex = len - n + gap
+        if (gapIndex < 0) continue
+        var upValue = upList[gapIndex], downValue = downList[gapIndex]
+        var missingUp = upValue === null || upValue === undefined || !isFinite(Number(upValue))
+        var missingDown = downValue === null || downValue === undefined || !isFinite(Number(downValue))
+        if (missingUp && missingDown) ctx.fillRect(snap(width - (n - gap) * root.pitch + root.gap), mid - 2, Math.max(1 / dpr, snap(root.barWidth)), 5)
+      }
+    }
   }
 }

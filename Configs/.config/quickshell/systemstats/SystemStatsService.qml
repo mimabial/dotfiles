@@ -14,6 +14,9 @@ Item {
 
   property var snapshot: ({})
   property var history: Model.emptyHistory()
+  property var historyHour: Model.emptyPeakBucket()
+  property var historyDay: Model.emptyPeakBucket()
+  property bool historyLoaded: false
   property int seq: -1
   property bool ready: false
   property string samplerError: ""
@@ -28,12 +31,19 @@ Item {
   property var instances: []
   property var temperatureRamp: Model.FALLBACK_TEMPERATURE_RAMP
   property bool destroying: false
-  property var alertConfig: ({ enabled: {}, thresholds: {} })
+  property var alertConfig: ({ enabled: {}, thresholds: {}, sensorThresholds: {}, alertCommand: "" })
   property var alertEvents: []
   property bool alertsReady: false
   property bool alertDetailHeld: false
   property var alertStates: ({})
   property var driveLevels: ({})
+  property var powerFine: ({ cpu: [], gpu: [] })
+  property var powerHour: ({ slots: [], cpu: [], gpu: [] })
+  property var powerDay: ({ slots: [], cpu: [], gpu: [] })
+  property real peakCpuPower: -1
+  property real peakGpuPower: -1
+  property real cpuEnergyWh: 0
+  property real gpuEnergyWh: 0
 
   readonly property var themeColors: ({
     red: shell.role("c1", shell.urgent),
@@ -70,7 +80,44 @@ Item {
     var disks = data.disks || {}
     var gpu = data.gpu
     var battery = data.battery
-    var memPercent = mem.total > 0 ? mem.used / mem.total * 100 : 0
+    var power = data.power || {}
+    var domains = Array.isArray(power.domains) ? power.domains : []
+    var cpuPower = null
+    for (var d = 0; d < domains.length; d++) {
+      if (/^package/.test(String(domains[d].name)) && domains[d].watts !== null && isFinite(Number(domains[d].watts)))
+        cpuPower = (cpuPower || 0) + Number(domains[d].watts)
+    }
+    var gpuPower = gpu && gpu.power !== null && gpu.power !== undefined && isFinite(Number(gpu.power)) ? Number(gpu.power) : null
+    var elapsed = Number(data.elapsed)
+    if (isFinite(elapsed) && elapsed > 0 && elapsed <= Math.max(1, Number(data.interval) * 2)) {
+      if (cpuPower !== null) cpuEnergyWh += cpuPower * elapsed / 3600
+      if (gpuPower !== null) gpuEnergyWh += gpuPower * elapsed / 3600
+    }
+    if (cpuPower !== null) peakCpuPower = Math.max(peakCpuPower, cpuPower)
+    if (gpuPower !== null) peakGpuPower = Math.max(peakGpuPower, gpuPower)
+    var fineLength = Math.min(1200, Math.max(12, Math.ceil(120 / Math.max(0.1, Number(data.interval) || 1))))
+    powerFine = {
+      cpu: Model.pushHistory(powerFine.cpu, cpuPower, fineLength),
+      gpu: Model.pushHistory(powerFine.gpu, gpuPower, fineLength)
+    }
+    var minute = Math.floor(Number(data.t) / 60)
+    var priorMinute = powerHour.slots.length ? powerHour.slots[powerHour.slots.length - 1] : -1
+    powerHour = Model.powerBucket(powerHour, minute, cpuPower, gpuPower, 60)
+    powerDay = Model.powerBucket(powerDay, Math.floor(minute / 24), cpuPower, gpuPower, 60)
+    if (minute !== priorMinute && (cpuPower !== null || gpuPower !== null || priorMinute >= 0))
+      powerFile.setText(JSON.stringify({ hour: powerHour, day: powerDay }) + "\n")
+    var memPercent = mem.total > 0 ? mem.used / mem.total * 100 : null
+    var gpuPercent = gpu && gpu.util !== null && gpu.util !== undefined ? gpu.util : null
+    var gpuTemp = gpu && gpu.temp !== null && gpu.temp !== undefined ? gpu.temp : null
+    var vramPercent = gpu && gpu.memTotal > 0 ? gpu.memUsed / gpu.memTotal * 100 : null
+    var values = {
+      cpuUser: cpu.user, cpuSystem: cpu.system, cpuTotal: cpu.total, cpuTemp: cpu.temp,
+      gpu: gpuPercent, gpuTemp: gpuTemp, vram: vramPercent,
+      memUsed: memPercent, memPressure: mem.pressureSome,
+      netRx: net.rx, netTx: net.tx, diskRead: disks.read, diskWrite: disks.write,
+      batteryEmpty: battery && battery.present && battery.percent !== null && battery.percent !== undefined ? 100 - Number(battery.percent) : null,
+      batteryCharging: battery && battery.present ? (battery.status === "Charging" ? 1 : 0) : null
+    }
     var perDisk = disks.perDisk || {}
     var diskHistory = {}
     for (var name in perDisk) {
@@ -79,20 +126,37 @@ Item {
         read: Model.pushHistory(previous.read, perDisk[name].read, n),
         write: Model.pushHistory(previous.write, perDisk[name].write, n)
       }
+      values["disk/" + name + "/read"] = perDisk[name].read
+      values["disk/" + name + "/write"] = perDisk[name].write
     }
     var gpuHistory = {}
+    var gpuTempHistory = {}, vramHistory = {}
     var gpuDevices = gpu && Array.isArray(gpu.devices) ? gpu.devices : []
     for (var i = 0; i < gpuDevices.length; i++) {
       var vendor = String(gpuDevices[i].vendor || "")
-      if (vendor) gpuHistory[vendor] = Model.pushHistory(h.gpus && h.gpus[vendor], gpuDevices[i].util, n)
+      if (vendor) {
+        var device = gpuDevices[i]
+        var deviceVram = device.memTotal > 0 ? device.memUsed / device.memTotal * 100 : null
+        gpuHistory[vendor] = Model.pushHistory(h.gpus && h.gpus[vendor], device.util, n)
+        gpuTempHistory[vendor] = Model.pushHistory(h.gpuTemps && h.gpuTemps[vendor], device.temp, n)
+        vramHistory[vendor] = Model.pushHistory(h.vrams && h.vrams[vendor], deviceVram, n)
+        values["gpu/" + vendor] = device.util
+        values["gpuTemp/" + vendor] = device.temp
+        values["vram/" + vendor] = deviceVram
+      }
     }
 
     root.history = {
       cpuUser: Model.pushHistory(h.cpuUser, cpu.user, n),
       cpuSystem: Model.pushHistory(h.cpuSystem, cpu.system, n),
       cpuTotal: Model.pushHistory(h.cpuTotal, cpu.total, n),
-      gpu: Model.pushHistory(h.gpu, gpu && isFinite(Number(gpu.util)) ? gpu.util : 0, n),
+      cpuTemp: Model.pushHistory(h.cpuTemp, cpu.temp, n),
+      gpu: Model.pushHistory(h.gpu, gpuPercent, n),
+      gpuTemp: Model.pushHistory(h.gpuTemp, gpuTemp, n),
+      vram: Model.pushHistory(h.vram, vramPercent, n),
       gpus: gpuHistory,
+      gpuTemps: gpuTempHistory,
+      vrams: vramHistory,
       memUsed: Model.pushHistory(h.memUsed, memPercent, n),
       memPressure: Model.pushHistory(h.memPressure, mem.pressureSome, n),
       netRx: Model.pushHistory(h.netRx, net.rx, n),
@@ -100,9 +164,15 @@ Item {
       diskRead: Model.pushHistory(h.diskRead, disks.read, n),
       diskWrite: Model.pushHistory(h.diskWrite, disks.write, n),
       disks: diskHistory,
-      battery: Model.pushHistory(h.battery, battery && battery.present ? battery.percent : 0, n),
+      battery: Model.pushHistory(h.battery, battery && battery.present ? battery.percent : null, n),
       batteryCharging: Model.pushHistory(h.batteryCharging, battery && battery.status === "Charging" ? 1 : 0, n)
     }
+    var historyMinute = Math.floor(Number(data.t) / 60)
+    var previousHistoryMinute = historyHour.slots.length ? historyHour.slots[historyHour.slots.length - 1] : -1
+    historyHour = Model.peakBucket(historyHour, historyMinute, values, 60)
+    historyDay = Model.peakBucket(historyDay, Math.floor(historyMinute / 24), values, 60)
+    if (historyLoaded && historyMinute !== previousHistoryMinute)
+      historyFile.setText(JSON.stringify({ version: 1, hour: historyHour, day: historyDay }) + "\n")
     root.snapshot = data
     root.seq = Number(data.seq) || 0
     root.ready = true
@@ -111,21 +181,28 @@ Item {
   }
 
   function loadAlertConfig(raw) {
-    var previouslyEnabled = alertConfig.enabled
+    var previous = alertConfig
     try {
       var parsed = JSON.parse(String(raw))
       alertConfig = {
         enabled: parsed.enabled && typeof parsed.enabled === "object" ? parsed.enabled : {},
-        thresholds: parsed.thresholds && typeof parsed.thresholds === "object" ? parsed.thresholds : {}
+        thresholds: parsed.thresholds && typeof parsed.thresholds === "object" ? parsed.thresholds : {},
+        sensorThresholds: parsed.sensorThresholds && typeof parsed.sensorThresholds === "object" ? parsed.sensorThresholds : {},
+        alertCommand: typeof parsed.alertCommand === "string" ? parsed.alertCommand : ""
       }
-    } catch (error) { alertConfig = ({ enabled: {}, thresholds: {} }) }
+    } catch (error) { alertConfig = ({ enabled: {}, thresholds: {}, sensorThresholds: {}, alertCommand: "" }) }
     var states = Object.assign({}, alertStates)
     for (var i = 0; i < Model.ALERTS.length; i++) {
       var key = Model.ALERTS[i].id
-      if ((previouslyEnabled[key] === true) !== alertEnabled(key)) {
+      if ((previous.enabled[key] === true) !== alertEnabled(key) || previous.thresholds[key] !== alertConfig.thresholds[key]) {
         delete states[key]
         if (key === "driveHealth") driveLevels = ({})
       }
+    }
+    for (var stateKey in states) {
+      if (stateKey.indexOf("sensor:") !== 0) continue
+      var sensorId = stateKey.slice(7)
+      if (previous.sensorThresholds[sensorId] !== alertConfig.sensorThresholds[sensorId]) delete states[stateKey]
     }
     alertStates = states
     alertsReady = true
@@ -154,7 +231,7 @@ Item {
     delete states[key]
     alertStates = states
     if (key === "driveHealth") driveLevels = ({})
-    saveAlertConfig({ enabled: flags, thresholds: alertConfig.thresholds })
+    saveAlertConfig(Object.assign({}, alertConfig, { enabled: flags }))
   }
 
   function setAlertThreshold(key, value) {
@@ -165,12 +242,33 @@ Item {
     var states = Object.assign({}, alertStates)
     delete states[key]
     alertStates = states
-    saveAlertConfig({ enabled: alertConfig.enabled, thresholds: thresholds })
+    saveAlertConfig(Object.assign({}, alertConfig, { thresholds: thresholds }))
+  }
+
+  function sensorThreshold(id) {
+    var value = alertConfig.sensorThresholds[String(id)]
+    return value === undefined || value === null || !isFinite(Number(value)) ? -1 : Model.clamp(value, 40, 120)
+  }
+
+  function setSensorThreshold(id, value) {
+    var key = String(id || "")
+    if (!key) return
+    var thresholds = Object.assign({}, alertConfig.sensorThresholds)
+    if (value === null || value === undefined) delete thresholds[key]
+    else thresholds[key] = Math.round(Model.clamp(value, 40, 120) / 5) * 5
+    var states = Object.assign({}, alertStates)
+    delete states["sensor:" + key]
+    alertStates = states
+    saveAlertConfig(Object.assign({}, alertConfig, { sensorThresholds: thresholds }))
+  }
+
+  function setAlertCommand(command) {
+    saveAlertConfig(Object.assign({}, alertConfig, { alertCommand: String(command || "").slice(0, 4096) }))
   }
 
   function syncAlertSources() {
     if (!alertsReady) return
-    var needsProcesses = alertEnabled("cpuUsage") || alertEnabled("cpuTemp") || alertEnabled("gpuTemp") || alertEnabled("memory")
+    var needsProcesses = alertEnabled("cpuUsage") || alertEnabled("cpuTemp") || alertEnabled("memory")
     if (needsProcesses !== alertDetailHeld) {
       alertDetailHeld = needsProcesses
       if (needsProcesses) acquireDetail()
@@ -181,12 +279,7 @@ Item {
   }
 
   function alertValue(data, key) {
-    var cpu = data.cpu || {}, gpu = data.gpu || {}, mem = data.mem || {}
-    if (key === "cpuUsage") return cpu.total
-    if (key === "cpuTemp") return cpu.temp
-    if (key === "gpuTemp") return gpu.temp
-    if (key === "memory") return mem.total > 0 ? mem.used / mem.total * 100 : null
-    return null
+    return Model.alertReading(data, key).value
   }
 
   function contextLines(data, drive) {
@@ -196,7 +289,13 @@ Item {
     if (isFinite(Number(cpu.temp)) && cpu.temp !== null) lines.push("CPU temp " + Math.round(cpu.temp) + "°C")
     if (isFinite(Number(gpu.util)) && gpu.util !== null) lines.push("GPU " + Math.round(gpu.util) + "%")
     if (isFinite(Number(gpu.temp)) && gpu.temp !== null) lines.push("GPU temp " + Math.round(gpu.temp) + "°C")
+    var vram = Model.alertReading(data, "vram").value
+    if (vram !== null && vram !== undefined && isFinite(Number(vram))) lines.push("VRAM " + Math.round(vram) + "%")
     if (mem.total > 0) lines.push("Memory " + Math.round(mem.used / mem.total * 100) + "%")
+    var disk = Model.alertReading(data, "diskUsage")
+    if (disk.value !== null) lines.push("Disk " + disk.subject + " " + Math.round(disk.value) + "%")
+    if (data.battery && data.battery.present && data.battery.percent !== null && data.battery.percent !== undefined)
+      lines.push("Battery " + Math.round(data.battery.percent) + "%")
     if (Array.isArray(procs.cpu) && procs.cpu.length) lines.push("Top CPU: " + procs.cpu[0].name + " " + Math.round(procs.cpu[0].cpu) + "%")
     if (Array.isArray(procs.mem) && procs.mem.length) lines.push("Top memory: " + procs.mem[0].name + " " + Model.bytesText(procs.mem[0].mem))
     if (drive) lines.push("Drive: " + drive.title + " · " + drive.health.text + (drive.health.temperature ? " · " + drive.health.temperature : ""))
@@ -207,8 +306,13 @@ Item {
     var event = { at: Date.now(), key: key, title: title, message: message, context: contextLines(data || {}, drive) }
     alertEvents = [event].concat(alertEvents).slice(0, 20)
     alertLogFile.setText(JSON.stringify(alertEvents, null, 2) + "\n")
-    var urgency = key === "cpuTemp" || key === "gpuTemp" || key === "driveHealth" ? "critical" : "normal"
+    var urgency = key === "cpuTemp" || key === "gpuTemp" || key === "driveTemp" || key === "batteryLow" || key === "driveHealth" || key.indexOf("sensor:") === 0 ? "critical" : "normal"
     Quickshell.execDetached(["notify-send", "-a", "System stats", "-u", urgency, title, message])
+    if (alertConfig.alertCommand) Quickshell.execDetached([
+      "/usr/bin/env", "SYSTEMSTATS_ALERT_KEY=" + key, "SYSTEMSTATS_ALERT_TEXT=" + title + ": " + message,
+      "SYSTEMSTATS_ALERT_CRITICAL=" + (urgency === "critical" ? "1" : "0"), "SYSTEMSTATS_ALERT_AT=" + event.at,
+      "/bin/sh", "-c", alertConfig.alertCommand
+    ])
   }
 
   function clearAlertEvents() {
@@ -222,17 +326,33 @@ Item {
     for (var i = 0; i < Model.ALERTS.length; i++) {
       var def = Model.ALERTS[i]
       if (def.id === "driveHealth" || !alertEnabled(def.id)) continue
-      var value = alertValue(data, def.id)
+      var reading = Model.alertReading(data, def.id), value = reading.value
       var valid = value !== null && value !== undefined && isFinite(Number(value))
-      var state = Model.nextAlertState(states[def.id], valid && Number(value) >= alertThreshold(def.id), now)
+      var state = Model.nextAlertState(states[def.id], valid && (def.low ? Number(value) <= alertThreshold(def.id) : Number(value) >= alertThreshold(def.id)), now)
       states[def.id] = state
       if (state.fire) {
-        var reading = Math.round(Number(value)) + def.unit
-        var message = reading + " reached the " + alertThreshold(def.id) + def.unit + " limit"
-        var top = data.procs && (def.id === "memory" ? data.procs.mem : data.procs.cpu)
+        var message = (reading.subject ? reading.subject + ": " : "") + Math.round(Number(value)) + def.unit
+          + " reached the " + alertThreshold(def.id) + def.unit + " limit"
+        var top = data.procs && (def.id === "memory" ? data.procs.mem : (def.id === "cpuUsage" || def.id === "cpuTemp" ? data.procs.cpu : null))
         if (Array.isArray(top) && top.length) message += " · top process: " + top[0].name
         fireAlert(def.id, def.label, message, data, null)
       }
+    }
+    var temps = data.sensors && Array.isArray(data.sensors.temps) ? data.sensors.temps : []
+    var seenSensors = {}
+    for (var j = 0; j < temps.length; j++) {
+      var sensor = temps[j], sensorId = String(sensor.alertId || "")
+      var limit = sensorThreshold(sensorId)
+      if (!sensorId || limit < 0) continue
+      var key = "sensor:" + sensorId
+      seenSensors[key] = true
+      var hot = sensor.value !== null && sensor.value !== undefined && isFinite(Number(sensor.value)) && Number(sensor.value) >= limit
+      var sensorState = Model.nextAlertState(states[key], hot, now)
+      states[key] = sensorState
+      if (sensorState.fire) fireAlert(key, Model.sensorLabel(sensor), Math.round(Number(sensor.value)) + "°C reached the " + limit + "°C limit", data, null)
+    }
+    for (var activeKey in states) {
+      if (activeKey.indexOf("sensor:") === 0 && !seenSensors[activeKey]) states[activeKey] = Model.nextAlertState(states[activeKey], false, now)
     }
     alertStates = states
   }
@@ -368,6 +488,19 @@ Item {
     return "ok"
   }
 
+  function setHistorySpan(span) {
+    var value = String(span || "").toLowerCase()
+    if (value === "2m") value = "live"
+    if (["live", "1h", "24h"].indexOf(value) === -1) return "unknown history span"
+    for (var i = 0; i < instances.length; i++) {
+      if (instances[i] && typeof instances[i].persist === "function") {
+        instances[i].persist("historySpan", value)
+        return "ok"
+      }
+    }
+    return "systemstats unavailable"
+  }
+
   function summary() {
     var s = snapshot || {}
     var cpu = s.cpu || {}
@@ -384,6 +517,38 @@ Item {
       gpu: s.gpu ? s.gpu.util : null,
       battery: s.battery && s.battery.present ? s.battery.percent : null,
       error: samplerError
+    }
+  }
+
+  FileView {
+    id: historyFile
+    path: root.shell.home + "/.local/state/quickshell/systemstats-history.json"
+    atomicWrites: true
+    printErrors: false
+    onLoaded: {
+      try {
+        var saved = JSON.parse(text())
+        if (saved.version === 1) {
+          root.historyHour = Model.mergePeakBuckets(saved.hour, root.historyHour, 60)
+          root.historyDay = Model.mergePeakBuckets(saved.day, root.historyDay, 60)
+        }
+      } catch (error) {}
+      root.historyLoaded = true
+    }
+    onLoadFailed: root.historyLoaded = true
+  }
+
+  FileView {
+    id: powerFile
+    path: root.shell.home + "/.local/state/quickshell/systemstats-power.json"
+    atomicWrites: true
+    printErrors: false
+    onLoaded: {
+      try {
+        var saved = JSON.parse(text())
+        if (saved.hour && Array.isArray(saved.hour.slots) && Array.isArray(saved.hour.cpu) && Array.isArray(saved.hour.gpu)) root.powerHour = saved.hour
+        if (saved.day && Array.isArray(saved.day.slots) && Array.isArray(saved.day.cpu) && Array.isArray(saved.day.gpu)) root.powerDay = saved.day
+      } catch (error) {}
     }
   }
 
@@ -455,6 +620,7 @@ Item {
       }))
     }
     function open(tab: string): string { return root.showTab(tab, "show") }
+    function span(value: string): string { return root.setHistorySpan(value) }
     function toggle(tab: string): string { return root.showTab(tab, "toggle") }
     function hide(): string { return root.showTab("", "hide") }
   }

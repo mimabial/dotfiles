@@ -6,6 +6,7 @@ import ".."
 BarButton {
     id: root
     property bool popupsAllowed: true
+    property string popupName: "network"
     readonly property var connectedNetwork: {
         for (const device of Networking.devices.values)
             if (device.type === DeviceType.Wifi)
@@ -19,7 +20,7 @@ BarButton {
         : root.connectedNetwork.name + "\nSignal: " + Math.round(root.connectedNetwork.signalStrength * 100) + "%"
     onClicked: button => button === Qt.RightButton
         ? Networking.wifiEnabled = !Networking.wifiEnabled
-        : root.shell.togglePopup("network")
+        : root.shell.togglePopup(root.popupName)
     NetworkPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }
     WifiQrPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }
 }

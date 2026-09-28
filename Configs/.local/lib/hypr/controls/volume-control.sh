@@ -253,29 +253,41 @@ set_output_by_description() {
 }
 
 move_application_streams() {
-  local sink_name="$1"
-  local input=""
+  local old_sink="$1" new_sink="$2" old_index="" metadata="" streams=""
+  local input="" object_id="" target=""
+  local -A explicit_targets=()
 
-  while IFS= read -r input; do
-    [[ -n "${input}" ]] && pactl move-sink-input "${input}" "${sink_name}" >/dev/null 2>&1 || true
-  done < <(
-    pactl list sink-inputs 2>/dev/null | awk '
-      /^Sink Input #/ {id = substr($3, 2)}
-      /application\.name = / {
-        app = $0
-        sub(/.*application\.name = "/, "", app)
-        sub(/"$/, "", app)
-        if (app != "EasyEffects") print id
-      }'
-  )
+  [[ -n ${old_sink} && ${old_sink} != "${new_sink}" ]] || return 0
+  metadata=$(pw-metadata -n default 2>/dev/null) || return 0
+  old_index=$(pactl -f json list sinks 2>/dev/null |
+    jq -r --arg name "${old_sink}" 'map(select(.name == $name))[0].index // empty') || return 0
+  [[ ${old_index} =~ ^[0-9]+$ ]] || return 0
+  streams=$(pactl -f json list sink-inputs 2>/dev/null |
+    jq -r --arg sink "${old_index}" '.[]
+      | select((.sink | tostring) == $sink)
+      | select(.properties."application.name" != null and .properties."application.name" != "EasyEffects")
+      | [.index, (.properties."object.id" // "")] | @tsv') || return 0
+
+  while IFS=$'\t' read -r object_id target; do
+    [[ ${object_id} =~ ^[0-9]+$ && ${target} != -1 ]] && explicit_targets["${object_id}"]=1
+  done < <(sed -n "s/^update: id:\([0-9][0-9]*\) key:'target\.\(object\|node\)' value:'\([^']*\)'.*/\1\t\3/p" <<<"${metadata}")
+
+  while IFS=$'\t' read -r input object_id; do
+    [[ ${input} =~ ^[0-9]+$ ]] || continue
+    [[ -n ${object_id} && -n ${explicit_targets[${object_id}]:-} ]] && continue
+    pactl move-sink-input "${input}" "${new_sink}" >/dev/null 2>&1 || true
+  done <<<"${streams}"
 }
 
 set_default_output() {
   local sink_id="$1"
   local sink_name="$2"
+  local old_sink=""
+
+  old_sink=$(pactl get-default-sink 2>/dev/null || true)
 
   if wpctl set-default "${sink_id}" && pactl set-default-sink "${sink_name}"; then
-    move_application_streams "${sink_name}"
+    move_application_streams "${old_sink}" "${sink_name}"
     dunstify -t "${VOLUME_NOTIFY_TIMEOUT_MS}" -i "$(icons_media_dir)/unmuted-speaker.svg" \
       -r "${VOLUME_NOTIFY_REPLACE_ID}" -u low "Activated: ${sink_name}"
   else

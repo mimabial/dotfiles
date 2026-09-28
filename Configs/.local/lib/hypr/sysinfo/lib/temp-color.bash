@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Shared temperature -> colour ramp for the sysinfo widgets (cpuinfo, gpuinfo;
-# also read by sensorsinfo.py). Colour comes from the reading NORMALISED to the
-# sensor's critical point (temp*100/crit), so one ramp fits any chip: a value at
-# its crit is always the hottest colour, whatever the chip's absolute limit.
+# Temperature -> colour ramp for sysinfo/gpuinfo. Colour comes from the reading
+# NORMALISED to the sensor's critical point (temp*100/crit), so one ramp fits
+# any chip: a value at its crit is always the hottest colour, whatever the
+# chip's absolute limit.
 # Callers without a known crit omit it, so crit defaults to 100 and the ramp is
 # read as a plain degC scale (the long-standing cpu/gpu behaviour).
 #

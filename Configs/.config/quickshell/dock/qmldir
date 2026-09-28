@@ -4,6 +4,7 @@ DockContextMenu 1.0 DockContextMenu.qml
 DockMenuRow 1.0 DockMenuRow.qml
 DockMenuDivider 1.0 DockMenuDivider.qml
 HoverTooltip 1.0 HoverTooltip.qml
+AppTooltipContent 1.0 AppTooltipContent.qml
 DockItem 1.0 DockItem.qml
 DockIconButton 1.0 DockIconButton.qml
 DockSeparator 1.0 DockSeparator.qml

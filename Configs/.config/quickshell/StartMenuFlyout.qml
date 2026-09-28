@@ -2,8 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 
-// One cascade level of the menu.d tree, anchored beside the row that opened it.
-// Chained like TrayFlyout: the next level binds to this openSubId/openRow.
 PopupWindow {
     id: root
     required property var shell
@@ -12,13 +10,14 @@ PopupWindow {
     property Item anchorItem: null
     property int contentWidth: Style.px(230)
     property int padding: Style.popupPadding
-    readonly property bool open: menuId !== "" && anchorItem !== null
+    property string mappedMenuId: ""
+    readonly property bool open: menuId !== "" && anchorItem !== null && items.length > 0
     readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null
     property string openSubId: ""
     property Item openRow: null
-    // preferred cascade side: away from the bar, so the common case never flips
     property bool openLeft: false
     signal actionTriggered(string target)
+    signal dismissed()
     readonly property bool hovered: flyHover.hovered
 
     readonly property var items: {
@@ -33,32 +32,23 @@ PopupWindow {
     }
     function labelIcon(label) { const m = label.match(/^(\S+)\s{2,}/); return m ? m[1] : "" }
     function labelText(label) { const m = label.match(/^\S+\s{2,}(.*)$/); return m ? m[1] : label }
-    function selectedTarget(target) {
-        const value = String(target || "")
-        const layoutPrefix = "style_bar_layout_"
-        if (value.indexOf(layoutPrefix) === 0)
-            return root.shell.layoutName === value.slice(layoutPrefix.length)
-        const cornerPrefix = "style_expose_hot_corner_"
-        if (value.indexOf(cornerPrefix) === 0)
-            return root.shell.exposeConfig.hotCornerEnabled
-                && root.shell.exposeConfig.hotCornerPosition === value.slice(cornerPrefix.length)
-        return false
+    function closeSubmenu() { openSubId = ""; openRow = null }
+    function remapMenu() {
+        mappedMenuId = ""
+        if (menuId !== "") showNextMenu.restart()
     }
-
-    onOpenChanged: if (!open) { openSubId = ""; openRow = null }
-    onMenuIdChanged: { openSubId = ""; openRow = null }
-    // Switching between two equal-length sibling submenus changes nothing the
-    // anchor watches, so it would keep the previous row's y.
+    onOpenChanged: if (!open) closeSubmenu()
+    onMenuIdChanged: { closeSubmenu(); remapMenu() }
+    onMenusChanged: remapMenu()
     onAnchorItemChanged: if (root.open) anchor.updateAnchor()
+    onVisibleChanged: if (!visible && open && mappedMenuId === menuId) dismissed()
+    Timer { id: showNextMenu; interval: 0; onTriggered: root.mappedMenuId = root.menuId }
 
-    visible: open
+    visible: open && mappedMenuId === menuId
     color: "transparent"
     implicitWidth: contentWidth
     implicitHeight: flyColumn.implicitHeight + padding * 2
 
-    // the rect is the row itself, so the compositor can mirror this level about
-    // it when the preferred side runs out of screen. Flip is tried before slide,
-    // so a cramped level lands beside its parent instead of on top of it
     anchor {
         window: root.anchorWindow
         adjustment: PopupAdjustment.FlipX | PopupAdjustment.Slide
@@ -75,6 +65,10 @@ PopupWindow {
 
     Rectangle {
         anchors.fill: parent
+        focus: root.visible
+        Keys.onPressed: event => {
+            if (root.shell.popupCard) event.accepted = root.shell.popupCard.handleKey(event)
+        }
         color: root.shell.alpha(root.shell.role("bg", "#0c1021"), 0.94)
         border.color: root.shell.alpha(root.shell.role("alt_br", root.shell.foreground), .45)
         border.width: 1
@@ -86,20 +80,20 @@ PopupWindow {
             id: flyColumn
             anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
             anchors.margins: root.padding
-            spacing: 2
+            spacing: Style.xxs
             Repeater {
                 model: root.items
                 delegate: PopupRow {
                     id: row
                     required property var modelData
-                    width: flyColumn.width; shell: root.shell
+                    width: flyColumn.width; height: Style.popupRowHeight; shell: root.shell
                     icon: root.labelIcon(modelData.label)
                     title: root.labelText(modelData.label)
                     valueWidth: Style.px(18)
-                    selected: root.selectedTarget(modelData.target)
-                    active: modelData.kind === "submenu" ? root.openSubId === modelData.target : selected
+                    readonly property bool checked: root.shell.menuTargetActive(modelData.target) ?? modelData.checked
+                    active: modelData.kind === "submenu" && root.openSubId === modelData.target
                     color: row.highlight
-                    value: modelData.chevron || (selected ? "✓" : "")
+                    value: modelData.chevron || (checked ? "✓" : "")
                     onHoveredChanged: {
                         if (!hovered) return
                         if (modelData.kind === "submenu") { root.openSubId = modelData.target; root.openRow = row }
@@ -115,6 +109,13 @@ PopupWindow {
                         root.actionTriggered(modelData.target)
                     }
                 }
+            }
+            Text {
+                width: parent.width; text: "↑↓ move · → open · ← back · Esc"
+                wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter
+                fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Style.caption - 2)
+                color: root.shell.alpha(root.shell.foreground, .55)
+                font.family: root.shell.fontFamily; font.pixelSize: Style.caption
             }
         }
     }

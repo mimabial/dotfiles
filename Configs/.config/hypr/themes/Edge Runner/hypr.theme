@@ -9,6 +9,7 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = Hackneyed-Dark
 $CURSOR_SIZE = 30
+
 $FONT = ShureTechMono Nerd Font
 $BAR_FONT = ShureTechMono Nerd Font
 $MENU_FONT = ShureTechMono Nerd Font

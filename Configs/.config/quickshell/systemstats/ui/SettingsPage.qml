@@ -26,7 +26,7 @@ Column {
     var out = []
     for (var i = 0; i < Model.MODULES.length; i++) {
       var id = Model.MODULES[i].id
-      if (id === "settings" || id === "alerts") continue
+      if (id === "settings" || id === "alerts" || id === "power") continue
       if (id === "gpu" && !hasGpu) continue
       if (id === "battery" && !hasBattery) continue
       out.push(id)
@@ -339,14 +339,32 @@ Column {
       onChanged: function(value) { root.set("refreshSeconds", value) }
     }
 
+    ChoiceRow {
+      label: "History range"
+      options: [{ value: "live", label: "Live" }, { value: "1h", label: "1 hour" }, { value: "24h", label: "24 hours" }]
+      value: String(Model.settingValue(root.settings, "historySpan"))
+      onChanged: function(value) { root.set("historySpan", value) }
+    }
+
     StepperRow {
-      label: "History"
+      label: "Live history"
       value: root.num("historySeconds")
       unit: "s"
       minimum: 30
       maximum: 3600
       step: 30
       onChanged: function(value) { root.set("historySeconds", value) }
+    }
+
+    Text {
+      width: parent.width
+      text: "The 1-hour and 24-hour views keep peak readings across shell restarts and are saved once a minute."
+      textFormat: Text.PlainText
+      wrapMode: Text.WordWrap
+      color: root.foreground
+      opacity: 0.55
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
     }
 
     StepperRow {

@@ -8,8 +8,8 @@ Column {
   id: root
 
   property var service: null
-  property var host: null
   property var settings: ({})
+  property int historyRange: 0
   property string temperatureUnit: "Celsius"
   property bool publicIpEnabled: true
   property color foreground: Color.popups.text
@@ -18,7 +18,7 @@ Column {
   function flag(key) { return Model.flag(settings, key) }
 
   readonly property var snap: service ? service.snapshot : ({})
-  readonly property var hist: service ? service.history : Model.emptyHistory()
+  readonly property var hist: service ? Model.peakHistoryView(service.history, service.historyHour, service.historyDay, historyRange) : Model.emptyHistory()
   readonly property color s1: service ? service.series1 : Color.accent
   readonly property color s2: service ? service.series2 : Color.accent
   readonly property color s3: service ? service.tertiary : Color.accent
@@ -103,6 +103,34 @@ Column {
   }
 
   Card {
+    foreground: root.foreground
+
+    CardHeader { title: "History"; detail: "Peak in each time slot"; foreground: root.foreground; fontFamily: root.fontFamily }
+    SectionTitle { text: "Memory used"; fontFamily: root.fontFamily }
+    HistoryGraph {
+      width: parent.width
+      height: Style.space(56)
+      barWidth: Model.historyBarWidth(width, root.historyRange)
+      showGaps: root.historyRange > 0
+      series: [root.hist.memUsed || []]
+      colors: [root.s1]
+      ceiling: 100
+      baselineColor: Util.alpha(root.foreground, 0.14)
+    }
+    SectionTitle { text: "Memory pressure"; fontFamily: root.fontFamily }
+    HistoryGraph {
+      width: parent.width
+      height: Style.space(44)
+      barWidth: Model.historyBarWidth(width, root.historyRange)
+      showGaps: root.historyRange > 0
+      series: [root.hist.memPressure || []]
+      colors: [root.s2]
+      ceiling: 100
+      baselineColor: Util.alpha(root.foreground, 0.14)
+    }
+  }
+
+  Card {
     visible: root.flag("showBreakdown")
     foreground: root.foreground
     spacing: Style.space(2)
@@ -182,10 +210,8 @@ Column {
     foreground: root.foreground
 
     ProcessList {
-      host: root.host
+      expandable: false
       items: root.procs ? (root.procs.mem || []) : []
-      allItems: root.procs ? (root.procs.all || []) : []
-      total: root.procs ? Model.num(root.procs.total) : 0
       columns: [{ key: "mem", kind: "bytes", title: "" }]
       emptyText: root.procs ? "Nothing resident" : "Measuring…"
       foreground: root.foreground

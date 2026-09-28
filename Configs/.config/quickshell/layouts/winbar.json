@@ -1,21 +1,62 @@
 {
   "panel": "winbar",
   "edge": "bottom",
-  "left": ["menu", "taskbar", "workspace-weather", "submap"],
-  "center": ["workspaces"],
-  "right": [
+  "left": [
+    "menu",
+    "taskbar",
+    {
+      "id": "workspaces",
+      "props": {
+        "activeOnly": true,
+        "hideActive": false
+      }
+    },
     {
       "id": "mediaplayer",
       "props": {
         "appearance": "mpris",
-        "showControls": true,
+        "showAlbumArt": false,
+        "artIcon": "󰽯",
+        "showControls": false,
         "controlsRight": true,
         "showArtist": false,
-        "randomizeProgressShape": true
+        "randomizeProgressShape": true,
+        "showWhenIdle": true
+      }
+    }
+  ],
+  "center": [
+    "workspaces"
+  ],
+  "tray": [
+    "bitwarden",
+    "vpn",
+    "wifi",
+    {
+      "id": "bluetooth",
+      "props": {
+        "showReadout": true
       }
     },
-    "tray",
-    "language",
+    {
+      "id": "removable",
+      "props": {
+        "showBadge": true
+      }
+    },
+    "agents"
+  ],
+  "right": [
+    "submap",
+    {
+      "id": "tray",
+      "props": {
+        "alwaysOpen": false
+      }
+    },
+    "volume-slider",
+    "microphone-slider",
+    "backlight-slider",
     "datetime"
   ]
 }

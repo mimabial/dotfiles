@@ -1,0 +1,16 @@
+{
+  "firefox, chromium": {
+    "File": [["New Tab", "CTRL", "T"], ["Close Tab", "CTRL", "W"]],
+    "Edit": [["Find", "CTRL", "F"]],
+    "View": [["Reload", "CTRL", "R"], ["Zoom In", "CTRL", "equal"], ["Zoom Out", "CTRL", "minus"]],
+    "History": [["Show All History", "CTRL", "H"], ["Reopen Closed Tab", "CTRL SHIFT", "T"]],
+    "Bookmarks": [["Bookmark This Page", "CTRL", "D"], ["Show All Bookmarks", "CTRL SHIFT", "O"]]
+  },
+  "kitty": {
+    "Edit": [["Copy"]],
+    "Shell": [["New Tab", "CTRL SHIFT", "C"], ["Next Tab", "CTRL SHIFT", "N"], ["Previous Tab", "CTRL SHIFT", "P"], ["Detach Tab", "CTRL SHIFT", "D"], null, ["Close Split", "CTRL SHIFT", "X"], ["Zoom Split", "CTRL SHIFT", "Z"]]
+  },
+  "mpv": {
+    "Playback": [["Play/Pause", "", "space"], ["Mute", "", "M"], ["Full Screen", "", "F"]]
+  }
+}

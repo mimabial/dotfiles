@@ -12,7 +12,7 @@ Item {
     property real maximum: 1
     property real step: 0
     property string valueText: Math.round(value * 100) + "%"
-    property bool keyboardEnabled: false
+    property bool keyboardEnabled: true
     property bool keyboardAdjustsExternally: false
     readonly property bool navigable: keyboardEnabled && enabled
     property bool cursored: false

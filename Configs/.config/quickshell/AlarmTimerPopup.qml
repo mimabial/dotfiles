@@ -8,6 +8,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "timer"
+    keyboardHint: wantsKeyboard ? "Type value · Enter save · Esc cancel" : hintText()
     contentWidth: Style.px(400)
     contentHeight: timerColumn.implicitHeight + padding * 2
     property var entries: []
@@ -128,28 +129,12 @@ PopupCard {
         return clockwork.modeName + " · " + clockwork.statusText
     }
     function hintText() {
-        const reset = "R\u00a0reset", modes = "1–6\u00a0change\u00a0mode"
-        const edit = "J/K\u00a0move     H/L\u00a0adjust     Enter\u00a0edit"
-        if (mode === "timer") return edit + "     Space\u00a0start     " + reset + "     " + modes
-        if (mode === "alarm") return edit + "     Space\u00a0add     " + reset + "     " + modes
-        if (mode === "stopwatch") {
-            if (clockwork.running) return "Space\u00a0pause     L\u00a0lap     " + reset
-            if (clockwork.completed) return "Space\u00a0start\u00a0again     " + reset + "     " + modes
-            return (clockwork.storedElapsedMs > 0 ? "Space\u00a0resume" : "Space\u00a0start")
-                + "     " + reset + "     " + modes
-        }
-        if (clockwork.running) return mode === "pomodoro"
-            ? "Space\u00a0pause     S\u00a0skip     " + reset
-            : "Space\u00a0pause     " + reset
-        if (clockwork.completed) return "Space\u00a0start\u00a0again     " + reset + "     " + modes
-        if (mode === "pomodoro" && clockwork.pomodoroSessionStarted)
-            return "Space\u00a0resume     S\u00a0skip     " + reset + "     " + modes
-        if (mode === "intervals") return edit + "     "
-            + (clockwork.storedElapsedMs > 0 ? "Space\u00a0resume" : "Space\u00a0start")
-            + "     " + reset + "     " + modes
-        if (clockwork.storedElapsedMs > 0)
-            return "Space\u00a0resume     " + reset + "     " + modes
-        return edit + "     Space\u00a0start     " + reset + "     " + modes
+        if (mode === "alarm" || mode === "timer")
+            return "JK move · HL adjust · Enter edit · Space " + (mode === "alarm" ? "add" : "start") + " · Esc"
+        const action = clockwork.running ? "pause" : clockwork.completed ? "restart"
+            : clockwork.storedElapsedMs > 0 ? "resume" : "start"
+        if (mode === "stopwatch") return "Space " + action + (clockwork.running ? " · L lap" : "") + " · R reset · Esc"
+        return "1–6 mode · Space " + action + (mode === "pomodoro" && clockwork.running ? " · S skip" : "") + " · R reset · Esc"
     }
     function startClockwork() {
         clockwork.startPause()
@@ -228,9 +213,9 @@ PopupCard {
     }
     component ModeTab: BarButton {
         property bool selected: false
-        active: false; radius: shell.rounding; fill: "transparent"; outline: "transparent"; textColor: selected ? shell.accent : shell.alpha(shell.foreground, .6)
+        active: false; radius: shell.rounding; backgroundColor: "transparent"; borderColor: "transparent"; textColor: selected ? shell.accent : shell.alpha(shell.foreground, .6)
     }
-    component PresetButton: BarButton { keyboardEnabled: true; radius: shell.rounding; fill: shell.alpha(shell.accent, .18); outline: "transparent"; textColor: shell.accent }
+    component PresetButton: BarButton { keyboardEnabled: true; radius: shell.rounding; backgroundColor: shell.alpha(shell.accent, .18); borderColor: "transparent"; textColor: shell.accent }
     property Component actionComponent: Component { Process {
         id: action; property string failure: ""
         stderr: StdioCollector { waitForEnd: true; onStreamFinished: action.failure = String(text).trim() }
@@ -319,7 +304,7 @@ PopupCard {
                 }
                 Field { id: timerLabel; width: parent.width; placeholderText: "Label (optional)" }
                 Row { width: parent.width; spacing: Style.sm
-                    BarButton { id: resetTimer; keyboardEnabled: true; width: (pages.width - Style.sm * 2) / 3; height: Style.controlHeight; shell: root.shell; radius: shell.rounding; fill: shell.alpha(shell.foreground, .06); outline: shell.alpha(shell.foreground, .18); text: "RESET"; onClicked: root.setDuration(0) }
+                    BarButton { id: resetTimer; keyboardEnabled: true; width: (pages.width - Style.sm * 2) / 3; height: Style.controlHeight; shell: root.shell; radius: shell.rounding; borderWidth: 1; backgroundColor: shell.alpha(shell.foreground, .06); borderColor: shell.alpha(shell.foreground, .18); text: "RESET"; onClicked: root.setDuration(0) }
                     BarButton { keyboardEnabled: true; width: parent.width - resetTimer.width - parent.spacing; height: Style.controlHeight; shell: root.shell; text: "START"; active: true; onClicked: root.addTimer(root.duration(), "") }
                 }
             }
@@ -367,8 +352,8 @@ PopupCard {
                                 keyboardEnabled: true
                                 active: root.alarmDaySelected(modelData.day)
                                 radius: shell.rounding
-                                fill: shell.alpha(shell.accent, active ? .32 : .18)
-                                outline: "transparent"; textColor: shell.accent
+                                backgroundColor: shell.alpha(shell.accent, active ? .32 : .18)
+                                borderColor: "transparent"; textColor: shell.accent
                                 onClicked: root.toggleAlarmDay(modelData.day)
                             }
                         }
@@ -387,7 +372,7 @@ PopupCard {
                         id: resetAlarmButton; width: (pages.width - Style.sm * 2) / 3
                         height: Style.controlHeight; shell: root.shell; text: "RESET"
                         keyboardEnabled: true
-                        fill: shell.alpha(shell.foreground, .06); outline: shell.alpha(shell.foreground, .18)
+                        backgroundColor: shell.alpha(shell.foreground, .06); borderColor: shell.alpha(shell.foreground, .18); borderWidth: 1
                         onClicked: root.resetAlarm()
                     }
                     BarButton {
@@ -411,12 +396,6 @@ PopupCard {
                 onStartRequested: root.startClockwork()
                 onResetRequested: root.resetClockwork()
             }
-        }
-        Text {
-            width: parent.width; text: root.hintText()
-            color: Qt.darker(root.shell.foreground, 1.4); font.family: root.shell.fontFamily
-            font.pixelSize: Style.caption; horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.WordWrap; maximumLineCount: 2
         }
         Text { visible: root.error !== ""; width: parent.width; text: root.error; color: root.shell.role("error", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
         PopupSeparator { shell: root.shell }

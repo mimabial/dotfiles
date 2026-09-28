@@ -9,6 +9,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "cliphist"
+    keyboardHint: "Type to search · ↑↓ move · Enter copy · Del remove · Esc close"
     contentWidth: Style.px(430)
     contentHeight: Style.px(470)
 
@@ -59,6 +60,13 @@ PopupCard {
         const body = String(previewRow.text || "")
         return secretKind(body) || body
     }
+    readonly property string previewImageKey: previewRow && previewRow.image ? String(previewRow.key) : ""
+    property string previewImagePath: ""
+    onPreviewImageKeyChanged: {
+        previewImagePath = ""
+        if (previewImageKey !== "")
+            imageProc.exec(["python3", shell.home + "/.local/lib/hypr/rofi/cliphist.image.py", previewImageKey])
+    }
 
     // the search box can never hold focus (the bar owns it), so typing is routed
     // through the field's text, which stays the single source of truth
@@ -106,6 +114,9 @@ PopupCard {
                 root.favorites = payload.favorites || []
             } catch (error) { root.entries = []; root.favorites = [] }
         } }
+    }
+    property Process imageProc: Process {
+        stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.previewImagePath = text.trim() }
     }
 
     component Tab: Rectangle {
@@ -338,15 +349,26 @@ PopupCard {
             id: previewBlock
             visible: root.rows.length > 0
             width: parent.width; spacing: Style.xs
-            PopupSeparator { shell: root.shell }
             // fixed at five lines: a pane that grew with each entry would resize
             // the list under the cursor as you move down it
+            property real paneHeight: lineProbe.implicitHeight * (root.previewExpanded ? 16 : 5)
+            Behavior on paneHeight { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+            PopupSeparator { shell: root.shell }
+            Image {
+                id: previewImage
+                visible: root.previewImageKey !== "" && status !== Image.Error
+                width: parent.width; height: previewBlock.paneHeight
+                source: root.previewImagePath !== "" ? "file://" + root.previewImagePath : ""
+                sourceSize.width: width
+                fillMode: Image.PreserveAspectFit
+                asynchronous: true
+            }
             Flickable {
+                visible: !previewImage.visible
                 width: parent.width
-                height: lineProbe.implicitHeight * (root.previewExpanded ? 16 : 5)
+                height: previewBlock.paneHeight
                 contentHeight: previewText.implicitHeight
                 clip: true; interactive: root.previewExpanded
-                Behavior on height { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
             Text {
                 id: previewText
                 width: parent.width

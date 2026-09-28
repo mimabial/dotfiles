@@ -19,7 +19,7 @@ The implementation separates three concerns:
              │        styles/base.json + styles/<style>.json
              │        ~/.cache/hypr/render/quickshell/theme.json
              ▼
- MainBar.qml | HorizontalBar.qml ── BarModules.qml ── QML component
+         HorizontalBar.qml ── BarModules.qml ── QML component
 ```
 
 Use the layout helper instead of editing state directly:
@@ -29,7 +29,7 @@ hyprshell quickshell/layout list
 hyprshell quickshell/layout select
 hyprshell quickshell/layout next
 hyprshell quickshell/layout previous
-hyprshell quickshell/layout set sidebar
+hyprshell quickshell/layout set top
 ```
 
 It discovers layouts from `layouts/*.json` and writes state through the locked
@@ -40,10 +40,11 @@ call.
 
 | name | panel | edge | purpose |
 | --- | --- | --- | --- |
-| `sidebar` | `vertical` | left | taskbar/workspace sidebar |
 | `top` | `horizontal` | top | three-section horizontal bar |
 | `bottom` | `horizontal` | bottom | three-section horizontal bar |
 | `winbar` | `winbar` | bottom | compact three-section bar |
+| `totebar` | `horizontal` | top | workspaces on the left, utilities on the right |
+| `macos` | `horizontal` | top | macOS menu bar: hyprmenu dropdown, focused-app menus, status items, clock |
 
 The dock in `dock/` is not a layout: it is a separate bottom-edge panel that
 runs alongside whichever bar layout is active, the way `expose/` does.
@@ -52,16 +53,38 @@ not filesystem folders. Drag one app onto another to create a group, drag onto
 an existing group to add it, or use Dock Settings → App Groups. A group
 auto-dissolves when one app remains.
 
+The horizontal `taskbar` module in `top`, `bottom`, and `winbar` groups running
+windows by app and removes each icon when its last window closes. Left-click
+focuses an app and cycles its windows when one is already focused; middle-click
+launches another instance. Right-click offers window, launcher, minimize, and
+close actions. Hover shows the app name and its open window titles. It shows
+windows from all workspaces, including special workspaces.
+
+The `winbar` uses a hover tray adapted from
+[omarchy-tray](https://github.com/TyRichards/omarchy-tray). Its drawer is the
+layout's `tray` array, in order: module entries as in any section, plus
+`"icon:<id>"` to place a system icon among them; unlisted icons follow. Dragging a
+module onto, off, or within the tray rewrites that array. Drag the chevron to move
+the tray. Left-click it to hold the drawer open until a popup closes, or set
+`"props": {"alwaysOpen": true}` on the `tray` entry to keep it open. Right-click the chevron to hide or pin system icons or restore widgets;
+the icon choices live in `~/.local/state/quickshell/bar.json`. The `tray` style
+rule frames the drawer and pinned icons, not the chevron, rounded by the theme
+unless `borderRadius` is set; hosted widgets keep their own rules.
+If a section contains repeated module IDs, the bar adds `trayInstance` to later
+entries in that layout so each widget keeps its own tray state when reordered.
+
 Each resolved layout has a `panel` and `edge`; names have no special behavior.
+`clock` picks the clock format set (`top`, `winbar`, `macos`); it defaults from the panel.
 `top` and `bottom` extend `layouts/shared/horizontal.json` and set only their
 edge, so edits to its modules affect both bars.
 An extending layout can prepend modules to a section with `leftPrepend`,
-`centerPrepend`, or `rightPrepend`; `top` uses this for its Games button.
-`vertical` accepts the left edge and a `modules` array. `horizontal` and
-`winbar` accept top/bottom edges and `left`, `center`, and `right` arrays. An
+`centerPrepend`, or `rightPrepend`.
+`horizontal` and `winbar` accept top/bottom edges and `left`, `center`, and `right` arrays. An
 entry may be a module id or `{"id":"audio","props":{"reverse":false}}`;
-`"spacer"` consumes remaining space: vertical bars fill height; in a horizontal
-`left` or `right` array it stretches that section to the center. A horizontal layout may set
+custom entries can use `{"id":"name","source":"modules/Name.qml"}` or
+`{"id":"name","exec":["command","arg"]}`. A source component receives `shell`
+as an initial property; command output uses `ScriptButton`'s JSON format.
+`"spacer"` stretches a `left` or `right` section to the center. A horizontal layout may set
 `centerAnchor` to pin one center module to the exact screen center; entries
 before and after it flank that anchor. Keep layout-specific composition in JSON
 rather than adding layout-name conditions to components.
@@ -85,18 +108,55 @@ Validate with `jq empty layouts/<name>.json`, then run
 | change a popup | the matching `*Popup.qml` |
 | change provider output | the existing helper under `~/.local/lib/hypr/` |
 
-Composed modules such as `appearance`, `datetime`, and `forecast` own
+Composed modules such as `appearance` own
 drawers. Style the drawer frame by its `css` key and its children by their own
 keys.
 
-`mediaplayer` takes `showWhenIdle: true`, which keeps a placeholder glyph
-(`idleIcon`, default `\uf001`) in the bar when no player is running —
-otherwise the module collapses to nothing: `ScriptButton` on an empty provider
-line in a vertical panel, or `MediaButton` on a null `Media.player` in a
-horizontal panel.
+`mediaplayer` supports `appearance: "countdown"` (the default remaining-time readout),
+`"icon"` (a playback-state glyph), and `"mpris"` (cover art, metadata, and optional
+transport controls). It takes `showWhenIdle: true` to keep a placeholder when no player is
+running. The `countdown` and idle `mpris` views show a music-box glyph (`idleIcon`)
+and a short quote that advances on each hover (`idleQuotes`); `icon` shows only the glyph.
+With `showArtist: true`, the
+text reads `author — quote`; otherwise it shows just the quote. Idle text elides
+at `maxLabelWidth` or the available bar width. Otherwise the module collapses
+when `Media.player` is null.
+
+In `macos`, `menu` takes `dropdown: true`: a left click opens the menutree
+(`rofi/menutree --dump-json`) as a macOS dropdown whose submenus cascade on hover;
+right and middle click keep their start-menu actions. `appmenu` shows the focused app in bold with File/Edit/View/Window menus that
+act on that window through Hyprland dispatchers; with no window focused it shows the file
+manager's App, File, and Go menus, as Finder does. Edit sends its combo with
+`send_shortcut`, moving copy/paste to Ctrl+Shift in terminals and disabling the
+combos a terminal reads as signals. `controlcenter` holds Wi-Fi, Bluetooth, Night
+Shift and Keep Awake tiles with display, sound and now-playing controls; `battery`
+opens the power popup; `spotlight` runs menutree's Search All. `nowplaying` shows a playback glyph only while a
+player is active and opens a compact card: artwork, title, artist, a seek bar, and
+previous/play/next. The `*-menu` modules (`sound`, `wifi`, `bluetooth`, `vpn`,
+`display`) and `battery` wrap the regular buttons with a compact `modules/MacCard.qml`:
+a switch or slider, the devices, and a "… Settings…" row that opens the full popup.
+Sound lists inputs only once more than one microphone exists; Wi-Fi shows the eight
+strongest networks. `notification-center` is the clock with a month calendar (click for
+the full calendar) and the five latest notifications. Both menus render
+`modules/MenuBarPopup.qml` items `{text, glyph, shortcut, checked, submenu, run}`,
+where `null` is a separator, `submenu` is a nested item list, and `run` is a
+command array or a function. Arrow keys walk every level: → or Enter opens a
+submenu, ← or Esc backs out one level.
+
+`appmenus.json` adds per-app menus, keyed by lowercase app id (comma-separated ids
+share an entry). Each item is `[label, mods, key]` sent with `send_shortcut`, or `null`
+for a separator. An item whose label matches a standard one replaces it, and `[label]`
+alone disables it; others append below a separator. New menu names appear between
+View and Window. Prefer letter keys: digits and most punctuation sit above level 1 in
+the `fr` layout.
 
 `notifications` takes `showBadge: true` to show the unread count. `bluetooth`
 takes `showReadout: true` for its connected-device count.
+
+`weather` shows the readouts picked under the gear in its popup (`temp` by default;
+also `minmax`, `sunrise`, `sunset`, `rain`, `wind`, `humidity`), saved in
+`~/.local/state/quickshell/weather.json`. All of them come from the one
+`hyprshell weather` run behind the `Weather` singleton.
 
 ## Styling
 
@@ -106,37 +166,44 @@ QML properties override the merged rule only where runtime behavior requires it.
 Static appearance belongs in JSON.
 
 Rules are keyed by a component's `css` value. Common fields are `margin`,
-`padding`, `border`, `minWidth`, `minHeight`, `fontSize`, `fontWeight`, `justify`,
-`fill`, `outline`, `content`, `hover`, and `edge`. Hover uses the same
-`fill`/`outline`/`content` channels. Colors use a palette role or
-`[role, opacity]`; `null` paints nothing.
+`padding`, `borderWidth`, `borderColor`, `backgroundColor`, `color`, `minWidth`,
+`minHeight`, `fontSize`, `fontWeight`, `justify`, and `hover`. `open.backgroundColor`
+paints a button while its popup is open, `menuTracking: true` switches to a hovered
+button's popup while another is open, and `borderRadius` overrides the theme rounding. Individual sides use
+`borderTopWidth`/`borderTopColor`, `borderRightWidth`/`borderRightColor`,
+`borderBottomWidth`/`borderBottomColor`, or `borderLeftWidth`/`borderLeftColor`. Hover uses
+the same color fields. Colors use a palette role or `[role, opacity]`; `null`
+paints nothing.
 
 Use the layout module id as the style key for a single button or readout.
-Grouped modules style their children separately: for example, `forecast` contains
-`weather`, `weather.minmax`, and `weather.sunrise`, while `datetime` contains
-`clock.time` and `clock.date`. A dotted key names a child or state, and inherits
+Grouped modules style their children separately: for example, `weather` styles its
+readouts as `weather` (`temp`), `weather.minmax`, and `weather.sunrise`, while
+`datetime` contains `clock.time`. A dotted key names a child or state, and inherits
 from its prefix. These are JSON style rules, despite the QML property name `css`.
+`.modules-left`, `.modules-center`, and `.modules-right` set each bar section's
+margin, padding, and spacing. A key may list several names separated by commas,
+`"clock, battery": {"margin": [0, 4, 0, 4]}`; it merges into each name in file
+order, so a later key naming one of them overrides it.
 
 Important geometry rules:
 
-- `border` contributes to size even when `outline` is `null`; use `border: 0`
-  when no border space should exist.
+- On `BarButton` and `BarGroup`, `borderWidth` contributes to size only while
+  `borderColor` paints a border.
 - Adjacent margins do not collapse.
 - Theme rounding comes from generated `theme.json`; module rectangles use
   `shell.moduleRadius` unless a component deliberately overrides it.
-- `edge` is drawn by `ModuleEdge` and selects border sides; it is not an
-  independent second outline.
+- `SideBorder` paints individual sides; `borderRadius` can override their rounding.
 - An `.active` rule inherits its unsuffixed rule before applying overrides.
 - `volume` keys off the active output port and mute state:
   `volume.<port>[.muted]`, where `<port>` is one of `headphone`, `hands-free`,
   `headset`, `phone`, `portable`, `car`, or absent for a plain sink. Each level
   inherits the one above, so `volume.headphone.muted` falls back to
   `volume.headphone` and then `volume`.
-- `agents` takes an extra `alarm` channel, used instead of `content` once a
-  provider limit reaches 90%; unset, it paints the `error` role.
+- `agents` shows a confused robot outline, switching to angry at 90% and dead
+  at 100% of any reported provider limit. All states use `color`.
 - A button's count badge (`BarButton.badgeText`, used by `notifications`,
   `bluetooth`, and `removable`) is an `md-numeric_<n>` glyph (`9+` past nine)
-  drawn as an exponent past the glyph's top-right. `badgeContent` sets its
+  drawn as an exponent past the glyph's top-right. `badgeColor` sets its
   colour and opacity; otherwise it follows the glyph. `badgeSize` sets its px size (default 9);
   `badgeOffsetX`/`badgeOffsetY` nudge it, positive right and down. It tracks the
   glyph, not the module frame, so it stays put as the bar widens.
@@ -147,7 +214,7 @@ Important geometry rules:
 This keeps inactive scripts out of the process tree. A script-backed button that
 initially has no output may therefore make a drawer appear in two stages.
 
-For a vertical reversed drawer, the last secondary item is immediately above the
+For an upward reversed drawer, the last secondary item is immediately above the
 primary item. Slider placement is explicit through module properties such as
 `sliderFirst`; do not infer it from the drawer direction.
 
@@ -160,6 +227,21 @@ when fixing outside-click behavior so the first click reaches the target window.
 
 The standalone `date` module opens the calendar. `datetime` opens the
 alarm/timer/stopwatch popup where configured as the timer clock.
+
+The power popup reads `power-manager.json`. Automatic profile, idle, and lid
+rules are off by default; enabling them routes decisions through
+`system/power-manager.sh`, the existing power-profile watcher, hypridle, and
+the lid helper. The charge-limit control calls the separately installed,
+Polkit-protected helper only when the user applies a limit. Its udev rule
+persists the accepted hardware limit across boots.
+
+On a restored host, install the privileged charge-limit pieces from the mirrored
+sources before using that control:
+
+```bash
+sudo install -D -o root -g root -m 0755 ~/.local/lib/hypr/system/power-manager-backend/charge-limit /usr/local/libexec/hypr-power-manager-charge-limit
+sudo install -D -o root -g root -m 0644 ~/.local/lib/hypr/system/power-manager-backend/org.hypr.power-manager.policy /usr/share/polkit-1/actions/org.hypr.power-manager.policy
+```
 
 ## Cross-component contracts
 
@@ -177,9 +259,26 @@ alarm/timer/stopwatch popup where configured as the timer clock.
   not a refresh path anything else may rely on. Pressing R in the popup forces
   a local rescan. The OpenCode tab reads provider
   tokens and cost from `opencode.db`; its Go limits appear when a Go key is available.
+  The popup has independent switches for recommendation-change and 90% limit
+  notifications. Both default off in `agents.json`; limit notices use fresh
+  readings from every provider and send once per limit crossing or reset period.
+- System stats keeps live samples in memory and saves minute peaks for the last
+  hour and 24-minute peaks for the last day to
+  `~/.local/state/quickshell/systemstats-history.json`. The file is written once
+  a minute and restored after a shell restart. Missing intervals remain empty.
+  Choose the chart range in the sysstats Settings page or use
+  `quickshell ipc call systemstats span 1h` (`live`, `1h`, and `24h` are accepted).
+  The selection is saved with the other sysstats settings.
 - Audio limits are expressed in dB. `controls/volume-control.sh --limits` probes
   the active backend and supplies portable minimum, maximum, and step values;
   QML converts between dB and PipeWire/PulseAudio's cubic scalar.
+- The audio and microphone popups route live application streams through
+  `controls/stream-route.sh`. It uses PipeWire serials and target metadata so
+  "Always use" survives a stream restart; "Follow default" clears that target.
+  `controls/stream-route-status.sh` reads the selected mode when a popup opens.
+  Device profiles are read on demand from `bluetooth/audio-cards.sh` and changed
+  through its locked `audio-profile-transition.sh` helper. The Bluetooth popup
+  uses the same profile transition for codecs.
 - The media popup passes the selected player identity to `cliamp/spectrum.py`,
   which captures only that sink input. Its payload keeps normalized display
   values alongside calibrated band/RMS/sample-peak/true-peak dBFS values and
@@ -230,8 +329,8 @@ alarm/timer/stopwatch popup where configured as the timer clock.
 | entry and shared state | `shell.qml`, `Style.qml`, `Theme.qml` |
 | standalone panels | `dock/`, `expose/`, `lockview/` (hyprlock layout explorer) |
 | layer blur | `LayerBlur.qml` |
-| panels | `MainBar.qml`, `HorizontalBar.qml`, `BarSection.qml`, `BarModuleLoader.qml` |
-| primitives | `BarButton.qml`, `ScriptButton.qml`, `DrawerGroup.qml`, `ModuleEdge.qml`, `Popup*.qml` |
+| panels | `HorizontalBar.qml`, `BarSection.qml`, `BarModuleLoader.qml` |
+| primitives | `BarButton.qml`, `ScriptButton.qml`, `DrawerGroup.qml`, `SideBorder.qml`, `Popup*.qml` |
 | modules | root `*Button.qml`/service components and `modules/*Module.qml` |
 | popups | `*Popup.qml` and menu/flyout helpers |
 | live data | `layouts/*.json`, `styles/*.json`, generated theme JSON |
@@ -254,6 +353,8 @@ add `systemctl` calls to layout switching, module actions, reloads, or providers
 - A derived property can shadow a base property with the same name.
 - `PopupCard`'s default property accepts Items, not handlers.
 - Masked text fields contain separators even when they have no digits.
+- An array nested in a `property var` comes back as a list wrapper, so
+  `Array.isArray` is false; test for the other case (`typeof run === "function"`).
 - Nerd Font glyphs above the BMP must be stored literally, not through jq's
   `\\uXXXX` escape form.
 

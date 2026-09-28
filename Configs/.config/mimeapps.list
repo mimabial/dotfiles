@@ -27,6 +27,7 @@ x-scheme-handler/chrome=firefox.desktop;
 x-scheme-handler/http=firefox.desktop;
 x-scheme-handler/https=firefox.desktop;
 application/x-compressed-tar=org.kde.ark.desktop;
+video/mp4=org.xfce.Parole.desktop;
 
 [Default Applications]
 application/json=nvim.desktop;

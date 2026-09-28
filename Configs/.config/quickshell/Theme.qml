@@ -4,30 +4,37 @@ import Quickshell.Io
 QtObject {
     id: root
     required property string home
-    property string styleName: "sidebar"
+    property string styleName: "horizontal"
     property var theme: ({ rounding: 0, borderSize: 0, palette: {} })
     property var baseRules: ({})
     property var overrides: ({})
     readonly property var rules: resolve(baseRules, overrides)
+    property string loadedStyle: ""
+    readonly property bool ready: loadedStyle === styleName
 
     readonly property var palette: theme.palette || ({})
     readonly property real radius: theme.rounding || 0
     readonly property real border: theme.borderSize || 0
     readonly property var fallback: ({
         margin: [0, 0, 0, 0], padding: [0, 0, 0, 0],
-        fontSize: 12, fontWeight: 400, border: 0, minWidth: 0, minHeight: 0,
+        fontSize: 12, fontWeight: 400, borderWidth: 0, minWidth: 0, minHeight: 0,
         justify: "center"
     })
 
     function box(name) { const key = String(name || ""); return rules[key] || (key.includes(".") ? box(key.slice(0, key.lastIndexOf("."))) : rules[""] || fallback) }
-    function resolve(base, over) {
-        const out = {}, root = merge(fallback, base[""] || {})
+    function resolve(rawBase, rawOver) {
+        const base = expand(rawBase), over = expand(rawOver), out = {}, root = merge(fallback, base[""] || {})
         const build = key => {
             if (key in out) return out[key]
             let rule = merge(key.includes(".") ? build(key.slice(0, key.lastIndexOf("."))) : root, base[key] || {})
             return out[key] = merge(merge(rule, over[""] || {}), over[key] || {})
         }
         for (const layer of [base, over]) for (const key in layer) build(key)
+        return out
+    }
+    function expand(layer) {
+        const out = {}
+        for (const group in layer) for (const key of group.split(",").map(name => name.trim())) out[key] = merge(out[key] || {}, layer[group])
         return out
     }
     function merge(base, over) {
@@ -62,9 +69,11 @@ QtObject {
         printErrors: false
         onPathChanged: { root.overrides = ({}); reload() }
         onFileChanged: reload()
+        onLoadFailed: root.loadedStyle = root.styleName
         onLoaded: {
             try { root.overrides = JSON.parse(text()) }
             catch (error) { console.warn("style " + root.styleName + ": " + error) }
+            root.loadedStyle = root.styleName
         }
     }
 }

@@ -106,10 +106,10 @@ Singleton {
         return true
     }
     function icon(player) {
-        if (!player) return "󰓛"
-        return player.playbackState === MprisPlaybackState.Playing ? "󰼛"
-            : player.playbackState === MprisPlaybackState.Paused ? "󰏤"
-            : "󰓛"
+        if (!player) return ""
+        return player.playbackState === MprisPlaybackState.Playing ? ""
+            : player.playbackState === MprisPlaybackState.Paused ? ""
+            : ""
     }
     function remaining(player) {
         tick

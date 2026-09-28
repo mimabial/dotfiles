@@ -14,7 +14,7 @@ hl.window_rule({["name"] = "lua:windowrules:28", ["match"] = {["class"] = "^(org
 hl.window_rule({["name"] = "lua:windowrules:30", ["match"] = {["class"] = "^(firefox)$"}, ["opacity"] = "0.90 override 0.90 override 1"})
 hl.window_rule({["name"] = "lua:windowrules:31", ["match"] = {["class"] = "^(brave-browser)$"}, ["opacity"] = "0.90 override 0.90 override 1"})
 hl.window_rule({["name"] = "lua:windowrules:32", ["match"] = {["class"] = "^(kitty)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
-hl.window_rule({["name"] = "lua:windowrules:33", ["match"] = {["class"] = "^(foot)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
+hl.window_rule({["name"] = "lua:windowrules:33", ["match"] = {["class"] = "^(Alacritty)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
 hl.window_rule({["name"] = "lua:windowrules:34", ["match"] = {["class"] = "^(org\\.kde\\.dolphin)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
 hl.window_rule({["name"] = "lua:windowrules:35", ["match"] = {["class"] = "^(org\\.kde\\.ark)$"}, ["opacity"] = "0.80 override 0.80 override 1"})
 hl.window_rule({["name"] = "lua:windowrules:36", ["match"] = {["class"] = "^(org\\.qbittorrent\\.qBittorrent)$"}, ["opacity"] = "0.80 override 0.80 override 1"})

@@ -4,11 +4,11 @@ import QtQuick
 Item {
     id: root
     required property var shell
-    // "compact" is the remaining-time countdown, "mpris" the transport controls.
-    property string appearance: "compact"
+    property string appearance: "countdown"
     property bool popupEnabled: true
-    property bool vertical: false
     property int albumArtSize: 18
+    property bool showAlbumArt: true
+    property string artIcon: "󰝚"
     property int maxLabelWidth: 300
     property bool fillAvailableWidth: false
     property bool showControls: true
@@ -18,31 +18,58 @@ Item {
     // with no player the module collapses to nothing; showWhenIdle keeps a
     // placeholder in the bar to open the popup from
     property bool showWhenIdle: false
-    property string idleIcon: "\uf001"
+    property string idleIcon: "󰽯"
+    property var idleQuotes: [
+        { text: "What we play is life.", author: "Louis Armstrong" },
+        { text: "I hear America singing", author: "Walt Whitman" },
+        { text: "Music, when soft voices die", author: "P. B. Shelley" },
+        { text: "If music be the food of love", author: "William Shakespeare" },
+        { text: "And sings the tune", author: "Emily Dickinson" },
+        { text: "Heard melodies are sweet", author: "John Keats" },
+        { text: "The aim was song", author: "Robert Frost" },
+        { text: "the mermaids singing", author: "T. S. Eliot" },
+        { text: "Keeping time, time, time,", author: "Edgar Allan Poe" },
+        { text: "A River sings", author: "Maya Angelou" },
+        { text: "Sing low, sing high", author: "Carl Sandburg" },
+        { text: "loving nothing but music", author: "Naomi Shihab Nye" },
+        { text: "Singing everlastingly;", author: "John Milton" },
+        { text: "Music is music", author: "Elizabeth Akers Allen" },
+        { text: "Music is feeling", author: "Wallace Stevens" },
+        { text: "You got a song, man", author: "Martín Espada" },
+        { text: "I sing the body electric", author: "Walt Whitman" },
+        { text: "Sounds and sweet airs", author: "William Shakespeare" },
+        { text: "Our sweetest songs", author: "P. B. Shelley" },
+        { text: "Sing and let your song be new", author: "J. Osherow" }
+    ]
+    property int idleQuoteIndex: 0
+    readonly property var idleQuote: idleQuotes.length ? idleQuotes[idleQuoteIndex % idleQuotes.length] : null
+    readonly property string idleText: idleQuote
+        ? (showArtist && idleQuote.author ? idleQuote.author + " — " : "") + idleQuote.text : ""
     readonly property bool mprisAppearance: appearance === "mpris"
+    readonly property bool iconAppearance: appearance === "icon"
     readonly property var player: Media.player
-    readonly property Item compactItem: compactLoader.item as Item
+    readonly property Item simpleItem: simpleLoader.item as Item
     readonly property bool hasPlayer: player !== null
-    // the placeholder is a plain glyph, so the transport row only stands in for a live player
-    readonly property bool mprisView: mprisAppearance && hasPlayer
+    readonly property bool mprisView: mprisAppearance && shown
     readonly property bool shown: hasPlayer || showWhenIdle
     readonly property int artSize: Math.max(Style.px(12), Style.px(albumArtSize))
-    readonly property int fixedWidth: (showControls ? transport.implicitWidth + contents.spacing : 0)
+    readonly property int fixedWidth: (transport.visible ? transport.implicitWidth + contents.spacing : 0)
         + artSize + metadata.spacing + Style.px(12)
-    readonly property string displayText: showArtist && Media.artist && Media.title
+    readonly property string displayText: !hasPlayer ? idleText : showArtist && Media.artist && Media.title
         ? Media.artist + " — " + Media.title : Media.title || Media.artist
 
     visible: shown
     implicitWidth: !shown ? 0 : mprisView
-        ? (vertical ? artSize : fillAvailableWidth ? fixedWidth : contents.implicitWidth + Style.px(12))
-        : root.compactItem ? root.compactItem.implicitWidth : 0
+        ? (fillAvailableWidth ? fixedWidth : contents.implicitWidth + Style.px(12))
+        : root.simpleItem ? root.simpleItem.implicitWidth : 0
     implicitHeight: !shown ? 0 : mprisView
         ? Math.max(artSize, contents.implicitHeight)
-        : root.compactItem ? root.compactItem.implicitHeight : 0
+        : root.simpleItem ? root.simpleItem.implicitHeight : 0
 
     Behavior on implicitWidth { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
 
     function wheel(delta) { if (delta > 0) Media.previous(); else if (delta < 0) Media.next() }
+    function cycleIdleQuote() { if (idleQuotes.length > 1) idleQuoteIndex = (idleQuoteIndex + 1) % idleQuotes.length }
     function metadataClick(button) {
         if (button === Qt.MiddleButton) Media.previous()
         else if (button === Qt.RightButton) Media.playPause()
@@ -58,30 +85,37 @@ Item {
     }
 
     Loader {
-        id: compactLoader
+        id: simpleLoader
         anchors.verticalCenter: parent.verticalCenter
-        width: root.compactItem ? root.compactItem.implicitWidth : 0
+        width: root.simpleItem ? root.simpleItem.implicitWidth : 0
         // swapping left/horizontalCenter anchors after creation briefly sets both, which pins width to 0
         x: root.fillAvailableWidth ? 0 : (root.width - width) / 2
         active: !root.mprisView
-        sourceComponent: compactView
+        sourceComponent: simpleView
     }
     Component {
-        id: compactView
+        id: simpleView
         BarButton {
             shell: root.shell
             opensPopup: true
             css: "mediaplayer"
-            textColor: shell.alpha(shell.role("act_fg", shell.foreground), .7)
-            text: root.player ? Media.icon(root.player) + "  " + Media.remaining(root.player)
-                : root.showWhenIdle ? root.idleIcon : ""
+            maxWidth: !root.player && root.showWhenIdle && !root.iconAppearance
+                ? Math.min(Style.px(root.maxLabelWidth), root.fillAvailableWidth ? Math.max(1, root.width) : Style.px(root.maxLabelWidth))
+                : 0
+            textColor: !root.player && root.showWhenIdle ? shell.alpha(shell.foreground, .5)
+                : box.color !== undefined ? styleColor("color")
+                : shell.alpha(shell.role("act_fg", shell.foreground), .7)
+            leadingIcon: !root.player && root.showWhenIdle && !root.iconAppearance ? root.idleIcon : ""
+            text: root.player ? Media.icon(root.player) + (root.iconAppearance ? "" : "  " + Media.remaining(root.player))
+                : root.showWhenIdle ? (root.iconAppearance ? root.idleIcon : root.idleText) : ""
+            onHoveredChanged: if (hovered && !root.player && !root.iconAppearance) root.cycleIdleQuote()
             onClicked: button => button === Qt.RightButton ? Media.playPause()
                 : button === Qt.MiddleButton ? Media.next() : root.shell.togglePopup("media")
             onWheeled: delta => root.wheel(delta)
         }
     }
 
-    MediaPopup { anchorItem: root.fillAvailableWidth ? (root.mprisView ? contents : compactLoader) : root; shell: root.shell; popupEnabled: root.popupEnabled; randomizeProgressShape: root.randomizeProgressShape }
+    MediaPopup { anchorItem: root.fillAvailableWidth ? (root.mprisView ? contents : simpleLoader) : root; shell: root.shell; popupEnabled: root.popupEnabled; randomizeProgressShape: root.randomizeProgressShape }
 
     Row {
         id: contents
@@ -93,30 +127,30 @@ Item {
 
         Row {
             id: transport
-            spacing: Style.px(4); layoutDirection: Qt.LeftToRight; visible: root.showControls
-            TransportButton { iconText: "󰒮"; enabled: !!(root.player && root.player.canGoPrevious); visible: !root.vertical; onTriggered: Media.previous() }
+            spacing: Style.px(4); layoutDirection: Qt.LeftToRight; visible: root.showControls && root.hasPlayer
+            TransportButton { iconText: "󰒮"; enabled: !!(root.player && root.player.canGoPrevious); onTriggered: Media.previous() }
             TransportButton {
                 iconText: root.player && root.player.isPlaying ? "󰏤" : "󰐊"
                 enabled: !!(root.player && (root.player.canPlay || root.player.canPause || root.player.canTogglePlaying))
                 onTriggered: Media.playPause()
             }
-            TransportButton { iconText: "󰒭"; enabled: !!(root.player && root.player.canGoNext); visible: !root.vertical; onTriggered: Media.next() }
+            TransportButton { iconText: "󰒭"; enabled: !!(root.player && root.player.canGoNext); onTriggered: Media.next() }
         }
 
         Row {
           id: metadata
-          spacing: Style.px(4); layoutDirection: Qt.LeftToRight; visible: !root.vertical
+          spacing: Style.px(4); layoutDirection: Qt.LeftToRight
+          HoverHandler { onHoveredChanged: if (hovered && !root.player) root.cycleIdleQuote() }
           Item {
             id: artContainer
             width: root.artSize; height: root.artSize
             anchors.verticalCenter: parent.verticalCenter
-            visible: !root.vertical
 
             Rectangle { anchors.fill: parent; radius: Style.px(3); color: root.shell.alpha(root.shell.foreground, .08) }
             Image {
                 id: cover
                 anchors.fill: parent; anchors.margins: 1
-                source: Media.artUrl
+                source: root.showAlbumArt ? Media.artUrl : ""
                 sourceSize.width: Math.round(width * Screen.devicePixelRatio)
                 sourceSize.height: Math.round(height * Screen.devicePixelRatio)
                 fillMode: Image.PreserveAspectCrop
@@ -124,9 +158,9 @@ Item {
             }
             Text {
                 anchors.centerIn: parent
-                visible: Media.artUrl === "" || cover.status === Image.Error
-                text: "󰝚"; color: root.shell.foreground
-                font.family: root.shell.fontFamily; font.pixelSize: Style.body
+                visible: !root.showAlbumArt || Media.artUrl === "" || cover.status === Image.Error
+                text: root.hasPlayer ? root.artIcon : root.idleIcon; color: root.shell.foreground
+                font.family: root.shell.iconGlyphFont; font.pixelSize: Style.body
             }
             MouseArea {
                 anchors.fill: parent; hoverEnabled: true
@@ -143,7 +177,7 @@ Item {
                 ? Math.max(0, root.width - root.fixedWidth) : Style.px(root.maxLabelWidth))
             height: Math.max(root.artSize, label.implicitHeight)
             anchors.verticalCenter: parent.verticalCenter
-            visible: !root.vertical && root.displayText !== ""
+            visible: root.displayText !== ""
             clip: true
 
             Text {
@@ -182,7 +216,7 @@ Item {
         }
         Text {
             anchors.centerIn: parent; text: button.iconText; color: root.shell.foreground
-            font.family: root.shell.fontFamily; font.pixelSize: Style.body
+            font.family: root.shell.iconGlyphFont; font.pixelSize: Style.body
         }
         MouseArea {
             id: mouse

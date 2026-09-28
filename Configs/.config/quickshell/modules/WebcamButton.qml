@@ -8,8 +8,18 @@ BarButton {
     property bool inUse: false
     property bool recheckPending: false
     css: "webcam"
-    text: inUse ? "\u{f0100}" : "\u{f0d5d}"
+    text: "\u{f05a0}"
+    smoothTextColor: false
+    textColor: inUse ? shell.alpha(shell.role("error", shell.foreground), .25 + blink.phase * .75) : shell.foreground
     onClicked: shell.togglePopup("webcam")
+
+    SequentialAnimation {
+        id: blink
+        property real phase: 0
+        running: root.inUse; loops: Animation.Infinite
+        NumberAnimation { target: blink; property: "phase"; from: 0; to: 1; duration: 600 }
+        NumberAnimation { target: blink; property: "phase"; from: 1; to: 0; duration: 600 }
+    }
 
     function checkHolders() {
         if (holders.running) recheckPending = true

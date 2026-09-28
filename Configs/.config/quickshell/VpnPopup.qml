@@ -6,6 +6,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "vpn"
+    keyboardHint: browsing ? "Type filter · ↑↓ move · Enter select · Esc back" : "Tab move · Enter · / country · R refresh · D off · Esc"
     contentWidth: Style.px(380)
     contentHeight: vpnColumn.implicitHeight + padding * 2
 
@@ -269,6 +270,9 @@ PopupCard {
         property string label: ""
         property string value: ""
         property bool interactive: false
+        readonly property bool navigable: interactive && enabled
+        property bool cursored: false
+        function activateKeyboard() { clicked() }
         visible: value !== ""
         signal clicked
         width: parent.width; height: pair.implicitHeight
@@ -276,7 +280,7 @@ PopupCard {
             id: pair; width: parent.width; spacing: Style.lg
             Text { id: pairLabel; text: infoPair.label; color: root.shell.alpha(root.shell.foreground, .6); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
             Item { width: Math.max(0, parent.width - pairLabel.implicitWidth - pairValue.implicitWidth - parent.spacing * 2); height: 1 }
-            Text { id: pairValue; text: infoPair.value; color: pairMouse.containsMouse ? root.shell.accent : root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+            Text { id: pairValue; text: infoPair.value; color: pairMouse.containsMouse || infoPair.cursored ? root.shell.accent : root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
         }
         MouseArea { id: pairMouse; anchors.fill: parent; enabled: infoPair.interactive; hoverEnabled: enabled; cursorShape: Qt.PointingHandCursor; onClicked: infoPair.clicked() }
     }
@@ -292,8 +296,8 @@ PopupCard {
     }
     component BackendTab: BarButton {
         required property string backendName
-        active: false; radius: shell.rounding; fill: "transparent"; outline: "transparent"
-        hoverOverride: ({fill: shell.hoverFill(), content: shell.role("hvr_fg", shell.accent)})
+        active: false; radius: shell.rounding; backgroundColor: "transparent"; borderColor: "transparent"
+        hoverOverride: ({backgroundColor: shell.hoverFill(), color: shell.role("hvr_fg", shell.accent)})
         textColor: root.backend === backendName ? shell.accent : shell.alpha(shell.foreground, .6)
     }
 

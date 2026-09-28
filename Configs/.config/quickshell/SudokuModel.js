@@ -1,6 +1,5 @@
 .pragma library
 
-// Ported from l3aro/omarchy-sudoku (MIT), compacted for the local bar.
 var STATUS_READY = "ready"
 var STATUS_PLAYING = "playing"
 var STATUS_WON = "won"

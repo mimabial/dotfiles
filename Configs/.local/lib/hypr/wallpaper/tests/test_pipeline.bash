@@ -40,6 +40,58 @@ test_json() (
     jq -e 'length == 2 and .[0].hash == "abc" and .[1].hash == "def"' >/dev/null
 )
 
+test_json_cache_freshness() (
+  source "${WALLPAPER_DIR}/lib/ui.bash"
+  local dir
+  dir="$(mktemp -d)"; trap 'rm -rf -- "${dir}"' EXIT
+  printf 'cached\n' >"${dir}/catalog.json"
+  : >"${dir}/hashmap.tsv"
+  touch -d '@1000.100000000' "${dir}/catalog.json"
+  touch -d '@1000.200000000' "${dir}/hashmap.tsv"
+  refute wallpaper_catalog_print_cached_json_if_current "${dir}/catalog.json" "${dir}/hashmap.tsv"
+  touch -d '@1000.300000000' "${dir}/catalog.json"
+  [[ "$(wallpaper_catalog_print_cached_json_if_current "${dir}/catalog.json" "${dir}/hashmap.tsv")" == cached ]]
+)
+
+test_trash_selection() (
+  source "${WALLPAPER_DIR}/lib/ui.bash"
+  local dir catalog first second chosen="" backend_calls=0 fail_trash=1
+  dir="$(mktemp -d)"
+  trap 'rm -rf -- "${dir}"' EXIT
+  first="${dir}/first wall.jpg"
+  second="${dir}/second.jpg"
+  catalog="${dir}/catalog.json"
+  : >"${first}"; : >"${second}"
+  jq -n --arg first "${first}" --arg second "${second}" \
+    '[{basename:"first wall.jpg",path:$first,sqre:"/one"},{basename:"second.jpg",path:$second,sqre:"/two"}]' >"${catalog}"
+
+  local active_wallpaper_link="${dir}/wall.set" wallpaper_notifications_disabled=1
+  ln -s "${first}" "${active_wallpaper_link}"
+  print_log() { :; }
+  wallpaper_resolve_path() { readlink -f -- "$1"; }
+  wallpaper_catalog_load_file() { chosen="$1"; }
+  apply_selected_wallpaper() { ln -sfn "${chosen}" "${active_wallpaper_link}"; }
+  wallpaper_apply_backend() { backend_calls=$((backend_calls + 1)); }
+  gio() {
+    [[ "$1" == trash && "$2" == -- ]] || return 1
+    ((fail_trash == 0)) || return 1
+    mv -- "$3" "${dir}/trashed.jpg"
+  }
+
+  [[ "$(wallpaper_selected_fields "${catalog}" 1)" == $'second.jpg\t'"${second}"$'\t/two' ]]
+  refute wallpaper_trash_selected "${catalog}" "${first}"
+  [[ -f "${first}" && "$(readlink "${active_wallpaper_link}")" == "${first}" ]]
+
+  fail_trash=0
+  wallpaper_trash_selected "${catalog}" "${first}"
+  [[ -f "${dir}/trashed.jpg" && ! -e "${first}" ]]
+  [[ "$(readlink "${active_wallpaper_link}")" == "${second}" && "${backend_calls}" -eq 1 ]]
+  jq -e --arg second "${second}" 'length == 1 and .[0].path == $second' "${catalog}" >/dev/null
+
+  refute wallpaper_trash_selected "${catalog}" "${second}"
+  [[ -f "${second}" ]]
+)
+
 test_queue() (
   local tmp_dir pending_count temp_count i
   tmp_dir="$(mktemp -d)"
@@ -116,6 +168,8 @@ test_select_adjacent() (
 test_parser
 test_actions
 test_json
+test_json_cache_freshness
+test_trash_selection
 test_queue
 test_index_helpers
 test_select_adjacent
@@ -194,6 +248,9 @@ test_link_selected_uses_the_path_it_is_given() (
 
   [[ "$(readlink "${active_wallpaper_link}")" == "${dir}/chosen.png" ]]
   [[ "$(readlink "${current_wallpaper_link}")" == "${dir}/chosen.png" ]]
+  current_wallpaper_link=""
+  wallpaper_link_selected "${dir}/chosen.png"
+  [[ "$(readlink "${active_wallpaper_link}")" == "${dir}/chosen.png" ]]
   [[ "${payload_arg}" == "${dir}/chosen.png" ]]
 )
 

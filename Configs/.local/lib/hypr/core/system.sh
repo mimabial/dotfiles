@@ -81,7 +81,7 @@ paste_string() {
   local ignored_class=""
   local -a ignored_classes=(
     kitty
-    foot
+    Alacritty
   )
 
   [[ -t 1 ]] && return 0

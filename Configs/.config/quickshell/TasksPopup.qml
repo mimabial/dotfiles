@@ -6,6 +6,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "tasks"
+    keyboardHint: addField.activeFocus || editingId !== "" ? "Type task · Enter save · Esc cancel" : "↑↓ move · Tab view · Space done · Q add · E edit · ? help · Esc"
     contentWidth: Style.px(420)
     contentHeight: Math.max(tasksColumn.implicitHeight,
         showHelp ? helpColumn.implicitHeight : 0) + padding * 2
@@ -866,7 +867,6 @@ PopupCard {
                         radius: root.shell.rounding
                         color: taskRow.confirming
                             ? root.shell.alpha(root.shell.role("error", root.shell.foreground), .18)
-                            : taskRow.selected ? root.shell.alpha(root.shell.role("act_bg", root.shell.accent), .3)
                             : rowHover.hovered ? root.shell.alpha(root.shell.foreground, .07) : "transparent"
 
                         HoverHandler { id: rowHover }

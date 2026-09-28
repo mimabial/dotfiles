@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ "$(id -u)" == 0 ]] || exit 1
+limit="${1:-}"
+battery="${2:-}"
+[[ "$limit" =~ ^[0-9]+$ ]] && ((limit >= 50 && limit <= 100)) || exit 2
+[[ "$battery" =~ ^[A-Za-z0-9_-]+$ ]] || exit 2
+
+device="/sys/class/power_supply/$battery"
+threshold="$device/charge_control_end_threshold"
+[[ -r "$device/type" && "$(<"$device/type")" == Battery && -e "$threshold" ]] || exit 2
+
+printf '%d\n' "$limit" >"$threshold"
+actual="$(<"$threshold")"
+[[ "$actual" == "$limit" ]] || { printf 'Hardware accepted %s%%, not %s%%\n' "$actual" "$limit" >&2; exit 1; }
+
+rule="/etc/udev/rules.d/90-hypr-power-manager-charge.rules"
+if ((limit == 100)); then
+  rm -f -- "$rule"
+else
+  tmp="$(mktemp "$rule.tmp.XXXXXX")"
+  trap 'rm -f -- "$tmp"' EXIT
+  printf 'ACTION=="add", SUBSYSTEM=="power_supply", KERNEL=="%s", ATTR{charge_control_end_threshold}="%s"\n' "$battery" "$limit" >"$tmp"
+  chmod 644 "$tmp"
+  mv -f -- "$tmp" "$rule"
+fi
+command -v udevadm >/dev/null 2>&1 && udevadm control --reload-rules
+printf '%s\n' "$actual"

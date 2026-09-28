@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Build a Hypr theme pack from an omarchy theme source tree.
+"""Build a Hypr theme pack from a compatible theme source tree.
 
-Emits only palette.toml, hypr.theme and wallpapers/. The per-app files an
-omarchy theme ships (btop.theme, chromium.theme, vscode.json, ...) are dropped: with
+Emits only palette.toml, hypr.theme and wallpapers/. Per-app files from the
+source (btop.theme, chromium.theme, vscode.json, ...) are dropped: with
 no <app>.theme override in the pack, every renderer under render/ derives that
 app's colours from the pack palette, which fits a foreign theme better than its
 own stylesheets do.
@@ -34,7 +34,7 @@ ICON_ROOTS = (
 # Mirrors the extensions core/wallpaper.catalog.sh treats as wallpapers.
 WALL_SUFFIXES = (".gif", ".jpg", ".jpeg", ".png", ".webp")
 ANSI_ORDER = ("black", "red", "green", "yellow", "blue", "magenta", "cyan", "white")
-OMARCHY_ANSI = (
+SOURCE_ANSI = (
     "background", "red", "green", "yellow", "blue", "magenta", "cyan", "foreground",
     "muted", "bright_red", "bright_green", "bright_yellow", "bright_blue", "bright_magenta",
     "bright_cyan", "bright_foreground",
@@ -125,8 +125,7 @@ def is_light(hex_color):
 
 
 def derive_pack_name(raw):
-    stem = re.sub(r"^omarchy[-_]", "", raw)
-    stem = re.sub(r"[-_]theme$", "", stem)
+    stem = re.sub(r"[-_]theme$", "", raw)
     words = [word for word in re.split(r"[-_\s]+", stem) if word]
     if not words:
         die(f"cannot derive a pack name from '{raw}'; pass --name")
@@ -159,8 +158,7 @@ def load_toml(path):
 
 
 def from_alacritty(raw):
-    """Older omarchy themes ship no colors.toml; alacritty.toml carries the same
-    palette under Alacritty's key names."""
+    """Use Alacritty's color keys when the source has no colors.toml."""
     colors = raw.get("colors") or {}
     primary = colors.get("primary") or {}
     cursor = colors.get("cursor") or {}
@@ -190,7 +188,7 @@ def load_source_data(src):
         warn(f"no colors.toml; deriving the palette from {alacritty.name}")
         return from_alacritty(load_toml(alacritty))
 
-    die(f"no colors.toml or alacritty.toml in {src}; this does not look like an omarchy theme")
+    die(f"no colors.toml or alacritty.toml in {src}; this is not a compatible theme source")
 
 
 def resolve_mode(src, data, background):
@@ -209,7 +207,7 @@ def build_palette(data, kvantum):
 
     background = hex_value("background")
     foreground = hex_value("foreground")
-    colors = [hex_value(f"color{i}") or hex_value(name) for i, name in enumerate(OMARCHY_ANSI)]
+    colors = [hex_value(f"color{i}") or hex_value(name) for i, name in enumerate(SOURCE_ANSI)]
 
     missing = [name for name, value in (("background", background), ("foreground", foreground)) if not value]
     missing += [f"color{i}" for i, color in enumerate(colors) if not color]
@@ -412,9 +410,9 @@ def validate(pack_dir, name):
 def parse_args():
     parser = argparse.ArgumentParser(
         prog="hyprshell theme/theme.import",
-        description="Convert an omarchy theme (directory or git URL) into a Hypr theme pack.",
+        description="Convert a compatible theme source (directory or git URL) into a Hypr theme pack.",
     )
-    parser.add_argument("source", help="omarchy theme directory or git URL")
+    parser.add_argument("source", help="theme source directory or git URL")
     parser.add_argument("--name", help='pack name (default: derived, e.g. "Sakura Mochi")')
     parser.add_argument("--icons", help="$ICON_THEME override")
     parser.add_argument("--cursor", help="$CURSOR_THEME override")

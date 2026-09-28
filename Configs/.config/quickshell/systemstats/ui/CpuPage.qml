@@ -10,6 +10,7 @@ Column {
   property var service: null
   property var host: null
   property var settings: ({})
+  property int historyRange: 0
   property string temperatureUnit: "Celsius"
   property bool publicIpEnabled: true
   property color foreground: Color.popups.text
@@ -18,7 +19,7 @@ Column {
   function flag(key) { return Model.flag(settings, key) }
 
   readonly property var snap: service ? service.snapshot : ({})
-  readonly property var hist: service ? service.history : Model.emptyHistory()
+  readonly property var hist: service ? Model.peakHistoryView(service.history, service.historyHour, service.historyDay, historyRange) : Model.emptyHistory()
   readonly property color s1: service ? service.series1 : Color.accent
   readonly property color s2: service ? service.series2 : Color.accent
   readonly property var cpu: snap.cpu || ({})
@@ -51,8 +52,12 @@ Column {
     HistoryGraph {
       width: parent.width
       height: Style.space(64)
-      series: [root.hist.cpuUser || [], root.hist.cpuSystem || []]
-      colors: [root.s1, root.s2]
+      barWidth: Model.historyBarWidth(width, root.historyRange)
+      showGaps: root.historyRange > 0
+      series: root.historyRange === 0
+        ? [root.hist.cpuUser || [], root.hist.cpuSystem || []]
+        : [root.hist.cpuTotal || []]
+      colors: root.historyRange === 0 ? [root.s1, root.s2] : [root.s1]
       ceiling: 100
       baselineColor: Util.alpha(root.foreground, 0.14)
     }
@@ -60,10 +65,30 @@ Column {
     Legend {
       foreground: root.foreground
       fontFamily: root.fontFamily
-      items: [
+      items: root.historyRange === 0 ? [
         { color: root.s1, label: "User", value: Math.round(Model.num(root.cpu.user)), unit: "%" },
         { color: root.s2, label: "System", value: Math.round(Model.num(root.cpu.system)), unit: "%" }
+      ] : [
+        { color: root.s1, label: "Peak CPU", value: Math.round(Model.maxOf(root.hist.cpuTotal)), unit: "%" }
       ]
+    }
+
+    SectionTitle {
+      visible: Model.hasReading(root.hist.cpuTemp)
+      text: "CPU temperature · " + Model.tempText(root.cpu.temp, root.temperatureUnit)
+      fontFamily: root.fontFamily
+    }
+
+    HistoryGraph {
+      visible: Model.hasReading(root.hist.cpuTemp)
+      width: parent.width
+      height: Style.space(48)
+      barWidth: Model.historyBarWidth(width, root.historyRange)
+      showGaps: root.historyRange > 0
+      series: [root.hist.cpuTemp || []]
+      colors: [root.s2]
+      floor: 30
+      baselineColor: Util.alpha(root.foreground, 0.14)
     }
   }
 

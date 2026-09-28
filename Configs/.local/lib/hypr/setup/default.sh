@@ -75,7 +75,7 @@ if [[ -z "${selection}" ]]; then
         zen.desktop) printf 'zen\n' ;;
       esac
       ;;
-    terminal) state_get TERMINAL "$(lua_default TERMINAL foot)" ;;
+    terminal) state_get TERMINAL "$(lua_default TERMINAL alacritty)" ;;
     editor) state_get EDITOR "$(lua_default EDITOR nvim)" ;;
     -h | --help | help) usage ;;
     *) usage >&2; exit 2 ;;
@@ -94,7 +94,7 @@ case "${kind}:${selection}" in
   browser:edge) command_name=microsoft-edge-stable; desktop_id=microsoft-edge.desktop; display_name=Edge ;;
   browser:firefox) command_name=firefox; desktop_id=firefox.desktop; display_name=Firefox ;;
   browser:zen) command_name=zen-browser; desktop_id=zen.desktop; display_name=Zen ;;
-  terminal:foot) command_name=foot; desktop_id=foot.desktop; display_name=Foot ;;
+  terminal:alacritty) command_name=alacritty; desktop_id=Alacritty.desktop; display_name=Alacritty ;;
   terminal:kitty) command_name=kitty; desktop_id=kitty.desktop; display_name=Kitty ;;
   editor:nvim) command_name=nvim; display_name=Neovim ;;
   editor:code) command_name=code; display_name=VSCode ;;

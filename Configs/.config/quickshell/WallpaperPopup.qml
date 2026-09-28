@@ -3,9 +3,7 @@ import QtQuick
 import QtQuick.Controls
 
 // Wallpaper panel: preview the active theme's wallpapers, set one, and shape
-// the rotation. Ported from the omarchy plugin dizziee.auto-wallpaper's
-// Panel.qml onto this shell's popup primitives; the state and the rotation
-// itself live in the Wallpaper singleton.
+// the rotation. The state and the rotation live in the Wallpaper singleton.
 PopupCard {
     id: root
     popupName: "wallpaper"
@@ -47,11 +45,10 @@ PopupCard {
     }
 
     component ChoiceButton: BarButton {
-        // opt into the card's row walk through the base property, not a shadow of it
-        keyboardEnabled: true
         shell: root.shell; radius: shell.rounding; fontSize: Style.bodySmall
-        fill: active ? shell.alpha(shell.role("act_bg", shell.accent), .3) : shell.alpha(shell.foreground, .07)
-        outline: active ? shell.alpha(shell.role("act_br", shell.accent), .65)
+        borderWidth: 1
+        backgroundColor: active ? shell.alpha(shell.role("act_bg", shell.accent), .3) : shell.alpha(shell.foreground, .07)
+        borderColor: active ? shell.alpha(shell.role("act_br", shell.accent), .65)
             : cursored ? shell.hoverEdge(.85) : shell.alpha(shell.role("br", shell.foreground), .25)
     }
 
@@ -91,6 +88,10 @@ PopupCard {
                     delegate: Rectangle {
                         id: cell
                         required property var modelData
+                        readonly property bool navigable: true
+                        property bool cursored: false
+                        signal clicked(int button)
+                        onClicked: Wallpaper.setWallpaper(modelData.path)
                         readonly property bool isCurrent: Wallpaper.current === modelData.path
                         // the thumbnail cache can lag a freshly added wallpaper;
                         // fall back to the full image rather than an empty cell
@@ -123,7 +124,7 @@ PopupCard {
                         Rectangle {
                             anchors.fill: parent; radius: parent.radius; color: "transparent"
                             border.width: cell.isCurrent ? 2 : 1
-                            border.color: cell.isCurrent ? root.shell.role("act_br", root.shell.accent)
+                            border.color: cell.cursored ? root.shell.hoverEdge(.85) : cell.isCurrent ? root.shell.role("act_br", root.shell.accent)
                                 : cellMouse.containsMouse ? root.shell.hoverEdge()
                                 : root.shell.alpha(root.shell.foreground, .18)
                         }
@@ -134,7 +135,7 @@ PopupCard {
                             cursorShape: Qt.PointingHandCursor
                             onEntered: root.hoverName = cell.modelData.name
                             onExited: if (root.hoverName === cell.modelData.name) root.hoverName = ""
-                            onClicked: Wallpaper.setWallpaper(cell.modelData.path)
+                            onClicked: cell.clicked(Qt.LeftButton)
                         }
                     }
                 }

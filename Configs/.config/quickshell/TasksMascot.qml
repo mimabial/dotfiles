@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// Adapted from Saikomantisu/omarchy-todos Mascot.qml; see THIRD_PARTY_LICENSES.md.
 Item {
     id: root
     property real urgency: 0

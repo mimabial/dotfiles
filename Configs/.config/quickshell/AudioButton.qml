@@ -6,16 +6,17 @@ BarButton {
     id: root
     readonly property var sink: Pipewire.defaultAudioSink
     property bool popupEnabled: true
+    property string popupName: "audio"
     property bool framed: true
+    property bool levelIcons: true
     readonly property bool muted: root.sink ? root.sink.audio.muted : false
     css: (root.portKey ? "volume." + root.portKey : "volume") + (root.muted ? ".muted" : "")
     // must measure the face BarButton draws with, or the nudge corrects an ink
     // overhang the drawn glyph does not have
     TextMetrics { id: iconMetrics; font.family: root.usesIconFont ? root.shell.iconGlyphFont : root.shell.fontFamily; font.pixelSize: root.renderedFontSize; font.weight: root.fontWeight; text: root.text }
     textOffsetX: iconMetrics.advanceWidth / 2 - iconMetrics.tightBoundingRect.x - iconMetrics.tightBoundingRect.width / 2
-    textRotation: root.shell.mode === "vertical" ? -90 : 0
     radius: shell.moduleRadius
-    fill: framed ? root.styleColor("fill") : "transparent"
+    backgroundColor: framed ? root.styleColor("backgroundColor") : "transparent"
     // pulseaudio format-icons, in their declared order: a matching port wins
     // over the volume ramp, mute wins over both. The selection keys off the
     // active port name; quickshell's pipewire API exposes no port, so this
@@ -67,11 +68,12 @@ BarButton {
     readonly property bool zeroVolume: root.sink ? Math.round(root.sink.audio.volume * 100) === 0 : false
     readonly property string volumeIcon: !root.sink || root.zeroVolume ? "" : root.sink.audio.volume < .34 ? ""
         : root.sink.audio.volume < .67 ? "" : ""
-    text: !root.sink ? "󰖁" : root.muted ? root.mutedPortIcon || "" : root.zeroVolume ? root.volumeIcon : root.portIcon || root.volumeIcon
+    text: !root.levelIcons ? (!root.sink || root.muted ? "\uEB24" : "\uEB75")
+        : !root.sink ? "󰖁" : root.muted ? root.mutedPortIcon || "" : root.zeroVolume ? root.volumeIcon : root.portIcon || root.volumeIcon
     tooltip: !root.sink ? "No output device"
         : "Volume level: " + Math.round(root.sink.audio.volume * 100) + "%" + (root.portKey ? " " + root.portKey : "")
             + "\nUsing: " + (root.sink.description || root.sink.nickname || root.sink.name)
-    onClicked: button => button === Qt.RightButton ? (sink ? root.volumeAction("m") : false) : shell.togglePopup("audio")
+    onClicked: button => button === Qt.RightButton ? (sink ? root.volumeAction("m") : false) : shell.togglePopup(popupName)
     onWheeled: delta => { if (sink) root.volumeAction(delta > 0 ? "i" : "d") }
 
     PwObjectTracker { objects: [root.sink].filter(x => x) }

@@ -34,6 +34,12 @@ BorderSurface {
     if (popup.group) popup.dock.renameAppGroup(popup.group.id, nameInput.text)
     popup.dock.appGroupEditing = false
   }
+  function beginRename() {
+    if (!group) return
+    nameInput.text = String(group.name || "Applications")
+    dock.appGroupEditing = true
+    Qt.callLater(function() { nameInput.forceActiveFocus(); nameInput.selectAll() })
+  }
 
   Column {
     id: content
@@ -75,11 +81,7 @@ BorderSurface {
         anchors.fill: title
         visible: title.visible
         cursorShape: Qt.PointingHandCursor
-        onClicked: {
-          nameInput.text = title.text
-          popup.dock.appGroupEditing = true
-          Qt.callLater(function() { nameInput.forceActiveFocus(); nameInput.selectAll() })
-        }
+        onClicked: popup.beginRename()
       }
 
       Rectangle {
@@ -118,6 +120,9 @@ BorderSurface {
           width: popup.cellWidth
           height: popup.cellHeight
           readonly property string appId: String(modelData || "")
+          readonly property bool navigable: true
+          property bool cursored: false
+          function activateKeyboard() { popup.dock.activate(appId); popup.dock.closeAppGroup() }
           readonly property var entry: popup.dock.appLibrary.lookup(appId)
             || DockModel.entryFor(popup.dock.appRows, appId)
           property point dragStart: Qt.point(0, 0)
@@ -127,7 +132,7 @@ BorderSurface {
           Rectangle {
             anchors.fill: parent
             radius: Style.cornerRadius
-            color: area.containsMouse ? Util.alpha(Color.menu.text, 0.08) : "transparent"
+            color: area.containsMouse || cell.cursored ? Util.alpha(Color.menu.text, 0.08) : "transparent"
           }
 
           Column {
@@ -206,6 +211,14 @@ BorderSurface {
           }
         }
       }
+    }
+    Text {
+      width: parent.width
+      text: popup.dock.appGroupEditing ? "Enter rename · Esc cancel" : "↑↓ move · Enter open · F2 · Esc"
+      wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter
+      fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Style.font.caption - 2)
+      color: Util.alpha(Color.menu.text, .55)
+      font.family: Style.font.family; font.pixelSize: Style.font.caption
     }
   }
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TERMINAL_TUI="${TERMINAL_TUI:-foot}"
+TERMINAL_TUI="${TERMINAL_TUI:-alacritty}"
 HYPR_LIB_ROOT="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}"
 DEFAULT_PRINT_COMMAND_SEPARATOR=$'\037'
 
@@ -209,6 +209,19 @@ build_terminal_command() {
   launch_ref=("${TERMINAL_TUI}" "${extra_terminal_args[@]}")
 
   case "${terminal_name}" in
+    alacritty)
+      [[ -n "${launch_options[app_id]}" ]] && launch_ref+=("--class" "${launch_options[app_id]}")
+      [[ -n "${launch_options[title]}" ]] && launch_ref+=("--title" "${launch_options[title]}")
+      case "${launch_options[width]}:${launch_options[height]}" in
+        :) ;;
+        *c:*c)
+          launch_ref+=(-o "window.dimensions.columns=${launch_options[width]%c}")
+          launch_ref+=(-o "window.dimensions.lines=${launch_options[height]%c}")
+          ;;
+        *c:* | *:*c) printf 'alacritty requires width and height in the same unit\n' >&2; return 2 ;;
+      esac
+      ((${#command_ref[@]} == 0)) || launch_ref+=(-e "${command_ref[@]}")
+      ;;
     kitty)
       [[ -n "${launch_options[app_id]}" ]] && launch_ref+=("--app-id=${launch_options[app_id]}")
       [[ -n "${launch_options[title]}" ]] && launch_ref+=("--title=${launch_options[title]}")
@@ -218,17 +231,6 @@ build_terminal_command() {
       fi
       launch_ref+=("${command_ref[@]}")
       ;;
-    foot)
-      [[ -n "${launch_options[app_id]}" ]] && launch_ref+=("--app-id=${launch_options[app_id]}")
-      [[ -n "${launch_options[title]}" ]] && launch_ref+=("--title=${launch_options[title]}")
-      case "${launch_options[width]}:${launch_options[height]}" in
-        :) ;;
-        *c:*c) launch_ref+=(-W "${launch_options[width]%c}x${launch_options[height]%c}") ;;
-        *c:* | *:*c) printf 'foot requires width and height in the same unit\n' >&2; return 2 ;;
-        *) launch_ref+=(-w "${launch_options[width]}x${launch_options[height]}") ;;
-      esac
-      launch_ref+=("${command_ref[@]}")
-      ;;
     *)
       if [[ -n "${launch_options[app_id]}" || -n "${launch_options[title]}" ]]; then
         printf 'WARN: terminal backend %s does not support app-id/title metadata\n' "${terminal_name}" >&2
@@ -236,6 +238,28 @@ build_terminal_command() {
       launch_ref+=("${command_ref[@]}")
       ;;
   esac
+}
+
+alacritty_window_address() {
+  local address=""
+  address="$(hyprctl clients -j 2>/dev/null | jq -r --argjson pid "$1" \
+    'first(.[] | select(.pid == $pid and .floating == true) | .address) // empty')"
+  [[ -n "${address}" ]] || return 1
+  printf '%s\n' "${address}"
+}
+
+resize_alacritty_window() {
+  local pid="$1" width="$2" height="$3" address="" window_lua=""
+  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] || return 0
+  [[ -n "${width}" && -n "${height}" && "${width}" != *c && "${height}" != *c ]] || return 0
+  load_window_lib launch_source_core_common || return 0
+  launch_source_core_common || return 0
+  address="$(hypr_wait_for 8 'openwindow>>*' alacritty_window_address "${pid}")" || return 0
+  window_lua="$(hypr_lua_quote "address:${address}")"
+  hypr_lua_batch \
+    "hl.dsp.window.resize({x=${width}, y=${height}, exact=true, window=${window_lua}})" \
+    "hl.dsp.window.center({window=${window_lua}, respect_reserved=true})" \
+    >/dev/null 2>&1 || true
 }
 
 terminal_desktop_path() {
@@ -307,6 +331,8 @@ main() {
   terminal_pid=$!
 
   trap 'terminate_child "${terminal_pid}"' INT TERM HUP
+  [[ "${TERMINAL_TUI##*/}" != alacritty ]] \
+    || resize_alacritty_window "${terminal_pid}" "${options[width]}" "${options[height]}"
   wait "${terminal_pid}" || exit_code=$?
 
   return "${exit_code}"

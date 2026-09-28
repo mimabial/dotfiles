@@ -35,7 +35,7 @@ hl.window_rule({
 })
 hl.window_rule({
 	["name"] = "lua:workflow:windows:35",
-	["match"] = { ["class"] = "^(foot)$" },
+	["match"] = { ["class"] = "^(Alacritty)$" },
 	["opacity"] = "0.98 override 0.9 override",
 })
 hl.window_rule({

@@ -17,7 +17,9 @@ Canvas {
   property int barWidth: 2
   property int gap: 1
   property bool showBaseline: true
+  property bool showGaps: false
   property color baselineColor: Util.alpha(Color.popups.text, 0.14)
+  property color gapColor: Util.alpha(Color.popups.text, 0.5)
 
   readonly property int pitch: Math.max(1, barWidth + gap)
   readonly property int capacity: Math.max(1, Math.floor((width + gap) / pitch))
@@ -28,9 +30,12 @@ Canvas {
   onSeriesChanged: requestPaint()
   onColorsChanged: requestPaint()
   onCeilingChanged: requestPaint()
+  onBarWidthChanged: requestPaint()
+  onShowGapsChanged: requestPaint()
   onWidthChanged: requestPaint()
   onHeightChanged: requestPaint()
   onBaselineColorChanged: requestPaint()
+  onGapColorChanged: requestPaint()
   onVisibleChanged: if (visible) requestPaint()
 
   onPaint: {
@@ -81,6 +86,19 @@ Canvas {
     if (root.showBaseline) {
       ctx.fillStyle = root.baselineColor
       ctx.fillRect(0, height - 1, width, 1)
+    }
+    if (root.showGaps) {
+      ctx.fillStyle = root.gapColor
+      for (var gap = 0; gap < n; gap++) {
+        var gapIndex = len - n + gap
+        if (gapIndex < 0) continue
+        var missing = true
+        for (var line = 0; line < count; line++) {
+          var reading = list[line] ? list[line][gapIndex] : null
+          if (reading !== null && reading !== undefined && isFinite(Number(reading))) { missing = false; break }
+        }
+        if (missing) ctx.fillRect(snap(width - (n - gap) * root.pitch + root.gap), height - 4, Math.max(1 / dpr, snap(root.barWidth)), 2)
+      }
     }
   }
 }

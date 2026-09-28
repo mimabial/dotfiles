@@ -7,8 +7,9 @@ import "CalendarMath.js" as CalendarMath
 PopupCard {
     id: root
     popupName: "clock"
+    keyboardHint: "Arrows day · PgUp/PgDn month · Home today · W week · Esc"
     readonly property int calendarWidth: Style.px(440) - padding * 2
-    readonly property int agendaWidth: Style.px(520)
+    readonly property int agendaWidth: calendarWidth
     readonly property int choiceColumn: Style.px(84)
     readonly property int paneGap: Style.px(16)
     property bool agendaVisible: false

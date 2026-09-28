@@ -137,18 +137,6 @@ show_font_menu() {
   fi
 }
 
-show_setup_power_profile_menu() {
-  local profile=""
-
-  profile="$(menu "Power Profile" "$(hyprshell system/powerprofiles.sh)" --select "$(hypr_power_profile)")"
-  if [[ -z "${profile}" || "${profile}" == "CNCLD" ]]; then
-    menu_exit_or_show setup
-    return 0
-  fi
-
-  hyprshell system/powerprofiles.sh --set "${profile}"
-}
-
 show_install_font_menu() {
   local selection=""
   local label=""
@@ -320,9 +308,6 @@ menu_run_action_dynamic() {
       ;;
     style_font)
       show_font_menu
-      ;;
-    setup_power_profile)
-      show_setup_power_profile_menu
       ;;
     install_font)
       show_install_font_menu

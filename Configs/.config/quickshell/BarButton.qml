@@ -6,8 +6,10 @@ Item {
     property string css: ""
     readonly property var box: shell.style.box(css)
     property string text: ""
+    property string leadingIcon: ""
+    property real leadingIconGap: Style.px(4)
     property string tooltip: ""
-    property bool keyboardEnabled: false
+    property bool keyboardEnabled: true
     readonly property bool navigable: keyboardEnabled && enabled
     property bool cursored: false
     // PopupCards anchored here register themselves; opensPopup covers lazy
@@ -26,59 +28,64 @@ Item {
         && !/[^\ue000-\uf8ff\ud800-\udfff\u23fb-\u23fe\u2b58]/.test(labelText)
     property real fontSize: Style.fontPx(box.fontSize)
     readonly property real renderedFontSize: usesIconFont ? fontSize * shell.iconFontScale : fontSize
+    readonly property real leadingIconSize: fontSize * shell.iconFontScale
     property int fontWeight: box.fontWeight
     property int textFormat: Text.AutoText
     property real textOffsetX: 0
     property real textRotation: 0
     property real fixedWidth: 0
+    property real maxWidth: 0
     readonly property int textAlignment: box.justify === "right" ? Text.AlignRight
         : box.justify === "left" ? Text.AlignLeft : Text.AlignHCenter
-    property real radius: shell.moduleRadius
+    property real radius: box.borderRadius ?? shell.moduleRadius
     readonly property bool hovered: mouse.containsMouse
-    property color fill: root.styleColor("fill")
-    property color outline: root.styleColor("outline")
-    readonly property color restingFill: active && box.fill === undefined ? shell.alpha(shell.role("act_bg", shell.accent), .2) : fill
-    readonly property color restingOutline: active && box.outline === undefined ? shell.role("act_br", shell.accent) : outline
+    readonly property bool popupOpen: popupCards.some(card => card.open)
+    property color backgroundColor: root.styleColor("backgroundColor")
+    property color borderColor: root.styleColor("borderColor")
     property color cornerOutline: "transparent"
-    property color textColor: box.content !== undefined ? styleColor("content") : active ? shell.role("act_fg", shell.foreground) : shell.foreground
+    property color textColor: box.color !== undefined ? styleColor("color") : active ? shell.role("act_fg", shell.foreground) : shell.foreground
     property var hoverOverride: null
     // drawn as an exponent past the glyph's top-right; countGlyph() fills it
     property string badgeText: ""
     property bool smoothTextColor: true
     signal clicked(int button)
     signal wheeled(int delta)
+    onHoveredChanged: if (hovered && box.menuTracking && hasPopup && !popupOpen && shell.popupName !== "") clicked(Qt.LeftButton)
 
     function styleColor(key) {
         const spec = box[key]
         if (!spec) return "transparent"
         return Array.isArray(spec)
-            ? shell.alpha(shell.role(spec[0], shell.foreground), spec[1])
+            ? shell.alpha(shell.role(spec[0], shell.foreground), spec[1] ?? 1)
             : shell.role(spec, shell.foreground)
     }
 
     // md-numeric_<n> runs contiguously from 0; md-numeric_9_plus draws at half height, so 9+ is md-numeric_9 + md-plus_thick
     function countGlyph(count) { return count > 9 ? "\u{f0b42}\u{f11ec}" : String.fromCodePoint(0xf0b39 + count) }
 
-    // Hover rules override only declared channels; unstyled buttons get a subtle fallback.
     function interactiveColor(key, fallback) {
         if (!hovered) return fallback
         if (hoverOverride && key in hoverOverride) return hoverOverride[key]
         if (box.hover && !(key in box.hover)) return fallback
         if (!box.hover) {
-            if (key === "fill") return shell.alpha(shell.foreground, .1)
-            if (key === "outline" && fallback.a > 0)
+            if (key === "backgroundColor") return shell.alpha(shell.foreground, .1)
+            if (key === "borderColor" && fallback.a > 0)
                 return shell.alpha(shell.role("br", shell.foreground), .6)
             return fallback
         }
         const spec = box.hover[key]
-        return spec ? shell.alpha(shell.role(spec[0], fallback), spec[1]) : "transparent"
+        return !spec ? "transparent" : Array.isArray(spec)
+            ? shell.alpha(shell.role(spec[0], fallback), spec[1] ?? 1) : shell.role(spec, fallback)
     }
 
-    readonly property real borderWidth: edge.replacesOutline ? 0 : box.border > 0 ? box.border : active && box.outline === undefined ? 1.6 : restingOutline.a > 0 ? 1 : 0
-    readonly property real horizontalInsets: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * borderWidth
-    readonly property real verticalInsets: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * borderWidth
-    implicitWidth: fixedWidth > 0 ? fixedWidth : Math.max(box.minWidth, label.implicitWidth) + horizontalInsets
-    implicitHeight: Math.max(box.minHeight, label.implicitHeight) + verticalInsets
+    property real borderWidth: box.borderWidth
+    readonly property real paintedBorderWidth: sideBorder.replacesBorder || borderColor.a === 0 ? 0 : borderWidth
+    readonly property real horizontalInsets: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * paintedBorderWidth
+    readonly property real verticalInsets: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * paintedBorderWidth
+    readonly property real leadingIconWidth: leadingIcon !== "" ? icon.implicitWidth + (text !== "" ? leadingIconGap : 0) : 0
+    readonly property real naturalWidth: Math.max(box.minWidth, label.implicitWidth + leadingIconWidth) + horizontalInsets
+    implicitWidth: fixedWidth > 0 ? fixedWidth : maxWidth > 0 ? Math.min(naturalWidth, maxWidth) : naturalWidth
+    implicitHeight: Math.max(box.minHeight, label.implicitHeight, leadingIcon !== "" ? icon.implicitHeight : 0) + verticalInsets
     readonly property rect paintedLabelBounds: Qt.rect(
         label.x + textOffsetX + (textAlignment === Text.AlignLeft ? 0
             : textAlignment === Text.AlignRight ? label.width - label.paintedWidth
@@ -91,20 +98,34 @@ Item {
         anchors.topMargin: root.box.margin[0]; anchors.rightMargin: root.box.margin[1]
         anchors.bottomMargin: root.box.margin[2]; anchors.leftMargin: root.box.margin[3]
         radius: root.radius
-        color: root.cursored ? root.shell.hoverFill() : root.interactiveColor("fill", root.restingFill)
-        border.color: root.cursored ? root.shell.hoverEdge(.85) : root.interactiveColor("outline", root.restingOutline)
-        border.width: root.cursored ? 2 : root.borderWidth
+        color: root.cursored ? root.shell.hoverFill()
+            : root.popupOpen && root.box.open ? root.shell.styleColor(root.box.open.backgroundColor, root.backgroundColor)
+            : root.interactiveColor("backgroundColor", root.backgroundColor)
+        border.color: root.cursored ? root.shell.hoverEdge(.85) : root.interactiveColor("borderColor", root.borderColor)
+        border.width: root.cursored ? 2 : root.paintedBorderWidth
         Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
         Behavior on border.color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
     }
     Text {
+        id: icon
+        visible: root.leadingIcon !== ""
+        anchors.left: parent.left
+        anchors.leftMargin: root.box.margin[3] + root.paintedBorderWidth + root.box.padding[3]
+        anchors.verticalCenter: parent.verticalCenter
+        text: root.leadingIcon
+        color: root.box.iconColor === undefined ? label.color : root.interactiveColor("iconColor", root.styleColor("iconColor"))
+        Behavior on color { enabled: root.smoothTextColor; ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
+        font.family: root.shell.iconGlyphFont
+        font.pixelSize: root.leadingIconSize
+    }
+    Text {
         id: label
         anchors.fill: parent
-        anchors.topMargin: root.box.margin[0] + root.borderWidth + root.box.padding[0]
-        anchors.rightMargin: root.box.margin[1] + root.borderWidth + root.box.padding[1]
-        anchors.bottomMargin: root.box.margin[2] + root.borderWidth + root.box.padding[2]
-        anchors.leftMargin: root.box.margin[3] + root.borderWidth + root.box.padding[3]
-        color: root.interactiveColor("content", root.textColor)
+        anchors.topMargin: root.box.margin[0] + root.paintedBorderWidth + root.box.padding[0]
+        anchors.rightMargin: root.box.margin[1] + root.paintedBorderWidth + root.box.padding[1]
+        anchors.bottomMargin: root.box.margin[2] + root.paintedBorderWidth + root.box.padding[2]
+        anchors.leftMargin: root.box.margin[3] + root.paintedBorderWidth + root.box.padding[3] + root.leadingIconWidth
+        color: root.interactiveColor("color", root.textColor)
         Behavior on color { enabled: root.smoothTextColor; ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
         font.family: root.usesIconFont ? root.shell.iconGlyphFont : root.shell.fontFamily
         font.pixelSize: root.renderedFontSize
@@ -122,13 +143,13 @@ Item {
         x: root.paintedLabelBounds.x + root.paintedLabelBounds.width + (root.box.badgeOffsetX || 0)
         y: root.paintedLabelBounds.y + (root.box.badgeOffsetY || 0)
         text: root.badgeText
-        color: root.box.badgeContent === undefined ? label.color : root.styleColor("badgeContent")
+        color: root.box.badgeColor === undefined ? label.color : root.styleColor("badgeColor")
         font.family: root.shell.iconGlyphFont
         font.pixelSize: Style.px(root.box.badgeSize || 9)
     }
     Rectangle { anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: 8; anchors.rightMargin: 2; height: 1; visible: root.cornerOutline.a > 0; color: root.cornerOutline }
     Rectangle { anchors.top: parent.top; anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.rightMargin: 2; anchors.bottomMargin: 8; width: 1; visible: root.cornerOutline.a > 0; color: root.cornerOutline }
-    ModuleEdge { id: edge; shell: root.shell; host: root; hovered: root.hovered; active: root.active }
+    SideBorder { id: sideBorder; shell: root.shell; host: root; hovered: root.hovered }
     MouseArea {
         id: mouse
         // a derived type's children stack above the base's, and a rich-text Text

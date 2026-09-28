@@ -23,6 +23,16 @@ function labelText(label) {
     const match = label.match(/^\S+\s{2,}(.*)$/)
     return match ? match[1] : label
 }
+function dropdownItems(menus, selected, menuId = "main", ancestors = []) {
+    const menu = menus[menuId]
+    if (!menu || ancestors.includes(menuId)) return []
+    return menu.items.map(item => ({
+        text: labelText(item.label), glyph: labelIcon(item.label), shortcut: item.chevron,
+        checked: () => selected(item.target) ?? item.checked,
+        submenu: item.kind === "submenu" ? dropdownItems(menus, selected, item.target, ancestors.concat(menuId)) : null,
+        run: item.kind === "submenu" ? null : ["hyprshell", "rofi/menutree", "--action", item.target]
+    }))
+}
 function flattenMenu(menus, menuId, prefix, output, visited) {
     const menu = menus[menuId]
     if (!menu || visited.includes(menuId)) return output

@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-## Author: Misterio (https://github.com/misterio77)
-
-## This tool is based on grimshot, with swaymsg commands replaced by their
-## hyprctl equivalents.
-## https://github.com/swaywm/sway/blob/master/contrib/grimshot
-
 set -euo pipefail
 
 grimblast_usage() {

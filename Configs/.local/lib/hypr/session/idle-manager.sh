@@ -59,6 +59,7 @@ start_hypridle() {
 }
 
 stop_hypridle() {
+  "${script_dir}/../system/power-manager.sh" idle-cancel || true
   if systemd_user_ok && systemctl --user is-active --quiet "${IDLE_UNIT}" >/dev/null 2>&1; then
     systemctl --user stop "${IDLE_UNIT}" >/dev/null 2>&1 || true
     return 0
@@ -171,13 +172,11 @@ watch_hyprland_events() {
         sleep "${HYPRLAND_FOLLOW_RETRY}"
         continue
       fi
-      nc -U "${socket_path}" 2>/dev/null | while IFS= read -r event; do
-        case "${event}" in
-          fullscreen\>\>* | openwindow\>\>* | closewindow\>\>* | movewindow\>\>* | movewindowv2\>\>* | workspace\>\>* | workspacev2\>\>* | focusedmon\>\>* | focusedmonv2\>\>* | changefloatingmode\>\>* | monitoradded\>\>* | monitoraddedv2\>\>* | monitorremoved\>\>* | monitorremovedv2\>\>*)
-            kill -USR1 "$$" 2>/dev/null || true
-            ;;
-        esac
-      done
+      nc -U "${socket_path}" 2>/dev/null |
+        grep --line-buffered -E '^(fullscreen|openwindow|closewindow|movewindow(v2)?|workspace(v2)?|focusedmon(v2)?|changefloatingmode|monitor(added|removed)(v2)?)>>' |
+        while read -r _; do
+          kill -USR1 "$$" 2>/dev/null || true
+        done
       sleep "${HYPRLAND_FOLLOW_RETRY}"
     done
   ) &

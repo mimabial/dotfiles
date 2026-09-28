@@ -485,7 +485,6 @@ def resolve_layout():
 
     width = max(1, round(base_metric("width", 300) * text_scale()))
     origin = {
-        "left": "top-left",
         "bottom": "bottom-right",
         "top": "top-right",
     }.get(bar_position(), "top-right")

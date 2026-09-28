@@ -17,6 +17,7 @@ MirrorGraph 1.0 MirrorGraph.qml
 ModuleTabs 1.0 ModuleTabs.qml
 NetworkPage 1.0 NetworkPage.qml
 ProcessList 1.0 ProcessList.qml
+PowerPage 1.0 PowerPage.qml
 RingGauge 1.0 RingGauge.qml
 SectionTitle 1.0 SectionTitle.qml
 SensorsPage 1.0 SensorsPage.qml

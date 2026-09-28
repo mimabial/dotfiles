@@ -23,7 +23,7 @@ PopupCard {
 
     component NavButton: BarButton {
         shell: root.shell; implicitWidth: Style.controlHeight; implicitHeight: Style.controlHeight
-        radius: shell.rounding; fill: shell.alpha(shell.foreground, .07); outline: shell.alpha(shell.role("br", shell.foreground), .3); fontSize: Style.subtitle
+        radius: shell.rounding; borderWidth: 1; backgroundColor: shell.alpha(shell.foreground, .07); borderColor: shell.alpha(shell.role("br", shell.foreground), .3); fontSize: Style.subtitle
     }
     component SourceRow: Item {
         id: sourceRow
@@ -42,11 +42,9 @@ PopupCard {
         }
     }
     component ModeButton: BarButton {
-        // opt into the card's row walk through the base property, not a shadow of it
-        keyboardEnabled: true
-        shell: root.shell; radius: shell.rounding; fontSize: Style.bodySmall
-        fill: active ? shell.alpha(shell.role("act_bg", shell.accent), .3) : shell.alpha(shell.foreground, .07)
-        outline: active ? shell.alpha(shell.role("act_br", shell.accent), .65) : cursored ? shell.hoverEdge(.85) : shell.alpha(shell.role("br", shell.foreground), .25)
+        shell: root.shell; radius: shell.rounding; fontSize: Style.bodySmall; borderWidth: 1
+        backgroundColor: active ? shell.alpha(shell.role("act_bg", shell.accent), .3) : shell.alpha(shell.foreground, .07)
+        borderColor: active ? shell.alpha(shell.role("act_br", shell.accent), .65) : cursored ? shell.hoverEdge(.85) : shell.alpha(shell.role("br", shell.foreground), .25)
     }
 
     Column {

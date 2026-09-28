@@ -1,27 +1,31 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import Quickshell.Io
 
 PopupCard {
     id: root
     popupName: "agents"
+    keyboardHint: "↑↓/Tab move · Enter details · R refresh · Esc close"
     contentWidth: Style.px(380)
-    contentHeight: agentsViewport.height + hintHeight + padding * 2
+    contentHeight: agentsViewport.height + padding * 2
 
     property var records: []
     property int selected: 0
     property string expandedProviderId: ""
     property string recommendationId: ""
+    property var notificationSettings: ({notifyRecommendation: false, notifyLimit: false})
+    readonly property bool notifyLimit: notificationSettings.notifyLimit === true
     signal select(int index)
     signal refreshRequested()
+    signal limitNotificationsEnabled()
+    onNotifyLimitChanged: if (notifyLimit) limitNotificationsEnabled()
 
     readonly property int blockingHorizonMs: 5 * 3600000
     readonly property int staleAfterMs: 40 * 60000
     readonly property int viewportHeight: Style.px(520)
-    readonly property int hintHeight: Style.px(24)
     readonly property real switchMargin: 0.05
 
     readonly property var provider: records.length ? records[Math.min(selected, records.length - 1)] : null
-    readonly property bool selectedRecommended: provider !== null && String(provider.id) === recommendationId
     readonly property bool isOpenCode: provider !== null && provider.id === "opencode"
     readonly property var providerUsage: isOpenCode ? provider.providerUsage || [] : []
     readonly property bool telemetryStale: records.some(record => record.id !== "opencode" &&
@@ -104,6 +108,11 @@ PopupCard {
         if (event.key === Qt.Key_R) { refreshRequested(); return true }
         return defaultKey(event)
     }
+    function setNotification(key, enabled) {
+        const next = Object.assign({}, notificationSettings, {[key]: enabled})
+        notificationSettingsFile.setText(JSON.stringify(next, null, 2) + "\n")
+        notificationSettings = next
+    }
     onCandidateChanged: {
         if (!candidate) return
         const held = recommendationId ? records.find(record => String(record.id) === recommendationId) : null
@@ -117,11 +126,27 @@ PopupCard {
             String(record.name || recommendationId), usageSummary(record)])
     }
 
+    FileView {
+        id: notificationSettingsFile
+        path: root.shell.home + "/.config/quickshell/agents.json"
+        watchChanges: true; atomicWrites: true; printErrors: false
+        onFileChanged: reload()
+        onLoaded: {
+            try {
+                const saved = JSON.parse(text())
+                root.notificationSettings = {
+                    notifyRecommendation: saved.notifyRecommendation === true,
+                    notifyLimit: saved.notifyLimit === true
+                }
+            } catch (error) { root.notificationSettings = ({notifyRecommendation: false, notifyLimit: false}) }
+        }
+    }
+
     Flickable {
         id: agentsViewport
         width: parent.width
         height: Math.max(0, Math.min(root.viewportHeight,
-            root.anchorWindow ? root.maxHeight - root.padding * 2 : root.viewportHeight) - root.hintHeight)
+            root.anchorWindow ? root.maxHeight - root.padding * 2 - root.keyboardHintHeight : root.viewportHeight))
         contentHeight: agentsColumn.implicitHeight
         clip: true
         boundsBehavior: Flickable.StopAtBounds
@@ -148,9 +173,10 @@ PopupCard {
                     implicitHeight: Style.controlHeight
                     text: modelData.name + (root.recommendationId === String(modelData.id) ? "  *" : "")
                     fontSize: Style.bodySmall
+                    borderWidth: 1
                     active: index === root.selected; radius: shell.rounding
-                    fill: active ? shell.alpha(shell.role("act_bg", shell.accent), .3) : "transparent"
-                    outline: active ? shell.alpha(shell.role("act_br", shell.accent), .65) : "transparent"
+                    backgroundColor: active ? shell.alpha(shell.role("act_bg", shell.accent), .3) : "transparent"
+                    borderColor: active ? shell.alpha(shell.role("act_br", shell.accent), .65) : "transparent"
                     textColor: index === root.selected ? shell.accent : shell.alpha(shell.foreground, .6)
                     onClicked: root.select(index)
                 }
@@ -350,17 +376,27 @@ PopupCard {
             }
         }
 
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSeparator { shell: root.shell }
+            PopupSection { shell: root.shell; text: "NOTIFICATIONS" }
+            PopupToggleRow {
+                width: parent.width; shell: root.shell
+                title: "Recommendation changes"
+                detail: "Notify when the suggested agent changes"
+                checked: root.notificationSettings.notifyRecommendation === true
+                onToggled: root.setNotification("notifyRecommendation", !checked)
+            }
+            PopupToggleRow {
+                width: parent.width; shell: root.shell
+                title: "90% limit"
+                detail: "Notify when any agent nears a limit"
+                checked: root.notifyLimit
+                onToggled: root.setNotification("notifyLimit", !checked)
+            }
         }
-    }
 
-    Text {
-        y: agentsViewport.height + (root.hintHeight - implicitHeight) / 2
-        width: parent.width
-        text: "R refresh" + (root.records.length > 1 && root.selectedRecommended
-            ? "  ·  * Recommended" : "")
-        horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
-        color: root.shell.alpha(root.shell.foreground, .55)
-        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+        }
     }
 
     component ProviderUsageRow: Column {
@@ -370,9 +406,14 @@ PopupCard {
         readonly property bool expanded: popup.expandedProviderId === String(modelData.id)
         spacing: Style.xs
         Rectangle {
+            id: summaryCard
+            readonly property bool navigable: true
+            property bool cursored: false
+            signal clicked(int button)
+            onClicked: row.popup.expandedProviderId = row.expanded ? "" : String(row.modelData.id)
             width: row.width; height: summary.implicitHeight + Style.md * 2
             radius: row.popup.shell.rounding
-            color: hit.containsMouse || row.expanded
+            color: hit.containsMouse || cursored || row.expanded
                 ? row.popup.shell.alpha(row.popup.shell.foreground, .08) : "transparent"
             Column {
                 id: summary
@@ -421,7 +462,7 @@ PopupCard {
             MouseArea {
                 id: hit
                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                onClicked: row.popup.expandedProviderId = row.expanded ? "" : String(row.modelData.id)
+                onClicked: summaryCard.clicked(Qt.LeftButton)
             }
         }
         Column {

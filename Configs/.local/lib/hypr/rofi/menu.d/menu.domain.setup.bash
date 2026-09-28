@@ -1,14 +1,6 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
-setup_default_label() {
-  local current="$1"
-  local value="$2"
-  local label="$3"
-
-  [[ "${current}" == "${value}" ]] && printf '%s  ✓' "${label}" || printf '%s' "${label}"
-}
-
 setup_add_default_item() {
   local menu_id="$1"
   local current="$2"
@@ -18,7 +10,8 @@ setup_add_default_item() {
   local command_name="$6"
 
   command -v "${command_name}" >/dev/null 2>&1 || return 0
-  menu_add_item "${menu_id}" "$(setup_default_label "${current}" "${value}" "${label}")" action "${action_id}"
+  [[ "${current}" == "${value}" ]] && menu_mark_active "${action_id}"
+  menu_add_item "${menu_id}" "${label}" action "${action_id}"
 }
 
 menu_register_domain_setup() {
@@ -26,6 +19,7 @@ menu_register_domain_setup() {
   local default_browser="${BROWSER:-}"
   local default_editor="${EDITOR:-}"
   local default_terminal="${TERMINAL:-}"
+  local profile="" profile_label=""
 
   default_browser="${default_browser##*/}"
   default_editor="${default_editor##*/}"
@@ -45,9 +39,15 @@ menu_register_domain_setup() {
   menu_add_item setup "󱫋  Network" action setup_network
   menu_add_item setup "󰇖  DNS" action setup_dns
   menu_add_item setup "󰐲  Wi-Fi QR Code" action setup_wifi_qr
-  menu_add_item setup "  Power Profile" action setup_power_profile
+  menu_add_item setup "  Power Profile" submenu setup_power_profile
   menu_add_item setup "󰍹  Monitors" submenu setup_monitors
   menu_add_item setup "  Security" submenu setup_security
+
+  menu_define setup_power_profile "Power Profile" choice
+  for profile in $("${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/powerprofiles.sh"); do
+    profile_label="${profile//-/ }"
+    menu_add_item setup_power_profile "  ${profile_label^}" action "setup_power_profile_${profile}"
+  done
 
   menu_define setup_monitors "Monitors"
   menu_add_item setup_monitors "󰍹  Edit Config" action setup_monitors_config
@@ -61,12 +61,12 @@ menu_register_domain_setup() {
   menu_add_item setup_default "  Terminal" submenu setup_default_terminal
   menu_add_item setup_default "  Editor" submenu setup_default_editor
 
-  menu_define setup_default_agent "Default Agent"
+  menu_define setup_default_agent "Default Agent" choice
   setup_add_default_item setup_default_agent "${default_agent}" claude "󰛄  Claude" setup_default_agent_claude claude
   setup_add_default_item setup_default_agent "${default_agent}" codex "󱙺  Codex" setup_default_agent_codex codex
   setup_add_default_item setup_default_agent "${default_agent}" opencode "󰚩  OpenCode" setup_default_agent_opencode opencode
 
-  menu_define setup_default_browser "Default Browser"
+  menu_define setup_default_browser "Default Browser" choice
   setup_add_default_item setup_default_browser "${default_browser}" chromium "  Chromium" setup_default_browser_chromium chromium
   setup_add_default_item setup_default_browser "${default_browser}" chrome "󰊯  Chrome" setup_default_browser_chrome google-chrome-stable
   setup_add_default_item setup_default_browser "${default_browser}" brave "󰖟  Brave" setup_default_browser_brave brave
@@ -75,11 +75,11 @@ menu_register_domain_setup() {
   setup_add_default_item setup_default_browser "${default_browser}" firefox "  Firefox" setup_default_browser_firefox firefox
   setup_add_default_item setup_default_browser "${default_browser}" zen "󰖟  Zen" setup_default_browser_zen zen-browser
 
-  menu_define setup_default_terminal "Default Terminal"
-  setup_add_default_item setup_default_terminal "${default_terminal}" foot "  Foot" setup_default_terminal_foot foot
+  menu_define setup_default_terminal "Default Terminal" choice
+  setup_add_default_item setup_default_terminal "${default_terminal}" alacritty "  Alacritty" setup_default_terminal_alacritty alacritty
   setup_add_default_item setup_default_terminal "${default_terminal}" kitty "  Kitty" setup_default_terminal_kitty kitty
 
-  menu_define setup_default_editor "Default Editor"
+  menu_define setup_default_editor "Default Editor" choice
   setup_add_default_item setup_default_editor "${default_editor}" nvim "  Neovim" setup_default_editor_nvim nvim
   setup_add_default_item setup_default_editor "${default_editor}" code "  VSCode" setup_default_editor_code code
   setup_add_default_item setup_default_editor "${default_editor}" cursor "  Cursor" setup_default_editor_cursor cursor
@@ -107,6 +107,7 @@ menu_run_action_setup() {
     setup_default_browser_*) hyprshell setup/default.sh browser "${action_id#setup_default_browser_}" ;;
     setup_default_terminal_*) hyprshell setup/default.sh terminal "${action_id#setup_default_terminal_}" ;;
     setup_default_editor_*) hyprshell setup/default.sh editor "${action_id#setup_default_editor_}" ;;
+    setup_power_profile_*) hyprshell system/powerprofiles.sh --set "${action_id#setup_power_profile_}" ;;
     setup_audio) present_terminal --hypr-profile tui --app-id org.tui.Wiremix --title Wiremix -- wiremix ;;
     setup_wifi) rfkill unblock wifi && present_terminal --hypr-profile tui --app-id org.tui.Impala --title Impala -- impala ;;
     setup_bluetooth) hyprshell launch/bluetooth ;;
@@ -130,3 +131,12 @@ menu_run_action_setup() {
 }
 
 menu_register_action_handler menu_run_action_setup
+
+menu_active_setup() {
+  case "$1" in
+    setup_power_profile_*) menu_choice "$1" setup_power_profile_ hypr_power_profile ;;
+    *) return 1 ;;
+  esac
+}
+
+menu_register_active_check menu_active_setup

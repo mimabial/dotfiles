@@ -117,7 +117,7 @@ python-colorthief                                     # pywal16 wallpaper palett
 firefox                                               # browser
 chromium                                              # Chromium-family webapp fallback
 kitty                                                 # terminal
-foot                                                  # secondary terminal
+alacritty                                             # terminal
 tmux                                                  # terminal multiplexer
 lazygit                                               # git TUI
 lazydocker                                            # docker TUI

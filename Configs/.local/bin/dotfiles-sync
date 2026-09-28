@@ -328,7 +328,7 @@ purge_orphaned_host_files() {
       rm -f -- "${host_entry}"
       log_success "Removed orphaned host file ${rel_path}"
     fi
-  done < <(find -P "${host_root}" -mindepth 1 ! -type d -print0)
+  done < <(find -P "${host_root}" -mindepth 1 -path "${host_root}/.system" -prune -o ! -type d -print0)
 
   if [[ "${SYNC_MODE}" == "apply" ]]; then
     while IFS= read -r -d '' host_dir; do

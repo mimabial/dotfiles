@@ -11,12 +11,12 @@ $NVIM_TRANSPARENCY = false
 $CURSOR_THEME = capitaine-cursors-light
 $CURSOR_SIZE = 30
 
-$FONT = Terminess Nerd Font
-$BAR_FONT = Terminess Nerd Font
-$MENU_FONT = Terminess Nerd Font
-$MONOSPACE_FONT = Terminess Nerd Font
-$TERMINAL_FONT = Terminess Nerd Font
-$NOTIFICATION_FONT = Terminess Nerd Font Mono
+$FONT = ShureTechMono Nerd Font
+$BAR_FONT = ShureTechMono Nerd Font
+$MENU_FONT = ShureTechMono Nerd Font
+$MONOSPACE_FONT = ShureTechMono Nerd Font
+$TERMINAL_FONT = ShureTechMono Nerd Font
+$NOTIFICATION_FONT = ShureTechMono Nerd Font Mono
 
 # Theme variables above are the primary inputs used by theme.switch.sh.
 

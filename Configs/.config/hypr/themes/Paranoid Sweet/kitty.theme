@@ -1,7 +1,6 @@
 $HOME/.config/kitty/theme.conf
 
 # kitty theme: Sweet
-# Based on: https://github.com/EliverLara/Sweet/blob/nova/kde/konsole/Sweet.colorscheme
 
 background #161925
 foreground #c3c7c8

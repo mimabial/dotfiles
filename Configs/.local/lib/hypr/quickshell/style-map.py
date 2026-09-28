@@ -14,12 +14,12 @@ from pathlib import Path
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "quickshell"
 CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "hypr/quickshell/style-map"
 
-BARS = {"vertical": "MainBar", "horizontal": "HorizontalBar", "winbar": "HorizontalBar"}
+BARS = {"horizontal": "HorizontalBar", "winbar": "HorizontalBar"}
 InlineComponent = namedtuple("InlineComponent", "child css variants pins body")
 EMPTY_INLINE_COMPONENT = InlineComponent(None, None, (), (), "")
 
 # BarButton reads these from the style box, so a QML assignment shadows the rule
-PINNABLE = ("fill", "outline", "fontWeight", "textColor")
+PINNABLE = ("backgroundColor", "borderColor", "borderWidth", "fontWeight", "textColor")
 
 # the shared bases declare those properties; only a consumer assigning one pins it
 BASE_TYPES = {"BarButton", "ScriptButton", "BarGroup", "StackedReadout"}
@@ -112,7 +112,7 @@ def css_keys(expr, text):
 
 
 def assigned_style_properties(body):
-    """Assigned properties only — a `property color outline:` declaration is not one."""
+    """Assigned properties only — a property declaration is not one."""
     found = []
     for prop in PINNABLE:
         for match in re.finditer(r'(?<![\w.])%s:' % prop, body):
@@ -235,16 +235,14 @@ def collect_component_style_hierarchy(type_name, index, depth=0, seen=()):
     return group_css, group_variants, unique
 
 
-def bar_component_registry(panel, index):
+def bar_component_registry(index):
     text = read_qml_cached(index["BarModules"])
     match = re.search(r'registry:\s*\(\{(.+?)\}\)', text, re.S)
     pairs = {}
-    primary_mode = panel if panel in ("vertical", "winbar") else None
     for key, expression in re.findall(r'"([^"]+)"\s*:\s*([^,}\n]+)', match.group(1) if match else ""):
         choices = re.findall(r'\bmod_\w+\b', expression)
         if choices:
-            condition = re.match(r'\s*(vertical|winbar)\s*\?', expression)
-            pairs[key] = choices[0 if condition and condition.group(1) == primary_mode else -1]
+            pairs[key] = choices[-1]
     inline = {}
     for names, body in components(text):
         child = inner_type(body)
@@ -265,7 +263,7 @@ def layout_data(layout):
 
 def modules_of(layout):
     data = layout_data(layout)
-    entries = [m for key in ("modules", "left", "center", "right") for m in data.get(key, [])]
+    entries = [m for key in ("left", "center", "right") for m in data.get(key, [])]
     return [(e, {}) if isinstance(e, str) else (e.get("id", ""), e.get("props") or {})
             for e in entries]
 
@@ -273,7 +271,7 @@ def modules_of(layout):
 def render_layout_style_map(layout, index):
     data = layout_data(layout)
     bar = BARS[data["panel"]]
-    table, inline, bar_blocks = bar_component_registry(data["panel"], index)
+    table, inline, bar_blocks = bar_component_registry(index)
     lines = [f"{bar}", ""]
     used = set()
 
@@ -344,7 +342,8 @@ def render_layout_style_map(layout, index):
     orphans = []
     if style.exists():
         known = every_css_literal(index)
-        for key in json.loads(style.read_text()):
+        keys = (key.strip() for group in json.loads(style.read_text()) for key in group.split(","))
+        for key in dict.fromkeys(keys):
             if not key or key in used:
                 continue
             parent = key.rsplit(".", 1)[0] if "." in key else None

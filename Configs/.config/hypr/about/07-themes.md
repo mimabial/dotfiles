@@ -76,9 +76,9 @@ That app stops being themed. Nothing else changes, nothing warns you, and settin
 the bit again brings it back. Files starting with `_` are shared libraries, not
 renderers.
 
-## Importing an Omarchy theme
+## Importing a theme
 
-Omarchy themes drop straight in, from a directory or a git URL:
+Compatible theme sources can be imported from a directory or a git URL:
 
 ```bash
 hyprshell theme/theme.import <source> [--name X] [--icons X] [--cursor X] \

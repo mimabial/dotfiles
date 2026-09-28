@@ -3,7 +3,7 @@
 # map_floor MAPPING NUM: from a high->low ordered "key:value, key:value, ..."
 # list, print the value of the first pair whose key is below NUM. A trailing
 # bare token (no ':') is the default; with none, no match prints a single space.
-# Shared by sysinfo/cpuinfo.sh and sysinfo/gpuinfo.render.bash.
+# Used by sysinfo/gpuinfo.render.bash.
 map_floor() {
   local mapping="$1"
   local input="$2"

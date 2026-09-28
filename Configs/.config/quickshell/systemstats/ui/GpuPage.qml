@@ -11,13 +11,14 @@ Column {
   property var service: null
   property var host: null
   property var settings: ({})
+  property int historyRange: 0
   property string temperatureUnit: "Celsius"
   property bool publicIpEnabled: true
   property color foreground: Color.popups.text
   property string fontFamily: Style.font.family
 
   readonly property var snap: service ? service.snapshot : ({})
-  readonly property var hist: service ? service.history : Model.emptyHistory()
+  readonly property var hist: service ? Model.peakHistoryView(service.history, service.historyHour, service.historyDay, historyRange) : Model.emptyHistory()
   readonly property var gpu: snap.gpu || null
   readonly property var devices: gpu && Array.isArray(gpu.devices) ? gpu.devices : []
 
@@ -87,7 +88,43 @@ Column {
       HistoryGraph {
         width: parent.width
         height: Style.space(56)
+        barWidth: Model.historyBarWidth(width, root.historyRange)
+        showGaps: root.historyRange > 0
         series: [root.hist.gpus && root.hist.gpus[gpuCard.device.vendor] || []]
+        colors: [gpuCard.seriesColor]
+        ceiling: 100
+        baselineColor: Util.alpha(root.foreground, 0.14)
+      }
+
+      SectionTitle {
+        visible: Model.hasReading(root.hist.gpuTemps && root.hist.gpuTemps[gpuCard.device.vendor])
+        text: "Temperature"
+        fontFamily: root.fontFamily
+      }
+      HistoryGraph {
+        visible: Model.hasReading(root.hist.gpuTemps && root.hist.gpuTemps[gpuCard.device.vendor])
+        width: parent.width
+        height: Style.space(44)
+        barWidth: Model.historyBarWidth(width, root.historyRange)
+        showGaps: root.historyRange > 0
+        series: [root.hist.gpuTemps && root.hist.gpuTemps[gpuCard.device.vendor] || []]
+        colors: [gpuCard.seriesColor]
+        floor: 30
+        baselineColor: Util.alpha(root.foreground, 0.14)
+      }
+
+      SectionTitle {
+        visible: Model.hasReading(root.hist.vrams && root.hist.vrams[gpuCard.device.vendor])
+        text: "VRAM usage"
+        fontFamily: root.fontFamily
+      }
+      HistoryGraph {
+        visible: Model.hasReading(root.hist.vrams && root.hist.vrams[gpuCard.device.vendor])
+        width: parent.width
+        height: Style.space(44)
+        barWidth: Model.historyBarWidth(width, root.historyRange)
+        showGaps: root.historyRange > 0
+        series: [root.hist.vrams && root.hist.vrams[gpuCard.device.vendor] || []]
         colors: [gpuCard.seriesColor]
         ceiling: 100
         baselineColor: Util.alpha(root.foreground, 0.14)
