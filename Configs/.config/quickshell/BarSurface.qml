@@ -28,7 +28,12 @@ PanelWindow {
     WlrLayershell.keyboardFocus: !popupOpen ? WlrKeyboardFocus.None
         : exclusivePhase ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
 
-    Rectangle { anchors.fill: parent; color: root.shell.barColor; radius: root.shell.prefs.barFloating ? root.shell.rounding : 0 }
+    Rectangle {
+        id: surface
+        readonly property var box: root.shell.style.box("bar")
+        anchors.fill: parent; color: root.shell.barColor; radius: root.shell.prefs.barFloating ? root.shell.rounding : 0
+        SideBorder { shell: root.shell; host: surface }
+    }
 
     onFocusRequestChanged: {
         exclusivePhase = focusRequest !== ""

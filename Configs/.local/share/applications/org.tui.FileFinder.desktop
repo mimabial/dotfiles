@@ -2,7 +2,7 @@
 Type=Application
 Name=File Finder
 Icon=system-search
-Exec=/usr/bin/true
+Exec=/home/rifle/.local/bin/hyprshell launch/file-finder
 Terminal=false
 NoDisplay=true
 StartupWMClass=org.tui.FileFinder

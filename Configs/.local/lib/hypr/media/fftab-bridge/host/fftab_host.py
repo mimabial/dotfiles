@@ -41,6 +41,7 @@ NODE_XML = """
     <property name="CanQuit" type="b" access="read"/>
     <property name="HasTrackList" type="b" access="read"/>
     <property name="Identity" type="s" access="read"/>
+    <property name="DesktopEntry" type="s" access="read"/>
     <property name="SupportedUriSchemes" type="as" access="read"/>
     <property name="SupportedMimeTypes" type="as" access="read"/>
   </interface>
@@ -240,6 +241,7 @@ class TabPlayer:
                 "CanQuit": GLib.Variant("b", False),
                 "HasTrackList": GLib.Variant("b", False),
                 "Identity": GLib.Variant("s", f"Firefox tab {self.tab_id}"),
+                "DesktopEntry": GLib.Variant("s", "firefox"),
                 "SupportedUriSchemes": GLib.Variant("as", []),
                 "SupportedMimeTypes": GLib.Variant("as", []),
             }.get(prop)

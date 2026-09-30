@@ -4,6 +4,7 @@ import ".."
 VpnButton {
     id: root
     popupName: "vpn-menu"
+    symbol: String(output.class) === "connected" ? "network-vpn" : "network-vpn-disconnected"
     MacCard {
         anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: "vpn-menu"; settings: "VPN"; settingsPopup: "vpn"
         PopupToggleRow {

@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Layouts
 import Quickshell.Io
 
 PopupCard {
@@ -7,14 +8,18 @@ PopupCard {
     popupName: "printers"
     contentWidth: Style.px(360)
 
+    readonly property string script: shell.home + "/.local/lib/hypr/system/printers.sh"
     property var report: ({})
+    property string error: ""
     readonly property var printers: report.printers || []
     readonly property var jobs: report.jobs || []
+    readonly property var defaultPrinter: printers.find(printer => printer.default) || ({})
 
     function refresh() { if (!listProc.running) listProc.running = true }
     function act(args) {
+        error = ""
         actProc.running = false
-        actProc.command = ["hyprshell", "system/printers"].concat(args)
+        actProc.command = ["bash", script].concat(args)
         actProc.running = true
     }
     function sizeLabel(bytes) {
@@ -22,15 +27,18 @@ PopupCard {
         return kb >= 1024 ? (kb / 1024).toFixed(1) + " MB" : Math.round(kb) + " KB"
     }
 
-    onOpenChanged: if (open) refresh()
+    onOpenChanged: if (open) { error = ""; refresh() }
 
     property Process listProc: Process {
-        command: ["hyprshell", "system/printers", "--report"]
+        command: ["bash", root.script, "--report"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             try { root.report = JSON.parse(text) || ({}) } catch (error) { root.report = ({}) }
         } }
     }
-    property Process actProc: Process { onExited: root.refresh() }
+    property Process actProc: Process {
+        stderr: StdioCollector { waitForEnd: true; onStreamFinished: root.error = String(text).trim() }
+        onExited: root.refresh()
+    }
     property Timer poll: Timer { interval: 5000; running: root.open; repeat: true; onTriggered: root.refresh() }
 
     Column {
@@ -40,9 +48,10 @@ PopupCard {
         PopupHero { shell: root.shell; title: "Printers"; status: root.printers.length > 0 ? root.printers.length + " configured" : "none configured" }
 
         Text {
-            visible: root.printers.length === 0
-            width: parent.width; text: "No printers configured"
-            color: root.shell.alpha(root.shell.foreground, .5)
+            visible: text !== ""
+            width: parent.width; wrapMode: Text.Wrap
+            text: root.error || (root.printers.length === 0 ? "No printers configured" : "")
+            color: root.error ? root.shell.role("error", root.shell.foreground) : root.shell.alpha(root.shell.foreground, .5)
             font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
         }
 
@@ -54,7 +63,8 @@ PopupCard {
                 icon: modelData.state === "stopped" ? "\u{f042c}"
                     : modelData.state === "printing" ? "\u{f1296}" : "\u{f042a}"
                 title: modelData.name + (modelData.default ? "  •  default" : "")
-                detail: modelData.state === "stopped" ? "Stopped — queued jobs are held" : modelData.state
+                detail: [modelData.state === "stopped" ? (modelData.reason || "Stopped") + " — jobs held" : modelData.state,
+                    modelData.transport].filter(part => part).join("  •  ")
                 value: modelData.state === "stopped" ? "Resume" : "Pause"
                 active: modelData.state === "stopped"
                 // left toggles the queue, right makes it the default
@@ -84,17 +94,19 @@ PopupCard {
         }
 
         PopupSeparator { shell: root.shell }
-        Row {
+        RowLayout {
             width: parent.width; spacing: Style.xs
             PopupRow {
-                width: (parent.width - Style.xs) / 2; shell: root.shell
+                Layout.fillWidth: true; shell: root.shell
                 icon: "\u{f0a79}"; title: "Cancel all"
                 onClicked: root.act(["--cancel-all"])
             }
             PopupRow {
-                width: (parent.width - Style.xs) / 2; shell: root.shell
-                icon: "\u{f0707}"; title: "CUPS"
-                onClicked: { root.act(["--web"]); root.shell.closePopup() }
+                readonly property bool onUsb: root.defaultPrinter.transport === "usb"
+                visible: !!root.defaultPrinter.transport
+                Layout.fillWidth: true; shell: root.shell
+                icon: onUsb ? "\u{f0317}" : "\u{f0553}"; title: onUsb ? "Use network" : "Use USB"
+                onClicked: root.act(["--switch", root.defaultPrinter.name])
             }
         }
     }

@@ -5,8 +5,8 @@ foreground = "#e2e8ff"
 background = "#2a2139"
 
 [colors.cursor]
-text = "#2a2139"
-cursor = "#ff70a6"
+text = "#282a36"
+cursor = "#8ba7a7"
 
 [colors.selection]
 text = "#2a2139"

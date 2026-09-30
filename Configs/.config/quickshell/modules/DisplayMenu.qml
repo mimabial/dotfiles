@@ -4,6 +4,8 @@ import ".."
 DisplayButton {
     id: root
     popupName: "display-menu"
+    text: "󰃠"
+    symbol: "display-brightness"
     MacCard {
         anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: "display-menu"; settings: "Display"; settingsPopup: "monitor"
         PopupSlider {

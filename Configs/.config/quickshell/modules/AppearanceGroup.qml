@@ -35,10 +35,8 @@ BarGroup {
     } }
     Component { id: barLayoutSlot; BarButton {
         id: barButton; shell: root.shell; css: "barlayout-button"; text: root.shell.barLayoutIcon()
-        textColor: root.shell.prefs.barTransparent ? root.shell.accent : root.shell.foreground
         onClicked: button => button === Qt.LeftButton ? root.shell.togglePopup("barlayout")
-            : button === Qt.RightButton ? root.shell.toggleBarTransparency()
-            : root.shell.run(["hyprshell", "quickshell/layout", "next"])
+            : root.shell.run(["hyprshell", "quickshell/layout", button === Qt.RightButton ? "previous" : "next"])
         BarLayoutPopup { anchorItem: barButton; shell: root.shell; popupEnabled: root.popupsAllowed }
     } }
     Component { id: windowLayoutSlot; WindowLayoutButton { shell: root.shell; popupsAllowed: root.popupsAllowed } }

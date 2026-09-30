@@ -5,14 +5,16 @@ import ".."
 ScriptButton {
     id: root
     property bool popupsAllowed: true
+    property string popupName: "language"
+    property alias settingsPanel: panel
     readonly property var layouts: String(output.layouts || "").split(",").map(entry => entry.trim()).filter(entry => entry !== "")
-    readonly property bool shown: raw !== ""
+    readonly property bool shown: layouts.length > 1
     css: "language"
     command: ["hyprshell", "util/keyboard-layout"]
     polling: false
     Component.onCompleted: refresh()
     onClicked: button => {
-        if (button !== Qt.RightButton) return root.shell.togglePopup("language")
+        if (button !== Qt.RightButton) return root.shell.togglePopup(root.popupName)
         root.shell.run(["hyprshell", "util/keyboard-switch.sh"], root.refresh)
     }
     Connections {
@@ -29,5 +31,5 @@ ScriptButton {
         repeat: true
         onTriggered: root.refresh()
     }
-    LanguagePopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; onModuleRefreshRequested: root.refresh() }
+    LanguagePopup { id: panel; anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; onModuleRefreshRequested: root.refresh() }
 }

@@ -7,8 +7,7 @@ BarButton {
     id: root
     property bool popupEnabled: true
     property bool dropdown: false
-    css: "menu"; text: shell.distroGlyph
-    onHoveredChanged: if (hovered) shell.cycleDistroGlyph()
+    css: "menu"; text: ""
     onDropdownChanged: menuTree.running = dropdown
     onClicked: button => button === Qt.RightButton ? shell.run(["hyprshell", "menutree"])
         : button === Qt.MiddleButton ? shell.run([shell.terminal]) : shell.togglePopup(dropdown ? "hyprmenu" : "start")

@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 
 Item {
@@ -8,6 +9,7 @@ Item {
     property string text: ""
     property string leadingIcon: ""
     property real leadingIconGap: Style.px(4)
+    property real trailingWidth: 0
     property string tooltip: ""
     property bool keyboardEnabled: true
     readonly property bool navigable: keyboardEnabled && enabled
@@ -27,11 +29,22 @@ Item {
     readonly property bool usesIconFont: labelText.length > 0
         && !/[^\ue000-\uf8ff\ud800-\udfff\u23fb-\u23fe\u2b58]/.test(labelText)
     property real fontSize: Style.fontPx(box.fontSize)
-    readonly property real renderedFontSize: usesIconFont ? fontSize * shell.iconFontScale : fontSize
+    property string symbol: ""
+    property string symbolContext: "status"
+    readonly property bool symbolic: symbol !== ""
+    readonly property bool boxedIcon: symbolic || usesIconFont && box.iconBox !== undefined
+    readonly property real iconBoxPx: Style.fontPx(box.iconBox ?? box.fontSize)
+    readonly property rect glyphInk: (glyphProbe.item as GlyphInk)?.ink ?? Qt.rect(0, 0, 0, 0)
+    readonly property bool fitsIconBox: boxedIcon && glyphInk.width > 0
+    readonly property real iconMaxAspect: 1.2
+    readonly property real renderedFontSize: fitsIconBox ? Math.round(iconBoxPx / Math.max(glyphInk.height, glyphInk.width / iconMaxAspect))
+        : usesIconFont ? fontSize * shell.iconFontScale : fontSize
     readonly property real leadingIconSize: fontSize * shell.iconFontScale
     property int fontWeight: box.fontWeight
     property int textFormat: Text.AutoText
-    property real textOffsetX: 0
+    readonly property real inkOffsetX: fitsIconBox ? label.contentWidth / 2 - label.font.pixelSize * (glyphInk.x + glyphInk.width / 2) : 0
+    property real textOffsetX: inkOffsetX
+    readonly property real textOffsetY: fitsIconBox ? label.height / 2 - label.baselineOffset - label.font.pixelSize * (glyphInk.y + glyphInk.height / 2) : 0
     property real textRotation: 0
     property real fixedWidth: 0
     property real maxWidth: 0
@@ -83,9 +96,10 @@ Item {
     readonly property real horizontalInsets: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * paintedBorderWidth
     readonly property real verticalInsets: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * paintedBorderWidth
     readonly property real leadingIconWidth: leadingIcon !== "" ? icon.implicitWidth + (text !== "" ? leadingIconGap : 0) : 0
-    readonly property real naturalWidth: Math.max(box.minWidth, label.implicitWidth + leadingIconWidth) + horizontalInsets
+    readonly property real naturalWidth: Math.max(box.minWidth, (boxedIcon ? Math.max(iconBoxPx * iconMaxAspect, label.implicitWidth) : label.implicitWidth)
+        + leadingIconWidth) + trailingWidth + horizontalInsets
     implicitWidth: fixedWidth > 0 ? fixedWidth : maxWidth > 0 ? Math.min(naturalWidth, maxWidth) : naturalWidth
-    implicitHeight: Math.max(box.minHeight, label.implicitHeight, leadingIcon !== "" ? icon.implicitHeight : 0) + verticalInsets
+    implicitHeight: Math.max(box.minHeight, boxedIcon ? iconBoxPx : label.implicitHeight, leadingIcon !== "" ? icon.implicitHeight : 0) + verticalInsets
     readonly property rect paintedLabelBounds: Qt.rect(
         label.x + textOffsetX + (textAlignment === Text.AlignLeft ? 0
             : textAlignment === Text.AlignRight ? label.width - label.paintedWidth
@@ -106,6 +120,12 @@ Item {
         Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
         Behavior on border.color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
     }
+    Loader { id: glyphProbe; active: root.boxedIcon && !root.symbolic; sourceComponent: Component { GlyphInk { glyph: root.labelText; family: root.shell.iconGlyphFont } } }
+    Loader {
+        id: symbolLoader
+        active: root.symbolic; anchors.centerIn: label
+        sourceComponent: Component { SymbolicIcon { name: root.symbol; context: root.symbolContext; directory: root.box.symbols ?? ""; color: label.color; size: Math.round(root.iconBoxPx * 1.15) } }
+    }
     Text {
         id: icon
         visible: root.leadingIcon !== ""
@@ -120,9 +140,10 @@ Item {
     }
     Text {
         id: label
+        visible: !((symbolLoader.item as SymbolicIcon)?.loaded ?? false)
         anchors.fill: parent
         anchors.topMargin: root.box.margin[0] + root.paintedBorderWidth + root.box.padding[0]
-        anchors.rightMargin: root.box.margin[1] + root.paintedBorderWidth + root.box.padding[1]
+        anchors.rightMargin: root.box.margin[1] + root.paintedBorderWidth + root.box.padding[1] + root.trailingWidth
         anchors.bottomMargin: root.box.margin[2] + root.paintedBorderWidth + root.box.padding[2]
         anchors.leftMargin: root.box.margin[3] + root.paintedBorderWidth + root.box.padding[3] + root.leadingIconWidth
         color: root.interactiveColor("color", root.textColor)
@@ -130,7 +151,7 @@ Item {
         font.family: root.usesIconFont ? root.shell.iconGlyphFont : root.shell.fontFamily
         font.pixelSize: root.renderedFontSize
         font.weight: root.fontWeight
-        transform: Translate { x: root.textOffsetX }
+        transform: Translate { x: root.textOffsetX; y: root.textOffsetY }
         rotation: root.textRotation
         textFormat: root.textFormat
         horizontalAlignment: root.textAlignment

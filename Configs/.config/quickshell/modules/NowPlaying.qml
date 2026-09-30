@@ -1,49 +1,73 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Widgets
-import qs.Ui as Ui
 import ".."
 
 BarButton {
     id: root
     property bool popupsAllowed: true
-    readonly property var player: Media.player
-    readonly property bool seekable: !!player?.canSeek && player.lengthSupported && player.length > 0
+    property bool raisePending: false
+    property bool cliampLoaded: false
+    readonly property real artSize: Style.px(36)
+    readonly property string genericArt: Quickshell.iconPath("audio-x-generic", true)
     css: "nowplaying"
-    text: Media.icon(player)
+    text: Media.player ? "󰐊" : ""
+    symbol: "media-playback-start"; symbolContext: "actions"
     onClicked: shell.togglePopup("nowplaying")
-    component Control: Ui.Button { fontFamily: root.shell.iconGlyphFont; fontSize: Style.title + 4; foreground: root.shell.foreground }
+    function appIcon(player) { return player.desktopEntry && DesktopEntries.applications.values.length ? Quickshell.iconPath(DesktopEntries.heuristicLookup(player.desktopEntry)?.icon ?? "", true) : "" }
     PopupCard {
         anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: "nowplaying"
-        contentWidth: Style.px(300); contentHeight: card.implicitHeight + padding * 2; keyboardHint: ""
+        contentWidth: Style.px(320); contentHeight: sources.implicitHeight + padding * 2; keyboardHint: ""
+        onOpenChanged: if (!open) root.raisePending = false
         Column {
-            id: card
-            width: parent.width; spacing: Style.md
-            Row {
-                width: parent.width; spacing: Style.lg
-                ClippingRectangle {
-                    id: artwork
-                    width: Style.px(56); height: width; radius: Style.sm; visible: art.status === Image.Ready
-                    Image { id: art; anchors.fill: parent; source: Media.artUrl; fillMode: Image.PreserveAspectCrop; sourceSize: Qt.size(width * 2, height * 2) }
+            id: sources
+            width: parent.width; spacing: Style.xs
+            Repeater {
+                model: Media.sourcePlayers
+                PopupRow {
+                    id: entry
+                    required property var modelData
+                    readonly property string app: root.appIcon(modelData)
+                    width: parent.width; shell: root.shell; interactive: modelData.canRaise
+                    iconSource: modelData.trackArtUrl || app || root.genericArt; iconSize: root.artSize
+                    title: modelData.trackTitle || modelData.identity; detail: Media.displayArtist(modelData); rightInset: controls.width + Style.sm
+                    onClicked: { root.raisePending = true; entry.modelData.raise() }
+                    IconImage {
+                        visible: entry.modelData.trackArtUrl !== "" && entry.app !== ""
+                        width: root.artSize / 2; height: width; source: entry.app
+                        x: Style.controlPaddingX + root.artSize - width; y: (entry.height + root.artSize) / 2 - height
+                    }
+                    Row {
+                        id: controls
+                        anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX; anchors.verticalCenter: parent.verticalCenter
+                        TransportButton { shell: root.shell; text: entry.modelData.isPlaying ? "󰏤" : "󰐊"; onClicked: Media.playPause(entry.modelData) }
+                        TransportButton { shell: root.shell; text: "󰒭"; enabled: Media.canNext(entry.modelData); onClicked: Media.next(entry.modelData) }
+                    }
                 }
-                Column {
-                    width: parent.width - (artwork.visible ? artwork.width + parent.spacing : 0); anchors.verticalCenter: parent.verticalCenter
-                    Text { width: parent.width; text: Media.title; elide: Text.ElideRight; font.bold: true; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.body }
-                    Text { width: parent.width; text: Media.artist; elide: Text.ElideRight; color: root.shell.alpha(root.shell.foreground, .6); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
-                }
             }
-            PopupSlider {
-                width: parent.width; shell: root.shell; visible: root.seekable
-                label: Media.time(Media.elapsed); valueText: Media.time(root.player?.length ?? 0)
-                maximum: root.player?.length ?? 1; value: Media.elapsed
-                onReleased: value => root.player.position = value
-            }
-            Row {
-                anchors.horizontalCenter: parent.horizontalCenter; spacing: Style.xl
-                Control { text: "󰒮"; onClicked: Media.previous() }
-                Control { text: root.player?.isPlaying ? "󰏤" : "󰐊"; onClicked: Media.playPause() }
-                Control { text: "󰒭"; onClicked: Media.next() }
-            }
+            PopupSeparator { shell: root.shell }
+            PopupRow { width: parent.width; shell: root.shell; title: "Open CLIamp…"; onClicked: { root.cliampLoaded = true; root.shell.togglePopup("media") } }
+        }
+    }
+    Loader {
+        active: root.cliampLoaded; visible: false
+        sourceComponent: Component { MediaPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+    }
+    // Hyprland answers an app's focus request by marking it urgent (focus_on_activate is off),
+    // so the window a row click raised is focused here instead
+    Connections {
+        target: Hyprland; enabled: root.raisePending
+        function onRawEvent(event) {
+            if (event.name !== "urgent") return
+            root.raisePending = false
+            const address = "0x" + event.data
+            const dock = root.shell.dock
+            if (!(dock && (dock.minimizedOrigins[address] !== undefined || dock.isMinimizedWorkspace(dock.liveWsNameOf({ address })))
+                && dock.restoreWindow(address, "")))
+                Hyprland.dispatch('hl.dsp.focus({ window = "address:' + address + '" })')
+            root.shell.closePopup()
         }
     }
 }

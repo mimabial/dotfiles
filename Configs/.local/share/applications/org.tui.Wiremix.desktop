@@ -2,7 +2,7 @@
 Type=Application
 Name=Wiremix
 Icon=multimedia-volume-control
-Exec=/usr/bin/true
+Exec=/home/rifle/.local/bin/hyprshell launch/tui --app-id org.tui.Wiremix --title Wiremix -- wiremix
 Terminal=false
 NoDisplay=true
 StartupWMClass=org.tui.Wiremix

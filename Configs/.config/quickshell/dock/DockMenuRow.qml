@@ -35,9 +35,9 @@ Item {
   // row and the whole menu visibly changed width as the selection moved.
   readonly property real chevronWidth: crow.isWindowRow ? Style.space(8) : 0
 
-  implicitWidth: Math.min(Style.space(260), Math.max(220, Style.space(8) + crow.markWidth + Style.space(6)
+  implicitWidth: Style.space(8) + crow.markWidth + Style.space(6)
     + (crow.chevronWidth > 0 ? crow.chevronWidth + Style.space(6) : 0)
-    + label.implicitWidth + Style.space(8)))
+    + label.implicitWidth + Style.space(8)
   width: crow.menuWidth > 0 ? crow.menuWidth : crow.implicitWidth
   height: crow.isHeader ? Math.max(22, Style.space(22)) : Math.max(28, Style.space(28))
 

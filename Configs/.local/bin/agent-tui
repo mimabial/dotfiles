@@ -3,11 +3,14 @@
 
 import argparse
 import curses
+import fcntl
 import json
 import os
 import shutil
+import struct
 import subprocess
 import sys
+import termios
 import time
 from datetime import datetime
 from pathlib import Path
@@ -87,7 +90,7 @@ MIN_LABEL_WIDTH = 16
 MAX_LABEL_WIDTH = 24
 SECTION_GAP_MAX = 1
 CACHE_MAX_AGE_SECONDS = 900
-HINT = "\u2190\u2192 agent   Enter launch   d default   s set default   r refresh   q close"
+HINT = ("\u2190\u2192 agent   Enter launch   d default   s set default   r refresh", "q close")
 
 
 def init_colors():
@@ -240,16 +243,11 @@ def content_height(record, title_gap=1):
         total += 1
         if count:
             total += title_gap + count
-    return total + 2  # footer rule and hint
-
-
-def required_rows(records, spare=2):
-    needed = max((content_height(record) for record in records), default=0)
-    return max(MIN_ROWS, needed + spare)
+    return total + 3  # footer rule and hint
 
 
 def footer_hint(agent_paths):
-    return HINT + "".join(
+    return HINT[0], HINT[1] + "".join(
         f"   {spec.shortcut} {spec.name}"
         for spec in AGENTS.values()
         if agent_paths[spec.command]
@@ -258,10 +256,6 @@ def footer_hint(agent_paths):
 
 def installed_agent_paths():
     return {spec.command: shutil.which(spec.command) for spec in AGENTS.values()}
-
-
-def required_columns(agent_paths):
-    return max(MIN_COLS, len(footer_hint(agent_paths)) + 2)
 
 
 def progress(value, width, divisions=1):
@@ -341,7 +335,7 @@ class Dashboard:
         self.default_agent = self.read_default_agent()
         self.agent_paths = installed_agent_paths()
         self.configure_screen()
-        self.fit_window()
+        self.fit_window_to_content()
         if (
             not self.records
             or self.cache_age() > CACHE_MAX_AGE_SECONDS
@@ -359,25 +353,38 @@ class Dashboard:
         if curses.has_colors():
             init_colors()
 
-    def fit_window(self):
+    def fit_window_to_content(self):
         rows, columns = self.screen.getmaxyx()
-        needed_columns = required_columns(self.agent_paths)
-        needed_rows = required_rows(self.records)
-        if columns >= needed_columns and rows >= needed_rows:
+        needed_columns = max(MIN_COLS, max(map(len, footer_hint(self.agent_paths))) + 2)
+        needed_rows = max(MIN_ROWS, max((content_height(record) for record in self.records), default=0) + 1)
+        if rows >= needed_rows and columns >= needed_columns:
             return
         try:
-            clients = json.loads(subprocess.check_output(
-                ["hyprctl", "clients", "-j"], stderr=subprocess.DEVNULL, timeout=1
-            ))
-            matches = [client for client in clients if client.get("class") == "org.tui.AgentHub" and client.get("floating")]
-            window = next((client for client in matches if client.get("pid") == os.getppid()), None)
-            if window is None and len(matches) == 1:
-                window = matches[0]
+            _, _, text_width, text_height = struct.unpack(
+                "HHHH", fcntl.ioctl(sys.stdin.fileno(), termios.TIOCGWINSZ, b"\0" * 8)
+            )
+            if not text_width or not text_height:
+                return
+            response = subprocess.check_output(
+                ["hyprctl", "-j", "--batch", "clients;monitors"],
+                stderr=subprocess.DEVNULL, timeout=1,
+            )
+            clients, monitors = [json.loads(chunk) for chunk in response.split(b"\n\n", 1)]
+            window = next((client for client in clients
+                           if client.get("pid") == os.getppid()
+                           and client.get("class") == "org.tui.AgentHub"
+                           and client.get("floating")), None)
             if window is None:
                 return
-            pixel_width, pixel_height = window["size"]
-            width = (pixel_width * max(columns, needed_columns) + columns - 1) // columns
-            height = (pixel_height * max(rows, needed_rows) + rows - 1) // rows
+            monitor = next((item for item in monitors if item["id"] == window["monitor"]), None)
+            if monitor is None:
+                return
+            left, top, right, bottom = monitor["reserved"]
+            width, height = window["size"]
+            width = min(width + max(0, needed_columns - columns) * text_width // columns,
+                        int(monitor["width"] / monitor["scale"] - left - right))
+            height = min(height + max(0, needed_rows - rows) * text_height // rows,
+                         int(monitor["height"] / monitor["scale"] - top - bottom))
             selector = json.dumps("address:" + window["address"])
             resize = f"hl.dsp.window.resize({{x={width}, y={height}, exact=true, window={selector}}})"
             center = f"hl.dsp.window.center({{window={selector}, respect_reserved=true}})"
@@ -451,7 +458,7 @@ class Dashboard:
                 0,
             )
             self.last_mtime = mtime
-            self.fit_window()
+            self.fit_window_to_content()
         if status is not None:
             self.note(
                 "Usage refreshed" if status == 0 else "Usage refresh failed",
@@ -713,7 +720,7 @@ class Dashboard:
         chart_width = max(8, value_x - bar_x - 2)
         layout = DashboardLayout(
             width=width,
-            bottom=height - 2,
+            bottom=height - 3,
             label_x=label_x,
             label_width=label_width,
             bar_x=bar_x,
@@ -744,12 +751,14 @@ class Dashboard:
         self.screen.refresh()
 
     def draw_footer(self, height, width):
-        self.put(height - 2, 1, "\u2500" * (width - 2), curses.color_pair(PAIR_DIM))
+        first_hint, second_hint = self.hint()
+        self.put(height - 3, 1, "\u2500" * (width - 2), curses.color_pair(PAIR_DIM))
+        self.put(height - 2, 1, first_hint, curses.color_pair(PAIR_DIM))
         if self.message and time.monotonic() < self.message_until:
             attr = curses.color_pair(PAIR_ERROR if self.message_error else PAIR_BAR)
             self.put(height - 1, 1, self.message, attr | curses.A_BOLD)
             return
-        self.put(height - 1, 1, self.hint(), curses.color_pair(PAIR_DIM))
+        self.put(height - 1, 1, second_hint, curses.color_pair(PAIR_DIM))
 
     def move_selection(self, offset):
         if self.records:
@@ -819,12 +828,11 @@ def main():
         help="print the minimum terminal columns and rows",
     )
     args = parser.parse_args()
-    records = load_records()
     if args.size:
-        print(required_columns(installed_agent_paths()), required_rows(records))
+        print(MIN_COLS, MIN_ROWS)
         return
     if args.snapshot:
-        print(snapshot(records, args.agent))
+        print(snapshot(load_records(), args.agent))
         return
     if not sys.stdin.isatty() or not sys.stdout.isatty():
         parser.error(

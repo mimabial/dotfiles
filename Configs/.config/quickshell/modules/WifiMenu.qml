@@ -11,6 +11,8 @@ WifiButton {
             .sort((a, b) => b.connected - a.connected || b.signalStrength - a.signalStrength).slice(0, 8) : []
     }
     popupName: "wifi-menu"
+    symbol: !Networking.wifiEnabled ? "network-wireless-disabled" : !connectedNetwork ? "network-wireless-offline"
+        : "network-wireless-signal-" + ["none", "weak", "ok", "good", "excellent"][Math.min(4, Math.floor(connectedNetwork.signalStrength * 5))]
     MacCard {
         anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: "wifi-menu"; settings: "Wi-Fi"; settingsPopup: "network"
         PopupToggleRow { width: parent.width; shell: root.shell; title: "Wi-Fi"; checked: Networking.wifiEnabled; onToggled: Networking.wifiEnabled = !Networking.wifiEnabled }

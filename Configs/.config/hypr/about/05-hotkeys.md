@@ -80,7 +80,6 @@ app is either in front of you or out of the way.
 | `Super + G` | group |
 | `Super + Z` / `Super + LMB` | move window |
 | `Super + X` / `Super + RMB` | resize window |
-| `Super + L` | lock the screen |
 | `Super + Escape` | logout menu |
 | `Ctrl + Alt + Delete` | logout menu |
 
@@ -174,9 +173,9 @@ the bar · `H` toggle the bar · `F` select font · `Shift + F` install a Nerd F
 
 ### Utilities — `Super + U`
 
-`W` select workflow · `O` audio output · `S` / `Shift + S` cycle monitor scale ·
+`L` lock the screen · `W` select workflow · `O` audio output · `S` / `Shift + S` cycle monitor scale ·
 `D` toggle the laptop display · `M` toggle mirroring · `N` toggle nightlight ·
-`A` keep awake · `F` windows mode · `Q` close all windows
+`A` keep awake · `Q` close all windows
 
 ### Window — `Super + W`
 

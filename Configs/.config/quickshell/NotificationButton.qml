@@ -2,7 +2,9 @@ import QtQuick
 
 ScriptButton {
     id: root
-    icons: ({ "notification":"\uDB80\uDF6A", "dnd-notification":"\uDB84\uDD75", "dnd-none":"\uDB84\uDD6D", "email-notification":"\uDB83\uDD42", "chat-notification":"\uDB84\uDEC9", "warning-notification":"\uDB85\uDF3B", "error":"\uDB82\uDE04", "error-notification":"\uDB82\uDE04", "network-notification":"\uDB83\uDC8A", "battery-notification":"\uDB84\uDCCD", "update-notification":"\uDB81\uDEB0", "music-notification":"\uEC1B", "volume-notification":"\uDB81\uDFC5", "dnd":"\uDB84\uDD6D", "none":"\uDB80\uDF65" })
+    readonly property var filledIcons: ({ "none":"\uDB80\uDF61", "notification":"\uDB80\uDF69", "email-notification":"\uDB84\uDEF2", "chat-notification":"\uDB80\uDF66", "warning-notification":"\uDB85\uDF3A", "error":"\uDB80\uDF62", "error-notification":"\uDB80\uDF62", "network-notification":"\uDB86\uDDCC", "battery-notification":"\uDB85\uDDA9", "update-notification":"\uDB81\uDEF1", "music-notification":"\uDB80\uDF64", "volume-notification":"\uDB86\uDDCE" })
+    readonly property var outlineIcons: ({ "none":"\uDB80\uDF65", "notification":"\uDB80\uDF6A", "email-notification":"\uDB84\uDEF3", "chat-notification":"\uDB84\uDD70", "warning-notification":"\uDB85\uDF3B", "error":"\uDB82\uDE04", "error-notification":"\uDB82\uDE04", "network-notification":"\uDB86\uDDCD", "battery-notification":"\uDB85\uDDAA", "update-notification":"\uDB84\uDD72", "music-notification":"\uDB84\uDD6C", "volume-notification":"\uDB86\uDDCF" })
+    icons: paused ? outlineIcons : filledIcons
     css: "notifications"
     tooltip: ""
     // dunst signals every counter it exposes and rewrites the archive on each
@@ -14,10 +16,11 @@ ScriptButton {
     property bool popupEnabled: true
     property bool activeOnly: false
     property bool showBadge: true
+    property bool themed: false
+    symbol: themed ? paused ? "notifications-disabled" : "notification" : ""
     readonly property bool paused: output.paused === true
     readonly property int unread: output.unread || 0
     badgeText: showBadge && unread > 0 ? countGlyph(unread) : ""
-    active: paused
     visible: activeOnly ? paused : text !== ""
     // opening the panel moves the watermark, so re-read rather than waiting out
     // the poll to notice the badge should be gone

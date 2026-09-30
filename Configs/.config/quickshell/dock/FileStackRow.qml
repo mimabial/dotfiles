@@ -1,6 +1,6 @@
 import QtQuick
-import QtQuick.Effects
 import qs.Commons
+import ".." as Shell
 import "DockModel.js" as DockModel
 
 Item {
@@ -22,16 +22,8 @@ Item {
   width: frow.rowWidth
   height: Math.max(28, Style.space(28))
 
-  readonly property string resolvedIconSource: {
-    var _tv = frow.dock.themeVersion
-    return frow.dock.appLibrary.iconSource(DockModel.resolveFileItemIcon(frow.icon, frow.dock.folderColor))
-  }
-  readonly property bool isIconSymbolic: resolvedIconSource.indexOf("-symbolic.svg") >= 0 || resolvedIconSource.indexOf("symbolic") >= 0
-  readonly property color symbolicColor: {
-    if (frow.dock.folderColor === "white") return "#ffffff"
-    if (frow.dock.folderColor === "black") return "#111111"
-    return (Color.bar.background.hslLightness < 0.5 || Color.background.hslLightness < 0.5) ? "#ffffff" : "#111111"
-  }
+  readonly property string resolvedIcon: DockModel.resolveFileItemIcon(frow.icon)
+  readonly property bool isIconSymbolic: frow.dock.symbolicFolders && DockModel.isPlaceIcon(frow.resolvedIcon)
 
   Rectangle {
     anchors.fill: parent
@@ -56,9 +48,11 @@ Item {
       anchors.verticalCenter: parent.verticalCenter
 
       Image {
-        id: stackRowImg
         anchors.fill: parent
-        source: frow.resolvedIconSource
+        source: {
+          var _tv = frow.dock.themeVersion
+          return frow.isIconSymbolic ? "" : frow.dock.appLibrary.iconSource(frow.resolvedIcon)
+        }
         sourceSize: Qt.size(48, 48)
         fillMode: Image.PreserveAspectFit
         asynchronous: true
@@ -67,28 +61,13 @@ Item {
         visible: !frow.isIconSymbolic
       }
 
-      Item {
+      Shell.SymbolicIcon {
         anchors.fill: parent
         visible: frow.isIconSymbolic
-
-        Image {
-          id: symStackImg
-          anchors.fill: parent
-          source: frow.resolvedIconSource
-          sourceSize: Qt.size(48, 48)
-          fillMode: Image.PreserveAspectFit
-          asynchronous: true
-          smooth: true
-          mipmap: true
-          visible: false
-        }
-
-        MultiEffect {
-          anchors.fill: symStackImg
-          source: symStackImg
-          colorization: 1.0
-          colorizationColor: frow.symbolicColor
-        }
+        name: frow.isIconSymbolic ? frow.resolvedIcon : ""
+        context: "places"
+        color: frow.dock.symbolicFolderColor
+        size: iconHolder.width
       }
     }
 

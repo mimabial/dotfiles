@@ -123,6 +123,10 @@
   "bluetooth.connected": {
     "fontSize": 13.0
   },
+  "tasks": {
+    "badgeColor": ["accent", 0.5],
+    "badgeSize": 7.0
+  },
   "notifications": {
     "badgeColor": ["accent", 0.5],
     "badgeSize": 7.0,
@@ -150,10 +154,8 @@
   },
   "tray": {
     "backgroundColor": ["alt_bg", 0.1],
-    "borderColor": ["alt_br", 0.1],
-    "borderWidth": 1.3,
     "iconSize": 13,
-    "margin": [6, 6, 6, 6],
+    "margin": [3, 6, 3, 6],
     "padding": [0, 6, 0, 6]
   },
   "tray.chevron": {
@@ -161,8 +163,5 @@
     "color": ["fg", 0.5],
     "hover": { "color": ["hvr_fg", 1.0] },
     "fontSize": 12
-  },
-  "tasks.due": {
-    "color": ["accent", 1.0]
   }
 }

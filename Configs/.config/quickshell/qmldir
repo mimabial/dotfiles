@@ -13,6 +13,7 @@ BarSurface 1.0 BarSurface.qml
 BarSlider 1.0 BarSlider.qml
 BarTooltip 1.0 BarTooltip.qml
 Bitwarden 1.0 Bitwarden.qml
+GlyphInk 1.0 GlyphInk.qml
 BitwardenPopup 1.0 BitwardenPopup.qml
 BrightnessPopup 1.0 BrightnessPopup.qml
 BluetoothPopup 1.0 BluetoothPopup.qml
@@ -41,6 +42,7 @@ GamePopup 1.0 GamePopup.qml
 HyprsunsetPopup 1.0 HyprsunsetPopup.qml
 LanguagePopup 1.0 LanguagePopup.qml
 LayerBlur 1.0 LayerBlur.qml
+LazyPopup 1.0 LazyPopup.qml
 LogoutButton 1.0 LogoutButton.qml
 MediaButton 1.0 MediaButton.qml
 MediaControls 1.0 MediaControls.qml
@@ -48,6 +50,7 @@ MediaPopup 1.0 MediaPopup.qml
 MicrophoneButton 1.0 MicrophoneButton.qml
 PrivacyButton 1.0 PrivacyButton.qml
 SideBorder 1.0 SideBorder.qml
+SymbolicIcon 1.0 SymbolicIcon.qml
 NetworkEnrichmentDialog 1.0 NetworkEnrichmentDialog.qml
 NetworkPopup 1.0 NetworkPopup.qml
 NotificationButton 1.0 NotificationButton.qml
@@ -104,6 +107,8 @@ WorkspacePopup 1.0 WorkspacePopup.qml
 Workspaces 1.0 Workspaces.qml
 singleton Backlight 1.0 Backlight.qml
 singleton Media 1.0 Media.qml
+singleton Mirroring 1.0 Mirroring.qml
+singleton Privacy 1.0 Privacy.qml
 singleton Removable 1.0 Removable.qml
 singleton Style 1.0 Style.qml
 singleton Wallpaper 1.0 Wallpaper.qml

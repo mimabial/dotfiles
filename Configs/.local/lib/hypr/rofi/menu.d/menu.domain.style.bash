@@ -15,6 +15,24 @@ menu_add_presets() {
   done
 }
 
+menu_opacity_percent() {
+  [[ "${REPLY}" =~ ^([0-9]+)(\.([0-9]{0,2}))?$ ]] || { REPLY=auto; return 0; }
+  local fraction="${BASH_REMATCH[3]}00"
+  REPLY=$((10#${BASH_REMATCH[1]} * 100 + 10#${fraction:0:2}))
+}
+
+menu_add_opacity() {
+  local menu_id="$1" line="" name=""
+  menu_define "${menu_id}" "Opacity" choice
+  menu_add_item "${menu_id}" "󰃟  $2" action "${menu_id}_auto"
+  while IFS= read -r line; do
+    [[ "${line}" =~ name:\ \"([^\"]+)\",\ value:\ ([0-9.]+) ]] || continue
+    name="${BASH_REMATCH[1]}" REPLY="${BASH_REMATCH[2]}"
+    menu_opacity_percent
+    menu_add_item "${menu_id}" "󰃟  ${name} (${REPLY}%)" action "${menu_id}_${REPLY}"
+  done <"${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/Opacity.js"
+}
+
 menu_register_domain_style() {
   local layout_dir="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/layouts"
   local layout_file=""
@@ -39,21 +57,16 @@ menu_register_domain_style() {
 
   menu_define style_bar "Bar"
   menu_add_item style_bar "󰍜  Layout" submenu style_bar_layout
-  menu_add_item style_bar "󰂵  Transparency" action style_bar_transparency
+  menu_add_item style_bar "󰃟  Opacity" submenu style_bar_opacity
   menu_add_item style_bar "󰐷  Blur" action style_bar_blur
   menu_add_item style_bar "󰹞  Floating" action style_bar_floating
 
   menu_define style_dock "Dock"
-  menu_add_item style_dock "󰄶  Position" submenu style_dock_position
-  menu_add_item style_dock "󰂵  Transparency" action style_dock_transparency
+  menu_add_item style_dock "󰃟  Opacity" submenu style_dock_opacity
   menu_add_item style_dock "󰐷  Blur" action style_dock_blur
 
-  menu_define style_dock_position "Position" choice
-  menu_add_item style_dock_position "󰌷  Opposite the Bar" action style_dock_position_link
-  menu_add_item style_dock_position "↓  Bottom" action style_dock_position_bottom
-  menu_add_item style_dock_position "↑  Top" action style_dock_position_top
-  menu_add_item style_dock_position "←  Left" action style_dock_position_left
-  menu_add_item style_dock_position "→  Right" action style_dock_position_right
+  menu_add_opacity style_bar_opacity "Auto (Workflow)"
+  menu_add_opacity style_dock_opacity "Auto (Theme)"
 
   menu_define style_bar_layout "Layout" choice
   for layout_file in "${layout_dir}"/*.json; do
@@ -96,7 +109,6 @@ menu_register_domain_style() {
 menu_run_action_style() {
   local action_id="$1"
   local corner=""
-  local edge_name=""
   local layout_name=""
 
   case "${action_id}" in
@@ -111,20 +123,11 @@ menu_run_action_style() {
       [[ "${layout_name}" =~ ^[a-z0-9_-]+$ ]] || return 1
       hyprshell quickshell/layout set "${layout_name}"
       ;;
-    style_bar_transparency) quickshell ipc --any-display call bar transparency ;;
     style_bar_blur) quickshell ipc --any-display call bar blur ;;
     style_bar_floating) quickshell ipc --any-display call bar floating ;;
-    style_dock_transparency) quickshell ipc --any-display call dock transparency ;;
+    style_bar_opacity_*) quickshell ipc --any-display call bar opacity "${action_id#style_bar_opacity_}" ;;
+    style_dock_opacity_*) quickshell ipc --any-display call dock opacity "${action_id#style_dock_opacity_}" ;;
     style_dock_blur) quickshell ipc --any-display call dock blur ;;
-    style_dock_position_link) quickshell ipc --any-display call dock link ;;
-    style_dock_position_*)
-      edge_name="${action_id#style_dock_position_}"
-      case "${edge_name}" in
-        top | bottom | left | right) ;;
-        *) return 1 ;;
-      esac
-      quickshell ipc --any-display call dock position "${edge_name}"
-      ;;
     style_expose_hot_corner_*)
       corner="${action_id#style_expose_hot_corner_}"
       case "${corner}" in
@@ -159,13 +162,11 @@ menu_active_style() {
     style_text_size_*) menu_choice "${target}" style_text_size_ state_get TEXT_SIZE 12 ;;
     style_color_mode_source_*) menu_choice "${target}" style_color_mode_source_ state_get selected_color_source theme ;;
     style_color_mode_*) menu_state selected_color_mode state_get selected_color_mode 2 && [[ "${target#style_color_mode_}" == "${color_modes[REPLY]:-}" ]] ;;
-    style_bar_transparency) menu_json_flag "${bar}" barTransparent false ;;
     style_bar_blur) menu_json_flag "${bar}" barBlur true ;;
     style_bar_floating) menu_json_flag "${bar}" barFloating false ;;
-    style_dock_position_link) menu_json_flag "${dock}" linkToBar true ;;
-    style_dock_position_*) ! menu_json_flag "${dock}" linkToBar true && menu_json_value "${dock}" edge bottom && [[ "${target#style_dock_position_}" == "${REPLY}" ]] ;;
-    style_dock_transparency) if menu_json_flag "${dock}" linkToBar true; then menu_json_flag "${bar}" barTransparent false; else menu_json_flag "${dock}" transparent false; fi ;;
-    style_dock_blur) if menu_json_flag "${dock}" linkToBar true; then menu_json_flag "${bar}" barBlur true; else menu_json_flag "${dock}" blur true; fi ;;
+    style_bar_opacity_*) menu_json_value "${bar}" barOpacity -1 && menu_opacity_percent && [[ "${target#style_bar_opacity_}" == "${REPLY}" ]] ;;
+    style_dock_opacity_*) menu_json_value "${dock}" opacity 1 && menu_opacity_percent && [[ "${target#style_dock_opacity_}" == "${REPLY}" ]] ;;
+    style_dock_blur) menu_json_flag "${dock}" blur true ;;
     style_expose_hot_corner_*) menu_json_flag "${expose}" hotCornerEnabled true && menu_json_value "${expose}" hotCornerPosition top-left && [[ "${target#style_expose_hot_corner_}" == "${REPLY}" ]] ;;
     *) return 1 ;;
   esac

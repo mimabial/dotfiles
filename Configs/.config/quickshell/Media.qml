@@ -3,11 +3,15 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
+import "MediaModel.js" as MediaModel
 
 Singleton {
     id: root
     property int tick: 0
     property string selectedPlayer: ""
+    readonly property real endTolerance: 1
+    readonly property string cliampCtl: Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", "")
+    property bool cliampQueued: false
     readonly property var players: Mpris.players ? Mpris.players.values : []
     readonly property var sourcePlayers: availablePlayers()
     readonly property var player: chooseActivePlayer()
@@ -77,11 +81,11 @@ Singleton {
         const key = playerKey(player)
         if (key && key !== selectedPlayer) { selectedPlayer = key; selection.setText(JSON.stringify({ player: key, updated_at: Date.now() / 1000 }) + "\n") }
     }
-    function playPause() {
-        const target = player
+    function ended(player) { return player.canSeek && player.lengthSupported && player.positionSupported && player.length - player.position < endTolerance }
+    function playPause(target = player) {
         if (!target) return false
         if (target.isPlaying && target.canPause) target.pause()
-        else if (!target.isPlaying && target.canPlay) target.play()
+        else if (!target.isPlaying && target.canPlay) { if (ended(target)) target.position = 0; target.play() }
         else if (target.canTogglePlaying) target.togglePlaying()
         else return false
         select(target)
@@ -93,10 +97,12 @@ Singleton {
         select(player)
         return true
     }
-    function next() {
-        if (!player || !player.canGoNext) return false
-        player.next()
-        select(player)
+    function canNext(target = player) { return !!target && (MediaModel.isCliampPlayer(target) ? cliampQueued : target.canGoNext) }
+    function next(target = player) {
+        if (!canNext(target)) return false
+        if (MediaModel.isCliampPlayer(target)) Quickshell.execDetached(["python3", cliampCtl, "next"])
+        else target.next()
+        select(target)
         return true
     }
     function raisePlayer() {
@@ -130,6 +136,11 @@ Singleton {
         }
     }
 
+    FileView {
+        path: Quickshell.env("HOME") + "/.cache/cliamp/queue.json"; watchChanges: true; printErrors: false
+        onFileChanged: reload()
+        onLoaded: { try { root.cliampQueued = JSON.parse(text()).length > 0 } catch (error) {} }
+    }
     FileView {
         id: selection
         path: Quickshell.env("HOME") + "/.local/state/hypr/mediaplayer.json"; watchChanges: true; printErrors: false; atomicWrites: true

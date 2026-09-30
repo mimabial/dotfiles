@@ -5,37 +5,59 @@ usage() {
   cat <<'USAGE'
 Usage: hyprshell system/printers [option]
 
-  --report        JSON: {"printers":[{name,state,enabled,reason,default}],
+  --report        JSON: {"printers":[{name,state,reason,default,transport}],
                          "jobs":[{id,printer,user,size}],"pending":n,"stopped":n}
   --bar           Bar JSON: text, class, tooltip
   --enable NAME   Resume a stopped queue
   --disable NAME  Stop a queue, leaving its jobs held
   --default NAME  Make it the default destination
+  --switch NAME   Toggle the queue between USB and network
   --cancel ID     Cancel one job
   --cancel-all    Cancel every queued job
-  --web           Open the CUPS interface
 
-Reads lpstat, so it sees whatever queues CUPS has, local or network.
+Reads lpstat, so it sees whatever queues CUPS has, local or network, except fax.
 USAGE
 }
 
+# Listing every destination makes lpstat browse DNS-SD for a second per flag;
+# naming the queues cupsd reports keeps it to the local answer.
+queue_names() {
+  ipptool -c ipp://localhost/ /dev/stdin 2>/dev/null <<'IPP' | tail -n +2
+{
+  OPERATION CUPS-Get-Printers
+  GROUP operation-attributes-tag
+  ATTR charset attributes-charset utf-8
+  ATTR naturalLanguage attributes-natural-language en
+  ATTR keyword requested-attributes printer-name
+  DISPLAY printer-name
+}
+IPP
+}
+
 printers_json() {
-  lpstat -p -d 2>/dev/null | jq -R -s '
-    split("\n") | map(select(length > 0)) as $lines
-    | ($lines | map(select(startswith("system default destination:"))
-        | sub("^system default destination: "; "")) | first // "") as $default
-    | [ $lines[] | select(startswith("printer ")) ]
-    | map(
-        (sub("^printer "; "") | split(" ")[0]) as $name
+  local names
+  mapfile -t names < <(queue_names)
+  {
+    lpstat -d
+    if ((${#names[@]})); then lpstat -p "${names[@]}" -v "${names[@]}"; fi
+  } 2>/dev/null | jq -R -s '
+    (capture("system default destination: (?<name>\\S+)").name // "") as $default
+    | ([scan("device for ([^:]+): (\\S+)") | {key: .[0], value: .[1]}] | from_entries) as $devices
+    | [ scan("(?m)^printer (\\S+) (.*)\\n(?:\\t(.*))?") as [$name, $status, $reason]
+        | ($devices[$name] // "") as $device
+        | select($device | startswith("hpfax:") | not)
         | {
             name: $name,
-            enabled: (test("is idle|now printing|is printing")),
-            state: (if test("now printing|is printing") then "printing"
-                    elif test("is idle") then "idle"
+            state: (if $status | test("now printing|is printing") then "printing"
+                    elif $status | test("is idle") then "idle"
                     else "stopped" end),
-            default: ($name == $default)
+            reason: ($reason // ""),
+            default: ($name == $default),
+            transport: ($device | if test("^(usb://|hp:/usb/)") then "usb"
+                        elif test("^(hp:/net/|ipps?://|socket://|lpd://)|ip=") then "network"
+                        else "" end)
           }
-      )'
+      ]'
 }
 
 jobs_json() {
@@ -90,6 +112,7 @@ case "${1:---report}" in
     ;;
   --enable)
     [[ -n "${2:-}" ]] || { usage >&2; exit 1; }
+    cupsaccept "$2"
     cupsenable "$2"
     ;;
   --disable)
@@ -100,15 +123,16 @@ case "${1:---report}" in
     [[ -n "${2:-}" ]] || { usage >&2; exit 1; }
     lpoptions -d "$2" >/dev/null
     ;;
+  --switch)
+    [[ -n "${2:-}" ]] || { usage >&2; exit 1; }
+    exec bash "${BASH_SOURCE[0]%/*}/printer.connection.switch.sh" -p "$2"
+    ;;
   --cancel)
     [[ -n "${2:-}" ]] || { usage >&2; exit 1; }
     cancel "$2"
     ;;
   --cancel-all)
     cancel -a
-    ;;
-  --web)
-    xdg-open "http://localhost:631/" >/dev/null 2>&1 &
     ;;
   *)
     usage >&2

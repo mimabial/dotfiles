@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
 Name=LazyGit
-Icon=git
-Exec=/usr/bin/true
+Icon=/home/rifle/.local/share/icons/Nordzy/apps/scalable/git.svg
+Exec=/home/rifle/.local/bin/hyprshell launch/tui --app-id org.tui.LazyGit --title LazyGit -- lazygit
 Terminal=false
 NoDisplay=true
 StartupWMClass=org.tui.LazyGit

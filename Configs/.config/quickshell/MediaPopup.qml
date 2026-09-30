@@ -12,8 +12,6 @@ PopupCard {
   popupName: "media"
   keyboardHint: "Tab move · Space play · ↑↓ vol · ←→ seek · / search · Esc"
   padding: 0
-  surfaceOpacity: 0.94
-  borderOpacity: 0.45
   contentWidth: Commons.Style.space(400)
   contentHeight: Math.min(mainColumn.implicitHeight + Commons.Style.space(16), Commons.Style.space(560))
   headerHeight: Commons.Style.space(34)
@@ -723,11 +721,6 @@ PopupCard {
 
   Process {
     id: queueProc
-    onExited: function() {
-      if (!root.queueReloadPending) return
-      root.queueReloadPending = false
-      root.startQueueLoad()
-    }
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -738,6 +731,14 @@ PopupCard {
         } catch (e) { root.queueSource = "cliamp"; root.queueItems = [] }
         trackList.queueUpdated()
       }
+    }
+  }
+  Connections {
+    target: queueProc
+    function onExited() {
+      if (!root.queueReloadPending) return
+      root.queueReloadPending = false
+      root.startQueueLoad()
     }
   }
 
@@ -765,10 +766,8 @@ PopupCard {
     }
   }
 
-  Process {
-    id: recentProc
-    onExited: if (root.open) root.loadHistory()
-  }
+  Process { id: recentProc }
+  Connections { target: recentProc; function onExited() { if (root.open) root.loadHistory() } }
 
   Process {
     id: playlistsProc
@@ -805,11 +804,13 @@ PopupCard {
     }
   }
 
-  Process { id: liveProc; onExited: root._commandGen++ }
+  Process { id: liveProc }
+  Connections { target: liveProc; function onExited() { root._commandGen++ } }
 
-  Process {
-    id: actionProc
-    onExited: function() {
+  Process { id: actionProc }
+  Connections {
+    target: actionProc
+    function onExited() {
       root._commandGen++
       if (root.pendingCmds.length > 0) {
         root.startAction(root.pendingCmds.shift())
@@ -847,8 +848,8 @@ PopupCard {
   Process {
     id: warmupProc
     command: ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "start_daemon"]
-    onExited: root.refresh()
   }
+  Connections { target: warmupProc; function onExited() { root.refresh() } }
 
   Process {
     id: spectrumProc

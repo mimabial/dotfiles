@@ -12,8 +12,8 @@ import gi
 gi.require_version("Gio", "2.0")
 from gi.repository import Gio, GLib
 
-# notify/archive.sh owns this format; the count is read straight off the files so
-# the bar's two-second poll does not fork a shell just to compare timestamps.
+# notify/archive.sh owns this format; the state is read straight off the files so
+# each dunst event does not fork a shell just to compare timestamps.
 ARCHIVE_DIR = (
     Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
     / "hypr"
@@ -41,13 +41,8 @@ def _run_dunstctl(command):
     ).stdout.strip()
 
 
-def _status_error(message):
-    return {
-        "text": "?",
-        "alt": "error",
-        "tooltip": message,
-        "class": "error",
-    }
+def _status_error():
+    return {"text": "", "alt": "error", "class": "error"}
 
 
 # every query rides the one connection: no dunstctl shell, no dbus-send, no fork.
@@ -58,58 +53,44 @@ def _call_dunst_dbus(iface, method, params=None):
     ).unpack()[0]
 
 
-def _get_dunst_properties():
-    props = _call_dunst_dbus(PROPS_IFACE, "GetAll", GLib.Variant("(s)", (DUNST_IFACE,)))
-    return (
-        bool(props["paused"]),
-        int(props["waitingLength"]),
-        int(props["displayedLength"]),
-        int(props["historyLength"]),
-    )
+def _get_paused():
+    return bool(_call_dunst_dbus(PROPS_IFACE, "Get", GLib.Variant("(ss)", (DUNST_IFACE, "paused"))))
 
 
-def _get_history_items():
-    return list(_call_dunst_dbus(DUNST_IFACE, "NotificationListHistory"))
-
-
-def _extract_field(item, key):
-    value = item.get(key, {})
-    if isinstance(value, dict):
-        return str(value.get("data", "")).strip()
-    return str(value).strip()
-
-
-def _archive_unread():
+# the panel lists the archive, not dunst's history, so the icon follows it too
+def _archive_state():
     try:
         seen = int((ARCHIVE_DIR / "seen").read_text().strip() or 0)
     except (OSError, ValueError):
         seen = 0
 
-    count = 0
+    total = unread = 0
+    category = ""
     try:
         with (ARCHIVE_DIR / "archive.jsonl").open() as handle:
             for line in handle:
                 try:
-                    if json.loads(line).get("ts", 0) > seen:
-                        count += 1
+                    entry = json.loads(line)
+                    unread += entry.get("ts", 0) > seen
                 except (json.JSONDecodeError, AttributeError):
                     continue
+                total += 1
+                category = entry.get("category", "")
     except OSError:
-        return 0
-    return count
+        pass
+    return total, unread, category
 
 
 def get_dunst_status():
     if BUS is None:
-        return _status_error("no session bus")
+        return _status_error()
 
     try:
-        paused, waiting, displayed, history_count = _get_dunst_properties()
-        history = _get_history_items()
-    except (GLib.Error, KeyError, TypeError, ValueError):
-        return _status_error("Failed to query dunst status")
+        paused = _get_paused()
+    except (GLib.Error, TypeError, ValueError):
+        return _status_error()
 
-    count = max(history_count, displayed + waiting, len(history))
+    total, unread, category = _archive_state()
     category_map = {
         "email": "email-notification",
         "chat": "chat-notification",
@@ -122,41 +103,9 @@ def get_dunst_status():
         "volume": "volume-notification",
     }
 
-    alt = "none"
-    if paused:
-        alt = "dnd-notification" if count > 0 else "dnd-none"
-    elif count > 0:
-        alt = "notification"
-        if history:
-            category = _extract_field(history[0], "category").lower()
-            alt = category_map.get(category, alt)
+    alt = category_map.get(category.lower(), "notification") if total else "none"
 
-    tooltip_lines = [
-        "Notifications",
-        "scroll-down: show latest from history",
-        "left-click: toggle do not disturb",
-        "middle-click: open menu",
-        "right-click: clear notifications",
-    ]
-
-    if history:
-        tooltip_lines.append("")
-        for item in history[:8]:
-            summary = _extract_field(item, "summary")
-            body = _extract_field(item, "body")
-            line = summary or body or "Notification"
-            if summary and body and body != summary:
-                line = f"{summary}: {body}"
-            tooltip_lines.append(f"• {line}")
-
-    return {
-        "text": "",
-        "alt": alt,
-        "tooltip": "\n".join(tooltip_lines),
-        "class": alt,
-        "paused": paused,
-        "unread": _archive_unread(),
-    }
+    return {"text": "", "alt": alt, "class": alt, "paused": paused, "unread": unread}
 
 
 def toggle_dnd():

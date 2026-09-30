@@ -2,6 +2,7 @@
 
 var BY_KIND = {
     winbar: [
+        { pattern: "HH:mm\ndd/MM/yyyy", hasDate: true, hasTime: true },
         { pattern: "HH:mm\ndd|MM", hasDate: true, hasTime: true },
         { pattern: "dd|MM\nHH:mm", hasDate: true, hasTime: true },
         { pattern: "ddd dd\nHH:mm", hasDate: true, hasTime: true },

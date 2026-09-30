@@ -1,23 +1,23 @@
 import QtQuick
 import qs.Commons
+import ".." as Shell
 
 Item {
   id: btn
   required property var dock
-  required property Item card
 
-  property string glyph: ""
+  property string icon: ""
+  property string iconContext: ""
   property string tooltip: ""
-  property color glyphColor: btn.dock.dockForeground
-  property real glyphSize: {
-    const bounds = glyphMetrics.tightBoundingRect
-    const extent = Math.max(bounds.width, bounds.height)
-    return extent > 0 ? btn.dock.baseIconArt * 200 / extent : btn.dock.baseIconArt
-  }
   signal pressed()
   signal middleClicked()
   signal wheelScrolled(int dir)
-  signal menuRequested(real x, real y)
+  signal menuRequested(real x)
+
+  function trigger(menu) {
+    if (menu) btn.menuRequested(btn.dock.slotCenterX(btn))
+    else btn.pressed()
+  }
 
   property real homeCenter: 0
   property real magnifyScale: {
@@ -31,30 +31,17 @@ Item {
   }
 
   readonly property real slotMain: btn.dock.iconSlot * (btn.dock.waveHover ? btn.magnifyScale : 1)
-  width: btn.dock.vertical ? btn.dock.iconSlot : btn.slotMain
-  height: btn.dock.vertical ? btn.slotMain : btn.dock.iconSlot
+  width: btn.slotMain
+  height: btn.dock.iconSlot
 
-  TextMetrics {
-    id: glyphMetrics
-    font.family: btn.dock.shell ? btn.dock.shell.iconGlyphFont : Style.font.family
-    font.pixelSize: 200
-    text: btn.glyph
-  }
-
-  Text {
+  Shell.SymbolicIcon {
     anchors.centerIn: parent
-    width: btn.dock.iconSize
-    height: btn.dock.iconSize
-    text: btn.glyph
-    textFormat: Text.PlainText
-    horizontalAlignment: Text.AlignHCenter
-    verticalAlignment: Text.AlignVCenter
-    font.family: btn.dock.shell ? btn.dock.shell.iconGlyphFont : Style.font.family
-    font.pixelSize: btn.glyphSize
-    color: area.containsMouse ? Color.accent : btn.glyphColor
+    name: btn.icon
+    context: btn.iconContext
+    color: area.containsMouse ? Color.accent : Color.bar.text
+    size: btn.dock.iconSize
     transformOrigin: btn.dock.floorTransformOrigin
     scale: btn.magnifyScale * (area.pressed ? 0.92 : 1.0)
-    Behavior on color { ColorAnimation { duration: 120 } }
   }
 
   MouseArea {
@@ -65,17 +52,8 @@ Item {
     cursorShape: Qt.PointingHandCursor
     acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
     onClicked: function(mouse) {
-      if (mouse.button === Qt.RightButton) {
-        var pt = btn.mapToItem(btn.card, btn.width / 2, btn.height / 2)
-        var gx = btn.dock.vertical
-          ? btn.card.y + (pt ? pt.y : (btn.y + btn.height / 2))
-          : btn.card.x + (pt ? pt.x : (btn.x + btn.width / 2))
-        btn.menuRequested(gx, 0)
-      } else if (mouse.button === Qt.MiddleButton) {
-        btn.middleClicked()
-      } else {
-        btn.pressed()
-      }
+      if (mouse.button === Qt.MiddleButton) btn.middleClicked()
+      else btn.trigger(mouse.button === Qt.RightButton)
     }
     onWheel: function(wheel) {
       if (wheel.angleDelta.y !== 0) btn.wheelScrolled(wheel.angleDelta.y > 0 ? -1 : 1)
@@ -86,7 +64,7 @@ Item {
     dock: btn.dock
     text: btn.tooltip
     hovered: area.containsMouse
-    x: btn.dock.tipX(btn.width, width)
+    x: (btn.width - width) / 2
     y: btn.dock.tipY(btn.height, height)
   }
 }

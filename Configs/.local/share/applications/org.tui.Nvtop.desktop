@@ -2,7 +2,7 @@
 Type=Application
 Name=Nvtop
 Icon=video-display
-Exec=/usr/bin/true
+Exec=/home/rifle/.local/bin/hyprshell launch/tui --app-id org.tui.Nvtop --title Nvtop -- nvtop
 Terminal=false
 NoDisplay=true
 StartupWMClass=org.tui.Nvtop

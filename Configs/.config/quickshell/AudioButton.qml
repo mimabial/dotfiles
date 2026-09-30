@@ -14,8 +14,7 @@ BarButton {
     // must measure the face BarButton draws with, or the nudge corrects an ink
     // overhang the drawn glyph does not have
     TextMetrics { id: iconMetrics; font.family: root.usesIconFont ? root.shell.iconGlyphFont : root.shell.fontFamily; font.pixelSize: root.renderedFontSize; font.weight: root.fontWeight; text: root.text }
-    textOffsetX: iconMetrics.advanceWidth / 2 - iconMetrics.tightBoundingRect.x - iconMetrics.tightBoundingRect.width / 2
-    radius: shell.moduleRadius
+    textOffsetX: fitsIconBox ? inkOffsetX : iconMetrics.advanceWidth / 2 - iconMetrics.tightBoundingRect.x - iconMetrics.tightBoundingRect.width / 2
     backgroundColor: framed ? root.styleColor("backgroundColor") : "transparent"
     // pulseaudio format-icons, in their declared order: a matching port wins
     // over the volume ramp, mute wins over both. The selection keys off the

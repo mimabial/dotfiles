@@ -2,7 +2,7 @@
 Type=Application
 Name=Htop
 Icon=utilities-system-monitor
-Exec=/usr/bin/true
+Exec=/home/rifle/.local/bin/hyprshell launch/tui --app-id org.tui.Htop --title Htop -- htop
 Terminal=false
 NoDisplay=true
 StartupWMClass=org.tui.Htop

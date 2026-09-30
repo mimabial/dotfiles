@@ -6,7 +6,7 @@ background = "#1f1f28"
 
 [colors.cursor]
 text = "#1f1f28"
-cursor = "#c8c093"
+cursor = "#dcd7ba"
 
 [colors.selection]
 text = "#c8c093"

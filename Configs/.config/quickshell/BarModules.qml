@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
+import Quickshell.Hyprland
 import "modules"
 import qs.systemstats
 
@@ -27,8 +28,9 @@ Item {
         "screenshot": mod_screenshot, "webcam": mod_webcam, "terminal": mod_terminal,
         "converter": mod_converter, "sudoku": mod_sudoku, "games": mod_games,
         "appmenu": mod_appmenu, "battery": mod_battery, "spotlight": mod_spotlight, "controlcenter": mod_controlcenter, "nowplaying": mod_nowplaying, "sound-menu": mod_sound,
-        "wifi-menu": mod_wifi_menu, "bluetooth-menu": mod_bluetooth_menu, "vpn-menu": mod_vpn_menu, "display-menu": mod_display_menu,
-        "notification-center": mod_notification_center
+        "wifi-menu": mod_wifi_menu, "bluetooth-menu": mod_bluetooth_menu, "vpn-menu": mod_vpn_menu, "language-menu": mod_language_menu, "mirroring-menu": mod_mirroring_menu, "display-menu": mod_display_menu,
+        "notification-center": mod_notification_center,
+        "widgets": mod_widgets, "search": mod_search, "taskview": mod_taskview, "quicksettings": mod_quicksettings, "showdesktop": mod_showdesktop
     })
 
     Component { id: mod_menu; StartButton { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
@@ -77,14 +79,33 @@ Item {
     Component { id: mod_games; GameButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_appmenu; AppMenu { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_battery; BatteryButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
-    Component { id: mod_spotlight; BarButton { shell: catalog.shell; css: "spotlight"; text: "󰍉"; Layout.fillHeight: true; onClicked: catalog.shell.run(["hyprshell", "rofi/menutree", "--search-all"]) } }
+    Component { id: mod_spotlight; BarButton { shell: catalog.shell; css: "spotlight"; text: "󰍉"; symbol: "system-search"; symbolContext: "actions"; Layout.fillHeight: true; onClicked: catalog.shell.run(["hyprshell", "rofi/menutree", "--search-all"]) } }
     Component { id: mod_controlcenter; ControlCenter { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_nowplaying; NowPlaying { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_sound; SoundMenu { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_wifi_menu; WifiMenu { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_bluetooth_menu; BluetoothMenu { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_vpn_menu; VpnMenu { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_language_menu; LanguageMenu { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_mirroring_menu; MirroringMenu { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_display_menu; DisplayMenu { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_widgets; BarButton {
+        id: widgets
+        readonly property var readouts: Weather.output.readouts ?? {}
+        shell: catalog.shell; css: "widgets"; leadingIcon: readouts.current?.icon ?? ""; Layout.fillHeight: true
+        text: readouts.current && readouts.condition ? readouts.current.value + "\n" + readouts.condition.value : ""
+        onClicked: catalog.shell.togglePopup("weather")
+        WeatherPopup { anchorItem: widgets; shell: catalog.shell; popupEnabled: catalog.popupsAllowed }
+    } }
+    Component { id: mod_search; BarButton { shell: catalog.shell; css: "search"; leadingIcon: "\uea6d"; text: "Search"; Layout.fillHeight: true; onClicked: catalog.shell.togglePopup("start") } }
+    Component { id: mod_taskview; BarButton { shell: catalog.shell; css: "taskview"; text: "\ueb23"; tooltip: "Task View"; Layout.fillHeight: true; onClicked: catalog.shell.expose?.toggle() } }
+    Component { id: mod_quicksettings; QuickSettings { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
+    // an empty workspace stands in for the desktop; a second click goes back
+    Component { id: mod_showdesktop; BarButton {
+        readonly property bool shown: true
+        shell: catalog.shell; css: "showdesktop"; Layout.fillHeight: true
+        onClicked: Hyprland.dispatch('hl.dsp.focus({ workspace = "' + (Hyprland.focusedWorkspace?.toplevels.values.length ? "emptym" : "previous") + '" })')
+    } }
     Component { id: mod_notification_center; NotificationCenter { shell: catalog.shell; kind: catalog.shell.clockKind; css: "datetime"; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
 
 }

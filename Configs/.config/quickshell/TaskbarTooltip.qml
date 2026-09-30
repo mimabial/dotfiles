@@ -64,7 +64,7 @@ PopupWindow {
     }
     BorderSurface {
         id: bubble
-        color: Commons.Util.alpha(Commons.Color.tooltip.background, root.shell.dock ? root.shell.dock.dockSurfaceOpacity : Math.max(0.45, Commons.Style.barOpacity))
+        color: Commons.Util.alpha(Commons.Color.tooltip.background, Commons.Style.popupSurfaceOpacity)
         borderSpec: Commons.Border.surfaceSpec("tooltip", "border", Commons.Color.tooltip.border, 1)
         radius: Commons.Style.cornerRadius
         padding: Commons.Style.space(6)

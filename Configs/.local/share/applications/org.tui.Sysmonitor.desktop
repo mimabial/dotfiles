@@ -2,7 +2,7 @@
 Type=Application
 Name=System Monitor
 Icon=utilities-system-monitor
-Exec=/usr/bin/true
+Exec=/home/rifle/.local/bin/hyprshell util/sysmon-launch
 Terminal=false
 NoDisplay=true
 StartupWMClass=org.tui.Sysmonitor

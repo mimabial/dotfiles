@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Effects
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
@@ -114,11 +115,21 @@ Item {
         ? "per-monitor"
         : "mirrored"
     readonly property bool showFooter: !root.pluginEntry || root.pluginEntry.showFooter !== false
+    readonly property real dragPreviewHeight: Style.space(72)
+    readonly property real searchFieldWidth: Style.space(640)
+    readonly property real workspaceBandBlur: Style.space(64)
+    readonly property real workspaceBandTint: 0.25
+    // Apple's frosted material saturates its backdrop to 180%.
+    readonly property real workspaceBandSaturation: 0.8
+    readonly property var windowDragKeys: ["expose-window"]
+    readonly property real outlineWidth: root.shell ? Math.max(0, root.shell.borderWidth) : Style.normalBorderWidth
     property bool opened: false
     property bool surfaceMounted: false
+    property string pendingWorkspaceAction: ""
     property bool hotCornerArmed: true
     property string pendingHotCornerScreen: ""
     property string filterText: ""
+    property string appFilter: ""
     property string workspaceScope: "all"
     property int selectedIndex: 0
     property int hoveredIndex: -1
@@ -223,14 +234,16 @@ Item {
         }
     }
 
-    function open(payload) {
+    function open(app) {
         hotCornerTimer.stop();
+        root.pendingWorkspaceAction = "";
         var blurRestoreInFlight = root.restoringDesktopBlur && backgroundBlurSession.running;
         if (!blurRestoreInFlight)
             root.restoringDesktopBlur = false;
         root.closeSettings();
         root.filterText = "";
-        root.workspaceScope = root.initialWorkspaceScope;
+        root.appFilter = String(app || "");
+        root.workspaceScope = root.appFilter ? "all" : root.initialWorkspaceScope;
         if (root.surfaceMounted) {
             if (blurRestoreInFlight) {
                 root.openingPending = true;
@@ -295,7 +308,7 @@ Item {
     }
 
     function toggle() {
-        (root.opened || root.openingPending) ? root.dismiss() : root.open("{}");
+        (root.opened || root.openingPending) ? root.dismiss() : root.open();
     }
 
     function requestedBackgroundBlur() {
@@ -375,6 +388,11 @@ Item {
             root.scheduleBackgroundBlurUpdate();
             Qt.callLater(root.focusKeyboardWindow);
             return;
+        }
+        if (root.pendingWorkspaceAction) {
+            var action = root.pendingWorkspaceAction;
+            root.pendingWorkspaceAction = "";
+            Hyprland.dispatch(action);
         }
         backgroundBlurUpdate.stop();
         if (backgroundBlurSession.running) {
@@ -568,7 +586,7 @@ Item {
 
     function openSettings() {
         if (!root.surfaceMounted)
-            root.open("{}");
+            root.open();
         root.closeFooterHideConfirmation();
         root.clearAnimationTimingPreview();
         root.backgroundBlurPreview = -1;
@@ -706,7 +724,7 @@ Item {
             root.overviewScreenPinned = true;
             root.overviewScreenName = name;
         }
-        root.open("{}");
+        root.open();
     }
 
     function clearOverviewScreen() {
@@ -797,7 +815,7 @@ Item {
     }
 
     function setWorkspaceScope(value) {
-        var next = value === "current" ? "current" : "all";
+        var next = String(value || "all");
         if (next === "current" && !root.workspaceForScreen(root.keyboardScreenName))
             return;
         if (next === root.workspaceScope)
@@ -809,8 +827,58 @@ Item {
         root.selectedIndex = Math.max(0, root.filteredToplevels.indexOf(Hyprland.activeToplevel));
     }
 
-    function toggleWorkspaceScope() {
-        root.setWorkspaceScope(root.workspaceScope === "all" ? "current" : "all");
+    function cycleWorkspaceScope(step) {
+        var groups = root.workspacesForScreen(root.keyboardScreenName);
+        var names = ["all"];
+        var workspaces = groups.regular.concat(groups.special);
+        for (var index = 0; index < workspaces.length; index++)
+            names.push(String(workspaces[index].name));
+        var current = root.workspaceForScreen(root.keyboardScreenName);
+        var selected = root.workspaceScope === "current" && current ? String(current.name) : root.workspaceScope;
+        var position = Math.max(0, names.indexOf(selected));
+        root.setWorkspaceScope(names[(position + step + names.length) % names.length]);
+    }
+
+    function openApp(app) {
+        var shown = root.opened || root.openingPending;
+        var appId = String(app || WindowModel.appIdFor(shown
+            ? root.filteredToplevels[root.selectedIndex]
+            : Hyprland.activeToplevel)).toLowerCase();
+        if (shown)
+            root.setAppFilter(appId);
+        else
+            root.open(appId);
+    }
+
+    function toggleApp() {
+        if (root.appFilter && (root.opened || root.openingPending))
+            root.dismiss();
+        else
+            root.openApp("");
+    }
+
+    function setAppFilter(app) {
+        var selectedTop = root.filteredToplevels[root.selectedIndex];
+        root.appFilter = app;
+        if (app)
+            root.workspaceScope = "all";
+        root.filterText = "";
+        root.hoveredIndex = -1;
+        root.clearPreview();
+        root.modelRevision++;
+        root.selectedIndex = Math.max(0, root.filteredToplevels.indexOf(selectedTop));
+    }
+
+    function cycleApp(step) {
+        var apps = [];
+        var windows = root.toplevelsOnScreen(root.keyboardScreenName);
+        for (var index = 0; index < windows.length; index++) {
+            var app = WindowModel.appIdFor(windows[index]).toLowerCase();
+            if (app && apps.indexOf(app) === -1)
+                apps.push(app);
+        }
+        if (apps.length)
+            root.setAppFilter(apps[(apps.indexOf(root.appFilter) + step + apps.length) % apps.length]);
     }
 
     function refreshHyprlandState() {
@@ -986,6 +1054,27 @@ Item {
         return null;
     }
 
+    function workspacesForScreen(screenName) {
+        var perMonitor = root.multiMonitorMode === "per-monitor";
+        var monitor = root.monitorForScreen(screenName);
+        var dock = root.shell ? root.shell.dock : null;
+        var regular = [], special = [];
+        var all = Hyprland.workspaces.values;
+        for (var index = 0; index < all.length; index++) {
+            var workspace = all[index];
+            var name = String(workspace.name || "");
+            if (name.indexOf("special:") === 0) {
+                if (!(dock && dock.isMinimizedWorkspace(name)))
+                    special.push(workspace);
+            } else if (!perMonitor || workspace.monitor === monitor) {
+                regular.push(workspace);
+            }
+        }
+        regular.sort(function (a, b) { return a.id - b.id; });
+        special.sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); });
+        return { regular: regular, special: special };
+    }
+
     function workspaceForScreen(screenName) {
         if (root.multiMonitorMode === "per-monitor") {
             var monitor = root.monitorForScreen(screenName);
@@ -1003,9 +1092,61 @@ Item {
     }
 
     function workspaceScopeLabelForScreen(screenName) {
-        return root.workspaceScope === "current"
-            ? "Workspace " + root.activeWorkspaceLabelForScreen(screenName)
-            : "All workspaces";
+        if (root.workspaceScope === "all")
+            return "All workspaces";
+        var workspace = root.scopedWorkspaceForScreen(screenName);
+        return "Workspace " + root.formatWorkspaceLabel(workspace ? workspace.name : root.workspaceScope);
+    }
+
+    function scopedWorkspaceForScreen(screenName) {
+        if (root.workspaceScope === "current")
+            return root.workspaceForScreen(screenName);
+        var workspaces = Hyprland.workspaces.values;
+        for (var index = 0; index < workspaces.length; index++)
+            if (String(workspaces[index].name) === root.workspaceScope)
+                return workspaces[index];
+        return null;
+    }
+
+    function isWorkspaceShown(workspace) {
+        if (workspace.active)
+            return true;
+        var monitor = workspace.monitor;
+        var special = monitor && monitor.lastIpcObject ? monitor.lastIpcObject.specialWorkspace : null;
+        return Boolean(special) && special.name === workspace.name;
+    }
+
+    function workspaceTarget(workspace) {
+        if (!workspace) {
+            var used = {};
+            var workspaces = Hyprland.workspaces.values;
+            for (var index = 0; index < workspaces.length; index++)
+                if (workspaces[index].id > 0)
+                    used[workspaces[index].id] = true;
+            var next = 1;
+            while (used[next])
+                next++;
+            return String(next);
+        }
+        var name = String(workspace.name || "");
+        return name.indexOf("special:") === 0 ? name : String(workspace.id);
+    }
+
+    function showWorkspace(workspace) {
+        var target = root.workspaceTarget(workspace);
+        root.pendingWorkspaceAction = "";
+        if (target.indexOf("special:") !== 0)
+            root.pendingWorkspaceAction = "hl.dsp.focus({ workspace = " + JSON.stringify(target) + " })";
+        else if (!root.isWorkspaceShown(workspace))
+            root.pendingWorkspaceAction = "hl.dsp.workspace.toggle_special(" + JSON.stringify(target.slice("special:".length)) + ")";
+        root.dismiss();
+    }
+
+    function moveWindowTo(top, workspace) {
+        var address = WindowModel.addressFor(top);
+        if (address)
+            Hyprland.dispatch("hl.dsp.window.move({ workspace = " + JSON.stringify(root.workspaceTarget(workspace))
+                + ", follow = false, window = \"address:" + address + "\" })");
     }
 
     function isOnScreen(top, screenName) {
@@ -1029,12 +1170,14 @@ Item {
 
     function toplevelsForScreen(screenName) {
         var needle = root.filterText.toLowerCase();
-        var currentWorkspace = root.workspaceForScreen(screenName);
+        var scopedWorkspace = root.scopedWorkspaceForScreen(screenName);
         var candidates = root.toplevelsOnScreen(screenName);
         var result = [];
         for (var index = 0; index < candidates.length; index++) {
             var top = candidates[index];
-            if (root.workspaceScope === "current" && !root.isOnWorkspace(top, currentWorkspace))
+            if (root.workspaceScope !== "all" && !root.isOnWorkspace(top, scopedWorkspace))
+                continue;
+            if (root.appFilter && WindowModel.appIdFor(top).toLowerCase() !== root.appFilter)
                 continue;
             var haystack = WindowModel.searchTextFor(top);
             if (!needle || haystack.indexOf(needle) !== -1)
@@ -1210,10 +1353,14 @@ Item {
             if (!event.isAutoRepeat)
                 root.togglePreview(Boolean(event.modifiers & Qt.ShiftModifier));
         }
-        else if (event.key === Qt.Key_Tab
+        else if ((event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab)
                 && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {
-            if (!event.isAutoRepeat)
-                root.toggleWorkspaceScope();
+            if (!event.isAutoRepeat) {
+                if (root.appFilter)
+                    root.cycleApp(event.key === Qt.Key_Backtab ? -1 : 1);
+                else
+                    root.cycleWorkspaceScope(event.key === Qt.Key_Backtab || Boolean(event.modifiers & Qt.ShiftModifier) ? -1 : 1);
+            }
         }
         else if (event.key === Qt.Key_Left)
             root.moveDirectional(-1, 0, layout, Boolean(event.modifiers & Qt.ShiftModifier));
@@ -1231,6 +1378,8 @@ Item {
             if (!event.isAutoRepeat)
                 root.requestClose(root.filteredToplevels[root.selectedIndex]);
         }
+        else if (event.key === Qt.Key_Backspace && root.appFilter && !root.filterText)
+            root.setAppFilter("");
         else if (Util.editsFilter(event, root.filterText))
             root.setFilter(Util.editedFilter(event, root.filterText));
         else if (event.text && event.text.length === 1 && event.text.charCodeAt(0) >= 32 && !(event.modifiers & (Qt.AltModifier | Qt.MetaModifier)))
@@ -1403,8 +1552,12 @@ Item {
                 root.selectedIndex = index;
         }
         function onRawEvent(event) {
-            if (event && event.name === "custom" && event.data === "expose.window-overview:toggle")
+            if (!event || event.name !== "custom")
+                return;
+            if (event.data === "expose.window-overview:toggle")
                 root.toggle();
+            else if (event.data === "expose.window-overview:app")
+                root.toggleApp();
         }
     }
 
@@ -1559,6 +1712,9 @@ Item {
             Component.onCompleted: overviewWindow.syncCardToplevels()
             readonly property string screenWorkspaceLabel: root.activeWorkspaceLabelForScreen(String(modelData.name || ""))
             readonly property string screenScopeLabel: root.workspaceScopeLabelForScreen(String(modelData.name || ""))
+            readonly property real screenRatio: overviewWindow.screen && overviewWindow.screen.height > 0
+                ? overviewWindow.screen.width / overviewWindow.screen.height
+                : 0
 
             function focusSettingsCategory() {
                 var settings = settingsLayerLoader.item as SettingsView;
@@ -1598,6 +1754,46 @@ Item {
                 anchors.fill: parent
                 color: "black"
                 opacity: root.effectiveBackgroundDim / 100
+            }
+
+            // The workspace row sits on its own heavier material, as in Mission
+            // Control. Hyprland's blur strength is global, so the band blurs one
+            // capture of the screen, taken while the overlay is still transparent.
+            Item {
+                width: overviewWindow.width
+                height: topLine.height + contentColumn.anchors.topMargin * 2
+                clip: true
+
+                Item {
+                    id: bandBackdrop
+                    width: parent.width
+                    height: parent.height + root.workspaceBandBlur
+                    visible: false
+
+                    ScreencopyView {
+                        id: bandCapture
+                        width: overviewWindow.width
+                        height: overviewWindow.height
+                        captureSource: overviewWindow.screen
+                        live: !bandCapture.hasContent
+                        paintCursor: false
+                    }
+                }
+
+                MultiEffect {
+                    anchors.fill: bandBackdrop
+                    source: bandBackdrop
+                    autoPaddingEnabled: false
+                    blurEnabled: true
+                    blur: 1
+                    blurMax: root.workspaceBandBlur
+                    saturation: root.workspaceBandSaturation
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: Util.alpha(Color.background, root.workspaceBandTint)
+                }
             }
 
             Item {
@@ -1644,65 +1840,20 @@ Item {
                 }
 
                 ColumnLayout {
+                    id: contentColumn
                     anchors.fill: parent
                     anchors.margins: Style.spacing.sm
                     spacing: Style.spacing.md
 
-                    Ui.BorderSurface {
-                        id: searchBar
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.preferredWidth: Math.min(Style.space(760), overviewWindow.width - Style.space(48))
-                        Layout.preferredHeight: Style.space(48)
-                        radius: Style.cornerRadius
-                        color: "transparent"
-                        borderSpec: Border.flat(filterHover.hovered || filterField.activeFocus || root.filterText
-                            ? Color.menu.selectedText : Color.menu.border, Style.normalBorderWidth)
-
-                        HoverHandler { id: filterHover }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.IBeamCursor
-                            onClicked: filterField.forceActiveFocus()
-                        }
+                    RowLayout {
+                        id: topLine
+                        Layout.fillWidth: true
+                        spacing: Style.spacing.xl
 
                         RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: Style.spacing.xl
-                            anchors.rightMargin: Style.spacing.xl
+                            id: statusGroup
                             spacing: Style.spacing.md
-                            Text {
-                                text: "󰍉"
-                                textFormat: Text.PlainText
-                                color: Color.menu.text
-                                opacity: 0.55
-                                font.family: Style.font.menuFamily
-                                font.pixelSize: Style.font.heading
-                            }
-                            TextField {
-                                id: filterField
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                text: root.filterText
-                                placeholderText: "Type to filter windows…"
-                                color: Color.menu.text
-                                opacity: text ? 1 : 0.6
-                                font.family: Style.font.menuFamily
-                                font.pixelSize: Style.font.heading
-                                verticalAlignment: TextInput.AlignVCenter
-                                selectByMouse: true
-                                background: null
-                                leftPadding: 0
-                                rightPadding: 0
-                                onTextEdited: root.setFilter(text)
-                                Keys.priority: Keys.BeforeItem
-                                Keys.onPressed: function(event) {
-                                    if ([Qt.Key_Escape, Qt.Key_Tab, Qt.Key_Up, Qt.Key_Down, Qt.Key_Return, Qt.Key_Enter].indexOf(event.key) >= 0)
-                                        root.handleKey(event, overviewArea.windowLayout);
-                                    else
-                                        event.accepted = false;
-                                }
-                            }
+
                             Text {
                                 text: overviewWindow.screenToplevels.length + " windows"
                                 textFormat: Text.PlainText
@@ -1718,11 +1869,20 @@ Item {
                                 color: Color.menu.border
                             }
 
+                            Image {
+                                id: appIcon
+                                readonly property var appWindow: root.appFilter ? overviewWindow.screenToplevels[0] : null
+                                visible: Boolean(appIcon.appWindow)
+                                Layout.preferredWidth: Style.space(24)
+                                Layout.preferredHeight: Style.space(24)
+                                source: appIcon.appWindow ? root.iconFor(appIcon.appWindow) : ""
+                                fillMode: Image.PreserveAspectFit
+                                asynchronous: true
+                            }
+
                             Text {
                                 Layout.maximumWidth: Style.space(176)
-                                text: searchBar.width < Style.space(640)
-                                    ? (root.workspaceScope === "all" ? "All" : "WS " + overviewWindow.screenWorkspaceLabel)
-                                    : overviewWindow.screenScopeLabel
+                                text: root.appFilter ? root.appFilter : overviewWindow.screenScopeLabel
                                 textFormat: Text.PlainText
                                 color: Color.accent
                                 font.family: Style.font.menuFamily
@@ -1732,6 +1892,7 @@ Item {
                             }
 
                             ThemedControl {
+                                id: scopeKey
                                 Layout.preferredWidth: Style.space(34)
                                 Layout.preferredHeight: Style.space(24)
                                 radius: Math.max(2, Style.cornerRadius - Style.spacing.sm)
@@ -1747,6 +1908,81 @@ Item {
                                 }
                             }
                         }
+
+                        Item { Layout.fillWidth: true }
+
+                        Ui.BorderSurface {
+                            id: searchBar
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: root.searchFieldWidth
+                            Layout.maximumWidth: root.searchFieldWidth
+                            Layout.minimumWidth: 0
+                            Layout.preferredHeight: scopeKey.Layout.preferredHeight + Style.spacing.sm * 2
+                            radius: Style.cornerRadius
+                            color: "transparent"
+                            borderSpec: Border.flat(filterField.activeFocus ? Color.accent
+                                : searchHover.hovered ? Color.menu.selectedBorder : Color.menu.border,
+                                Style.normalBorderWidth)
+
+                            HoverHandler { id: searchHover }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.IBeamCursor
+                                onClicked: filterField.forceActiveFocus()
+                            }
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: Style.spacing.xl
+                                anchors.rightMargin: Style.spacing.xl
+                                anchors.topMargin: Style.spacing.sm
+                                anchors.bottomMargin: Style.spacing.sm
+                                spacing: Style.spacing.md
+                                Text {
+                                    text: "󰍉"
+                                    textFormat: Text.PlainText
+                                    color: Color.menu.text
+                                    opacity: 0.55
+                                    font.family: Style.font.menuFamily
+                                    font.pixelSize: Style.font.heading
+                                }
+                                TextField {
+                                    id: filterField
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    text: root.filterText
+                                    placeholderText: root.appFilter ? "Type to filter " + root.appFilter + " windows…" : "Type to filter windows…"
+                                    color: Color.menu.text
+                                    opacity: text ? 1 : 0.6
+                                    font.family: Style.font.menuFamily
+                                    font.pixelSize: Style.font.heading
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    selectByMouse: true
+                                    background: null
+                                    leftPadding: 0
+                                    rightPadding: 0
+                                    onTextEdited: root.setFilter(text)
+                                    Keys.priority: Keys.BeforeItem
+                                    Keys.onPressed: function(event) {
+                                        if ([Qt.Key_Escape, Qt.Key_Tab, Qt.Key_Backtab, Qt.Key_Up, Qt.Key_Down, Qt.Key_Return, Qt.Key_Enter].indexOf(event.key) >= 0
+                                                || (event.key === Qt.Key_Backspace && !filterField.text))
+                                            root.handleKey(event, overviewArea.windowLayout);
+                                        else
+                                            event.accepted = false;
+                                    }
+                                }
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        WorkspaceStrip {
+                            id: workspaceStrip
+                            controller: root
+                            screenName: String(overviewWindow.modelData.name || "")
+                            chipHeight: statusGroup.implicitHeight
+                        }
                     }
 
                     Item {
@@ -1755,10 +1991,7 @@ Item {
                         Layout.fillHeight: true
                         readonly property var windowLayout: {
                             var revision = root.modelRevision;
-                            var screenRatio = overviewWindow.screen && overviewWindow.screen.height > 0
-                                ? overviewWindow.screen.width / overviewWindow.screen.height
-                                : 0;
-                            return root.computeWindowLayout(overviewWindow.screenToplevels, width, height, Style.space(64), Style.spacing.sm, root.windowFooterHeight, screenRatio);
+                            return root.computeWindowLayout(overviewWindow.screenToplevels, width, height, Style.space(64), Style.spacing.sm, root.windowFooterHeight, overviewWindow.screenRatio);
                         }
 
                         Item {
@@ -1790,10 +2023,10 @@ Item {
                         Text {
                             anchors.centerIn: parent
                             visible: overviewWindow.screenToplevels.length === 0
-                            text: root.filterText
+                            text: root.filterText || root.appFilter
                                 ? "No matching windows"
-                                : (root.workspaceScope === "current"
-                                    ? "No windows on Workspace " + overviewWindow.screenWorkspaceLabel
+                                : (root.workspaceScope !== "all"
+                                    ? "No windows on " + overviewWindow.screenScopeLabel
                                     : "No open windows")
                             textFormat: Text.PlainText
                             color: Color.menu.text
@@ -1809,7 +2042,9 @@ Item {
                         visible: root.showFooter
 
                         Text {
-                            text: "← ↑ ↓ → navigate   Space preview   Tab scope   Shift+Q close   Enter open   Esc close"
+                            text: "← ↑ ↓ → navigate   Space preview   "
+                                + (root.appFilter ? "Tab next app   Backspace all apps" : "Tab next workspace   Shift+Tab previous")
+                                + "   Drag to a workspace to move   Shift+Q close   Enter open   Esc close"
                             textFormat: Text.PlainText
                             color: Color.menu.text
                             opacity: 0.55

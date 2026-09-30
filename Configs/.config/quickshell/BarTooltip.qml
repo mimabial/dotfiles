@@ -41,7 +41,7 @@ PopupWindow {
     }
     Rectangle {
         anchors.fill: parent; radius: root.shell.rounding
-        color: root.shell.alpha(root.shell.background, .96)
+        color: root.shell.alpha(root.shell.background, Style.popupSurfaceOpacity)
         border.color: root.shell.alpha(root.shell.role("br", root.shell.foreground), .45)
         Text {
             id: label; anchors.centerIn: parent; width: Math.min(340, implicitWidth)

@@ -1,28 +1,38 @@
 {
-  "autohide": true,
-  "intelligentAutohide": true,
-  "linkToBar": true,
-  "edge": "right",
+  "autohide": false,
+  "intelligentAutohide": false,
+  "edge": "bottom",
   "minimizeMode": "active",
   "showMinimizedTiles": true,
   "showAppsButton": true,
   "showTooltips": true,
-  "advancedTooltips": true,
+  "advancedTooltips": false,
   "launchBounce": true,
-  "hoverEffect": "zoom",
-  "opacity": "theme",
-  "shape": "theme",
-  "bgColor": "theme",
-  "transparent": false,
+  "hoverEffect": "wave",
+  "opacity": 0.35,
   "blur": true,
   "folderColor": "theme",
-  "itemSpacing": 4,
+  "itemSpacing": 8,
   "showUrgentHint": true,
   "urgentSound": true,
   "urgentSoundName": "bell",
   "revealDelay": 160,
   "tooltipDelay": 450,
   "appGroups": [],
-  "pinnedFolders": [],
-  "clickToMinimize": true
+  "pinnedFolders": [
+    {
+      "path": "~/Downloads",
+      "name": "Downloads",
+      "icon": "folder-download"
+    }
+  ],
+  "clickToMinimize": true,
+  "iconSize": 36,
+  "recentApps": [
+    "org.tui.Nvtop",
+    "org.tui.Rmpc",
+    "org.tui.Wiremix"
+  ],
+  "showRecents": true,
+  "showIndicators": true
 }

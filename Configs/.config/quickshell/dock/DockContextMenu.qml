@@ -5,6 +5,7 @@ import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 import "DockModel.js" as DockModel
+import "../Opacity.js" as Opacity
 
 BorderSurface {
   id: contextMenu
@@ -16,7 +17,7 @@ BorderSurface {
   component MenuDivider: DockMenuDivider { menuWidth: contextMenu.rowWidth }
   visible: contextMenu.dock.contextAppId !== ""
   z: 100
-  color: Util.alpha(Color.menu.background, contextMenu.dock.dockSurfaceOpacity)
+  color: Util.alpha(Color.menu.background, Style.popupSurfaceOpacity)
   borderSpec: Border.surfaceSpec("menu", "border",
     Util.alpha(Color.menu.border, Style.popupBorderOpacity), 1)
   radius: Style.cornerRadius
@@ -35,8 +36,8 @@ BorderSurface {
     ? menuColumn.implicitHeight + contentTopInset + contentBottomInset
     : 0
 
-  x: contextMenu.dock.vertical ? contextMenu.dock.panelCross(width) : contextMenu.dock.panelMain(width, contextMenu.dock.contextAnchor)
-  y: contextMenu.dock.vertical ? contextMenu.dock.panelMain(height, contextMenu.dock.contextAnchor) : contextMenu.dock.panelCross(height)
+  x: contextMenu.dock.panelX(width, contextMenu.dock.contextAnchor)
+  y: contextMenu.dock.panelY(height)
 
   Column {
     id: menuColumn
@@ -95,7 +96,8 @@ BorderSurface {
         }
 
         ContextRow {
-          text: "Position: " + contextMenu.dock.edgeLabel(contextMenu.dock.edge) + (contextMenu.dock.linkToBar ? " (linked)" : "") + " ›"
+          text: "Position: " + contextMenu.dock.edgeLabel(contextMenu.dock.edge) + " ›"
+          visible: !contextMenu.dock.barShown
           onTriggered: contextMenu.dock.settingsSubmenu = "position"
         }
       }
@@ -312,35 +314,15 @@ BorderSurface {
         }
 
         ContextRow {
-          text: "Opposite the Bar"
-          checked: contextMenu.dock.linkToBar
-          onTriggered: contextMenu.dock.setLinkToBar(!contextMenu.dock.linkToBar)
-        }
-
-        MenuDivider {}
-
-        ContextRow {
           text: "Bottom"
-          checked: !contextMenu.dock.linkToBar && contextMenu.dock.dockEdge === "bottom"
+          checked: contextMenu.dock.dockEdge === "bottom"
           onTriggered: contextMenu.dock.setDockEdge("bottom")
         }
 
         ContextRow {
           text: "Top"
-          checked: !contextMenu.dock.linkToBar && contextMenu.dock.dockEdge === "top"
+          checked: contextMenu.dock.dockEdge === "top"
           onTriggered: contextMenu.dock.setDockEdge("top")
-        }
-
-        ContextRow {
-          text: "Left"
-          checked: !contextMenu.dock.linkToBar && contextMenu.dock.dockEdge === "left"
-          onTriggered: contextMenu.dock.setDockEdge("left")
-        }
-
-        ContextRow {
-          text: "Right"
-          checked: !contextMenu.dock.linkToBar && contextMenu.dock.dockEdge === "right"
-          onTriggered: contextMenu.dock.setDockEdge("right")
         }
       }
 
@@ -360,30 +342,14 @@ BorderSurface {
         }
 
         ContextRow {
-          text: "Shape: " + (contextMenu.dock.dockShape === "theme" || contextMenu.dock.dockShape === "auto" ? "Auto (Theme)" : (contextMenu.dock.dockShape === "round" || contextMenu.dock.dockShape === "pill" ? "Round" : (contextMenu.dock.dockShape === "square" ? "Square" : "Rounded"))) + " ›"
-          onTriggered: contextMenu.dock.settingsSubmenu = "shape"
-        }
-
-        ContextRow {
-          text: "Opacity: " + (contextMenu.dock.dockOpacity < 0 ? "Auto (Theme)" : (contextMenu.dock.dockOpacity >= 0.95 ? "Opaque" : (contextMenu.dock.dockOpacity >= 0.75 ? "Glass" : (contextMenu.dock.dockOpacity >= 0.55 ? "Frosted Glass" : (contextMenu.dock.dockOpacity >= 0.20 ? "Translucent" : "Transparent"))))) + " ›"
+          text: "Opacity: " + (contextMenu.dock.dockOpacity < 0 ? "Auto (Theme)" : Opacity.nearest(contextMenu.dock.dockOpacity).name) + " ›"
           onTriggered: contextMenu.dock.settingsSubmenu = "opacity"
-        }
-
-        ContextRow {
-          text: "Color: " + (contextMenu.dock.dockBgColor === "theme" || !contextMenu.dock.dockBgColor ? "Theme" : (contextMenu.dock.dockBgColor === "none" ? "No Color" : "Custom")) + " ›"
-          onTriggered: contextMenu.dock.settingsSubmenu = "color"
         }
 
         MenuDivider {}
 
         ContextRow {
-          text: contextMenu.dock.linked ? "Transparent (with bar)" : "Transparent"
-          checked: contextMenu.dock.transparent
-          onTriggered: contextMenu.dock.setTransparent(!contextMenu.dock.transparent)
-        }
-
-        ContextRow {
-          text: contextMenu.dock.linked ? "Blur (with bar)" : "Blur"
+          text: "Blur"
           checked: contextMenu.dock.blurred
           onTriggered: contextMenu.dock.setBlur(!contextMenu.dock.blurred)
         }
@@ -459,6 +425,15 @@ BorderSurface {
         }
 
         ContextRow {
+          text: "Running Indicators"
+          checked: contextMenu.dock.showIndicators
+          onTriggered: {
+            contextMenu.dock.showIndicators = !contextMenu.dock.showIndicators
+            contextMenu.dock.saveConfig()
+          }
+        }
+
+        ContextRow {
           text: "Window Previews"
           checked: contextMenu.dock.advancedTooltips
           onTriggered: {
@@ -481,6 +456,15 @@ BorderSurface {
           checked: contextMenu.dock.showMinimizedTiles
           onTriggered: {
             contextMenu.dock.showMinimizedTiles = !contextMenu.dock.showMinimizedTiles
+            contextMenu.dock.saveConfig()
+          }
+        }
+
+        ContextRow {
+          text: "Recent Apps"
+          checked: contextMenu.dock.showRecents
+          onTriggered: {
+            contextMenu.dock.showRecents = !contextMenu.dock.showRecents
             contextMenu.dock.saveConfig()
           }
         }
@@ -517,6 +501,27 @@ BorderSurface {
           text: "None"
           checked: contextMenu.dock.hoverEffect === "off"
           onTriggered: contextMenu.dock.setHoverEffect("off")
+        }
+
+        MenuDivider {}
+
+        ContextRow {
+          text: "Magnification"
+          isHeader: true
+        }
+
+        Repeater {
+          model: contextMenu.dock.magnificationPresets
+          ContextRow {
+            required property var modelData
+            text: modelData.name
+            checked: contextMenu.dock.magnification === modelData.scale
+            disabled: contextMenu.dock.hoverEffect === "off"
+            onTriggered: {
+              contextMenu.dock.magnification = modelData.scale
+              contextMenu.dock.saveConfig()
+            }
+          }
         }
       }
 
@@ -689,137 +694,6 @@ BorderSurface {
 
       Column {
         spacing: Style.space(1)
-        visible: contextMenu.dock.settingsSubmenu === "shape"
-
-        ContextRow {
-          text: "‹ Back"
-          textColor: Color.bar.active
-          onTriggered: contextMenu.dock.settingsSubmenu = "appearance"
-        }
-
-        ContextRow {
-          text: "Dock Shape"
-          isHeader: true
-        }
-
-        ContextRow {
-          text: "Auto (Theme)"
-          checked: contextMenu.dock.dockShape === "theme" || contextMenu.dock.dockShape === "auto"
-          onTriggered: contextMenu.dock.setDockShape("theme")
-        }
-
-        ContextRow {
-          text: "Rounded"
-          checked: contextMenu.dock.dockShape === "rounded"
-          onTriggered: contextMenu.dock.setDockShape("rounded")
-        }
-
-        ContextRow {
-          text: "Round (Pill)"
-          checked: contextMenu.dock.dockShape === "round" || contextMenu.dock.dockShape === "pill"
-          onTriggered: contextMenu.dock.setDockShape("round")
-        }
-
-        ContextRow {
-          text: "Square"
-          checked: contextMenu.dock.dockShape === "square"
-          onTriggered: contextMenu.dock.setDockShape("square")
-        }
-      }
-
-      Column {
-        spacing: Style.space(1)
-        visible: contextMenu.dock.settingsSubmenu === "color"
-
-        ContextRow {
-          text: "‹ Back"
-          textColor: Color.bar.active
-          onTriggered: contextMenu.dock.settingsSubmenu = "appearance"
-        }
-
-        ContextRow {
-          text: "Background Color"
-          isHeader: true
-        }
-
-        ContextRow {
-          text: "Theme (Default)"
-          checked: contextMenu.dock.dockBgColor === "theme" || !contextMenu.dock.dockBgColor
-          onTriggered: contextMenu.dock.setDockBgColor("theme")
-        }
-
-        ContextRow {
-          text: "No Color"
-          checked: contextMenu.dock.dockBgColor === "none"
-          onTriggered: contextMenu.dock.setDockBgColor("none")
-        }
-
-        Rectangle {
-          width: parent.width
-          height: 1
-          color: Util.alpha(Color.menu.border, 0.4)
-        }
-
-        ContextRow {
-          text: "Presets"
-          isHeader: true
-        }
-
-        Item {
-          readonly property bool isMenuContent: true
-          implicitWidth: Math.max(220, 5 * Style.space(24) + 4 * Style.space(4) + Style.space(16))
-          implicitHeight: 2 * Style.space(24) + Style.space(4) + Style.space(8)
-          width: contextMenu.rowWidth > 0 ? contextMenu.rowWidth : implicitWidth
-          height: implicitHeight
-
-          Grid {
-            id: swatchGrid
-            anchors.centerIn: parent
-            columns: 5
-            spacing: Style.space(4)
-
-            readonly property var presetColors: [
-              "#000000", "#181825", "#1e1e2e", "#0f172a", "#111827",
-              "#062e24", "#1c1917", "#2c0b16", "#1e102d", "#334155"
-            ]
-
-            Repeater {
-              model: parent.presetColors
-              delegate: Rectangle {
-                id: swatchRect
-                required property string modelData
-                width: Style.space(24)
-                height: Style.space(24)
-                radius: Style.space(4)
-                color: modelData
-                border.color: contextMenu.dock.dockBgColor === modelData
-                  ? Color.bar.active
-                  : Util.alpha(Color.menu.border, 0.8)
-                border.width: contextMenu.dock.dockBgColor === modelData ? 2 : 1
-
-                Rectangle {
-                  visible: contextMenu.dock.dockBgColor === swatchRect.modelData
-                  anchors.centerIn: parent
-                  width: Style.space(8)
-                  height: Style.space(8)
-                  radius: Style.space(4)
-                  color: Color.bar.active
-                }
-
-                MouseArea {
-                  anchors.fill: parent
-                  hoverEnabled: true
-                  cursorShape: Qt.PointingHandCursor
-                  onClicked: contextMenu.dock.setDockBgColor(swatchRect.modelData)
-                }
-              }
-            }
-          }
-        }
-      }
-
-      Column {
-        spacing: Style.space(1)
         visible: contextMenu.dock.settingsSubmenu === "opacity"
 
         ContextRow {
@@ -839,34 +713,14 @@ BorderSurface {
           onTriggered: contextMenu.dock.setDockOpacity(-1.0)
         }
 
-        ContextRow {
-          text: "Opaque (100%)"
-          checked: contextMenu.dock.dockOpacity >= 0.95
-          onTriggered: contextMenu.dock.setDockOpacity(1.0)
-        }
-
-        ContextRow {
-          text: "Glass (80%)"
-          checked: contextMenu.dock.dockOpacity >= 0.75 && contextMenu.dock.dockOpacity < 0.95
-          onTriggered: contextMenu.dock.setDockOpacity(0.80)
-        }
-
-        ContextRow {
-          text: "Frosted Glass (65%)"
-          checked: contextMenu.dock.dockOpacity >= 0.55 && contextMenu.dock.dockOpacity < 0.75
-          onTriggered: contextMenu.dock.setDockOpacity(0.65)
-        }
-
-        ContextRow {
-          text: "Translucent (35%)"
-          checked: contextMenu.dock.dockOpacity >= 0.20 && contextMenu.dock.dockOpacity < 0.55
-          onTriggered: contextMenu.dock.setDockOpacity(0.35)
-        }
-
-        ContextRow {
-          text: "Transparent (0%)"
-          checked: contextMenu.dock.dockOpacity >= 0.0 && contextMenu.dock.dockOpacity < 0.20
-          onTriggered: contextMenu.dock.setDockOpacity(0.0)
+        Repeater {
+          model: Opacity.presets
+          ContextRow {
+            required property var modelData
+            text: Opacity.label(modelData)
+            checked: contextMenu.dock.dockOpacity >= 0 && Opacity.nearest(contextMenu.dock.dockOpacity).value === modelData.value
+            onTriggered: contextMenu.dock.setDockOpacity(modelData.value)
+          }
         }
       }
 
@@ -926,19 +780,19 @@ BorderSurface {
         }
 
         ContextRow {
-          text: "Compact (2px)"
+          text: "Compact"
           checked: contextMenu.dock.itemSpacing === 2
           onTriggered: contextMenu.dock.setItemSpacing(2)
         }
 
         ContextRow {
-          text: "Normal (4px)"
+          text: "Normal"
           checked: contextMenu.dock.itemSpacing === 4
           onTriggered: contextMenu.dock.setItemSpacing(4)
         }
 
         ContextRow {
-          text: "Relaxed (8px)"
+          text: "Relaxed"
           checked: contextMenu.dock.itemSpacing === 8
           onTriggered: contextMenu.dock.setItemSpacing(8)
         }
@@ -977,6 +831,36 @@ BorderSurface {
         danger: true
         onTriggered: {
           contextMenu.dock.toggleFolderPin(contextMenu.dock.contextFolderPath, contextMenu.dock.contextFolderName, "")
+          contextMenu.dock.closeContext()
+        }
+      }
+    }
+
+    Column {
+      spacing: Style.space(2)
+      visible: contextMenu.dock.contextAppId === "__trash_context__"
+
+      ContextRow {
+        text: "Trash"
+        isHeader: true
+      }
+
+      ContextRow {
+        text: "Open Trash"
+        onTriggered: {
+          contextMenu.dock.openTrash()
+          contextMenu.dock.closeContext()
+        }
+      }
+
+      MenuDivider {}
+
+      ContextRow {
+        text: "Empty Trash"
+        danger: true
+        disabled: !contextMenu.dock.trashFull
+        onTriggered: {
+          Util.execDetached("gio trash --empty")
           contextMenu.dock.closeContext()
         }
       }
@@ -1130,6 +1014,16 @@ BorderSurface {
         }
 
         ContextRow {
+          text: "Show All Windows"
+          visible: contextMenu.dock.contextWindows > 1
+          onTriggered: {
+            var appId = contextMenu.dock.contextWindowList[0].appId
+            contextMenu.dock.closeContext()
+            contextMenu.dock.shell.expose?.openApp(appId)
+          }
+        }
+
+        ContextRow {
           text: contextMenu.dock.contextWindows > 0 ? "New Window" : "Launch"
           visible: contextMenu.dock.contextDesktopActions.length === 0
           onTriggered: {
@@ -1160,12 +1054,26 @@ BorderSurface {
         ContextRow {
           text: contextMenu.dock.contextPinned ? "Unpin from Dock" : "Pin to Dock"
           onTriggered: {
-            var deskEntry = DockModel.entryFor(contextMenu.dock.appRows, contextMenu.dock.contextAppId)
-            if (!deskEntry && typeof DesktopEntries !== "undefined" && DesktopEntries) {
-              deskEntry = DesktopEntries.heuristicLookup(contextMenu.dock.contextAppId) || DesktopEntries.byId(contextMenu.dock.contextAppId)
-            }
-            var canonicalId = (deskEntry && deskEntry.id) ? deskEntry.id : contextMenu.dock.contextAppId
-            contextMenu.dock.togglePin(canonicalId)
+            contextMenu.dock.togglePin(contextMenu.dock.contextDesktopId || contextMenu.dock.contextAppId)
+            contextMenu.dock.closeContext()
+          }
+        }
+
+        ContextRow {
+          text: "Remove from Dock"
+          visible: contextMenu.dock.contextIsRecent
+          onTriggered: {
+            contextMenu.dock.removeRecent(contextMenu.dock.contextAppId)
+            contextMenu.dock.closeContext()
+          }
+        }
+
+        ContextRow {
+          text: "Open at Login"
+          visible: contextMenu.dock.contextDesktopId !== ""
+          checked: contextMenu.dock.contextOpensAtLogin
+          onTriggered: {
+            contextMenu.dock.toggleOpenAtLogin()
             contextMenu.dock.closeContext()
           }
         }
@@ -1176,6 +1084,16 @@ BorderSurface {
           danger: true
           onTriggered: {
             DockModel.closeApp((ToplevelManager.toplevels ? ToplevelManager.toplevels.values : []), contextMenu.dock.contextAppId)
+            contextMenu.dock.closeContext()
+          }
+        }
+
+        ContextRow {
+          text: "Force Quit"
+          visible: contextMenu.dock.contextWindows > 0
+          danger: true
+          onTriggered: {
+            contextMenu.dock.forceQuit(contextMenu.dock.contextWindowList)
             contextMenu.dock.closeContext()
           }
         }

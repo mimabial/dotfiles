@@ -2,7 +2,7 @@
 Type=Application
 Name=Impala
 Icon=network-wireless
-Exec=/usr/bin/true
+Exec=/home/rifle/.local/bin/hyprshell launch/tui --app-id org.tui.Impala --title Impala -- impala
 Terminal=false
 NoDisplay=true
 StartupWMClass=org.tui.Impala

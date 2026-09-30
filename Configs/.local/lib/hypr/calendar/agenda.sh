@@ -332,6 +332,12 @@ try:
         state = json.load(handle)
 except (OSError, ValueError):
     state = {}
+try:
+    with open(os.path.join(os.path.dirname(state_path), "task-order.json"), encoding="utf-8") as handle:
+        order_state = json.load(handle)
+    later = set(order_state.get("later", [])) if isinstance(order_state, dict) else set()
+except (OSError, ValueError):
+    later = set()
 today = datetime.date.today().isoformat()
 old_items = state.get("items", {}) if isinstance(state.get("items"), dict) else {}
 notice = 0
@@ -340,7 +346,7 @@ if mutate:
     rolled = bool(state.get("day")) and state["day"] < today
     next_items = {}
     for item in todos:
-        if item.get("completed") or item.get("due") is not None:
+        if item.get("completed") or item.get("due") is not None or item["uid"] in later:
             continue
         uid = item["uid"]
         saved = old_items.get(uid, {})
@@ -364,7 +370,7 @@ if mutate:
 
 items = state.get("items", {})
 for item in todos:
-    item["carries"] = int(items.get(item["uid"], {}).get("carries", 0) or 0)
+    item["carries"] = 0 if item["uid"] in later else int(items.get(item["uid"], {}).get("carries", 0) or 0)
 todos.sort(key=lambda item: (
     bool(item.get("completed")), item.get("due") if item.get("due") is not None else 99999999999,
     item.get("priority") or 10, str(item.get("summary", "")).lower()))

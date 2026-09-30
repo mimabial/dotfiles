@@ -12,7 +12,6 @@ BarButton {
     tooltip: root.displayPanel && root.displayPanel.activeProfile
         ? "Display profile: " + root.displayPanel.activeProfile + "\nBacklight: " + Backlight.percent + "%"
         : "Backlight level: " + Backlight.percent + "%\nUsing: " + Backlight.device
-    radius: shell.moduleRadius
     onClicked: shell.togglePopup(popupName)
     onWheeled: delta => {
         shell.run(["hyprshell", "brightness-control.sh", delta > 0 ? "i" : "d"], Backlight.refresh)

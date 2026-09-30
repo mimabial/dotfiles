@@ -47,6 +47,7 @@ local function sync_scrolling_width()
         local left, right = m.position.x + m.reserved.left + gaps.left + border, m.position.x + m.size.width / m.scale - m.reserved.right - gaps.right - border
         table.sort(windows, function(a, b) return a.at.x < b.at.x end)
         local active, index, shift = hl.get_active_window(), 0, 0
+        if not active then return end
         for i, w in ipairs(windows) do if w.address == active.address then index = i; break end end
         if #windows > 3 and index > 1 and index < #windows then
             local pair = math.min(index, #windows - 2)
@@ -55,7 +56,12 @@ local function sync_scrolling_width()
             local first, last = windows[1], windows[#windows]
             shift = first.at.x > left and left - first.at.x or last.at.x + last.size.x < right and right - last.at.x - last.size.x or 0
         end
-        if shift ~= 0 then hl.dispatch(hl.dsp.layout("move " .. (shift > 0 and "+" or "") .. shift)) end
+        if shift == 0 then return end
+        local no_warps = hl.get_config("cursor.no_warps")
+        hl.dispatch(hl.dsp.layout("move " .. (shift > 0 and "+" or "") .. shift))
+        hl.config({cursor = {no_warps = true}})
+        hl.dispatch(hl.dsp.focus({window = "address:" .. active.address}))
+        hl.config({cursor = {no_warps = no_warps}})
     end
 end
 for _, event in ipairs({"window.open", "window.destroy", "window.move_to_workspace", "window.active", "workspace.active"}) do hl.on(event, sync_scrolling_width) end
@@ -143,6 +149,7 @@ local startup = {
     vars.get("start.IDLE_MANAGER"),
     vars.get("start.ZSH_ZCOMPDUMP"),
     vars.get("start.AUTH_DIALOGUE"),
+    vars.get("start.LOCATION_AGENT"),
     vars.get("start.WALLPAPER"),
     vars.get("start.QUICKSHELL"),
     vars.get("start.STYLE_MAP"),

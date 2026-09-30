@@ -16,6 +16,8 @@ Loader {
     readonly property var moduleProps: typeof moduleEntry === "string" ? null : (moduleEntry.props || null)
     readonly property bool spacer: moduleId === "spacer"
     readonly property bool customSource: !registry[moduleId] && !!moduleEntry.source
+    // a hosted drag released where no drop area of its own window took it
+    signal droppedOutside(point position)
     function moduleVisible(module: var): bool {
         if (!module) return true
         if ("shown" in module) return module.shown
@@ -51,7 +53,7 @@ Loader {
         onActiveChanged: {
             if (active) { root.shell.dragKey = root.moduleKey; marker.Drag.active = true }
             else {
-                if (marker.Drag.active) marker.Drag.drop()
+                if (marker.Drag.active && marker.Drag.drop() === Qt.IgnoreAction && root.hosted) root.droppedOutside(marker.mapToItem(null, 0, 0))
                 if (root.shell.dragKey === root.moduleKey) root.shell.dragKey = ""
             }
         }

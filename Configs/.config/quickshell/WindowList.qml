@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Widgets
 import "taskbar/AppModel.js" as AppModel
@@ -11,6 +12,11 @@ Item {
     id: root
     required property var shell
     property bool popupEnabled: true
+    property bool pins: false
+    property bool dash: false
+    property var pinned: []
+    readonly property int dashWidth: Style.px(6)
+    readonly property int activeDashWidth: Style.px(16)
     readonly property var box: shell.style.box("taskbar")
     property int iconSize: 18
     readonly property int scaledIcon: Math.round(box.iconSize !== undefined ? box.iconSize : iconSize)
@@ -56,13 +62,25 @@ Item {
     }
 
     function refreshSlots() {
-        const fingerprint = AppModel.windowFingerprint(windows)
+        const fingerprint = AppModel.windowFingerprint(windows) + "\u0001" + pinned.join("\u0002")
         if (fingerprint === lastFingerprint) return
         lastFingerprint = fingerprint
-        const next = AppModel.recordsFor(windows)
+        const next = AppModel.withPins(pinned, AppModel.recordsFor(windows))
         if (!AppModel.sameKeys(next, slots)) slots = next
     }
     onWindowsChanged: refreshSlots()
+    onPinnedChanged: refreshSlots()
+    function isPinned(record) { return !!record && pinned.some(id => String(id).toLowerCase() === record.key) }
+    function togglePin(record) {
+        pinned = isPinned(record) ? pinned.filter(id => String(id).toLowerCase() !== record.key) : pinned.concat(record.desktopId)
+        pinsFile.setText(JSON.stringify(pinned, null, 2) + "\n")
+    }
+    FileView {
+        id: pinsFile
+        path: root.pins ? root.shell.home + "/.config/quickshell/taskbar/pins.json" : ""
+        printErrors: false
+        onLoaded: { try { root.pinned = JSON.parse(text()) } catch (error) { root.pinned = [] } }
+    }
     Component.onCompleted: refreshSlots()
 
     Connections {
@@ -162,7 +180,6 @@ Item {
                 readonly property bool active: matched.some(window => window.address === root.activeAddress)
                     || (!!root.activeAppId && String(modelData.desktopId || "").toLowerCase() === root.activeAppId)
                 readonly property bool urgent: !active && !!root.shell.dock && matched.some(window => root.shell.dock.urgentMap[window.address])
-                readonly property color indicatorForeground: root.shell.dock ? root.shell.dock.dockForeground : root.shell.foreground
                 property real pulse: 1
                 SequentialAnimation on pulse {
                     running: slot.urgent
@@ -185,7 +202,7 @@ Item {
                     anchors.fill: parent
                     anchors.topMargin: slot.box.margin[0]; anchors.rightMargin: slot.box.margin[1]
                     anchors.bottomMargin: slot.box.margin[2]; anchors.leftMargin: slot.box.margin[3]
-                    radius: root.shell.moduleRadius
+                    radius: slot.box.borderRadius ?? root.shell.moduleRadius
                     color: slot.boxColor("backgroundColor", "backgroundColor", root.shell.background)
                     border.color: slot.boxColor("borderColor", "borderColor", root.shell.foreground)
                     border.width: taskSideBorder.replacesBorder ? 0 : slot.box.borderWidth
@@ -197,9 +214,18 @@ Item {
                     width: root.scaledIcon; height: root.scaledIcon
                     source: root.iconFor(slot.modelData)
                 }
+                Rectangle {
+                    visible: root.dash && slot.running
+                    anchors.horizontalCenter: frame.horizontalCenter
+                    anchors.bottom: frame.bottom; anchors.bottomMargin: Style.xxs
+                    width: slot.active ? root.activeDashWidth : root.dashWidth; height: indicators.dotSize; radius: height / 2
+                    color: slot.urgent ? root.shell.urgent : slot.active ? root.shell.accent : root.shell.alpha(root.shell.foreground, .5)
+                    opacity: slot.urgent ? 0.4 + 0.6 * slot.pulse : 1
+                    Behavior on width { NumberAnimation { duration: 140; easing.type: Easing.OutQuad } }
+                }
                 Row {
                     id: indicators
-                    visible: slot.running
+                    visible: slot.running && !root.dash
                     readonly property int count: slot.matched.length > 5 ? 2 : slot.matched.length
                     readonly property int dotSize: Style.px(3)
                     spacing: Style.px(1)
@@ -219,8 +245,8 @@ Item {
                             width: focused ? Style.px(7) : indicators.dotSize
                             height: indicators.dotSize
                             radius: Math.min(width, height) / 2
-                            color: focused ? root.shell.accent : parked ? "transparent" : slot.urgent ? root.shell.urgent : root.shell.alpha(slot.indicatorForeground, 0.88)
-                            border.color: focused ? Qt.rgba(0, 0, 0, 0.45) : parked ? (slot.urgent ? root.shell.urgent : root.shell.alpha(slot.indicatorForeground, 0.88)) : Qt.rgba(0, 0, 0, 0.45)
+                            color: focused ? root.shell.accent : parked ? "transparent" : slot.urgent ? root.shell.urgent : root.shell.alpha(root.shell.foreground, 0.88)
+                            border.color: focused ? Qt.rgba(0, 0, 0, 0.45) : parked ? (slot.urgent ? root.shell.urgent : root.shell.alpha(root.shell.foreground, 0.88)) : Qt.rgba(0, 0, 0, 0.45)
                             border.width: 1
                             opacity: slot.urgent ? 0.4 + 0.6 * slot.pulse : 1
                             Behavior on width { NumberAnimation { duration: 140; easing.type: Easing.OutQuad } }
@@ -238,7 +264,7 @@ Item {
                             width: overflowText.implicitWidth + Style.px(2)
                             height: Style.px(5)
                             radius: height / 2
-                            color: root.shell.alpha(slot.indicatorForeground, 0.20)
+                            color: root.shell.alpha(root.shell.foreground, 0.20)
                             border.color: Qt.rgba(0, 0, 0, 0.35)
                             border.width: 1
                             Text {
@@ -246,7 +272,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: "+" + (slot.matched.length - indicators.count)
                                 textFormat: Text.PlainText
-                                color: slot.indicatorForeground
+                                color: root.shell.foreground
                                 font.family: root.shell.fontFamily
                                 font.pixelSize: Math.max(7, Style.caption - 4)
                                 font.bold: true

@@ -7,8 +7,12 @@ import "DockModel.js" as DockModel
 Item {
   id: item
   required property var dock
-  required property Item dockContent
   required property var groupData
+
+  function trigger(menu) {
+    if (menu) item.dock.openAppGroupContext(item.groupData, item.dock.slotCenterX(item))
+    else item.dock.openAppGroup(item.groupData, item.dock.slotCenterX(item))
+  }
   property real homeCenter: 0
 
   readonly property string groupId: String(groupData.id || "")
@@ -30,8 +34,8 @@ Item {
     return { windows: windows, active: active }
   }
   readonly property real slotMain: dock.iconSlot * (dock.waveHover ? magnifyScale : 1)
-  width: dock.vertical ? dock.iconSlot : slotMain
-  height: dock.vertical ? slotMain : dock.iconSlot
+  width: slotMain
+  height: dock.iconSlot
 
   function iconSource(appId) {
     var entry = dock.appLibrary.lookup(appId) || DockModel.entryFor(dock.appRows, appId)
@@ -55,7 +59,7 @@ Item {
 
     Rectangle {
       anchors.fill: parent
-      radius: Math.min(width / 4, item.dock.effectiveCardRadius)
+      radius: Math.min(width / 4, Style.cornerRadius)
       color: Util.alpha(Color.bar.background, 0.65)
       border.color: item.isDropTarget ? Color.accent : Util.alpha(Color.menu.border, 0.65)
       border.width: item.isDropTarget ? 2 : 1
@@ -83,19 +87,14 @@ Item {
   }
 
   Rectangle {
-    visible: item.runningInfo.windows > 0 || item.isOpen
+    visible: item.dock.showIndicators && (item.runningInfo.windows > 0 || item.isOpen)
     readonly property bool emphasized: item.runningInfo.active || item.isOpen
-    readonly property real floorGap: Style.space(1)
-    width: item.dock.vertical ? Style.space(4) : Style.space(emphasized ? 12 : 4)
-    height: item.dock.vertical ? Style.space(emphasized ? 12 : 4) : Style.space(4)
-    radius: Math.min(width, height) / 2
-    x: item.dock.vertical
-      ? (item.dock.edge === "left" ? floorGap : item.width - width - floorGap)
-      : (item.width - width) / 2
-    y: item.dock.vertical
-      ? (item.height - height) / 2
-      : (item.dock.edge === "top" ? floorGap : item.height - height - floorGap)
-    color: emphasized ? Color.bar.active : Util.alpha(item.dock.dockForeground, 0.88)
+    width: Style.space(emphasized ? 12 : 4)
+    height: Style.space(4)
+    radius: height / 2
+    x: (item.width - width) / 2
+    y: item.dock.indicatorY(item.height, height)
+    color: emphasized ? Color.bar.active : Util.alpha(Color.bar.text, 0.88)
   }
 
   MouseArea {
@@ -105,13 +104,7 @@ Item {
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     cursorShape: Qt.PointingHandCursor
     onEntered: item.dock.slotEntered("__app_group_context__", "", item.groupId)
-    onClicked: function(mouse) {
-      var point = item.mapToItem(item.dockContent, item.width / 2, item.height / 2)
-      if (!point) return
-      var anchor = item.dock.vertical ? point.y : point.x
-      if (mouse.button === Qt.RightButton) item.dock.openAppGroupContext(item.groupData, anchor)
-      else item.dock.openAppGroup(item.groupData, anchor)
-    }
+    onClicked: function(mouse) { item.trigger(mouse.button === Qt.RightButton) }
   }
 
   HoverTooltip {
@@ -119,7 +112,7 @@ Item {
     text: String(item.groupData.name || "Applications") + " (" + item.appIds.length + " apps)"
     hovered: area.containsMouse
     blocked: item.dock.activeAppGroupId !== ""
-    x: item.dock.tipX(item.width, width)
+    x: (item.width - width) / 2
     y: item.dock.tipY(item.height, height)
   }
 }

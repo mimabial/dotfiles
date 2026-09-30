@@ -13,20 +13,16 @@ QtObject {
     required property string surface
     required property bool enabled
 
-    // Blur covers the whole layer surface — and an xdg popup counts as part of
-    // its parent surface, so a bar rule blurs every popup's full area too, far
-    // past the bar itself. A threshold at or above zero leaves pixels that faint
-    // alone, confining the effect to what the surface actually paints: the panel
-    // and its cards, not the empty room reserved around them. A fully
-    // transparent surface paints nothing and so blurs nothing — reach for an
-    // opacity preset rather than the transparency toggle to get frosted glass.
+    // Blur spans each surface and popup window whole; a threshold at or above
+    // zero confines it to the pixels actually painted.
     property real ignoreAlpha: -1
 
     function apply() {
+        const blur = root.enabled ? "true" : "false"
         Quickshell.execDetached(["hyprctl", "eval",
             'hl.layer_rule({ name = "quickshell-' + root.surface + '-blur"'
             + ', match = { namespace = "^' + root.surface + '$" }'
-            + ', blur = ' + (root.enabled ? "true" : "false")
+            + ', blur = ' + blur + ', blur_popups = ' + blur
             + (root.ignoreAlpha >= 0 ? ', ignore_alpha = ' + root.ignoreAlpha : "")
             + ' })'])
     }

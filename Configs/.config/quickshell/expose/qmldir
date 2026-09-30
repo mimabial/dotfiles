@@ -9,3 +9,4 @@ SettingsCategoryButton 1.0 SettingsCategoryButton.qml
 SettingToggle 1.0 SettingToggle.qml
 DialogButton 1.0 DialogButton.qml
 WindowCard 1.0 WindowCard.qml
+WorkspaceStrip 1.0 WorkspaceStrip.qml

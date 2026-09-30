@@ -3,7 +3,7 @@ local runtime = require("runtime")
 local vars = require("vars")
 
 vars.set("WORKFLOW_ICON", "󰽏")
-vars.set("WORKFLOW_DESCRIPTION", "Window-focused workspace // Uses scrolling and winbar with effects disabled")
+vars.set("WORKFLOW_DESCRIPTION", "Window-focused workspace // Floating windows and winbar with effects disabled")
 vars.set("WORKFLOW_QUICKSHELL_LAYOUT", "winbar")
 runtime.config("decoration.shadow.enabled", 0)
 runtime.config("decoration.blur.enabled", 0)
@@ -48,3 +48,4 @@ hl.window_rule({
 	["match"] = { ["class"] = "^(org\\.kde\\.dolphin)$" },
 	["opacity"] = "0.98 override 0.9 override",
 })
+hl.window_rule({ ["name"] = "workflow-windows-float", ["match"] = { ["class"] = "(.*)" }, ["float"] = true })

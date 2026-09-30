@@ -250,8 +250,8 @@ seed_current_uris() {
 }
 
 apply_stored_uris() {
-  [[ -z "$usb_uri" && -n "$stored_usb_uri" ]] && usb_uri="$stored_usb_uri"
-  [[ -z "$network_uri" && -n "$stored_network_uri" ]] && network_uri="$stored_network_uri"
+  usb_uri="${usb_uri:-$stored_usb_uri}"
+  network_uri="${network_uri:-$stored_network_uri}"
 }
 
 discover_candidate_uris() {

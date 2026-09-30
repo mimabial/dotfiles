@@ -2,12 +2,15 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell.Io
+import "TasksModel.js" as TasksModel
 
 PopupCard {
     id: root
     popupName: "tasks"
-    keyboardHint: addField.activeFocus || editingId !== "" ? "Type task · Enter save · Esc cancel" : "↑↓ move · Tab view · Space done · Q add · E edit · ? help · Esc"
-    contentWidth: Style.px(420)
+    keyboardHint: addField.activeFocus || editingId !== "" ? "Type task · Enter save · Esc cancel"
+        : searchField.activeFocus ? "Search titles and details · +category · @calendar · in:scope · Esc clear"
+        : "↑↓ move · Tab view · / search · S sort · F facets · Space done · ? help · Esc"
+    contentWidth: Style.px(420) * (facetsOpen ? 4 / 3 : 1)
     contentHeight: Math.max(tasksColumn.implicitHeight,
         showHelp ? helpColumn.implicitHeight : 0) + padding * 2
     wantsKeyboard: true
@@ -18,10 +21,19 @@ PopupCard {
     property int cursor: 0
     property string pendingDelete: ""
     property Item confirmingRow: null
-    property Item editingRow: null
+    property var editingRow: null
     property bool showHelp: false
     property string editingId: ""
     property var taskOrder: []
+    property var laterKeys: []
+    property var laterAdd: null
+    property string sortMode: "due"
+    property bool compact: false
+    property bool showFace: false
+    property bool facetsOpen: false
+    property string searchText: ""
+    property string listFilter: ""
+    property var hoveredDay: null
     onShowHelpChanged: if (open) leaveAdd()
 
     function leaveAdd() {
@@ -29,7 +41,10 @@ PopupCard {
         taskKeys.forceActiveFocus()
     }
 
-    readonly property var views: ["today", "overdue", "all", "done"]
+    readonly property var views: ["today", "later", "overdue", "all", "done"]
+    readonly property var sortModes: ["due", "manual", "priority"]
+    readonly property var searchScopes: ["open", "all", "done", "due", "rec"]
+    readonly property string effectiveView: TasksModel.scope(searchText) || view
     property string categoryFilter: ""
     readonly property var allCategories: {
         const seen = ({})
@@ -44,21 +59,34 @@ PopupCard {
     }
     readonly property string activeFilter:
         allCategories.indexOf(categoryFilter) >= 0 ? categoryFilter : ""
+    readonly property var allLists: [...new Set(todos.map(item => String(item.list || "")).filter(Boolean))].sort()
+    readonly property string activeList: allLists.indexOf(listFilter) >= 0 ? listFilter : ""
     function matchesFilter(item) {
-        if (activeFilter === "") return true
-        return (item.categories || []).some(tag => String(tag) === activeFilter)
+        return (activeFilter === "" || (item.categories || []).some(tag => String(tag) === activeFilter))
+            && (activeList === "" || String(item.list) === activeList)
     }
 
-    function taskKey(item) { return String(item.uid || (item.list + ":" + item.id)) }
-    function ordered(items) {
-        const rank = ({})
-        for (let index = 0; index < taskOrder.length; index++) rank[String(taskOrder[index])] = index
-        return items.slice().sort((left, right) => {
-            const a = rank[taskKey(left)], b = rank[taskKey(right)]
-            return a === undefined ? (b === undefined ? 0 : 1) : (b === undefined ? -1 : a - b)
-        })
+    function taskKey(item) { return TasksModel.key(item) }
+    function isLater(item) { return laterKeys.indexOf(taskKey(item)) >= 0 }
+    function saveOrder() {
+        orderFile.setText(JSON.stringify({ order: taskOrder, later: laterKeys,
+            sort: sortMode, compact: compact, face: showFace }) + "\n")
     }
-    readonly property var orderedTodos: ordered(todos)
+    function cycleSort() {
+        sortMode = sortModes[(sortModes.indexOf(sortMode) + 1) % sortModes.length]
+        saveOrder()
+    }
+    function toggleDensity() { compact = !compact; saveOrder() }
+    function toggleFace() { showFace = !showFace; saveOrder() }
+    function toggleLater(item) {
+        const key = taskKey(item)
+        laterKeys = isLater(item) ? laterKeys.filter(value => value !== key) : laterKeys.concat(key)
+        saveOrder()
+        const next = listed.findIndex(value => taskKey(value) === key)
+        cursor = next >= 0 ? next : Math.min(cursor, Math.max(0, listed.length - 1))
+        pendingDelete = ""
+    }
+    readonly property var orderedTodos: TasksModel.sorted(todos, sortMode, taskOrder)
 
     function startOfToday() {
         const now = new Date()
@@ -76,15 +104,20 @@ PopupCard {
         return due >= startOfToday() && due < startOfToday() + 86400000
     }
     readonly property var open_: orderedTodos.filter(item => item.completed !== true)
-    readonly property var listed: {
-        const base = view === "done" ? orderedTodos.filter(item => item.completed === true)
-            : view === "all" ? open_
-            : view === "overdue" ? open_.filter(item => isOverdue(item))
-            : open_.filter(item => isOverdue(item) || isToday(item) || dueMillis(item) < 0)
-        return base.filter(item => matchesFilter(item))
+    readonly property var visibleTasks: {
+        const base = effectiveView === "done" ? orderedTodos.filter(item => item.completed === true)
+            : effectiveView === "all" && TasksModel.scope(searchText) ? orderedTodos
+            : effectiveView === "open" || effectiveView === "all" ? open_
+            : effectiveView === "due" ? open_.filter(item => dueMillis(item) >= 0)
+            : effectiveView === "rec" ? open_.filter(item => item.recurring === true)
+            : effectiveView === "overdue" ? open_.filter(item => isOverdue(item))
+            : effectiveView === "later" ? open_.filter(item => isLater(item))
+            : open_.filter(item => !isLater(item)
+                && (isOverdue(item) || isToday(item) || dueMillis(item) < 0))
+        return base.filter(item => matchesFilter(item) && TasksModel.matches(item, searchText))
     }
     readonly property var sections: {
-        const rows = listed
+        const rows = visibleTasks
         const out = []
         let offset = 0
         const push = function (label, items) {
@@ -92,16 +125,26 @@ PopupCard {
             out.push({ label: label, items: items, offset: offset })
             offset += items.length
         }
-        if (view === "done") { push("COMPLETED", rows); return out }
-        if (view === "overdue") { push("OVERDUE", rows); return out }
-        push("OVERDUE", rows.filter(item => isOverdue(item)))
-        push("TODAY", rows.filter(item => isToday(item)))
-        if (view === "all")
-            push("LATER", rows.filter(item => !isOverdue(item) && !isToday(item)
+        if (effectiveView === "done") { push("COMPLETED", rows); return out }
+        if (effectiveView === "overdue") { push("OVERDUE", rows); return out }
+        if (effectiveView === "later") { push("LATER", rows); return out }
+        const active = rows.filter(item => item.completed !== true && !isLater(item))
+        push("OVERDUE", active.filter(item => isOverdue(item)))
+        push("TODAY", active.filter(item => isToday(item)))
+        if (["all", "open", "due", "rec"].includes(effectiveView))
+            push("UPCOMING", active.filter(item => !isOverdue(item) && !isToday(item)
                 && dueMillis(item) >= 0))
-        push("CARRIED", rows.filter(item => dueMillis(item) < 0 && Number(item.carries || 0) > 0))
-        push("NO DATE", rows.filter(item => dueMillis(item) < 0 && Number(item.carries || 0) === 0))
+        push("CARRIED", active.filter(item => dueMillis(item) < 0 && Number(item.carries || 0) > 0))
+        push("NO DATE", active.filter(item => dueMillis(item) < 0 && Number(item.carries || 0) === 0))
+        if (["all", "open", "due", "rec"].includes(effectiveView))
+            push("LATER", rows.filter(item => item.completed !== true && isLater(item)))
+        if (effectiveView === "all") push("COMPLETED", rows.filter(item => item.completed === true))
         return out
+    }
+    readonly property var listed: {
+        const items = []
+        for (const section of sections) items.push(...section.items)
+        return items
     }
     readonly property int dueCount: open_.filter(item => isOverdue(item) || isToday(item)).length
 
@@ -151,11 +194,10 @@ PopupCard {
             if (completed !== "") parts.push(completed)
             const due = dueLabel(item)
             if (due !== "") parts.push("due " + due)
-        } else {
-            const due = dueLabel(item)
-            if (due !== "") parts.push(due)
-        }
-        if (Number(item.carries || 0) > 0) parts.push("↻" + item.carries + " carried")
+        } else if (isOverdue(item)) parts.push("due " + dueLabel(item))
+        if (!isLater(item) && Number(item.carries || 0) > 0) parts.push("↻" + item.carries + " carried")
+        if ((item.categories || []).length) parts.push(item.categories.map(tag => "+" + tag).join(" "))
+        if (allLists.length > 1) parts.push("@" + item.list)
         return parts.join("  ·  ")
     }
 
@@ -166,6 +208,7 @@ PopupCard {
         const start = startOfToday(), end = start + 86400000
         let done = 0, total = 0
         for (const item of orderedTodos) {
+            if (isLater(item)) continue
             const due = dueMillis(item)
             const completed = Number(item.completed_at || 0) * 1000
             if ((!item.completed && (due < 0 || due < end))
@@ -183,12 +226,12 @@ PopupCard {
     }
     readonly property var mood: {
         const moods = {
-            idle: { label: "Idle", tagline: "Give the day a shape.", smile: .2, eyes: "flat", brow: 0, sweat: 0, sparkle: 0, wavy: false, urgency: 0 },
-            done: { label: "Relaxed", tagline: "Done and dusted.", smile: 1, eyes: "happy", brow: 0, sweat: 0, sparkle: 2, wavy: false, urgency: 0 },
-            easy: { label: "Easy", tagline: "Comfortably ahead.", smile: .8, eyes: "happy", brow: 0, sweat: 0, sparkle: 0, wavy: false, urgency: .1 },
-            focused: { label: "Focused", tagline: "Steady as it goes.", smile: .3, eyes: "open", brow: .2, sweat: 0, sparkle: 0, wavy: false, urgency: .3 },
-            worried: { label: "Worried", tagline: "The day is getting on.", smile: -.4, eyes: "open", brow: .65, sweat: 1, sparkle: 0, wavy: false, urgency: .62 },
-            stressed: { label: "Stressed", tagline: "Pick one and start it.", smile: -.9, eyes: "wide", brow: 1, sweat: 2, sparkle: 0, wavy: true, urgency: 1 }
+            idle: { label: "Idle", smile: .2, eyes: "flat", brow: 0, sweat: 0, sparkle: 0, wavy: false, urgency: 0 },
+            done: { label: "Relaxed", smile: 1, eyes: "happy", brow: 0, sweat: 0, sparkle: 2, wavy: false, urgency: 0 },
+            easy: { label: "Easy", smile: .8, eyes: "happy", brow: 0, sweat: 0, sparkle: 0, wavy: false, urgency: .1 },
+            focused: { label: "Focused", smile: .3, eyes: "open", brow: .2, sweat: 0, sparkle: 0, wavy: false, urgency: .3 },
+            worried: { label: "Worried", smile: -.4, eyes: "open", brow: .65, sweat: 1, sparkle: 0, wavy: false, urgency: .62 },
+            stressed: { label: "Stressed", smile: -.9, eyes: "wide", brow: 1, sweat: 2, sparkle: 0, wavy: true, urgency: 1 }
         }
         if (stats.total === 0) return moods.idle
         if (stats.done === stats.total) return moods.done
@@ -203,15 +246,11 @@ PopupCard {
         }
         return counts
     }
-    readonly property var history: {
-        const days = [], date = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        for (let offset = 13; offset >= 0; offset--) {
-            const day = new Date(date); day.setDate(day.getDate() - offset)
-            days.push({ key: dayKey(day), count: completionsByDay[dayKey(day)] || 0 })
-        }
-        return days
-    }
-    readonly property int historyMax: Math.max(1, ...history.map(day => day.count))
+    readonly property var activity: TasksModel.activity(todos.filter(item => matchesFilter(item)), now)
+    readonly property var topActivity: activity.topCategories.length > 0
+        ? activity.topCategories : activity.topCalendars
+    readonly property string topActivityLabel: activity.topCategories.length > 0 ? "CATEGORIES" : "CALENDARS"
+    readonly property int completedRetained: todos.filter(item => item.completed === true && matchesFilter(item)).length
     readonly property int streak: {
         const day = new Date(now.getFullYear(), now.getMonth(), now.getDate())
         if (!completionsByDay[dayKey(day)]) day.setDate(day.getDate() - 1)
@@ -219,7 +258,6 @@ PopupCard {
         while (completionsByDay[dayKey(day)]) { count++; day.setDate(day.getDate() - 1) }
         return count
     }
-    readonly property int completedRetained: todos.filter(item => item.completed === true).length
 
     readonly property var weekdayNames: ["sunday", "monday", "tuesday", "wednesday",
         "thursday", "friday", "saturday"]
@@ -355,10 +393,11 @@ PopupCard {
     }
     // every mutation re-reads the whole set, completed included, or a task
     // that was just ticked off would vanish instead of moving to DONE
-    function run(args) {
+    function run(args, laterSummary) {
         pendingDelete = ""
         editingId = ""
         readProc.running = false
+        laterAdd = laterSummary ? { summary: laterSummary, keys: todos.map(taskKey) } : null
         readProc.command = ["hyprshell", "calendar/agenda"].concat(args).concat(["--todos-all"])
         readProc.running = true
     }
@@ -426,13 +465,18 @@ PopupCard {
         const from = keys.indexOf(taskKey(item)), to = keys.indexOf(taskKey(target))
         const swap = keys[from]; keys[from] = keys[to]; keys[to] = swap
         taskOrder = keys
-        orderFile.setText(JSON.stringify(keys) + "\n")
+        sortMode = "manual"
+        saveOrder()
         cursor = position.section.offset + position.index + delta
         pendingDelete = ""
     }
     function handleKey(event) {
-        if (addField.activeFocus || editingId !== "") return false
+        if (addField.activeFocus || searchField.activeFocus || editingId !== "") return false
         const item = listed[cursor]
+        if (event.text === "/" || ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_F)) {
+            searchField.forceActiveFocus()
+            return true
+        }
         switch (event.key) {
         case Qt.Key_Down: move(1); break
         case Qt.Key_Up: move(-1); break
@@ -449,7 +493,13 @@ PopupCard {
         case Qt.Key_T: view = "today"; break
         case Qt.Key_O: view = "overdue"; break
         case Qt.Key_A: view = "all"; break
-        case Qt.Key_D: view = "done"; break
+        case Qt.Key_D:
+            if (event.modifiers & Qt.ShiftModifier) toggleDensity()
+            else view = "done"
+            break
+        case Qt.Key_S: cycleSort(); break
+        case Qt.Key_F: facetsOpen = !facetsOpen; break
+        case Qt.Key_P: if (item && item.completed !== true) toggleLater(item); break
         case Qt.Key_R: refresh(); break
         case Qt.Key_Question: showHelp = !showHelp; break
         case Qt.Key_Q: addField.forceActiveFocus(); break
@@ -469,6 +519,8 @@ PopupCard {
 
     onViewChanged: { cursor = 0; pendingDelete = "" }
     onCategoryFilterChanged: { cursor = 0; pendingDelete = "" }
+    onListFilterChanged: { cursor = 0; pendingDelete = "" }
+    onSearchTextChanged: { cursor = 0; pendingDelete = "" }
     onOpenChanged: {
         if (!open) {
             addField.focus = false
@@ -480,6 +532,9 @@ PopupCard {
         view = "today"
         cursor = 0
         categoryFilter = ""
+        listFilter = ""
+        facetsOpen = true
+        searchField.text = ""
         refresh()
         leaveAdd()
     }
@@ -488,7 +543,17 @@ PopupCard {
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             let payload = ({})
             try { payload = JSON.parse(text) || ({}) } catch (error) { payload = ({}) }
-            root.todos = payload.todos || []
+            if (root.laterAdd && !payload.error && !payload.unavailable) {
+                const created = (payload.todos || []).find(item => item.completed !== true
+                    && item.summary === root.laterAdd.summary
+                    && root.laterAdd.keys.indexOf(root.taskKey(item)) < 0)
+                if (created) {
+                    root.laterKeys = root.laterKeys.concat(root.taskKey(created))
+                    root.saveOrder()
+                }
+            }
+            root.laterAdd = null
+            root.todos = (payload.todos || []).filter(item => item.list === "work" || item.list === "home")
             root.unavailable = payload.unavailable === true
             if (root.cursor >= root.listed.length) root.cursor = Math.max(0, root.listed.length - 1)
         } }
@@ -499,8 +564,16 @@ PopupCard {
         onLoaded: {
             try {
                 const saved = JSON.parse(text())
-                root.taskOrder = Array.isArray(saved) ? saved.map(value => String(value)) : []
-            } catch (error) { root.taskOrder = [] }
+                root.taskOrder = (Array.isArray(saved) ? saved : saved.order || []).map(value => String(value))
+                root.laterKeys = Array.isArray(saved.later) ? saved.later.map(value => String(value)) : []
+                root.sortMode = root.sortModes.includes(saved.sort) ? saved.sort
+                    : root.taskOrder.length > 0 ? "manual" : "due"
+                root.compact = saved.compact === true
+                root.showFace = saved.face === true
+            } catch (error) {
+                root.taskOrder = []; root.laterKeys = []; root.sortMode = "due"
+                root.compact = false; root.showFace = false
+            }
         }
         onFileChanged: reload()
     }
@@ -549,6 +622,41 @@ PopupCard {
             onClicked: mouse => action.triggered(mouse.button)
         }
         BarTooltip { shell: root.shell; anchorItem: action; text: action.hint; hovered: actionArea.containsMouse }
+    }
+
+    component FacetChoice: Item {
+        required property string name
+        required property string kind
+        required property int count
+        readonly property bool current: kind === "" ? root.activeFilter === "" && root.activeList === ""
+            : kind === "category" ? root.activeFilter === name : root.activeList === name
+        width: parent.width; height: Style.bodySmall + Style.xs
+        Text {
+            anchors.left: parent.left; anchors.right: facetCount.left
+            anchors.verticalCenter: parent.verticalCenter
+            text: parent.kind === "category" ? "+" + parent.name
+                : parent.kind === "list" ? "@" + parent.name : "All"
+            elide: Text.ElideRight
+            color: parent.current ? root.shell.role("act_br", root.shell.accent)
+                : root.shell.alpha(root.shell.foreground, facetArea.containsMouse ? .85 : .55)
+            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+        }
+        Text {
+            id: facetCount
+            anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+            text: parent.count
+            color: root.shell.alpha(root.shell.foreground, .4)
+            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+        }
+        MouseArea {
+            id: facetArea
+            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                if (parent.kind === "category") root.categoryFilter = parent.name
+                else if (parent.kind === "list") root.listFilter = parent.name
+                else { root.categoryFilter = ""; root.listFilter = "" }
+            }
+        }
     }
 
     component ViewTab: Rectangle {
@@ -600,6 +708,14 @@ PopupCard {
                             || fieldPoint.y > addField.height)
                         root.leaveAdd()
                 }
+                if (searchField.activeFocus) {
+                    const fieldPoint = searchField.mapFromItem(taskKeys,
+                        eventPoint.position.x, eventPoint.position.y)
+                    if (fieldPoint.x < 0 || fieldPoint.y < 0
+                            || fieldPoint.x > searchField.width
+                            || fieldPoint.y > searchField.height)
+                        taskKeys.forceActiveFocus()
+                }
                 if (root.pendingDelete === "" || !root.confirmingRow) return
                 const point = root.confirmingRow.mapFromItem(taskKeys,
                     eventPoint.position.x, eventPoint.position.y)
@@ -612,19 +728,32 @@ PopupCard {
 
         Keys.onPressed: event => event.accepted = root.handleKey(event)
 
+        Flickable {
+            id: tasksFlick
+            anchors.fill: parent
+            visible: !root.showHelp
+            clip: true
+            contentHeight: tasksColumn.implicitHeight
+            boundsBehavior: Flickable.StopAtBounds
+            function reveal(row) {
+                if (!row || !row.selected) return
+                const top = row.mapToItem(tasksColumn, 0, 0).y
+                contentY = Math.max(0, Math.min(contentHeight - height,
+                    Math.max(top + row.height - height, Math.min(top, contentY))))
+            }
+
         Column {
             id: tasksColumn
-            anchors.left: parent.left; anchors.right: parent.right
+            width: tasksFlick.width
             spacing: Style.sm
-            opacity: root.showHelp ? 0 : 1
-            visible: opacity > 0
 
             Item {
                 id: hero
                 width: parent.width
-                height: Style.px(54)
+                height: root.showFace ? Style.px(54) : heroText.implicitHeight
                 TasksMascot {
                     id: heroMascot
+                    visible: root.showFace
                     anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
                     anchors.verticalCenterOffset: -Style.xxs
                     width: parent.height; height: width
@@ -634,19 +763,13 @@ PopupCard {
                     urgency: root.mood.urgency; smile: root.mood.smile; eyes: root.mood.eyes
                     brow: root.mood.brow; sweat: root.mood.sweat
                     sparkle: root.mood.sparkle; wavy: root.mood.wavy
-                    animated: root.open
-                }
-                Text {
-                    id: heroCount
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: root.stats.total > 0 ? root.stats.done + "/" + root.stats.total : "–"
-                    color: root.shell.alpha(root.shell.foreground, .5)
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.heroIcon; font.bold: true
+                    animated: root.open && root.showFace
                 }
                 Column {
-                    anchors.left: heroMascot.right; anchors.leftMargin: Style.xxxl
-                    anchors.right: heroCount.left; anchors.rightMargin: Style.xl
+                    id: heroText
+                    anchors.left: root.showFace ? heroMascot.right : hero.left
+                    anchors.leftMargin: root.showFace ? Style.xxxl : 0
+                    anchors.right: hero.right
                     anchors.verticalCenter: parent.verticalCenter; spacing: Style.xxs
                     Text {
                         width: parent.width; text: Qt.formatDate(root.now, "dddd d MMMM"); elide: Text.ElideRight
@@ -654,13 +777,17 @@ PopupCard {
                         font.pixelSize: Style.title; font.bold: true
                     }
                     Text {
+                        visible: root.showFace
                         width: parent.width; elide: Text.ElideRight
                         text: root.unavailable ? "TODOMAN IS NOT INSTALLED" : root.mood.label.toUpperCase()
                         color: heroMascot.inkColor; font.family: root.shell.fontFamily
                         font.pixelSize: Style.caption; font.bold: true; font.letterSpacing: 1.2
                     }
                     Text {
-                        width: parent.width; text: root.mood.tagline; elide: Text.ElideRight
+                        width: parent.width
+                        text: root.open_.length + " open · " + root.dueCount + " due · "
+                            + root.completedRetained + " done"
+                        elide: Text.ElideRight
                         color: root.shell.alpha(root.shell.foreground, .5)
                         font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                     }
@@ -716,16 +843,18 @@ PopupCard {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     rightPadding: Style.controlPaddingX + Style.px(20) + Style.sm
-                    placeholderText: "Add a task… (friday 5pm, +work, p1)"
+                    placeholderText: root.view === "later" ? "Save for later… (+work, p1)"
+                        : "Add a task… (friday 5pm, +work, p1)"
                     function submit() {
                         const parsed = root.parseQuickAdd(addField.text)
                         if (parsed.summary === "") return
-                        const args = ["--todo-add", "--title", parsed.summary]
+                        const args = ["--todo-add", "--title", parsed.summary,
+                            "--calendar", root.activeList || "home"]
                         if (parsed.due !== "") args.push("--day", parsed.due)
                         if (parsed.time !== "") args.push("--time", parsed.time)
                         for (const tag of parsed.tags) args.push("--category", tag)
                         if (parsed.priority !== "") args.push("--priority", parsed.priority)
-                        root.run(args)
+                        root.run(args, root.view === "later" ? parsed.summary : "")
                         addField.text = ""
                     }
                     onSubmitted: addField.submit()
@@ -771,6 +900,45 @@ PopupCard {
                 font.family: root.shell.fontFamily; font.pixelSize: Style.caption
             }
 
+            PopupField {
+                id: searchField
+                shell: root.shell
+                width: parent.width; height: Style.controlHeight
+                placeholderText: "Search tasks, +category, @calendar, in:scope"
+                onTextChanged: root.searchText = text
+                Keys.onEscapePressed: event => {
+                    if (text !== "") text = ""
+                    else taskKeys.forceActiveFocus()
+                    event.accepted = true
+                }
+                Keys.onReturnPressed: event => { taskKeys.forceActiveFocus(); event.accepted = true }
+                Keys.onEnterPressed: event => { taskKeys.forceActiveFocus(); event.accepted = true }
+            }
+            Row {
+                visible: root.searchText !== "" || searchField.activeFocus
+                spacing: Style.sm
+                Repeater {
+                    model: root.searchScopes
+                    Text {
+                        required property var modelData
+                        readonly property bool current: TasksModel.scope(root.searchText) === String(modelData)
+                        text: "in:" + modelData
+                        color: current ? root.shell.role("act_br", root.shell.accent)
+                            : root.shell.alpha(root.shell.foreground, scopeArea.containsMouse ? .8 : .4)
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                        MouseArea {
+                            id: scopeArea
+                            anchors.fill: parent; anchors.margins: -Style.xxs
+                            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                searchField.text = TasksModel.withScope(root.searchText, String(parent.modelData))
+                                searchField.forceActiveFocus()
+                            }
+                        }
+                    }
+                }
+            }
+
             Item { width: 1; height: Style.xs }
 
             Row {
@@ -785,23 +953,51 @@ PopupCard {
             }
 
             Row {
-                spacing: Style.sm
-                visible: root.allCategories.length > 0
-                Repeater {
-                    model: [""].concat(root.allCategories)
-                    Text {
-                        required property var modelData
-                        readonly property bool current: root.activeFilter === String(modelData)
-                        text: String(modelData) === "" ? "all" : "+" + modelData
-                        color: current ? root.shell.role("act_br", root.shell.accent)
-                            : root.shell.alpha(root.shell.foreground, tagArea.containsMouse ? .8 : .4)
-                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-                        MouseArea {
-                            id: tagArea
-                            anchors.fill: parent; anchors.margins: -4
-                            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                            onClicked: root.categoryFilter = String(parent.modelData)
-                        }
+                spacing: Style.lg
+                Text {
+                    text: "SORT · " + root.sortMode.toUpperCase()
+                    color: root.shell.alpha(root.shell.foreground, sortArea.containsMouse ? .85 : .55)
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                    MouseArea {
+                        id: sortArea
+                        anchors.fill: parent; anchors.margins: -Style.xxs
+                        hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: root.cycleSort()
+                    }
+                }
+                Text {
+                    text: root.compact ? "COMPACT" : "COMFORTABLE"
+                    color: root.shell.alpha(root.shell.foreground, densityArea.containsMouse ? .85 : .55)
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                    MouseArea {
+                        id: densityArea
+                        anchors.fill: parent; anchors.margins: -Style.xxs
+                        hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: root.toggleDensity()
+                    }
+                }
+                Text {
+                    text: root.facetsOpen ? "HIDE FACETS" : "FACETS"
+                    color: root.facetsOpen ? root.shell.role("act_br", root.shell.accent)
+                        : root.shell.alpha(root.shell.foreground, facetToggle.containsMouse ? .85 : .55)
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                    MouseArea {
+                        id: facetToggle
+                        anchors.fill: parent; anchors.margins: -Style.xxs
+                        hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: root.facetsOpen = !root.facetsOpen
+                    }
+                }
+                Text {
+                    text: root.showFace ? "FACE ON" : "FACE OFF"
+                    color: root.showFace ? root.shell.role("act_br", root.shell.accent)
+                        : root.shell.alpha(root.shell.foreground, faceArea.containsMouse ? .85 : .55)
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                    MouseArea {
+                        id: faceArea
+                        anchors.fill: parent; anchors.margins: -Style.xxs
+                        hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: root.toggleFace()
                     }
                 }
             }
@@ -812,16 +1008,67 @@ PopupCard {
                 visible: root.listed.length === 0
                 width: parent.width
                 text: root.unavailable ? "Install todoman to use this panel"
-                    : root.view === "done" ? "Nothing completed yet"
-                    : root.view === "overdue" ? "Nothing overdue" : "Nothing to do"
+                    : root.searchText !== "" ? "No matches"
+                    : root.effectiveView === "done" ? "Nothing completed yet"
+                    : root.effectiveView === "overdue" ? "Nothing overdue"
+                    : root.effectiveView === "later" ? "Nothing saved for later" : "Nothing to do"
                 color: root.shell.alpha(root.shell.foreground, .35)
                 font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                 topPadding: Style.rowGap
             }
 
+            Row {
+                id: taskArea
+                width: parent.width; spacing: root.facetsOpen ? Style.lg : 0
+                Column {
+                    id: facetSidebar
+                    visible: root.facetsOpen
+                    width: Style.px(420) / 3
+                    spacing: Style.xs
+                    Text {
+                        text: "FACETS"
+                        color: root.shell.alpha(root.shell.foreground, .45)
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
+                        font.letterSpacing: 1
+                    }
+                    FacetChoice { name: ""; kind: ""; count: root.todos.length }
+                    Text {
+                        text: "CATEGORIES"
+                        color: root.shell.alpha(root.shell.foreground, .4)
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
+                    }
+                    Repeater {
+                        model: root.allCategories
+                        FacetChoice {
+                            required property var modelData
+                            name: String(modelData); kind: "category"
+                            count: root.todos.filter(item => (item.categories || []).includes(name)).length
+                        }
+                    }
+                    Text {
+                        visible: root.allCategories.length === 0
+                        text: "No categories"
+                        color: root.shell.alpha(root.shell.foreground, .3)
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                    }
+                    Text {
+                        text: "CALENDARS"
+                        color: root.shell.alpha(root.shell.foreground, .4)
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
+                    }
+                    Repeater {
+                        model: root.allLists
+                        FacetChoice {
+                            required property var modelData
+                            name: String(modelData); kind: "list"
+                            count: root.todos.filter(item => String(item.list) === name).length
+                        }
+                    }
+                }
             Column {
                 id: sectionList
-                width: parent.width; spacing: Style.sm
+                width: taskArea.width - (root.facetsOpen ? facetSidebar.width + taskArea.spacing : 0)
+                spacing: Style.sm
                 Repeater {
                 model: root.sections
                 Column {
@@ -849,7 +1096,9 @@ PopupCard {
                         readonly property bool done: taskRow.modelData.completed === true
                         readonly property bool confirming: root.pendingDelete === String(taskRow.modelData.id)
                         readonly property bool editing: root.editingId === root.taskKey(taskRow.modelData)
+                        readonly property int rowPadding: Style.controlPaddingX
                         function finish(commit) { root.finishEdit(taskRow.modelData, rowEditor.text, commit) }
+                        onSelectedChanged: if (selected) Qt.callLater(() => tasksFlick.reveal(taskRow))
                         onConfirmingChanged: {
                             if (taskRow.confirming) root.confirmingRow = taskRow
                             else if (root.confirmingRow === taskRow) root.confirmingRow = null
@@ -863,11 +1112,15 @@ PopupCard {
                             }
                         }
                         width: section.width
-                        height: (taskRow.editing ? rowEditor.height : rowText.implicitHeight) + Style.px(18)
+                        height: Math.max(taskRow.editing ? rowEditor.height : rowText.implicitHeight,
+                            rowCheck.height) + rowPadding * 2
                         radius: root.shell.rounding
                         color: taskRow.confirming
                             ? root.shell.alpha(root.shell.role("error", root.shell.foreground), .18)
-                            : rowHover.hovered ? root.shell.alpha(root.shell.foreground, .07) : "transparent"
+                            : taskRow.selected ? root.shell.alpha(root.shell.role("act_br", root.shell.accent), .16)
+                            : rowHover.hovered ? root.shell.alpha(root.shell.role("act_br", root.shell.accent), .09) : "transparent"
+                        border.width: taskRow.selected ? 1 : 0
+                        border.color: root.shell.alpha(root.shell.role("act_br", root.shell.accent), Style.popupBorderOpacity)
 
                         HoverHandler { id: rowHover }
                         MouseArea {
@@ -884,24 +1137,29 @@ PopupCard {
                         }
 
                         Rectangle {
-                            visible: taskRow.selected
-                            anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                            width: Style.px(3); height: parent.height - Style.px(8); radius: 1
-                            color: root.shell.role("act_br", root.shell.accent)
-                        }
-
-                        Text {
                             id: rowCheck
                             anchors.left: parent.left
-                            anchors.leftMargin: Style.controlPaddingX * 2
-                            anchors.top: parent.top; anchors.topMargin: Style.px(8)
-                            text: taskRow.done ? "\u{f0133}" : "\u{f0130}"
-                            color: taskRow.done ? root.shell.alpha(root.shell.foreground, .4)
-                                : root.priorityColor(taskRow.modelData)
-                            font.family: root.shell.fontFamily; font.pixelSize: Style.body
+                            anchors.leftMargin: taskRow.rowPadding
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Style.body + Style.sm; height: width
+                            radius: Math.min(root.shell.rounding, Style.xs)
+                            color: "transparent"
+                            border.width: 1
+                            border.color: !taskRow.done && (root.isOverdue(taskRow.modelData) || root.isToday(taskRow.modelData))
+                                ? root.shell.role("error", root.shell.foreground)
+                                : root.shell.alpha(root.shell.foreground, .5)
+                            Text {
+                                anchors.centerIn: parent
+                                text: "✓"
+                                color: root.shell.foreground
+                                opacity: taskRow.done || checkArea.containsMouse ? 1 : 0
+                                font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                            }
                             MouseArea {
+                                id: checkArea
                                 anchors.fill: parent; anchors.margins: -4
                                 enabled: !taskRow.editing
+                                hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: root.toggle(taskRow.modelData)
                             }
@@ -909,21 +1167,25 @@ PopupCard {
 
                         Column {
                             id: rowText
-                            anchors.left: rowCheck.right; anchors.leftMargin: Style.sm
-                            anchors.right: rowBin.left; anchors.rightMargin: Style.sm
-                            anchors.top: parent.top; anchors.topMargin: Style.px(8)
+                            anchors.left: rowCheck.right; anchors.leftMargin: Style.xl
+                            anchors.right: rowDue.visible ? rowDue.left : rowBin.visible ? rowBin.left : parent.right
+                            anchors.rightMargin: rowDue.visible || rowBin.visible ? Style.sm : taskRow.rowPadding
+                            anchors.verticalCenter: parent.verticalCenter
                             visible: !taskRow.editing
                             spacing: 2
                             Text {
                                 width: parent.width
                                 text: taskRow.modelData.summary; elide: Text.ElideRight
+                                wrapMode: root.compact ? Text.NoWrap : Text.Wrap
+                                maximumLineCount: root.compact ? 1 : 2
                                 color: taskRow.done ? root.shell.alpha(root.shell.foreground, .45)
-                                    : root.priorityColor(taskRow.modelData)
+                                    : root.shell.foreground
                                 font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+                                font.bold: !taskRow.done && root.priorityIndex(taskRow.modelData) === 3
                                 font.strikeout: taskRow.done
                             }
                             Text {
-                                visible: text !== ""
+                                visible: !root.compact && text !== ""
                                 text: root.taskMeta(taskRow.modelData)
                                 color: (root.isOverdue(taskRow.modelData) && !taskRow.done)
                                         || Number(taskRow.modelData.carries || 0) >= 3
@@ -933,13 +1195,29 @@ PopupCard {
                             }
                         }
 
+                        Text {
+                            id: rowDue
+                            visible: !taskRow.editing && !taskRow.done && !rowBin.visible
+                                && root.dueMillis(taskRow.modelData) >= 0
+                            anchors.right: parent.right; anchors.rightMargin: taskRow.rowPadding + Style.sm
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Style.caption * 9
+                            horizontalAlignment: Text.AlignRight
+                            text: root.isOverdue(taskRow.modelData) ? "overdue" : root.dueLabel(taskRow.modelData)
+                            color: root.isOverdue(taskRow.modelData) || root.isToday(taskRow.modelData)
+                                ? root.shell.role("error", root.shell.foreground)
+                                : root.shell.alpha(root.shell.foreground, .5)
+                            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                            elide: Text.ElideRight
+                        }
+
                         PopupField {
                             id: rowEditor
                             shell: root.shell
                             visible: taskRow.editing
-                            anchors.left: rowCheck.right; anchors.leftMargin: Style.sm
-                            anchors.right: rowBin.left; anchors.rightMargin: Style.sm
-                            anchors.top: parent.top; anchors.topMargin: Style.px(8)
+                            anchors.left: rowCheck.right; anchors.leftMargin: Style.lg
+                            anchors.right: parent.right; anchors.rightMargin: taskRow.rowPadding
+                            anchors.verticalCenter: parent.verticalCenter
                             height: Style.controlHeight
                             onVisibleChanged: if (visible) {
                                 text = String(taskRow.modelData.summary)
@@ -954,11 +1232,22 @@ PopupCard {
                         Row {
                             id: rowBin
                             anchors.right: parent.right
-                            anchors.rightMargin: Style.controlPaddingX
+                            anchors.rightMargin: taskRow.rowPadding
                             anchors.verticalCenter: parent.verticalCenter
                             visible: (rowHover.hovered || taskRow.confirming) && !taskRow.editing
                             spacing: Style.sm
 
+                            TaskAction {
+                                visible: !taskRow.confirming && !taskRow.done
+                                glyph: "✎"; hint: "Edit task (E)"
+                                onTriggered: root.beginEdit(taskRow.modelData)
+                            }
+                            TaskAction {
+                                visible: !taskRow.confirming && !taskRow.done
+                                glyph: root.isLater(taskRow.modelData) ? "↗" : "↘"
+                                hint: root.isLater(taskRow.modelData) ? "Remove from Later (P)" : "Save for later (P)"
+                                onTriggered: root.toggleLater(taskRow.modelData)
+                            }
                             TaskAction {
                                 visible: !taskRow.confirming && root.canReorder(taskRow.modelData, -1)
                                 glyph: "↑"; hint: "Move up (Shift+K)"
@@ -1032,52 +1321,137 @@ PopupCard {
                 }
                 }
             }
+            }
 
             PopupSeparator { visible: !root.unavailable; shell: root.shell }
             Column {
-                width: parent.width; spacing: Style.sm
+                width: parent.width; spacing: Style.md
                 visible: !root.unavailable
-                Text {
-                    text: "COMPLETED · LAST 14 DAYS"
-                    color: root.shell.alpha(root.shell.foreground, .45)
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-                    font.letterSpacing: 1; font.bold: true
-                }
                 Row {
-                    id: historyBars
-                    width: parent.width; height: Style.px(26); spacing: Style.xs
-                    Repeater {
-                        model: root.history
-                        Item {
-                            required property var modelData
-                            width: (historyBars.width - historyBars.spacing * 13) / 14
-                            height: historyBars.height
-                            Rectangle {
-                                anchors.fill: parent; radius: Math.min(width / 3, root.shell.rounding)
-                                color: root.shell.alpha(root.shell.foreground, .08)
-                                border.width: parent.modelData.key === root.todayKey ? 1 : 0
-                                border.color: root.shell.alpha(root.shell.foreground, .55)
+                    width: parent.width; spacing: Style.lg
+                    Column {
+                        id: activitySummary
+                        width: facetSidebar.width
+                        spacing: Style.xxs
+                        Text {
+                            id: activityTotal
+                            text: String(root.activity.total)
+                            height: Math.ceil(activityTotalBounds.tightBoundingRect.y
+                                + activityTotalBounds.tightBoundingRect.height
+                                - activityTotalBounds.boundingRect.y)
+                            verticalAlignment: Text.AlignTop
+                            color: root.shell.foreground
+                            font.family: root.shell.fontFamily; font.pixelSize: Style.heroIcon + Style.xxs; font.bold: true
+                            TextMetrics { id: activityTotalBounds; font: activityTotal.font; text: activityTotal.text }
+                        }
+                        Text {
+                            text: "completed in " + Math.round(TasksModel.activityWeeks / 52 * 12) + " months"
+                            color: root.shell.alpha(root.shell.foreground, .5)
+                            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                        }
+                        Item { width: 1; height: root.topActivity.length > 0 ? Style.xs : 0 }
+                        Text {
+                            visible: root.topActivity.length > 0
+                            width: parent.width
+                            text: "Top " + root.topActivityLabel.toLowerCase()
+                            color: root.shell.foreground
+                            font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
+                        }
+                        Repeater {
+                            model: root.topActivity
+                            Row {
+                                required property var modelData
+                                width: parent.width; spacing: Style.xs
+                                Text {
+                                    width: parent.width - activityCount.width - parent.spacing
+                                    text: (root.topActivityLabel === "CATEGORIES" ? "+" : "@") + parent.modelData.name
+                                    color: root.shell.role("act_br", root.shell.accent)
+                                    font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                                    elide: Text.ElideRight
+                                }
+                                Text {
+                                    id: activityCount
+                                    text: String(parent.modelData.count)
+                                    color: root.shell.alpha(root.shell.foreground, .5)
+                                    font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                                }
                             }
-                            Rectangle {
-                                anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
-                                height: Math.round(parent.height * parent.modelData.count / root.historyMax)
-                                radius: Math.min(width / 3, root.shell.rounding)
-                                color: root.shell.alpha(root.shell.foreground, .7)
+                        }
+                    }
+                    Column {
+                        id: activityChart
+                        width: parent.width - activitySummary.width - parent.spacing
+                        spacing: Style.xs
+                        Row {
+                            spacing: Style.sm
+                            Item { width: Style.body * 2; height: Style.caption }
+                            Row {
+                                spacing: activityGrid.spacing
+                                Repeater {
+                                    model: root.activity.months
+                                    Text {
+                                        required property var modelData
+                                        width: activityGrid.cellWidth
+                                        text: modelData
+                                        color: root.shell.alpha(root.shell.foreground, .45)
+                                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                                    }
+                                }
+                            }
+                        }
+                        Row {
+                            spacing: Style.sm
+                            Column {
+                                width: Style.body * 2; spacing: activityGrid.spacing
+                                Repeater {
+                                    model: ["", "Mon", "", "Wed", "", "Fri", ""]
+                                    Text {
+                                        required property var modelData
+                                        width: parent.width; height: activityGrid.cellWidth
+                                        text: modelData
+                                        verticalAlignment: Text.AlignVCenter
+                                        color: root.shell.alpha(root.shell.foreground, .45)
+                                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                            }
+                            Grid {
+                                id: activityGrid
+                                property real cellWidth: (width - (TasksModel.activityWeeks - 1) * spacing)
+                                    / TasksModel.activityWeeks
+                                width: activityChart.width - Style.body * 2 - Style.sm
+                                rows: 7; flow: Grid.TopToBottom; spacing: Style.xxs
+                                Repeater {
+                                    model: root.activity.cells
+                                    Rectangle {
+                                        id: activityCell
+                                        required property var modelData
+                                        width: activityGrid.cellWidth; height: width
+                                        radius: Math.min(root.shell.rounding, Style.xs)
+                                        color: modelData.count > 0 ? root.shell.role("act_br", root.shell.accent)
+                                            : root.shell.foreground
+                                        opacity: modelData.future ? .04
+                                            : modelData.count > 0 ? Math.min(1, .28 + modelData.count * .18) : .12
+                                        border.width: modelData.date === root.todayKey ? 1 : 0
+                                        border.color: root.shell.foreground
+                                        MouseArea {
+                                            anchors.fill: parent; hoverEnabled: true
+                                            onEntered: root.hoveredDay = activityCell.modelData
+                                            onExited: if (root.hoveredDay === activityCell.modelData) root.hoveredDay = null
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
                 Item {
-                    width: parent.width; height: historyCaption.implicitHeight
+                    width: parent.width; height: activityCaption.implicitHeight
                     Text {
-                        id: historyCaption; anchors.left: parent.left
-                        text: root.streak > 0 ? root.streak + " day streak" : "No streak yet"
-                        color: root.shell.alpha(root.shell.foreground, .42)
-                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-                    }
-                    Text {
-                        anchors.right: parent.right
-                        text: root.completedRetained + " of " + root.todos.length + " retained complete"
+                        id: activityCaption; anchors.right: parent.right
+                        text: root.hoveredDay ? root.hoveredDay.date + " · " + root.hoveredDay.count + " completed"
+                            : root.streak > 0 ? root.streak + " day streak" : "No streak yet"
                         color: root.shell.alpha(root.shell.foreground, .42)
                         font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                     }
@@ -1091,7 +1465,7 @@ PopupCard {
                 text: "<a href=\"help\" style=\"text-decoration:none\">?</a>&nbsp; help"
                     + "&nbsp;&nbsp;&nbsp; j k&nbsp; move&nbsp;&nbsp;&nbsp; J K&nbsp; reorder"
                     + "&nbsp;&nbsp;&nbsp; space&nbsp; done&nbsp;&nbsp;&nbsp; e&nbsp; edit"
-                    + "&nbsp;&nbsp;&nbsp; h&nbsp;l&nbsp;priority&nbsp;&nbsp;&nbsp; q&nbsp; add"
+                    + "&nbsp;&nbsp;&nbsp; /&nbsp; search&nbsp;&nbsp;&nbsp; s&nbsp; sort"
                 linkColor: root.shell.role("act_br", root.shell.accent)
                 onLinkActivated: link => { if (link === "help") root.showHelp = true }
                 color: root.shell.alpha(root.shell.foreground, .3)
@@ -1100,6 +1474,7 @@ PopupCard {
                 wrapMode: Text.WordWrap
                 horizontalAlignment: Text.AlignHCenter
             }
+        }
         }
 
         Column {
@@ -1122,10 +1497,14 @@ PopupCard {
             HelpRow { keys: "enter"; action: "Complete — or reopen a done one" }
             HelpRow { keys: "e"; action: "Edit the selected task" }
             HelpRow { keys: "h l  ← →"; action: "Raise or lower priority" }
+            HelpRow { keys: "p"; action: "Move a task to or from Later" }
             HelpRow { keys: "x  x"; action: "Delete — twice to confirm, esc to cancel" }
             HelpRow { keys: "q"; action: "Jump to the add box" }
+            HelpRow { keys: "/  ctrl+f"; action: "Search titles, descriptions, and details" }
+            HelpRow { keys: "s  shift+d"; action: "Cycle sort · toggle density" }
+            HelpRow { keys: "f"; action: "Show categories and calendars" }
             HelpRow { keys: "t o a d"; action: "Today · Overdue · All · Done" }
-            HelpRow { keys: "tab"; action: "Cycle the views" }
+            HelpRow { keys: "tab"; action: "Includes the Later view" }
             HelpRow { keys: "r"; action: "Refresh from todoman" }
             HelpRow { keys: "esc"; action: "Leave the box, cancel a delete, or close" }
 
@@ -1142,7 +1521,8 @@ PopupCard {
             HelpRow { keys: "25 sep  sep 25"; action: "Rolls to next year once past" }
             HelpRow { keys: "2026-12-24"; action: "A plain ISO date" }
             HelpRow { keys: "5pm  at 14:30"; action: "A due time as well as a day" }
-            HelpRow { keys: "+work  +home"; action: "Categories — click one to filter" }
+            HelpRow { keys: "+work  @personal"; action: "Search a category or calendar" }
+            HelpRow { keys: "in:due  in:rec"; action: "Search scopes: open, all, done, due, rec" }
             HelpRow { keys: "!high  p1"; action: "Priority — !medium !low, p1–p4" }
         }
 

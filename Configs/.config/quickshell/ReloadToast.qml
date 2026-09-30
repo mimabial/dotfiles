@@ -54,7 +54,7 @@ Scope {
         WlrLayershell.namespace: "hypr-shell-reload"; WlrLayershell.layer: WlrLayer.Overlay
         Rectangle {
             anchors.fill: parent; radius: root.shell.rounding
-            color: root.shell.alpha(root.shell.role("alt_bg", root.shell.background), .96)
+            color: root.shell.alpha(root.shell.role("alt_bg", root.shell.background), Style.popupSurfaceOpacity)
             border.width: 1
             border.color: root.shell.alpha(root.shell.role(root.failed ? "error" : "act_br", root.shell.accent), .65)
             Column {

@@ -9,6 +9,7 @@ BarButton {
     property bool loaded: false
     opensPopup: true
     property int dueCount: 0
+    property bool showBadge: true
     property bool notifyOnDue: true
     // ids already announced, so a task is not re-notified every scan
     property var notified: ({})
@@ -17,20 +18,7 @@ BarButton {
     text: ""
     tooltip: ""
     active: root.shell.popupName === "tasks"
-    // both states read from the style sheet: "tasks" for the idle colour and
-    // "tasks.due" for the one with something due. Theme.box falls back to the
-    // parent key, so a layout that names neither still resolves.
-    readonly property var dueBox: root.shell.style.box("tasks.due")
-    function specColor(spec, fallback) {
-        if (!spec) return fallback
-        return Array.isArray(spec)
-            ? root.shell.alpha(root.shell.role(spec[0], root.shell.foreground), spec[1])
-            : root.shell.role(spec, root.shell.foreground)
-    }
-    textColor: root.dueCount > 0
-        ? root.specColor(root.dueBox.color, root.shell.role("c3", root.shell.foreground))
-        : root.box.color !== undefined ? root.styleColor("color")
-        : root.shell.foreground
+    badgeText: showBadge && dueCount > 0 ? countGlyph(dueCount) : ""
     onClicked: { root.loaded = true; root.shell.togglePopup("tasks") }
 
     // hyprshell forks a shell per call, so the polling path runs the helper

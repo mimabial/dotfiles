@@ -8,6 +8,7 @@ import Quickshell.Hyprland
 import Quickshell.Services.UPower
 import qs.systemstats
 import "ClockFormats.js" as ClockFormats
+import "Opacity.js" as Opacity
 
 ShellRoot {
     id: shellRoot
@@ -33,15 +34,17 @@ ShellRoot {
     property bool stateReady: false
     property string mode: workflow === "gaming" ? "hidden" : style.ready ? String(barLayout.panel || "") : ""
     property bool userHidden: false
+    readonly property bool barShown: (mode === "horizontal" || mode === "winbar") && !userHidden
     property string popupName: ""
     property string dragKey: ""
-    readonly property var distroGlyphs: ["", "", "󰕈", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]
-    property int distroGlyphIndex: 0
-    readonly property string distroGlyph: distroGlyphs[distroGlyphIndex]
     property var barLayout: ({})
     property var layoutData: ({})
     readonly property var barSections: ["left", "center", "right", "tray"]
-    readonly property var barModules: barSections.reduce((all, key) => all.concat(Array.isArray(barLayout[key]) ? barLayout[key] : []), []).map(item => typeof item === "string" ? item : String(item.id || ""))
+    function moduleIds(sections) { return sections.reduce((all, key) => all.concat(Array.isArray(barLayout[key]) ? barLayout[key] : []), []).map(item => typeof item === "string" ? item : String(item.id || "")) }
+    readonly property var barModules: moduleIds(barSections)
+    // the tray's modules exist only while its flyout is open
+    property bool trayOpen: false
+    readonly property var liveModules: moduleIds(trayOpen ? barSections : barSections.filter(section => section !== "tray"))
     readonly property var trayHidden: parseTrayList(prefs.trayHidden)
     readonly property var trayPinned: parseTrayList(prefs.trayPinned)
     function parseTrayList(raw) {
@@ -123,6 +126,7 @@ ShellRoot {
     readonly property alias systemStats: systemStatsService
     readonly property var monitorPreviewCoordinator: monitorPreviewGuardLoader.item
     readonly property var dock: dockLoader.item
+    readonly property var expose: overviewLoader.item
     property Theme style: Theme { home: shellRoot.home; styleName: String(shellRoot.barLayout.style || shellRoot.layoutName) }
     readonly property var palette: style.palette
     readonly property color background: role("bg", "#1f2430")
@@ -185,8 +189,8 @@ ShellRoot {
     readonly property real moduleRadius: mode === "winbar" ? 0 : rounding
     readonly property string barEdge: String(barLayout.edge || "top")
     property real barFloatGap: Style.popupGap
-    readonly property real barOpacity: workflow === "powersaver" ? 1 : workflow === "windows" ? .5 : .4
-    readonly property color barColor: prefs.barTransparent ? "transparent" : alpha(background, barOpacity)
+    readonly property real barOpacity: prefs.barOpacity >= 0 ? prefs.barOpacity : workflow === "powersaver" ? 1 : workflow === "windows" ? .5 : .4
+    readonly property color barColor: alpha(background, barOpacity)
     property SystemClock clock: SystemClock { precision: SystemClock.Minutes }
     readonly property alias store: persistent
     readonly property alias prefs: prefsAdapter
@@ -200,8 +204,8 @@ ShellRoot {
             property int topClock: 2
             property int winbarClock: 0
             property int macosClock: 0
-            property bool barTransparent: false
             property bool barBlur: true
+            property real barOpacity: -1
             property bool barFloating: false
             property string trayHidden: "[]"
             property string trayPinned: "[]"
@@ -242,7 +246,6 @@ ShellRoot {
 
     function alpha(color, opacity) { return Qt.rgba(color.r, color.g, color.b, opacity) }
     function styleColor(spec, fallback) { return !spec ? fallback : Array.isArray(spec) ? alpha(role(spec[0], fallback), spec[1] ?? 1) : role(spec, fallback) }
-    function cycleDistroGlyph() { distroGlyphIndex = (distroGlyphIndex + 1) % distroGlyphs.length }
     function loadExposeConfig(raw) {
         try {
             const value = JSON.parse(String(raw))
@@ -322,23 +325,22 @@ ShellRoot {
     property string popupCenteredName: ""
     function togglePopup(name, centered) { popupCenteredName = centered === true ? name : ""; popupName = popupName === name ? "" : name }
     function closePopup() { popupName = "" }
-    function toggleBarTransparency() { prefs.barTransparent = !prefs.barTransparent }
     function toggleBarBlur() { prefs.barBlur = !prefs.barBlur }
     function toggleBarFloating() { prefs.barFloating = !prefs.barFloating }
     function refreshBarFloatGap() { if (!barGapProbe.running) barGapProbe.running = true }
     function refreshMenuState() { refreshBarFloatGap(); if (!pausedProbe.running) pausedProbe.running = true }
     function menuTargetActive(target) {
         const toggles = {
-            style_bar_transparency: prefs.barTransparent, style_bar_blur: prefs.barBlur, style_bar_floating: prefs.barFloating,
-            style_dock_transparency: !!dock?.transparent, style_dock_blur: !!dock?.blurred, style_dock_position_link: !!dock?.linkToBar,
+            style_bar_blur: prefs.barBlur, style_bar_floating: prefs.barFloating,
+            style_dock_blur: !!dock?.blurred,
             trigger_toggle_nightlight: sunsetEnabled === "1", trigger_toggle_keep_awake: keepAwakeManual,
             trigger_toggle_notifications: !notificationsPaused, trigger_toggle_bar: !userHidden, trigger_toggle_window_gaps: barFloatGap > 0
         }
         const choices = {
             style_bar_layout_: layoutName, style_workflow_: workflow, style_animations_: animation, style_text_size_: Style.textSize,
             style_color_mode_source_: colorSource, style_color_mode_: colorMode, trigger_toggle_workspace_layout_: windowLayout,
+            style_bar_opacity_: Opacity.presetId(prefs.barOpacity), style_dock_opacity_: dock ? Opacity.presetId(dock.dockOpacity) : null,
             setup_power_profile_: PowerProfile.toString(PowerProfiles.profile).replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase(),
-            style_dock_position_: dock && !dock.linkToBar ? dock.dockEdge : null,
             style_expose_hot_corner_: exposeConfig.hotCornerEnabled ? exposeConfig.hotCornerPosition : null
         }
         const prefix = Object.keys(choices).find(prefix => target.startsWith(prefix))
@@ -499,11 +501,8 @@ ShellRoot {
         active: shellRoot.lockviewScreen !== ""
         Component.onCompleted: lockviewLoader.setSource(Qt.resolvedUrl("lockview/LockView.qml"), { shell: shellRoot })
     }
-    // A popup is an xdg child of the bar's layer surface, so a blur rule on that
-    // surface blurs the popup's whole area too — well past the bar. The
-    // threshold confines it to what is actually painted: the bar at barOpacity
-    // and the popup card at its own, but not the empty margin around either.
     LayerBlur { surface: "hypr-shell-bar"; enabled: shellRoot.prefs.barBlur; ignoreAlpha: 0.1 }
+    LayerBlur { surface: "hypr-shell-reload"; enabled: shellRoot.prefs.barBlur; ignoreAlpha: 0.1 }
 
     onModeChanged: closePopup()
     onLayoutNameChanged: { layoutData = ({}); barLayout = ({}); layoutFile.reload() }
@@ -533,8 +532,8 @@ ShellRoot {
         function reloadHard(): void { Quickshell.reload(true) }
         function popup(name: string): void { shellRoot.togglePopup(name, true) }
         function bookmarks(): void { shellRoot.togglePopup("bookmarks", true) }
-        function transparency(): void { shellRoot.toggleBarTransparency() }
         function blur(): void { shellRoot.toggleBarBlur() }
+        function opacity(percent: string): void { shellRoot.prefs.barOpacity = percent === "auto" ? -1 : Number(percent) / 100 }
         function floating(): void { shellRoot.toggleBarFloating() }
         function floatingState(): string { return JSON.stringify({ enabled: shellRoot.prefs.barFloating, gap: shellRoot.barFloatGap }) }
         function popupName(): string { return shellRoot.popupName }

@@ -1,6 +1,6 @@
 # Lock screen and idle
 
-`Super + L` locks. `Super + Escape` or `Ctrl + Alt + Delete` opens the logout
+`Super + U`, then `L`, locks. `Super + Escape` or `Ctrl + Alt + Delete` opens the logout
 menu. Closing the lid locks and suspends unless automatic power management is
 enabled in the power popup with another lid action.
 

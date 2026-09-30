@@ -11,8 +11,8 @@ cyan = "#65B8C1"
 white = "#888F94"
 
 [colors.cursor]
-cursor = "#C4CACF"
-text = "#1C1917"
+cursor = "#c4cacf"
+text = "#1c1917"
 
 [colors.normal]
 black = "#1C1917"

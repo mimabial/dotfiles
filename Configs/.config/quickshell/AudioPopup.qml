@@ -217,7 +217,6 @@ PopupCard {
         }
         Text { visible: root.routeError !== ""; width: parent.width; text: root.routeError; textFormat: Text.PlainText; wrapMode: Text.WordWrap; color: root.shell.urgent; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
         PopupRow { width: parent.width; shell: root.shell; icon: "󰒓"; title: "Device profiles"; detail: "Sound cards and Bluetooth codecs"; onClicked: root.openCards() }
-        Text { width: parent.width; text: "j/k navigate  ·  h/l adjust  ·  m mute"; color: root.shell.alpha(root.shell.foreground, .45); font.family: root.shell.fontFamily; font.pixelSize: Style.caption; horizontalAlignment: Text.AlignHCenter }
     }
 
     Item {

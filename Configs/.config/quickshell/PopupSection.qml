@@ -8,7 +8,7 @@ Text {
     // set to put a reading on the right of the header row, so the control below
     // needs no label of its own
     property string value: ""
-    width: value !== "" && parent ? parent.width : implicitWidth
+    width: value !== "" && parent ? parent.width : undefined
     color: Qt.darker(shell.foreground, 1.4)
     font.family: shell.fontFamily
     font.pixelSize: Style.caption

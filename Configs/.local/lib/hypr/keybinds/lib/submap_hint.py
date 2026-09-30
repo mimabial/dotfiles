@@ -85,9 +85,11 @@ def build_hint(name):
     workflow = state.get("HYPR_WORKFLOW", "")
     profile_locked = os.getenv("HYPR_PROFILE_WORKFLOW_LOCK", "1") != "0"
     blocked = {
-        "gaming": ("bar", "windows mode", "select workflow"),
-        "powersaver": ("windows mode", "select workflow") if profile_locked else (),
+        "gaming": ("bar", "select workflow"),
+        "powersaver": ("select workflow",) if profile_locked else (),
         "windows": ("bar layout", "toggle bar", "cycle global layout"),
+        "niri": ("cycle global layout",),
+        "macos": ("bar layout",),
     }.get(workflow, ())
     if blocked:
         submap_binds = [bind for bind in submap_binds if not any(text in bind["action_key"] for text in blocked)]

@@ -107,7 +107,7 @@ PopupWindow {
     id: card
     anchors.fill: parent
     opacity: root.open ? 1 : 0
-    color: Color.popups.background
+    color: Color.alpha(Color.popups.background, Style.popupSurfaceOpacity)
     borderSpec: root.borderSpec
     radius: Style.cornerRadius
     Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }

@@ -31,7 +31,7 @@ BarSurface {
         const first = (layout[section] || [])[0], before = first && x < start
         return { section, target: before ? shell.trayKey(section, first) : "", x: before ? start : end }
     }
-    active: (shell.mode === "horizontal" || shell.mode === "winbar") && !shell.userHidden
+    active: shell.barShown
     anchors.left: true; anchors.right: true; anchors.top: onTop; anchors.bottom: !onTop
     margins.left: floatMargin("left"); margins.right: floatMargin("right")
     margins.top: onTop ? (active ? floatMargin("top") : -implicitHeight) : floatMargin("top")

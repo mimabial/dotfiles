@@ -9,6 +9,9 @@ GameButton 1.0 GameButton.qml
 GithubButton 1.0 GithubButton.qml
 HyprsunsetButton 1.0 HyprsunsetButton.qml
 LanguageButton 1.0 LanguageButton.qml
+LanguageMenu 1.0 LanguageMenu.qml
+MirroringMenu 1.0 MirroringMenu.qml
+TransportButton 1.0 TransportButton.qml
 PrintersButton 1.0 PrintersButton.qml
 RemovableButton 1.0 RemovableButton.qml
 ScreenRecordButton 1.0 ScreenRecordButton.qml
@@ -25,6 +28,7 @@ WeatherStats 1.0 WeatherStats.qml
 AppMenu 1.0 AppMenu.qml
 BatteryButton 1.0 BatteryButton.qml
 ControlCenter 1.0 ControlCenter.qml
+QuickSettings 1.0 QuickSettings.qml
 MenuBarPopup 1.0 MenuBarPopup.qml
 NowPlaying 1.0 NowPlaying.qml
 SoundMenu 1.0 SoundMenu.qml

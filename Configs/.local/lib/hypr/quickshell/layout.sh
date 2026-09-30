@@ -25,6 +25,7 @@ files=("${layout_dir}"/*.json)
 mapfile -t layouts < <(printf '%s\n' "${files[@]}" | sed -E 's!.*/!!;s/\.json$//' | sort -u)
 action="${1:-next}"
 [[ "${action}" == list ]] && { printf '%s\n' "${layouts[@]}"; exit; }
+[[ "$(state_get HYPR_WORKFLOW default)" =~ ^(windows|macos)$ ]] && exit 0
 current="$(state_get QUICKSHELL_LAYOUT_NAME top)" step=1 i=0
 if [[ "${action}" == select ]]; then
   hypr_runtime_require rofi
@@ -49,9 +50,6 @@ else
   [[ "${action}" =~ ^(next|previous)$ ]] || { usage >&2; exit 1; }
   for i in "${!layouts[@]}"; do [[ "${layouts[$i]}" == "${current}" ]] && break; done
   target="${layouts[$(((i + step + ${#layouts[@]}) % ${#layouts[@]}))]}"
-fi
-if [[ "$(state_get HYPR_WORKFLOW default)" == windows ]]; then
-  exit 0
 fi
 state_set QUICKSHELL_LAYOUT_NAME "${target}" staterc
 # dunstrc bakes the notification origin at render time, so a bar that moved to

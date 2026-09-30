@@ -2,7 +2,7 @@
 Type=Application
 Name=Oryx
 Icon=preferences-system-network
-Exec=/usr/bin/true
+Exec=/home/rifle/.local/bin/hyprshell launch/tui --app-id org.tui.Oryx --title Oryx -- sudo oryx
 Terminal=false
 NoDisplay=true
 StartupWMClass=org.tui.Oryx

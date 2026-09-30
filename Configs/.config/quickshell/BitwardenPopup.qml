@@ -41,7 +41,6 @@ PopupCard {
         if (centered) return Qt.point((screen.width - width) / 2, (screen.height - height) / 2)
         let x = anchorItem.width / 2 - width / 2, y = anchorItem.height + margin
         if (position === "bottom") y = -height - margin
-        else if (position === "left") { x = anchorItem.width + margin; y = anchorItem.height / 2 - height / 2 }
         const point = anchorWindow.contentItem.mapFromItem(anchorItem, x, y)
         return Qt.point(Math.max(0, Math.min(screen.width - width, originX + point.x)),
             Math.max(0, Math.min(screen.height - height, originY + point.y)))

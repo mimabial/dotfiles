@@ -18,15 +18,15 @@ BorderSurface {
 
   visible: dock.activeAppGroupId !== "" && dock.dockVisible
   z: 100
-  color: Util.alpha(Color.menu.background, dock.dockSurfaceOpacity)
+  color: Util.alpha(Color.menu.background, Style.popupSurfaceOpacity)
   borderSpec: Border.surfaceSpec("menu", "border", Util.alpha(Color.menu.border, Style.popupBorderOpacity), 1)
   radius: Style.cornerRadius
   padding: Style.space(6)
   width: Math.max(Style.space(180), columns * cellWidth + (columns - 1) * Style.space(6))
     + contentLeftInset + contentRightInset
   height: content.implicitHeight + contentTopInset + contentBottomInset
-  x: dock.vertical ? dock.panelCross(width) : dock.panelMain(width, dock.activeAppGroupAnchor)
-  y: dock.vertical ? dock.panelMain(height, dock.activeAppGroupAnchor) : dock.panelCross(height)
+  x: dock.panelX(width, dock.activeAppGroupAnchor)
+  y: dock.panelY(height)
 
   HoverHandler { id: hover }
 
@@ -184,7 +184,7 @@ BorderSurface {
               }
               if (cell.dragging) {
                 var point = cell.mapToItem(popup.dock.dockCardItem, mouse.x, mouse.y)
-                popup.dock.updateDragTarget(cell.appId, popup.dock.vertical ? point.y : point.x)
+                popup.dock.updateDragTarget(cell.appId, point.x)
               }
             }
             onReleased: function(mouse) {

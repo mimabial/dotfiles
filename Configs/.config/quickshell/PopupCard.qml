@@ -182,9 +182,11 @@ PopupWindow {
     }
     function handleKey(event) { return defaultKey(event) }
 
+    // A window hosting bar modules outside the bar (the tray flyout) names that bar,
+    // so a click on the bar reaches it instead of dismissing the popup first.
     HyprlandFocusGrab {
         active: root.open && !root.shell.focusPriming
-        windows: (root.anchorWindow ? [root, root.anchorWindow] : [root]).concat(root.extraGrabWindows)
+        windows: [root, root.anchorWindow, root.anchorWindow?.bar].filter(Boolean).concat(root.extraGrabWindows)
         onCleared: root.shell.closePopup()
     }
     anchor {
@@ -199,8 +201,6 @@ PopupWindow {
             // from the anchors, so redo that to express screen coordinates in window ones
             const origin = root.windowOrigin()
             let x = root.leftAligned ? 0 : root.anchorItem.width / 2 - root.width / 2
-            if (root.position === "left") x = root.anchorItem.width + root.margin
-            else if (root.position === "right") x = -root.width - root.margin
             anchor.rect.x = Math.round(root.centered ? (root.anchorWindow.screen.width - root.width) / 2 - origin.x
                 : root.anchorWindow.contentItem.mapFromItem(root.anchorItem, x, 0).x)
             anchor.rect.y = Math.round(root.span.top - origin.y)

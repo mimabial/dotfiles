@@ -33,9 +33,8 @@ Item {
     readonly property string applicationName: WindowModel.appIdFor(modelData) || "Application"
     readonly property string workspaceName: card.controller.workspaceName(modelData)
     readonly property string iconSource: card.controller.iconFor(modelData)
-    readonly property color outlineColor: focusedWindow ? Color.accent : (selected ? Color.menu.selectedText : Color.menu.border)
-    readonly property real outlineWidth: card.controller.shell ? Math.max(0, card.controller.shell.borderWidth) : Style.normalBorderWidth
-    readonly property var outlineSpec: Border.flat(outlineColor, outlineWidth)
+    readonly property color outlineColor: focusedWindow ? Color.accent : (selected ? Color.menu.selectedBorder : Color.menu.border)
+    readonly property var outlineSpec: Border.flat(outlineColor, card.controller.outlineWidth)
     readonly property color currentColor: Style.selectedStateColor(Color.menu.text, Color.accent)
     // An excluded card keeps its last rectangle, so it neither
     // animates toward the origin nor flies back in from it.
@@ -43,6 +42,8 @@ Item {
     property var packedRect: Qt.rect(0, 0, 1, 1)
     readonly property var previewRect: WindowModel.previewRect(modelData, packedRect, card.layoutAreaWidth, card.layoutAreaHeight, Style.spacing.sm, card.controller.windowFooterHeight, card.controller.previewPlacement)
     readonly property var layoutRect: previewed ? previewRect : packedRect
+    readonly property bool dragging: dragHandler.active
+    readonly property point dragOffset: dragging ? dragHandler.activeTranslation : Qt.point(0, 0)
 
     onPackedRectSourceChanged: {
         if (packedRectSource)
@@ -55,11 +56,30 @@ Item {
 
     }
     visible: inLayout
-    x: layoutRect.x
-    y: layoutRect.y
+    x: layoutRect.x + dragOffset.x
+    y: layoutRect.y + dragOffset.y
     width: layoutRect.width
     height: layoutRect.height
-    z: previewed ? 11 : (exitingPreview ? 10 : 0)
+    z: dragging ? 12 : (previewed ? 11 : (exitingPreview ? 10 : 0))
+    Drag.active: card.dragging
+    Drag.source: card
+    Drag.keys: card.controller.windowDragKeys
+    Drag.hotSpot: dragHandler.centroid.pressPosition
+    // Shrinks around the pointer so the workspace row stays visible while
+    // carrying the window there.
+    transform: Scale {
+        origin.x: card.Drag.hotSpot.x
+        origin.y: card.Drag.hotSpot.y
+        xScale: card.dragging ? Math.min(1, card.controller.dragPreviewHeight / card.height) : 1
+        yScale: xScale
+
+        Behavior on xScale {
+            NumberAnimation {
+                duration: card.controller.previewAnimationDuration
+                easing.type: card.controller.previewAnimationEasing
+            }
+        }
+    }
     opacity: card.controller.previewIndex < 0 || previewed ? 1 : 0.28
 
     MouseArea {
@@ -94,6 +114,13 @@ Item {
             else
                 card.controller.activate(card.modelData);
         }
+    }
+
+    DragHandler {
+        id: dragHandler
+        target: null
+        enabled: !card.controller.settingsOpen && card.controller.previewIndex < 0
+        onActiveChanged: if (!active) card.Drag.drop()
     }
 
     ColumnLayout {
@@ -362,7 +389,7 @@ Item {
     }
 
     Behavior on x {
-        enabled: card.controller.motionSettled
+        enabled: card.controller.motionSettled && !card.dragging
 
         NumberAnimation {
             duration: card.controller.previewAnimationDuration
@@ -372,7 +399,7 @@ Item {
     }
 
     Behavior on y {
-        enabled: card.controller.motionSettled
+        enabled: card.controller.motionSettled && !card.dragging
 
         NumberAnimation {
             duration: card.controller.previewAnimationDuration

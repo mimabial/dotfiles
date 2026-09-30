@@ -15,7 +15,6 @@ PopupCard {
     padding: Commons.Style.space(4)
     background: Commons.Color.menu.background
     borderColor: Commons.Color.menu.border
-    surfaceOpacity: shell.dock ? shell.dock.dockSurfaceOpacity : Math.max(0.45, Commons.Style.barOpacity)
     property var record: null
     property int selectedWindowIdx: -1
     readonly property var actionWindows: record ? taskbar.windowsFor(record) : []
@@ -98,6 +97,11 @@ PopupCard {
                 text: root.actionWindows.length ? "New Window" : "Launch"
                 disabled: !root.record || !root.taskbar.entryFor(root.record)
                 onTriggered: { root.taskbar.launch(root.record); root.shell.closePopup() }
+            }
+            ContextRow {
+                visible: root.taskbar.pins && root.record !== null
+                text: root.taskbar.isPinned(root.record) ? "Unpin from taskbar" : "Pin to taskbar"
+                onTriggered: { root.taskbar.togglePin(root.record); root.shell.closePopup() }
             }
             ContextRow {
                 visible: !!root.shell.dock && root.shell.dock.minimizeMode !== "off" && root.actionWindows.length > 0

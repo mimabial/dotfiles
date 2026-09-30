@@ -32,7 +32,7 @@ Singleton {
 
     // Popup surfaces. PopupCard defaults from these, and the qs.Commons shim
     // re-exports them so ported panels land on the same glass as the bar's own.
-    readonly property real popupSurfaceOpacity: 0.92
+    readonly property real popupSurfaceOpacity: 0.75
     readonly property real popupBorderOpacity: 0.45
 
     readonly property real hoverFillAlpha: 0.12

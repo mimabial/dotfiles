@@ -42,7 +42,7 @@ call.
 | --- | --- | --- | --- |
 | `top` | `horizontal` | top | three-section horizontal bar |
 | `bottom` | `horizontal` | bottom | three-section horizontal bar |
-| `winbar` | `winbar` | bottom | compact three-section bar |
+| `winbar` | `winbar` | bottom | Windows 11 taskbar: weather widget, centered Start/Search/Task View/apps, overflow, Quick Settings, clock |
 | `totebar` | `horizontal` | top | workspaces on the left, utilities on the right |
 | `macos` | `horizontal` | top | macOS menu bar: hyprmenu dropdown, focused-app menus, status items, clock |
 
@@ -58,18 +58,22 @@ windows by app and removes each icon when its last window closes. Left-click
 focuses an app and cycles its windows when one is already focused; middle-click
 launches another instance. Right-click offers window, launcher, minimize, and
 close actions. Hover shows the app name and its open window titles. It shows
-windows from all workspaces, including special workspaces.
+windows from all workspaces, including special workspaces. `"pins": true` keeps the
+apps listed in `taskbar/pins.json` first, running or not, and adds Pin/Unpin to the
+right-click menu; `"dash": true` draws one Windows-style dash per app, wide and
+accented for the focused one, instead of a dot per window.
 
-The `winbar` uses a hover tray adapted from
-[omarchy-tray](https://github.com/TyRichards/omarchy-tray). Its drawer is the
-layout's `tray` array, in order: module entries as in any section, plus
-`"icon:<id>"` to place a system icon among them; unlisted icons follow. Dragging a
-module onto, off, or within the tray rewrites that array. Drag the chevron to move
-the tray. Left-click it to hold the drawer open until a popup closes, or set
-`"props": {"alwaysOpen": true}` on the `tray` entry to keep it open. Right-click the chevron to hide or pin system icons or restore widgets;
-the icon choices live in `~/.local/state/quickshell/bar.json`. The `tray` style
-rule frames the drawer and pinned icons, not the chevron, rounded by the theme
-unless `borderRadius` is set; hosted widgets keep their own rules.
+The `winbar` tray is the Windows overflow, adapted from
+[omarchy-tray](https://github.com/TyRichards/omarchy-tray): left-click the chevron
+to open a grid flyout above it, which closes on an outside click or when a popup
+opened from it closes. The flyout is the layout's `tray` array, in order: module
+entries as in any section, plus `"icon:<id>"` to place a system icon among them;
+unlisted icons follow. Dragging a module onto the chevron, within the flyout, or
+out of it rewrites that array; one dragged out lands at the end of the bar section
+under the pointer. Drag the chevron to move the tray. Right-click the chevron to hide or pin system icons or restore widgets;
+the icon choices live in `~/.local/state/quickshell/bar.json`. Pinned icons sit
+beside the chevron. The `tray` style rule frames the pinned icons and sizes the
+flyout cells, `tray.chevron` styles the chevron; hosted widgets keep their own rules.
 If a section contains repeated module IDs, the bar adds `trayInstance` to later
 entries in that layout so each widget keeps its own tray state when reordered.
 
@@ -143,6 +147,21 @@ where `null` is a separator, `submenu` is a nested item list, and `run` is a
 command array or a function. Arrow keys walk every level: → or Enter opens a
 submenu, ← or Esc backs out one level.
 
+The `winbar` recreates the Windows 11 taskbar. `widgets` shows the weather icon,
+temperature and condition and opens the weather popup. `menu` takes the Windows
+logo through its `text` prop; `search` is the search box and opens the Start
+menu; `taskview` toggles Exposé. `quicksettings` draws the network, volume and
+battery icons as one button: its flyout holds Wi-Fi, Bluetooth, Energy saver,
+Night light, Do not disturb and Cast tiles, the brightness and volume sliders, the
+playing media and the battery level. The `›` on a tile or slider opens that
+detail popup, which the module creates on first use unless a module hosting the
+same popup (`wifi`, `bluetooth`, `volume`, `battery`, …) is live on the bar; a tray
+widget is live only while the flyout is open, so a popup it hosts opens by name
+(`bar popup bitwarden`) with the flyout closed too.
+`notifications` takes `themed: true` to draw its bell from the style's symbolic
+icons. `showdesktop` is the sliver at the right edge: it switches to an empty
+workspace, and back when that workspace is still empty.
+
 `appmenus.json` adds per-app menus, keyed by lowercase app id (comma-separated ids
 share an entry). Each item is `[label, mods, key]` sent with `send_shortcut`, or `null`
 for a separator. An item whose label matches a standard one replaces it, and `[label]`
@@ -169,7 +188,18 @@ Rules are keyed by a component's `css` value. Common fields are `margin`,
 `padding`, `borderWidth`, `borderColor`, `backgroundColor`, `color`, `minWidth`,
 `minHeight`, `fontSize`, `fontWeight`, `justify`, and `hover`. `open.backgroundColor`
 paints a button while its popup is open, `menuTracking: true` switches to a hovered
-button's popup while another is open, and `borderRadius` overrides the theme rounding. Individual sides use
+button's popup while another is open, and `borderRadius` overrides the theme rounding.
+`iconBox` scales every icon glyph to that nominal height, its width capped at 1.2× it, in a slot of that width: `GlyphInk.qml` draws
+the glyph once into a hidden Canvas and reads back its real ink, because Nerd Font
+metrics misreport some glyph bottoms, and `BarButton` scales and centers that ink. Mixed icon families still
+differ in weight, so the macOS modules set `BarButton.symbol` instead: `SymbolicIcon.qml`
+draws that freedesktop symbolic icon from MacTahoe-dark, recolored to the text color, and
+the glyph shows only when the icon is missing. A style's `symbols` key names the icon
+directory under `~/.local/share/icons`, with `{context}` standing for the context
+folder (`winbar` uses `Fluent-dark/symbolic/{context}`); the default is MacTahoe-dark. The
+button height follows the box, so an enlarged small glyph never grows the bar.
+`BarButton.trailingWidth` reserves room right of the label for drawn content, such as
+the Control Center privacy dots. Individual sides use
 `borderTopWidth`/`borderTopColor`, `borderRightWidth`/`borderRightColor`,
 `borderBottomWidth`/`borderBottomColor`, or `borderLeftWidth`/`borderLeftColor`. Hover uses
 the same color fields. Colors use a palette role or `[role, opacity]`; `null`
@@ -193,7 +223,9 @@ Important geometry rules:
 - Theme rounding comes from generated `theme.json`; module rectangles use
   `shell.moduleRadius` unless a component deliberately overrides it.
 - `SideBorder` paints individual sides; `borderRadius` can override their rounding.
-- An `.active` rule inherits its unsuffixed rule before applying overrides.
+- A dotted rule such as `.active` inherits its resolved prefix before applying
+  overrides. The style's `""` rule beats base rules, dotted ones included, but not
+  the style's own rule for that prefix.
 - `volume` keys off the active output port and mute state:
   `volume.<port>[.muted]`, where `<port>` is one of `headphone`, `hands-free`,
   `headset`, `phone`, `portable`, `car`, or absent for a plain sink. Each level
@@ -310,14 +342,16 @@ sudo install -D -o root -g root -m 0644 ~/.local/lib/hypr/system/power-manager-b
 - Alarm/timer and stopwatch state lives under `~/.local/state/quickshell/` and is
   restored by `calendar/alarm-timer.sh`; do not move scheduling into QML timers
   that disappear on reload.
-- Tasks remain VTODOs owned by `todoman`. The popup keeps only display order in
-  `task-order.json`; `calendar/agenda.sh --todos` advances undated carry counts
-  under a lock and emits the once-daily carry notification signal.
-- Bar and dock share `store.barTransparent` and `store.barBlur`. While the dock
-  is linked it renders from those and writes back to them, so a toggle from
-  either surface moves both; `LayerBlur` turns each surface's blur into a named
-  Hyprland layer rule and re-applies it after a compositor config reload. The
-  bar's independent `barFloating` option follows Hyprland's live `gaps_out`.
+- Tasks remain VTODOs owned by `todoman`. The popup keeps display order and
+  Later queue membership in `task-order.json`; moving a task keeps its due date,
+  priority, and categories. `calendar/agenda.sh --todos` advances carry counts
+  for undated tasks outside Later under a lock and emits the once-daily carry
+  notification signal.
+- Bar and dock keep separate blur settings (`store.barBlur`, the dock's `blur`);
+  `LayerBlur` turns each surface's blur into a named Hyprland layer rule and
+  re-applies it after a compositor config reload. Transparency is the 0% opacity
+  preset on each surface. The bar's `barFloating` option follows Hyprland's live
+  `gaps_out`.
 - Taskbar focus is address-based. Its helper temporarily suppresses Hyprland
   cursor warps only for taskbar activation and restores the prior setting in the
   same compositor call; do not add an arbitrary delay.
@@ -330,7 +364,7 @@ sudo install -D -o root -g root -m 0644 ~/.local/lib/hypr/system/power-manager-b
 | standalone panels | `dock/`, `expose/`, `lockview/` (hyprlock layout explorer) |
 | layer blur | `LayerBlur.qml` |
 | panels | `HorizontalBar.qml`, `BarSection.qml`, `BarModuleLoader.qml` |
-| primitives | `BarButton.qml`, `ScriptButton.qml`, `DrawerGroup.qml`, `SideBorder.qml`, `Popup*.qml` |
+| primitives | `BarButton.qml`, `ScriptButton.qml`, `DrawerGroup.qml`, `SideBorder.qml`, `Popup*.qml`, `LazyPopup.qml` |
 | modules | root `*Button.qml`/service components and `modules/*Module.qml` |
 | popups | `*Popup.qml` and menu/flyout helpers |
 | live data | `layouts/*.json`, `styles/*.json`, generated theme JSON |
@@ -385,3 +419,8 @@ unqualified access is a runtime break rather than a style nit, and a delegate mu
 declare `required property var modelData` / `required property int index` for what
 it reads. Add the pragma only to a file with no `[unqualified]` left; the files
 that still have some deliberately go without it.
+
+## Credits
+
+- The Tasks popup draws on [omarchy-todos](https://github.com/Saikomantisu/omarchy-todos).
+- Its sorting, search, facets, and activity grid draw on [omarchy-tuxedo-todo](https://github.com/lpanebr/omarchy-tuxedo-todo).

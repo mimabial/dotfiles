@@ -7,6 +7,7 @@ BluetoothButton {
     id: root
     readonly property var paired: Bluetooth.devices.values.filter(device => device.paired || device.bonded || device.trusted)
     popupName: "bluetooth-menu"
+    symbol: power === "off" ? "bluetooth-disabled" : "bluetooth-active"
     function deviceIcon(device) {
         const kind = String(device.icon)
         return kind.includes("audio") ? "󰋋" : kind.includes("mouse") ? "󰍽" : kind.includes("keyboard") ? "󰌌" : kind.includes("phone") ? "󰏲" : "󰂯"

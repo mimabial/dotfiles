@@ -2,7 +2,7 @@
 Type=Application
 Name=Dua
 Icon=disk-usage-analyzer
-Exec=/usr/bin/true
+Exec=/home/rifle/.local/bin/hyprshell launch/tui --app-id org.tui.Dua --title Dua -- dua i
 Terminal=false
 NoDisplay=true
 StartupWMClass=org.tui.Dua

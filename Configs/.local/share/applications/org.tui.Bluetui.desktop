@@ -2,7 +2,7 @@
 Type=Application
 Name=Bluetui
 Icon=bluetooth
-Exec=/usr/bin/true
+Exec=/home/rifle/.local/bin/hyprshell launch/bluetooth
 Terminal=false
 NoDisplay=true
 StartupWMClass=org.tui.Bluetui

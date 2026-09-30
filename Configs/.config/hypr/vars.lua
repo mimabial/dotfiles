@@ -24,6 +24,7 @@ local values = {
     ["start.THEME_OUTPUT_SYNC"] = "hyprshell theme/startup-sync.sh",
     ["start.DISPLAY_PROFILES"] = "hyprshell system/monitor-profile start",
     ["start.AUTH_DIALOGUE"] = "hyprshell app -t service -- hyprshell session/polkit-kde-auth",
+    ["start.LOCATION_AGENT"] = "hyprshell system/start-if-available.sh HYPR_START_LOCATION_AGENT /usr/lib/geoclue-2.0/demos/agent -- hyprshell app -t service -- /usr/lib/geoclue-2.0/demos/agent",
     ["start.QUICKSHELL"] = "hyprshell system/start-if-available.sh HYPR_START_QUICKSHELL quickshell -- hyprshell service/control start hyprland-quickshell",
     ["start.STYLE_MAP"] = "hyprshell app -t service -- hyprshell quickshell/style-map-watch",
     ["start.WALLPAPER"] = "hyprshell app -u hyprland-wallpaper.service -t service -- hyprshell wallpaper start --global",

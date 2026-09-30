@@ -1,0 +1,15 @@
+local runtime = require("runtime")
+local vars = require("vars")
+
+vars.set("WORKFLOW_ICON", "")
+vars.set("WORKFLOW_DESCRIPTION", "Scrollable tiling like niri // half-width columns, vertical workspaces")
+
+runtime.config("general.layout", "scrolling")
+runtime.config("scrolling.column_width", 0.5)
+runtime.config("scrolling.explicit_column_widths", "0.333, 0.5, 0.667")
+runtime.config("scrolling.wrap_focus", 0)
+runtime.config("general.gaps_in", 8)
+runtime.config("general.gaps_out", 16)
+runtime.config("general.border_size", 4)
+runtime.config("decoration.shadow.enabled", 0)
+hl.animation({leaf = "workspaces", enabled = true, speed = 5, bezier = "wind", style = "slidevert"})

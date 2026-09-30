@@ -26,8 +26,11 @@ QtObject {
         const base = expand(rawBase), over = expand(rawOver), out = {}, root = merge(fallback, base[""] || {})
         const build = key => {
             if (key in out) return out[key]
-            let rule = merge(key.includes(".") ? build(key.slice(0, key.lastIndexOf("."))) : root, base[key] || {})
-            return out[key] = merge(merge(rule, over[""] || {}), over[key] || {})
+            const dotted = key.includes(".")
+            const rule = merge(dotted ? build(key.slice(0, key.lastIndexOf("."))) : root, base[key] || {})
+            // a dotted rule's prefix already carries the style's "" rule; applying all
+            // of it again would undo the style's own prefix rule, so only let it beat base[key]
+            return out[key] = merge(merge(rule, dotted ? within(over[""] || {}, base[key] || {}) : over[""] || {}), over[key] || {})
         }
         for (const layer of [base, over]) for (const key in layer) build(key)
         return out
@@ -35,6 +38,11 @@ QtObject {
     function expand(layer) {
         const out = {}
         for (const group in layer) for (const key of group.split(",").map(name => name.trim())) out[key] = merge(out[key] || {}, layer[group])
+        return out
+    }
+    function within(rule, shape) {
+        const out = {}
+        for (const key in shape) if (key in rule) out[key] = rule[key] && shape[key] && typeof rule[key] === "object" && typeof shape[key] === "object" && !Array.isArray(rule[key]) && !Array.isArray(shape[key]) ? within(rule[key], shape[key]) : rule[key]
         return out
     }
     function merge(base, over) {

@@ -13,6 +13,12 @@ function recordsFor(windows) {
     return Object.keys(byKey).sort().map(key => ({ key, desktopId: byKey[key] }))
 }
 
+function withPins(pins, records) {
+    const pinnedKeys = pins.map(id => String(id).toLowerCase())
+    return pins.map((id, index) => ({ key: pinnedKeys[index], desktopId: String(id) }))
+        .concat(records.filter(record => !pinnedKeys.includes(record.key)))
+}
+
 function windowsFor(record, windows) {
     if (!record) return []
     const id = String(record.desktopId || "").toLowerCase()

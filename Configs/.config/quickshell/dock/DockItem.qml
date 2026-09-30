@@ -25,17 +25,22 @@ Item {
 
   signal activateRequested(string appId)
   signal newWindowRequested(string appId)
-  signal menuRequested(string appId, real cx, real cy)
+  signal menuRequested(string appId, real cx)
   signal dragStarted(string appId)
-  signal dragMoved(string appId, real x)
+  signal dragMoved(string appId, real x, bool away)
   signal dragDropped(string appId)
   signal wheelScrolled(string appId, int direction)
+
+  function trigger(menu) {
+    if (menu) item.menuRequested(item.appId, item.dock.slotCenterX(item))
+    else item.activateRequested(item.appId)
+  }
 
   // Only the wave lets a slot grow; zoom keeps the layout still and simply
   // draws its icon larger. Growth is always along the main axis.
   readonly property real slotMain: item.dock.iconSlot * (item.dock.waveHover ? item.magnifyScale : 1)
-  width: item.dock.vertical ? item.dock.iconSlot : item.slotMain
-  height: item.dock.vertical ? item.slotMain : item.dock.iconSlot
+  width: item.slotMain
+  height: item.dock.iconSlot
 
   property bool isDragging: false
   property bool _dragJustEnded: false
@@ -144,24 +149,15 @@ Item {
     transformOrigin: item.dock.floorTransformOrigin
     Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutQuad } }
 
-    transform: Translate {
-      x: item.dock.vertical ? item.dock.awaySign * item.bounceOffset : 0
-      y: item.dock.vertical ? 0 : item.dock.awaySign * item.bounceOffset
-    }
+    transform: Translate { y: item.dock.awaySign * item.bounceOffset }
 
     // Sits on the dock floor and grows away from it, so a magnified icon
     // never reaches back over the running dots beneath it.
     Image {
       id: iconImg
-      readonly property real floorMargin:
-        Math.round(((item.dock.vertical ? iconBox.width : iconBox.height) - item.dock.baseIconArt) / 2)
-      x: item.dock.vertical
-        ? (item.dock.edge === "left" ? floorMargin : iconBox.width - width - floorMargin)
-        : (iconBox.width - width) / 2
-      y: item.dock.vertical
-        ? (iconBox.height - height) / 2
-        : (item.dock.edge === "top" ? floorMargin : iconBox.height - height - floorMargin)
-      width: item.dock.baseIconArt * item.magnifyScale
+      x: (iconBox.width - width) / 2
+      y: item.dock.edge === "top" ? 0 : iconBox.height - height
+      width: item.dock.iconSize * item.magnifyScale
       height: width
       source: {
         var _tv = item.dock.themeVersion
@@ -173,6 +169,31 @@ Item {
       opacity: item.starting ? (0.4 + 0.6 * item.pulse) : 1.0
       mipmap: true
       smooth: true
+
+      // Sized off the icon, so it grows with magnification like the icon does.
+      Rectangle {
+        id: badge
+        readonly property int count: item.dock.badgeCountFor(item.appId)
+        visible: badge.count > 0
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.topMargin: -badge.height / 4
+        anchors.rightMargin: -badge.height / 4
+        height: Math.round(iconImg.height * 0.4)
+        width: Math.max(badge.height, badgeLabel.implicitWidth + badge.height / 2)
+        radius: badge.height / 2
+        color: Color.urgent
+
+        Text {
+          id: badgeLabel
+          anchors.centerIn: parent
+          text: String(badge.count)
+          color: Color.bar.background
+          font.family: Style.font.family
+          font.pixelSize: Math.round(badge.height * 0.75)
+          font.bold: true
+        }
+      }
     }
   }
 
@@ -199,23 +220,18 @@ Item {
 
   readonly property int totalWindowCount: (item.windowList && item.windowList.length > 0) ? item.windowList.length : (item.running ? 1 : 0)
   readonly property int maxVisibleDots: totalWindowCount > 5 ? 4 : Math.min(totalWindowCount, 5)
-  readonly property real dynamicDotSize: totalWindowCount >= 5 ? Style.space(4) : Style.space(5)
+  readonly property real dynamicDotSize: totalWindowCount >= 5 ? Style.space(4) : item.dock.indicatorHeight
   readonly property real dynamicActiveWidth: totalWindowCount >= 5 ? Style.space(9) : Style.space(12)
   readonly property real dynamicSpacing: totalWindowCount >= 5 ? Style.space(2) : Style.space(3)
 
-  // Fixed on the slot's floor, never scaled or pushed out of the dock.
+  // In the card's floor padding, never scaled with the icon.
   Grid {
     id: indicatorRow
-    columns: item.dock.vertical ? 1 : Math.max(1, indicatorRow.visibleChildren.length)
-    readonly property real floorGap: Style.space(1)
-    x: item.dock.vertical
-      ? (item.dock.edge === "left" ? floorGap : item.width - width - floorGap)
-      : (item.width - width) / 2
-    y: item.dock.vertical
-      ? (item.height - height) / 2
-      : (item.dock.edge === "top" ? floorGap : item.height - height - floorGap)
+    columns: Math.max(1, indicatorRow.visibleChildren.length)
+    x: (item.width - width) / 2
+    y: item.dock.indicatorY(item.height, height)
     spacing: item.dynamicSpacing
-    visible: item.running
+    visible: item.running && item.dock.showIndicators
     z: 2
 
     Repeater {
@@ -226,10 +242,8 @@ Item {
         readonly property bool winMinimized: winObj ? item.isWinMinimized(winObj) : item.minimized
         readonly property bool winActive: !winMinimized && (winObj ? item.isWinActive(winObj) : (index === 0 && item.isFocused))
 
-        readonly property real longSide: winActive ? item.dynamicActiveWidth : item.dynamicDotSize
-        readonly property real shortSide: winActive ? Style.space(4) : item.dynamicDotSize
-        width: item.dock.vertical ? shortSide : longSide
-        height: item.dock.vertical ? longSide : shortSide
+        width: winActive ? item.dynamicActiveWidth : item.dynamicDotSize
+        height: winActive ? Style.space(4) : item.dynamicDotSize
         radius: Math.min(width, height) / 2
 
         // 1. Active window: Solid illuminated bar
@@ -239,12 +253,12 @@ Item {
           ? Color.bar.active
           : (winMinimized
               ? "transparent"
-              : (item.urgent ? Color.urgent : Util.alpha(item.dock.dockForeground, 0.88)))
+              : (item.urgent ? Color.urgent : Util.alpha(Color.bar.text, 0.88)))
 
         border.color: winActive
           ? Qt.rgba(0, 0, 0, 0.45)
           : (winMinimized
-              ? (item.urgent ? Color.urgent : Util.alpha(item.dock.dockForeground, 0.88))
+              ? (item.urgent ? Color.urgent : Util.alpha(Color.bar.text, 0.88))
               : Qt.rgba(0, 0, 0, 0.45))
 
         border.width: winMinimized ? 1.5 : 1
@@ -270,7 +284,7 @@ Item {
         width: overflowText.implicitWidth + Style.space(4)
         height: Style.space(5)
         radius: height / 2
-        color: Util.alpha(item.dock.dockForeground, 0.20)
+        color: Util.alpha(Color.bar.text, 0.20)
         border.color: Qt.rgba(0, 0, 0, 0.35)
         border.width: 1
 
@@ -279,7 +293,7 @@ Item {
           anchors.centerIn: parent
           text: "+" + (item.totalWindowCount - item.maxVisibleDots)
           textFormat: Text.PlainText
-          color: item.dock.dockForeground
+          color: Color.bar.text
           font.family: Style.font.family
           font.pixelSize: Math.max(7, Style.font.caption - 4)
           font.bold: true
@@ -324,16 +338,16 @@ Item {
     }
 
     onPressed: function(mouse) {
-      if (mouse.button === Qt.LeftButton && (item.pinned || item.running)) {
-        item.dragStartMain = item.dock.vertical ? mouse.y : mouse.x
+      if (mouse.button === Qt.LeftButton) {
+        item.dragStartMain = mouse.x
         item.isDragging = false
         item._dragJustEnded = false
       }
     }
 
     onPositionChanged: function(mouse) {
-      if (area.pressed && mouse.buttons & Qt.LeftButton && (item.pinned || item.running)) {
-        var main = item.dock.vertical ? mouse.y : mouse.x
+      if (area.pressed && mouse.buttons & Qt.LeftButton) {
+        var main = mouse.x
         var dist = Math.abs(main - item.dragStartMain)
         if (!item.isDragging && dist > 8) {
           item.isDragging = true
@@ -341,7 +355,8 @@ Item {
         }
         if (item.isDragging) {
           var pt = item.mapToItem(item.card, mouse.x, mouse.y)
-          item.dragMoved(item.appId, pt ? (item.dock.vertical ? pt.y : pt.x) : main)
+          var away = !!pt && (pt.y < -item.dock.iconSlot || pt.y > item.card.height + item.dock.iconSlot)
+          item.dragMoved(item.appId, pt ? pt.x : main, away)
         }
       }
     }
@@ -368,11 +383,7 @@ Item {
         return
       }
       if (mouse.button === Qt.RightButton) {
-        var pt = item.mapToItem(item.card, item.width / 2, item.height / 2)
-        var gx = item.dock.vertical
-          ? item.card.y + (pt ? pt.y : (item.y + item.height / 2))
-          : item.card.x + (pt ? pt.x : (item.x + item.width / 2))
-        item.menuRequested(item.appId, gx, 0)
+        item.trigger(true)
       } else if (mouse.button === Qt.MiddleButton) {
         item.newWindowRequested(item.appId)
       } else if (mouse.button === Qt.LeftButton) {
@@ -413,11 +424,11 @@ Item {
       && item.name !== "" && item.dock.showTooltips && item.dock.contextAppId === ""
     visible: itemTooltip.shown && itemTooltip.wanted
     z: 300
-    color: Util.alpha(Color.tooltip.background, item.dock.dockSurfaceOpacity)
+    color: Util.alpha(Color.tooltip.background, Style.popupSurfaceOpacity)
     borderSpec: Border.surfaceSpec("tooltip", "border", Color.tooltip.border, 1)
     radius: Style.cornerRadius
     padding: Style.space(6)
-    x: item.dock.tipX(item.width, width, Style.space(10))
+    x: (item.width - width) / 2
     y: item.dock.tipY(item.height, height, Style.space(10))
     width: tooltipContent.implicitWidth + contentLeftInset + contentRightInset
     height: tooltipContent.implicitHeight + contentTopInset + contentBottomInset
@@ -452,5 +463,13 @@ Item {
       x: parent.contentLeftInset
       y: parent.contentTopInset
     }
+  }
+
+  HoverTooltip {
+    dock: item.dock
+    text: "Remove"
+    shown: item.isDragging && item.dock.dragRemove
+    x: (item.width - width) / 2
+    y: item.dock.tipY(item.height, height)
   }
 }

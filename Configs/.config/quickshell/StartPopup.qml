@@ -273,25 +273,25 @@ PopupCard {
     property Timer menuCloseDelay: Timer { interval: Style.hoverDuration; onTriggered: if (!root.menuChainHovered) menuPane.reset() }
 
     property StartMenuFlyout flyout: StartMenuFlyout {
-        shell: root.shell; menus: root.menus; openLeft: root.position === "right"
+        shell: root.shell; menus: root.menus
         menuId: menuPane.openSubId; anchorItem: menuPane.openRow
         onActionTriggered: target => root.runMenuAction(target)
         onDismissed: menuPane.reset()
     }
     property StartMenuFlyout flyout2: StartMenuFlyout {
-        shell: root.shell; menus: root.menus; openLeft: root.position === "right"
+        shell: root.shell; menus: root.menus
         menuId: root.flyout.openSubId; anchorItem: root.flyout.openRow
         onActionTriggered: target => root.runMenuAction(target)
         onDismissed: root.flyout.closeSubmenu()
     }
     property StartMenuFlyout flyout3: StartMenuFlyout {
-        shell: root.shell; menus: root.menus; openLeft: root.position === "right"
+        shell: root.shell; menus: root.menus
         menuId: root.flyout2.openSubId; anchorItem: root.flyout2.openRow
         onActionTriggered: target => root.runMenuAction(target)
         onDismissed: root.flyout2.closeSubmenu()
     }
     property StartMenuFlyout flyout4: StartMenuFlyout {
-        shell: root.shell; menus: root.menus; openLeft: root.position === "right"
+        shell: root.shell; menus: root.menus
         menuId: root.flyout3.openSubId; anchorItem: root.flyout3.openRow
         onActionTriggered: target => root.runMenuAction(target)
         onDismissed: root.flyout3.closeSubmenu()
@@ -371,9 +371,6 @@ PopupCard {
             visible: !root.searchActive
             width: parent.width
             spacing: Style.sectionGap
-            // the narrow places/menu column sits away from the bar, so the apps
-            // list is the half under the cursor that just came off the button
-            layoutDirection: root.position === "right" ? Qt.RightToLeft : Qt.LeftToRight
 
             Column {
                 width: parent.width - placesAndMenuPane.width - parent.spacing

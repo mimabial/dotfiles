@@ -772,12 +772,6 @@ PopupCard {
                         color: root.shell.alpha(root.shell.foreground, .5); font.family: root.shell.fontFamily
                         font.pixelSize: Style.bodySmall; horizontalAlignment: Text.AlignHCenter
                     }
-                    Text {
-                        visible: root.connectedRows.length + root.knownRows.length + root.discoveredRows.length > 0
-                        width: parent.width; text: "j/k navigate  ·  h/l actions  ·  x forget  ·  right-click details"
-                        color: root.shell.alpha(root.shell.foreground, .4); font.family: root.shell.fontFamily
-                        font.pixelSize: Style.caption; horizontalAlignment: Text.AlignHCenter
-                    }
                 }
             }
         }

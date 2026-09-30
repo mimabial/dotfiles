@@ -13,8 +13,6 @@ PopupWindow {
     readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null
     property var openSub: null
     property Item openRow: null
-    // preferred cascade side; see StartMenuFlyout.openLeft
-    property bool openLeft: false
     property int cursorIndex: -1
     signal picked
     signal backRequested
@@ -97,8 +95,8 @@ PopupWindow {
     anchor {
         window: root.anchorWindow
         adjustment: PopupAdjustment.FlipX | PopupAdjustment.Slide
-        edges: Edges.Top | (root.openLeft ? Edges.Left : Edges.Right)
-        gravity: Edges.Bottom | (root.openLeft ? Edges.Left : Edges.Right)
+        edges: Edges.Top | Edges.Right
+        gravity: Edges.Bottom | Edges.Right
         rect.width: root.anchorItem ? root.anchorItem.width : 1
         rect.height: root.anchorItem ? root.anchorItem.height : 1
         onAnchoring: {
@@ -114,7 +112,7 @@ PopupWindow {
         Keys.onPressed: event => {
             if (root.shell.popupCard) event.accepted = root.shell.popupCard.handleKey(event)
         }
-        color: root.shell.alpha(root.shell.role("bg", "#0c1021"), 0.94)
+        color: root.shell.alpha(root.shell.role("bg", "#0c1021"), Style.popupSurfaceOpacity)
         border.color: root.shell.alpha(root.shell.role("alt_br", root.shell.foreground), .45)
         border.width: 1
         radius: root.shell.rounding

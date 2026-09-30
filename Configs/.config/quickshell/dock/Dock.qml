@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
+import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -25,99 +26,86 @@ Item {
   readonly property string configPath: Quickshell.env("HOME") + "/.config/quickshell/dock/settings.json"
 
 
-  // The edge, transparency and blur the dock uses when it is not following the
-  // bar. Linked, all three come from the bar instead, and toggling either side
-  // writes through to the bar's store so the two never drift apart.
-  property string dockEdge: "bottom"
-  property bool dockTransparent: false
-  property bool dockBlur: true
-  property bool linkToBar: true
+  property bool blurred: true
 
-  readonly property var barStore: (root.shell && root.shell.prefs) ? root.shell.prefs : null
-  readonly property bool linked: root.linkToBar && root.barStore !== null
-  readonly property bool transparent: root.linked ? root.barStore.barTransparent === true : root.dockTransparent
-  readonly property bool blurred: root.linked ? root.barStore.barBlur === true : root.dockBlur
-
-  function setTransparent(value) {
-    if (root.linked) root.barStore.barTransparent = value
-    else { root.dockTransparent = value; root.saveConfig() }
-  }
   function setBlur(value) {
-    if (root.linked) root.barStore.barBlur = value
-    else { root.dockBlur = value; root.saveConfig() }
-  }
-  function setLinkToBar(value) {
-    // Unlinking keeps whatever is on screen, so the dock does not jump.
-    if (!value) {
-      root.dockEdge = root.edge
-      root.dockTransparent = root.transparent
-      root.dockBlur = root.blurred
-    }
-    root.linkToBar = value
+    root.blurred = value
     root.saveConfig()
   }
   function setDockEdge(value) {
     root.dockEdge = value
-    if (root.linkToBar) root.linkToBar = false
     root.saveConfig()
   }
 
-  // Each bar layout pins the bar to one screen edge; linked, the dock takes the
-  // opposite one so the two never share a side.
+  // Each bar layout pins the bar to one screen edge; while it shows, the dock
+  // takes the opposite one so the two never share a side.
   readonly property string barEdge: root.shell ? String(root.shell.barEdge) : "top"
-  readonly property string edge: root.linkToBar
-    ? ({ top: "bottom", bottom: "top", left: "right" })[root.barEdge]
+  readonly property bool barShown: root.shell ? root.shell.barShown === true : false
+  property string dockEdge: "bottom"
+  readonly property string edge: root.barShown
+    ? (root.barEdge === "top" ? "bottom" : "top")
     : root.dockEdge
   // Main axis is the one icons march along; cross axis is the card's thickness.
-  readonly property bool vertical: root.edge === "left" || root.edge === "right"
-  readonly property real mainWindowSize: root.vertical ? dockWindow.height : dockWindow.width
-  readonly property real cardMainInsetStart: root.vertical ? dockCard.contentTopInset : dockCard.contentLeftInset
-  readonly property real cardMainInsetEnd: root.vertical ? dockCard.contentBottomInset : dockCard.contentRightInset
   // The dock's "floor" is the side facing its screen edge: icons stand on it,
   // indicators line it, and a launch bounce lifts away from it. awaySign turns
   // the bounce's own negative magnitude into that outward direction.
-  readonly property int awaySign: (root.edge === "bottom" || root.edge === "right") ? 1 : -1
-  readonly property int floorTransformOrigin: root.edge === "bottom" ? Item.Bottom
-    : root.edge === "top" ? Item.Top : root.edge === "left" ? Item.Left : Item.Right
+  readonly property int awaySign: root.edge === "bottom" ? 1 : -1
+  readonly property int floorTransformOrigin: root.edge === "bottom" ? Item.Bottom : Item.Top
 
-  // A hover bubble hangs off the slot's non-floor side, centred on the main axis.
-  function tipX(hostWidth, tipWidth, gap) {
-    var g = gap || Style.space(8)
-    if (root.edge === "left") return hostWidth + g
-    if (root.edge === "right") return -tipWidth - g
-    return (hostWidth - tipWidth) / 2
-  }
-  // A panel that opens off the dock clears the card on the cross axis and
-  // centres on the main-axis point its opener reported, clamped to the screen.
   readonly property real panelGap: Style.space(6)
-  function panelMain(size, at) {
-    return Math.max(Style.gapsOut,
-                    Math.min(root.mainWindowSize - size - Style.gapsOut, at - size / 2))
+  function panelX(width, at) {
+    return Math.max(Style.gapsOut, Math.min(dockWindow.width - width - Style.gapsOut, at - width / 2))
   }
-  function panelCross(size) {
-    if (root.edge === "bottom") return dockCard.y - size - root.panelGap
-    if (root.edge === "top") return dockCard.y + dockCard.height + root.panelGap
-    if (root.edge === "left") return dockCard.x + dockCard.width + root.panelGap
-    return dockCard.x - size - root.panelGap
+  function panelY(height) {
+    return root.edge === "top" ? dockCard.y + dockCard.height + root.panelGap : dockCard.y - height - root.panelGap
   }
-
   function tipY(hostHeight, tipHeight, gap) {
     var g = gap || Style.space(8)
-    if (root.edge === "top") return hostHeight + g
-    if (root.edge === "bottom") return -tipHeight - g
-    return (hostHeight - tipHeight) / 2
+    return root.edge === "top" ? hostHeight + g : -tipHeight - g
   }
 
   property string screenName: ""
-  readonly property var dockScreen: root.screenName
-    ? root.screenForName(root.screenName)
-    : (Quickshell.screens.length > 0 ? Quickshell.screens[0] : null)
+  readonly property var dockScreen: root.screenForName(root.screenName)
+    || (Quickshell.screens.length > 0 ? Quickshell.screens[0] : null)
 
   function screenForName(name) {
     var list = Quickshell.screens
     for (var i = 0; i < list.length; i++)
       if (list[i].name === name) return list[i]
     return null
+  }
+
+  function moveToScreen(name) {
+    root.screenName = name
+    root.saveConfig()
+  }
+
+  // Pushing the pointer against the dock's edge of another display brings the
+  // dock there, as on macOS.
+  Variants {
+    model: Array.prototype.filter.call(Quickshell.screens, screen => screen !== root.dockScreen)
+    PanelWindow {
+      id: followStrip
+      required property var modelData
+      screen: modelData
+      color: "transparent"
+      WlrLayershell.namespace: "hypr-shell-dock-follow"
+      WlrLayershell.layer: WlrLayer.Top
+      exclusionMode: ExclusionMode.Ignore
+      anchors {
+        top: root.edge === "top"
+        bottom: root.edge === "bottom"
+        left: true
+        right: true
+      }
+      implicitHeight: root.revealHeight
+      HoverHandler { id: push }
+      Timer {
+        running: push.hovered
+        interval: root.revealDelay
+        onTriggered: root.moveToScreen(followStrip.modelData.name)
+      }
+    }
   }
 
   readonly property AppLibrary appLibrary: AppLibrary { }
@@ -141,17 +129,15 @@ Item {
   // Distances are measured from each slot's *unmagnified* home centre, in
   // window coordinates. Nothing that magnification changes feeds back into
   // those numbers, so the wave cannot chase itself.
-  readonly property real magnifyPeak: 1.4
-  readonly property real zoomPeak: 1.22
+  readonly property var magnificationPresets: [{ name: "Subtle", scale: 0.6 }, { name: "Medium", scale: 1 }, { name: "Large", scale: 1.6 }]
+  property real magnification: 1
+  readonly property real magnifyPeak: 1 + 0.4 * root.magnification
+  readonly property real zoomPeak: 1 + 0.22 * root.magnification
   readonly property real magnifyRange: root.iconSlot * 2.2
-  readonly property real baseIconArt: root.iconSize - Style.space(4)
 
   // The card's own handler, lifted into window coordinates. Both terms move
   // together as the card grows, so their sum stays the physical pointer.
-  readonly property real pointerMain: cardHover.hovered
-    ? (root.vertical ? dockCard.y + cardHover.point.position.y
-                     : dockCard.x + cardHover.point.position.x)
-    : -1e6
+  readonly property real pointerMain: cardHover.hovered ? dockCard.x + cardHover.point.position.x : -1e6
 
   readonly property int appsSlots: root.showAppsButton ? 1 : 0
   // Running apps that actually render an icon. Fully-minimized unpinned apps
@@ -185,9 +171,10 @@ Item {
   readonly property int groupSlots: root.appGroups.length
   readonly property bool hasSeparator: (root.pinnedSection.length > 0 || root.groupSlots > 0 || root.hasTiles)
     && root.visibleRunningCount > 0
-  readonly property real gapWidth: Style.space(root.itemSpacing)
+  // itemSpacing is in 32nds of an icon, so the gap keeps its proportion at any size.
+  readonly property real gapWidth: Math.round(root.iconSize * root.itemSpacing / 32)
   readonly property real separatorWidth: Style.space(1)
-  readonly property int folderSlots: root.pinnedFolders ? root.pinnedFolders.length : 0
+  readonly property int folderSlots: root.pinnedFolders.length + 1
   readonly property bool hasFolderSeparator: root.folderSlots > 0
     && (root.pinnedSection.length > 0 || root.groupSlots > 0 || root.hasTiles || root.visibleRunningCount > 0)
 
@@ -224,25 +211,10 @@ Item {
     return out
   }
   readonly property int tileCount: root.tileModel.length
-  // The tile frame stays landscape on every edge. Its short side is the one
-  // that crosses the dock, so the dock never grows thicker than its icons; the
-  // long side runs along the dock when horizontal, and across it when vertical —
-  // where the dock's own thickness caps it, making the whole tile smaller.
-  // Named for the axes rather than width/height, since which is which flips.
-  readonly property real tileAspect: 1.5 / 0.95
   readonly property real tileCrossSize: Math.round(root.iconSlot * 0.95)
-  readonly property real tileMainSize: root.vertical
-    ? Math.round(root.tileCrossSize / root.tileAspect)
-    : Math.round(root.iconSlot * 1.5)
+  readonly property real tileMainSize: Math.round(root.iconSlot * 1.5)
 
-  // Tiles take the dock's own rounding rather than a fixed 4px, clamped to half
-  // the tile's short side so a large theme radius cannot round one into a pill.
-  readonly property real tileRadius: {
-    if (root.dockShape === "square") return 0
-    var limit = Math.min(root.tileMainSize, root.tileCrossSize) / 2
-    if (root.dockShape === "round" || root.dockShape === "pill") return limit
-    return Math.max(2, Math.min(limit, root.effectiveCardRadius))
-  }
+  readonly property real tileRadius: Math.min(Style.cornerRadius, root.tileCrossSize / 2)
   readonly property bool hasTiles: root.tileCount > 0
   // Left tile divider (pinned|tiles) renders only when pins precede the tiles.
   readonly property bool hasLeftTileSeparator: root.hasTiles && (root.pinnedSection.length > 0 || root.groupSlots > 0)
@@ -269,9 +241,9 @@ Item {
 
   // Where the row would start if nothing were magnified, measured along the
   // main axis. The card is centred, so this only moves when its contents change.
-  readonly property real baseRowStart: (root.mainWindowSize
-    - (root.baseRowWidth + root.cardMainInsetStart + root.cardMainInsetEnd)) / 2
-    + root.cardMainInsetStart
+  readonly property real baseRowStart: (dockWindow.width
+    - (root.baseRowWidth + dockCard.contentLeftInset + dockCard.contentRightInset)) / 2
+    + dockCard.contentLeftInset
 
   function slotHomeCenter(elementIndex, iconSlotsBefore, separatorCount, extraWidth) {
     return root.baseRowStart
@@ -332,54 +304,22 @@ Item {
   }
 
 
-  // The bar foreground is tuned for the bar's own background. A custom dock
-  // colour can land on the same side of the scale — a light theme's dark text
-  // on a dark card, or the reverse — so flip only when the two collide.
-  function isLight(value) {
-    return (0.2126 * value.r + 0.7152 * value.g + 0.0722 * value.b) > 0.5
-  }
-
-  // Corner radius for the dock card. "rounded" tracks the card's own height, so
-  // the panel keeps the same visual softness at any icon size.
-  readonly property int effectiveCardRadius: {
-    var h = dockCard.height > 0 ? dockCard.height : (root.iconSlot + Style.space(10))
-    if (root.dockShape === "round" || root.dockShape === "pill") return Math.round(h / 2)
-    if (root.dockShape === "square") return 0
-    if (root.dockShape === "theme" || root.dockShape === "auto") {
-      var n = Style.cornerRadius
-      return (typeof n === "number" && isFinite(n) && n >= 0) ? n : Math.max(14, Style.space(14))
-    }
-    return Math.max(Style.space(14), Math.min(Style.space(28), Math.round(h * 0.26)))
-  }
-
-  function cardRadius(height) {
-    return root.effectiveCardRadius
-  }
-
-  readonly property color dockForeground: {
-    var custom = String(root.dockBgColor || "")
-    if (custom.charAt(0) !== "#") return Color.bar.text
-
-    // A hand-edited config can hold an invalid hex string; Qt.color() throws
-    // on those, which would break this binding and take the whole dock's
-    // foreground with it. Fall back to the theme color instead.
-    var customColor
-    try {
-      customColor = Qt.color(custom)
-    } catch (e) {
-      return Color.bar.text
-    }
-    var cardIsLight = root.isLight(customColor)
-    if (cardIsLight !== root.isLight(Color.bar.text)) return Color.bar.text
-    return cardIsLight ? "#12100f" : "#f2efec"
-  }
 
 
   property int configuredIconSize: 0
   readonly property int iconSize: root.configuredIconSize > 0
     ? root.configuredIconSize
     : Math.max(28, Math.round(Style.bar.sizeHorizontal * 0.9))
-  readonly property int iconSlot: root.iconSize + Style.space(10)
+  // Proportions follow the icon, as on macOS: a slot is the icon itself and the
+  // card's padding is a fraction of it. The running dots sit in the floor-side
+  // padding, which grows to hold them.
+  readonly property int iconSlot: root.iconSize
+  readonly property int cardPadding: Math.round(root.iconSize / 8)
+  readonly property real indicatorHeight: Style.space(5)
+  readonly property real floorPadding: root.cardPadding + (root.showIndicators ? root.indicatorHeight : 0)
+  function indicatorY(hostHeight, height) {
+    return root.edge === "top" ? -height - root.cardPadding / 2 : hostHeight + root.cardPadding / 2
+  }
 
 
   property var pinnedIds: []
@@ -394,11 +334,31 @@ Item {
   readonly property var runningSection: root.dockModel.running || []
   readonly property var groupedSection: root.dockModel.grouped || []
 
+  // macOS keeps the last few unpinned apps in the dock after they quit.
+  readonly property int recentLimit: root.showRecents ? 3 : 0
+  property var recentIds: []
+  readonly property bool contextIsRecent: root.recentIds.indexOf(root.contextAppId) >= 0
+
+  function buildDockModel(recents) {
+    return DockModel.buildEntries(root.pinnedIds,
+                                  (ToplevelManager.toplevels ? ToplevelManager.toplevels.values : []),
+                                  root.appRows, root.appLibrary, root.hyprToplevelFor,
+                                  root.isMinimizedWorkspace, root.minimizedOrigins, root.appGroups,
+                                  recents, root.recentLimit)
+  }
+
   function refreshDock() {
-    root.dockModel = DockModel.buildEntries(root.pinnedIds,
-                                            (ToplevelManager.toplevels ? ToplevelManager.toplevels.values : []),
-                                            root.appRows, root.appLibrary, root.hyprToplevelFor,
-                                            root.isMinimizedWorkspace, root.minimizedOrigins, root.appGroups)
+    var model = root.buildDockModel(root.recentIds)
+    var stillRunning = model.running.filter(e => e.running).map(e => e.appId)
+    var quit = root.runningSection.filter(e => e.running && stillRunning.indexOf(e.appId) < 0
+      && DockModel.entryFor(root.appRows, e.appId)).map(e => e.appId)
+    if (quit.length > 0) model = root.buildDockModel(quit.concat(root.recentIds))
+    var recents = model.running.filter(e => !e.running).map(e => e.appId)
+    if (String(recents) !== String(root.recentIds)) {
+      root.recentIds = recents
+      root.saveConfig()
+    }
+    root.dockModel = model
     root.rescanMinimizedWindows()
     root.pruneLaunching()
     root.pruneWindowState()
@@ -525,6 +485,7 @@ Item {
 
 
   property string dragAppId: ""
+  property bool dragRemove: false
   property string dropBeforeId: ""
   property string dropTargetAppId: ""
   property string dropTargetGroupId: ""
@@ -538,9 +499,9 @@ Item {
   property bool contextPinned: false
   property int contextWindows: 0
   property var contextWindowList: []
+  property string contextDesktopId: ""
   property var contextDesktopActions: []
   property real contextAnchor: 0
-  property real contextY: 0
 
 
   property var pinnedFolders: []
@@ -586,7 +547,8 @@ Item {
     for (var i = 0; i < rows.length; i++) rows[i].cursored = i === menuCursor
   }
   function handleMenuKey(event) {
-    if (appGroupEditing || !anyPanelOpen) return false
+    if (appGroupEditing) return false
+    if (!anyPanelOpen) return dockCursor >= 0 && handleDockKey(event)
     if (event.key === Qt.Key_F2 && activeAppGroupId !== "") { appGroupPopup.beginRename(); return true }
     if (event.key === Qt.Key_Escape || event.key === Qt.Key_Left) {
       if (contextAppId === "__dock_settings__" && settingsSubmenu !== "") settingsSubmenu = ""
@@ -606,6 +568,7 @@ Item {
         if (row.activateKeyboard) row.activateKeyboard()
         else row.triggered()
       }
+      if (!anyPanelOpen) dockCursor = -1
       return true
     }
     return false
@@ -618,12 +581,47 @@ Item {
     menuFocusTimer.restart()
   }
 
+  // Keyboard focus walks the dock's slots: every row child that can be triggered.
+  // The cursor is a slot index, so it survives the row rebuilding its items.
+  property int dockCursor: -1
+  readonly property Item dockCursorItem: dockCursor < 0 ? null : dockSlots()[dockCursor] || null
+  onDockCursorChanged: { root.syncVisibility(); root.syncPanelDismiss() }
+  function dockSlots() {
+    return Array.prototype.filter.call(row.children, c => c.visible && c.width > 0 && typeof c.trigger === "function")
+  }
+  function slotCenterX(item) {
+    return dockCard.x + row.x + item.x + item.width / 2
+  }
+  function moveDockCursor(step) {
+    var count = dockSlots().length
+    if (count) dockCursor = dockCursor < 0 ? (step > 0 ? 0 : count - 1) : (dockCursor + step + count) % count
+  }
+  function focusDock() {
+    dockCursor = -1
+    moveDockCursor(1)
+    menuKeyCatcher.forceActiveFocus()
+  }
+  // Escape or any typed character hands the keyboard back.
+  function handleDockKey(event) {
+    if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) moveDockCursor(event.key === Qt.Key_Right ? 1 : -1)
+    else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+      dockCursorItem.trigger(false)
+      if (!anyPanelOpen) dockCursor = -1
+    }
+    else if (event.key === (edge === "top" ? Qt.Key_Down : Qt.Key_Up) || event.key === Qt.Key_Menu) dockCursorItem.trigger(true)
+    else if (event.key === Qt.Key_Escape || event.text !== "") dockCursor = -1
+    else return false
+    return true
+  }
+
 
   property bool autohide: true
   property bool intelligentAutohide: true
   property bool showAppsButton: true
   property bool showTooltips: true
   property bool showMinimizedTiles: true
+  property bool showRecents: true
+  property bool showIndicators: true
   // "zoom" grows only the icon under the pointer and leaves the layout alone —
   // the behaviour this dock shipped with, and the default. "wave" is the
   // falloff: neighbours respond and the row carries the extra width. "off" is
@@ -637,26 +635,16 @@ Item {
   // same opacity, so the menus do not read as a denser material than the dock
   // they belong to. PopupCard's 0.92 is right for a free-standing popup over
   // arbitrary content; a dock menu is part of the dock.
-  readonly property real dockSurfaceOpacity: Math.max(0.45, root.effectiveDockOpacity)
 
-  readonly property real effectiveDockOpacity: {
-    if (root.dockOpacity < 0) {
-      // "Auto (Theme)" means match the bar. Upstream reads the alpha off
-      // Color.bar.background, but this config's palette colours are opaque and
-      // the bar applies its opacity itself, so that resolved to 1 and left the
-      // dock the only solid surface on the desktop.
-      var a = Style.barOpacity
-      if (!isFinite(a) || a < 0) {
-        a = (Color.bar && Color.bar.background && typeof Color.bar.background.a === "number") ? Color.bar.background.a : 1.0
-      }
-      return (isFinite(a) && a >= 0) ? Math.min(1.0, a) : 1.0
-    }
-    return Math.max(0.0, Math.min(1.0, root.dockOpacity))
-  }
-  property string dockShape: "rounded"
-  property string dockBgColor: "theme"
+  // "Auto (Theme)" matches the bar. The palette colours are opaque and the bar
+  // applies its opacity itself, so the alpha comes from the bar rather than
+  // from Color.bar.background.
+  readonly property real effectiveDockOpacity: Math.min(1, root.dockOpacity >= 0 ? root.dockOpacity : Style.barOpacity)
   property int themeVersion: 0
   property string folderColor: "theme"
+  readonly property bool symbolicFolders: ["white", "black", "symbolic"].indexOf(root.folderColor) >= 0
+  readonly property color symbolicFolderColor: root.folderColor === "white" ? "#ffffff"
+    : root.folderColor === "black" ? "#111111" : Color.bar.text
   property int itemSpacing: 4
   property string minimizeMode: "active"
   readonly property bool clickToMinimize: root.minimizeMode !== "off"
@@ -789,28 +777,10 @@ Item {
     var monX = (mon && typeof mon.x === "number") ? mon.x : 0
     var monY = (mon && typeof mon.y === "number") ? mon.y : 0
     // The card's footprint on the dock's own edge, in monitor coordinates.
-    var dockLeft, dockRight, dockTop, dockBottom
-    if (root.vertical) {
-      dockTop = monY + (screenLogicalH - cardH) / 2
-      dockBottom = monY + (screenLogicalH + cardH) / 2
-      if (root.edge === "left") {
-        dockLeft = monX
-        dockRight = monX + cardW + 12
-      } else {
-        dockLeft = monX + screenLogicalW - cardW - 12
-        dockRight = monX + screenLogicalW
-      }
-    } else {
-      dockLeft = monX + (screenLogicalW - cardW) / 2
-      dockRight = monX + (screenLogicalW + cardW) / 2
-      if (root.edge === "top") {
-        dockTop = monY
-        dockBottom = monY + cardH + 12
-      } else {
-        dockTop = monY + screenLogicalH - cardH - 12
-        dockBottom = monY + screenLogicalH
-      }
-    }
+    var dockLeft = monX + (screenLogicalW - cardW) / 2
+    var dockRight = monX + (screenLogicalW + cardW) / 2
+    var dockTop = root.edge === "top" ? monY : monY + screenLogicalH - cardH - 12
+    var dockBottom = root.edge === "top" ? monY + cardH + 12 : monY + screenLogicalH
 
     var overlap = false
     // Compare against the dock monitor's own active workspace, not the
@@ -854,6 +824,28 @@ Item {
     }
 
     root.windowsOverlapDock = overlap
+  }
+
+  // Unread counts apps publish over the Unity LauncherEntry D-Bus API. Apps only
+  // announce changes, so a count set before the shell started shows at the next one.
+  property var badgeCounts: ({})
+  function badgeCountFor(appId) {
+    for (var id in root.badgeCounts)
+      if (DockModel.isAppMatch(id, appId)) return root.badgeCounts[id]
+    return 0
+  }
+  Process {
+    running: true
+    command: ["python3", Quickshell.env("HOME") + "/.local/lib/hypr/quickshell/launcher-entry.py"]
+    stdout: SplitParser {
+      onRead: function(line) {
+        var update = JSON.parse(line)
+        var next = DockModel.copyMap(root.badgeCounts)
+        if (update.count > 0) next[update.app] = update.count
+        else delete next[update.app]
+        root.badgeCounts = next
+      }
+    }
   }
 
   Process {
@@ -909,10 +901,7 @@ Item {
     || appGroupPopup.hovered
   readonly property bool anyPanelOpen: root.contextAppId !== "" || root.activeStackFolder !== ""
     || root.activeAppGroupId !== ""
-  readonly property string startPopupName: "dockstart"
-  readonly property bool startPopupOpen: root.shell ? root.shell.popupName === root.startPopupName : false
 
-  onStartPopupOpenChanged: root.syncVisibility()
   onPointerOverDockChanged: root.syncPanelDismiss()
   onAnyPanelOpenChanged: root.syncPanelDismiss()
 
@@ -921,13 +910,14 @@ Item {
   // Dragging is exempt: the pointer crosses every slot on its way.
   function slotEntered(menuOwner, stackOwner, groupOwner) {
     if (root.dragAppId !== "") return
+    root.dockCursor = -1
     if (root.contextAppId !== "" && root.contextAppId !== menuOwner) root.closeContext()
     if (root.activeStackFolder !== "" && root.activeStackFolder !== stackOwner) root.closeFolderStack()
     if (root.activeAppGroupId !== "" && root.activeAppGroupId !== groupOwner) root.closeAppGroup()
   }
 
   function syncPanelDismiss() {
-    if (root.pointerOverDock || !root.anyPanelOpen || root.dragAppId !== "") panelLeaveTimer.stop()
+    if (root.pointerOverDock || !root.anyPanelOpen || root.dragAppId !== "" || root.dockCursor >= 0) panelLeaveTimer.stop()
     else panelLeaveTimer.restart()
   }
 
@@ -952,8 +942,7 @@ Item {
 
     var isHovered = (cardHover && cardHover.hovered) || (revealHover && revealHover.hovered)
       || root.contextAppId !== "" || root.dragAppId !== "" || root.activeStackFolder !== ""
-      || root.activeAppGroupId !== ""
-      || root.startPopupOpen
+      || root.activeAppGroupId !== "" || root.dockCursor >= 0
 
     if (isHovered) {
       hideTimer.stop()
@@ -992,7 +981,6 @@ Item {
   }
   onWindowsOverlapDockChanged: root.syncVisibility()
   onDockVisibleChanged: {
-    if (root.dockVisible && root.shell) root.shell.cycleDistroGlyph()
     if (!root.dockVisible) {
       root.closeContext()
       root.closeFolderStack()
@@ -1242,6 +1230,7 @@ Item {
     root.rescanApps()
   }
   onPinnedIdsChanged: root.refreshDock()
+  onShowRecentsChanged: root.refreshDock()
   onAppGroupsChanged: root.refreshDock()
 
 
@@ -1264,6 +1253,9 @@ Item {
     root.showAppsButton = parsed && parsed.showAppsButton !== false
     root.showTooltips = parsed && parsed.showTooltips !== false
     root.showMinimizedTiles = parsed ? parsed.showMinimizedTiles !== false : true
+    root.showRecents = parsed ? parsed.showRecents !== false : true
+    root.showIndicators = parsed ? parsed.showIndicators !== false : true
+    root.magnification = parsed && typeof parsed.magnification === "number" ? parsed.magnification : 1
     // Migrates the old boolean: an explicit magnification:false meant no growth.
     root.hoverEffect = parsed && typeof parsed.hoverEffect === "string"
       ? parsed.hoverEffect
@@ -1279,13 +1271,9 @@ Item {
     } else {
       root.dockOpacity = 1.0
     }
-    root.dockShape = parsed && typeof parsed.shape === "string" ? parsed.shape : "rounded"
-    root.dockBgColor = parsed && typeof parsed.bgColor === "string" ? parsed.bgColor : "theme"
     root.folderColor = parsed && typeof parsed.folderColor === "string" ? parsed.folderColor : "theme"
-    root.linkToBar = parsed ? parsed.linkToBar !== false : true
-    root.dockEdge = parsed && typeof parsed.edge === "string" ? parsed.edge : "bottom"
-    root.dockTransparent = parsed ? parsed.transparent === true : false
-    root.dockBlur = parsed ? parsed.blur !== false : true
+    root.dockEdge = parsed && parsed.edge === "top" ? "top" : "bottom"
+    root.blurred = parsed ? parsed.blur !== false : true
     root.itemSpacing = parsed && typeof parsed.itemSpacing === "number" ? parsed.itemSpacing : 4
     if (parsed && typeof parsed.minimizeMode === "string") {
       root.minimizeMode = parsed.minimizeMode
@@ -1304,6 +1292,7 @@ Item {
       ? Math.max(0, Math.min(5000, Math.round(parsed.tooltipDelay)))
       : 450
     root.appGroups = parsed && Array.isArray(parsed.appGroups) ? parsed.appGroups : []
+    root.recentIds = parsed && Array.isArray(parsed.recentApps) ? parsed.recentApps : []
     if (parsed && Array.isArray(parsed.pinnedFolders)) {
       root.pinnedFolders = parsed.pinnedFolders
     } else {
@@ -1324,8 +1313,7 @@ Item {
   }
 
   // Upstream also offered Yaru's coloured folder sets; those ship with Ubuntu's
-  // icon theme, which is not installed here, so only the modes that recolour
-  // Adwaita's symbolic folder remain.
+  // icon theme, which is not installed here, so only the monochrome modes remain.
   function edgeLabel(value) {
     return String(value || "bottom").replace(/^./, function (c) { return c.toUpperCase() })
   }
@@ -1344,13 +1332,12 @@ Item {
     root.saveConfig()
   }
 
-  function openDockSettingsMenu(x, y) {
+  function openDockSettingsMenu(x) {
     root.contextName = "Dock Settings"
     root.contextWindows = 0
     root.contextWindowList = []
     root.contextPinned = false
     root.contextAnchor = x
-    root.contextY = y
     root.settingsSubmenu = ""
     root.contextAppId = "__dock_settings__"
   }
@@ -1377,16 +1364,6 @@ Item {
 
   function setHoverEffect(mode) {
     root.hoverEffect = mode
-    root.saveConfig()
-  }
-
-  function setDockShape(shape) {
-    root.dockShape = shape
-    root.saveConfig()
-  }
-
-  function setDockBgColor(col) {
-    root.dockBgColor = col
     root.saveConfig()
   }
 
@@ -1559,6 +1536,16 @@ Item {
       'hl.dsp.window.move({ window = "address:' + address + '", workspace = "'
         + root.luaString(parkWs) + '", follow = false })',
       "movetoworkspacesilent " + parkWs + ",address:" + address)
+
+    // A shown scratchpad with nothing left on it would linger as an empty overlay.
+    var emptied = root.isScratchpadWorkspace(origin) && origin === root.dockSpecialWorkspace
+      && !(Hyprland.toplevels.values || []).some(h => h.workspace && h.workspace.name === origin
+        && !root.minimizedOrigins[root.windowAddress(h)])
+    if (emptied) {
+      var scratchpad = origin.slice("special:".length)
+      root.hyprDispatch('hl.dsp.workspace.toggle_special("' + root.luaString(scratchpad) + '")',
+        "togglespecialworkspace " + scratchpad)
+    }
     return true
   }
 
@@ -1570,9 +1557,8 @@ Item {
     // Default restore target is the workspace the user is on right now;
     // useOrigin=true sends the window back to where it was parked from.
     var origin = root.minimizedOrigins[address] || ""
-    var target = ""
-    if ((useOrigin || root.isScratchpadWorkspace(origin)) && origin) target = origin
-    if (!target) target = root.workspaceTarget(Hyprland.focusedWorkspace)
+    var here = root.workspaceTarget(Hyprland.focusedWorkspace)
+    var target = (useOrigin || root.isScratchpadWorkspace(origin)) && origin ? origin : here
     if (!target) return false
 
     var origins = DockModel.copyMap(root.minimizedOrigins)
@@ -1591,8 +1577,10 @@ Item {
       'hl.dsp.window.move({ window = "address:' + address + '", workspace = "'
         + root.luaString(target) + '", follow = false })',
       "movetoworkspacesilent " + target + ",address:" + address)
-    root.hyprDispatch('hl.dsp.focus({ workspace = "' + root.luaString(target) + '" })',
-                      "workspace " + target)
+    // Switch only when the window returns elsewhere: re-focusing the shown
+    // workspace does nothing, and the scrolling layout rejects it while empty.
+    if (target !== here) root.hyprDispatch('hl.dsp.focus({ workspace = "' + root.luaString(target) + '" })',
+                                           "workspace " + target)
 
     var top = root.liveToplevelForAddress(address)
     if (top) {
@@ -1623,6 +1611,7 @@ Item {
     var focusAddr = null
     var focusTarget = null
     var bestTime = -1
+    var here = root.workspaceTarget(Hyprland.focusedWorkspace)
 
     for (var i = 0; i < wins.length; i++) {
       var w = wins[i]
@@ -1630,9 +1619,7 @@ Item {
       var address = w.address
 
       var origin = origins[address] || ""
-      var target = ""
-      if ((useOrigin || root.isScratchpadWorkspace(origin)) && origin) target = origin
-      if (!target) target = root.workspaceTarget(Hyprland.focusedWorkspace)
+      var target = (useOrigin || root.isScratchpadWorkspace(origin)) && origin ? origin : here
       if (!target) continue
 
       var t = parkedTimes[address] !== undefined ? parkedTimes[address] : 0
@@ -1663,8 +1650,8 @@ Item {
 
     // Single workspace switch + single window activation after all moves.
     if (focusTarget) {
-      root.hyprDispatch('hl.dsp.focus({ workspace = "' + root.luaString(focusTarget) + '" })',
-                        "workspace " + focusTarget)
+      if (focusTarget !== here) root.hyprDispatch('hl.dsp.focus({ workspace = "' + root.luaString(focusTarget) + '" })',
+                                                  "workspace " + focusTarget)
       var top = root.liveToplevelForAddress(focusAddr)
       if (top) DockModel.focusWindow(top)
     }
@@ -1937,12 +1924,9 @@ Item {
       if (addr !== "") root.minimizeToplevel(addr)
     }
 
-    function transparency(): void { root.setTransparent(!root.transparent) }
     function blur(): void { root.setBlur(!root.blurred) }
-    function link(): void { root.setLinkToBar(!root.linkToBar) }
-    function position(edge: string): void {
-      if (["top", "bottom", "left", "right"].indexOf(edge) >= 0) root.setDockEdge(edge)
-    }
+    function opacity(percent: string): void { root.setDockOpacity(percent === "auto" ? -1 : Number(percent) / 100) }
+    function focus(): void { root.focusDock() }
 
     function restoreLast(): void {
       var parked = []
@@ -1958,7 +1942,7 @@ Item {
 
   function launchApp(appId, entry) {
     var target = entry || root.entryForId(appId)
-    var deskEntry = DockModel.entryFor(root.appRows, appId)
+    var deskEntry = root.appLibrary.lookup(appId) || DockModel.entryFor(root.appRows, appId)
     var targetId = (deskEntry && deskEntry.id) ? deskEntry.id : appId
     if (!root.appLibrary.launch(targetId)) {
       var webAppMatch = String(appId).match(/^(?:chrome|chromium|brave|edge|microsoft-edge)-(.*?)__?-(?:default|profile.*)$/i)
@@ -2014,6 +1998,9 @@ Item {
     conf.showAppsButton = root.showAppsButton
     conf.showTooltips = root.showTooltips
     conf.showMinimizedTiles = root.showMinimizedTiles
+    conf.showRecents = root.showRecents
+    conf.showIndicators = root.showIndicators
+    conf.magnification = root.magnification
     conf.hoverEffect = root.hoverEffect
     delete conf.magnification
     conf.launchBounce = root.launchBounce
@@ -2022,13 +2009,9 @@ Item {
     if (root.configuredIconSize > 0) conf.iconSize = root.configuredIconSize
     else delete conf.iconSize
     conf.opacity = root.dockOpacity < 0 ? "theme" : root.dockOpacity
-    conf.shape = root.dockShape
-    conf.bgColor = root.dockBgColor
     conf.folderColor = root.folderColor
-    conf.linkToBar = root.linkToBar
     conf.edge = root.dockEdge
-    conf.transparent = root.dockTransparent
-    conf.blur = root.dockBlur
+    conf.blur = root.blurred
     conf.itemSpacing = root.itemSpacing
     conf.minimizeMode = root.minimizeMode
     conf.clickToMinimize = root.minimizeMode !== "off"
@@ -2039,6 +2022,7 @@ Item {
     conf.tooltipDelay = root.tooltipDelay
     conf.appGroups = root.appGroups
     conf.pinnedFolders = root.pinnedFolders
+    conf.recentApps = root.recentIds
     configFile.setText(JSON.stringify(conf, null, 2))
   }
 
@@ -2144,15 +2128,14 @@ Item {
       return
     }
 
-    // (preferring current workspace, then recent, then first). Restoring
-    // minimized windows is the preview tiles' job — icon clicks never do it.
+    // Focus a visible window (preferring current workspace, then recent, then
+    // first); with every window minimized, bring one back, as on macOS.
     if (visible.length > 0) {
       var target = root.windowHere(visible) || root.recentWindow(appId, visible) || visible[0]
       if (target && target.address) root.focusWindowByAddress(target.address, appId)
+    } else if (parked.length > 0) {
+      root.restoreWindow(root.oldestParked(parked), appId)
     }
-
-    // All windows parked (or none): intentionally nothing. The dock's preview
-    // tiles are the restore surface; a plain click must not surprise anyone.
   }
 
   // Menu rows name the workspace a window sits on, including the parked ones.
@@ -2211,6 +2194,12 @@ Item {
     root.setPinned(DockModel.togglePinned(root.pinnedIds, appId))
   }
 
+  function removeRecent(appId) {
+    root.recentIds = root.recentIds.filter(id => id !== appId)
+    root.saveConfig()
+    root.refreshDock()
+  }
+
   function launchDesktopAction(action, appName) {
     if (!action) return
     root.markLaunching(root.contextAppId || "", 0)
@@ -2255,7 +2244,7 @@ Item {
           wins.push({
             title: String(top.title || "Window"),
             address: addr,
-            appId: root.contextAppId,
+            appId: String(top.appId),
             workspaceName: isParked ? root.minimizedWorkspaceFor(addr) : wsName,
             isMinimized: isParked
           })
@@ -2271,7 +2260,7 @@ Item {
     } catch (e) {}
   }
 
-  function openContext(appId, x, y) {
+  function openContext(appId, x) {
     root.contextAppId = appId
     var entry = root.entryForId(appId)
     root.contextName = entry ? entry.name : appId
@@ -2283,10 +2272,10 @@ Item {
     }
     var canonicalId = (deskEntry && deskEntry.id) ? deskEntry.id : appId
     root.contextPinned = DockModel.isPinned(root.pinnedIds, appId) || (canonicalId !== appId && DockModel.isPinned(root.pinnedIds, canonicalId))
+    root.contextDesktopId = deskEntry && deskEntry.id ? String(deskEntry.id) : ""
     root.contextDesktopActions = (deskEntry && deskEntry.actions) ? deskEntry.actions : []
     try { contextMenu.selectedWindowIdx = -1 } catch (e) {}
     root.contextAnchor = x
-    root.contextY = y
   }
 
   function closeContext() {
@@ -2310,7 +2299,6 @@ Item {
     root.contextTilePinned = DockModel.isPinned(root.pinnedIds, appId)
       || (canonicalId !== appId && DockModel.isPinned(root.pinnedIds, canonicalId))
     root.contextAnchor = cx
-    root.contextY = 0
     root.contextAppId = "__tile_context__"
     root.syncVisibility()
   }
@@ -2360,12 +2348,57 @@ Item {
     root.syncVisibility()
   }
 
-  function openFolderContext(path, name, cx, cy) {
+  FolderListModel {
+    id: trashFiles
+    folder: "file://" + (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/Trash/files"
+    showHidden: true
+  }
+  readonly property bool trashFull: trashFiles.count > 0
+
+  function openTrash() {
+    Util.execDetached("uwsm-app -- gio open trash:///")
+  }
+
+  function forceQuit(windows) {
+    for (var win of windows)
+      if (win.address) root.hyprDispatch('hl.dsp.window.kill({ window = "address:' + win.address + '" })',
+        "killwindow address:" + win.address)
+  }
+
+  readonly property string autostartDir: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/autostart"
+  FolderListModel {
+    id: autostartFiles
+    folder: "file://" + root.autostartDir
+    nameFilters: ["*.desktop"]
+    showDirs: false
+  }
+  readonly property string contextAutostartFile: root.contextDesktopId
+    ? root.autostartDir + "/" + DockModel.stripDesktop(root.contextDesktopId) + ".desktop"
+    : ""
+  readonly property bool contextOpensAtLogin: autostartFiles.count > 0 && root.contextAutostartFile !== ""
+    && autostartFiles.indexOf("file://" + root.contextAutostartFile) >= 0
+
+  // Links the app's own desktop entry, so autostart follows package updates.
+  function toggleOpenAtLogin() {
+    if (root.contextOpensAtLogin) Quickshell.execDetached(["rm", "-f", root.contextAutostartFile])
+    else Quickshell.execDetached(["sh", "-c",
+      'for d in "${XDG_DATA_HOME:-$HOME/.local/share}" $(printf %s "${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" | tr : " "); do'
+      + ' f="$d/applications/${1##*/}"; [ -f "$f" ] && mkdir -p "${1%/*}" && exec ln -sf "$f" "$1"; done',
+      "sh", root.contextAutostartFile])
+  }
+
+  function openTrashContext(cx) {
+    root.closeFolderStack()
+    root.contextAnchor = cx
+    root.contextAppId = "__trash_context__"
+    root.syncVisibility()
+  }
+
+  function openFolderContext(path, name, cx) {
     root.closeFolderStack()
     root.contextFolderPath = path
     root.contextFolderName = name || "Folder"
     root.contextAnchor = cx
-    root.contextY = cy
     root.contextAppId = "__folder_context__"
     root.syncVisibility()
   }
@@ -2514,14 +2547,16 @@ Item {
 
   function itemMainBounds(item) {
     var point = item.mapToItem(dockCard, 0, 0)
-    return { start: root.vertical ? point.y : point.x, size: root.vertical ? item.height : item.width }
+    return { start: point.x, size: item.width }
   }
 
-  function updateDragTarget(appId, main) {
+  function updateDragTarget(appId, main, away) {
     root.dropBeforeId = ""
     root.dropTargetAppId = ""
     root.dropTargetGroupId = ""
     root.dropIntoPins = false
+    root.dragRemove = !!away && (DockModel.isPinned(root.pinnedIds, appId) || root.recentIds.indexOf(appId) >= 0)
+    if (root.dragRemove) return
 
     for (var g = 0; g < appGroupsRepeater.count; g++) {
       var groupItem = appGroupsRepeater.itemAt(g)
@@ -2570,14 +2605,21 @@ Item {
     var targetApp = root.dropTargetAppId
     var before = root.dropBeforeId
     var pinHere = root.dropIntoPins
+    var remove = root.dragRemove
 
     root.dragAppId = ""
+    root.dragRemove = false
     root.dragSourceGroupId = ""
     root.dropTargetGroupId = ""
     root.dropTargetAppId = ""
     root.dropBeforeId = ""
     root.dropIntoPins = false
     if (!appId || (sourceGroup && sourceGroup === targetGroup)) return
+    if (remove) {
+      if (root.recentIds.indexOf(appId) >= 0) root.removeRecent(appId)
+      else root.setPinned(root.pinnedIds.filter(id => id !== appId))
+      return
+    }
 
     if (sourceGroup) root.removeAppFromGroup(sourceGroup, appId, false)
     if (targetGroup) root.addAppToGroup(targetGroup, appId)
@@ -2603,7 +2645,7 @@ Item {
       var nested = root.menuContentWidth(kid)
       if (nested > widest) widest = nested
     }
-    return Math.min(Math.max(widest, 220), Style.space(280))
+    return Math.min(Math.max(widest, Style.space(220)), Style.space(280))
   }
 
 
@@ -2619,11 +2661,14 @@ Item {
     color: "transparent"
     WlrLayershell.namespace: "hypr-shell-dock"
     WlrLayershell.layer: WlrLayer.Top
-    WlrLayershell.keyboardFocus: !(root.anyPanelOpen || root.appGroupEditing) ? WlrKeyboardFocus.None
+    // Keyboard navigation holds focus exclusively: dropping to on-demand hands it
+    // back to the window under the pointer.
+    WlrLayershell.keyboardFocus: root.dockCursor >= 0 ? WlrKeyboardFocus.Exclusive
+      : !(root.anyPanelOpen || root.appGroupEditing) ? WlrKeyboardFocus.None
       : root.menuFocusPriming || root.appGroupFocusPriming ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
     exclusionMode: (!root.autohide) ? ExclusionMode.Normal : ExclusionMode.Ignore
     exclusiveZone: (!root.autohide)
-      ? Math.round((root.vertical ? dockCard.width : dockCard.height) + Style.gapsOut * 2)
+      ? Math.round(dockCard.height + Style.gapsOut)
       : 0
 
     // The panel spans the dock's edge and reaches well into the screen, so
@@ -2631,8 +2676,8 @@ Item {
     anchors {
       top: root.edge !== "bottom"
       bottom: root.edge !== "top"
-      left: root.edge !== "right"
-      right: root.edge !== "left"
+      left: true
+      right: true
     }
     implicitWidth: 650
     implicitHeight: 650
@@ -2641,6 +2686,7 @@ Item {
       anchors.fill: parent
       focus: true
       Keys.onPressed: event => event.accepted = root.handleMenuKey(event)
+      Window.onActiveChanged: if (!Window.active) root.dockCursor = -1
     }
 
     // Bound explicitly rather than `item: dockCard`: the card slides on animated
@@ -2668,9 +2714,8 @@ Item {
       // anchors that do not apply does not reliably unset them, and a strip
       // left stretched across the panel reports the whole dock as an edge
       // trigger, which keeps the dock up wherever the pointer is.
-      width: root.vertical ? root.revealHeight : parent.width
-      height: root.vertical ? parent.height : root.revealHeight
-      x: root.edge === "right" ? parent.width - width : 0
+      width: parent.width
+      height: root.revealHeight
       y: root.edge === "bottom" ? parent.height - height : 0
 
       HoverHandler {
@@ -2680,44 +2725,14 @@ Item {
 
       // The grab handle sits on the screen edge and grows along the dock's axis.
       Rectangle {
-        x: root.vertical
-          ? (root.edge === "left" ? 0 : parent.width - width)
-          : (parent.width - width) / 2
-        y: root.vertical
-          ? (parent.height - height) / 2
-          : (root.edge === "top" ? 0 : parent.height - height)
-        width: root.vertical ? Style.space(3) : (revealHover.hovered ? Style.space(48) : Style.space(24))
-        height: root.vertical ? (revealHover.hovered ? Style.space(48) : Style.space(24)) : Style.space(3)
-        radius: Math.min(width, height) / 2
+        x: (parent.width - width) / 2
+        y: root.edge === "top" ? 0 : parent.height - height
+        width: revealHover.hovered ? Style.space(48) : Style.space(24)
+        height: Style.space(3)
+        radius: height / 2
         color: Util.alpha(Color.bar.text, revealHover.hovered ? 0.6 : 0.25)
         Behavior on width { NumberAnimation { duration: 150 } }
-        Behavior on height { NumberAnimation { duration: 150 } }
         Behavior on color { ColorAnimation { duration: 150 } }
-      }
-    }
-
-    // The bar's start popup anchors to the bar, so on a dock sitting opposite it
-    // the menu would open across the screen from the button that spawned it.
-    // The dock hosts its own under a separate name, positioned off its own edge,
-    // and loads it only once it has actually been opened.
-    Loader {
-      id: startPopupLoader
-      property bool everOpened: false
-      active: startPopupLoader.everOpened
-      visible: false
-      sourceComponent: Component {
-        Shell.StartPopup {
-          anchorItem: appsButton
-          shell: root.shell
-          popupName: root.startPopupName
-          position: root.edge
-        }
-      }
-      Connections {
-        target: root.shell
-        function onPopupNameChanged() {
-          if (root.shell.popupName === root.startPopupName) startPopupLoader.everOpened = true
-        }
       }
     }
 
@@ -2757,18 +2772,12 @@ Item {
     BorderSurface {
       id: dockCard
 
-      readonly property color effectiveBgColor: {
-        if (root.dockBgColor === "none") return Qt.rgba(0, 0, 0, 0.25)
-        if (root.dockBgColor === "theme" || !root.dockBgColor) return Color.bar.background
-        return root.dockBgColor
-      }
-
-      color: root.transparent
-        ? "transparent"
-        : (root.dockBgColor === "none" ? effectiveBgColor : Util.alpha(effectiveBgColor, root.effectiveDockOpacity))
+      color: Util.alpha(Color.bar.background, root.effectiveDockOpacity)
       borderSpec: Border.none()
-      radius: root.cardRadius(height)
-      padding: Style.space(5)
+      radius: Style.cornerRadius
+      padding: root.cardPadding
+      topPadding: root.edge === "top" ? root.floorPadding : root.cardPadding
+      bottomPadding: root.edge === "bottom" ? root.floorPadding : root.cardPadding
       z: 1
 
       HoverHandler {
@@ -2787,16 +2796,12 @@ Item {
       // card moved that way draws in one place and takes input in another.
       readonly property real edgeOffset: root.dockVisible
         ? Style.gapsOut
-        : -((root.vertical ? dockCard.width : dockCard.height) + Style.gapsOut + 10)
+        : -(dockCard.height + Style.gapsOut + 10)
       property real slideOffset: dockCard.edgeOffset
       Behavior on slideOffset { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-      x: root.vertical
-        ? (root.edge === "left" ? slideOffset : parent.width - width - slideOffset)
-        : (parent.width - width) / 2
-      y: root.vertical
-        ? (parent.height - height) / 2
-        : (root.edge === "top" ? slideOffset : parent.height - height - slideOffset)
+      x: (parent.width - width) / 2
+      y: root.edge === "top" ? slideOffset : parent.height - height - slideOffset
 
       opacity: root.dockVisible ? 1 : 0
       Behavior on opacity {
@@ -2817,15 +2822,23 @@ Item {
         }
       }
 
-      // A Grid rather than a Row so the spine can flip axis from a binding:
-      // rows 1 lays the children out horizontally, columns 1 vertically.
+      Rectangle {
+        visible: root.dockCursorItem !== null
+        x: row.x + (root.dockCursorItem ? root.dockCursorItem.x : 0)
+        y: row.y
+        width: root.dockCursorItem ? root.dockCursorItem.width : 0
+        height: row.height
+        radius: Style.cornerRadius
+        color: Color.menu.selectedBackground
+      }
+
       Grid {
         id: row
         z: 1
         spacing: Style.space(root.itemSpacing)
         // Empty Repeaters are visible children, so counting them adds a gap
         // after the last icon and shifts a lone button off the screen centre.
-        columns: root.vertical ? 1 : Math.max(1, root.elementTotal)
+        columns: Math.max(1, root.elementTotal)
 
         anchors.left: parent.left
         anchors.leftMargin: dockCard.contentLeftInset
@@ -2838,19 +2851,16 @@ Item {
 
         DockIconButton {
           dock: root
-          card: dockCard
           id: appsButton
           visible: root.showAppsButton
           homeCenter: root.slotHomeCenter(0, 0, 0)
-          glyph: root.shell ? root.shell.distroGlyph : ""
-          glyphColor: root.dockForeground
+          icon: "view-app-grid"
+          iconContext: "actions"
           tooltip: "Applications"
-          onPressed: { if (root.shell) root.shell.togglePopup(root.startPopupName) }
+          onPressed: Quickshell.execDetached(["hyprshell", "rofi-launch.sh", "d"])
           onMiddleClicked: { if (root.shell) root.shell.run([root.shell.terminal]) }
           onWheelScrolled: function(dir) { root.cycleWorkspace(dir) }
-          onMenuRequested: function(cx, cy) {
-            root.openDockSettingsMenu(cx, cy)
-          }
+          onMenuRequested: function(cx) { root.openDockSettingsMenu(cx) }
         }
 
         DockSeparator { dock: root; visible: root.appsSeparatorCount > 0 }
@@ -2874,7 +2884,7 @@ Item {
             active: modelData.appId === root.activeId
             onActivateRequested: function(aid) { root.activate(aid) }
             onNewWindowRequested: function(aid) { root.launchApp(aid, null) }
-            onMenuRequested: function(aid, cx, cy) { root.openContext(aid, cx, cy) }
+            onMenuRequested: function(aid, cx) { root.openContext(aid, cx) }
             onWheelScrolled: function(aid, dir) { root.cycleApp(aid, dir) }
             onDragStarted: function(aid) {
               dock.dragAppId = aid
@@ -2883,23 +2893,20 @@ Item {
               dock.dropTargetAppId = ""
               dock.dropTargetGroupId = ""
             }
-            onDragMoved: function(aid, main) { dock.updateDragTarget(aid, main) }
+            onDragMoved: function(aid, main, away) { dock.updateDragTarget(aid, main, away) }
             onDragDropped: function(aid) { dock.finishDrag() }
           }
         }
 
         Repeater {
           id: appGroupsRepeater
-          model: root.appGroups.map(function(group) {
-            return { group: group, dock: root, content: dockWindow.contentItem }
-          })
+          model: root.appGroups
           delegate: DockAppGroupItem {
             required property var modelData
             required property int index
-            dock: modelData.dock
-            dockContent: modelData.content
-            groupData: modelData.group
-            homeCenter: dock.groupHomeCenter(index)
+            dock: root
+            groupData: modelData
+            homeCenter: root.groupHomeCenter(index)
           }
         }
 
@@ -2942,6 +2949,12 @@ Item {
               root.restoreWindowBatch(groupWins)
             }
 
+            function trigger(menu) {
+              if (!tile.win || !tile.win.address) return
+              if (menu) root.openTileContext(tile.groupWins, tile.win.appId || "", root.slotCenterX(tile))
+              else tile.doRestore()
+            }
+
             function doClose() {
               for (var i = 0; i < groupWins.length; i++) {
                 var w = groupWins[i]
@@ -2955,8 +2968,8 @@ Item {
             // A tile is shorter than a slot across the dock and used to anchor
             // itself centred, which a Grid child may not do. The delegate now
             // fills the slot on the cross axis and centres the tile within it.
-            width: root.vertical ? root.iconSlot : tile.tileMain
-            height: root.vertical ? tile.tileMain : root.iconSlot
+            width: tile.tileMain
+            height: root.iconSlot
             opacity: root.dockVisible ? 1 : 0
 
             // Zoom mode scales this visual stack in place (the preview overlaps
@@ -2965,8 +2978,8 @@ Item {
             Item {
               id: tileVisual
               anchors.centerIn: parent
-              width: root.vertical ? root.tileCrossSize : tile.tileMain
-              height: root.vertical ? tile.tileMain : root.tileCrossSize
+              width: tile.tileMain
+              height: root.tileCrossSize
               scale: root.waveHover ? 1 : tile.magnifyScale
 
               // Stacked-card layers behind grouped tiles hint at the count.
@@ -2976,9 +2989,9 @@ Item {
                 anchors.leftMargin: -Style.space(3)
                 anchors.bottomMargin: -Style.space(2)
                 radius: root.tileRadius
-                color: Util.alpha(root.dockForeground, 0.16)
+                color: Util.alpha(Color.bar.text, 0.16)
                 border.width: 1
-                border.color: Util.alpha(root.dockForeground, 0.38)
+                border.color: Util.alpha(Color.bar.text, 0.38)
               }
               Rectangle {
                 visible: tile.isGroup && tile.groupCount > 2
@@ -2986,17 +2999,17 @@ Item {
                 anchors.leftMargin: -Style.space(6)
                 anchors.bottomMargin: -Style.space(4)
                 radius: root.tileRadius
-                color: Util.alpha(root.dockForeground, 0.11)
+                color: Util.alpha(Color.bar.text, 0.11)
                 border.width: 1
-                border.color: Util.alpha(root.dockForeground, 0.28)
+                border.color: Util.alpha(Color.bar.text, 0.28)
               }
 
               Rectangle {
                 anchors.fill: parent
                 radius: root.tileRadius
-                color: tileArea.containsMouse ? Color.menu.selectedBackground : Util.alpha(root.dockForeground, 0.10)
+                color: tileArea.containsMouse ? Color.menu.selectedBackground : Util.alpha(Color.bar.text, 0.10)
                 border.width: 1
-                border.color: Util.alpha(root.dockForeground, tileArea.containsMouse ? 0.55 : 0.22)
+                border.color: Util.alpha(Color.bar.text, tileArea.containsMouse ? 0.55 : 0.22)
               }
 
               // The capture fills the frame and the overflow is trimmed, rather
@@ -3113,11 +3126,11 @@ Item {
               id: tileTooltip
               visible: tile.tileHovered && !tile.tileMenuOpen && tile.tileTitle !== ""
               z: 300
-              color: Util.alpha(Color.tooltip.background, root.dockSurfaceOpacity)
+              color: Util.alpha(Color.tooltip.background, Style.popupSurfaceOpacity)
               borderSpec: Border.surfaceSpec("tooltip", "border", Color.tooltip.border, 1)
               radius: Style.cornerRadius
               padding: Style.space(4)
-              x: root.tipX(parent.width, width, Style.space(6))
+              x: (parent.width - width) / 2
               y: root.tipY(parent.height, height, Style.space(6))
               width: tileTooltipLabel.implicitWidth + contentLeftInset + contentRightInset
               height: tooltipImplicitHeight()
@@ -3155,16 +3168,8 @@ Item {
               acceptedButtons: Qt.LeftButton | Qt.RightButton
               cursorShape: Qt.PointingHandCursor
               onClicked: function(mouse) {
-                if (!tile.win || !tile.win.address) return
-                if (mouse.button === Qt.RightButton) {
-                  var pt = tile.mapToItem(dockCard, tile.width / 2, 0)
-                  var gx = dockCard.x + (pt ? pt.x : (tile.x + tile.width / 2))
-                  root.openTileContext(tile.groupWins, tile.win.appId || "", gx)
-                } else if (root.contextAppId === "__tile_context__") {
-                  root.closeContext()
-                } else {
-                  tile.doRestore()
-                }
+                if (mouse.button !== Qt.RightButton && root.contextAppId === "__tile_context__") root.closeContext()
+                else tile.trigger(mouse.button === Qt.RightButton)
               }
             }
           }
@@ -3193,13 +3198,13 @@ Item {
             active: modelData.appId === root.activeId
             onActivateRequested: function(aid) { root.activate(aid) }
             onNewWindowRequested: function(aid) { root.launchApp(aid, null) }
-            onMenuRequested: function(aid, cx, cy) { root.openContext(aid, cx, cy) }
+            onMenuRequested: function(aid, cx) { root.openContext(aid, cx) }
             onWheelScrolled: function(aid, dir) { root.cycleApp(aid, dir) }
             onDragStarted: function(aid) {
               dock.dragAppId = aid
               dock.dragSourceGroupId = ""
             }
-            onDragMoved: function(aid, main) { dock.updateDragTarget(aid, main) }
+            onDragMoved: function(aid, main, away) { dock.updateDragTarget(aid, main, away) }
             onDragDropped: function(aid) { dock.finishDrag() }
 
             // When an unpinned app has ALL its windows minimized and tiles are
@@ -3231,28 +3236,35 @@ Item {
             required property var modelData
             required property int index
             dock: root
-            dockContent: dockWindow.contentItem
             folderPath: modelData.path
             name: modelData.name || "Folder"
             icon: modelData.icon || DockModel.folderIconFor(modelData.path, "")
             homeCenter: root.folderHomeCenter(index)
-            onOpenStackRequested: function(fpath, fname, cx, cy) {
-              root.openFolderStack(fpath, fname, cx)
-            }
-            onMenuRequested: function(fpath, fname, cx, cy) {
-              root.openFolderContext(fpath, fname, cx, cy)
-            }
+            onOpenStackRequested: function(fpath, fname, cx) { root.openFolderStack(fpath, fname, cx) }
+            onMenuRequested: function(fpath, fname, cx) { root.openFolderContext(fpath, fname, cx) }
           }
+        }
+
+        DockFolderItem {
+          dock: root
+          folderPath: "trash:///"
+          name: "Trash"
+          tooltip: "Trash"
+          menuOwner: "__trash_context__"
+          icon: root.trashFull ? "user-trash-full" : "user-trash"
+          homeCenter: root.folderHomeCenter(root.pinnedFolders.length)
+          onOpenStackRequested: root.openTrash()
+          onMenuRequested: function(fpath, fname, cx) { root.openTrashContext(cx) }
         }
       }
 
       Rectangle {
         visible: root.dragAppId !== "" && root.dropIntoPins
           && root.dropTargetAppId === "" && root.dropTargetGroupId === ""
-        x: root.vertical ? row.x + (row.width - width) / 2 : root.dropIndicatorMain
-        y: root.vertical ? root.dropIndicatorMain : row.y + (row.height - height) / 2
-        width: root.vertical ? root.iconSize + Style.space(4) : Style.space(2)
-        height: root.vertical ? Style.space(2) : root.iconSize + Style.space(4)
+        x: root.dropIndicatorMain
+        y: row.y + (row.height - height) / 2
+        width: Style.space(2)
+        height: root.iconSize + Style.space(4)
         radius: 1
         color: Color.bar.active
         z: 10
@@ -3271,7 +3283,7 @@ Item {
       Behavior on opacity { NumberAnimation { duration: 120 } }
 
       z: 100
-      color: Util.alpha(Color.menu.background, root.dockSurfaceOpacity)
+      color: Util.alpha(Color.menu.background, Style.popupSurfaceOpacity)
       borderSpec: Border.surfaceSpec("menu", "border",
         Util.alpha(Color.menu.border, Style.popupBorderOpacity), 1)
       radius: Style.cornerRadius
@@ -3290,8 +3302,8 @@ Item {
         ? stackColumn.implicitHeight + contentTopInset + contentBottomInset
         : 0
 
-      x: root.vertical ? root.panelCross(width) : root.panelMain(width, root.activeStackAnchor)
-      y: root.vertical ? root.panelMain(height, root.activeStackAnchor) : root.panelCross(height)
+      x: root.panelX(width, root.activeStackAnchor)
+      y: root.panelY(height)
 
       Column {
         id: stackColumn

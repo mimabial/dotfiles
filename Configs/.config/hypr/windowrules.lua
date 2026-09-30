@@ -309,9 +309,10 @@ hl.window_rule({
 	["center"] = true,
 })
 hl.window_rule({
-	["name"] = "lockview-float",
+	["name"] = "lockview",
 	["match"] = { ["class"] = "^(org\\.quickshell)$", ["title"] = "^(Lock Layouts)$" },
 	["float"] = true,
+	["opacity"] = "1 override 1 override",
 })
 
 local open_profiles = {

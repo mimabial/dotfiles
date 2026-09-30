@@ -126,9 +126,12 @@ function composeRows(rows, scale, width, height, gap, padding, footerHeight) {
     totalHeight += Math.max(0, measured.length - 1) * gap;
     if (totalHeight > height)
         return null;
-    var y = (height - totalHeight) / 2, result = [];
+    var extraRowSpace = (height - totalHeight) / measured.length;
+    var y = extraRowSpace / 2, result = [];
     for (var outputRow = 0; outputRow < measured.length; outputRow++) {
-        var row = measured[outputRow], x = (width - row.width) / 2;
+        var row = measured[outputRow];
+        var extraCardSpace = (width - row.width) / row.cards.length;
+        var x = extraCardSpace / 2;
         for (var cardIndex = 0; cardIndex < row.cards.length; cardIndex++) {
             var card = row.cards[cardIndex];
             result[card.index] = {
@@ -137,9 +140,9 @@ function composeRows(rows, scale, width, height, gap, padding, footerHeight) {
                 width: card.width,
                 height: card.height
             };
-            x += card.width + (row.cards.length > 1 ? gap : 0);
+            x += card.width + gap + extraCardSpace;
         }
-        y += row.height + (measured.length > 1 ? gap : 0);
+        y += row.height + gap + extraRowSpace;
     }
     return result;
 }

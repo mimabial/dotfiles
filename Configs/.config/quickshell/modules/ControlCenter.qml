@@ -9,26 +9,47 @@ import ".."
 BarButton {
     id: root
     property bool popupsAllowed: true
+    readonly property real badgeSize: Style.px(30)
     readonly property var sink: Pipewire.defaultAudioSink
-    css: "controlcenter"; text: "󰔡"
+    readonly property var wifi: Array.from(Networking.devices.values).find(device => device.type === DeviceType.Wifi)
+    readonly property string wifiName: Array.from(wifi?.networks.values ?? []).find(network => network.connected)?.name ?? ""
+    readonly property string bluetoothNames: Bluetooth.devices.values.filter(device => device.connected).map(device => device.name).join(", ")
+    readonly property var indicators: [
+        { nodes: Privacy.camera, color: shell.role("success", "#30d158"), icon: "󰄀", label: "Camera" },
+        { nodes: Privacy.microphone, color: shell.role("warning", "#ff9f0a"), icon: "󰍬", label: "Microphone" },
+        { nodes: Privacy.screen, color: shell.role("c5", "#bf5af2"), icon: "󰹑", label: "Screen Recording" }
+    ].filter(indicator => indicator.nodes.length > 0)
+    css: "controlcenter"; text: "󰔡"; symbol: "org.gnome.Tweaks"; symbolContext: "apps"
     onClicked: shell.togglePopup("controlcenter")
+    trailingWidth: indicators.length || Privacy.location ? dots.width + Style.xs : 0
+    Row {
+        id: dots
+        anchors.right: parent.right; anchors.rightMargin: root.box.margin[1] + root.box.padding[1]; anchors.verticalCenter: parent.verticalCenter
+        spacing: Style.xxs
+        SymbolicIcon { visible: Privacy.location; anchors.verticalCenter: parent.verticalCenter; name: "location-services-active"; color: root.shell.foreground; size: Style.px(9) }
+        Repeater {
+            model: root.indicators
+            Rectangle { required property var modelData; anchors.verticalCenter: parent.verticalCenter; width: Style.px(6); height: width; radius: width / 2; color: modelData.color }
+        }
+    }
     component Tile: Item {
         id: tile
         required property string icon
         required property string title
         required property bool active
+        property string status: ""
         signal clicked()
         Layout.fillWidth: true; implicitHeight: Style.px(40)
         Rectangle {
             id: badge
-            width: Style.px(30); height: width; radius: width / 2; anchors.verticalCenter: parent.verticalCenter
+            width: root.badgeSize; height: width; radius: width / 2; anchors.verticalCenter: parent.verticalCenter
             color: tile.active ? root.shell.accent : root.shell.alpha(root.shell.foreground, .12)
             Text { anchors.centerIn: parent; text: tile.icon; color: tile.active ? root.shell.background : root.shell.foreground; font.family: root.shell.iconGlyphFont; font.pixelSize: Style.body }
         }
         Column {
             anchors.left: badge.right; anchors.leftMargin: Style.md; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
             Text { width: parent.width; text: tile.title; elide: Text.ElideRight; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.body; font.bold: true }
-            Text { text: tile.active ? "On" : "Off"; color: root.shell.alpha(root.shell.foreground, .55); font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
+            Text { width: parent.width; text: tile.status || (tile.active ? "On" : "Off"); elide: Text.ElideRight; color: root.shell.alpha(root.shell.foreground, .55); font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
         }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: tile.clicked() }
     }
@@ -36,13 +57,25 @@ BarButton {
     PopupCard {
         anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: "controlcenter"
         contentWidth: Style.px(320); contentHeight: panel.implicitHeight + padding * 2; keyboardHint: ""
+        onOpenChanged: if (open) root.shell.refreshMenuState()
         Column {
             id: panel
             width: parent.width; spacing: Style.md
+            Repeater {
+                model: root.indicators
+                PopupRow {
+                    required property var modelData
+                    width: parent.width; shell: root.shell; interactive: false; icon: modelData.icon; iconColor: modelData.color
+                    title: modelData.nodes.map(node => Privacy.appName(node)).join(", "); detail: modelData.label + " in use"
+                }
+            }
+            PopupRow { width: parent.width; shell: root.shell; interactive: false; visible: Privacy.location; icon: ""; iconColor: root.shell.role("info", root.shell.accent); title: "Location Services"; detail: "In use" }
             GridLayout {
                 width: parent.width; columns: 2; rowSpacing: Style.xs; columnSpacing: Style.xs
-                Tile { icon: "󰖩"; title: "Wi-Fi"; active: Networking.wifiEnabled; onClicked: Networking.wifiEnabled = !Networking.wifiEnabled }
-                Tile { icon: "󰂯"; title: "Bluetooth"; active: !!Bluetooth.defaultAdapter?.enabled; onClicked: root.shell.run(["hyprshell", "bluetooth/power", "toggle"]) }
+                Tile { icon: "󰖩"; title: "Wi-Fi"; status: root.wifiName; active: Networking.wifiEnabled; onClicked: Networking.wifiEnabled = !Networking.wifiEnabled }
+                Tile { icon: "󰂯"; title: "Bluetooth"; status: root.bluetoothNames; active: !!Bluetooth.defaultAdapter?.enabled; onClicked: root.shell.run(["hyprshell", "bluetooth/power", "toggle"]) }
+                Tile { icon: "󰂛"; title: "Focus"; active: root.shell.notificationsPaused; onClicked: root.shell.run(["hyprshell", "notify/notifications", "--toggle"], () => root.shell.refreshMenuState()) }
+                Tile { icon: "󰍺"; title: "Mirroring"; active: Mirroring.active; onClicked: Mirroring.toggle() }
                 Tile { icon: "󱩌"; title: "Night Shift"; active: root.shell.sunsetEnabled === "1"; onClicked: root.shell.run(["hyprshell", "hyprsunset", "-t", "-q"]) }
                 Tile { icon: "󰅶"; title: "Keep Awake"; active: root.shell.keepAwakeManual; onClicked: root.shell.run(["hyprshell", "session/toggle-keep-awake.sh"]) }
             }
@@ -57,9 +90,15 @@ BarButton {
                 onChanged: value => { if (root.sink?.audio) root.sink.audio.volume = value }
             }
             PopupRow {
-                width: parent.width; shell: root.shell; visible: Media.hasMedia
-                icon: Media.player?.isPlaying ? "󰏤" : "󰐊"; title: Media.title; detail: Media.artist
-                onClicked: Media.playPause()
+                width: parent.width; shell: root.shell; visible: Media.hasMedia; interactive: false
+                iconSource: Media.artUrl; iconSize: root.badgeSize; title: Media.title; detail: Media.artist; rightInset: mediaControls.width + Style.sm
+                Row {
+                    id: mediaControls
+                    anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX; anchors.verticalCenter: parent.verticalCenter
+                    TransportButton { shell: root.shell; text: "󰒮"; enabled: !!Media.player?.canGoPrevious; onClicked: Media.previous() }
+                    TransportButton { shell: root.shell; text: Media.player?.isPlaying ? "󰏤" : "󰐊"; onClicked: Media.playPause() }
+                    TransportButton { shell: root.shell; text: "󰒭"; enabled: Media.canNext(); onClicked: Media.next() }
+                }
             }
         }
     }

@@ -7,7 +7,6 @@ BarButton {
     readonly property bool performance: PowerProfiles.profile === PowerProfile.Performance
     readonly property bool saver: PowerProfiles.profile === PowerProfile.PowerSaver
     css: performance ? "powerprofile.performance" : saver ? "powerprofile.power-saver" : "powerprofile"
-    radius: shell.moduleRadius
     text: PowerProfiles.profile === PowerProfile.Performance ? "󱐌" : PowerProfiles.profile === PowerProfile.PowerSaver ? "󰌪" : "󰗑"
     // powerprofiles owns the GameMode lock and the list of profiles that exist
     onClicked: button => button === Qt.RightButton

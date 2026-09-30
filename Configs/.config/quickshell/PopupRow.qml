@@ -9,6 +9,7 @@ Rectangle {
     property string icon: ""
     property color iconColor: shell.foreground
     property string iconSource: ""
+    property real iconSize: Style.px(18)
     property string title: ""
     property string detail: ""
     property string value: ""
@@ -30,7 +31,7 @@ Rectangle {
     // pills after the title: [{text, color}]
     property var badges: []
     signal clicked(int button)
-    implicitHeight: Math.max(Style.popupRowHeight, textColumn.implicitHeight + Style.controlPaddingY * 2)
+    implicitHeight: Math.max(Style.popupRowHeight, Math.max(textColumn.implicitHeight, iconImage.visible ? root.iconSize : 0) + Style.controlPaddingY * 2)
     readonly property color highlight: selected ? shell.hoverEdge(.85)
         : active ? shell.alpha(shell.role("act_br", shell.accent), .5)
         : cursored ? shell.hoverEdge(.85)
@@ -46,7 +47,7 @@ Rectangle {
         anchors.fill: parent; anchors.leftMargin: Style.controlPaddingX; anchors.rightMargin: Style.controlPaddingX + root.rightInset
         spacing: Style.controlPaddingX
         // centred in its fixed column so the gap to the border matches the gap to the text
-        IconImage { id: iconImage; visible: root.iconSource !== ""; implicitWidth: Style.px(18); implicitHeight: Style.px(18); anchors.verticalCenter: parent.verticalCenter; source: root.iconSource }
+        IconImage { id: iconImage; visible: root.iconSource !== ""; implicitWidth: root.iconSize; implicitHeight: root.iconSize; clip: true; backer.fillMode: Image.PreserveAspectCrop; anchors.verticalCenter: parent.verticalCenter; source: root.iconSource }
         Text { id: iconText; visible: root.icon !== ""; width: Style.px(22); horizontalAlignment: Text.AlignHCenter; anchors.verticalCenter: parent.verticalCenter; text: root.icon; color: root.iconColor; font.family: root.shell.fontFamily; font.pixelSize: Style.title + 3 }
         Column {
             id: textColumn

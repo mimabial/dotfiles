@@ -301,7 +301,7 @@ function workspaceLabel(name) {
 
 // isMinimizedWs: predicate over a workspace name. Each parked window gets its
 // own special workspace, so there is no single name to compare against.
-function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMinimizedWs, minimizedOrigins, appGroups) {
+function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMinimizedWs, minimizedOrigins, appGroups, recentIds, recentLimit) {
   var pinned = Array.isArray(pinnedIds) ? pinnedIds : []
   var list = toArray(toplevels)
   var isMinWs = typeof isMinimizedWs === "function"
@@ -321,6 +321,12 @@ function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMini
   function isGrouped(appId) {
     for (var i = 0; i < groupedIds.length; i++)
       if (isAppMatch(appId, groupedIds[i])) return true
+    return false
+  }
+
+  function isPinnedApp(appId) {
+    for (var i = 0; i < pinned.length; i++)
+      if (isAppMatch(pinned[i], appId)) return true
     return false
   }
 
@@ -414,14 +420,7 @@ function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMini
   var runningOut = []
   for (j = 0; j < runningIds.length; j++) {
     var rid = runningIds[j]
-    var alreadyPinned = false
-    for (var p = 0; p < pinned.length; p++) {
-      if (isAppMatch(pinned[p], rid)) {
-        alreadyPinned = true
-        break
-      }
-    }
-    if (alreadyPinned || isGrouped(rid) || seen[rid]) continue
+    if (isPinnedApp(rid) || isGrouped(rid) || seen[rid]) continue
     seen[rid] = true
     var wins = winMap[rid] || []
     runningOut.push({
@@ -433,6 +432,15 @@ function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMini
       windowList: wins
     })
   }
+  var recentOut = []
+  var recents = toArray(recentIds)
+  for (j = 0; j < recents.length && recentOut.length < recentLimit; j++) {
+    var cid = stripDesktop(recents[j])
+    if (!cid || seen[cid] || isPinnedApp(cid) || isGrouped(cid)) continue
+    seen[cid] = true
+    recentOut.push({ id: cid, appId: cid, pinned: false, running: false, windows: 0, windowList: [] })
+  }
+  runningOut = runningOut.concat(recentOut)
   enrich(runningOut)
 
   var groupedOut = []
@@ -543,11 +551,8 @@ function folderIconFor(path, explicitIcon) {
   return "folder"
 }
 
-// Returns an icon name for the caller to resolve through the active icon theme.
-// Explicit monochrome modes bypass that and name Adwaita's symbolic file, which
-// is the one place a fixed path is correct: no themed lookup yields a folder
-// glyph that recolours cleanly.
-function resolveThemedFolderIcon(iconName, folderColorMode) {
+// The standard place icon a folder icon name stands for; a path passes through.
+function resolveThemedFolderIcon(iconName) {
   var name = String(iconName || "folder").trim()
   if (name.indexOf("/") === 0 || name.indexOf("file://") === 0) return name
 
@@ -567,24 +572,16 @@ function resolveThemedFolderIcon(iconName, folderColorMode) {
   var validPlaces = [
     "folder", "folder-documents", "folder-download", "folder-music",
     "folder-pictures", "folder-publicshare", "folder-remote",
-    "folder-templates", "folder-videos", "user-home", "user-desktop", "user-trash"
+    "folder-templates", "folder-videos", "user-home", "user-desktop", "user-trash", "user-trash-full"
   ]
-  if (validPlaces.indexOf(name) < 0) name = "folder"
-
-  if (folderColorMode === "white" || folderColorMode === "black" || folderColorMode === "symbolic") {
-    return "file:///usr/share/icons/Adwaita/symbolic/places/" + name + "-symbolic.svg"
-  }
-
-  return name
+  return validPlaces.indexOf(name) >= 0 ? name : "folder"
 }
 
-function resolveFileItemIcon(iconName, folderColorMode) {
+function isPlaceIcon(name) {
+  return name === "folder" || name.indexOf("folder-") === 0 || name === "user-home"
+}
+
+function resolveFileItemIcon(iconName) {
   var name = String(iconName || "text-x-generic").trim()
-  if (name.indexOf("/") === 0 || name.indexOf("file://") === 0) return name
-
-  if (name === "folder" || name.indexOf("folder-") === 0 || name === "user-home") {
-    return resolveThemedFolderIcon(name, folderColorMode)
-  }
-
-  return name
+  return isPlaceIcon(name) ? resolveThemedFolderIcon(name) : name
 }

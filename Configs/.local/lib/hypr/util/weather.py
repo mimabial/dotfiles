@@ -608,6 +608,8 @@ sunrise, sunset = get_sunrise(today, True), get_sunset(today, True)
 high, low = degrees(get_max_temp(today)), degrees(get_min_temp(today))
 data["readouts"] = {
     "temp": readout(icon, feels),
+    "current": readout(icon, get_temperature(current_weather)),
+    "condition": readout("", get_description(current_weather)),
     "minmax": readout("", f"{high}|{low}"),
     "sunrise": readout("\ue34c", sunrise),
     "sunset": readout("\ue34d", sunset),

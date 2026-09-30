@@ -25,7 +25,7 @@ under.
 choices, insert pickers, sharing, and a Toggle submenu for nightlight, keep
 awake, mirroring, the laptop display and workspace layout.
 
-**Style** is everything visual that is not a theme: bar layout, dock position,
+**Style** is everything visual that is not a theme: bar layout, dock appearance,
 Exposé settings and hot corner, launcher style.
 
 **Setup** is the defaults — terminal, browser, editor, agent — plus monitors and

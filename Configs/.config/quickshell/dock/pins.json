@@ -1,3 +1,7 @@
 {
-  "pinned": []
+  "pinned": [
+    "org.kde.dolphin",
+    "firefox",
+    "Alacritty"
+  ]
 }

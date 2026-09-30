@@ -5,8 +5,8 @@ background = "#121212"
 foreground = "#c9bfb2"
 
 [colors.cursor]
-text = "#1c1917"
-cursor = "#c9bfb2"
+text = "#151515"
+cursor = "#b4b4b4"
 
 [colors.vi_mode_cursor]
 text = "#1c1917"

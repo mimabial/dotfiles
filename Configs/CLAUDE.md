@@ -11,6 +11,8 @@ Guidance for Claude Code when working in this home directory.
 - Verify the changed path before considering the task done.
 - Keep code fast and efficient: no redundant processes, polling, or eager loading. Batch work and load on demand.
 - Keep the line count low: build on existing primitives and prefer the smaller correct design, including when porting.
+- No magic numbers: derive a value from its source (theme vars, `Style`, font size, palette) or name it once where it is defined.
+- Follow YAGNI: no speculative flags, options, parameters, fallbacks, validation layers or abstractions for a case that does not exist yet.
 - Write self-documenting code: names and structure carry the meaning; a comment only states reasoning the code cannot.
 
 ## Critical Safety Rules
@@ -342,14 +344,15 @@ hyprctl reload
 # files directly. Usage: hyq -Q '<query>' <file>
 hyq -Q '$CURSOR_THEME' ~/.config/hypr/themes/theme.meta
 
-# Select or set the active Quickshell layout
+# Select or set the active Quickshell layout (a silent no-op, exit 0, while the
+# windows or macos workflow owns the bar)
 hyprshell quickshell/layout select
-hyprshell quickshell/layout set left
+hyprshell quickshell/layout set top
 
 # Soft Quickshell reload (reuses the engine; see "Reload Behavior")
 quickshell ipc call bar reload
 
-# Switch workflow profile. Selectable: default, editing, windows.
+# Switch workflow profile. Selectable: default, editing, windows, presentation, niri, macos.
 # gaming and powersaver exist but are automatic (GameMode / power-saver profile)
 # and are excluded from the picker; while one owns the workflow, --set fails.
 hyprshell util/workflows --select
@@ -422,8 +425,13 @@ verification run only when that reload did not happen (an edit to an imported `.
 alone did not trigger it here). **Never stack a forced reload on the watcher's:** two
 reloads ~1s apart destroy an engine still creating delegates, and Quickshell segfaults
 in `QQmlDelegateModel` teardown — every one of the 32 crashes since Sep 5 was two or
-three reloads 1–4s apart. Wait for `Configuration Loaded` before forcing another. Popup-only errors may appear only after opening the affected
-popup.
+three reloads 1–4s apart. `Configuration Loaded` is not a safe point either: the async
+`Loader`s in `shell.qml` (dock, Exposé, monitor guard) are still creating items after it,
+and a `reloadHard` issued right after that line crashed on Sep 29 ("items in the process of
+being created at engine destruction"). When an edit needs a recompile the watcher will not
+give it (a `modules/` file, see below), restart the process instead:
+`hyprshell service/control restart hyprland-quickshell`. Popup-only errors may appear only
+after opening the affected popup.
 
 `bar reload` is `Quickshell.reload(false)` — a **soft** reload that reuses the
 running engine and keeps existing instances, so it does not reliably pick up a
@@ -464,7 +472,7 @@ For simple changes, edit files in `~/.config/`:
 # 1. Read current config to understand existing state
 # 2. Make changes with Edit tool
 # 3. Apply: Hyprland and Quickshell auto-reload; use their manual reloads to verify
-# 4. If change should persist: dotfiles-sync
+# 4. Stop there: the user runs dotfiles-sync on their own schedule
 ```
 
 ### Pattern 2: Keybinding Changes
@@ -545,7 +553,7 @@ hyprshell service/managed.sh --mode restore <domain> [domain...]
 - Read the relevant files before editing.
 - Prefer existing helpers and shared libraries over one-off logic.
 - For direct Hypr shell script runs, source `~/.local/lib/hypr/runtime/init.bash` to bootstrap `LIB_DIR`, `HYPR_*_HOME`, and lock paths before invoking helpers.
-- If a live config change should persist, sync it back into `~/dotfiles/` after editing the live file(s). Per-host changes are routed by the active `host-profile`.
+- Never run `dotfiles-sync` or write into `~/dotfiles/` unless the user asks in that message; they review live changes and sync them themselves. Per-host changes are routed by the active `host-profile`.
 
 ## Script Conventions
 

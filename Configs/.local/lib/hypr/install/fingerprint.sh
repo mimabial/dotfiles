@@ -60,7 +60,7 @@ else
     print_info "\nNow let's verify that it's working correctly.\n"
     if fprintd-verify; then
       print_success "\nPerfect! Fingerprint authentication is now configured."
-      print_info "You can use your fingerprint for sudo, polkit, and lock screen (Super + Escape)."
+      print_info "You can use your fingerprint for sudo, polkit, and lock screen (Super + U, then L)."
     else
       print_error "\nVerification failed. You may want to try enrolling again."
     fi

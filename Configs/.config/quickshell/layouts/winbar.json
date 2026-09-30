@@ -2,61 +2,51 @@
   "panel": "winbar",
   "edge": "bottom",
   "left": [
-    "menu",
-    "taskbar",
+    "widgets"
+  ],
+  "center": [
     {
-      "id": "workspaces",
+      "id": "menu",
       "props": {
-        "activeOnly": true,
-        "hideActive": false
+        "text": ""
       }
     },
+    "search",
+    "taskview",
     {
-      "id": "mediaplayer",
+      "id": "taskbar",
       "props": {
-        "appearance": "mpris",
-        "showAlbumArt": false,
-        "artIcon": "󰽯",
-        "showControls": false,
-        "controlsRight": true,
-        "showArtist": false,
-        "randomizeProgressShape": true,
-        "showWhenIdle": true
+        "pins": true,
+        "dash": true
       }
     }
   ],
-  "center": [
-    "workspaces"
-  ],
   "tray": [
+    "webcam",
     "bitwarden",
     "vpn",
-    "wifi",
-    {
-      "id": "bluetooth",
-      "props": {
-        "showReadout": true
-      }
-    },
+    "printers",
     {
       "id": "removable",
       "props": {
         "showBadge": true
       }
     },
-    "agents"
+    "agents",
+    "games"
   ],
   "right": [
-    "submap",
+    "tray",
+    "language",
+    "quicksettings",
+    "datetime",
     {
-      "id": "tray",
+      "id": "notifications",
       "props": {
-        "alwaysOpen": false
+        "showBadge": true,
+        "themed": true
       }
     },
-    "volume-slider",
-    "microphone-slider",
-    "backlight-slider",
-    "datetime"
+    "showdesktop"
   ]
 }

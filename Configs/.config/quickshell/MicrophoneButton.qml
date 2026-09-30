@@ -10,7 +10,6 @@ BarButton {
             && !group.source.isStream && !String(group.source.name).endsWith(".monitor"))).length
     readonly property bool live: source && !source.audio.muted
     css: live ? "microphone" : "microphone.muted"
-    radius: shell.moduleRadius
     text: !root.source || root.source.audio.muted ? "" : ""
     smoothTextColor: false
     textColor: recordingCount ? shell.alpha(shell.role("error", shell.foreground), .25 + blink.phase * .75) : shell.foreground

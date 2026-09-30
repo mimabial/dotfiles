@@ -1,14 +1,15 @@
 import QtQuick
 import Quickshell.Services.UPower
 import ".."
+import "StatusSymbols.js" as StatusSymbols
 
 BarButton {
     id: root
     property bool popupsAllowed: true
     readonly property var battery: UPower.displayDevice
-    readonly property var levels: [..."󰁺󰁻󰁼󰁽󰁾󰁿󰂀󰂁󰂂󰁹"]
+    symbol: StatusSymbols.battery(battery, UPower.onBattery)
+    readonly property bool shown: battery.isPresent
     css: "battery"
-    text: !battery.isPresent ? "" : UPower.onBattery ? levels[Math.min(9, Math.floor(battery.percentage * 10))] : "󰂄"
     onClicked: shell.togglePopup("battery")
     PowerPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }
     MacCard {

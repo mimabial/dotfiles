@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
 Name=LazyDocker
-Icon=docker
-Exec=/usr/bin/true
+Icon=/home/rifle/.local/share/icons/Nordzy/apps/scalable/docker.svg
+Exec=/home/rifle/.local/bin/hyprshell launch/tui --app-id org.tui.LazyDocker --title LazyDocker -- lazydocker
 Terminal=false
 NoDisplay=true
 StartupWMClass=org.tui.LazyDocker

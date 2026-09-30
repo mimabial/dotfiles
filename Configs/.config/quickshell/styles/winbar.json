@@ -1,62 +1,288 @@
 {
+  "": {
+    "fontSize": 11.0,
+    "margin": [
+      4.0,
+      2.0,
+      4.0,
+      2.0
+    ],
+    "padding": [
+      0.0,
+      8.0,
+      0.0,
+      8.0
+    ],
+    "borderRadius": 4.0,
+    "hover": {
+      "backgroundColor": [
+        "fg",
+        0.08
+      ],
+      "color": [
+        "fg",
+        1.0
+      ]
+    },
+    "open": {
+      "backgroundColor": [
+        "fg",
+        0.12
+      ]
+    },
+    "iconBox": 12.0,
+    "symbols": "Fluent-dark/symbolic/{context}"
+  },
   ".modules-left": {
-    "padding": [0.0, 0.0, 0.0, 6.0]
+    "margin": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "padding": [
+      0.0,
+      0.0,
+      0.0,
+      4.0
+    ]
   },
-
+  ".modules-center": {
+    "margin": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "padding": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
   ".modules-right": {
-    "padding": [0.0, 2.0, 0.0, 0.0]
+    "margin": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "padding": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
   },
-
+  "bar": {
+    "margin": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "borderRadius": 0.0,
+    "borderTopWidth": 1.0,
+    "borderTopColor": [
+      "fg",
+      0.08
+    ]
+  },
+  "widgets": {
+    "justify": "left",
+    "iconColor": [
+      "c3",
+      1.0
+    ],
+    "padding": [
+      0.0,
+      10.0,
+      0.0,
+      8.0
+    ],
+    "fontSize": 10.0
+  },
   "menu": {
-    "fontSize": 14.0,
-    "backgroundColor": null,
-    "fontWeight": 700,
-    "borderColor": null,
-    "margin": [0.0, 0.0, 0.0, 0.0],
-    "padding": [0.0, 6.0, 0.0, 6.0]
+    "color": [
+      "accent",
+      1.0
+    ],
+    "hover": {
+      "color": [
+        "accent",
+        1.0
+      ]
+    },
+    "fontWeight": 400,
+    "iconBox": 16.0,
+    "padding": [
+      0.0,
+      10.0,
+      0.0,
+      10.0
+    ]
   },
-  "mediaplayer": {
-    "fontSize": 12.0
+  "search": {
+    "justify": "left",
+    "minWidth": 180.0,
+    "color": [
+      "fg",
+      0.6
+    ],
+    "hover": {
+      "backgroundColor": [
+        "fg",
+        0.1
+      ],
+      "color": [
+        "fg",
+        0.6
+      ]
+    },
+    "backgroundColor": [
+      "fg",
+      0.05
+    ],
+    "borderColor": [
+      "fg",
+      0.1
+    ],
+    "borderWidth": 1.0,
+    "borderRadius": 16.0,
+    "margin": [
+      8.0,
+      4.0,
+      8.0,
+      4.0
+    ],
+    "padding": [
+      0.0,
+      14.0,
+      0.0,
+      12.0
+    ]
+  },
+  "taskview": {
+    "iconBox": 14.0,
+    "padding": [
+      0.0,
+      10.0,
+      0.0,
+      10.0
+    ]
   },
   "taskbar": {
-    "iconSize": 27.0,
-    "margin": [0.0, 0.0, 0.0, 0.0],
-    "padding": [0.0, 0.0, 6.0, 4.0]
+    "iconSize": 24.0,
+    "spacing": 4.0,
+    "margin": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "padding": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
   },
   "#taskbar button": {
-    "padding": [0.0, 0.0, 15.0, 0.0]
+    "margin": [
+      4.0,
+      0.0,
+      4.0,
+      0.0
+    ],
+    "padding": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+    ],
+    "hover": {
+      "backgroundColor": [
+        "fg",
+        0.08
+      ]
+    }
   },
   "#taskbar button.active": {
-    "padding": [0.0, 0.0, 15.0, 0.0]
+    "backgroundColor": [
+      "fg",
+      0.1
+    ]
   },
-  "workspaces": { "margin": [0.0, 0.0, 0.0, 0.0] },
-  "#workspaces button": {
-    "fontSize": 10.0,
-    "color": ["fg", 0.3],
-    "margin": [0.0, 6.0, 0.0, 6.0],
-    "padding": [0.0, 0.0, 0.0, 0.0]
+  "tray": {
+    "iconSize": 16.0,
+    "backgroundColor": null,
+    "margin": [
+      4.0,
+      0.0,
+      4.0,
+      0.0
+    ],
+    "padding": [
+      0.0,
+      6.0,
+      0.0,
+      6.0
+    ]
   },
-  "#workspaces button.active": {
-    "fontSize": 10.0,
-    "color": ["act_br", 0.6],
-    "hover": { "backgroundColor": null, "color": ["hvr_fg", 1.0] },
-    "margin": [0.0, 3.0, 0.0, 3.0],
-    "padding": [0.0, 6.0, 0.0, 6.0]
+  "tray.chevron": {
+    "color": [
+      "fg",
+      1.0
+    ],
+    "fontWeight": 400,
+    "iconBox": 8.0,
+    "margin": [
+      4.0,
+      2.0,
+      4.0,
+      2.0
+    ],
+    "padding": [
+      0.0,
+      8.0,
+      0.0,
+      8.0
+    ]
   },
-  "volume": {
-    "fontSize": 15.0
-  },
-  "language": {
-    "fontSize": 12.0,
-    "hover": { "backgroundColor": null, "color": ["hvr_fg", 1.0] },
-    "margin": [0.0, 6.0, 0.0, 6.0],
-    "padding": [0.0, 0.0, 0.0, 0.0]
+  "quicksettings": {
+    "spacing": 10.0,
+    "padding": [
+      0.0,
+      10.0,
+      0.0,
+      10.0
+    ]
   },
   "datetime": {
-    "fontSize": 10.0,
+    "justify": "right",
     "fontWeight": 400,
-    "hover": { "backgroundColor": null, "color": ["hvr_fg", 1.0] },
-    "margin": [6.0, 10.0, 6.0, 10.0],
-    "padding": [0.0, 0.0, 0.0, 0.0]
+    "fontSize": 10.0
+  },
+  "showdesktop": {
+    "minWidth": 6.0,
+    "margin": [
+      0.0,
+      0.0,
+      0.0,
+      6.0
+    ],
+    "padding": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "borderRadius": 0.0,
+    "borderLeftWidth": 1.0,
+    "borderLeftColor": [
+      "fg",
+      0.2
+    ]
   }
 }

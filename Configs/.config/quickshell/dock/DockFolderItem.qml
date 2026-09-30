@@ -1,24 +1,30 @@
 import QtQuick
-import QtQuick.Effects
 import qs.Commons
+import ".." as Shell
 import "DockModel.js" as DockModel
 
 Item {
   id: fitem
   required property var dock
-  required property Item dockContent
 
   property string folderPath: ""
   property string name: ""
   property string icon: "folder"
+  property string tooltip: fitem.name + " (Folder)"
+  property string menuOwner: "__folder_context__"
   property real homeCenter: 0
 
-  signal openStackRequested(string path, string name, real cx, real cy)
-  signal menuRequested(string path, string name, real cx, real cy)
+  signal openStackRequested(string path, string name, real cx)
+  signal menuRequested(string path, string name, real cx)
+
+  function trigger(menu) {
+    if (menu) fitem.menuRequested(fitem.folderPath, fitem.name, fitem.dock.slotCenterX(fitem))
+    else fitem.openStackRequested(fitem.folderPath, fitem.name, fitem.dock.slotCenterX(fitem))
+  }
 
   readonly property real slotMain: fitem.dock.iconSlot * (fitem.dock.waveHover ? fitem.magnifyScale : 1)
-  width: fitem.dock.vertical ? fitem.dock.iconSlot : fitem.slotMain
-  height: fitem.dock.vertical ? fitem.slotMain : fitem.dock.iconSlot
+  width: fitem.slotMain
+  height: fitem.dock.iconSlot
 
   readonly property bool isOpen: fitem.dock.activeStackFolder === fitem.folderPath
 
@@ -28,16 +34,8 @@ Item {
     return area.containsMouse ? fitem.dock.zoomPeak : 1
   }
 
-  readonly property string resolvedSource: {
-    var _tv = fitem.dock.themeVersion
-    return fitem.dock.appLibrary.iconSource(DockModel.resolveThemedFolderIcon(fitem.icon, fitem.dock.folderColor))
-  }
-  readonly property bool isSymbolic: resolvedSource.indexOf("-symbolic.svg") >= 0 || resolvedSource.indexOf("symbolic") >= 0
-  readonly property color symbolicColor: {
-    if (fitem.dock.folderColor === "white") return "#ffffff"
-    if (fitem.dock.folderColor === "black") return "#111111"
-    return (Color.bar.background.hslLightness < 0.5 || Color.background.hslLightness < 0.5) ? "#ffffff" : "#111111"
-  }
+  readonly property string placeIcon: DockModel.resolveThemedFolderIcon(fitem.icon)
+  readonly property bool isSymbolic: fitem.dock.symbolicFolders && fitem.placeIcon.indexOf("/") < 0
 
   Behavior on magnifyScale {
     NumberAnimation { duration: 110; easing.type: Easing.OutQuad }
@@ -59,9 +57,11 @@ Item {
       scale: fitem.magnifyScale
 
       Image {
-        id: folderIconImg
         anchors.fill: parent
-        source: fitem.resolvedSource
+        source: {
+          var _tv = fitem.dock.themeVersion
+          return fitem.isSymbolic ? "" : fitem.dock.appLibrary.iconSource(fitem.placeIcon)
+        }
         sourceSize: Qt.size(fitem.dock.iconSize * 4, fitem.dock.iconSize * 4)
         fillMode: Image.PreserveAspectFit
         asynchronous: true
@@ -70,41 +70,21 @@ Item {
         visible: !fitem.isSymbolic
       }
 
-      Item {
+      Shell.SymbolicIcon {
         anchors.fill: parent
         visible: fitem.isSymbolic
-
-        Image {
-          id: symbolicImg
-          anchors.fill: parent
-          source: fitem.resolvedSource
-          sourceSize: Qt.size(fitem.dock.iconSize * 4, fitem.dock.iconSize * 4)
-          fillMode: Image.PreserveAspectFit
-          asynchronous: true
-          smooth: true
-          mipmap: true
-          visible: false
-        }
-
-        MultiEffect {
-          anchors.fill: symbolicImg
-          source: symbolicImg
-          colorization: 1.0
-          colorizationColor: fitem.symbolicColor
-        }
+        name: fitem.isSymbolic ? fitem.placeIcon : ""
+        context: "places"
+        color: fitem.dock.symbolicFolderColor
+        size: fitem.dock.iconSize
       }
     }
   }
 
   Rectangle {
-    visible: fitem.isOpen
-    readonly property real floorGap: Style.space(1)
-    x: fitem.dock.vertical
-      ? (fitem.dock.edge === "left" ? floorGap : fitem.width - width - floorGap)
-      : (fitem.width - width) / 2
-    y: fitem.dock.vertical
-      ? (fitem.height - height) / 2
-      : (fitem.dock.edge === "top" ? floorGap : fitem.height - height - floorGap)
+    visible: fitem.dock.showIndicators && fitem.isOpen
+    x: (fitem.width - width) / 2
+    y: fitem.dock.indicatorY(fitem.height, height)
     width: Style.space(4)
     height: Style.space(4)
     radius: width / 2
@@ -115,31 +95,21 @@ Item {
     id: area
     anchors.fill: parent
     hoverEnabled: true
-    onEntered: fitem.dock.slotEntered("__folder_context__", fitem.folderPath)
+    onEntered: fitem.dock.slotEntered(fitem.menuOwner, fitem.folderPath)
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     cursorShape: Qt.PointingHandCursor
 
-    onClicked: function(mouse) {
-      if (mouse.button === Qt.RightButton) {
-        var mappedPos = fitem.mapToItem(fitem.dockContent, mouse.x, mouse.y)
-        if (!mappedPos) return
-        fitem.menuRequested(fitem.folderPath, fitem.name, mappedPos.x, mappedPos.y)
-      } else {
-        var centerPos = fitem.mapToItem(fitem.dockContent, fitem.width / 2, 0)
-        if (!centerPos) return
-        fitem.openStackRequested(fitem.folderPath, fitem.name, centerPos.x, centerPos.y)
-      }
-    }
+    onClicked: function(mouse) { fitem.trigger(mouse.button === Qt.RightButton) }
   }
 
   // Hover tooltip — uses our own HoverTooltip so textFormat: Text.PlainText is enforced.
   // (PanelToolTip is an opaque shell component; folder names come from user config.)
   HoverTooltip {
     dock: fitem.dock
-    text: fitem.name + " (Folder)"
+    text: fitem.tooltip
     hovered: area.containsMouse
     blocked: !fitem.dock.showTooltips || fitem.dock.activeStackFolder !== ""
     x: (fitem.width - width) / 2
-    y: -height - Style.space(8)
+    y: fitem.dock.tipY(fitem.height, height)
   }
 }

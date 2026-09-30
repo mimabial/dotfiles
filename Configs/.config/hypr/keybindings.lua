@@ -204,6 +204,7 @@ bind(
 	"[Window Management] toggle maximize",
 	hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })
 )
+exec(mod .. " SHIFT", "M", "[Window Management] minimize to dock", "quickshell ipc call dock minimizeActive")
 exec(mod, "P", "[Window Management] toggle pin", "hyprshell window/windowpin.sh")
 bind(mod, "G", "[Window Management] toggle group", hl.dsp.group.toggle())
 bind(mod .. " SHIFT", "F", "[Window Management] toggle floating", toggle_floating)
@@ -270,7 +271,6 @@ bind(mod, "mouse:273", "[Window Management|Mouse] resize window", hl.dsp.window.
 bind(mod, "Z", "[Window Management|Mouse] move window", hl.dsp.window.drag(), { mouse = true })
 bind(mod, "X", "[Window Management|Mouse] resize window", hl.dsp.window.resize(), { mouse = true })
 
-exec(mod, "L", "[Window Management] lock screen", "hyprshell lock-screen.sh")
 exec("CTRL ALT", "DELETE", "[Window Management] logout menu", "hyprshell logout-launch.sh 2")
 exec(mod, "ESCAPE", "[Window Management] logout menu", "hyprshell logout-launch.sh 2")
 
@@ -290,9 +290,23 @@ exec(
 -- Focus the existing window if there is one -- hl.dsp.focus pulls in a hidden
 -- special workspace as well as a regular one -- otherwise spawn it on its workspace.
 -- On a scratchpad the same key hides it again while it is showing, so the bind toggles.
-local function summon_app(class, workspace, command)
+local function summon_app(class, workspace, command, focus_when_opened)
 	local scratchpad = workspace:match("^special:(.+)$")
+	local pending_focus = false
+	if focus_when_opened then
+		hl.on("window.open", function(window)
+			if not pending_focus or not window or (window.class ~= class and window.initial_class ~= class) then
+				return
+			end
+			pending_focus = false
+			local shown = hl.get_active_special_workspace()
+			if shown and shown.name == workspace then
+				hl.dispatch(hl.dsp.focus({ window = "address:" .. window.address }))
+			end
+		end)
+	end
 	return function()
+		pending_focus = false
 		local shown = hl.get_active_special_workspace()
 		for _, window in ipairs(hl.get_windows() or {}) do
 			if window.class == class or window.initial_class == class then
@@ -309,40 +323,56 @@ local function summon_app(class, workspace, command)
 				return
 			end
 		end
-		hl.dispatch(hl.dsp.exec_cmd("[workspace " .. workspace .. "] " .. app(command)))
-		-- Spawning onto a scratchpad does not reveal it, so the first press would look inert.
 		if scratchpad and not (shown and shown.name == workspace) then
 			hl.dispatch(hl.dsp.workspace.toggle_special(scratchpad))
 		end
+		pending_focus = focus_when_opened
+		hl.dispatch(hl.dsp.exec_cmd("[workspace " .. workspace .. "] " .. app(command)))
 	end
 end
 
-bind(mod, "E", "[Launcher|Apps] file explorer", summon_app("org.kde.dolphin", "special:explorer", explorer))
-bind(
-	mod .. " SHIFT",
-	"E",
-	"[Workspaces] move window to explorer special workspace",
-	hl.dsp.window.move({ workspace = "special:explorer" })
-)
-exec(
-	mod .. " ALT",
-	"E",
-	"[Launcher|Apps] file explorer in current directory",
-	app(explorer .. [[ "$(hyprshell terminal-cwd.sh)"]])
-)
-bind(mod, "B", "[Launcher|Apps] web browser", summon_app("firefox", "special:browser", browser))
-bind(
-	mod .. " SHIFT",
-	"B",
-	"[Workspaces] move window to browser special workspace",
-	hl.dsp.window.move({ workspace = "special:browser" })
-)
-exec(mod .. " ALT", "B", "[Launcher|Apps] private browser", "hyprshell browser.sh --private")
+local numbered_special_workspaces = {
+	[8] = {
+		description = "[Launcher|Apps] web browser",
+		action = summon_app("firefox", "special:browser", browser),
+		workspace = "special:browser",
+		move_description = "[Workspaces] move window to browser special workspace",
+		alt_description = "[Launcher|Apps] private browser",
+		alt_action = hl.dsp.exec_cmd("hyprshell browser.sh --private"),
+	},
+	[9] = {
+		description = "[Launcher|Apps] file explorer",
+		action = summon_app("org.kde.dolphin", "special:explorer", explorer, true),
+		workspace = "special:explorer",
+		move_description = "[Workspaces] move window to explorer special workspace",
+		alt_description = "[Launcher|Apps] file explorer in current directory",
+		alt_action = hl.dsp.exec_cmd(app(explorer .. [[ "$(hyprshell terminal-cwd.sh)"]])),
+	},
+	[10] = {
+		description = "[Workspaces] toggle scratchpad",
+		action = hl.dsp.workspace.toggle_special(""),
+		workspace = "special",
+		move_description = "[Workspaces] move to scratchpad",
+		alt_description = "[Workspaces] move to scratchpad silently",
+		alt_action = hl.dsp.window.move({ workspace = "special", follow = false }),
+	},
+}
+
+local function numbered_workspace_action(workspace)
+	local special = numbered_special_workspaces[workspace]
+	if special then
+		return special.description, special.action
+	end
+	return "[Workspaces] go to workspace " .. workspace, hl.dsp.focus({ workspace = workspace })
+end
+
 exec(mod, "C", "[Launcher|Apps] text editor", app(terminal .. " -e " .. editor))
 
 exec(mod, "D", "[Launcher|Menus] application finder", "hyprshell rofi-launch.sh d")
 exec(mod .. " SHIFT", "D", "[Launcher|Menus] window switcher", "hyprshell rofi-launch.sh w")
+exec(mod .. " CTRL", "D", "[Launcher|Menus] focus dock", "quickshell ipc call dock focus")
 bind(mod, "A", "[Launcher|Menus] Exposé window overview", hl.dsp.event("expose.window-overview:toggle"))
+bind(mod .. " SHIFT", "A", "[Launcher|Menus] Exposé app windows", hl.dsp.event("expose.window-overview:app"))
 exec(mod, "SPACE", "[Launcher|Menus] menu tree", "pkill -x rofi || hyprshell menutree")
 exec(mod, "V", "[Launcher|Menus] clipboard", "quickshell ipc call bar popup cliphist")
 exec(mod .. " SHIFT", "V", "[Launcher|Menus] clipboard manager", "pkill -x rofi || hyprshell cliphist.sh")
@@ -623,10 +653,11 @@ submap_leader("theming", mod, "T", function()
 	submap_exec("K", "[Theming] select lock layout", "quickshell ipc call lockview open")
 	-- the number row keeps working, so a theme can be judged on another workspace
 	for workspace = 1, 10 do
+		local description, action = numbered_workspace_action(workspace)
 		submap_action(
 			chord(mod, workspace_code(workspace)),
-			HIDDEN_MARKER .. "go to workspace " .. workspace,
-			hl.dsp.focus({ workspace = workspace })
+			HIDDEN_MARKER .. description,
+			action
 		)
 	end
 end, false)
@@ -720,10 +751,10 @@ submap_leader("hints", mod, "H", function()
 end)
 
 submap_leader("utilities", mod, "U", function()
+	submap_exec("L", "[System] lock screen", "hyprshell lock-screen.sh")
 	submap_exec("Q", "[System] close all windows", "hyprshell window/close-all.sh")
 	submap_exec("N", "[System] toggle nightlight", "hyprshell system/hyprsunset.sh -t")
 	submap_exec("A", "[System] toggle keep awake", "hyprshell session/toggle-keep-awake.sh")
-	submap_exec("F", "[System] windows mode", "hyprshell util/workflow-toggle.sh windows")
 	submap_exec("W", "[System] select workflow", "pkill -x rofi || hyprshell workflows --select")
 	submap_exec("O", "[System] audio output switcher", "hyprshell controls/volume-control.sh -t")
 	submap_exec("S", "[System] cycle monitor scale", "hyprshell system/monitor-scale.sh")
@@ -735,18 +766,20 @@ end)
 -- Workspaces
 for workspace = 1, 10 do
 	local code = workspace_code(workspace)
-	bind(mod, code, "[Workspaces] go to workspace " .. workspace, hl.dsp.focus({ workspace = workspace }))
+	local special = numbered_special_workspaces[workspace]
+	local description, action = numbered_workspace_action(workspace)
+	bind(mod, code, description, action)
 	bind(
 		mod .. " SHIFT",
 		code,
-		"[Workspaces] move window to workspace " .. workspace,
-		hl.dsp.window.move({ workspace = workspace })
+		special and special.move_description or "[Workspaces] move window to workspace " .. workspace,
+		hl.dsp.window.move({ workspace = special and special.workspace or workspace })
 	)
 	bind(
 		mod .. " ALT",
 		code,
-		"[Workspaces] move window silently to workspace " .. workspace,
-		hl.dsp.window.move({ workspace = workspace, follow = false })
+		special and special.alt_description or "[Workspaces] move window silently to workspace " .. workspace,
+		special and special.alt_action or hl.dsp.window.move({ workspace = workspace, follow = false })
 	)
 end
 
@@ -776,11 +809,3 @@ bind(
 )
 bind(mod, "mouse_down", "[Workspaces] next existing workspace", hl.dsp.focus({ workspace = "e+1" }))
 bind(mod, "mouse_up", "[Workspaces] previous existing workspace", hl.dsp.focus({ workspace = "e-1" }))
-bind(mod .. " SHIFT", "S", "[Workspaces] move to scratchpad", hl.dsp.window.move({ workspace = "special" }))
-bind(
-	mod .. " ALT",
-	"S",
-	"[Workspaces] move to scratchpad silently",
-	hl.dsp.window.move({ workspace = "special", follow = false })
-)
-bind(mod, "S", "[Workspaces] toggle scratchpad", hl.dsp.workspace.toggle_special(""))
