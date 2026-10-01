@@ -91,6 +91,8 @@
   },
   "widgets": {
     "justify": "left",
+    "leadingIconSize": 18.0,
+    "leadingIconGap": 8.0,
     "iconColor": [
       "c3",
       1.0

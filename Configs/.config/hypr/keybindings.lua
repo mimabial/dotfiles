@@ -640,7 +640,7 @@ submap_leader("theming", mod, "T", function()
 	submap_exec("SHIFT + C", "[Theming] cycle bar layout backward", "hyprshell quickshell/layout previous")
 	submap_exec("H", "[Theming] toggle bar", "hyprshell quickshell/visibility toggle")
 	submap_exec("SHIFT + H", "[Theming] toggle floating bar", "quickshell ipc call bar floating")
-	submap_exec("V", "[Theming] look and feel", "hyprshell window/looknfeel.sh")
+	submap_exec("V", "[Theming] look and feel", "hyprshell window/settings.sh")
 	submap_exec(
 		"A",
 		"[Theming] select animation",
@@ -718,7 +718,7 @@ submap_leader("terminal", mod, "J", function()
 	tui_app("U", "Dua", "org.tui.Dua", "dua i")
 	tui_app("C", "Calculator", "org.tui.Calc", "hyprshell util/calc-tui.py")
 	tui_app("D", "Display layout", "org.tui.Displays", "hyprmoncfg")
-	submap_exec("L", "[Terminal] Look and feel", "hyprshell window/looknfeel.sh")
+	submap_exec("L", "[Terminal] Look and feel", "hyprshell window/settings.sh")
 	submap_exec("T", "[Terminal] Dropdown terminal", "hyprshell window/dropdown-terminal")
 	submap_exec(
 		"R",

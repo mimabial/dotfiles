@@ -8,7 +8,7 @@
     {
       "id": "menu",
       "props": {
-        "text": ""
+        "text": ""
       }
     },
     "search",
@@ -32,8 +32,8 @@
         "showBadge": true
       }
     },
-    "agents",
-    "games"
+    "games",
+    "agents"
   ],
   "right": [
     "tray",

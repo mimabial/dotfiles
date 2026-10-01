@@ -8,7 +8,7 @@ Item {
     readonly property var box: shell.style.box(css)
     property string text: ""
     property string leadingIcon: ""
-    property real leadingIconGap: Style.px(4)
+    property real leadingIconGap: Style.px(box.leadingIconGap ?? 4)
     property real trailingWidth: 0
     property string tooltip: ""
     property bool keyboardEnabled: true
@@ -39,7 +39,7 @@ Item {
     readonly property real iconMaxAspect: 1.2
     readonly property real renderedFontSize: fitsIconBox ? Math.round(iconBoxPx / Math.max(glyphInk.height, glyphInk.width / iconMaxAspect))
         : usesIconFont ? fontSize * shell.iconFontScale : fontSize
-    readonly property real leadingIconSize: fontSize * shell.iconFontScale
+    readonly property real leadingIconSize: Style.fontPx(box.leadingIconSize ?? box.fontSize) * shell.iconFontScale
     property int fontWeight: box.fontWeight
     property int textFormat: Text.AutoText
     readonly property real inkOffsetX: fitsIconBox ? label.contentWidth / 2 - label.font.pixelSize * (glyphInk.x + glyphInk.width / 2) : 0

@@ -145,8 +145,8 @@ class Looknfeel:
             self.engine = str(layout["value"])
 
         self.read_state_files()
-        self.read_block()
         self.read_baseline()
+        self.read_block()
         self.start_option_lists()
 
     def read_block(self):
@@ -512,9 +512,6 @@ SECTION_WIDTH = 18
 # Right-aligned in a fixed field so the gauge keeps one width per section:
 # a value crossing 9 to 10 must not shorten the bar it sits beside.
 VALUE_WIDTH = 5
-# Blank line between option rows. The section list stays at one line per entry:
-# it has no scrolling, and at this pitch twelve sections would clip off the
-# bottom of a 24-line terminal.
 ROW_PITCH = 2
 
 
@@ -577,7 +574,7 @@ def draw(win, app):
     accent = curses.color_pair(PAIR_ACCENT)
     dim = curses.color_pair(PAIR_DIM)
 
-    add(win, 0, 1, "Look & Feel", accent | curses.A_BOLD)
+    add(win, 0, 1, getattr(app, "title", "Look & Feel"), accent | curses.A_BOLD)
     status = app.theme_key
     add(win, 0, max(14, width - len(status) - 2), status, dim)
     add(win, 1, 1, "─" * (width - 2), dim)
@@ -587,10 +584,16 @@ def draw(win, app):
     rows_x = SECTION_WIDTH + 2
 
     sections = app.sections
-    for index, section in enumerate(sections):
-        y = top + index
-        if y >= bottom:
-            break
+    section_visible = bottom - top
+    first = getattr(app, "section_offset", 0)
+    if app.section_index < first:
+        first = app.section_index
+    elif app.section_index >= first + section_visible:
+        first = app.section_index - section_visible + 1
+    app.section_offset = first
+    for index in range(first, min(len(sections), first + section_visible)):
+        section = sections[index]
+        y = top + index - first
         selected = index == app.section_index
         attr = (accent | curses.A_BOLD) if selected else dim
         marker = "▌" if selected else " "
@@ -647,17 +650,17 @@ def draw(win, app):
         add(win, footer, 1, app.error_text.replace("\n", " "),
             curses.color_pair(PAIR_ERROR))
     else:
-        add(win, footer, 1, HINT, dim)
+        add(win, footer, 1, getattr(app, "hint", HINT), dim)
     win.noutrefresh()
 
 
-def main(win):
+def main(win, app_type=Looknfeel):
     curses.curs_set(0)
     init_colors()
     win.keypad(True)
     win.timeout(int(WATCH_INTERVAL * 1000))
 
-    app = Looknfeel()
+    app = app_type()
     app.refresh()
 
     while True:
@@ -666,6 +669,10 @@ def main(win):
         key = win.getch()
 
         if key == -1:
+            app.tick()
+            continue
+
+        if hasattr(app, "handle_key") and app.handle_key(key, win):
             app.tick()
             continue
 

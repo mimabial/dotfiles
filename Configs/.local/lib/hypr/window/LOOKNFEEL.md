@@ -1,7 +1,8 @@
 # Look & Feel — design
 
-A terminal UI for editing Hyprland's visual configuration by hand, with live
-preview, per-theme memory, and rows that drive the existing hyprshell pipelines.
+The visual settings engine in the desktop Settings TUI edits Hyprland's visual
+configuration with live preview, per-theme memory, and rows that drive the
+existing hyprshell pipelines.
 
 It began as a Quickshell overlay, and the engine still uses the same reader,
 renderer, fences, and per-theme resolver. What
@@ -39,10 +40,12 @@ Additional capabilities:
 ## Surface
 
 An ordinary terminal window: `launch/tui.sh` under the `tui` Hyprland profile,
-app-id `org.tui.Looknfeel`, title `Look & Feel`. Two panes — a section list on
-the left, rows for the selected section on the right — with a header carrying
-the active theme key and a footer carrying either the key hints or the last
-`hyprctl configerrors` output.
+app-id `org.tui.Settings`, title `Settings`. Two panes — a section list on the
+left, rows for the selected section on the right — with a header carrying the
+active theme key and a footer carrying either the key hints or the last
+`hyprctl configerrors` output. The visual sections share this window with
+theme, bar, keyboard, display, workspace, audio, network, Bluetooth, power,
+compose, and keybinding pages.
 
 `windowrules.lua` needs no entry: the existing `^(org\.tui\..*|…)$` rule already
 floats every `org.tui.*` window, which is why the app-id is shaped that way.
@@ -59,7 +62,7 @@ an opaque card to stay readable.
 
 ### Focus and lifetime
 
-`window/looknfeel.sh` is focus-or-launch (`launch/focus.sh`, the `launch/tui.sh`
+`window/settings.sh` is focus-or-launch (`launch/focus.sh`, the `launch/tui.sh`
 pattern `bluetooth.sh` uses), not a toggle. There is no layershell surface, no
 keyboard-focus priming sequence, and no participation in the bar's
 one-global-popup rule — it is a window, and the compositor arbitrates.
@@ -73,9 +76,11 @@ before a window takes focus.
 ~/.local/lib/hypr/window/
   lib/looknfeel_schema.py   the option catalogue
   lib/looknfeel_lua.py      render the managed block, parse reader + getoption
-  lib/looknfeel_tui.py      curses UI, keyboard nav, preview + persist
+  lib/looknfeel_tui.py      visual engine and shared curses UI
+  lib/settings_tui.py       desktop settings pages and local helper routing
   looknfeel-read.lua        recording-stub reader
-  looknfeel.sh              entry point; focus or launch
+  settings.sh               entry point; focus or launch
+  looknfeel.sh              compatibility alias
   tests/test_looknfeel.py   the engine's test suite
   LOOKNFEEL.md              this file
 
@@ -336,18 +341,18 @@ reaches the file rather than evaporating at the next reload.
 
 ## Entry point
 
-`hyprshell window/looknfeel` — focuses the existing window or launches one:
+`hyprshell window/settings` — focuses the existing window or launches one:
 
 ```bash
-hyprshell launch/focus.sh org.tui.Looknfeel -- \
-  hyprshell launch/tui.sh --app-id org.tui.Looknfeel --title "Look & Feel" -- \
-  python3 "${HYPR_LIB_DIR}/window/lib/looknfeel_tui.py"
+hyprshell launch/focus.sh org.tui.Settings -- \
+  hyprshell launch/tui.sh --app-id org.tui.Settings --title Settings -- \
+  python3 "${HYPR_LIB_DIR}/window/lib/settings_tui.py"
 ```
 
 Bound in the theming submap (`keybindings.lua`) on `V`:
 
 ```lua
-submap_exec("V", "[Theming] look and feel", "hyprshell window/looknfeel.sh")
+submap_exec("V", "[Theming] look and feel", "hyprshell window/settings.sh")
 ```
 
 The description is a lookup key for `keybinds_hint.py` — keep it unique and
@@ -386,7 +391,7 @@ Alongside: `python3 -m py_compile` on the three modules; `bash -n` on
 `looknfeel.sh`, `animations.sh`, `shaders.sh`; `luac -p` on `looknfeel-read.lua`
 and the resolver; `hyprctl configerrors` after a write.
 
-Then by hand: `mod+T V` opens the window; dragging a gaps row changes gaps
+Then by hand: `mod+T V` opens Settings; adjusting a gaps row changes gaps
 immediately; `q` persists across `hyprctl reload`; `Backspace` restores the
 theme's value; switching themes swaps which `looknfeel.d/` file applies and
 returning restores the first theme's overrides. The Cursor section lists

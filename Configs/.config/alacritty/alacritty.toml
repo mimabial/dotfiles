@@ -18,7 +18,7 @@ history = 10000
 multiplier = 6
 
 [font]
-normal = { family = "FiraCode Nerd Font" }
+normal = { family = "Lilex Nerd Font" }
 bold = { style = "Bold" }
 italic = { style = "Italic" }
 bold_italic = { style = "Bold Italic" }

@@ -1,12 +1,12 @@
 {
-  "autohide": false,
-  "intelligentAutohide": false,
+  "autohide": true,
+  "intelligentAutohide": true,
   "edge": "bottom",
   "minimizeMode": "active",
   "showMinimizedTiles": true,
   "showAppsButton": true,
   "showTooltips": true,
-  "advancedTooltips": false,
+  "advancedTooltips": true,
   "launchBounce": true,
   "hoverEffect": "wave",
   "opacity": 0.35,
@@ -29,9 +29,9 @@
   "clickToMinimize": true,
   "iconSize": 36,
   "recentApps": [
+    "org.tui.Settings",
     "org.tui.Nvtop",
-    "org.tui.Rmpc",
-    "org.tui.Wiremix"
+    "org.tui.Rmpc"
   ],
   "showRecents": true,
   "showIndicators": true

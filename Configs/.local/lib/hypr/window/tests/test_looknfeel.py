@@ -197,13 +197,11 @@ class EntryPointTest(unittest.TestCase):
     rather than toggling a surface inside another process."""
 
     def test_help_is_on_stdout_and_exits_zero(self):
-        proc = hyprshell("window/looknfeel", "--help")
+        proc = hyprshell("window/settings", "--help")
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn("Usage:", proc.stdout)
 
     def test_app_id_is_floated_by_a_window_rule(self):
-        """org.tui.* is already floated; a Looknfeel window inherits that, so
-        the rule set needs no entry of its own."""
         rules = (Path(os.path.expanduser("~/.config/hypr/windowrules.lua"))
                  .read_text())
         self.assertIn("org\\\\.tui\\\\.", rules)
@@ -211,7 +209,7 @@ class EntryPointTest(unittest.TestCase):
     def test_keybinding_points_at_the_entry_point(self):
         binds = (Path(os.path.expanduser("~/.config/hypr/keybindings.lua"))
                  .read_text())
-        self.assertIn("window/looknfeel.sh", binds)
+        self.assertIn("window/settings.sh", binds)
 
 
 class CursorCliTest(unittest.TestCase):
