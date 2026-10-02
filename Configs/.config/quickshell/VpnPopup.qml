@@ -265,73 +265,28 @@ PopupCard {
     }
     property Timer copiedTimer: Timer { interval: 1400; onTriggered: root.ipCopied = false }
 
-    component InfoPair: Item {
-        id: infoPair
-        property string label: ""
-        property string value: ""
-        property bool interactive: false
-        readonly property bool navigable: interactive && enabled
-        property bool cursored: false
-        function activateKeyboard() { clicked() }
-        visible: value !== ""
-        signal clicked
-        width: parent.width; height: pair.implicitHeight
-        Row {
-            id: pair; width: parent.width; spacing: Style.lg
-            Text { id: pairLabel; text: infoPair.label; color: root.shell.alpha(root.shell.foreground, .6); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
-            Item { width: Math.max(0, parent.width - pairLabel.implicitWidth - pairValue.implicitWidth - parent.spacing * 2); height: 1 }
-            Text { id: pairValue; text: infoPair.value; color: pairMouse.containsMouse || infoPair.cursored ? root.shell.accent : root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
-        }
-        MouseArea { id: pairMouse; anchors.fill: parent; enabled: infoPair.interactive; hoverEnabled: enabled; cursorShape: Qt.PointingHandCursor; onClicked: infoPair.clicked() }
-    }
-
-    component SettingRow: Item {
-        required property string setting
-        required property string label
-        required property string detail
-        required property bool checked
-        width: vpnColumn.width; height: row.implicitHeight; enabled: !root.settingsProc.running
-        PopupRow { id: row; anchors.fill: parent; shell: root.shell; title: parent.label; detail: parent.detail; active: parent.checked; rightInset: settingSwitch.width + Style.lg; onClicked: root.setSetting(parent.setting, !parent.checked) }
-        ToggleSwitch { id: settingSwitch; anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX; anchors.verticalCenter: parent.verticalCenter; shell: root.shell; checked: parent.checked; onToggled: root.setSetting(parent.setting, !parent.checked) }
-    }
-    component BackendTab: BarButton {
-        required property string backendName
-        active: false; radius: shell.rounding; backgroundColor: "transparent"; borderColor: "transparent"
-        hoverOverride: ({backgroundColor: shell.hoverFill(), color: shell.role("hvr_fg", shell.accent)})
-        textColor: root.backend === backendName ? shell.accent : shell.alpha(shell.foreground, .6)
-    }
-
     Column {
         id: vpnColumn
         anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
 
-        Column {
-            width: parent.width; spacing: Style.xxs
-            Text {
-                width: parent.width
-                text: root.backend === "networkmanager" ? "NetworkManager"
-                    : root.status.provider && root.status.provider !== "none" ? root.label(String(root.status.provider))
-                    : "No VPN client detected"
-                color: root.shell.foreground; font.family: root.shell.fontFamily
-                font.pixelSize: Style.title; font.bold: true
-            }
-            Text {
-                width: parent.width
-                text: root.label(root.state)
-                color: root.connected ? root.shell.role("success", root.shell.foreground)
-                    : root.busy ? root.shell.role("warning", root.shell.foreground)
-                    : root.blocked || root.state === "error" ? root.shell.role("error", root.shell.foreground)
-                    : root.shell.alpha(root.shell.foreground, .6)
-                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
-            }
-            Text { visible: root.notice !== ""; width: parent.width; wrapMode: Text.Wrap; text: root.notice; color: root.shell.role("error", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
+        PopupHero {
+            shell: root.shell
+            title: root.backend === "networkmanager" ? "NetworkManager"
+                : root.status.provider && root.status.provider !== "none" ? root.label(String(root.status.provider))
+                : "No VPN client detected"
+            status: root.state
+            statusColor: root.connected ? root.shell.role("success", root.shell.foreground)
+                : root.busy ? root.shell.role("warning", root.shell.foreground)
+                : root.blocked || root.state === "error" ? root.shell.role("error", root.shell.foreground)
+                : root.shell.mutedText
         }
+        Text { visible: root.notice !== ""; width: parent.width; wrapMode: Text.Wrap; text: root.notice; color: root.shell.role("error", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
 
         Row {
             visible: root.nmStatus.available === true
             width: parent.width; spacing: Style.sm
-            BackendTab { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; text: "MULLVAD"; backendName: "mullvad"; onClicked: root.selectBackend(backendName) }
-            BackendTab { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; text: "NETWORKMANAGER"; backendName: "networkmanager"; onClicked: root.selectBackend(backendName) }
+            PopupTab { width: (parent.width - parent.spacing) / 2; shell: root.shell; text: "Mullvad"; selected: root.backend === "mullvad"; onClicked: root.selectBackend("mullvad") }
+            PopupTab { width: (parent.width - parent.spacing) / 2; shell: root.shell; text: "NetworkManager"; selected: root.backend === "networkmanager"; onClicked: root.selectBackend("networkmanager") }
         }
 
         Column {
@@ -339,16 +294,16 @@ PopupCard {
             width: parent.width; spacing: Style.sm
             PopupSeparator { shell: root.shell }
             PopupSection { shell: root.shell; text: root.connected ? "TUNNEL" : "NETWORK" }
-            InfoPair { label: root.backend === "networkmanager" ? "Profile" : "Relay"; value: String(root.viewStatus.relay || "") }
-            InfoPair { label: "Location"; value: String(root.viewStatus.location || "") }
-            InfoPair { label: root.connected ? "Exit IP" : "Public IP"; value: root.ipCopied ? "Copied" : String(root.viewStatus.address || ""); interactive: root.backend === "mullvad"; onClicked: root.copyIp() }
-            InfoPair { label: "Interface"; value: String(root.viewStatus.iface || "") }
-            InfoPair { label: "Endpoint"; value: String(root.viewStatus.endpoint || "") }
+            PopupInfoPair { shell: root.shell; visible: value !== ""; label: root.backend === "networkmanager" ? "Profile" : "Relay"; value: String(root.viewStatus.relay || "") }
+            PopupInfoPair { shell: root.shell; visible: value !== ""; label: "Location"; value: String(root.viewStatus.location || "") }
+            PopupInfoPair { shell: root.shell; visible: value !== ""; label: root.connected ? "Exit IP" : "Public IP"; value: root.ipCopied ? "Copied" : String(root.viewStatus.address || ""); interactive: root.backend === "mullvad"; onClicked: root.copyIp() }
+            PopupInfoPair { shell: root.shell; visible: value !== ""; label: "Interface"; value: String(root.viewStatus.iface || "") }
+            PopupInfoPair { shell: root.shell; visible: value !== ""; label: "Endpoint"; value: String(root.viewStatus.endpoint || "") }
         }
 
         Column {
             visible: root.features.length > 0
-            width: parent.width; spacing: Style.xs
+            width: parent.width; spacing: Style.sm
             PopupSeparator { shell: root.shell }
             PopupSection { shell: root.shell; text: "FEATURES" }
             Repeater {
@@ -364,22 +319,22 @@ PopupCard {
 
         Column {
             visible: root.backend === "mullvad" && root.status.provider === "mullvad"
-            width: parent.width; spacing: Style.xs
+            width: parent.width; spacing: Style.sm
             PopupSeparator { shell: root.shell }
             PopupSection { shell: root.shell; text: "PRIVACY" }
             PopupRow { width: parent.width; shell: root.shell; icon: "󰒓"; title: "Mullvad settings"; detail: root.settingsOpen ? "Hide settings" : "Auto-connect, lockdown and local network"; active: root.settingsOpen; onClicked: root.toggleSettings() }
-            Text { visible: root.settingsOpen && !root.settingsLoaded && root.settingsProc.running; text: "Loading settings…"; color: root.shell.alpha(root.shell.foreground, .55); font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
-            SettingRow { visible: root.settingsOpen && root.settings.autoconnect !== undefined && root.settings.autoconnect !== null; setting: "autoconnect"; label: "Connect on startup"; detail: "Connect when the Mullvad daemon starts"; checked: root.settings.autoconnect === true }
-            SettingRow { visible: root.settingsOpen && root.settings.lockdown !== undefined && root.settings.lockdown !== null; setting: "lockdown"; label: "Lockdown mode"; detail: "Block all traffic while disconnected"; checked: root.settings.lockdown === true }
-            SettingRow { visible: root.settingsOpen && root.settings.lan !== undefined && root.settings.lan !== null; setting: "lan"; label: "Allow local network"; detail: "Reach printers and local devices"; checked: root.settings.lan === true }
+            Text { visible: root.settingsOpen && !root.settingsLoaded && root.settingsProc.running; text: "Loading settings…"; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
+            PopupToggleRow { visible: root.settingsOpen && root.settings.autoconnect != null; enabled: !root.settingsProc.running; width: parent.width; shell: root.shell; title: "Connect on startup"; detail: "Connect when the Mullvad daemon starts"; checked: root.settings.autoconnect === true; onToggled: root.setSetting("autoconnect", !checked) }
+            PopupToggleRow { visible: root.settingsOpen && root.settings.lockdown != null; enabled: !root.settingsProc.running; width: parent.width; shell: root.shell; title: "Lockdown mode"; detail: "Block all traffic while disconnected"; checked: root.settings.lockdown === true; onToggled: root.setSetting("lockdown", !checked) }
+            PopupToggleRow { visible: root.settingsOpen && root.settings.lan != null; enabled: !root.settingsProc.running; width: parent.width; shell: root.shell; title: "Allow local network"; detail: "Reach printers and local devices"; checked: root.settings.lan === true; onToggled: root.setSetting("lan", !checked) }
         }
 
         Column {
             visible: root.backend === "networkmanager"
-            width: parent.width; spacing: Style.xs
+            width: parent.width; spacing: Style.sm
             PopupSeparator { shell: root.shell }
             PopupSection { shell: root.shell; text: "PROFILES" }
-            Text { visible: root.nmProfiles.length === 0; width: parent.width; wrapMode: Text.Wrap; text: "No imported VPN profiles. Import an OpenVPN or WireGuard config with nmcli."; color: root.shell.alpha(root.shell.foreground, .55); font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
+            Text { visible: root.nmProfiles.length === 0; width: parent.width; wrapMode: Text.Wrap; text: "No imported VPN profiles. Import an OpenVPN or WireGuard config with nmcli."; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
             Repeater {
                 model: root.nmProfiles
                 PopupRow {
@@ -396,7 +351,7 @@ PopupCard {
 
         Column {
             visible: root.backend === "mullvad" && root.countries.length > 0
-            width: parent.width; spacing: Style.xs
+            width: parent.width; spacing: Style.sm
             PopupSeparator { shell: root.shell }
             PopupSection { shell: root.shell; text: "LOCATION" }
             PopupRow {
@@ -413,14 +368,14 @@ PopupCard {
                 width: parent.width; height: Style.controlHeight; radius: root.shell.rounding
                 color: root.shell.alpha(root.shell.foreground, .06)
                 border.width: 2; border.color: root.shell.alpha(root.shell.role("act_br", root.shell.accent), .65)
-                Text { anchors.left: parent.left; anchors.leftMargin: Style.controlPaddingX; anchors.verticalCenter: parent.verticalCenter; text: "󰍉"; color: root.shell.alpha(root.shell.foreground, .55); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+                Text { anchors.left: parent.left; anchors.leftMargin: Style.controlPaddingX; anchors.verticalCenter: parent.verticalCenter; text: "󰍉"; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
                 Text { id: searchText; anchors.left: parent.left; anchors.leftMargin: Style.px(34); anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX; anchors.verticalCenter: parent.verticalCenter; text: root.filter; color: root.shell.alpha(root.shell.foreground, .9); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; elide: Text.ElideRight }
                 Rectangle {
                     id: searchCaret; visible: root.browsing !== ""; x: searchText.x + Math.min(searchText.implicitWidth, searchText.width - width)
                     anchors.verticalCenter: parent.verticalCenter; width: Math.max(1, Style.px(1)); height: Style.bodySmall + Style.xs; color: root.shell.accent
                     SequentialAnimation on opacity { running: searchCaret.visible; loops: Animation.Infinite; NumberAnimation { to: 0; duration: 500 } NumberAnimation { to: 1; duration: 500 } }
                 }
-                Text { visible: root.filter === ""; anchors.left: searchCaret.right; anchors.leftMargin: Style.xs; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: root.openCountry ? "Filter cities…" : "Filter countries or cities…"; color: root.shell.alpha(root.shell.foreground, .4); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; elide: Text.ElideRight }
+                Text { visible: root.filter === ""; anchors.left: searchCaret.right; anchors.leftMargin: Style.xs; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: root.openCountry ? "Filter cities…" : "Filter countries or cities…"; color: root.shell.faintText; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; elide: Text.ElideRight }
             }
             ListView {
                 id: locationList
@@ -475,12 +430,12 @@ PopupCard {
                     onClicked: root.chooseLocation(modelData)
                 }
             }
-            Text { visible: root.browsing !== "" && root.locationRows.length === 0; text: "No matching locations"; color: root.shell.alpha(root.shell.foreground, .55); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+            Text { visible: root.browsing !== "" && root.locationRows.length === 0; text: "No matching locations"; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
         }
 
         Column {
             visible: root.backend === "mullvad" ? root.status.provider !== undefined && root.status.provider !== "none" : root.nmProfiles.length > 0
-            width: parent.width; spacing: Style.xs
+            width: parent.width; spacing: Style.sm
             PopupSeparator { shell: root.shell }
             PopupRow {
                 width: parent.width; shell: root.shell

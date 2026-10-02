@@ -1,6 +1,5 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls
 import Quickshell.Io
 import Quickshell.Networking
 
@@ -80,14 +79,6 @@ PopupCard {
     }
     property Timer statusTimer: Timer { interval: 5000; running: root.open; repeat: true; onTriggered: root.refreshStatus() }
 
-    component InfoPair: Row {
-        property string label: ""
-        property string value: ""
-        width: parent.width; spacing: Style.lg
-        Text { id: pairLabel; text: parent.label; color: root.shell.alpha(root.shell.foreground, .6); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; elide: Text.ElideRight }
-        Item { width: Math.max(0, parent.width - pairLabel.implicitWidth - pairValue.implicitWidth - parent.spacing * 2); height: 1 }
-        Text { id: pairValue; text: parent.value || "—"; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; elide: Text.ElideRight }
-    }
     // paired left/right so conjugate readings sit on one line; a cell keeps its
     // place and reads "—" when empty, or the pairing shifts as probes land
     component InfoDuo: Row {
@@ -95,12 +86,12 @@ PopupCard {
         property string label1: ""; property string value1: ""
         property string label2: ""; property string value2: ""
         width: parent.width; spacing: Style.xxl
-        InfoPair { width: (duo.width - duo.spacing) / 2; label: duo.label1; value: duo.value1 }
-        InfoPair { width: (duo.width - duo.spacing) / 2; label: duo.label2; value: duo.value2 }
+        PopupInfoPair { width: (duo.width - duo.spacing) / 2; shell: root.shell; label: duo.label1; value: duo.value1 }
+        PopupInfoPair { width: (duo.width - duo.spacing) / 2; shell: root.shell; label: duo.label2; value: duo.value2 }
     }
 
     Column {
-        anchors.fill: parent; spacing: Style.px(14)
+        anchors.fill: parent; spacing: Style.sectionGap
         PopupHero { shell: root.shell; title: "Network"; status: root.statusName() }
         Row {
             width: parent.width; spacing: Style.xs
@@ -114,16 +105,7 @@ PopupCard {
                 active: Networking.wifiEnabled
                 onClicked: Networking.wifiEnabled = !Networking.wifiEnabled
             }
-            BarButton {
-                id: qrAction
-                shell: root.shell
-                implicitWidth: Style.px(44); implicitHeight: wifiRow.implicitHeight
-                text: "󰐲"; tooltip: "Show QR code"
-                fontSize: Style.title
-                borderWidth: 1
-                borderColor: root.shell.alpha(root.shell.role("br", root.shell.foreground), .3)
-                onClicked: root.shell.togglePopup("wifiqr")
-            }
+            PopupIconButton { id: qrAction; shell: root.shell; implicitHeight: wifiRow.implicitHeight; glyph: "󰐲"; hint: "Show QR code"; onClicked: root.shell.togglePopup("wifiqr") }
         }
         Column {
             visible: root.active !== null || !!root.status.address
@@ -161,7 +143,6 @@ PopupCard {
                     }
                 }
             }
-            Item { width: 1; height: 2 }
             InfoDuo { label1: "Signal"; value1: root.active ? Math.round(root.active.signalStrength * 100) + "%" : ""; label2: "Security"; value2: root.active ? WifiSecurityType.toString(root.active.security) : "" }
             InfoDuo { label1: "IP address"; value1: String(root.status.address || ""); label2: "Gateway"; value2: String(root.status.gateway || "") }
             InfoDuo { label1: "Router ping"; value1: root.pingText("router"); label2: "Internet ping"; value2: root.pingText("internet") }
@@ -171,30 +152,35 @@ PopupCard {
             InfoDuo { visible: value1 !== "" || value2 !== ""; label1: "DNS"; value1: root.dnsFor(false); label2: "DNS IPv6"; value2: root.dnsFor(true) }
         }
 
-        Text { visible: root.pendingNetwork !== null; text: root.pendingNetwork ? "PASSWORD · " + root.pendingNetwork.name : ""; color: root.shell.alpha(root.shell.foreground, .5); font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true }
-        TextField {
-            id: password
+        Column {
             visible: root.pendingNetwork !== null
-            width: parent.width; height: visible ? 38 : 0
-            echoMode: TextInput.Password; placeholderText: "Network password"; color: root.shell.foreground; font.family: root.shell.fontFamily
-            background: Rectangle { color: root.shell.alpha(root.shell.foreground, .07); border.color: root.shell.alpha(root.shell.role("br", root.shell.foreground), .4); radius: root.shell.rounding }
-            onAccepted: if (root.pendingNetwork && text) { root.pendingNetwork.connectWithPsk(text); root.pendingNetwork = null }
-            Keys.onEscapePressed: root.pendingNetwork = null
+            width: parent.width; spacing: Style.sm
+            PopupSection { shell: root.shell; text: root.pendingNetwork ? "PASSWORD · " + root.pendingNetwork.name : "" }
+            PopupField {
+                id: password
+                width: parent.width; shell: root.shell
+                echoMode: TextInput.Password; placeholderText: "Network password"
+                onAccepted: if (root.pendingNetwork && text) { root.pendingNetwork.connectWithPsk(text); root.pendingNetwork = null }
+                Keys.onEscapePressed: root.pendingNetwork = null
+            }
         }
         PopupSeparator { shell: root.shell }
-        PopupSection { shell: root.shell; text: "AVAILABLE"; value: root.device && root.device.scannerEnabled ? "scanning" : "" }
-        ListView {
-            width: parent.width; height: parent.height - y; spacing: Style.px(4); clip: true
-            model: root.device ? root.device.networks : null
-            delegate: PopupRow {
-                required property var modelData
-                width: ListView.view.width; shell: root.shell
-                icon: modelData.connected ? "󰖩" : modelData.security === WifiSecurityType.Open ? "󰖪" : "󰌾"
-                title: modelData.name
-                detail: modelData.connected ? "Connected" : modelData.stateChanging ? ConnectionState.toString(modelData.state) : modelData.known ? "Saved" : WifiSecurityType.toString(modelData.security)
-                value: Math.round(modelData.signalStrength * 100) + "%"
-                active: modelData.connected
-                onClicked: button => button === Qt.RightButton && modelData.known && !modelData.connected ? modelData.forget() : root.activate(modelData)
+        Column {
+            width: parent.width; height: parent.height - y; spacing: Style.sm
+            PopupSection { shell: root.shell; text: "AVAILABLE"; value: root.device && root.device.scannerEnabled ? "scanning" : "" }
+            ListView {
+                width: parent.width; height: parent.height - y; spacing: Style.sm; clip: true
+                model: root.device ? root.device.networks : null
+                delegate: PopupRow {
+                    required property var modelData
+                    width: ListView.view.width; shell: root.shell
+                    icon: modelData.connected ? "󰖩" : modelData.security === WifiSecurityType.Open ? "󰖪" : "󰌾"
+                    title: modelData.name
+                    detail: modelData.connected ? "Connected" : modelData.stateChanging ? ConnectionState.toString(modelData.state) : modelData.known ? "Saved" : WifiSecurityType.toString(modelData.security)
+                    value: Math.round(modelData.signalStrength * 100) + "%"
+                    active: modelData.connected
+                    onClicked: button => button === Qt.RightButton && modelData.known && !modelData.connected ? modelData.forget() : root.activate(modelData)
+                }
             }
         }
     }

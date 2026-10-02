@@ -1,6 +1,8 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
+
 $ICON_THEME = Tela-purple-dark
 $COLOR_SCHEME = prefer-dark
+
 $NVIM_SCHEME = kanagawa
 $NVIM_VARIANT = wave
 $NVIM_BACKGROUND = dark
@@ -8,12 +10,13 @@ $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = BreezeX-Dark
 $CURSOR_SIZE = 30
-$FONT = VictorMono Nerd Font
-$BAR_FONT = VictorMono Nerd Font
-$MENU_FONT = VictorMono Nerd Font
-$MONOSPACE_FONT = VictorMono Nerd Font
-$TERMINAL_FONT = VictorMono Nerd Font
-$NOTIFICATION_FONT = VictorMono Nerd Font Mono
+
+$FONT = CaskaydiaCove Nerd Font
+$BAR_FONT = CaskaydiaCove Nerd Font
+$MENU_FONT = CaskaydiaCove Nerd Font
+$MONOSPACE_FONT = CaskaydiaCove Nerd Font
+$TERMINAL_FONT = CaskaydiaCove Nerd Font
+$NOTIFICATION_FONT = CaskaydiaCove Nerd Font Mono
 
 general {
     border_size = 3

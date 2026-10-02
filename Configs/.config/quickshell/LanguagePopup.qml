@@ -214,7 +214,7 @@ PopupCard {
         id: panelColumn
         anchors.left: parent.left
         anchors.right: parent.right
-        spacing: Style.sm
+        spacing: Style.sectionGap
 
         PopupHero {
             shell: root.shell
@@ -230,64 +230,67 @@ PopupCard {
         Column {
             visible: root.view === "main"
             width: parent.width
-            spacing: Style.sm
+            spacing: Style.sectionGap
 
-            PopupSection {
-                shell: root.shell
-                text: "LAYOUTS"
-                value: root.configured.length
-            }
+            Column {
+                width: parent.width; spacing: Style.sm
+                PopupSection {
+                    shell: root.shell
+                    text: "LAYOUTS"
+                    value: root.configured.length
+                }
 
-            Flickable {
-                id: configuredScroll
-                width: parent.width
-                height: Math.min(configuredColumn.implicitHeight, Style.popupRowHeight * 4 + Style.rowGap * 3)
-                contentWidth: width
-                contentHeight: configuredColumn.implicitHeight
-                interactive: contentHeight > height
-                clip: true
-                boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: ScrollBar { policy: configuredScroll.interactive ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
+                Flickable {
+                    id: configuredScroll
+                    width: parent.width
+                    height: Math.min(configuredColumn.implicitHeight, Style.popupRowHeight * 4 + Style.rowGap * 3)
+                    contentWidth: width
+                    contentHeight: configuredColumn.implicitHeight
+                    interactive: contentHeight > height
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    ScrollBar.vertical: ScrollBar { policy: configuredScroll.interactive ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
 
-                Column {
-                    id: configuredColumn
-                    width: configuredScroll.width
-                    spacing: Style.xxs
+                    Column {
+                        id: configuredColumn
+                        width: configuredScroll.width
+                        spacing: Style.xxs
 
-                    Repeater {
-                        model: root.configured
+                        Repeater {
+                            model: root.configured
 
-                        Item {
-                            id: configuredItem
-                            required property var modelData
-                            required property int index
-                            width: configuredColumn.width
-                            implicitHeight: layoutRow.implicitHeight
+                            Item {
+                                id: configuredItem
+                                required property var modelData
+                                required property int index
+                                width: configuredColumn.width
+                                implicitHeight: layoutRow.implicitHeight
 
-                            PopupRow {
-                                id: layoutRow
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                shell: root.shell
-                                title: Model.descriptionFor(root.catalog, configuredItem.modelData.layout, configuredItem.modelData.variant)
-                                detail: configuredItem.modelData.layout.toUpperCase() + (configuredItem.modelData.variant ? " · " + configuredItem.modelData.variant : " · default")
-                                value: Model.labelFor(root.catalog, configuredItem.modelData.layout, configuredItem.modelData.variant)
-                                active: configuredItem.index === root.activeIndex
-                                rightInset: removeButton.width + Style.sm
-                                onClicked: if (configuredItem.index !== root.activeIndex) root.runAction(["--use", String(configuredItem.index)], "Keyboard layout switched.")
-                            }
+                                PopupRow {
+                                    id: layoutRow
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    shell: root.shell
+                                    title: Model.descriptionFor(root.catalog, configuredItem.modelData.layout, configuredItem.modelData.variant)
+                                    detail: configuredItem.modelData.layout.toUpperCase() + (configuredItem.modelData.variant ? " · " + configuredItem.modelData.variant : " · default")
+                                    value: Model.labelFor(root.catalog, configuredItem.modelData.layout, configuredItem.modelData.variant)
+                                    active: configuredItem.index === root.activeIndex
+                                    rightInset: removeButton.width + Style.sm
+                                    onClicked: if (configuredItem.index !== root.activeIndex) root.runAction(["--use", String(configuredItem.index)], "Keyboard layout switched.")
+                                }
 
-                            Ui.PanelActionButton {
-                                id: removeButton
-                                anchors.right: parent.right
-                                anchors.rightMargin: Style.controlPaddingX
-                                anchors.verticalCenter: parent.verticalCenter
-                                iconText: "󰅖"
-                                enabled: !root.busy && root.configured.length > 1
-                                foreground: root.shell.foreground
-                                hoverColor: root.shell.role("error", root.shell.foreground)
-                                fontFamily: root.shell.fontFamily
-                                onClicked: root.requestDelete(configuredItem.index)
+                                Ui.PanelActionButton {
+                                    id: removeButton
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: Style.controlPaddingX
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    iconText: "󰅖"
+                                    enabled: !root.busy && root.configured.length > 1
+                                    foreground: root.shell.foreground
+                                    hoverColor: root.shell.role("error", root.shell.foreground)
+                                    fontFamily: root.shell.fontFamily
+                                    onClicked: root.requestDelete(configuredItem.index)
+                                }
                             }
                         }
                     }
@@ -296,33 +299,36 @@ PopupCard {
 
             PopupSeparator { shell: root.shell }
 
-            PopupRow {
-                width: parent.width
-                shell: root.shell
-                icon: "󰐕"
-                title: "Add layout or variant"
-                detail: root.catalog.layouts.length > 0 ? "Search installed XKB definitions" : "Loading XKB catalog…"
-                onClicked: root.showPicker("add")
-            }
+            Column {
+                width: parent.width; spacing: Style.xxs
+                PopupRow {
+                    width: parent.width
+                    shell: root.shell
+                    icon: "󰐕"
+                    title: "Add layout or variant"
+                    detail: root.catalog.layouts.length > 0 ? "Search installed XKB definitions" : "Loading XKB catalog…"
+                    onClicked: root.showPicker("add")
+                }
 
-            PopupRow {
-                width: parent.width
-                shell: root.shell
-                icon: "󰁔"
-                title: "Switch shortcut"
-                detail: Model.shortcutLabel(root.catalog, root.switchOption)
-                onClicked: root.showPicker("shortcut")
+                PopupRow {
+                    width: parent.width
+                    shell: root.shell
+                    icon: "󰁔"
+                    title: "Switch shortcut"
+                    detail: Model.shortcutLabel(root.catalog, root.switchOption)
+                    onClicked: root.showPicker("shortcut")
+                }
             }
         }
 
         Column {
             visible: root.view !== "main"
             width: parent.width
-            spacing: Style.sm
+            spacing: Style.sectionGap
 
             Rectangle {
                 width: parent.width
-                height: Style.px(34)
+                height: Style.controlHeight
                 radius: root.shell.rounding
                 color: root.shell.alpha(root.shell.role("alt_bg", root.shell.background), .25)
                 border.width: 1
@@ -334,7 +340,7 @@ PopupCard {
                     anchors.leftMargin: Style.controlPaddingX
                     anchors.verticalCenter: parent.verticalCenter
                     text: "󰍉"
-                    color: root.shell.alpha(root.shell.foreground, .55)
+                    color: root.shell.mutedText
                     font.family: root.shell.fontFamily
                     font.pixelSize: Style.bodySmall
                 }
@@ -346,7 +352,6 @@ PopupCard {
                     anchors.right: resultCount.left
                     anchors.rightMargin: Style.xs
                     anchors.verticalCenter: parent.verticalCenter
-                    height: Style.px(24)
                     text: root.query
                     leftPadding: 0
                     rightPadding: 0
@@ -371,7 +376,7 @@ PopupCard {
                     anchors.rightMargin: Style.controlPaddingX
                     anchors.verticalCenter: parent.verticalCenter
                     text: root.filteredOptions.length
-                    color: root.shell.alpha(root.shell.foreground, .45)
+                    color: root.shell.faintText
                     font.family: root.shell.fontFamily
                     font.pixelSize: Style.caption
                 }
@@ -381,7 +386,7 @@ PopupCard {
                 visible: root.filteredOptions.length === 0
                 width: parent.width
                 text: root.catalog.layouts.length === 0 ? "Loading XKB catalog…" : "No matching options"
-                color: root.shell.alpha(root.shell.foreground, .55)
+                color: root.shell.mutedText
                 font.family: root.shell.fontFamily
                 font.pixelSize: Style.bodySmall
             }
@@ -433,7 +438,7 @@ PopupCard {
             width: parent.width
             text: root.statusText
             color: root.statusError ? root.shell.role("error", root.shell.foreground)
-                : root.shell.alpha(root.shell.foreground, .6)
+                : root.shell.mutedText
             font.family: root.shell.fontFamily
             font.pixelSize: Style.caption
             wrapMode: Text.WordWrap

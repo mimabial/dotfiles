@@ -221,14 +221,6 @@ PopupCard {
 
     function value(list, fallback) { return list && list.length ? list[0].value : fallback }
 
-    component ForecastTab: BarButton {
-        required property string view
-        active: false; radius: shell.rounding; backgroundColor: "transparent"; borderColor: "transparent"
-        hoverOverride: ({ backgroundColor: shell.hoverFill(1.5) })
-        textColor: hovered ? shell.role("hvr_fg", shell.foreground)
-            : root.forecastView === view ? shell.accent : shell.alpha(shell.foreground, .6)
-    }
-
     component GlyphButton: Text {
         required property string glyph
         text: glyph
@@ -253,7 +245,7 @@ PopupCard {
     Column {
         id: weatherColumn
         anchors.left: parent.left; anchors.right: parent.right
-        spacing: Style.px(14)
+        spacing: Style.sectionGap
         Item {
             id: hero
             width: parent.width
@@ -306,7 +298,7 @@ PopupCard {
                             Text {
                                 required property string modelData
                                 text: modelData
-                                color: cityMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.alpha(root.shell.foreground, .55)
+                                color: cityMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.mutedText
                                 font.family: root.shell.fontFamily; font.pixelSize: Style.body; font.letterSpacing: 1
                             }
                         }
@@ -347,7 +339,7 @@ PopupCard {
                         Column {
                             required property var modelData
                             spacing: Style.px(5)
-                            Text { text: parent.modelData[0]; color: root.shell.alpha(root.shell.foreground, .45); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; font.letterSpacing: 1 }
+                            Text { text: parent.modelData[0]; color: root.shell.faintText; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; font.letterSpacing: 1 }
                             Text { text: parent.modelData[1]; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.typePx(1.17) }
                         }
                     }
@@ -378,7 +370,7 @@ PopupCard {
                     id: readoutRow
                     required property string modelData
                     readonly property int position: root.shownReadouts.indexOf(modelData)
-                    width: parent.width; height: Style.px(26)
+                    width: parent.width; height: Style.controlHeight
                     ToggleSwitch {
                         id: readoutSwitch
                         shell: root.shell; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
@@ -411,7 +403,7 @@ PopupCard {
                     required property var modelData
                     required property int index
                     readonly property bool cursored: root.suggestionIndex === index
-                    width: parent.width; height: Style.px(26); radius: root.shell.rounding
+                    width: parent.width; height: Style.popupRowHeight; radius: root.shell.rounding
                     color: (pickMouse.containsMouse || cursored) ? root.shell.hoverFill(1.5) : "transparent"
                     border.width: cursored ? 1 : 0
                     border.color: root.shell.hoverEdge(.85)
@@ -437,8 +429,8 @@ PopupCard {
         PopupSeparator { shell: root.shell }
         Row {
             width: parent.width; spacing: Style.sm
-            ForecastTab { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; view: "hourly"; text: root.hourlyLabel; onClicked: root.showHours(-1) }
-            ForecastTab { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; view: "daily"; text: "DAILY"; onClicked: root.showDays() }
+            PopupTab { width: (parent.width - parent.spacing) / 2; shell: root.shell; text: root.hourlyLabel; selected: root.forecastView === "hourly"; onClicked: root.showHours(-1) }
+            PopupTab { width: (parent.width - parent.spacing) / 2; shell: root.shell; text: "Daily"; selected: root.forecastView === "daily"; onClicked: root.showDays() }
         }
         Item {
             width: parent.width; height: Style.px(88)
@@ -468,7 +460,7 @@ PopupCard {
                             text: root.forecastView === "daily"
                                 ? (forecastCard.index === 0 ? "TODAY" : Qt.formatDate(new Date(forecastCard.modelData.date + "T12:00:00"), "ddd").toUpperCase())
                                 : (root.selectedDay < 0 && forecastCard.index === 0 ? "NOW" : Qt.formatTime(new Date(forecastCard.modelData.time), "HH:mm"))
-                            color: root.shell.alpha(root.shell.foreground, .5)
+                            color: root.shell.mutedText
                             font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
                         }
                         Text { anchors.horizontalCenter: parent.horizontalCenter; text: forecastCard.modelData.icon || "󰖐"; color: root.shell.role("c2", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.display }
@@ -478,7 +470,7 @@ PopupCard {
                                 : root.temp(forecastCard.modelData, "maxtemp") + "\u00b0 | " + root.temp(forecastCard.modelData, "mintemp") + "\u00b0"
                             color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                         }
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "󱢋 " + (forecastCard.modelData.chanceofrain || "0") + "%"; color: root.shell.alpha(root.shell.foreground, .55); font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
+                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "󱢋 " + (forecastCard.modelData.chanceofrain || "0") + "%"; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
                     }
                     MouseArea {
                         id: dayMouse; anchors.fill: parent
@@ -512,7 +504,7 @@ PopupCard {
                 Column {
                     required property var modelData
                     width: (weatherColumn.width - 12) / 2; spacing: 2
-                    Text { text: parent.modelData[0]; color: root.shell.alpha(root.shell.foreground, .45); font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true; font.letterSpacing: 1 }
+                    Text { text: parent.modelData[0]; color: root.shell.faintText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true; font.letterSpacing: 1 }
                     Text { text: parent.modelData[1]; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.subtitle }
                 }
             }
@@ -522,7 +514,7 @@ PopupCard {
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: weatherColumn.expanded ? "\u25b4  less" : "\u25be  more"
-                color: moreMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.alpha(root.shell.foreground, .5)
+                color: moreMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.mutedText
                 font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                 MouseArea { id: moreMouse; anchors.fill: parent; anchors.margins: -8; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: weatherColumn.expanded = !weatherColumn.expanded }
             }

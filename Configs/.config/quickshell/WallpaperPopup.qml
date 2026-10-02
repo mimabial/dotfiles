@@ -44,200 +44,182 @@ PopupCard {
         Wallpaper.refresh(true)
     }
 
-    component ChoiceButton: BarButton {
-        shell: root.shell; radius: shell.rounding; fontSize: Style.bodySmall
-        borderWidth: 1
-        backgroundColor: active ? shell.alpha(shell.role("act_bg", shell.accent), .3) : shell.alpha(shell.foreground, .07)
-        borderColor: active ? shell.alpha(shell.role("act_br", shell.accent), .65)
-            : cursored ? shell.hoverEdge(.85) : shell.alpha(shell.role("br", shell.foreground), .25)
-    }
-
     Column {
         id: wallColumn
-        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sm
+        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
 
         PopupHero { shell: root.shell; title: "Wallpaper"; status: Wallpaper.nextText() }
 
         PopupSeparator { shell: root.shell }
 
-        PopupSection {
-            shell: root.shell; text: "WALLPAPERS"
-            value: root.hoverName !== "" ? root.hoverName
-                : Wallpaper.entries.length + (Wallpaper.themeName ? " · " + Wallpaper.themeName : "")
-        }
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection {
+                shell: root.shell; text: "WALLPAPERS"
+                value: root.hoverName !== "" ? root.hoverName
+                    : Wallpaper.entries.length + (Wallpaper.themeName ? " · " + Wallpaper.themeName : "")
+            }
 
-        Flickable {
-            id: gridScroll
-            width: parent.width
-            height: Math.min(wallFlow.implicitHeight, root.gridMaxHeight)
-            contentWidth: width
-            contentHeight: wallFlow.implicitHeight
-            interactive: contentHeight > height
-            clip: true
-            boundsBehavior: Flickable.StopAtBounds
-            ScrollBar.vertical: ScrollBar { policy: gridScroll.interactive ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
+            Flickable {
+                id: gridScroll
+                width: parent.width
+                height: Math.min(wallFlow.implicitHeight, root.gridMaxHeight)
+                contentWidth: width
+                contentHeight: wallFlow.implicitHeight
+                interactive: contentHeight > height
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: ScrollBar { policy: gridScroll.interactive ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
 
-            Flow {
-                id: wallFlow
-                width: gridScroll.width
-                spacing: root.cellSpacing
+                Flow {
+                    id: wallFlow
+                    width: gridScroll.width
+                    spacing: root.cellSpacing
 
-                Repeater {
-                    model: Wallpaper.entries
+                    Repeater {
+                        model: Wallpaper.entries
 
-                    delegate: Rectangle {
-                        id: cell
-                        required property var modelData
-                        readonly property bool navigable: true
-                        property bool cursored: false
-                        signal clicked(int button)
-                        onClicked: Wallpaper.setWallpaper(modelData.path)
-                        readonly property bool isCurrent: Wallpaper.current === modelData.path
-                        // the thumbnail cache can lag a freshly added wallpaper;
-                        // fall back to the full image rather than an empty cell
-                        property bool thumbFailed: false
-                        width: root.cellSize; height: root.cellSize
-                        color: root.shell.alpha(root.shell.foreground, .06)
-                        radius: root.shell.rounding
-                        clip: true
+                        delegate: Rectangle {
+                            id: cell
+                            required property var modelData
+                            readonly property bool navigable: true
+                            property bool cursored: false
+                            signal clicked(int button)
+                            onClicked: Wallpaper.setWallpaper(modelData.path)
+                            readonly property bool isCurrent: Wallpaper.current === modelData.path
+                            // the thumbnail cache can lag a freshly added wallpaper;
+                            // fall back to the full image rather than an empty cell
+                            property bool thumbFailed: false
+                            width: root.cellSize; height: root.cellSize
+                            color: root.shell.alpha(root.shell.foreground, .06)
+                            radius: root.shell.rounding
+                            clip: true
 
-                        Image {
-                            anchors.fill: parent
-                            // decode only while the panel is open, at thumbnail size,
-                            // and drop the pixmap on close
-                            source: root.open ? Wallpaper.fileUrl(cell.thumbFailed ? cell.modelData.path : cell.modelData.thumb) : ""
-                            sourceSize: Qt.size(240, 240)
-                            fillMode: Image.PreserveAspectCrop
-                            asynchronous: true
-                            cache: false
-                            smooth: true
-                            onStatusChanged: if (status === Image.Error && !cell.thumbFailed) cell.thumbFailed = true
-                        }
-                        // hold back everything that is not the current pick
-                        Rectangle {
-                            anchors.fill: parent; radius: parent.radius
-                            color: root.shell.alpha(root.shell.background,
-                                cell.isCurrent ? 0 : cellMouse.containsMouse ? .1 : .35)
-                            Behavior on color { ColorAnimation { duration: Style.hoverDuration } }
-                        }
-                        // drawn over the image so it cannot be hidden by it
-                        Rectangle {
-                            anchors.fill: parent; radius: parent.radius; color: "transparent"
-                            border.width: cell.isCurrent ? 2 : 1
-                            border.color: cell.cursored ? root.shell.hoverEdge(.85) : cell.isCurrent ? root.shell.role("act_br", root.shell.accent)
-                                : cellMouse.containsMouse ? root.shell.hoverEdge()
-                                : root.shell.alpha(root.shell.foreground, .18)
-                        }
-                        MouseArea {
-                            id: cellMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onEntered: root.hoverName = cell.modelData.name
-                            onExited: if (root.hoverName === cell.modelData.name) root.hoverName = ""
-                            onClicked: cell.clicked(Qt.LeftButton)
+                            Image {
+                                anchors.fill: parent
+                                // decode only while the panel is open, at thumbnail size,
+                                // and drop the pixmap on close
+                                source: root.open ? Wallpaper.fileUrl(cell.thumbFailed ? cell.modelData.path : cell.modelData.thumb) : ""
+                                sourceSize: Qt.size(240, 240)
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                                cache: false
+                                smooth: true
+                                onStatusChanged: if (status === Image.Error && !cell.thumbFailed) cell.thumbFailed = true
+                            }
+                            // hold back everything that is not the current pick
+                            Rectangle {
+                                anchors.fill: parent; radius: parent.radius
+                                color: root.shell.alpha(root.shell.background,
+                                    cell.isCurrent ? 0 : cellMouse.containsMouse ? .1 : .35)
+                                Behavior on color { ColorAnimation { duration: Style.hoverDuration } }
+                            }
+                            // drawn over the image so it cannot be hidden by it
+                            Rectangle {
+                                anchors.fill: parent; radius: parent.radius; color: "transparent"
+                                border.width: cell.isCurrent ? 2 : 1
+                                border.color: cell.cursored ? root.shell.hoverEdge(.85) : cell.isCurrent ? root.shell.role("act_br", root.shell.accent)
+                                    : cellMouse.containsMouse ? root.shell.hoverEdge()
+                                    : root.shell.alpha(root.shell.foreground, .18)
+                            }
+                            MouseArea {
+                                id: cellMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onEntered: root.hoverName = cell.modelData.name
+                                onExited: if (root.hoverName === cell.modelData.name) root.hoverName = ""
+                                onClicked: cell.clicked(Qt.LeftButton)
+                            }
                         }
                     }
                 }
             }
-        }
 
-        Text {
-            visible: Wallpaper.entries.length === 0
-            width: parent.width
-            text: "No wallpapers found for this theme."
-            color: root.shell.alpha(root.shell.foreground, .55)
-            font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
-            wrapMode: Text.WordWrap
+            Text {
+                visible: Wallpaper.entries.length === 0
+                width: parent.width
+                text: "No wallpapers found for this theme."
+                color: root.shell.mutedText
+                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+                wrapMode: Text.WordWrap
+            }
         }
 
         PopupSeparator { shell: root.shell }
 
-        PopupSection { shell: root.shell; text: "SCHEDULE" }
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection { shell: root.shell; text: "SCHEDULE" }
 
-        Item {
-            width: parent.width
-            implicitHeight: autoRow.implicitHeight
-            PopupRow {
-                id: autoRow
-                anchors.fill: parent
-                shell: root.shell
+            PopupToggleRow {
+                width: parent.width; shell: root.shell
                 icon: Wallpaper.enabled ? "󰑖" : "󰑗"
                 title: "Automatic switching"
                 detail: Wallpaper.enabled ? Wallpaper.intervalLabel(Wallpaper.intervalMinutes) : "Paused"
-                active: Wallpaper.enabled
-                rightInset: autoSwitch.width + Style.xs
-                onClicked: Wallpaper.setEnabled(!Wallpaper.enabled)
-            }
-            ToggleSwitch {
-                id: autoSwitch
-                anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX
-                anchors.verticalCenter: parent.verticalCenter
-                shell: root.shell
                 checked: Wallpaper.enabled
                 onToggled: Wallpaper.setEnabled(!Wallpaper.enabled)
             }
-        }
 
-        PopupSlider {
-            width: parent.width
-            shell: root.shell
-            label: "Interval"
-            value: root.intervalIndex
-            minimum: 0
-            maximum: Wallpaper.intervalSteps.length - 1
-            step: 1
-            tickCount: Wallpaper.intervalSteps.length
-            valueText: Wallpaper.intervalLabel(root.shownInterval)
-            onChanged: value => root.draftInterval = Math.round(value)
-            onReleased: value => {
-                root.draftInterval = -1
-                Wallpaper.updateSchedule({intervalMinutes: Wallpaper.intervalSteps[Math.round(value)]})
-            }
-        }
-
-        Row {
-            width: parent.width; height: Style.controlHeight; spacing: Style.xs
-            Repeater {
-                model: [{value: "sequential", label: "Sequential", icon: "󰒬"},
-                        {value: "shuffle", label: "Shuffle", icon: "󰒝"}]
-                ChoiceButton {
-                    required property var modelData
-                    width: (wallColumn.width - Style.xs) / 2; height: parent.height
-                    text: modelData.icon + "  " + modelData.label
-                    active: Wallpaper.mode === modelData.value
-                    onClicked: Wallpaper.updateSchedule({mode: modelData.value})
+            PopupSlider {
+                width: parent.width
+                shell: root.shell
+                label: "Interval"
+                value: root.intervalIndex
+                minimum: 0
+                maximum: Wallpaper.intervalSteps.length - 1
+                step: 1
+                tickCount: Wallpaper.intervalSteps.length
+                valueText: Wallpaper.intervalLabel(root.shownInterval)
+                onChanged: value => root.draftInterval = Math.round(value)
+                onReleased: value => {
+                    root.draftInterval = -1
+                    Wallpaper.updateSchedule({intervalMinutes: Wallpaper.intervalSteps[Math.round(value)]})
                 }
             }
-        }
 
-        ChoiceButton {
-            width: parent.width; height: Style.controlHeight
-            text: Wallpaper.busy ? "󰔟  Applying…" : "󰑐  Apply next wallpaper now"
-            enabled: !Wallpaper.busy
-            textColor: Wallpaper.busy ? root.shell.alpha(root.shell.foreground, .5) : root.shell.foreground
-            onClicked: Wallpaper.applyNext()
-        }
+            Row {
+                width: parent.width; spacing: Style.sm
+                Repeater {
+                    model: [{value: "sequential", label: "Sequential", icon: "󰒬"},
+                            {value: "shuffle", label: "Shuffle", icon: "󰒝"}]
+                    PopupTab {
+                        required property var modelData
+                        width: (wallColumn.width - Style.sm) / 2
+                        shell: root.shell; icon: modelData.icon; text: modelData.label
+                        selected: Wallpaper.mode === modelData.value
+                        onClicked: Wallpaper.updateSchedule({mode: modelData.value})
+                    }
+                }
+            }
 
-        Text {
-            visible: text !== ""
-            width: parent.width
-            text: Wallpaper.lastError !== "" ? Wallpaper.lastError : Wallpaper.lastAction
-            color: Wallpaper.lastError !== "" ? root.shell.role("error", root.shell.foreground)
-                : root.shell.alpha(root.shell.foreground, .55)
-            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-            wrapMode: Text.WordWrap
-        }
+            PopupRow {
+                width: parent.width; shell: root.shell
+                icon: Wallpaper.busy ? "󰔟" : "󰑐"; title: Wallpaper.busy ? "Applying…" : "Apply next wallpaper now"
+                enabled: !Wallpaper.busy
+                onClicked: Wallpaper.applyNext()
+            }
 
-        Text {
-            width: parent.width
-            text: "Picking a wallpaper here restarts the interval, so manual choices and "
-                + "scheduled changes share one rotation. "
-                + (Wallpaper.shuffle ? "Shuffle plays every wallpaper once before repeating."
-                    : "Sequential advances by one wallpaper each interval.")
-            color: root.shell.alpha(root.shell.foreground, .45)
-            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-            wrapMode: Text.WordWrap
+            Text {
+                visible: text !== ""
+                width: parent.width
+                text: Wallpaper.lastError !== "" ? Wallpaper.lastError : Wallpaper.lastAction
+                color: Wallpaper.lastError !== "" ? root.shell.role("error", root.shell.foreground)
+                    : root.shell.mutedText
+                font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                wrapMode: Text.WordWrap
+            }
+
+            Text {
+                width: parent.width
+                text: "Picking a wallpaper here restarts the interval, so manual choices and "
+                    + "scheduled changes share one rotation. "
+                    + (Wallpaper.shuffle ? "Shuffle plays every wallpaper once before repeating."
+                        : "Sequential advances by one wallpaper each interval.")
+                color: root.shell.faintText
+                font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                wrapMode: Text.WordWrap
+            }
         }
     }
 }

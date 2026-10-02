@@ -43,7 +43,7 @@ PopupCard {
 
     Column {
         id: printersColumn
-        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sm
+        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
 
         PopupHero { shell: root.shell; title: "Printers"; status: root.printers.length > 0 ? root.printers.length + " configured" : "none configured" }
 
@@ -51,45 +51,51 @@ PopupCard {
             visible: text !== ""
             width: parent.width; wrapMode: Text.Wrap
             text: root.error || (root.printers.length === 0 ? "No printers configured" : "")
-            color: root.error ? root.shell.role("error", root.shell.foreground) : root.shell.alpha(root.shell.foreground, .5)
+            color: root.error ? root.shell.role("error", root.shell.foreground) : root.shell.mutedText
             font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
         }
 
-        Repeater {
-            model: root.printers
-            PopupRow {
-                required property var modelData
-                width: printersColumn.width; shell: root.shell
-                icon: modelData.state === "stopped" ? "\u{f042c}"
-                    : modelData.state === "printing" ? "\u{f1296}" : "\u{f042a}"
-                title: modelData.name + (modelData.default ? "  •  default" : "")
-                detail: [modelData.state === "stopped" ? (modelData.reason || "Stopped") + " — jobs held" : modelData.state,
-                    modelData.transport].filter(part => part).join("  •  ")
-                value: modelData.state === "stopped" ? "Resume" : "Pause"
-                active: modelData.state === "stopped"
-                // left toggles the queue, right makes it the default
-                onClicked: button => button === Qt.RightButton
-                    ? root.act(["--default", modelData.name])
-                    : root.act([modelData.state === "stopped" ? "--enable" : "--disable", modelData.name])
+        Column {
+            width: parent.width; spacing: Style.xxs
+            Repeater {
+                model: root.printers
+                PopupRow {
+                    required property var modelData
+                    width: printersColumn.width; shell: root.shell
+                    icon: modelData.state === "stopped" ? "\u{f042c}"
+                        : modelData.state === "printing" ? "\u{f1296}" : "\u{f042a}"
+                    title: modelData.name + (modelData.default ? "  •  default" : "")
+                    detail: [modelData.state === "stopped" ? (modelData.reason || "Stopped") + " — jobs held" : modelData.state,
+                        modelData.transport].filter(part => part).join("  •  ")
+                    value: modelData.state === "stopped" ? "Resume" : "Pause"
+                    active: modelData.state === "stopped"
+                    // left toggles the queue, right makes it the default
+                    onClicked: button => button === Qt.RightButton
+                        ? root.act(["--default", modelData.name])
+                        : root.act([modelData.state === "stopped" ? "--enable" : "--disable", modelData.name])
+                }
             }
         }
 
         PopupSeparator { visible: root.jobs.length > 0; shell: root.shell }
-        PopupSection {
-            visible: root.jobs.length > 0
-            shell: root.shell; text: "QUEUE"; value: root.jobs.length
-        }
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection {
+                visible: root.jobs.length > 0
+                shell: root.shell; text: "QUEUE"; value: root.jobs.length
+            }
 
-        Repeater {
-            model: root.jobs
-            PopupRow {
-                required property var modelData
-                width: printersColumn.width; shell: root.shell
-                icon: "\u{f015a}"
-                title: modelData.id
-                detail: modelData.user + " — " + root.sizeLabel(modelData.size)
-                value: "Cancel"
-                onClicked: root.act(["--cancel", modelData.id])
+            Repeater {
+                model: root.jobs
+                PopupRow {
+                    required property var modelData
+                    width: printersColumn.width; shell: root.shell
+                    icon: "\u{f015a}"
+                    title: modelData.id
+                    detail: modelData.user + " — " + root.sizeLabel(modelData.size)
+                    value: "Cancel"
+                    onClicked: root.act(["--cancel", modelData.id])
+                }
             }
         }
 

@@ -648,10 +648,10 @@ PopupCard {
 
         implicitHeight: Math.max(Style.popupRowHeight, labels.implicitHeight + Style.controlPaddingY * 2)
         color: cursored ? root.shell.hoverFill()
-            : dev.connected ? root.shell.alpha(root.shell.role("act_bg", root.shell.accent), .2)
+            : dev.connected ? root.shell.selectedFill()
             : rowMouse.containsMouse ? root.shell.hoverFill() : "transparent"
         border.color: cursored ? root.shell.hoverEdge(.85)
-            : dev.connected ? root.shell.alpha(root.shell.role("act_br", root.shell.accent), .5)
+            : dev.connected ? root.shell.selectedEdge()
             : rowMouse.containsMouse ? root.shell.hoverEdge(.6) : "transparent"
         radius: root.shell.rounding
 
@@ -720,7 +720,7 @@ PopupCard {
             }
             Text {
                 visible: text !== ""; width: parent.width; text: row.status; textFormat: Text.PlainText
-                color: row.failure || row.dev.blocked ? root.shell.urgent : root.shell.alpha(root.shell.foreground, .62)
+                color: row.failure || row.dev.blocked ? root.shell.urgent : root.shell.mutedText
                 font.family: root.shell.fontFamily; font.pixelSize: Style.caption; elide: Text.ElideRight
             }
         }
@@ -756,21 +756,30 @@ PopupCard {
                 ScrollBar.vertical: ScrollBar { policy: deviceScroll.contentHeight > deviceScroll.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
                 Column {
                     id: deviceLists
-                    width: deviceScroll.width; spacing: Style.rowGap
-                    PopupSection { visible: root.connectedRows.length > 0; shell: root.shell; text: "CONNECTED" }
-                    Repeater { model: root.connectedRows; DeviceRow { required property var modelData; dev: modelData; sectionName: "connected"; width: deviceLists.width } }
+                    width: deviceScroll.width; spacing: Style.sectionGap
+                    Column {
+                        width: parent.width; spacing: Style.sm
+                        PopupSection { visible: root.connectedRows.length > 0; shell: root.shell; text: "CONNECTED" }
+                        Repeater { model: root.connectedRows; DeviceRow { required property var modelData; dev: modelData; sectionName: "connected"; width: deviceLists.width } }
+                    }
                     PopupSeparator { visible: root.connectedRows.length > 0 && root.knownRows.length > 0; shell: root.shell }
-                    PopupSection { visible: root.knownRows.length > 0; shell: root.shell; text: "PAIRED" }
-                    Repeater { model: root.knownRows; DeviceRow { required property var modelData; dev: modelData; sectionName: "known"; width: deviceLists.width } }
+                    Column {
+                        width: parent.width; spacing: Style.sm
+                        PopupSection { visible: root.knownRows.length > 0; shell: root.shell; text: "PAIRED" }
+                        Repeater { model: root.knownRows; DeviceRow { required property var modelData; dev: modelData; sectionName: "known"; width: deviceLists.width } }
+                    }
                     PopupSeparator { visible: (root.connectedRows.length || root.knownRows.length) && root.discoveredRows.length > 0; shell: root.shell }
-                    PopupSection { visible: root.adapter && root.adapter.enabled; shell: root.shell; text: "AVAILABLE"; value: root.adapter && root.adapter.discovering ? "scanning" : "" }
-                    Repeater { model: root.adapter && root.adapter.discovering ? root.discoveredRows : []; DeviceRow { required property var modelData; dev: modelData; sectionName: "discovered"; width: deviceLists.width } }
-                    Text {
-                        visible: !root.adapter || !root.adapter.enabled || !root.connectedRows.length && !root.knownRows.length && !root.discoveredRows.length
-                        width: parent.width
-                        text: !root.adapter ? "No Bluetooth controller" : !root.adapter.enabled ? "Turn Bluetooth on to scan" : "Scanning for devices…"
-                        color: root.shell.alpha(root.shell.foreground, .5); font.family: root.shell.fontFamily
-                        font.pixelSize: Style.bodySmall; horizontalAlignment: Text.AlignHCenter
+                    Column {
+                        width: parent.width; spacing: Style.sm
+                        PopupSection { visible: root.adapter && root.adapter.enabled; shell: root.shell; text: "AVAILABLE"; value: root.adapter && root.adapter.discovering ? "scanning" : "" }
+                        Repeater { model: root.adapter && root.adapter.discovering ? root.discoveredRows : []; DeviceRow { required property var modelData; dev: modelData; sectionName: "discovered"; width: deviceLists.width } }
+                        Text {
+                            visible: !root.adapter || !root.adapter.enabled || !root.connectedRows.length && !root.knownRows.length && !root.discoveredRows.length
+                            width: parent.width
+                            text: !root.adapter ? "No Bluetooth controller" : !root.adapter.enabled ? "Turn Bluetooth on to scan" : "Scanning for devices…"
+                            color: root.shell.mutedText; font.family: root.shell.fontFamily
+                            font.pixelSize: Style.bodySmall; horizontalAlignment: Text.AlignHCenter
+                        }
                     }
                 }
             }
@@ -846,7 +855,7 @@ PopupCard {
                         visible: root.devicePropertyBusy || root.propertyError !== ""
                         width: parent.width; text: root.devicePropertyBusy ? "Applying device setting…" : root.propertyError
                         textFormat: Text.PlainText; wrapMode: Text.WordWrap
-                        color: root.propertyError ? root.shell.urgent : root.shell.alpha(root.shell.foreground, .55)
+                        color: root.propertyError ? root.shell.urgent : root.shell.mutedText
                         font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                     }
                     PopupSeparator { shell: root.shell }
@@ -884,7 +893,7 @@ PopupCard {
             PopupSeparator { shell: root.shell }
             PopupSection { shell: root.shell; text: "AUDIO MODE"; value: root.audioProfileBusy ? "switching" : "" }
             ListView {
-                width: parent.width; height: Math.min(contentHeight, parent.height - y - profileMessage.height - Style.rowGap)
+                width: parent.width; height: Math.min(contentHeight, parent.height - y - profileMessage.height - parent.spacing)
                 spacing: Style.rowGap; clip: true
                 model: root.selectedRow ? root.profileOptions(root.selectedRow.address) : []
                 delegate: PopupRow {
@@ -903,7 +912,7 @@ PopupCard {
                 width: parent.width
                 text: root.profileError || (!root.profileOptions(root.selectedAddress).length ? "No switchable audio modes are currently available." : "Mode changes preserve volume and mute state.")
                 textFormat: Text.PlainText; wrapMode: Text.WordWrap
-                color: root.profileError ? root.shell.urgent : root.shell.alpha(root.shell.foreground, .48)
+                color: root.profileError ? root.shell.urgent : root.shell.mutedText
                 font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
             }
         }

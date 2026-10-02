@@ -645,7 +645,7 @@ PopupCard {
             id: facetCount
             anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
             text: parent.count
-            color: root.shell.alpha(root.shell.foreground, .4)
+            color: root.shell.faintText
             font.family: root.shell.fontFamily; font.pixelSize: Style.caption
         }
         MouseArea {
@@ -656,31 +656,6 @@ PopupCard {
                 else if (parent.kind === "list") root.listFilter = parent.name
                 else { root.categoryFilter = ""; root.listFilter = "" }
             }
-        }
-    }
-
-    component ViewTab: Rectangle {
-        required property string name
-        readonly property bool current: root.view === name
-        implicitWidth: tabLabel.implicitWidth + Style.controlPaddingX * 4
-        implicitHeight: Style.px(28)
-        radius: root.shell.rounding
-        color: current ? root.shell.alpha(root.shell.role("act_bg", root.shell.accent), .35)
-            : tabArea.containsMouse ? root.shell.alpha(root.shell.foreground, .1) : "transparent"
-        border.width: 1
-        border.color: root.shell.alpha(root.shell.foreground, current ? .4 : .16)
-        Text {
-            id: tabLabel
-            anchors.centerIn: parent
-            text: parent.name.toUpperCase()
-            color: root.shell.alpha(root.shell.foreground, parent.current ? 1 : .6)
-            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-            font.letterSpacing: 1
-        }
-        MouseArea {
-            id: tabArea
-            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: root.view = parent.name
         }
     }
 
@@ -788,7 +763,7 @@ PopupCard {
                         text: root.open_.length + " open · " + root.dueCount + " due · "
                             + root.completedRetained + " done"
                         elide: Text.ElideRight
-                        color: root.shell.alpha(root.shell.foreground, .5)
+                        color: root.shell.mutedText
                         font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                     }
                 }
@@ -818,13 +793,13 @@ PopupCard {
                     Text {
                         id: progressDone; anchors.left: parent.left
                         text: root.stats.total > 0 ? Math.round(root.stats.ratio * 100) + "% of today done" : "Nothing planned yet"
-                        color: root.shell.alpha(root.shell.foreground, .42)
+                        color: root.shell.faintText
                         font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                     }
                     Text {
                         anchors.right: parent.right
                         text: Math.round(root.dayFraction * 100) + "% of the workday gone"
-                        color: root.shell.alpha(root.shell.foreground, .42)
+                        color: root.shell.faintText
                         font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                     }
                 }
@@ -839,7 +814,6 @@ PopupCard {
                 PopupField {
                     id: addField
                     shell: root.shell
-                    height: Style.px(32)
                     anchors.left: parent.left
                     anchors.right: parent.right
                     rightPadding: Style.controlPaddingX + Style.px(20) + Style.sm
@@ -945,9 +919,10 @@ PopupCard {
                 spacing: Style.sm
                 Repeater {
                     model: root.views
-                    ViewTab {
+                    PopupTab {
                         required property var modelData
-                        name: String(modelData)
+                        shell: root.shell; text: modelData; selected: root.view === modelData
+                        onClicked: root.view = modelData
                     }
                 }
             }
@@ -1027,14 +1002,14 @@ PopupCard {
                     spacing: Style.xs
                     Text {
                         text: "FACETS"
-                        color: root.shell.alpha(root.shell.foreground, .45)
+                        color: root.shell.faintText
                         font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
                         font.letterSpacing: 1
                     }
                     FacetChoice { name: ""; kind: ""; count: root.todos.length }
                     Text {
                         text: "CATEGORIES"
-                        color: root.shell.alpha(root.shell.foreground, .4)
+                        color: root.shell.faintText
                         font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
                     }
                     Repeater {
@@ -1053,7 +1028,7 @@ PopupCard {
                     }
                     Text {
                         text: "CALENDARS"
-                        color: root.shell.alpha(root.shell.foreground, .4)
+                        color: root.shell.faintText
                         font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
                     }
                     Repeater {
@@ -1079,7 +1054,7 @@ PopupCard {
                 Text {
                     width: section.width
                     text: section.modelData.label
-                    color: root.shell.alpha(root.shell.foreground, .45)
+                    color: root.shell.faintText
                     font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                     font.letterSpacing: 1; font.bold: true
                     bottomPadding: Style.xs
@@ -1178,7 +1153,7 @@ PopupCard {
                                 text: taskRow.modelData.summary; elide: Text.ElideRight
                                 wrapMode: root.compact ? Text.NoWrap : Text.Wrap
                                 maximumLineCount: root.compact ? 1 : 2
-                                color: taskRow.done ? root.shell.alpha(root.shell.foreground, .45)
+                                color: taskRow.done ? root.shell.faintText
                                     : root.shell.foreground
                                 font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                                 font.bold: !taskRow.done && root.priorityIndex(taskRow.modelData) === 3
@@ -1190,7 +1165,7 @@ PopupCard {
                                 color: (root.isOverdue(taskRow.modelData) && !taskRow.done)
                                         || Number(taskRow.modelData.carries || 0) >= 3
                                     ? root.shell.role("error", root.shell.foreground)
-                                    : root.shell.alpha(root.shell.foreground, .4)
+                                    : root.shell.faintText
                                 font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                             }
                         }
@@ -1206,7 +1181,7 @@ PopupCard {
                             text: root.isOverdue(taskRow.modelData) ? "overdue" : root.dueLabel(taskRow.modelData)
                             color: root.isOverdue(taskRow.modelData) || root.isToday(taskRow.modelData)
                                 ? root.shell.role("error", root.shell.foreground)
-                                : root.shell.alpha(root.shell.foreground, .5)
+                                : root.shell.mutedText
                             font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                             elide: Text.ElideRight
                         }
@@ -1346,7 +1321,7 @@ PopupCard {
                         }
                         Text {
                             text: "completed in " + Math.round(TasksModel.activityWeeks / 52 * 12) + " months"
-                            color: root.shell.alpha(root.shell.foreground, .5)
+                            color: root.shell.mutedText
                             font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                         }
                         Item { width: 1; height: root.topActivity.length > 0 ? Style.xs : 0 }
@@ -1372,7 +1347,7 @@ PopupCard {
                                 Text {
                                     id: activityCount
                                     text: String(parent.modelData.count)
-                                    color: root.shell.alpha(root.shell.foreground, .5)
+                                    color: root.shell.mutedText
                                     font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                                 }
                             }
@@ -1393,7 +1368,7 @@ PopupCard {
                                         required property var modelData
                                         width: activityGrid.cellWidth
                                         text: modelData
-                                        color: root.shell.alpha(root.shell.foreground, .45)
+                                        color: root.shell.faintText
                                         font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                                     }
                                 }
@@ -1410,7 +1385,7 @@ PopupCard {
                                         width: parent.width; height: activityGrid.cellWidth
                                         text: modelData
                                         verticalAlignment: Text.AlignVCenter
-                                        color: root.shell.alpha(root.shell.foreground, .45)
+                                        color: root.shell.faintText
                                         font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                                         elide: Text.ElideRight
                                     }
@@ -1452,7 +1427,7 @@ PopupCard {
                         id: activityCaption; anchors.right: parent.right
                         text: root.hoveredDay ? root.hoveredDay.date + " · " + root.hoveredDay.count + " completed"
                             : root.streak > 0 ? root.streak + " day streak" : "No streak yet"
-                        color: root.shell.alpha(root.shell.foreground, .42)
+                        color: root.shell.faintText
                         font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                     }
                 }
@@ -1511,7 +1486,7 @@ PopupCard {
             PopupSeparator { shell: root.shell }
             Text {
                 text: "QUICK ADD"
-                color: root.shell.alpha(root.shell.foreground, .45)
+                color: root.shell.faintText
                 font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                 font.letterSpacing: 1; font.bold: true
             }

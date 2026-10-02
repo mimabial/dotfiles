@@ -8,7 +8,7 @@ Item {
     property string icon: ""
     property string title: ""
     property string status: ""
-    property color statusColor: shell.alpha(shell.foreground, .6)
+    property color statusColor: shell.mutedText
     width: parent ? parent.width : implicitWidth
     implicitHeight: Math.max(heroIcon.visible ? heroIcon.implicitHeight : 0, labels.implicitHeight)
 

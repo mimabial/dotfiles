@@ -59,6 +59,8 @@ NotificationPopup 1.0 NotificationPopup.qml
 PopupCard 1.0 PopupCard.qml
 PopupField 1.0 PopupField.qml
 PopupHero 1.0 PopupHero.qml
+PopupIconButton 1.0 PopupIconButton.qml
+PopupInfoPair 1.0 PopupInfoPair.qml
 PopupHost 1.0 PopupHost.qml
 PopupNumberField 1.0 PopupNumberField.qml
 PopupRow 1.0 PopupRow.qml
@@ -67,6 +69,7 @@ PopupSection 1.0 PopupSection.qml
 PopupSelect 1.0 PopupSelect.qml
 PopupSeparator 1.0 PopupSeparator.qml
 PopupSlider 1.0 PopupSlider.qml
+PopupTab 1.0 PopupTab.qml
 PopupToggleRow 1.0 PopupToggleRow.qml
 PowerMenuPopup 1.0 PowerMenuPopup.qml
 PowerPopup 1.0 PowerPopup.qml

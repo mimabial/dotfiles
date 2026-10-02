@@ -116,76 +116,79 @@ PopupCard {
         Column {
             id: contentColumn
             width: scroll.width
-            spacing: Style.sm
+            spacing: Style.sectionGap
 
+            PopupHero { shell: root.shell; title: "Drives" }
             Row {
-                width: parent.width; spacing: Style.xxs
-                StorageTab { width: (parent.width - parent.spacing) / 2; label: "LOCAL"; glyph: Model.GLYPH_DISK
-                    count: Removable.devices.length + Removable.portables.length; selected: root.activeTab === "local"
-                    onPicked: root.pickTab("local") }
-                StorageTab { width: (parent.width - parent.spacing) / 2; label: "NETWORK"; glyph: Model.GLYPH_SERVER
-                    count: Removable.networkShares.length; selected: root.activeTab === "network"
-                    onPicked: root.pickTab("network") }
+                width: parent.width; spacing: Style.sm
+                PopupTab { width: (parent.width - parent.spacing) / 2; shell: root.shell; icon: Model.GLYPH_DISK; text: "Local (" + (Removable.devices.length + Removable.portables.length) + ")"
+                    selected: root.activeTab === "local"; onClicked: root.pickTab("local") }
+                PopupTab { width: (parent.width - parent.spacing) / 2; shell: root.shell; icon: Model.GLYPH_SERVER; text: "Network (" + Removable.networkShares.length + ")"
+                    selected: root.activeTab === "network"; onClicked: root.pickTab("network") }
             }
 
             SystemToggle { visible: root.activeTab === "local" && root.position === "top" }
-            PopupSection { visible: root.activeTab === "local"; shell: root.shell; text: "REMOVABLE"; value: Removable.devices.length || "" }
-            Text {
-                visible: root.activeTab === "local" && Removable.loaded && Removable.devices.length === 0
-                width: parent.width; text: "No removable drives"
-                horizontalAlignment: Text.AlignHCenter
-                color: root.shell.alpha(root.shell.foreground, .5)
-                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
-            }
-            Text {
-                visible: root.activeTab === "local" && !Removable.loaded
-                width: parent.width; text: "Looking for drives…"
-                horizontalAlignment: Text.AlignHCenter
-                color: root.shell.alpha(root.shell.foreground, .5)
-                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
-            }
+            Column {
+                visible: root.activeTab === "local"
+                width: parent.width; spacing: Style.sm
+                PopupSection { visible: root.activeTab === "local"; shell: root.shell; text: "REMOVABLE"; value: Removable.devices.length || "" }
+                Text {
+                    visible: root.activeTab === "local" && Removable.loaded && Removable.devices.length === 0
+                    width: parent.width; text: "No removable drives"
+                    horizontalAlignment: Text.AlignHCenter
+                    color: root.shell.mutedText
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+                }
+                Text {
+                    visible: root.activeTab === "local" && !Removable.loaded
+                    width: parent.width; text: "Looking for drives…"
+                    horizontalAlignment: Text.AlignHCenter
+                    color: root.shell.mutedText
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+                }
 
-            Text {
-                visible: text !== ""
-                width: parent.width
-                textFormat: Text.PlainText
-                text: Removable.lastError || Removable.actionStatus
-                color: Removable.lastError ? root.shell.role("error", root.shell.foreground)
-                    : root.shell.alpha(root.shell.foreground, .6)
-                font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-                wrapMode: Text.WordWrap
-            }
+                Text {
+                    visible: text !== ""
+                    width: parent.width
+                    textFormat: Text.PlainText
+                    text: Removable.lastError || Removable.actionStatus
+                    color: Removable.lastError ? root.shell.role("error", root.shell.foreground)
+                        : root.shell.mutedText
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                    wrapMode: Text.WordWrap
+                }
 
-            PopupRow {
-                visible: root.activeTab === "local" && Removable.pendingEjectPath !== ""
-                width: parent.width; shell: root.shell
-                icon: Model.GLYPH_ALERT; title: "Waiting for writes to finish"
-                detail: "The drive will eject after two quiet samples"
-                active: true
-                onClicked: Removable.cancelPendingEject()
-            }
+                PopupRow {
+                    visible: root.activeTab === "local" && Removable.pendingEjectPath !== ""
+                    width: parent.width; shell: root.shell
+                    icon: Model.GLYPH_ALERT; title: "Waiting for writes to finish"
+                    detail: "The drive will eject after two quiet samples"
+                    active: true
+                    onClicked: Removable.cancelPendingEject()
+                }
 
-            PopupRow {
-                visible: root.activeTab === "local" && Removable.blockers.length > 0
-                width: parent.width; shell: root.shell
-                icon: Model.GLYPH_UNMOUNT; title: "Held by " + Model.plain(Model.describeBlockers(Removable.blockers))
-                detail: "Click to force-unmount explicitly"
-                titleColor: root.shell.role("warning", root.shell.foreground)
-                onClicked: Removable.forceUnmountBlocked()
-            }
+                PopupRow {
+                    visible: root.activeTab === "local" && Removable.blockers.length > 0
+                    width: parent.width; shell: root.shell
+                    icon: Model.GLYPH_UNMOUNT; title: "Held by " + Model.plain(Model.describeBlockers(Removable.blockers))
+                    detail: "Click to force-unmount explicitly"
+                    titleColor: root.shell.role("warning", root.shell.foreground)
+                    onClicked: Removable.forceUnmountBlocked()
+                }
 
-            Repeater {
-                model: root.activeTab === "local" ? Removable.devices : []
-                DeviceCard {
-                    required property var modelData
-                    width: contentColumn.width
-                    device: modelData
+                Repeater {
+                    model: root.activeTab === "local" ? Removable.devices : []
+                    DeviceCard {
+                        required property var modelData
+                        width: contentColumn.width
+                        device: modelData
+                    }
                 }
             }
 
             Column {
                 visible: root.activeTab === "local" && Removable.store.showSystem === true && Removable.systemDevices.length > 0
-                width: parent.width; spacing: Style.xxs
+                width: parent.width; spacing: Style.sm
                 PopupSeparator { shell: root.shell }
                 PopupSection { shell: root.shell; text: "SYSTEM STORAGE"; value: Removable.systemDevices.length }
                 Repeater {
@@ -196,13 +199,13 @@ PopupCard {
 
             Column {
                 visible: root.activeTab === "network"
-                width: parent.width; spacing: Style.xxs
+                width: parent.width; spacing: Style.sm
                 PopupSection { shell: root.shell; text: "NETWORK"; value: Removable.networkShares.length }
                 Text {
                     visible: Removable.networkShares.length === 0
                     width: parent.width; text: "No network or cloud shares mounted"
                     horizontalAlignment: Text.AlignHCenter
-                    color: root.shell.alpha(root.shell.foreground, .5)
+                    color: root.shell.mutedText
                     font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                 }
                 Repeater {
@@ -241,7 +244,7 @@ PopupCard {
 
             Column {
                 visible: root.activeTab === "local" && (Removable.portables.length > 0 || Removable.supportHint !== "")
-                width: parent.width; spacing: Style.xxs
+                width: parent.width; spacing: Style.sm
                 PopupSeparator { shell: root.shell }
                 PopupSection { shell: root.shell; text: "PHONES & CAMERAS"; value: Removable.portables.length || "" }
                 Text {
@@ -264,7 +267,7 @@ PopupCard {
 
             Column {
                 visible: root.activeTab === "local"
-                width: parent.width; spacing: Style.xxs
+                width: parent.width; spacing: Style.sm
                 PopupSeparator { shell: root.shell }
                 Rectangle {
                     width: parent.width; height: settingsCard.implicitHeight + Style.sm * 2
@@ -292,9 +295,9 @@ PopupCard {
                                     {key: "cleanTrashOnEject", label: "Empty trash on eject", detail: "Delete the drive's .Trash before ejecting", on: false},
                                     {key: "unmountOnSuspend", label: "Unmount before sleep", detail: "Cancel suspend if a drive refuses", on: true},
                                     {key: "alwaysShow", label: "Always show icon", detail: "Keep the bar icon with nothing attached", on: true}] : []
-                                SettingRow {
+                                PopupToggleRow {
                                     required property var modelData
-                                    width: settingRows.width - settingRows.leftPadding - settingRows.rightPadding; label: modelData.label; detail: modelData.detail
+                                    width: settingRows.width - settingRows.leftPadding - settingRows.rightPadding; shell: root.shell; title: modelData.label; detail: modelData.detail
                                     checked: Removable.store[modelData.key] ?? modelData.on
                                     onToggled: Removable.setOption(modelData.key, !checked)
                                 }
@@ -492,7 +495,7 @@ PopupCard {
                 visible: deviceCard.expanded && root.settingsDevicePath === deviceCard.device.path
                 width: parent.width; spacing: Style.xs; leftPadding: Style.controlPaddingX
                 Text {
-                    text: "DRIVE SETTINGS"; color: root.shell.alpha(root.shell.foreground, .6)
+                    text: "DRIVE SETTINGS"; color: root.shell.mutedText
                     font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
                 }
                 Flow {
@@ -521,7 +524,7 @@ PopupCard {
             Item {
                 id: healthStrip
                 visible: deviceCard.expanded && deviceCard.health.state !== "unavailable"
-                width: parent.width; height: Style.px(28)
+                width: parent.width; height: Style.controlHeight
                 Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: root.shell.alpha(root.shell.foreground, .1) }
                 readonly property color statusColor: deviceCard.health.state === "healthy" ? root.shell.accent
                     : deviceCard.health.state === "failing" ? root.shell.role("error", root.shell.foreground)
@@ -619,7 +622,7 @@ PopupCard {
                 title: Model.plain(volumeRow.volume.title)
                 badges: (volumeRow.volume.fstypeLabel && volumeRow.volume.fstype !== "swap" ? [{text: volumeRow.volume.fstypeLabel,
                     color: volumeRow.volume.fstype === "ntfs" && !volumeRow.volume.mounted ? root.shell.role("error", root.shell.foreground)
-                        : root.shell.alpha(root.shell.foreground, .6)}] : [])
+                        : root.shell.mutedText}] : [])
                     .concat(volumeRow.volume.isSystem ? [root.guardBadge(volumeRow.volume.fstype === "swap" ? "SWAP"
                         : volumeRow.volume.mountpoint === "/" ? "OS ROOT" : /^\/(boot|efi)/.test(volumeRow.volume.mountpoint) ? "BOOT" : "SYSTEM")] : [])
                 detail: volumeRow.working ? "Working…" : Model.plain(Removable.volumeMeta(volumeRow.volume))
@@ -742,62 +745,6 @@ PopupCard {
         }
     }
 
-    component SettingRow: Item {
-        id: settingRow
-        required property string label
-        required property string detail
-        required property bool checked
-        signal toggled
-        height: Math.max(settingText.implicitHeight, settingSwitch.implicitHeight)
-        Column {
-            id: settingText
-            anchors.left: parent.left
-            anchors.right: settingSwitch.left; anchors.rightMargin: Style.sm
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 1
-            Text {
-                width: parent.width; text: settingRow.label
-                color: root.shell.foreground
-                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
-            }
-            Text {
-                width: parent.width; text: settingRow.detail; elide: Text.ElideRight
-                color: root.shell.alpha(root.shell.foreground, .45)
-                font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-            }
-        }
-        ToggleSwitch {
-            id: settingSwitch
-            shell: root.shell
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            checked: settingRow.checked
-            onToggled: settingRow.toggled()
-        }
-    }
-
-    component StorageTab: Rectangle {
-        id: tab
-        readonly property bool navigable: true
-        property bool cursored: false
-        required property string label
-        required property string glyph
-        required property int count
-        required property bool selected
-        signal picked
-        signal clicked(int button)
-        onClicked: picked()
-        height: Style.px(32); radius: root.shell.rounding
-        color: selected ? root.shell.alpha(root.shell.accent, .18) : tabArea.containsMouse ? root.shell.hoverFill() : root.shell.alpha(root.shell.foreground, .04)
-        border.width: 1; border.color: cursored ? root.shell.hoverEdge(.85) : root.shell.alpha(root.shell.foreground, selected ? .22 : .08)
-        Text {
-            anchors.centerIn: parent
-            text: tab.glyph + "  " + tab.label + " (" + tab.count + ")"
-            color: tab.selected ? root.shell.foreground : root.shell.alpha(root.shell.foreground, .6)
-            font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: tab.selected
-        }
-        MouseArea { id: tabArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: tab.clicked(Qt.LeftButton) }
-    }
 
     component ActionTile: Rectangle {
         id: tile
@@ -811,7 +758,7 @@ PopupCard {
         signal triggered
         signal clicked(int button)
         onClicked: triggered()
-        width: tileContent.implicitWidth + Style.px(18); height: Style.px(28)
+        width: tileContent.implicitWidth + Style.px(18); height: Style.controlHeight
         radius: root.shell.rounding; opacity: enabled ? 1 : .35
         color: root.shell.alpha(tint, tileArea.containsMouse ? (danger ? .18 : .12) : .04)
         border.width: 1
@@ -842,7 +789,7 @@ PopupCard {
         signal triggered
         signal clicked(int button)
         onClicked: triggered()
-        width: Style.px(27); height: Style.px(27); radius: root.shell.rounding
+        width: Style.controlHeight; height: Style.controlHeight; radius: root.shell.rounding
         opacity: enabled ? 1 : .35
         color: actionMouse.containsMouse || cursored ? root.shell.hoverFill(1.3) : "transparent"
         Text {

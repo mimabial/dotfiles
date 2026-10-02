@@ -236,7 +236,7 @@ PopupWindow {
                 anchors.bottom: parent.bottom; anchors.bottomMargin: Math.max(root.padding / 2, Style.sm)
                 text: root.keyboardHint; wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter
                 fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Style.caption - 2)
-                color: root.shell.alpha(root.shell.foreground, .55)
+                color: root.shell.mutedText
                 font.family: root.shell.fontFamily; font.pixelSize: Style.caption
             }
         }

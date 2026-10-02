@@ -16,7 +16,7 @@ ComboBox {
     onSelectedIndexChanged: currentIndex = selectedIndex
     onChoicesChanged: Qt.callLater(() => currentIndex = selectedIndex)
     Component.onCompleted: currentIndex = selectedIndex
-    implicitHeight: Style.px(40)
+    implicitHeight: Style.controlHeight
     function activateKeyboard() { forceActiveFocus(); popup.open() }
     function adjustKeyboard(direction) {
         const next = Math.max(0, Math.min(count - 1, currentIndex + direction))
@@ -33,7 +33,7 @@ ComboBox {
     indicator: Text {
         anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX
         anchors.verticalCenter: parent.verticalCenter; text: "▾"
-        color: root.shell.alpha(root.shell.foreground, .6); font.pixelSize: Style.subtitle
+        color: root.shell.mutedText; font.pixelSize: Style.subtitle
     }
     background: Rectangle {
         radius: root.shell.rounding; color: root.shell.alpha(root.shell.foreground, .06)

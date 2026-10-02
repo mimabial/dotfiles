@@ -15,7 +15,7 @@ PopupCard {
 
     Column {
         id: column
-        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.md
+        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
         PopupHero { shell: root.shell; title: "Brightness"; status: Backlight.percent + "%" }
         PopupSeparator { shell: root.shell }
         PopupSlider {

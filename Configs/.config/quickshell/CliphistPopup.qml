@@ -119,76 +119,19 @@ PopupCard {
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.previewImagePath = text.trim() }
     }
 
-    component Tab: Rectangle {
-        required property string label
-        required property bool selected
-        signal picked
-        implicitWidth: tabText.implicitWidth + Style.controlPaddingX * 2
-        implicitHeight: Style.px(24)
-        radius: root.shell.rounding
-        color: selected ? root.shell.alpha(root.shell.role("act_bg", root.shell.accent), .25)
-            : tabArea.containsMouse ? root.shell.hoverFill()
-            : "transparent"
-        Text {
-            id: tabText
-            anchors.centerIn: parent
-            text: parent.label
-            color: parent.selected ? root.shell.foreground : root.shell.alpha(root.shell.foreground, .6)
-            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-            font.bold: parent.selected; font.letterSpacing: 1
-        }
-        MouseArea {
-            id: tabArea
-            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: parent.picked()
-        }
-    }
-
-    // an inline row action, labelled by its own tooltip rather than a mouse button
-    component RowAction: Rectangle {
-        id: rowAction
-        required property string glyph
-        required property string hint
-        signal triggered
-        readonly property alias hovered: actionArea.containsMouse
-        width: Style.px(30); height: Style.px(30); radius: root.shell.rounding
-        color: actionArea.containsMouse ? root.shell.hoverFill(3) : "transparent"
-        Text {
-            anchors.centerIn: parent
-            text: rowAction.glyph
-            color: root.shell.alpha(root.shell.foreground, actionArea.containsMouse ? 1 : .7)
-            font.family: root.shell.fontFamily; font.pixelSize: Style.title
-        }
-        MouseArea {
-            id: actionArea
-            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: rowAction.triggered()
-        }
-        BarTooltip { shell: root.shell; anchorItem: rowAction; text: rowAction.hint; hovered: actionArea.containsMouse }
-    }
-
     Column {
         id: clipColumn
-        anchors.fill: parent; spacing: Style.sm
+        anchors.fill: parent; spacing: Style.sectionGap
 
         Row {
-            width: parent.width; spacing: Style.xs
-            Tab {
-                label: "HISTORY"; selected: root.view === "history"
-                onPicked: root.view = "history"
-            }
-            Tab {
-                label: "IMAGES"; selected: root.view === "images"
-                onPicked: root.view = "images"
-            }
-            Tab {
-                label: "FAVOURITES  " + root.favorites.length; selected: root.view === "favourites"
-                onPicked: root.view = "favourites"
-            }
+            width: parent.width; spacing: Style.sm
+            PopupTab { shell: root.shell; keyboardEnabled: false; text: "History"; selected: root.view === "history"; onClicked: root.view = "history" }
+            PopupTab { shell: root.shell; keyboardEnabled: false; text: "Images"; selected: root.view === "images"; onClicked: root.view = "images" }
+            PopupTab { shell: root.shell; keyboardEnabled: false; text: "Favourites  " + root.favorites.length; selected: root.view === "favourites"; onClicked: root.view = "favourites" }
         }
 
         Rectangle {
-            width: parent.width; height: Style.px(28)
+            width: parent.width; height: Style.controlHeight
             radius: root.shell.rounding
             color: root.shell.alpha(root.shell.role("alt_bg", root.shell.background), .25)
             border.width: 1
@@ -198,7 +141,7 @@ PopupCard {
                 anchors.left: parent.left; anchors.leftMargin: Style.controlPaddingX
                 anchors.verticalCenter: parent.verticalCenter
                 text: "\u{f0349}"
-                color: root.shell.alpha(root.shell.foreground, .5)
+                color: root.shell.mutedText
                 font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
             }
             TextField {
@@ -206,7 +149,6 @@ PopupCard {
                 anchors.left: searchGlyph.right; anchors.leftMargin: Style.xs
                 anchors.right: countText.left; anchors.rightMargin: Style.xs
                 anchors.verticalCenter: parent.verticalCenter
-                height: Style.px(20)
                 leftPadding: 0; rightPadding: 0; topPadding: 0; bottomPadding: 0
                 placeholderText: "Filter — Enter copy, Del remove, Ctrl+E expand"
                 color: root.shell.foreground
@@ -235,7 +177,7 @@ PopupCard {
                 anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.rows.length
-                color: root.shell.alpha(root.shell.foreground, .4)
+                color: root.shell.faintText
                 font.family: root.shell.fontFamily; font.pixelSize: Style.caption
             }
         }
@@ -244,7 +186,7 @@ PopupCard {
             visible: root.rows.length === 0
             width: parent.width
             text: root.filter !== "" ? "No match" : root.view === "favourites" ? "No favourites yet — pin one from History" : root.view === "images" ? "No images in history" : "History is empty"
-            color: root.shell.alpha(root.shell.foreground, .5)
+            color: root.shell.mutedText
             font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
         }
 
@@ -272,7 +214,7 @@ PopupCard {
                 signal clicked(int button)
 
                 width: ListView.view.width
-                height: Style.px(34)
+                height: Style.popupRowHeight
                 radius: root.shell.rounding
                 color: cursored ? root.shell.hoverFill(2) : "transparent"
                 border.width: cursored ? 1 : 0
@@ -294,7 +236,7 @@ PopupCard {
                     anchors.left: parent.left; anchors.leftMargin: Style.controlPaddingX
                     anchors.verticalCenter: parent.verticalCenter
                     text: row.secret !== "" ? "\u{f0306}" : row.isFavorite ? "\u{f04ce}" : "\u{f021f}"
-                    color: root.shell.alpha(root.shell.foreground, .5)
+                    color: root.shell.mutedText
                     font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                 }
                 Text {
@@ -304,7 +246,7 @@ PopupCard {
                     anchors.verticalCenter: parent.verticalCenter
                     text: row.secret !== "" ? row.secret : row.bodyText
                     elide: Text.ElideRight
-                    color: row.secret !== "" ? root.shell.alpha(root.shell.foreground, .55) : root.shell.foreground
+                    color: row.secret !== "" ? root.shell.mutedText : root.shell.foreground
                     font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                     font.italic: row.secret !== ""
                 }
@@ -315,31 +257,31 @@ PopupCard {
                     spacing: 0
                     opacity: row.cursored ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: 90 } }
-                    RowAction {
-                        id: ocrAction
+                    PopupIconButton {
+                        shell: root.shell; keyboardEnabled: false
                         visible: row.isImage
                         glyph: "\u{f113d}"
                         hint: "Extract text (OCR)"
-                        onTriggered: root.act(["--scan-image", String(row.modelData.key)], true)
+                        onClicked: root.act(["--scan-image", String(row.modelData.key)], true)
                     }
-                    RowAction {
-                        id: qrAction
+                    PopupIconButton {
+                        shell: root.shell; keyboardEnabled: false
                         visible: row.isImage
                         glyph: "\u{f0432}"
                         hint: "Decode QR code"
-                        onTriggered: root.act(["--scan-qr", String(row.modelData.key)], true)
+                        onClicked: root.act(["--scan-qr", String(row.modelData.key)], true)
                     }
-                    RowAction {
-                        id: pinAction
+                    PopupIconButton {
+                        shell: root.shell; keyboardEnabled: false
                         glyph: row.isFavorite ? "\u{f04ce}" : "\u{f04d2}"
                         hint: row.isFavorite ? "Remove from favourites" : "Add to favourites"
-                        onTriggered: root.pinRow(row.modelData)
+                        onClicked: root.pinRow(row.modelData)
                     }
-                    RowAction {
-                        id: deleteAction
+                    PopupIconButton {
+                        shell: root.shell; keyboardEnabled: false
                         glyph: "\u{f0a7a}"
                         hint: row.isFavorite ? "Remove favourite" : "Delete from history"
-                        onTriggered: root.deleteRow(row.modelData)
+                        onClicked: root.deleteRow(row.modelData)
                     }
                 }
             }
@@ -348,7 +290,7 @@ PopupCard {
         Column {
             id: previewBlock
             visible: root.rows.length > 0
-            width: parent.width; spacing: Style.xs
+            width: parent.width; spacing: Style.sm
             // fixed at five lines: a pane that grew with each entry would resize
             // the list under the cursor as you move down it
             property real paneHeight: lineProbe.implicitHeight * (root.previewExpanded ? 16 : 5)

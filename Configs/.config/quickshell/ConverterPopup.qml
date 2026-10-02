@@ -64,19 +64,9 @@ PopupCard {
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.loadRates(text) }
     }
 
-    component FieldLabel: Text {
-        color: root.shell.alpha(root.shell.foreground, .5); font.family: root.shell.fontFamily
-        font.pixelSize: Style.caption; font.bold: true; font.letterSpacing: 1
-    }
-    component TabButton: BarButton {
-        required property string tab
-        active: false; radius: shell.rounding; backgroundColor: "transparent"; borderColor: "transparent"
-        textColor: root.selectedTab === tab ? shell.accent : shell.alpha(shell.foreground, .6)
-    }
-
     Column {
         id: panel
-        anchors.fill: parent; spacing: Style.md
+        anchors.fill: parent; spacing: Style.sectionGap
         PopupHero {
             shell: root.shell; title: "Converter"
             status: root.selectedTab === "units" ? root.category.label || "units"
@@ -84,18 +74,18 @@ PopupCard {
         }
         Row {
             width: parent.width; spacing: Style.sm
-            TabButton { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; text: "UNIT"; tab: "units"; onClicked: root.selectTab(tab) }
-            TabButton { width: (parent.width - parent.spacing) / 2; height: Style.controlHeight; shell: root.shell; text: "CURRENCY"; tab: "currency"; onClicked: root.selectTab(tab) }
+            PopupTab { width: (parent.width - parent.spacing) / 2; shell: root.shell; text: "Unit"; selected: root.selectedTab === "units"; onClicked: root.selectTab("units") }
+            PopupTab { width: (parent.width - parent.spacing) / 2; shell: root.shell; text: "Currency"; selected: root.selectedTab === "currency"; onClicked: root.selectTab("currency") }
         }
         Column {
-            width: parent.width; spacing: Style.xxs
-            FieldLabel { text: "AMOUNT" }
+            width: parent.width; spacing: Style.sm
+            PopupSection { shell: root.shell; text: "AMOUNT" }
             TextField {
                 id: amountField
                 readonly property bool navigable: true
                 property bool cursored: false
                 function activateKeyboard() { forceActiveFocus(); selectAll() }
-                width: parent.width; height: Style.px(42); text: "1"; selectByMouse: true
+                width: parent.width; height: Style.controlHeight; text: "1"; selectByMouse: true
                 color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.title
                 leftPadding: Style.controlPaddingX; rightPadding: Style.controlPaddingX
                 inputMethodHints: Qt.ImhFormattedNumbersOnly
@@ -112,15 +102,15 @@ PopupCard {
         }
         Column {
             visible: root.selectedTab === "units"
-            width: parent.width; spacing: Style.xxs
-            FieldLabel { text: "CATEGORY" }
+            width: parent.width; spacing: Style.sm
+            PopupSection { shell: root.shell; text: "CATEGORY" }
             PopupSelect { width: parent.width; shell: root.shell; choices: root.categories; selectedIndex: root.categoryIndex; onActivated: index => root.categoryIndex = index }
         }
         Row {
             width: parent.width; spacing: Style.xs
             Column {
-                width: (parent.width - swapButton.width - parent.spacing * 2) / 2; spacing: Style.xxs
-                FieldLabel { text: "FROM" }
+                width: (parent.width - swapButton.width - parent.spacing * 2) / 2; spacing: Style.sm
+                PopupSection { shell: root.shell; text: "FROM" }
                 PopupSelect { width: parent.width; shell: root.shell; choices: root.choices; selectedIndex: root.fromIndex; onActivated: index => root.fromIndex = index }
             }
             Rectangle {
@@ -129,15 +119,15 @@ PopupCard {
                 property bool cursored: false
                 signal clicked(int button)
                 onClicked: root.swap()
-                anchors.bottom: parent.bottom; width: Style.px(40); height: Style.px(40); radius: root.shell.rounding
+                anchors.bottom: parent.bottom; width: Style.controlHeight; height: Style.controlHeight; radius: root.shell.rounding
                 color: swapMouse.containsMouse ? root.shell.hoverFill() : root.shell.alpha(root.shell.foreground, .06)
                 border.color: cursored ? root.shell.hoverEdge(.85) : "transparent"
                 Text { anchors.centerIn: parent; text: "󰑃"; color: root.shell.foreground; font.family: root.shell.iconGlyphFont; font.pixelSize: Style.title }
                 MouseArea { id: swapMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: swapButton.clicked(Qt.LeftButton) }
             }
             Column {
-                width: (parent.width - swapButton.width - parent.spacing * 2) / 2; spacing: Style.xxs
-                FieldLabel { text: "TO" }
+                width: (parent.width - swapButton.width - parent.spacing * 2) / 2; spacing: Style.sm
+                PopupSection { shell: root.shell; text: "TO" }
                 PopupSelect { width: parent.width; shell: root.shell; choices: root.choices; selectedIndex: root.toIndex; onActivated: index => root.toIndex = index }
             }
         }
@@ -146,21 +136,22 @@ PopupCard {
             property bool cursored: false
             signal clicked(int button)
             onClicked: root.shell.run(["wl-copy", root.result])
-            width: parent.width; height: Style.px(94); radius: root.shell.rounding
+            width: parent.width; height: resultColumn.implicitHeight + Style.controlPaddingX * 2; radius: root.shell.rounding
             color: root.shell.alpha(root.shell.role("act_bg", root.shell.background), .22)
             border.width: 1; border.color: cursored ? root.shell.hoverEdge(.85) : root.shell.alpha(root.shell.role("act_br", root.shell.accent), .4)
             Column {
-                anchors.fill: parent; anchors.margins: Style.controlPaddingX; spacing: Style.xxs
-                FieldLabel { text: "RESULT" }
+                id: resultColumn
+                anchors.fill: parent; anchors.margins: Style.controlPaddingX; spacing: Style.sm
+                PopupSection { shell: root.shell; text: "RESULT" }
                 Text { width: parent.width; text: root.ratesLoading ? "Loading…" : root.result; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.display; font.bold: true; elide: Text.ElideRight }
-                Text { width: parent.width; text: root.valid ? root.number(root.amount) + " " + root.fromUnit.symbol + " → " + root.toUnit.symbol : root.rateError; color: root.shell.alpha(root.shell.foreground, .5); font.family: root.shell.fontFamily; font.pixelSize: Style.caption; elide: Text.ElideRight }
+                Text { width: parent.width; text: root.valid ? root.number(root.amount) + " " + root.fromUnit.symbol + " → " + root.toUnit.symbol : root.rateError; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption; elide: Text.ElideRight }
             }
             MouseArea { anchors.fill: parent; enabled: root.valid; cursorShape: Qt.PointingHandCursor; onClicked: parent.clicked(Qt.LeftButton) }
         }
         Text {
             width: parent.width
             text: root.selectedTab === "currency" ? "ECB reference rates · click the result to copy" : root.category.label === "Volume" ? "US customary liquid measures · click the result to copy" : "Click the result to copy"
-            color: root.shell.alpha(root.shell.foreground, .4); font.family: root.shell.fontFamily
+            color: root.shell.faintText; font.family: root.shell.fontFamily
             font.pixelSize: Style.caption; horizontalAlignment: Text.AlignHCenter
         }
     }

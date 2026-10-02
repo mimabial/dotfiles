@@ -15,7 +15,6 @@ PopupCard {
 
     readonly property var vault: shell.bitwarden
     readonly property var settings: vault.settings
-    readonly property color dim: shell.alpha(shell.foreground, .55)
     // "list" | "item" | "form" | "generator" | "send" | "settings" while unlocked
     property string view: "list"
     readonly property string page: vault.status === "unlocked" ? view : vault.status || "checking"
@@ -145,44 +144,8 @@ PopupCard {
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     }
 
-    component HeaderAction: Rectangle {
-        id: headerAction
-        required property var action
-        readonly property bool navigable: true
-        property bool cursored: false
-        signal clicked(int button)
-        onClicked: action.run()
-        width: Style.px(26); height: Style.px(26); radius: root.shell.rounding
-        color: actionArea.containsMouse || cursored ? root.shell.hoverFill(3) : "transparent"
-        Text {
-            anchors.centerIn: parent; text: headerAction.action.glyph
-            color: headerAction.action.alert ? root.shell.urgent : root.shell.foreground
-            font.family: root.shell.fontFamily; font.pixelSize: Style.title
-        }
-        MouseArea { id: actionArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: headerAction.clicked(Qt.LeftButton) }
-        BarTooltip { shell: root.shell; anchorItem: headerAction; text: headerAction.action.hint; hovered: actionArea.containsMouse }
-    }
-    component Tab: Rectangle {
-        id: tab
-        required property string label
-        required property bool selected
-        readonly property bool navigable: true
-        property bool cursored: false
-        signal picked
-        signal clicked(int button)
-        onClicked: picked()
-        implicitWidth: tabText.implicitWidth + Style.controlPaddingX * 2; implicitHeight: Style.px(24)
-        radius: root.shell.rounding
-        color: selected ? root.shell.alpha(root.shell.role("act_bg", root.shell.accent), .25) : tabArea.containsMouse || cursored ? root.shell.hoverFill() : "transparent"
-        Text {
-            id: tabText; anchors.centerIn: parent; text: tab.label.toUpperCase()
-            color: tab.selected ? root.shell.foreground : root.dim
-            font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: tab.selected; font.letterSpacing: 1
-        }
-        MouseArea { id: tabArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: tab.clicked(Qt.LeftButton) }
-    }
     component Note: Text {
-        width: parent ? parent.width : 0; wrapMode: Text.Wrap; color: root.dim
+        width: parent ? parent.width : 0; wrapMode: Text.Wrap; color: root.shell.mutedText
         font.family: root.shell.fontFamily; font.pixelSize: Style.caption
     }
     component Setting: Item {
@@ -258,7 +221,7 @@ PopupCard {
         Text {
             id: labelText; x: Style.controlPaddingX; y: Style.controlPaddingY
             text: (field.entry.totp ? "TOTP · " + root.totpLeft + "s" : field.entry.label).toUpperCase()
-            color: root.dim; font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
+            color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
         }
         Text {
             id: valueText
@@ -271,7 +234,7 @@ PopupCard {
             id: eye
             anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX; anchors.verticalCenter: parent.verticalCenter
             width: field.entry.secret ? implicitWidth : 0; visible: field.entry.secret
-            text: field.masked ? "\u{f0208}" : "\u{f0209}"; color: root.dim
+            text: field.masked ? "\u{f0208}" : "\u{f0209}"; color: root.shell.mutedText
             font.family: root.shell.fontFamily; font.pixelSize: Style.title
             MouseArea {
                 anchors.fill: parent; anchors.margins: -Style.xs; cursorShape: Qt.PointingHandCursor
@@ -299,7 +262,7 @@ PopupCard {
             Row {
                 id: headerActions
                 anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                Repeater { model: root.actions; delegate: HeaderAction { required property var modelData; action: modelData } }
+                Repeater { model: root.actions; delegate: PopupIconButton { required property var modelData; shell: root.shell; glyph: modelData.glyph; hint: modelData.hint; glyphColor: modelData.alert ? root.shell.urgent : root.shell.foreground; onClicked: modelData.run() } }
             }
         }
         PopupSeparator { shell: root.shell }
@@ -311,7 +274,7 @@ PopupCard {
         Text {
             width: parent.width; visible: text !== ""; wrapMode: Text.Wrap
             text: root.vault.error || root.vault.notice
-            color: root.vault.error ? root.shell.urgent : root.dim
+            color: root.vault.error ? root.shell.urgent : root.shell.mutedText
             font.family: root.shell.fontFamily; font.pixelSize: Style.caption
         }
     }
@@ -366,10 +329,10 @@ PopupCard {
         Column {
             spacing: Style.sm
             Row {
-                spacing: Style.xs
+                spacing: Style.sm
                 Repeater {
                     model: ["All"].concat([1, 2, 3, 4, 5].map(type => Model.TYPES[type].label))
-                    delegate: Tab { required property string modelData; required property int index; label: modelData; selected: root.typeFilter === index; onPicked: root.typeFilter = index }
+                    delegate: PopupTab { required property string modelData; required property int index; shell: root.shell; text: modelData; selected: root.typeFilter === index; onClicked: root.typeFilter = index }
                 }
             }
             PopupField {
@@ -420,13 +383,13 @@ PopupCard {
         id: formPage
         Scroll {
             Row {
-                visible: !root.draft.id; spacing: Style.xs
+                visible: !root.draft.id; spacing: Style.sm
                 Repeater {
                     model: [1, 2, 3, 4]
-                    delegate: Tab {
+                    delegate: PopupTab {
                         required property int modelData
-                        label: Model.TYPES[modelData].label; selected: root.draft.type === modelData
-                        onPicked: root.draft = Object.assign(Model.blank(modelData), { name: root.draft.name })
+                        shell: root.shell; text: Model.TYPES[modelData].label; selected: root.draft.type === modelData
+                        onClicked: root.draft = Object.assign(Model.blank(modelData), { name: root.draft.name })
                     }
                 }
             }
@@ -510,9 +473,9 @@ PopupCard {
         Scroll {
             Component.onCompleted: root.regenerate()
             Row {
-                spacing: Style.xs
-                Tab { label: "Password"; selected: !root.generator.passphrase; onPicked: root.setOption("passphrase", false) }
-                Tab { label: "Passphrase"; selected: root.generator.passphrase; onPicked: root.setOption("passphrase", true) }
+                spacing: Style.sm
+                PopupTab { shell: root.shell; text: "Password"; selected: !root.generator.passphrase; onClicked: root.setOption("passphrase", false) }
+                PopupTab { shell: root.shell; text: "Passphrase"; selected: root.generator.passphrase; onClicked: root.setOption("passphrase", true) }
             }
             Text {
                 width: parent.width; wrapMode: Text.WrapAnywhere; horizontalAlignment: Text.AlignHCenter
@@ -578,14 +541,14 @@ PopupCard {
             Setting { label: "Suggest items for the focused window"; Toggle { checked: root.settings.suggest; onToggled: root.settings.suggest = !checked } }
             PopupSection { shell: root.shell; text: "QUICK UNLOCK" }
             Row {
-                spacing: Style.xs
+                spacing: Style.sm
                 Repeater {
                     model: [["", "Off"], ["pin", "PIN"], ["fingerprint", "Fingerprint"], ["fido2", "FIDO2"]]
                         .filter(method => !method[0] || root.vault.unlockMethods.includes(method[0]))
-                    delegate: Tab {
+                    delegate: PopupTab {
                         required property var modelData
-                        label: modelData[1]; selected: (prefs.arming || root.settings.quickUnlock) === modelData[0]
-                        onPicked: { prefs.arming = modelData[0]; if (!modelData[0]) root.vault.disarm() }
+                        shell: root.shell; text: modelData[1]; selected: (prefs.arming || root.settings.quickUnlock) === modelData[0]
+                        onClicked: { prefs.arming = modelData[0]; if (!modelData[0]) root.vault.disarm() }
                     }
                 }
             }

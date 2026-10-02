@@ -137,6 +137,8 @@ ShellRoot {
     readonly property color foreground: role("fg", "#ffffff")
     readonly property color accent: role("accent", foreground)
     readonly property color urgent: role("error", "#f38ba8")
+    readonly property color mutedText: alpha(foreground, Style.mutedTextAlpha)
+    readonly property color faintText: alpha(foreground, Style.faintTextAlpha)
     property string baseFont: "JetBrainsMono Nerd Font"
     property string userFont: ""
     property string themeFont: ""
@@ -419,6 +421,8 @@ ShellRoot {
     // so an emphasised row stays a ratio of the plain one instead of a literal
     function hoverFill(strength) { return alpha(role("hvr_bg", accent), Style.hoverFillAlpha * (strength === undefined ? 1 : strength)) }
     function hoverEdge(strength) { return alpha(role("hvr_br", foreground), Style.hoverBorderAlpha * (strength === undefined ? 1 : strength)) }
+    function selectedFill() { return alpha(role("act_bg", accent), Style.selectedFillAlpha) }
+    function selectedEdge() { return alpha(role("act_br", accent), Style.selectedBorderAlpha) }
     function loadFont(raw, key) {
         const icon = String(raw).match(/vars\.set\("BAR_ICON_FONT",\s*"([^"]+)"\)|BAR_ICON_FONT\s*=\s*"([^"]+)"/)
         if (icon) iconFontOverride = icon[1] || icon[2]

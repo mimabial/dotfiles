@@ -35,12 +35,12 @@ PopupCard {
 
     Column {
         id: shotColumn
-        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sm
+        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
 
-        PopupSection { shell: root.shell; text: "SCREENSHOT" }
+        PopupHero { shell: root.shell; title: "Screenshot" }
 
         Column {
-            width: parent.width; spacing: 2
+            width: parent.width; spacing: Style.xxs
             Repeater {
                 model: root.targets
                 PopupRow {
@@ -56,20 +56,23 @@ PopupCard {
         }
 
         PopupSeparator { shell: root.shell }
-        PopupSection { shell: root.shell; text: "GOES TO" }
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection { shell: root.shell; text: "GOES TO" }
 
-        Row {
-            width: parent.width; spacing: Style.xs
-            Repeater {
-                model: root.destinations
-                PopupRow {
-                    required property var modelData
-                    width: (shotColumn.width - Style.xs * 2) / 3
-                    shell: root.shell
-                    centerTitle: true
-                    title: modelData.label
-                    active: root.destination === modelData.id
-                    onClicked: root.destination = modelData.id
+            Row {
+                width: parent.width; spacing: Style.xs
+                Repeater {
+                    model: root.destinations
+                    PopupRow {
+                        required property var modelData
+                        width: (shotColumn.width - Style.xs * 2) / 3
+                        shell: root.shell
+                        centerTitle: true
+                        title: modelData.label
+                        active: root.destination === modelData.id
+                        onClicked: root.destination = modelData.id
+                    }
                 }
             }
         }

@@ -166,9 +166,9 @@
             size: "100%",
             pane: Pane(Property(
               content: [
-                (kind: Property(Status(Elapsed)), style: (fg: "#c3c7c8")),
-                (kind: Text("/"), style: (fg: "#697388")),
-                (kind: Property(Status(Duration)), style: (fg: "#c3c7c8")),
+                (kind: Property(Status(Elapsed)), style: (fg: "#DCD7BA")),
+                (kind: Text("/"), style: (fg: "#727169")),
+                (kind: Property(Status(Duration)), style: (fg: "#DCD7BA")),
               ], align: Center,
             )),
           ),

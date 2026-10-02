@@ -41,7 +41,6 @@ PopupCard {
     readonly property bool hasBattery: battery && battery.isPresent
     readonly property string sysfs: battery && battery.nativePath ? "/sys/class/power_supply/" + battery.nativePath : ""
     readonly property color accentColor: shell.role("act_br", shell.accent)
-    readonly property color mutedColor: shell.alpha(shell.foreground, .6)
     readonly property int thresholdEnd: sysfsEnd
     readonly property string thresholdText: sysfsStart > 0 && sysfsStart < thresholdEnd
         ? sysfsStart + "–" + thresholdEnd + "%" : thresholdEnd > 0 ? thresholdEnd + "%" : "Unavailable"
@@ -126,22 +125,20 @@ PopupCard {
     Column {
         id: panel
         anchors.left: parent.left; anchors.right: parent.right
-        spacing: Style.xxl
-        Rectangle {
-            id: tabBar
-            width: parent.width; height: Style.px(39); radius: root.shell.rounding
-            color: root.shell.alpha(root.shell.foreground, .04)
-            border.color: root.shell.alpha(root.shell.foreground, .09)
-            Row {
-                anchors.fill: parent; anchors.margins: Style.sm; spacing: Style.sm
-                Repeater {
-                    model: root.tabs
-                    TabChoice {
-                        required property var modelData
-                        width: (tabBar.width - Style.sm * (root.tabs.length + 1)) / root.tabs.length
-                        height: parent.height
-                        tabId: modelData.id; label: modelData.label; icon: modelData.icon
-                    }
+        spacing: Style.sectionGap
+        PopupHero {
+            shell: root.shell; icon: root.batteryIcon(); title: "Power"
+            status: (root.hasBattery ? Math.round(root.battery.percentage * 100) + "% · " : "") + root.batteryStatus
+        }
+        Row {
+            width: parent.width; spacing: Style.sm
+            Repeater {
+                model: root.tabs
+                PopupTab {
+                    required property var modelData
+                    width: (panel.width - Style.sm * (root.tabs.length - 1)) / root.tabs.length
+                    shell: root.shell; icon: modelData.icon; text: modelData.label
+                    selected: root.tab === modelData.id; onClicked: root.tab = modelData.id
                 }
             }
         }
@@ -149,7 +146,7 @@ PopupCard {
             id: viewport
             width: parent.width
             height: Math.min(profileLoader.implicitHeight,
-                Math.max(0, root.maxHeight - root.keyboardHintHeight - root.padding * 2 - tabBar.height - panel.spacing))
+                Math.max(0, root.maxHeight - root.keyboardHintHeight - root.padding * 2 - y))
             contentWidth: width
             contentHeight: root.tab === "profiles" ? profileLoader.implicitHeight : tabLoader.implicitHeight
             interactive: contentHeight > height
@@ -171,54 +168,6 @@ PopupCard {
         }
     }
 
-    component TabChoice: Rectangle {
-        id: choice
-        property string tabId: ""
-        property string label: ""
-        property string icon: ""
-        property bool cursored: false
-        readonly property bool navigable: true
-        readonly property bool selected: root.tab === tabId
-        radius: Math.max(1, root.shell.rounding - Style.sm)
-        color: selected ? root.shell.alpha(root.shell.foreground, .1)
-            : mouse.containsMouse || cursored ? root.shell.hoverFill() : "transparent"
-        border.color: selected ? root.shell.alpha(root.shell.foreground, .16)
-            : cursored ? root.shell.hoverEdge(.85) : "transparent"
-        function activateKeyboard() { root.tab = tabId }
-        Row {
-            anchors.centerIn: parent; spacing: Style.sm
-            Text { text: choice.icon; color: choice.selected ? root.accentColor : root.mutedColor; font.family: root.shell.iconGlyphFont; font.pixelSize: Style.bodySmall }
-            Text { text: choice.label; color: choice.selected ? root.shell.foreground : root.mutedColor; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; font.bold: choice.selected }
-        }
-        MouseArea { id: mouse; anchors.fill: parent; hoverEnabled: true; onClicked: choice.activateKeyboard() }
-    }
-    component InfoPair: Row {
-        id: pair
-        property string label: ""
-        property string value: ""
-        spacing: Style.sm
-        Text { id: pairLabel; text: pair.label; color: root.mutedColor; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
-        Item { width: Math.max(0, pair.width - pairLabel.implicitWidth - pairValue.implicitWidth - pair.spacing * 2); height: 1 }
-        Text { id: pairValue; text: pair.value; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
-    }
-    component ProfileChoice: Rectangle {
-        id: choice
-        property var profile: PowerProfile.Balanced
-        property bool cursored: false
-        readonly property bool navigable: enabled
-        readonly property bool selected: profile === PowerProfiles.profile
-        height: Style.px(38); radius: root.shell.rounding
-        color: selected ? root.shell.alpha(root.shell.role("act_bg", root.shell.accent), .22)
-            : mouse.containsMouse || cursored ? root.shell.hoverFill() : root.shell.alpha(root.shell.foreground, .04)
-        border.color: selected ? root.accentColor : cursored ? root.shell.hoverEdge(.85) : root.shell.alpha(root.shell.foreground, .1)
-        function activateKeyboard() { root.shell.run(["hyprshell", "system/powerprofiles", "--set", root.profileId(profile)]) }
-        Row {
-            anchors.centerIn: parent; spacing: Style.sm
-            Text { text: root.profileIcon(choice.profile); color: choice.selected ? root.accentColor : root.mutedColor; font.family: root.shell.iconGlyphFont; font.pixelSize: Style.bodySmall }
-            Text { text: root.shell.profileName(choice.profile); color: choice.selected ? root.shell.foreground : root.mutedColor; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; font.bold: choice.selected }
-        }
-        MouseArea { id: mouse; anchors.fill: parent; hoverEnabled: true; onClicked: choice.activateKeyboard() }
-    }
     component RuleSelect: Row {
         id: rule
         property string label: ""
@@ -265,29 +214,7 @@ PopupCard {
     Component {
         id: overviewTab
         Column {
-            width: viewport.width; spacing: Style.px(15)
-            Row {
-                width: parent.width; spacing: Style.xxl
-                Rectangle {
-                    width: Style.px(44); height: width; radius: root.shell.rounding
-                    color: root.shell.alpha(root.accentColor, .14)
-                    border.color: root.shell.alpha(root.accentColor, .34)
-                    Text { anchors.centerIn: parent; text: root.batteryIcon(); color: root.accentColor; font.family: root.shell.iconGlyphFont; font.pixelSize: Style.heroIcon }
-                }
-                Column {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - Style.px(120) - parent.spacing * 2; spacing: Style.xs
-                    Text { text: "Battery"; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.title + 3; font.bold: true }
-                    Text { text: root.batteryStatus; color: root.accentColor; font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true; font.letterSpacing: 1 }
-                }
-                Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: Style.px(64); height: Style.px(30); radius: root.shell.rounding
-                    color: root.shell.alpha(root.shell.foreground, .08)
-                    border.color: root.shell.alpha(root.shell.foreground, .12)
-                    Text { anchors.centerIn: parent; text: root.hasBattery ? Math.round(root.battery.percentage * 100) + "%" : "AC"; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.body; font.bold: true }
-                }
-            }
+            width: viewport.width; spacing: Style.sectionGap
             Rectangle {
                 visible: root.hasBattery
                 width: parent.width; height: Style.px(8); radius: height / 2
@@ -308,22 +235,27 @@ PopupCard {
                     id: metricGrid
                     anchors.centerIn: parent; width: parent.width - Style.px(24)
                     columns: 2; rowSpacing: Style.lg; columnSpacing: Style.xxl
-                    InfoPair { width: (metricGrid.width - metricGrid.columnSpacing) / 2; label: "Battery size"; value: root.battery && root.battery.energyCapacity > 0 ? root.battery.energyCapacity.toFixed(1) + " Wh" : "—" }
-                    InfoPair { width: (metricGrid.width - metricGrid.columnSpacing) / 2; label: root.discharging ? "Time left" : "Time to full"; value: root.batteryTime() }
-                    InfoPair { width: (metricGrid.width - metricGrid.columnSpacing) / 2; label: "Charge cycles"; value: root.cycles >= 0 ? String(root.cycles) : "—" }
-                    InfoPair { width: (metricGrid.width - metricGrid.columnSpacing) / 2; label: root.discharging ? "Discharging" : "Charging"; value: root.full ? "—" : root.battery ? Math.abs(root.battery.changeRate).toFixed(1) + " W" : "—" }
+                    PopupInfoPair { width: (metricGrid.width - metricGrid.columnSpacing) / 2; shell: root.shell; label: "Battery size"; value: root.battery && root.battery.energyCapacity > 0 ? root.battery.energyCapacity.toFixed(1) + " Wh" : "—" }
+                    PopupInfoPair { width: (metricGrid.width - metricGrid.columnSpacing) / 2; shell: root.shell; label: root.discharging ? "Time left" : "Time to full"; value: root.batteryTime() }
+                    PopupInfoPair { width: (metricGrid.width - metricGrid.columnSpacing) / 2; shell: root.shell; label: "Charge cycles"; value: root.cycles >= 0 ? String(root.cycles) : "—" }
+                    PopupInfoPair { width: (metricGrid.width - metricGrid.columnSpacing) / 2; shell: root.shell; label: root.discharging ? "Discharging" : "Charging"; value: root.full ? "—" : root.battery ? Math.abs(root.battery.changeRate).toFixed(1) + " W" : "—" }
                 }
             }
-            PopupSection { shell: root.shell; text: "POWER PROFILE" }
-            Row {
-                width: parent.width; spacing: Style.md
-                Repeater {
-                    model: [PowerProfile.PowerSaver, PowerProfile.Balanced, PowerProfile.Performance]
-                    ProfileChoice {
-                        required property var modelData
-                        width: (viewport.width - Style.md * (PowerProfiles.hasPerformanceProfile ? 2 : 1)) / (PowerProfiles.hasPerformanceProfile ? 3 : 2)
-                        visible: modelData !== PowerProfile.Performance || PowerProfiles.hasPerformanceProfile
-                        profile: modelData
+            Column {
+                width: parent.width; spacing: Style.sm
+                PopupSection { shell: root.shell; text: "POWER PROFILE" }
+                Row {
+                    width: parent.width; spacing: Style.sm
+                    Repeater {
+                        model: [PowerProfile.PowerSaver, PowerProfile.Balanced, PowerProfile.Performance]
+                        PopupTab {
+                            required property var modelData
+                            width: (viewport.width - Style.sm * (PowerProfiles.hasPerformanceProfile ? 2 : 1)) / (PowerProfiles.hasPerformanceProfile ? 3 : 2)
+                            visible: modelData !== PowerProfile.Performance || PowerProfiles.hasPerformanceProfile
+                            shell: root.shell; icon: root.profileIcon(modelData); text: root.shell.profileName(modelData)
+                            selected: modelData === PowerProfiles.profile
+                            onClicked: root.shell.run(["hyprshell", "system/powerprofiles", "--set", root.profileId(modelData)])
+                        }
                     }
                 }
             }
@@ -332,17 +264,22 @@ PopupCard {
     Component {
         id: profilesTab
         Column {
-            width: viewport.width; spacing: Style.xxl
-            PopupSection { shell: root.shell; text: "ACTIVE PROFILE" }
-            Row {
-                width: parent.width; spacing: Style.md
-                Repeater {
-                    model: [PowerProfile.PowerSaver, PowerProfile.Balanced, PowerProfile.Performance]
-                    ProfileChoice {
-                        required property var modelData
-                        width: (viewport.width - Style.md * (PowerProfiles.hasPerformanceProfile ? 2 : 1)) / (PowerProfiles.hasPerformanceProfile ? 3 : 2)
-                        visible: modelData !== PowerProfile.Performance || PowerProfiles.hasPerformanceProfile
-                        profile: modelData
+            width: viewport.width; spacing: Style.sectionGap
+            Column {
+                width: parent.width; spacing: Style.sm
+                PopupSection { shell: root.shell; text: "ACTIVE PROFILE" }
+                Row {
+                    width: parent.width; spacing: Style.sm
+                    Repeater {
+                        model: [PowerProfile.PowerSaver, PowerProfile.Balanced, PowerProfile.Performance]
+                        PopupTab {
+                            required property var modelData
+                            width: (viewport.width - Style.sm * (PowerProfiles.hasPerformanceProfile ? 2 : 1)) / (PowerProfiles.hasPerformanceProfile ? 3 : 2)
+                            visible: modelData !== PowerProfile.Performance || PowerProfiles.hasPerformanceProfile
+                            shell: root.shell; icon: root.profileIcon(modelData); text: root.shell.profileName(modelData)
+                            selected: modelData === PowerProfiles.profile
+                            onClicked: root.shell.run(["hyprshell", "system/powerprofiles", "--set", root.profileId(modelData)])
+                        }
                     }
                 }
             }
@@ -354,89 +291,119 @@ PopupCard {
                 checked: root.setting("enabled", false)
                 onToggled: root.setSetting("enabled", !checked)
             }
-            PopupSection { shell: root.shell; text: "AUTOMATIC PROFILE RULES" }
-            RuleSelect { label: "On AC power"; settingKey: "profiles.ac"; fallback: "balanced"; options: root.profileChoices }
-            RuleSelect { label: "Battery high"; settingKey: "profiles.batteryHigh"; fallback: "balanced"; options: root.profileChoices }
-            RuleSelect { label: "Battery low"; settingKey: "profiles.batteryLow"; fallback: "power-saver"; options: root.profileChoices }
-            RuleNumber { label: "Low battery threshold (%)"; settingKey: "batteryThreshold"; fallback: 20; minimum: 5; maximum: 95 }
-            Text { width: parent.width; wrapMode: Text.WordWrap; text: "With automatic management off, the existing AC and battery choices are still restored."; color: root.mutedColor; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
-            PopupRow { width: parent.width; shell: root.shell; icon: "󰆓"; title: "Apply profile rules"; detail: root.configDirty ? "Save changes" : "Up to date"; interactive: root.configDirty; onClicked: root.saveRules() }
+            Column {
+                width: parent.width; spacing: Style.sm
+                PopupSection { shell: root.shell; text: "AUTOMATIC PROFILE RULES" }
+                RuleSelect { label: "On AC power"; settingKey: "profiles.ac"; fallback: "balanced"; options: root.profileChoices }
+                RuleSelect { label: "Battery high"; settingKey: "profiles.batteryHigh"; fallback: "balanced"; options: root.profileChoices }
+                RuleSelect { label: "Battery low"; settingKey: "profiles.batteryLow"; fallback: "power-saver"; options: root.profileChoices }
+                RuleNumber { label: "Low battery threshold (%)"; settingKey: "batteryThreshold"; fallback: 20; minimum: 5; maximum: 95 }
+                Text { width: parent.width; wrapMode: Text.WordWrap; text: "With automatic management off, the existing AC and battery choices are still restored."; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+                PopupRow { width: parent.width; shell: root.shell; icon: "󰆓"; title: "Apply profile rules"; detail: root.configDirty ? "Save changes" : "Up to date"; interactive: root.configDirty; onClicked: root.saveRules() }
+            }
         }
     }
     Component {
         id: advancedTab
         Column {
-            width: viewport.width; spacing: Style.xxl
-            PopupSection { shell: root.shell; text: "BATTERY PROTECTION" }
-            InfoPair { width: parent.width; label: "Charge limit"; value: root.thresholdText }
-            PopupRow {
-                visible: root.sysfsEnd > 0
-                width: parent.width; shell: root.shell; icon: "󰂄"; title: "Stop charging at 80%"
-                detail: root.sysfsEnd === 80 ? "Active · restart level set by hardware"
-                    : !root.limitBackendReady ? "Privileged helper not installed"
-                    : limitApply.running ? "Applying…" : "Restart level set by hardware · authentication required"
-                active: root.sysfsEnd === 80
-                interactive: root.limitBackendReady && root.hasBattery && root.sysfsEnd !== 80 && !limitApply.running
-                onClicked: root.applyLimit(80)
-            }
-            Row {
-                visible: root.sysfsEnd > 0
-                width: parent.width; spacing: Style.md
-                Text { width: parent.width - limitField.width - parent.spacing; anchors.verticalCenter: parent.verticalCenter; text: "Charge cut-off (%)"; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
-                PopupNumberField {
-                    id: limitField
-                    width: Style.px(110); shell: root.shell
-                    value: root.draftLimit >= 0 ? root.draftLimit : root.sysfsEnd
-                    minimum: 50; maximum: 100
-                    onCommitted: value => root.draftLimit = value
+            width: viewport.width; spacing: Style.sectionGap
+            Column {
+                width: parent.width; spacing: Style.sm
+                PopupSection { shell: root.shell; text: "BATTERY PROTECTION" }
+                PopupInfoPair { shell: root.shell; label: "Charge limit"; value: root.thresholdText }
+                PopupRow {
+                    visible: root.sysfsEnd > 0
+                    width: parent.width; shell: root.shell; icon: "󰂄"; title: "Stop charging at 80%"
+                    detail: root.sysfsEnd === 80 ? "Active · restart level set by hardware"
+                        : !root.limitBackendReady ? "Privileged helper not installed"
+                        : limitApply.running ? "Applying…" : "Restart level set by hardware · authentication required"
+                    active: root.sysfsEnd === 80
+                    interactive: root.limitBackendReady && root.hasBattery && root.sysfsEnd !== 80 && !limitApply.running
+                    onClicked: root.applyLimit(80)
                 }
+                Row {
+                    visible: root.sysfsEnd > 0
+                    width: parent.width; spacing: Style.md
+                    Text { width: parent.width - limitField.width - parent.spacing; anchors.verticalCenter: parent.verticalCenter; text: "Charge cut-off (%)"; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+                    PopupNumberField {
+                        id: limitField
+                        width: Style.px(110); shell: root.shell
+                        value: root.draftLimit >= 0 ? root.draftLimit : root.sysfsEnd
+                        minimum: 50; maximum: 100
+                        onCommitted: value => root.draftLimit = value
+                    }
+                }
+                PopupRow {
+                    visible: root.sysfsEnd > 0
+                    width: parent.width; shell: root.shell; icon: "󰆓"; title: "Apply charge limit"
+                    detail: root.limitBackendReady ? (root.draftLimit < 0 || root.draftLimit === root.sysfsEnd ? "Up to date" : "Authentication required") : "Privileged helper not installed"
+                    interactive: root.limitBackendReady && root.draftLimit >= 50 && root.draftLimit !== root.sysfsEnd && !limitApply.running
+                    onClicked: root.applyLimit()
+                }
+                Text { visible: root.limitMessage !== ""; width: parent.width; text: root.limitMessage; color: root.shell.role("error", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
             }
-            PopupRow {
-                visible: root.sysfsEnd > 0
-                width: parent.width; shell: root.shell; icon: "󰆓"; title: "Apply charge limit"
-                detail: root.limitBackendReady ? (root.draftLimit < 0 || root.draftLimit === root.sysfsEnd ? "Up to date" : "Authentication required") : "Privileged helper not installed"
-                interactive: root.limitBackendReady && root.draftLimit >= 50 && root.draftLimit !== root.sysfsEnd && !limitApply.running
-                onClicked: root.applyLimit()
+            PopupSeparator { shell: root.shell }
+            Column {
+                width: parent.width; spacing: Style.sm
+                PopupSection { shell: root.shell; text: "SLEEP AFTER INACTIVITY" }
+                Text { width: parent.width; wrapMode: Text.WordWrap; text: "The existing 500 second suspend remains active until automatic management is enabled."; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
             }
-            Text { visible: root.limitMessage !== ""; width: parent.width; text: root.limitMessage; color: root.shell.role("error", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+            Column {
+                width: parent.width; spacing: Style.sm
+                PopupSection { shell: root.shell; text: "AC POWER" }
+                RuleNumber { label: "Minutes before sleep"; settingKey: "idle.ac.sleepAfterMinutes"; fallback: 30; minimum: 1 }
+                RuleSelect { label: "Action"; settingKey: "idle.ac.action"; fallback: "suspend"; options: root.actionChoices }
+            }
+            Column {
+                width: parent.width; spacing: Style.sm
+                PopupSection { shell: root.shell; text: "BATTERY HIGH" }
+                RuleNumber { label: "Minutes before sleep"; settingKey: "idle.batteryHigh.sleepAfterMinutes"; fallback: 15; minimum: 1 }
+                RuleSelect { label: "Action"; settingKey: "idle.batteryHigh.action"; fallback: "suspend"; options: root.actionChoices }
+            }
+            Column {
+                width: parent.width; spacing: Style.sm
+                PopupSection { shell: root.shell; text: "BATTERY LOW" }
+                RuleNumber { label: "Minutes before sleep"; settingKey: "idle.batteryLow.sleepAfterMinutes"; fallback: 5; minimum: 1 }
+                RuleSelect { label: "Action"; settingKey: "idle.batteryLow.action"; fallback: "suspend"; options: root.actionChoices }
+            }
             PopupSeparator { shell: root.shell }
-            PopupSection { shell: root.shell; text: "SLEEP AFTER INACTIVITY" }
-            Text { width: parent.width; wrapMode: Text.WordWrap; text: "The existing 500 second suspend remains active until automatic management is enabled."; color: root.mutedColor; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
-            PopupSection { shell: root.shell; text: "AC POWER" }
-            RuleNumber { label: "Minutes before sleep"; settingKey: "idle.ac.sleepAfterMinutes"; fallback: 30; minimum: 1 }
-            RuleSelect { label: "Action"; settingKey: "idle.ac.action"; fallback: "suspend"; options: root.actionChoices }
-            PopupSection { shell: root.shell; text: "BATTERY HIGH" }
-            RuleNumber { label: "Minutes before sleep"; settingKey: "idle.batteryHigh.sleepAfterMinutes"; fallback: 15; minimum: 1 }
-            RuleSelect { label: "Action"; settingKey: "idle.batteryHigh.action"; fallback: "suspend"; options: root.actionChoices }
-            PopupSection { shell: root.shell; text: "BATTERY LOW" }
-            RuleNumber { label: "Minutes before sleep"; settingKey: "idle.batteryLow.sleepAfterMinutes"; fallback: 5; minimum: 1 }
-            RuleSelect { label: "Action"; settingKey: "idle.batteryLow.action"; fallback: "suspend"; options: root.actionChoices }
-            PopupSeparator { shell: root.shell }
-            PopupSection { shell: root.shell; text: "WHEN LID CLOSES" }
-            PopupToggleRow { width: parent.width; shell: root.shell; title: "Ignore lid close"; checked: root.setting("lid.ignoreLidClose", false); onToggled: root.setSetting("lid.ignoreLidClose", !checked) }
-            RuleSelect { label: "On AC power"; settingKey: "lid.ac.action"; fallback: "suspend"; options: root.actionChoices }
-            RuleSelect { label: "Battery high"; settingKey: "lid.batteryHigh.action"; fallback: "suspend"; options: root.actionChoices }
-            RuleSelect { label: "Battery low"; settingKey: "lid.batteryLow.action"; fallback: "suspend"; options: root.actionChoices }
-            PopupRow { width: parent.width; shell: root.shell; icon: "󰆓"; title: "Apply sleep and lid rules"; detail: root.configDirty ? "Save changes" : "Up to date"; interactive: root.configDirty; onClicked: root.saveRules() }
+            Column {
+                width: parent.width; spacing: Style.sm
+                PopupSection { shell: root.shell; text: "WHEN LID CLOSES" }
+                PopupToggleRow { width: parent.width; shell: root.shell; title: "Ignore lid close"; checked: root.setting("lid.ignoreLidClose", false); onToggled: root.setSetting("lid.ignoreLidClose", !checked) }
+                RuleSelect { label: "On AC power"; settingKey: "lid.ac.action"; fallback: "suspend"; options: root.actionChoices }
+                RuleSelect { label: "Battery high"; settingKey: "lid.batteryHigh.action"; fallback: "suspend"; options: root.actionChoices }
+                RuleSelect { label: "Battery low"; settingKey: "lid.batteryLow.action"; fallback: "suspend"; options: root.actionChoices }
+                PopupRow { width: parent.width; shell: root.shell; icon: "󰆓"; title: "Apply sleep and lid rules"; detail: root.configDirty ? "Save changes" : "Up to date"; interactive: root.configDirty; onClicked: root.saveRules() }
+            }
         }
     }
     Component {
         id: diagnosticsTab
         Column {
-            width: viewport.width; spacing: Style.xxl
-            PopupSection { shell: root.shell; text: "SLEEP STATES" }
-            InfoPair { width: parent.width; label: "Suspend"; value: root.sleepStates.split(/\s+/).includes("mem") ? "Available" : "Unavailable" }
-            InfoPair { width: parent.width; label: "Hibernate"; value: root.sleepStates.split(/\s+/).includes("disk") ? "Kernel supports it" : "Unavailable" }
-            InfoPair { width: parent.width; label: "Memory sleep"; value: root.memoryStates || "Unavailable" }
+            width: viewport.width; spacing: Style.sectionGap
+            Column {
+                width: parent.width; spacing: Style.sm
+                PopupSection { shell: root.shell; text: "SLEEP STATES" }
+                PopupInfoPair { shell: root.shell; label: "Suspend"; value: root.sleepStates.split(/\s+/).includes("mem") ? "Available" : "Unavailable" }
+                PopupInfoPair { shell: root.shell; label: "Hibernate"; value: root.sleepStates.split(/\s+/).includes("disk") ? "Kernel supports it" : "Unavailable" }
+                PopupInfoPair { shell: root.shell; label: "Memory sleep"; value: root.memoryStates || "Unavailable" }
+            }
             PopupSeparator { shell: root.shell }
-            PopupSection { shell: root.shell; text: "HIBERNATION CHECKS" }
-            InfoPair { width: parent.width; label: "Swap"; value: root.swapDevices ? "Configured" : "No active swap" }
-            InfoPair { width: parent.width; label: "Resume parameter"; value: root.resumeConfigured ? "Configured" : "Not found" }
-            Text { width: parent.width; wrapMode: Text.WordWrap; text: "Kernel support alone does not confirm that hibernation can resume successfully."; color: root.mutedColor; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+            Column {
+                width: parent.width; spacing: Style.sm
+                PopupSection { shell: root.shell; text: "HIBERNATION CHECKS" }
+                PopupInfoPair { shell: root.shell; label: "Swap"; value: root.swapDevices ? "Configured" : "No active swap" }
+                PopupInfoPair { shell: root.shell; label: "Resume parameter"; value: root.resumeConfigured ? "Configured" : "Not found" }
+                Text { width: parent.width; wrapMode: Text.WordWrap; text: "Kernel support alone does not confirm that hibernation can resume successfully."; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+            }
             PopupSeparator { shell: root.shell }
-            PopupSection { shell: root.shell; text: "SYSTEM" }
-            InfoPair { width: parent.width; label: "Profile interface"; value: "UPower PowerProfiles" }
-            InfoPair { width: parent.width; label: "Active profile"; value: root.profileId(PowerProfiles.profile) }
+            Column {
+                width: parent.width; spacing: Style.sm
+                PopupSection { shell: root.shell; text: "SYSTEM" }
+                PopupInfoPair { shell: root.shell; label: "Profile interface"; value: "UPower PowerProfiles" }
+                PopupInfoPair { shell: root.shell; label: "Active profile"; value: root.profileId(PowerProfiles.profile) }
+            }
         }
     }
 

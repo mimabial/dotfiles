@@ -67,41 +67,18 @@ PopupCard {
         }
     }
 
-    component OptionRow: Item {
-        required property string label
-        property bool checked: false
-        signal toggled
-        width: recordColumn.width; height: Style.px(26)
-        Text {
-            anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-            text: parent.label
-            color: root.shell.alpha(root.shell.foreground, .8)
-            font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
-        }
-        ToggleSwitch {
-            shell: root.shell
-            anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-            checked: parent.checked
-            onToggled: parent.toggled()
-        }
-    }
-
     Column {
         id: recordColumn
-        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sm
+        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
 
-        PopupSection { shell: root.shell; text: "SCREEN RECORDING" }
-
-        Text {
-            visible: root.recording
-            width: parent.width; text: "Recording in progress"
-            color: root.shell.role("error", root.shell.foreground)
-            font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+        PopupHero {
+            shell: root.shell; title: "Screen recording"; status: root.recording ? "recording in progress" : ""
+            statusColor: root.shell.role("error", root.shell.foreground)
         }
 
         Column {
             visible: !root.recording
-            width: parent.width; spacing: 2
+            width: parent.width; spacing: Style.xxs
             Repeater {
                 model: root.targets
                 PopupRow {
@@ -117,22 +94,16 @@ PopupCard {
         }
 
         PopupSeparator { visible: !root.recording; shell: root.shell }
-        PopupSection { visible: !root.recording; shell: root.shell; text: "CAPTURE" }
-
         Column {
-            visible: !root.recording
-            width: parent.width; spacing: 0
-            OptionRow {
-                label: "Desktop audio"; checked: root.desktopAudio
-                onToggled: { root.desktopAudio = !root.desktopAudio; root.persist() }
-            }
-            OptionRow {
-                label: "Microphone"; checked: root.micAudio
-                onToggled: { root.micAudio = !root.micAudio; root.persist() }
-            }
-            OptionRow {
-                label: "Webcam overlay"; checked: root.webcam
-                onToggled: { root.webcam = !root.webcam; root.persist() }
+            width: parent.width; spacing: Style.sm
+            PopupSection { visible: !root.recording; shell: root.shell; text: "CAPTURE" }
+
+            Column {
+                visible: !root.recording
+                width: parent.width; spacing: Style.xxs
+                PopupToggleRow { width: parent.width; shell: root.shell; title: "Desktop audio"; checked: root.desktopAudio; onToggled: { root.desktopAudio = !root.desktopAudio; root.persist() } }
+                PopupToggleRow { width: parent.width; shell: root.shell; title: "Microphone"; checked: root.micAudio; onToggled: { root.micAudio = !root.micAudio; root.persist() } }
+                PopupToggleRow { width: parent.width; shell: root.shell; title: "Webcam overlay"; checked: root.webcam; onToggled: { root.webcam = !root.webcam; root.persist() } }
             }
         }
 

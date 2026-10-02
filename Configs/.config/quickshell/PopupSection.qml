@@ -9,7 +9,7 @@ Text {
     // needs no label of its own
     property string value: ""
     width: value !== "" && parent ? parent.width : undefined
-    color: Qt.darker(shell.foreground, 1.4)
+    color: shell.mutedText
     font.family: shell.fontFamily
     font.pixelSize: Style.caption
     font.bold: true

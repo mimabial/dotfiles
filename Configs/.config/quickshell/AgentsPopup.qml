@@ -163,28 +163,22 @@ PopupCard {
 
         Row {
             visible: root.records.length > 1
-            width: parent.width; spacing: Style.xs
+            width: parent.width; spacing: Style.sm
             Repeater {
                 model: root.records
-                BarButton {
+                PopupTab {
                     required property int index; required property var modelData
+                    width: (agentsColumn.width - Style.sm * (root.records.length - 1)) / root.records.length
                     shell: root.shell
-                    implicitWidth: (agentsColumn.width - Style.xs * (root.records.length - 1)) / root.records.length
-                    implicitHeight: Style.controlHeight
                     text: modelData.name + (root.recommendationId === String(modelData.id) ? "  *" : "")
-                    fontSize: Style.bodySmall
-                    borderWidth: 1
-                    active: index === root.selected; radius: shell.rounding
-                    backgroundColor: active ? shell.alpha(shell.role("act_bg", shell.accent), .3) : "transparent"
-                    borderColor: active ? shell.alpha(shell.role("act_br", shell.accent), .65) : "transparent"
-                    textColor: index === root.selected ? shell.accent : shell.alpha(shell.foreground, .6)
+                    selected: index === root.selected
                     onClicked: root.select(index)
                 }
             }
         }
         Column {
             visible: root.limits.length > 0
-            width: parent.width; spacing: Style.md
+            width: parent.width; spacing: Style.sm
             PopupSeparator { shell: root.shell }
             PopupSection { shell: root.shell; text: root.isOpenCode ? "GO LIMITS" : "LIMITS" }
             Repeater {
@@ -206,7 +200,7 @@ PopupCard {
                         Text {
                             id: limitPercent
                             text: Math.round(Number(limitRow.modelData.percent) * 100) + "%"
-                            color: root.shell.alpha(root.shell.foreground, .65)
+                            color: root.shell.mutedText
                             font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                         }
                     }
@@ -226,7 +220,7 @@ PopupCard {
                         visible: untilReset !== ""
                         width: parent.width
                         text: "Resets in " + untilReset
-                        color: root.shell.alpha(root.shell.foreground, .55)
+                        color: root.shell.mutedText
                         font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                     }
                 }
@@ -235,7 +229,7 @@ PopupCard {
 
         Column {
             visible: root.providerUsage.length > 0
-            width: parent.width; spacing: Style.md
+            width: parent.width; spacing: Style.sm
             PopupSeparator { shell: root.shell }
             PopupSection { shell: root.shell; text: "PROVIDERS" }
             Repeater {
@@ -247,13 +241,13 @@ PopupCard {
         Text {
             visible: root.isOpenCode && !!root.provider.goStatus
             width: parent.width; text: root.provider ? String(root.provider.goStatus || "") : ""
-            color: root.shell.alpha(root.shell.foreground, .55)
+            color: root.shell.mutedText
             font.family: root.shell.fontFamily; font.pixelSize: Style.caption
         }
 
         Column {
             visible: root.days.length > 0
-            width: parent.width; spacing: Style.md
+            width: parent.width; spacing: Style.sm
             PopupSeparator { shell: root.shell }
             PopupSection { shell: root.shell; text: "RECENT USAGE · " + root.compact(root.recentTotal) + " TOKENS" }
             Canvas {
@@ -332,7 +326,7 @@ PopupCard {
 
         Column {
             visible: !root.isOpenCode && root.models.length > 0
-            width: parent.width; spacing: Style.md
+            width: parent.width; spacing: Style.sm
             PopupSeparator { shell: root.shell }
             PopupSection { shell: root.shell; text: "TOKENS BY MODEL" }
             Repeater {
@@ -367,7 +361,7 @@ PopupCard {
                     Text {
                         id: modelTokens
                         text: root.compact(tokenModelRow.modelData.total)
-                        color: root.shell.alpha(root.shell.foreground, .65)
+                        color: root.shell.mutedText
                         font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; font.bold: true
                         anchors.right: parent.right; anchors.rightMargin: Style.lg
                         anchors.verticalCenter: parent.verticalCenter
@@ -445,7 +439,7 @@ PopupCard {
                         + row.popup.compact(row.modelData.tokensMonth) + " · 30d  ·  $"
                         + Number(row.modelData.costMonth).toFixed(2)
                     width: parent.width; elide: Text.ElideRight
-                    color: row.popup.shell.alpha(row.popup.shell.foreground, .55)
+                    color: row.popup.shell.mutedText
                     font.family: row.popup.shell.fontFamily; font.pixelSize: Style.caption
                 }
                 Rectangle {
@@ -476,7 +470,7 @@ PopupCard {
                         required property string modelData
                         width: row.width / 7; text: modelData
                         horizontalAlignment: Text.AlignHCenter
-                        color: row.popup.shell.alpha(row.popup.shell.foreground, .55)
+                        color: row.popup.shell.mutedText
                         font.family: row.popup.shell.fontFamily; font.pixelSize: Style.caption
                     }
                 }
@@ -488,7 +482,7 @@ PopupCard {
             Text {
                 visible: !(row.modelData.models || []).length
                 text: "No model usage in the last 7 days"
-                color: row.popup.shell.alpha(row.popup.shell.foreground, .55)
+                color: row.popup.shell.mutedText
                 font.family: row.popup.shell.fontFamily; font.pixelSize: Style.caption
             }
         }
@@ -510,7 +504,7 @@ PopupCard {
             Text {
                 id: modelTotal
                 text: modelRow.popup.compact(modelRow.modelData.tokensWeek)
-                color: modelRow.popup.shell.alpha(modelRow.popup.shell.foreground, .65)
+                color: modelRow.popup.shell.mutedText
                 font.family: modelRow.popup.shell.fontFamily; font.pixelSize: Style.caption
             }
         }

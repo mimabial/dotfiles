@@ -24,7 +24,7 @@ QtObject {
     readonly property int selectedBorderWidth: 0
     readonly property int focusBorderWidth: hoverBorderWidth
     readonly property real normalFillAlpha: 0.04
-    readonly property real selectedFillAlpha: 0.18
+    readonly property real selectedFillAlpha: Active.Style.selectedFillAlpha
     readonly property real pressedFillAlpha: 0.22
     readonly property real focusFillAlpha: Active.Style.hoverFillAlpha
     readonly property real selectionFillAlpha: 0.35

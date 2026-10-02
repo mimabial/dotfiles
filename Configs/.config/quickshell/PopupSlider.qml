@@ -47,7 +47,7 @@ Item {
     }
 
     Text { id: labelText; visible: root.headed; anchors.left: parent.left; anchors.leftMargin: Style.controlPaddingX; anchors.top: parent.top; text: root.icon + (root.icon && root.label ? "  " : "") + root.label; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.body }
-    Text { visible: root.headed; anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX; anchors.top: parent.top; text: root.valueText; color: root.shell.alpha(root.shell.foreground, .65); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+    Text { visible: root.headed; anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX; anchors.top: parent.top; text: root.valueText; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
     Slider {
         id: slider
         // Controls take focus on click by default, which would pull it off the

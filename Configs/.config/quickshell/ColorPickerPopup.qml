@@ -16,12 +16,15 @@ PopupCard {
 
     Column {
         id: colorColumn
-        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sm
-        PopupSection { shell: root.shell; text: "RECENT COLORS" }
-        GridLayout {
-            width: parent.width; columns: 2; rowSpacing: Style.xs; columnSpacing: Style.xs
-            Repeater { model: root.colors; PopupRow { required property string modelData; Layout.fillWidth: true; shell: root.shell; icon: "●"; iconColor: modelData; title: modelData.toUpperCase(); detail: "Copy to clipboard"; onClicked: root.copy(modelData) } }
-            PopupRow { visible: root.colors.length === 0; Layout.columnSpan: 2; Layout.fillWidth: true; enabled: false; shell: root.shell; icon: "󰀦"; title: "No saved colors" }
+        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection { shell: root.shell; text: "RECENT COLORS" }
+            GridLayout {
+                width: parent.width; columns: 2; rowSpacing: Style.xs; columnSpacing: Style.xs
+                Repeater { model: root.colors; PopupRow { required property string modelData; Layout.fillWidth: true; shell: root.shell; icon: "●"; iconColor: modelData; title: modelData.toUpperCase(); detail: "Copy to clipboard"; onClicked: root.copy(modelData) } }
+                PopupRow { visible: root.colors.length === 0; Layout.columnSpan: 2; Layout.fillWidth: true; enabled: false; shell: root.shell; icon: "󰀦"; title: "No saved colors" }
+            }
         }
         PopupSeparator { shell: root.shell }
         PopupRow { width: parent.width; shell: root.shell; icon: ""; title: "Pick from screen"; detail: "Copies and saves the color"; onClicked: root.pick() }

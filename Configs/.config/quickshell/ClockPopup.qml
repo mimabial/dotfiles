@@ -498,7 +498,7 @@ PopupCard {
     Column {
         id: calendar
         width: root.calendarWidth
-        spacing: Style.px(14)
+        spacing: Style.sectionGap
         focus: !root.eventPanelOpen
 
         Keys.onPressed: event => {
@@ -527,7 +527,7 @@ PopupCard {
             width: parent.width; height: Style.px(18)
             readonly property real progress: (root.today - new Date(root.today.getFullYear(), 0, 1)) / (new Date(root.today.getFullYear() + 1, 0, 1) - new Date(root.today.getFullYear(), 0, 1))
 
-            Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: root.today.getFullYear(); color: root.shell.alpha(root.shell.foreground, .5); font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
+            Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: root.today.getFullYear(); color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
             Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: Math.floor(yearBar.progress * 100) + "%"; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
             Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: Style.px(42); anchors.rightMargin: Style.px(34); anchors.verticalCenter: parent.verticalCenter; height: Style.px(5); radius: 3; color: root.shell.alpha(root.shell.foreground, .12); Rectangle { width: parent.width * yearBar.progress; height: parent.height; radius: parent.radius; color: root.shell.role("act_br", root.shell.accent) } }
         }
@@ -567,7 +567,7 @@ PopupCard {
                 Text {
                     required property var modelData
                     width: root.dayCellWidth; height: Style.px(18); text: modelData
-                    color: root.shell.alpha(root.shell.foreground, .45)
+                    color: root.shell.faintText
                     font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
@@ -591,9 +591,9 @@ PopupCard {
                     width: isWeek ? root.weekNumberColumnWidth : root.dayCellWidth
                     height: Style.px(31); radius: root.shell.rounding
                     // the foreground reads against this background; hvr_bg does not
-                    color: current ? root.shell.alpha(root.shell.role("act_bg", root.shell.accent), .35)
+                    color: current ? root.shell.selectedFill()
                         : hovered ? root.shell.alpha(root.shell.foreground, .12) : "transparent"
-                    border.color: current ? root.shell.alpha(root.shell.role("act_br", root.shell.accent), .7)
+                    border.color: current ? root.shell.selectedEdge()
                         : focused ? root.shell.alpha(root.shell.foreground, .45)
                         : hovered ? root.shell.alpha(root.shell.foreground, .2) : "transparent"
                     Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }

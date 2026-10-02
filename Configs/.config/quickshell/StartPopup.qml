@@ -387,7 +387,7 @@ PopupCard {
         Rectangle {
             id: searchHeader
             visible: !root.browseOnly
-            width: parent.width; height: Style.px(30); radius: root.shell.rounding
+            width: parent.width; height: Style.controlHeight; radius: root.shell.rounding
             color: root.shell.alpha(root.shell.foreground, .06)
             border.color: root.shell.alpha(root.shell.role("br", root.shell.foreground), .3)
             Text {
@@ -395,7 +395,7 @@ PopupCard {
                 anchors.left: parent.left; anchors.leftMargin: Style.controlPaddingX
                 anchors.verticalCenter: parent.verticalCenter
                 text: "\u{f0349}"
-                color: root.shell.alpha(root.shell.foreground, .5)
+                color: root.shell.mutedText
                 font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
             }
             TextField {
@@ -403,7 +403,6 @@ PopupCard {
                 anchors.left: searchGlyph.right; anchors.leftMargin: Style.xs
                 anchors.right: countText.left; anchors.rightMargin: Style.xs
                 anchors.verticalCenter: parent.verticalCenter
-                height: Style.px(22)
                 leftPadding: 0; rightPadding: 0; topPadding: 0; bottomPadding: 0
                 placeholderText: root.spotlight && root.shell.mode === "winbar" ? "Search apps, actions, places, recent files, documents"
                     : root.spotlight ? "Search apps, actions, places, recent files" : "Search apps, actions, places, documents"
@@ -421,7 +420,7 @@ PopupCard {
                 anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.selectableEntries.length
-                color: root.shell.alpha(root.shell.foreground, .4)
+                color: root.shell.faintText
                 font.family: root.shell.fontFamily; font.pixelSize: Style.caption
             }
         }
@@ -558,9 +557,9 @@ PopupCard {
                         width: placesColumn.width; shell: root.shell
                         implicitHeight: Style.px(24)
                         icon: "\u{f0415}"
-                        iconColor: root.shell.alpha(root.shell.foreground, .55)
+                        iconColor: root.shell.mutedText
                         title: "Add place…"
-                        titleColor: root.shell.alpha(root.shell.foreground, .55)
+                        titleColor: root.shell.mutedText
                         onClicked: root.openPlaceEditor()
                     }
                     Rectangle {

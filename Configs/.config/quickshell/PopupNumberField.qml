@@ -44,7 +44,7 @@ Column {
 
     Text {
         width: parent.width; text: root.label.toUpperCase()
-        color: root.shell.alpha(root.shell.foreground, .45)
+        color: root.shell.faintText
         font.family: root.shell.fontFamily; font.pixelSize: Style.caption
         font.bold: true; horizontalAlignment: Text.AlignHCenter
     }

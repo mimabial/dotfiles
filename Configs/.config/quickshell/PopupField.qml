@@ -12,7 +12,7 @@ TextField {
     signal submitted()
     function activateKeyboard() { forceActiveFocus(); selectAll() }
 
-    height: Style.px(24)
+    height: Style.controlHeight
     leftPadding: Style.controlPaddingX; rightPadding: Style.controlPaddingX
     topPadding: 0; bottomPadding: 0
     color: root.shell.foreground

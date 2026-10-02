@@ -100,7 +100,7 @@ PopupCard {
                         Text {
                             id: version
                             text: packageRow.modelData.from + " → " + packageRow.modelData.to
-                            color: root.shell.alpha(root.shell.foreground, .55)
+                            color: root.shell.mutedText
                             font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                         }
                     }

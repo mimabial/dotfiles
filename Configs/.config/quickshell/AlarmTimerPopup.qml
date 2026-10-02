@@ -211,10 +211,6 @@ PopupCard {
                 : root.shell.alpha(root.shell.foreground, fieldInput.activeFocus ? .45 : .18)
         }
     }
-    component ModeTab: BarButton {
-        property bool selected: false
-        active: false; radius: shell.rounding; backgroundColor: "transparent"; borderColor: "transparent"; textColor: selected ? shell.accent : shell.alpha(shell.foreground, .6)
-    }
     component PresetButton: BarButton { keyboardEnabled: true; radius: shell.rounding; backgroundColor: shell.alpha(shell.accent, .18); borderColor: "transparent"; textColor: shell.accent }
     property Component actionComponent: Component { Process {
         id: action; property string failure: ""
@@ -227,7 +223,6 @@ PopupCard {
         anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
         PopupHero {
             shell: root.shell; icon: "◷"; title: "Time Tools"; status: root.heroStatus()
-            statusColor: Qt.darker(root.shell.foreground, 1.4)
         }
         PopupSeparator { shell: root.shell }
         Column {
@@ -236,9 +231,9 @@ PopupCard {
                 width: parent.width; spacing: Style.sm
                 Repeater {
                     model: root.primaryModes
-                    ModeTab {
+                    PopupTab {
                         required property var modelData
-                        width: (timerColumn.width - Style.sm * 2) / 3; height: Style.controlHeight
+                        width: (timerColumn.width - Style.sm * 2) / 3
                         shell: root.shell; text: modelData.text; selected: root.mode === modelData.mode
                         enabled: !root.clockwork.running; opacity: enabled ? 1 : .35
                         onClicked: root.selectMode(modelData.mode)
@@ -249,9 +244,9 @@ PopupCard {
                 width: parent.width; spacing: Style.sm
                 Repeater {
                     model: root.secondaryModes
-                    ModeTab {
+                    PopupTab {
                         required property var modelData
-                        width: (timerColumn.width - Style.sm * 2) / 3; height: Style.controlHeight
+                        width: (timerColumn.width - Style.sm * 2) / 3
                         shell: root.shell; text: modelData.text; selected: root.mode === modelData.mode
                         enabled: !root.clockwork.running; opacity: enabled ? 1 : .35
                         onClicked: root.selectMode(modelData.mode)
@@ -399,11 +394,14 @@ PopupCard {
         }
         Text { visible: root.error !== ""; width: parent.width; text: root.error; color: root.shell.role("error", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
         PopupSeparator { shell: root.shell }
-        PopupSection { shell: root.shell; text: "ACTIVE"; value: root.entries.length }
-        Text { visible: root.entries.length === 0; width: parent.width; text: "No active alarms or timers"; color: root.shell.alpha(root.shell.foreground, .5); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
-        ListView {
-            visible: root.entries.length > 0; width: parent.width; height: Math.min(contentHeight, Style.px(180)); spacing: Style.sm; clip: true; model: root.entries
-            delegate: PopupRow { required property var modelData; width: ListView.view.width; shell: root.shell; icon: modelData.kind === "alarm" ? "󰀠" : "󰔛"; title: modelData.label || (modelData.kind === "alarm" ? "Alarm" : "Timer"); detail: (modelData.kind === "alarm" ? Qt.formatDateTime(new Date(modelData.epoch * 1000), "ddd HH:mm") : "Ends " + Qt.formatTime(new Date(modelData.epoch * 1000), "HH:mm")) + " · click to cancel"; value: root.remaining(modelData.epoch); active: true; onClicked: root.run(["cancel", String(modelData.id)]) }
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection { shell: root.shell; text: "ACTIVE"; value: root.entries.length }
+            Text { visible: root.entries.length === 0; width: parent.width; text: "No active alarms or timers"; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+            ListView {
+                visible: root.entries.length > 0; width: parent.width; height: Math.min(contentHeight, Style.px(180)); spacing: Style.sm; clip: true; model: root.entries
+                delegate: PopupRow { required property var modelData; width: ListView.view.width; shell: root.shell; icon: modelData.kind === "alarm" ? "󰀠" : "󰔛"; title: modelData.label || (modelData.kind === "alarm" ? "Alarm" : "Timer"); detail: (modelData.kind === "alarm" ? Qt.formatDateTime(new Date(modelData.epoch * 1000), "ddd HH:mm") : "Ends " + Qt.formatTime(new Date(modelData.epoch * 1000), "HH:mm")) + " · click to cancel"; value: root.remaining(modelData.epoch); active: true; onClicked: root.run(["cancel", String(modelData.id)]) }
+            }
         }
     }
 }

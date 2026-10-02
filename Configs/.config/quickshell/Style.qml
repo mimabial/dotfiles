@@ -37,6 +37,10 @@ Singleton {
 
     readonly property real hoverFillAlpha: 0.12
     readonly property real hoverBorderAlpha: 0.55
+    readonly property real selectedFillAlpha: 0.2
+    readonly property real selectedBorderAlpha: 0.5
+    readonly property real mutedTextAlpha: 0.55
+    readonly property real faintTextAlpha: 0.4
     readonly property int hoverDuration: 180
     readonly property int tooltipDelay: 400
 

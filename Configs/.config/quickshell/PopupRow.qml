@@ -16,7 +16,7 @@ Rectangle {
     property real valueWidth: 0
     property bool valueClickable: false
     property color titleColor: shell.foreground
-    property color detailColor: shell.alpha(shell.foreground, .55)
+    property color detailColor: shell.mutedText
     property color valueColor: shell.alpha(shell.foreground, .7)
     property color valueHoverColor: valueColor
     property bool active: false
@@ -40,12 +40,12 @@ Rectangle {
     implicitHeight: Math.max(Style.popupRowHeight, Math.max(textColumn.implicitHeight, iconImage.visible ? root.iconSize : 0) + Style.controlPaddingY * 2)
     readonly property color highlight: !hoverBorder && hovered ? "transparent"
         : selected ? shell.hoverEdge(.85)
-        : active ? shell.alpha(shell.role("act_br", shell.accent), .5)
+        : active ? shell.selectedEdge()
         : cursored ? shell.hoverEdge(.85)
         : (interactive && mouse.containsMouse && hoverBorder) ? shell.hoverEdge(.6)
         : "transparent"
     color: (interactive && (mouse.containsMouse || cursored || selected)) ? shell.hoverFill()
-        : active ? shell.alpha(shell.role("act_bg", shell.accent), .2) : "transparent"
+        : active ? shell.selectedFill() : "transparent"
     border.color: highlight
     radius: shell.rounding
     Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }

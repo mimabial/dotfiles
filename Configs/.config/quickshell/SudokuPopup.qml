@@ -85,20 +85,20 @@ PopupCard {
         required property string label
         required property string value
         spacing: Style.xxs
-        Text { text: stat.label; color: root.shell.alpha(root.shell.foreground, .5); font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true }
+        Text { text: stat.label; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true }
         Text { text: stat.value; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.title; font.bold: true }
     }
 
     Column {
         id: contentColumn
-        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.md
+        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
 
         PopupHero {
             shell: root.shell; title: "Sudoku"
             status: root.difficulty + " · " + (root.game.status === Game.STATUS_WON ? "solved" : root.game.clueCount + " clues")
         }
         Item {
-            width: parent.width; height: Style.px(34)
+            width: parent.width; height: Style.controlHeight
             Row {
                 anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; spacing: Style.xxl
                 Stat { label: "TIME"; value: Game.formatTime(root.elapsed) }
@@ -168,7 +168,7 @@ PopupCard {
                                             required property int index
                                             width: parent.width / 3; height: parent.height / 3
                                             visible: Game.hasNote(root.game.notes[cell.index], index + 1)
-                                            Text { anchors.centerIn: parent; text: note.index + 1; color: root.shell.alpha(root.shell.foreground, .45); font.family: root.shell.fontFamily; font.pixelSize: Math.max(6, board.cellSize * .24) }
+                                            Text { anchors.centerIn: parent; text: note.index + 1; color: root.shell.faintText; font.family: root.shell.fontFamily; font.pixelSize: Math.max(6, board.cellSize * .24) }
                                         }
                                     }
                                 }
@@ -212,12 +212,12 @@ PopupCard {
                 GameButton {
                     required property int index
                     readonly property int digit: index + 1
-                    width: Style.px(28); text: digit; selected: root.activeDigit === digit
+                    width: Style.controlHeight; text: digit; selected: root.activeDigit === digit
                     opacity: root.digitCounts[index] === 9 ? .35 : 1
                     onClicked: root.playDigit(digit)
                 }
             }
-            GameButton { width: Style.px(28); text: "⌫"; tooltip: "Erase (E)"; onClicked: root.erase() }
+            GameButton { width: Style.controlHeight; text: "⌫"; tooltip: "Erase (E)"; onClicked: root.erase() }
         }
     }
 

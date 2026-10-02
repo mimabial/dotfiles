@@ -35,24 +35,18 @@ PopupCard {
 
     Column {
         id: qrColumn
-        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.rowGap
+        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
 
-        PopupSection { shell: root.shell; text: "SHARE NETWORK" }
-        Text {
-            visible: root.ssid !== ""
-            width: parent.width; text: root.ssid; elide: Text.ElideRight
-            color: root.shell.foreground; font.family: root.shell.fontFamily
-            font.pixelSize: Style.subtitle; font.bold: true
-        }
+        PopupHero { shell: root.shell; title: "Share network"; status: root.ssid }
         Rectangle {
             visible: root.rows.length > 0
             anchors.horizontalCenter: parent.horizontalCenter
-            width: Style.px(212); height: Style.px(212); color: "#ffffff"; radius: 2
+            width: Style.px(212); height: width; color: "#ffffff"; radius: Style.xxs
             Grid {
                 id: qrGrid
                 anchors.centerIn: parent
                 readonly property int size: root.rows.length
-                readonly property real module: 212 / Math.max(1, size)
+                readonly property real module: parent.width / Math.max(1, size)
                 columns: size
                 Repeater {
                     model: qrGrid.size * qrGrid.size
@@ -69,7 +63,7 @@ PopupCard {
             visible: root.rows.length === 0
             width: parent.width; wrapMode: Text.Wrap
             text: root.error || "Reading network credentials…"
-            color: root.shell.alpha(root.shell.foreground, .6)
+            color: root.shell.mutedText
             font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
         }
     }

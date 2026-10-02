@@ -3,7 +3,6 @@
   "style": "horizontal",
   "left": [
     { "id": "workspaces", "props": { "compactStyle": true } },
-    "taskbar",
     {
       "id": "mediaplayer",
       "props": {

@@ -26,18 +26,24 @@ PopupCard {
 
     Column {
         id: desktopColumn
-        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sm
-        PopupSection { shell: root.shell; text: "WINDOW LAYOUT" }
-        GridLayout {
-            width: parent.width; columns: 2; rowSpacing: Style.xs; columnSpacing: Style.xs
-            Repeater { model: root.layouts; PopupRow { required property var modelData; Layout.fillWidth: true; shell: root.shell; icon: modelData.icon; title: modelData.label; active: root.shell.windowLayout === modelData.name; onClicked: root.shell.run(["hyprshell", "util/window-layout", "--set", modelData.name]) } }
+        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection { shell: root.shell; text: "WINDOW LAYOUT" }
+            GridLayout {
+                width: parent.width; columns: 2; rowSpacing: Style.xs; columnSpacing: Style.xs
+                Repeater { model: root.layouts; PopupRow { required property var modelData; Layout.fillWidth: true; shell: root.shell; icon: modelData.icon; title: modelData.label; active: root.shell.windowLayout === modelData.name; onClicked: root.shell.run(["hyprshell", "util/window-layout", "--set", modelData.name]) } }
+            }
         }
         PopupSeparator { shell: root.shell }
-        PopupSection { shell: root.shell; text: root.workflowOwner ? "WORKFLOW · LOCKED BY " + root.workflowOwner.toUpperCase() : "WORKFLOW" }
-        GridLayout {
-            width: parent.width; columns: 2; rowSpacing: Style.xs; columnSpacing: Style.xs
-            opacity: root.workflowOwner ? .45 : 1
-            Repeater { model: root.workflows; PopupRow { required property var modelData; Layout.fillWidth: true; shell: root.shell; icon: modelData.icon; title: root.title(modelData.name); detail: modelData.label; interactive: !root.workflowOwner; active: root.shell.workflow === modelData.name; onClicked: root.shell.run(["hyprshell", "util/workflows", "--set", modelData.name]) } }
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection { shell: root.shell; text: root.workflowOwner ? "WORKFLOW · LOCKED BY " + root.workflowOwner.toUpperCase() : "WORKFLOW" }
+            GridLayout {
+                width: parent.width; columns: 2; rowSpacing: Style.xs; columnSpacing: Style.xs
+                opacity: root.workflowOwner ? .45 : 1
+                Repeater { model: root.workflows; PopupRow { required property var modelData; Layout.fillWidth: true; shell: root.shell; icon: modelData.icon; title: root.title(modelData.name); detail: modelData.label; interactive: !root.workflowOwner; active: root.shell.workflow === modelData.name; onClicked: root.shell.run(["hyprshell", "util/workflows", "--set", modelData.name]) } }
+            }
         }
     }
 }

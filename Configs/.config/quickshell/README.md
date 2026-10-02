@@ -259,6 +259,12 @@ Bars normally use `WlrKeyboardFocus.None`; a newly opened popup is
 briefly primed with `Exclusive`, then uses `OnDemand`. Preserve that transition
 when fixing outside-click behavior so the first click reaches the target window.
 
+A panel opens with `PopupHero`. Its top-level column uses `Style.sectionGap`; each
+`PopupSection` sits in a `Column` (`Style.sm`) with its content. One-of-N choices are
+`PopupTab`, facts `PopupInfoPair`, glyph actions `PopupIconButton`, switches
+`PopupToggleRow`. Controls take `Style.controlHeight`; chosen state is
+`shell.selectedFill()`/`selectedEdge()`, secondary text `shell.mutedText`/`faintText`.
+
 The standalone `date` module opens the calendar. `datetime` opens the
 alarm/timer/stopwatch popup where configured as the timer clock.
 

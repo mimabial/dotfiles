@@ -37,16 +37,11 @@ PopupCard {
 
     Column {
         id: sunsetColumn
-        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sm
+        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
 
-        PopupSection { shell: root.shell; text: "NIGHT LIGHT" }
-
-        Text {
-            width: parent.width
-            text: root.active ? "Active" : "Inactive"
-            color: root.active ? root.shell.role("warning", root.shell.foreground)
-                : root.shell.alpha(root.shell.foreground, .6)
-            font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+        PopupHero {
+            shell: root.shell; title: "Night light"; status: root.active ? "active" : "inactive"
+            statusColor: root.active ? root.shell.role("warning", root.shell.foreground) : root.shell.mutedText
         }
 
         PopupSlider {

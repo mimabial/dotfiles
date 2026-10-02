@@ -33,23 +33,26 @@ PopupCard {
 
     Column {
         id: spaceColumn
-        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sm
+        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
 
-        PopupSection { shell: root.shell; text: "WORKSPACES"; value: root.spaces.length }
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection { shell: root.shell; text: "WORKSPACES"; value: root.spaces.length }
 
-        Repeater {
-            model: root.spaces
-            PopupRow {
-                required property var modelData
-                readonly property var names: root.windowsOn(modelData)
-                width: spaceColumn.width; shell: root.shell
-                icon: modelData.focused ? "\u{f0765}" : "\u{f0766}"
-                title: modelData.name && modelData.name !== String(modelData.id)
-                    ? modelData.id + "  " + modelData.name : String(modelData.id)
-                detail: names.length === 0 ? "empty" : names.join("  ·  ")
-                value: names.length > 0 ? String(names.length) : ""
-                active: modelData.focused
-                onClicked: { modelData.activate(); root.shell.closePopup() }
+            Repeater {
+                model: root.spaces
+                PopupRow {
+                    required property var modelData
+                    readonly property var names: root.windowsOn(modelData)
+                    width: spaceColumn.width; shell: root.shell
+                    icon: modelData.focused ? "\u{f0765}" : "\u{f0766}"
+                    title: modelData.name && modelData.name !== String(modelData.id)
+                        ? modelData.id + "  " + modelData.name : String(modelData.id)
+                    detail: names.length === 0 ? "empty" : names.join("  ·  ")
+                    value: names.length > 0 ? String(names.length) : ""
+                    active: modelData.focused
+                    onClicked: { modelData.activate(); root.shell.closePopup() }
+                }
             }
         }
     }

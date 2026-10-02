@@ -15,7 +15,7 @@ PopupCard {
 
     property var pendingAction: null
     property var status: ({ suspend: true, hibernate: false, uptime: 0, user: Quickshell.env("USER"), host: "" })
-    readonly property color dim: shell.alpha(shell.foreground, .55)
+    readonly property color dim: shell.mutedText
     readonly property color urgent: shell.role("error", shell.foreground)
     readonly property string helper: shell.home + "/.local/lib/hypr/session/power-menu.sh"
     readonly property var screenActions: [
@@ -65,22 +65,28 @@ PopupCard {
 
     Column {
         id: menu
-        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.md
+        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
 
         Row {
             width: parent.width; spacing: Style.xxl
             Text { width: Style.px(30); anchors.verticalCenter: parent.verticalCenter; text: "󰐥"; color: root.shell.foreground; font.family: root.shell.iconGlyphFont; font.pixelSize: Style.displayLarge; horizontalAlignment: Text.AlignHCenter }
             PopupHero { width: parent.width - Style.px(30) - parent.spacing; shell: root.shell; title: "Power"; status: root.sessionText }
         }
-        PopupSection { shell: root.shell; text: "SCREEN" }
-        Repeater {
-            model: root.screenActions
-            ActionRow { required property var modelData; required property int index; action: modelData; number: index + 1 }
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection { shell: root.shell; text: "SCREEN" }
+            Repeater {
+                model: root.screenActions
+                ActionRow { required property var modelData; required property int index; action: modelData; number: index + 1 }
+            }
         }
-        PopupSection { shell: root.shell; text: "SESSION"; topPadding: Style.lg }
-        Repeater {
-            model: root.sessionActions
-            ActionRow { required property var modelData; required property int index; action: modelData; number: root.screenActions.length + index + 1 }
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection { shell: root.shell; text: "SESSION"; topPadding: Style.lg }
+            Repeater {
+                model: root.sessionActions
+                ActionRow { required property var modelData; required property int index; action: modelData; number: root.screenActions.length + index + 1 }
+            }
         }
         PopupSeparator { shell: root.shell }
     }

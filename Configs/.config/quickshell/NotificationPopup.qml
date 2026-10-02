@@ -151,36 +151,9 @@ PopupCard {
     }
     property Timer poll: Timer { interval: 4000; running: root.open; repeat: true; onTriggered: root.refresh() }
 
-    // an inline header action, labelled by its own tooltip rather than a legend
-    component HeaderAction: Rectangle {
-        id: headerAction
-        required property string glyph
-        required property string hint
-        readonly property bool navigable: true
-        property bool cursored: false
-        property color glyphColor: root.shell.foreground
-        signal triggered
-        signal clicked(int button)
-        onClicked: triggered()
-        width: Style.px(26); height: Style.px(26); radius: root.shell.rounding
-        color: actionArea.containsMouse || cursored ? root.shell.hoverFill(3) : "transparent"
-        Text {
-            anchors.centerIn: parent
-            text: headerAction.glyph
-            color: headerAction.glyphColor
-            font.family: root.shell.fontFamily; font.pixelSize: Style.title
-        }
-        MouseArea {
-            id: actionArea
-            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: headerAction.clicked(Qt.LeftButton)
-        }
-        BarTooltip { shell: root.shell; anchorItem: headerAction; text: headerAction.hint; hovered: actionArea.containsMouse }
-    }
-
     Column {
         id: notifyColumn
-        anchors.fill: parent; spacing: Style.sm
+        anchors.fill: parent; spacing: Style.sectionGap
 
         Item {
             width: parent.width
@@ -200,34 +173,38 @@ PopupCard {
                 id: headerActions
                 anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                 spacing: 0
-                HeaderAction {
+                PopupIconButton {
+                    shell: root.shell
                     glyph: "\u{f0349}"
                     hint: "Search these notifications  ( / )"
                     glyphColor: root.searching ? root.shell.accent : root.shell.foreground
-                    onTriggered: root.searching ? root.endSearch() : root.startSearch()
+                    onClicked: root.searching ? root.endSearch() : root.startSearch()
                 }
-                HeaderAction {
+                PopupIconButton {
+                    shell: root.shell
                     glyph: root.paused ? "\u{f009b}" : "\u{f009a}"
                     hint: root.paused ? "Allow notifications" : "Silence notifications"
                     glyphColor: root.paused ? root.shell.accent : root.shell.foreground
-                    onTriggered: root.act(["hyprshell", "notify/notifications", "--toggle"])
+                    onClicked: root.act(["hyprshell", "notify/notifications", "--toggle"])
                 }
-                HeaderAction {
+                PopupIconButton {
+                    shell: root.shell
                     glyph: "\u{f039f}"
                     hint: "Show the most recent notification again"
-                    onTriggered: root.act(["dunstctl", "history-pop"])
+                    onClicked: root.act(["dunstctl", "history-pop"])
                 }
-                HeaderAction {
+                PopupIconButton {
+                    shell: root.shell
                     glyph: "\u{f0a7a}"
                     hint: "Clear the archive"
-                    onTriggered: root.clearAll()
+                    onClicked: root.clearAll()
                 }
             }
         }
 
         Rectangle {
             visible: root.searching
-            width: parent.width; height: visible ? Style.px(28) : 0
+            width: parent.width; height: Style.controlHeight
             radius: root.shell.rounding
             color: root.shell.alpha(root.shell.role("alt_bg", root.shell.background), .25)
             border.width: 1
@@ -237,7 +214,6 @@ PopupCard {
                 anchors.left: parent.left; anchors.leftMargin: Style.controlPaddingX
                 anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX
                 anchors.verticalCenter: parent.verticalCenter
-                height: Style.px(20)
                 leftPadding: 0; rightPadding: 0; topPadding: 0; bottomPadding: 0
                 placeholderText: "Search — Esc leaves, Esc again closes"
                 color: root.shell.foreground
@@ -253,7 +229,7 @@ PopupCard {
             visible: rows.count === 0
             width: parent.width
             text: root.filter !== "" ? "No match" : "Nothing kept yet"
-            color: root.shell.alpha(root.shell.foreground, .5)
+            color: root.shell.mutedText
             font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
         }
 

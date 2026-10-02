@@ -184,7 +184,7 @@ PopupCard {
 
     Column {
         id: audioColumn
-        anchors.fill: parent; visible: root.page === "mixer"; spacing: Style.px(14)
+        anchors.fill: parent; visible: root.page === "mixer"; spacing: Style.sectionGap
         PopupHero { shell: root.shell; title: root.microphoneMode ? "Microphone" : "Audio"; status: root.microphoneMode ? root.microphoneStatus() : root.volumeName() }
         PopupSeparator { shell: root.shell }
         PopupRow { visible: !root.microphoneMode; width: parent.width; shell: root.shell; icon: root.sink && root.sink.audio && root.sink.audio.muted ? "󰝟" : "󰕾"; title: root.name(root.sink); detail: "Output"; value: root.sink && root.sink.audio ? Math.round(root.sink.audio.volume * 100) + "%" : ""; active: root.sink && root.sink.audio && !root.sink.audio.muted; onClicked: if (root.sink) root.volumeAction("o", "m") }
@@ -193,27 +193,39 @@ PopupCard {
         PopupRow { visible: root.microphoneMode && root.source !== null; width: parent.width; shell: root.shell; icon: root.source && root.source.audio && root.source.audio.muted ? "󰍭" : "󰍬"; title: root.name(root.source); detail: "Microphone"; value: root.source && root.source.audio ? Math.round(root.source.audio.volume * 100) + "%" : ""; active: root.source && root.source.audio && !root.source.audio.muted; onClicked: if (root.source) root.volumeAction("i", "m") }
         PopupSlider { visible: root.microphoneMode && root.source !== null; width: parent.width; shell: root.shell; label: "Input volume"; keyboardEnabled: true; keyboardAdjustsExternally: true; value: root.source && root.source.audio ? root.source.audio.volume : 0; onChanged: value => { if (root.source && root.source.audio) root.source.audio.volume = value }; onKeyboardAdjusted: direction => root.volumeAction("i", direction > 0 ? "i" : "d") }
         PopupSeparator { shell: root.shell }
-        PopupSection { visible: !root.microphoneMode; shell: root.shell; text: "OUTPUT DEVICE" }
-        ListView {
-            visible: !root.microphoneMode; width: parent.width; height: Math.min(contentHeight, Style.px(85)); spacing: Style.px(4); clip: true; model: root.microphoneMode ? [] : root.outputs
-            delegate: PopupRow { required property var modelData; width: ListView.view.width; shell: root.shell; icon: "󰓃"; title: root.name(modelData); detail: modelData === root.sink ? "Default" : ""; active: modelData === root.sink; onClicked: Pipewire.preferredDefaultAudioSink = modelData }
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection { visible: !root.microphoneMode; shell: root.shell; text: "OUTPUT DEVICE" }
+            ListView {
+                visible: !root.microphoneMode; width: parent.width; height: Math.min(contentHeight, Style.px(85)); spacing: Style.sm; clip: true; model: root.microphoneMode ? [] : root.outputs
+                delegate: PopupRow { required property var modelData; width: ListView.view.width; shell: root.shell; icon: "󰓃"; title: root.name(modelData); detail: modelData === root.sink ? "Default" : ""; active: modelData === root.sink; onClicked: Pipewire.preferredDefaultAudioSink = modelData }
+            }
         }
-        PopupSection { visible: root.microphoneMode && root.inputs.length > 0; shell: root.shell; text: "INPUT DEVICE" }
-        ListView {
-            visible: root.microphoneMode && root.inputs.length > 0
-            width: parent.width; height: Math.min(contentHeight, Style.px(85)); spacing: Style.px(4); clip: true; model: root.microphoneMode ? root.inputs : []
-            delegate: PopupRow { required property var modelData; width: ListView.view.width; shell: root.shell; icon: "󰍬"; title: root.name(modelData); detail: modelData === root.source ? "Default" : ""; active: modelData === root.source; onClicked: Pipewire.preferredDefaultAudioSource = modelData }
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection { visible: root.microphoneMode && root.inputs.length > 0; shell: root.shell; text: "INPUT DEVICE" }
+            ListView {
+                visible: root.microphoneMode && root.inputs.length > 0
+                width: parent.width; height: Math.min(contentHeight, Style.px(85)); spacing: Style.sm; clip: true; model: root.microphoneMode ? root.inputs : []
+                delegate: PopupRow { required property var modelData; width: ListView.view.width; shell: root.shell; icon: "󰍬"; title: root.name(modelData); detail: modelData === root.source ? "Default" : ""; active: modelData === root.source; onClicked: Pipewire.preferredDefaultAudioSource = modelData }
+            }
         }
         PopupSeparator { visible: root.microphoneMode ? root.recordings.length > 0 : root.playbacks.length > 0; shell: root.shell }
-        PopupSection { visible: !root.microphoneMode && root.playbacks.length > 0; shell: root.shell; text: "PLAYBACK APPLICATIONS" }
-        ListView {
-            visible: !root.microphoneMode && root.playbacks.length > 0; width: parent.width; height: Math.min(contentHeight, Style.px(150)); spacing: Style.sm; clip: true; model: root.microphoneMode ? [] : root.playbacks
-            delegate: StreamControl { required property var modelData; stream: modelData }
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection { visible: !root.microphoneMode && root.playbacks.length > 0; shell: root.shell; text: "PLAYBACK APPLICATIONS" }
+            ListView {
+                visible: !root.microphoneMode && root.playbacks.length > 0; width: parent.width; height: Math.min(contentHeight, Style.px(150)); spacing: Style.sm; clip: true; model: root.microphoneMode ? [] : root.playbacks
+                delegate: StreamControl { required property var modelData; stream: modelData }
+            }
         }
-        PopupSection { visible: root.microphoneMode && root.recordings.length > 0; shell: root.shell; text: "RECORDING APPLICATIONS" }
-        ListView {
-            visible: root.microphoneMode && root.recordings.length > 0; width: parent.width; height: Math.min(contentHeight, Style.px(150)); spacing: Style.sm; clip: true; model: root.microphoneMode ? root.recordings : []
-            delegate: StreamControl { required property var modelData; stream: modelData; recording: true }
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection { visible: root.microphoneMode && root.recordings.length > 0; shell: root.shell; text: "RECORDING APPLICATIONS" }
+            ListView {
+                visible: root.microphoneMode && root.recordings.length > 0; width: parent.width; height: Math.min(contentHeight, Style.px(150)); spacing: Style.sm; clip: true; model: root.microphoneMode ? root.recordings : []
+                delegate: StreamControl { required property var modelData; stream: modelData; recording: true }
+            }
         }
         Text { visible: root.routeError !== ""; width: parent.width; text: root.routeError; textFormat: Text.PlainText; wrapMode: Text.WordWrap; color: root.shell.urgent; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
         PopupRow { width: parent.width; shell: root.shell; icon: "󰒓"; title: "Device profiles"; detail: "Sound cards and Bluetooth codecs"; onClicked: root.openCards() }
@@ -268,7 +280,7 @@ PopupCard {
                 id: profileMessage
                 width: parent.width; text: root.profileError || (!root.selectedAudioCard ? "Audio device disconnected." : "Profile changes preserve volume and mute state.")
                 textFormat: Text.PlainText; wrapMode: Text.WordWrap
-                color: root.profileError ? root.shell.urgent : root.shell.alpha(root.shell.foreground, .48)
+                color: root.profileError ? root.shell.urgent : root.shell.mutedText
                 font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
             }
         }

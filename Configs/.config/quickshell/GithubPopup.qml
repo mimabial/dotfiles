@@ -66,12 +66,12 @@ PopupCard {
         contentWidth: width; contentHeight: listColumn.implicitHeight
         interactive: contentHeight > height; clip: true; boundsBehavior: Flickable.StopAtBounds
         ScrollBar.vertical: ScrollBar { policy: list.interactive ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
-        Column { id: listColumn; width: list.width; spacing: 2; Repeater { id: rows } }
+        Column { id: listColumn; width: list.width; spacing: Style.xxs; Repeater { id: rows } }
     }
 
     Column {
         id: githubColumn
-        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sm
+        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sectionGap
 
         PopupHero { shell: root.shell; title: "GitHub"; status: root.inbox.available === false ? "unavailable" : root.notifications.length > 0 ? root.notifications.length + " unread" : "all caught up" }
 
@@ -114,60 +114,69 @@ PopupCard {
         }
 
         PopupSeparator { visible: reviewList.visible; shell: root.shell }
-        PopupSection { visible: reviewList.visible; shell: root.shell; text: "REVIEW REQUESTS"; value: String(root.reviewItems.length) }
-        CappedList {
-            id: reviewList
-            width: parent.width
-            model: root.reviewItems
-            delegate: PopupRow {
-                required property var modelData
-                width: reviewList.width; shell: root.shell
-                icon: ""; title: modelData.title; detail: modelData.repo
-                onClicked: root.openUrl(modelData.url)
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection { visible: reviewList.visible; shell: root.shell; text: "REVIEW REQUESTS"; value: String(root.reviewItems.length) }
+            CappedList {
+                id: reviewList
+                width: parent.width
+                model: root.reviewItems
+                delegate: PopupRow {
+                    required property var modelData
+                    width: reviewList.width; shell: root.shell
+                    icon: ""; title: modelData.title; detail: modelData.repo
+                    onClicked: root.openUrl(modelData.url)
+                }
             }
         }
 
         PopupSeparator { shell: root.shell }
-        PopupSection {
-            shell: root.shell
-            text: "SECURITY"; value: root.security.available === false ? "unavailable" : String(root.security.count || 0)
-        }
-
         Column {
-            width: parent.width; spacing: 2
-            Repeater {
-                model: root.kinds
-                PopupRow {
-                    required property var modelData
-                    width: githubColumn.width; shell: root.shell
-                    icon: modelData.key === "dependabot" ? "󰇚"
-                        : modelData.key === "code-scanning" ? "󰅩" : "󰌾"
-                    title: modelData.label
-                    detail: (modelData.repos || []).length > 0
-                        ? (modelData.repos || []).map(entry => entry.repo + " " + entry.count).join(", ")
-                        : ""
-                    value: String(modelData.count || 0)
-                    active: modelData.count > 0
-                    onClicked: root.openUrl("https://github.com/settings/security_analysis")
+            width: parent.width; spacing: Style.sm
+            PopupSection {
+                shell: root.shell
+                text: "SECURITY"; value: root.security.available === false ? "unavailable" : String(root.security.count || 0)
+            }
+
+            Column {
+                width: parent.width; spacing: Style.xxs
+                Repeater {
+                    model: root.kinds
+                    PopupRow {
+                        required property var modelData
+                        width: githubColumn.width; shell: root.shell
+                        icon: modelData.key === "dependabot" ? "󰇚"
+                            : modelData.key === "code-scanning" ? "󰅩" : "󰌾"
+                        title: modelData.label
+                        detail: (modelData.repos || []).length > 0
+                            ? (modelData.repos || []).map(entry => entry.repo + " " + entry.count).join(", ")
+                            : ""
+                        value: String(modelData.count || 0)
+                        active: modelData.count > 0
+                        onClicked: root.openUrl("https://github.com/settings/security_analysis")
+                    }
                 }
             }
         }
 
         PopupSeparator { visible: root.issues.length > 0; shell: root.shell }
-        PopupSection { visible: root.issues.length > 0; shell: root.shell; text: "ISSUES" }
-
         Column {
-            visible: root.issues.length > 0
-            width: parent.width; spacing: 2
-            Repeater {
-                model: root.issues
-                Text {
-                    required property var modelData
-                    width: githubColumn.width
-                    text: modelData
-                    wrapMode: Text.Wrap
-                    color: root.shell.role("warning", root.shell.foreground)
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+            width: parent.width; spacing: Style.sm
+            PopupSection { visible: root.issues.length > 0; shell: root.shell; text: "ISSUES" }
+
+            Column {
+                visible: root.issues.length > 0
+                width: parent.width; spacing: Style.xxs
+                Repeater {
+                    model: root.issues
+                    Text {
+                        required property var modelData
+                        width: githubColumn.width
+                        text: modelData
+                        wrapMode: Text.Wrap
+                        color: root.shell.role("warning", root.shell.foreground)
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                    }
                 }
             }
         }
