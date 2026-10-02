@@ -11,12 +11,12 @@ import "dock/DockModel.js" as DockModel
 Item {
     id: root
     required property var shell
+    required property real availableWidth
     property bool popupEnabled: true
     property bool pins: false
     property bool dash: false
     property var pinned: []
     readonly property bool ungroup: shell.layoutName === "winbar" && shell.prefs.winbarCombine === "never"
-    readonly property bool combinedLabels: shell.layoutName === "winbar" && shell.prefs.winbarButtonType === "icon-label"
     readonly property int activeDashWidth: Style.px(16)
     readonly property var box: shell.style.box("taskbar")
     property int iconSize: 18
@@ -25,10 +25,12 @@ Item {
     readonly property var buttonBox: shell.style.box("#taskbar button")
     readonly property real buttonInset: Math.max(buttonBox.borderWidth, buttonBox.borderBottomWidth || 0)
     readonly property real buttonWidth: Math.max(Style.px(24), scaledIcon + buttonBox.margin[1] + buttonBox.margin[3] + buttonBox.padding[1] + buttonBox.padding[3] + 2 * buttonInset)
+    readonly property real labelExtraWidth: scaledIcon * 5
     readonly property real buttonHeight: scaledIcon + buttonBox.margin[0] + buttonBox.margin[2] + buttonBox.padding[0] + buttonBox.padding[2] + 2 * buttonInset
     readonly property real spanX: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * box.borderWidth
     readonly property real spanY: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * box.borderWidth
-    implicitWidth: slots.length ? strip.implicitWidth + spanX : 0
+    readonly property real desiredWidth: neededWidth()
+    implicitWidth: shell.layoutName === "winbar" ? Math.min(desiredWidth, availableWidth) : desiredWidth
     implicitHeight: slots.length ? buttonHeight + spanY : 0
     visible: slots.length > 0
 
@@ -41,6 +43,18 @@ Item {
     readonly property string activeAppId: ToplevelManager.activeToplevel
         ? String(ToplevelManager.activeToplevel.appId || "").toLowerCase() : ""
     property string lastFingerprint: "\u0000"
+    FontMetrics { id: labelMetrics; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+
+    function neededWidth() {
+        let width = 0
+        for (const record of slots) {
+            const matches = windowsFor(record)
+            width += buttonWidth + (matches.length && ungroup
+                ? Style.sm + labelWidth(buttonLabel(record, matches)) : 0)
+        }
+        return slots.length ? spanX + width + (slots.length - 1) * slotSpacing : 0
+    }
+    function labelWidth(label) { return Math.min(labelExtraWidth, Math.ceil(labelMetrics.advanceWidth(label))) }
 
     function windowDescriptors() {
         const serial = windowSerial
@@ -158,6 +172,10 @@ Item {
     function activate(record) {
         const matches = windowsFor(record)
         if (!matches.length) { launch(record); return }
+        if (shell.workflow === "windows" && shell.dock) {
+            const focused = matches.find(window => window.address === activeAddress)
+            if (focused) { shell.dock.minimizeToplevel(focused.address); return }
+        }
         if (record.address) { focusWindow(matches[0]); return }
         const index = AppModel.nextWindowIndex(matches, activeAddress)
         focusWindow(matches[index])
@@ -183,29 +201,32 @@ Item {
         return workspace ? "[" + workspace + "]" : ""
     }
     function windowsFor(record) { return record && record.address ? windows.filter(window => window.address === record.address) : AppModel.windowsFor(record, windows) }
+    function buttonLabel(record, matches) { return record.address && matches.length ? matches[0].title || labelFor(record) : labelFor(record) }
 
-    Row {
-        id: strip
-        anchors.left: parent.left
-        anchors.leftMargin: root.box.margin[3] + root.box.padding[3] + root.box.borderWidth
-        anchors.top: parent.top; anchors.topMargin: root.box.margin[0] + root.box.padding[0] + root.box.borderWidth
-        anchors.bottom: parent.bottom; anchors.bottomMargin: root.box.margin[2] + root.box.padding[2] + root.box.borderWidth
+    ListView {
+        id: viewport
+        x: root.box.margin[3] + root.box.padding[3] + root.box.borderWidth
+        y: root.box.margin[0] + root.box.padding[0] + root.box.borderWidth
+        width: Math.max(0, root.width - root.spanX)
+        height: Math.max(0, root.height - root.spanY)
+        clip: true
+        orientation: ListView.Horizontal
         spacing: root.slotSpacing
-        Repeater {
-            model: root.slots
-            delegate: Item {
+        boundsBehavior: Flickable.StopAtBounds
+        model: root.slots
+        delegate: Item {
                 id: slot
                 required property var modelData
                 readonly property var matched: root.windowsFor(modelData)
                 property int selectedWindowIdx: -1
                 property bool wasDragged: false
                 readonly property bool running: matched.length > 0
-                readonly property bool labeled: running && (root.ungroup || root.combinedLabels)
-                readonly property string buttonLabel: modelData.address && matched.length
-                    ? matched[0].title || root.labelFor(modelData) : root.labelFor(modelData)
+                readonly property bool labeled: running && root.ungroup
+                readonly property string buttonLabel: root.buttonLabel(modelData, matched)
                 readonly property bool active: matched.some(window => window.address === root.activeAddress)
                     || (!modelData.address && !!root.activeAppId && String(modelData.desktopId || "").toLowerCase() === root.activeAppId)
                 readonly property bool urgent: !active && !!root.shell.dock && matched.some(window => root.shell.dock.urgentMap[window.address])
+                readonly property bool minimized: root.shell.layoutName === "winbar" && running && matched.every(window => root.windowParked(window))
                 property real pulse: 1
                 SequentialAnimation on pulse {
                     running: slot.urgent
@@ -221,8 +242,8 @@ Item {
                     if (!spec) return "transparent"
                     return Array.isArray(spec) ? root.shell.alpha(root.shell.role(spec[0], fallback), spec[1] ?? 1) : root.shell.role(spec, fallback)
                 }
-                width: root.buttonWidth + (slot.labeled ? root.scaledIcon * 5 : 0)
-                height: strip.height
+                width: root.buttonWidth + (slot.labeled ? Style.sm + root.labelWidth(slot.buttonLabel) : 0)
+                height: viewport.height
                 Rectangle {
                     id: frame
                     anchors.fill: parent
@@ -258,7 +279,8 @@ Item {
                     anchors.horizontalCenter: frame.horizontalCenter
                     anchors.bottom: frame.bottom; anchors.bottomMargin: Style.xxs
                     width: slot.active ? root.activeDashWidth : indicators.dotSize; height: indicators.dotSize; radius: height / 2
-                    color: slot.urgent ? root.shell.urgent : mouse.containsMouse ? root.shell.role("hvr_br", root.shell.accent)
+                    color: slot.urgent ? root.shell.urgent : slot.minimized ? root.shell.role("info", root.shell.foreground)
+                        : mouse.containsMouse ? root.shell.role("hvr_br", root.shell.accent)
                         : slot.active ? root.shell.accent : root.shell.alpha(root.shell.foreground, .5)
                     opacity: slot.urgent ? 0.4 + 0.6 * slot.pulse : 1
                     Behavior on width { NumberAnimation { duration: 140; easing.type: Easing.OutQuad } }
@@ -328,7 +350,12 @@ Item {
                     onPressed: slot.wasDragged = false
                     onExited: slot.selectedWindowIdx = -1
                     onWheel: wheel => {
-                        if (!wheel.angleDelta.y || !slot.matched.length) return
+                        if (!wheel.angleDelta.y) return
+                        if (viewport.contentWidth > viewport.width) {
+                            viewport.contentX = Math.max(0, Math.min(viewport.contentWidth - viewport.width, viewport.contentX - wheel.angleDelta.y))
+                            return
+                        }
+                        if (!slot.matched.length) return
                         const step = wheel.angleDelta.y > 0 ? -1 : 1
                         if (slot.matched.length === 1) { root.focusWindow(slot.matched[0]); return }
                         const focused = slot.matched.findIndex(window => window.address === root.activeAddress)
@@ -389,7 +416,6 @@ Item {
                     blocked: menu.open
                 }
             }
-        }
     }
     TaskbarPopup { id: menu; anchorItem: root.popupAnchor; shell: root.shell; taskbar: root; popupEnabled: root.popupEnabled }
 }

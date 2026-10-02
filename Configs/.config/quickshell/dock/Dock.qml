@@ -19,6 +19,7 @@ Item {
   component MenuDivider: DockMenuDivider { menuWidth: folderStackPopover.rowWidth }
 
   required property var shell
+  readonly property bool dockActive: root.shell.workflow !== "windows"
   property alias contextSelectedWindowIdx: contextMenu.selectedWindowIdx
   property alias dockCardItem: dockCard
 
@@ -83,7 +84,7 @@ Item {
   // Pushing the pointer against the dock's edge of another display brings the
   // dock there, as on macOS.
   Variants {
-    model: Array.prototype.filter.call(Quickshell.screens, screen => screen !== root.dockScreen)
+    model: root.dockActive ? Array.prototype.filter.call(Quickshell.screens, screen => screen !== root.dockScreen) : []
     PanelWindow {
       id: followStrip
       required property var modelData
@@ -933,6 +934,12 @@ Item {
   }
 
   function syncVisibility() {
+    if (!root.dockActive) {
+      hideTimer.stop()
+      revealTimer.stop()
+      root.dockVisible = false
+      return
+    }
     if (!root.autohide) {
       hideTimer.stop()
       revealTimer.stop()
@@ -974,6 +981,7 @@ Item {
     else appGroupFocusTimer.stop()
   }
   onDragAppIdChanged: root.syncVisibility()
+  onDockActiveChanged: root.syncVisibility()
   onAutohideChanged: root.syncVisibility()
   onIntelligentAutohideChanged: {
     if (root.intelligentAutohide) debounceOverlapTimer.restart()
@@ -2652,12 +2660,13 @@ Item {
   // Back to a low threshold now that nothing paints outside the card: it only
   // has to clear the empty room the panel reserves for its popups, so even the
   // faintest opacity preset still gets its blur.
-  Shell.LayerBlur { surface: "hypr-shell-dock"; enabled: root.blurred; ignoreAlpha: 0.1 }
+  Shell.LayerBlur { surface: "hypr-shell-dock"; enabled: root.blurred && root.dockActive; ignoreAlpha: 0.1 }
 
   PanelWindow {
     id: dockWindow
 
     screen: root.dockScreen
+    visible: root.dockActive
     color: "transparent"
     WlrLayershell.namespace: "hypr-shell-dock"
     WlrLayershell.layer: WlrLayer.Top

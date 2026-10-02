@@ -39,7 +39,7 @@ mainbox {
        row off centre. Identical layout once the listview has rows. */
     spacing:                     0px;
     margin:                      0px;
-    padding:                     20px;
+    padding:                     10px;
     border:                      0px solid;
     border-radius:               0px;
     border-color:                @border;

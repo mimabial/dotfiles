@@ -31,6 +31,8 @@ Item {
     readonly property bool overlayFooter: card.controller.windowFooterStyle === "overlay"
     readonly property bool centeredFooter: card.controller.windowFooterStyle === "centered"
     readonly property bool inMacSpace: WindowModel.workspaceName(modelData).indexOf("macspace_") === 0
+    readonly property int fullscreenMode: 2
+    readonly property bool fullscreenWindow: WindowModel.ipcFor(modelData).fullscreen === card.fullscreenMode
     property bool actionHovered: false
     readonly property string windowTitle: String(modelData.title || WindowModel.appIdFor(modelData) || "Untitled window")
     readonly property string applicationName: WindowModel.appIdFor(modelData) || "Application"
@@ -210,7 +212,7 @@ Item {
                 Shell.SymbolicIcon {
                     id: actionIcon
                     anchors.centerIn: parent
-                    name: card.inMacSpace ? "view-restore" : "view-fullscreen"
+                    name: card.inMacSpace || card.fullscreenWindow ? "view-restore" : "view-fullscreen"
                     context: "actions"
                     color: Color.menu.text
                     size: Style.font.heading

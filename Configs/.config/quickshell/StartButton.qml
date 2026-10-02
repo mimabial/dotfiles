@@ -29,12 +29,6 @@ BarButton {
         items: open ? [
             {text: "Combine app windows", checked: root.shell.prefs.winbarCombine !== "never",
                 run: () => root.shell.toggleWinbarCombine()},
-            {text: "Combined button type", submenu: [
-                {text: "Icon only", checked: root.shell.prefs.winbarButtonType === "icon",
-                    run: () => root.shell.setWinbarButtonType("icon")},
-                {text: "Icon + label", checked: root.shell.prefs.winbarButtonType === "icon-label",
-                    run: () => root.shell.setWinbarButtonType("icon-label")}
-            ]},
             {text: "Automatically hide taskbar", checked: root.shell.prefs.winbarAutoHide,
                 run: () => {
                     const enabled = !root.shell.prefs.winbarAutoHide

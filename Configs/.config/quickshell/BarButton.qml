@@ -99,7 +99,7 @@ Item {
     readonly property real naturalWidth: Math.max(box.minWidth, (boxedIcon ? Math.max(iconBoxPx * iconMaxAspect, label.implicitWidth) : label.implicitWidth)
         + leadingIconWidth) + trailingWidth + horizontalInsets
     implicitWidth: fixedWidth > 0 ? fixedWidth : maxWidth > 0 ? Math.min(naturalWidth, maxWidth) : naturalWidth
-    implicitHeight: Math.max(box.minHeight, boxedIcon ? iconBoxPx : label.implicitHeight, leadingIcon !== "" ? icon.implicitHeight : 0) + verticalInsets
+    implicitHeight: Math.max(box.minHeight, boxedIcon ? iconBoxPx : label.implicitHeight, leadingIconMetrics.tightBoundingRect.height) + verticalInsets
     readonly property rect paintedLabelBounds: Qt.rect(
         label.x + textOffsetX + (textAlignment === Text.AlignLeft ? 0
             : textAlignment === Text.AlignRight ? label.width - label.paintedWidth
@@ -138,6 +138,7 @@ Item {
         font.family: root.shell.iconGlyphFont
         font.pixelSize: root.leadingIconSize
     }
+    TextMetrics { id: leadingIconMetrics; font: icon.font; text: icon.text }
     Text {
         id: label
         visible: !((symbolLoader.item as SymbolicIcon)?.loaded ?? false)

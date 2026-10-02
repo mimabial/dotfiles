@@ -209,7 +209,7 @@ bind(
 	"[Window Management] toggle maximize",
 	hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })
 )
-exec(mod .. " SHIFT", "M", "[Window Management] minimize to dock", "quickshell ipc call dock minimizeActive")
+exec(mod .. " SHIFT", "M", "[Window Management] minimize window", "quickshell ipc call dock minimizeActive")
 exec(mod, "P", "[Window Management] toggle pin", "hyprshell window/windowpin.sh")
 bind(mod, "G", "[Window Management] toggle group", hl.dsp.group.toggle())
 bind(mod .. " SHIFT", "F", "[Window Management] toggle floating", toggle_floating)

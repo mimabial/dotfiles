@@ -36,10 +36,14 @@ Item {
     Layout.fillWidth: true
     implicitWidth: row.implicitWidth + (newWorkspace.implicitWidth + Style.spacing.sm) * 2
     implicitHeight: Math.max(row.implicitHeight, newWorkspace.implicitHeight)
+    readonly property real separatorCenterX: row.x + separator.x + separator.width / 2
 
     Row {
         id: row
-        anchors.horizontalCenter: parent.horizontalCenter
+        readonly property real maxVisibleX: strip.width - width - Style.spacing.sm - newWorkspace.implicitWidth
+        x: separator.visible
+            ? Math.max(0, Math.min(maxVisibleX, strip.width / 2 - separator.x - separator.width / 2))
+            : (strip.width - width) / 2
         spacing: Style.spacing.sm
 
         Repeater {
@@ -48,6 +52,7 @@ Item {
         }
 
         Rectangle {
+            id: separator
             visible: strip.workspaces.special.length > 0
             width: Style.normalBorderWidth
             height: strip.previewHeight

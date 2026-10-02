@@ -213,7 +213,6 @@ ShellRoot {
             property bool barFloating: false
             property bool winbarAutoHide: false
             property string winbarCombine: "always"
-            property string winbarButtonType: "icon-label"
             property string trayHidden: "[]"
             property string trayPinned: "[]"
             property bool trayShowIcons: true
@@ -329,7 +328,6 @@ ShellRoot {
     function togglePopup(name, centered) { popupCenteredName = centered === true ? name : ""; popupName = popupName === name ? "" : name }
     function closePopup() { popupName = "" }
     function toggleWinbarCombine() { prefs.winbarCombine = prefs.winbarCombine === "never" ? "always" : "never" }
-    function setWinbarButtonType(type) { prefs.winbarButtonType = type }
     function switchMenu(step) {
         const names = ["hyprmenu"].concat(menuBarHeadings.map(title => "appmenu:" + title))
         const index = names.indexOf(popupName)

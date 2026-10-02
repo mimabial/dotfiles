@@ -9,13 +9,14 @@ Item {
     id: catalog
     required property var shell
     required property bool popupsAllowed
+    required property real taskbarAvailableWidth
     readonly property bool winbar: shell.mode === "winbar"
     readonly property bool horizontal: shell.mode === "horizontal"
     readonly property var registry: ({
         "menu": mod_menu, "taskbar": mod_taskbar, "workspaces": mod_workspaces, "submap": mod_submap,
         "tray": mod_tray,
         "mediaplayer": mod_media, "datetime": mod_datetime,
-        "weather": mod_weather,
+        "weather": catalog.winbar ? mod_winbar_weather : mod_weather,
         "systemstats": mod_systemstats, "agents": mod_agents,
         "wifi": mod_wifi, "bluetooth": mod_bluetooth, "vpn": mod_vpn,
         "printers": mod_printers, "removable": mod_removable, "volume": mod_volume, "microphone": mod_microphone,
@@ -29,11 +30,11 @@ Item {
         "appmenu": mod_appmenu, "battery": mod_battery, "spotlight": mod_spotlight, "controlcenter": mod_controlcenter, "nowplaying": mod_nowplaying, "sound-menu": mod_sound,
         "wifi-menu": mod_wifi_menu, "bluetooth-menu": mod_bluetooth_menu, "vpn-menu": mod_vpn_menu, "language-menu": mod_language_menu, "mirroring-menu": mod_mirroring_menu, "display-menu": mod_display_menu,
         "notification-center": mod_notification_center,
-        "widgets": mod_widgets, "expose-strip": mod_expose_strip
+        "expose-strip": mod_expose_strip
     })
 
     Component { id: mod_menu; StartButton { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
-    Component { id: mod_taskbar; WindowList { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_taskbar; WindowList { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; availableWidth: catalog.taskbarAvailableWidth; Layout.fillHeight: true } }
     Component { id: mod_workspaces; Workspaces { shell: catalog.shell; activeOnly: !catalog.winbar; hideActive: catalog.winbar; popupEnabled: !catalog.winbar && catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_submap; SubmapButton { shell: catalog.shell; alt: true; baseColor: catalog.shell.alpha(catalog.shell.role("br", catalog.shell.foreground), .7); Layout.fillHeight: true } }
     Component { id: mod_tray; Tray { shell: catalog.shell; registry: catalog.registry; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
@@ -88,13 +89,13 @@ Item {
     Component { id: mod_language_menu; LanguageMenu { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_mirroring_menu; MirroringMenu { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_display_menu; DisplayMenu { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
-    Component { id: mod_widgets; BarButton {
-        id: widgets
+    Component { id: mod_winbar_weather; BarButton {
+        id: weatherButton
         readonly property var readouts: Weather.output.readouts ?? {}
-        shell: catalog.shell; css: "widgets"; leadingIcon: readouts.current?.icon ?? ""; Layout.fillHeight: true
+        shell: catalog.shell; css: "weather"; leadingIcon: readouts.current?.icon ?? ""; Layout.fillHeight: true
         text: readouts.current && readouts.condition ? readouts.current.value + "\n" + readouts.condition.value : ""
         onClicked: catalog.shell.togglePopup("weather")
-        WeatherPopup { anchorItem: widgets; shell: catalog.shell; popupEnabled: catalog.popupsAllowed }
+        WeatherPopup { anchorItem: weatherButton; shell: catalog.shell; popupEnabled: catalog.popupsAllowed }
     } }
     Component { id: mod_expose_strip; BarButton {
         readonly property bool shown: true

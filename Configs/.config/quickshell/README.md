@@ -63,10 +63,10 @@ apps listed in `taskbar/pins.json` first, running or not, and adds Pin/Unpin to 
 right-click menu; `"dash": true` draws one Windows-style dash per app, wide and
 accented for the focused one, instead of a dot per window.
 The `winbar` combines each app's windows into one button or shows separate window
-buttons. Separate window buttons always show icon and title; Combined button type
-selects icons or icons with app labels for grouped buttons. The Start button's
-right-click menu controls combining and auto-hide. Pinned apps can be reordered
-by dragging their buttons. App context menus also list recent files whose
+buttons. Separate window buttons show icon and title; combined buttons show icons
+only. The Start button's right-click menu controls combining and auto-hide.
+Pinned apps can be reordered by dragging their buttons. App context menus also
+list recent files whose
 recorded application name matches the app.
 
 The `winbar` tray is the Windows overflow, adapted from

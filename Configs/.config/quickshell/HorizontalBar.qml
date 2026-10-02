@@ -4,7 +4,12 @@ BarSurface {
     id: root
     readonly property var layout: shell.barLayout
     readonly property bool onTop: shell.barEdge === "top"
-    BarModules { id: moduleCatalog; shell: root.shell; popupsAllowed: root.popupsAllowed }
+    BarModules {
+        id: moduleCatalog
+        shell: root.shell; popupsAllowed: root.popupsAllowed
+        taskbarAvailableWidth: Math.max(0, rightRow.x - leftRow.x - leftRow.width
+            - centerFallback.leftInset - centerFallback.rightInset)
+    }
     readonly property var registry: moduleCatalog.registry
     readonly property var centerModules: layout.center || []
     readonly property int centerAnchorIndex: moduleIndex(centerModules, String(layout.centerAnchor || ""))
@@ -46,7 +51,14 @@ BarSurface {
     }
     BarSection {
         id: centerFallback
-        anchors.horizontalCenter: parent.horizontalCenter; anchors.horizontalCenterOffset: -centerFallback.contentCenterOffset; anchors.top: parent.top; anchors.bottom: parent.bottom
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.horizontalCenterOffset: {
+            if (root.shell.layoutName !== "winbar") return -centerFallback.contentCenterOffset
+            const base = (root.width - centerFallback.width) / 2
+            const preferred = base - centerFallback.contentCenterOffset
+            return Math.max(leftRow.x + leftRow.width, Math.min(preferred, rightRow.x - centerFallback.width)) - base
+        }
+        anchors.top: parent.top; anchors.bottom: parent.bottom
         registry: root.registry; shell: root.shell; sectionName: "center"; modules: root.centerAnchorIndex < 0 ? root.centerModules : []
     }
     BarSection {

@@ -1691,14 +1691,16 @@ Item {
                         chipHeight: statusGroup.implicitHeight
                     }
 
-                    RowLayout {
+                    Item {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: scopeKey.Layout.preferredHeight + Style.spacing.sm * 2
-
-                        Item { Layout.fillWidth: true }
+                        Layout.preferredHeight: statusGroup.implicitHeight + Style.spacing.sm * 2
 
                         RowLayout {
                             id: statusGroup
+                            x: workspaceStrip.workspaces.special.length > 0
+                                ? workspaceStrip.x + workspaceStrip.separatorCenterX - parent.x - statusSeparator.x - statusSeparator.width / 2
+                                : (parent.width - width) / 2
+                            anchors.verticalCenter: parent.verticalCenter
                             spacing: Style.spacing.md
 
                             Text {
@@ -1711,6 +1713,7 @@ Item {
                             }
 
                             Rectangle {
+                                id: statusSeparator
                                 Layout.preferredWidth: Math.max(1, Style.normalBorderWidth)
                                 Layout.preferredHeight: Style.space(24)
                                 color: Color.menu.border
@@ -1737,23 +1740,6 @@ Item {
                                 font.bold: true
                                 elide: Text.ElideRight
                             }
-
-                            ThemedControl {
-                                id: scopeKey
-                                Layout.preferredWidth: Style.space(34)
-                                Layout.preferredHeight: Style.space(24)
-                                radius: Math.max(2, Style.cornerRadius - Style.spacing.sm)
-                                color: "transparent"
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "Tab"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.caption
-                                }
-                            }
                         }
                     }
 
@@ -1763,7 +1749,7 @@ Item {
                         Layout.fillHeight: true
                         readonly property var windowLayout: {
                             var revision = root.modelRevision;
-                            return root.computeWindowLayout(overviewWindow.screenToplevels, width, height, Style.space(64), Style.spacing.sm, root.windowFooterHeight, overviewWindow.screenRatio);
+                            return root.computeWindowLayout(overviewWindow.screenToplevels, width, height, Style.spacing.huge * 2, Style.spacing.sm, root.windowFooterHeight, overviewWindow.screenRatio);
                         }
 
                         Item {

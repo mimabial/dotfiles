@@ -30,8 +30,8 @@
   "iconSize": 36,
   "recentApps": [
     "xdg-desktop-portal-gtk",
-    "org.pwmt.zathura",
-    "org.qbittorrent.qBittorrent"
+    "libreoffice-writer",
+    "signal"
   ],
   "showRecents": true,
   "showIndicators": true
