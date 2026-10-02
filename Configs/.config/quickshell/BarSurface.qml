@@ -27,6 +27,9 @@ PanelWindow {
     // Prime focus briefly; holding Exclusive would swallow outside clicks.
     WlrLayershell.keyboardFocus: !popupOpen ? WlrKeyboardFocus.None
         : exclusivePhase ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
+    HoverHandler {
+        onHoveredChanged: if (root.shell.mode === "winbar" && root.shell.prefs.winbarAutoHide) root.shell.barRevealed = hovered
+    }
 
     Rectangle {
         id: surface

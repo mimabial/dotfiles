@@ -1,7 +1,7 @@
 local runtime = require("runtime")
 local vars = require("vars")
 
-vars.set("WORKFLOW_ICON", "")
+vars.set("WORKFLOW_ICON", "󰕭")
 vars.set("WORKFLOW_DESCRIPTION", "Scrollable tiling like niri // half-width columns, vertical workspaces")
 
 runtime.config("general.layout", "scrolling")

@@ -78,6 +78,45 @@ function sameItems(left, right) {
     return true;
 }
 
+function thumbnailRect(toplevel, windows, source, outputWidth, outputHeight, gap) {
+    var ipc = ipcFor(toplevel), at = ipc.at || [], size = ipc.size || [];
+    var left = Number(at[0] ?? source.x), top = Number(at[1] ?? source.y);
+    var right = left + Number(size[0] ?? 0), bottom = top + Number(size[1] ?? 0);
+    var nearLeft = -Infinity, nearTop = -Infinity, nearRight = Infinity, nearBottom = Infinity;
+    if (!ipc.floating && !ipc.pinned && !ipc.fullscreen) {
+        for (var index = 0; index < windows.length; index++) {
+            var other = windows[index];
+            if (other === toplevel)
+                continue;
+            var candidate = ipcFor(other);
+            if (candidate.floating || candidate.pinned || candidate.fullscreen)
+                continue;
+            var position = candidate.at || [], dimensions = candidate.size || [];
+            var x = Number(position[0] ?? source.x), y = Number(position[1] ?? source.y);
+            var r = x + Number(dimensions[0] ?? 0), b = y + Number(dimensions[1] ?? 0);
+            if (r <= x || b <= y)
+                continue;
+            if (b > top && y < bottom) {
+                if (r <= left) nearLeft = Math.max(nearLeft, r);
+                if (x >= right) nearRight = Math.min(nearRight, x);
+            }
+            if (r > left && x < right) {
+                if (b <= top) nearTop = Math.max(nearTop, b);
+                if (y >= bottom) nearBottom = Math.min(nearBottom, y);
+            }
+        }
+        left = nearLeft > -Infinity ? (nearLeft + left) / 2 : source.x;
+        right = nearRight < Infinity ? (nearRight + right) / 2 : source.x + source.width;
+        top = nearTop > -Infinity ? (nearTop + top) / 2 : source.y;
+        bottom = nearBottom < Infinity ? (nearBottom + bottom) / 2 : source.y + source.height;
+    }
+    var x1 = (left - source.x) * outputWidth / source.width + (nearLeft > -Infinity ? gap / 2 : 0);
+    var x2 = (right - source.x) * outputWidth / source.width - (nearRight < Infinity ? gap / 2 : 0);
+    var y1 = (top - source.y) * outputHeight / source.height + (nearTop > -Infinity ? gap / 2 : 0);
+    var y2 = (bottom - source.y) * outputHeight / source.height - (nearBottom < Infinity ? gap / 2 : 0);
+    return { x: x1, y: y1, width: x2 - x1, height: y2 - y1 };
+}
+
 function compositionRows(entries, rowCount) {
     var rows = [];
     for (var row = 0; row < rowCount; row++)
@@ -136,7 +175,7 @@ function composeRows(rows, scale, width, height, gap, padding, footerHeight) {
             var card = row.cards[cardIndex];
             result[card.index] = {
                 x: x,
-                y: y + (row.height - card.height) * (((card.index + outputRow) % 3) / 2),
+                y: y + (row.height - card.height) / 2,
                 width: card.width,
                 height: card.height
             };

@@ -2,17 +2,16 @@
   "panel": "winbar",
   "edge": "bottom",
   "left": [
-    "widgets"
-  ],
-  "center": [
     {
       "id": "menu",
       "props": {
-        "text": ""
+        "text": "",
+        "taskbarSettings": true
       }
     },
-    "search",
-    "taskview",
+    "widgets"
+  ],
+  "center": [
     {
       "id": "taskbar",
       "props": {
@@ -38,7 +37,10 @@
   "right": [
     "tray",
     "language",
-    "quicksettings",
+    "spotlight",
+    "wifi-menu",
+    "sound-menu",
+    "battery",
     "datetime",
     {
       "id": "notifications",
@@ -47,6 +49,6 @@
         "themed": true
       }
     },
-    "showdesktop"
+    "expose-strip"
   ]
 }

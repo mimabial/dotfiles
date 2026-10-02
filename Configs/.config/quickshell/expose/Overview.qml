@@ -1,6 +1,5 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
 import Quickshell
@@ -8,7 +7,6 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
-import qs.Ui as Ui
 import "IconResolver.js" as IconResolver
 import "WindowModel.js" as WindowModel
 
@@ -95,6 +93,7 @@ Item {
         return isFinite(value) ? Math.max(0, Math.min(90, Math.round(value))) : 6;
     }
     readonly property bool hotCornerEnabled: !root.pluginEntry || root.pluginEntry.hotCornerEnabled !== false
+    readonly property bool hotCornerActive: hotCornerEnabled && root.shell.mode !== "winbar"
     readonly property string hotCornerPosition: {
         var position = String((root.pluginEntry && root.pluginEntry.hotCornerPosition) || "top-left");
         return ["top-left", "top-right", "bottom-left", "bottom-right"].indexOf(position) !== -1
@@ -116,7 +115,6 @@ Item {
         : "mirrored"
     readonly property bool showFooter: !root.pluginEntry || root.pluginEntry.showFooter !== false
     readonly property real dragPreviewHeight: Style.space(72)
-    readonly property real searchFieldWidth: Style.space(640)
     readonly property real workspaceBandBlur: Style.space(64)
     readonly property real workspaceBandTint: 0.25
     // Apple's frosted material saturates its backdrop to 180%.
@@ -132,25 +130,11 @@ Item {
     property string appFilter: ""
     property string workspaceScope: "all"
     property int selectedIndex: 0
-    property int hoveredIndex: -1
     property int previewIndex: -1
     property int previewExitIndex: -1
     property bool previewSlowMotion: false
     property bool previewNavigationSlowMotion: false
     property bool openingPending: false
-    property bool settingsOpen: false
-    property int settingsCategoryIndex: 0
-    property bool footerHideConfirmationOpen: false
-    property bool footerHideAcknowledged: false
-    property string animationDurationPreviewStyle: ""
-    property real animationInDurationPreview: -1
-    property real animationOutDurationPreview: -1
-    property real backgroundBlurPreview: -1
-    property real backgroundDimPreview: -1
-    property real hotCornerDelayPreview: -1
-    readonly property int effectiveHotCornerDelay: root.hotCornerDelayPreview >= 0 ? Math.round(root.hotCornerDelayPreview) : root.hotCornerDelay
-    readonly property real effectiveBackgroundBlur: root.backgroundBlurPreview >= 0 ? root.backgroundBlurPreview : root.backgroundBlur
-    readonly property real effectiveBackgroundDim: root.backgroundDimPreview >= 0 ? root.backgroundDimPreview : root.backgroundDim
     readonly property int previewAnimationDuration: root.previewSlowMotion || root.previewNavigationSlowMotion ? 4000 : 190
     readonly property int previewFadeDuration: root.previewSlowMotion || root.previewNavigationSlowMotion ? 4000 : 130
     readonly property int previewAnimationEasing: root.previewNavigationSlowMotion ? Easing.InOutCubic : Easing.OutQuart
@@ -217,16 +201,15 @@ Item {
     }
 
     onMultiMonitorModeChanged: {
-        root.hoveredIndex = -1;
         root.clearPreview();
         root.modelRevision++;
         root.selectedIndex = Math.max(0, root.filteredToplevels.indexOf(Hyprland.activeToplevel));
     }
 
-    onEffectiveBackgroundBlurChanged: {
+    onBackgroundBlurChanged: {
         if (!root.surfaceMounted)
             return;
-        if (!backgroundBlurSession.running && root.effectiveBackgroundBlur > 0 && !root.backgroundBlurFailed) {
+        if (!backgroundBlurSession.running && root.backgroundBlur > 0 && !root.backgroundBlurFailed) {
             root.backgroundBlurPrimed = false;
             backgroundBlurSession.running = true;
         } else {
@@ -240,7 +223,6 @@ Item {
         var blurRestoreInFlight = root.restoringDesktopBlur && backgroundBlurSession.running;
         if (!blurRestoreInFlight)
             root.restoringDesktopBlur = false;
-        root.closeSettings();
         root.filterText = "";
         root.appFilter = String(app || "");
         root.workspaceScope = root.appFilter ? "all" : root.initialWorkspaceScope;
@@ -266,11 +248,10 @@ Item {
         root.refreshHyprlandState();
         root.resetSessionToplevels();
         root.selectedIndex = Math.max(0, root.filteredToplevels.indexOf(Hyprland.activeToplevel));
-        root.hoveredIndex = -1;
         root.clearPreview();
         root.backgroundBlurPrimed = false;
         root.backgroundBlurFailed = false;
-        if (root.effectiveBackgroundBlur > 0) {
+        if (root.backgroundBlur > 0) {
             if (!blurRestoreInFlight)
                 backgroundBlurSession.running = true;
         } else {
@@ -284,8 +265,6 @@ Item {
 
     function startDismiss() {
         root.openingPending = false;
-        root.closeSettings();
-        root.hoveredIndex = -1;
         root.clearPreview();
         root.opened = false;
         if (root.restoringDesktopBlur)
@@ -312,7 +291,7 @@ Item {
     }
 
     function requestedBackgroundBlur() {
-        return Math.max(0, Math.round(root.effectiveBackgroundBlur));
+        return Math.max(0, Math.round(root.backgroundBlur));
     }
 
     function writeBackgroundBlur(size) {
@@ -327,7 +306,7 @@ Item {
     function prepareOpenSurface() {
         if (!root.openingPending)
             return;
-        if (root.effectiveBackgroundBlur > 0 && !root.backgroundBlurFailed) {
+        if (root.backgroundBlur > 0 && !root.backgroundBlurFailed) {
             if (!backgroundBlurSession.running) {
                 root.backgroundBlurPrimed = false;
                 backgroundBlurSession.running = true;
@@ -416,14 +395,6 @@ Item {
             root.shell.updateExposeSetting(name, value);
     }
 
-    function resetSettings() {
-        root.clearAnimationTimingPreview();
-        root.backgroundBlurPreview = -1;
-        root.backgroundDimPreview = -1;
-        root.hotCornerDelayPreview = -1;
-        root.shell?.resetExposeSettings();
-    }
-
     function setPreviewPlacement(value) {
         var mode = value === "centered" ? "centered" : "in-place";
         if (mode !== root.previewPlacement)
@@ -457,14 +428,10 @@ Item {
     }
 
     function animationInDurationFor(style) {
-        if (root.animationInDurationPreview >= 0 && root.animationDurationPreviewStyle === style)
-            return root.animationInDurationPreview;
         return Number(root.animationTimingFor(style)["in"]);
     }
 
     function animationOutDurationFor(style) {
-        if (root.animationOutDurationPreview >= 0 && root.animationDurationPreviewStyle === style)
-            return root.animationOutDurationPreview;
         return Number(root.animationTimingFor(style)["out"]);
     }
 
@@ -558,12 +525,6 @@ Item {
         return next;
     }
 
-    function clearAnimationTimingPreview() {
-        root.animationDurationPreviewStyle = "";
-        root.animationInDurationPreview = -1;
-        root.animationOutDurationPreview = -1;
-    }
-
     function setBackgroundBlur(value) {
         var numeric = Number(value);
         if (!isFinite(numeric))
@@ -582,37 +543,6 @@ Item {
         if (next !== root.backgroundDim)
             root.updatePluginSetting("backgroundDim", next);
         return next;
-    }
-
-    function openSettings() {
-        if (!root.surfaceMounted)
-            root.open();
-        root.closeFooterHideConfirmation();
-        root.clearAnimationTimingPreview();
-        root.backgroundBlurPreview = -1;
-        root.backgroundDimPreview = -1;
-        root.hotCornerDelayPreview = -1;
-        root.settingsCategoryIndex = 0;
-        root.settingsOpen = true;
-        Qt.callLater(function () {
-            if (root.settingsOpen)
-                root.focusSettingsCategory();
-        });
-    }
-
-    function closeSettings() {
-        var restoreKeyboardFocus = root.settingsOpen && root.opened;
-        root.closeFooterHideConfirmation();
-        root.settingsOpen = false;
-        root.clearAnimationTimingPreview();
-        root.backgroundBlurPreview = -1;
-        root.backgroundDimPreview = -1;
-        root.hotCornerDelayPreview = -1;
-        if (restoreKeyboardFocus)
-            Qt.callLater(function () {
-                if (root.opened)
-                    root.focusKeyboardWindow();
-            });
     }
 
     function clearPreview() {
@@ -670,25 +600,6 @@ Item {
             root.updatePluginSetting("multiMonitorMode", mode);
     }
 
-    function requestFooterHide() {
-        if (!root.showFooter)
-            return;
-        root.footerHideAcknowledged = false;
-        root.footerHideConfirmationOpen = true;
-    }
-
-    function closeFooterHideConfirmation() {
-        root.footerHideConfirmationOpen = false;
-        root.footerHideAcknowledged = false;
-    }
-
-    function confirmFooterHide() {
-        if (!root.footerHideConfirmationOpen || !root.footerHideAcknowledged || !root.showFooter)
-            return;
-        root.updatePluginSetting("showFooter", false);
-        root.closeFooterHideConfirmation();
-    }
-
     function hotCornerHovered() {
         var groups = [hotCornerInstances, surfaceInstances];
         for (var groupIndex = 0; groupIndex < groups.length; groupIndex++) {
@@ -701,7 +612,7 @@ Item {
     }
 
     function triggerHotCorner(screenName) {
-        if (!root.hotCornerEnabled || !root.hotCornerArmed)
+        if (!root.hotCornerActive || !root.hotCornerArmed)
             return;
         root.pendingHotCornerScreen = String(screenName || "");
         if (root.hotCornerDelay > 0) {
@@ -712,7 +623,7 @@ Item {
     }
 
     function activateHotCorner() {
-        if (!root.hotCornerEnabled || !root.hotCornerArmed)
+        if (!root.hotCornerActive || !root.hotCornerArmed)
             return;
         root.hotCornerArmed = false;
         if (root.opened || root.openingPending) {
@@ -737,8 +648,8 @@ Item {
         hotCornerRearm.restart();
     }
 
-    onHotCornerEnabledChanged: {
-        if (!root.hotCornerEnabled) {
+    onHotCornerActiveChanged: {
+        if (!root.hotCornerActive) {
             hotCornerTimer.stop();
             hotCornerRearm.stop();
             root.hotCornerArmed = true;
@@ -755,61 +666,9 @@ Item {
         }
     }
 
-    function focusSettingsCategory() {
-        for (var i = 0; i < surfaceInstances.instances.length; i++) {
-            var surface = surfaceInstances.instances[i];
-            if (surface && surface.acceptsKeyboard) {
-                surface.focusSettingsCategory();
-                return;
-            }
-        }
-    }
-
-    function focusSettingsItem(item) {
-        if (!item || !item.visible || !item.enabled)
-            return false;
-        item.forceActiveFocus();
-        return true;
-    }
-
-    // Tab/Shift+Tab wrap through every focusable item. Up/Down (and Left/Right
-    // inside the confirmation dialog) step without wrapping, so arrow keys never
-    // jump from the last control back to the sidebar.
-    function handleSettingsNavigation(event) {
-        if (!root.settingsOpen)
-            return false;
-        var isTab = event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab;
-        var isStep = event.key === Qt.Key_Up || event.key === Qt.Key_Down
-            || (root.footerHideConfirmationOpen && (event.key === Qt.Key_Left || event.key === Qt.Key_Right));
-        if (!isTab && !isStep)
-            return false;
-        var forward = isTab
-            ? event.key !== Qt.Key_Backtab && !(event.modifiers & Qt.ShiftModifier)
-            : event.key === Qt.Key_Down || event.key === Qt.Key_Right;
-        for (var index = 0; index < surfaceInstances.instances.length; index++) {
-            var surface = surfaceInstances.instances[index];
-            if (!surface || !surface.acceptsKeyboard)
-                continue;
-            if (root.footerHideConfirmationOpen)
-                surface.moveFooterConfirmationFocus(forward, isTab);
-            else
-                surface.moveSettingsFocus(forward, isTab);
-            event.accepted = true;
-            return true;
-        }
-        return false;
-    }
-
-    function handleSettingsTab(event) {
-        if (event.key !== Qt.Key_Tab && event.key !== Qt.Key_Backtab)
-            return false;
-        return root.handleSettingsNavigation(event);
-    }
-
     function setFilter(value) {
         root.filterText = value;
         root.selectedIndex = 0;
-        root.hoveredIndex = -1;
         root.clearPreview();
         root.modelRevision++;
     }
@@ -821,7 +680,6 @@ Item {
         if (next === root.workspaceScope)
             return;
         root.workspaceScope = next;
-        root.hoveredIndex = -1;
         root.clearPreview();
         root.modelRevision++;
         root.selectedIndex = Math.max(0, root.filteredToplevels.indexOf(Hyprland.activeToplevel));
@@ -863,7 +721,6 @@ Item {
         if (app)
             root.workspaceScope = "all";
         root.filterText = "";
-        root.hoveredIndex = -1;
         root.clearPreview();
         root.modelRevision++;
         root.selectedIndex = Math.max(0, root.filteredToplevels.indexOf(selectedTop));
@@ -893,7 +750,6 @@ Item {
         if (!root.overviewScreenPinned && (!root.surfaceMounted || root.openingPending))
             root.overviewScreenName = root.focusedMonitorName || root.keyboardScreenName;
         var selectedTop = root.filteredToplevels[root.selectedIndex];
-        root.hoveredIndex = -1;
         root.clearPreview();
         root.modelRevision++;
         var nextIndex = root.filteredToplevels.indexOf(selectedTop);
@@ -957,14 +813,32 @@ Item {
     function activate(top) {
         if (!top)
             return;
+        var address = WindowModel.addressFor(top);
+        var appId = WindowModel.appIdFor(top);
+        var dock = root.shell.dock;
+        if (dock && (dock.isMinimizedWorkspace(WindowModel.workspaceName(top))
+                || dock.minimizedOrigins[address] !== undefined))
+            dock.restoreWindow(address, appId);
         var helper = root.pluginDir + "/activate-window";
         Quickshell.execDetached([
             helper,
-            WindowModel.addressFor(top),
-            WindowModel.appIdFor(top),
+            address,
+            appId,
             String(top.title || ""),
             root.moveCursorToWindow ? "true" : "false"
         ]);
+        root.dismiss();
+    }
+
+    function toggleFullscreen(top) {
+        var address = WindowModel.addressFor(top);
+        if (!address)
+            return;
+        if (root.shell.workflow === "macos")
+            Quickshell.execDetached(["python3", Quickshell.env("HOME") + "/.local/lib/hypr/window/mac-spaces.py", "toggle", address]);
+        else
+            Hyprland.dispatch("hl.dsp.window.fullscreen({ mode = \"fullscreen\", action = \"toggle\", window = "
+                + JSON.stringify("address:" + address) + " })");
         root.dismiss();
     }
 
@@ -1055,6 +929,7 @@ Item {
     }
 
     function workspacesForScreen(screenName) {
+        var revision = root.modelRevision;
         var perMonitor = root.multiMonitorMode === "per-monitor";
         var monitor = root.monitorForScreen(screenName);
         var dock = root.shell ? root.shell.dock : null;
@@ -1063,6 +938,10 @@ Item {
         for (var index = 0; index < all.length; index++) {
             var workspace = all[index];
             var name = String(workspace.name || "");
+            if (name.indexOf("macspace_") === 0 && !root.allToplevels.some(function(top) {
+                return WindowModel.workspaceName(top) === name && WindowModel.ipcFor(top).mapped !== false;
+            }))
+                continue;
             if (name.indexOf("special:") === 0) {
                 if (!(dock && dock.isMinimizedWorkspace(name)))
                     special.push(workspace);
@@ -1070,7 +949,10 @@ Item {
                 regular.push(workspace);
             }
         }
-        regular.sort(function (a, b) { return a.id - b.id; });
+        regular.sort(function (a, b) {
+            return Number(String(a.name).indexOf("macspace_") === 0) - Number(String(b.name).indexOf("macspace_") === 0)
+                || a.id - b.id;
+        });
         special.sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); });
         return { regular: regular, special: special };
     }
@@ -1144,7 +1026,13 @@ Item {
 
     function moveWindowTo(top, workspace) {
         var address = WindowModel.addressFor(top);
-        if (address)
+        if (!address)
+            return;
+        var target = root.workspaceTarget(workspace);
+        var targetName = workspace ? String(workspace.name || "") : "";
+        if (targetName.indexOf("macspace_") === 0 || WindowModel.workspaceName(top).indexOf("macspace_") === 0)
+            Quickshell.execDetached(["python3", Quickshell.env("HOME") + "/.local/lib/hypr/window/mac-spaces.py", "move", address, targetName.indexOf("macspace_") === 0 ? targetName : target]);
+        else
             Hyprland.dispatch("hl.dsp.window.move({ workspace = " + JSON.stringify(root.workspaceTarget(workspace))
                 + ", follow = false, window = \"address:" + address + "\" })");
     }
@@ -1310,11 +1198,8 @@ Item {
         }
         previewExitTimer.stop();
         root.previewExitIndex = -1;
-        var target = root.hoveredIndex >= 0 ? root.hoveredIndex : root.selectedIndex;
-        if (target >= 0 && target < root.filteredToplevels.length) {
-            root.selectedIndex = target;
-            root.previewIndex = target;
-        }
+        if (root.selectedIndex >= 0 && root.selectedIndex < root.filteredToplevels.length)
+            root.previewIndex = root.selectedIndex;
     }
 
     function iconFor(top) {
@@ -1332,18 +1217,6 @@ Item {
     }
 
     function handleKey(event, layout) {
-        if (root.settingsOpen) {
-            if (event.key === Qt.Key_Escape) {
-                if (root.footerHideConfirmationOpen)
-                    root.closeFooterHideConfirmation();
-                else
-                    root.closeSettings();
-                event.accepted = true;
-            } else {
-                event.accepted = false;
-            }
-            return;
-        }
         if (event.key === Qt.Key_Escape) {
             if (root.previewIndex >= 0 || root.previewExitIndex >= 0)
                 root.clearPreview();
@@ -1372,6 +1245,10 @@ Item {
             root.moveDirectional(0, 1, layout, Boolean(event.modifiers & Qt.ShiftModifier));
         else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
             root.activate(root.filteredToplevels[root.selectedIndex]);
+        else if (event.key === Qt.Key_F && event.modifiers === Qt.ShiftModifier) {
+            if (!event.isAutoRepeat)
+                root.toggleFullscreen(root.filteredToplevels[root.selectedIndex]);
+        }
         else if (event.key === Qt.Key_Q
                 && Boolean(event.modifiers & Qt.ShiftModifier)
                 && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {
@@ -1606,7 +1483,7 @@ Item {
 
     Variants {
         id: hotCornerInstances
-        model: root.hotCornerEnabled && !root.surfaceMounted ? Quickshell.screens : []
+        model: root.hotCornerActive && !root.surfaceMounted ? Quickshell.screens : []
 
         PanelWindow {
             id: hotCornerWindow
@@ -1674,7 +1551,7 @@ Item {
             WlrLayershell.namespace: "expose-window-overview"
             WlrLayershell.layer: WlrLayer.Overlay
             HyprlandWindow.opacity: root.motionProgress
-            BackgroundEffect.blurRegion: root.effectiveBackgroundBlur > 0
+            BackgroundEffect.blurRegion: root.backgroundBlur > 0
                     && !root.backgroundBlurFailed
                 ? backgroundBlurRegion
                 : null
@@ -1716,35 +1593,6 @@ Item {
                 ? overviewWindow.screen.width / overviewWindow.screen.height
                 : 0
 
-            function focusSettingsCategory() {
-                var settings = settingsLayerLoader.item as SettingsView;
-                if (settings)
-                    settings.focusSettingsCategory();
-            }
-
-            function moveSettingsFocus(forward, wrap) {
-                var settings = settingsLayerLoader.item as SettingsView;
-                if (settings)
-                    settings.moveSettingsFocus(forward, wrap);
-            }
-
-            function focusFirstSettingsControl() {
-                var settings = settingsLayerLoader.item as SettingsView;
-                if (settings)
-                    settings.focusFirstSettingsControl();
-            }
-
-            function moveFooterConfirmationFocus(forward, wrap) {
-                var settings = settingsLayerLoader.item as SettingsView;
-                if (settings)
-                    settings.moveFooterConfirmationFocus(forward, wrap);
-            }
-
-            onAcceptsKeyboardChanged: {
-                if (acceptsKeyboard && root.settingsOpen)
-                    Qt.callLater(overviewWindow.focusSettingsCategory);
-            }
-
             Region {
                 id: backgroundBlurRegion
                 item: overviewWindow.contentItem
@@ -1753,7 +1601,7 @@ Item {
             Rectangle {
                 anchors.fill: parent
                 color: "black"
-                opacity: root.effectiveBackgroundDim / 100
+                opacity: root.backgroundDim / 100
             }
 
             // The workspace row sits on its own heavier material, as in Mission
@@ -1761,7 +1609,7 @@ Item {
             // capture of the screen, taken while the overlay is still transparent.
             Item {
                 width: overviewWindow.width
-                height: topLine.height + contentColumn.anchors.topMargin * 2
+                height: workspaceStrip.height + contentColumn.anchors.topMargin + contentColumn.anchors.margins
                 clip: true
 
                 Item {
@@ -1815,17 +1663,6 @@ Item {
                 }
                 Keys.priority: Keys.BeforeItem
                 Keys.onPressed: function (event) {
-                    if (root.settingsOpen
-                            && !root.footerHideConfirmationOpen
-                            && event.key >= Qt.Key_1
-                            && event.key <= Qt.Key_6) {
-                        root.settingsCategoryIndex = event.key - Qt.Key_1;
-                        Qt.callLater(overviewWindow.focusSettingsCategory);
-                        event.accepted = true;
-                        return;
-                    }
-                    if (root.handleSettingsNavigation(event))
-                        return;
                     root.handleKey(event, overviewArea.windowLayout);
                 }
 
@@ -1843,12 +1680,22 @@ Item {
                     id: contentColumn
                     anchors.fill: parent
                     anchors.margins: Style.spacing.sm
+                    anchors.topMargin: Style.spacing.lg
                     spacing: Style.spacing.md
 
+                    WorkspaceStrip {
+                        id: workspaceStrip
+                        Layout.alignment: Qt.AlignLeft
+                        controller: root
+                        screenName: String(overviewWindow.modelData.name || "")
+                        chipHeight: statusGroup.implicitHeight
+                    }
+
                     RowLayout {
-                        id: topLine
                         Layout.fillWidth: true
-                        spacing: Style.spacing.xl
+                        Layout.preferredHeight: scopeKey.Layout.preferredHeight + Style.spacing.sm * 2
+
+                        Item { Layout.fillWidth: true }
 
                         RowLayout {
                             id: statusGroup
@@ -1907,81 +1754,6 @@ Item {
                                     font.pixelSize: Style.font.caption
                                 }
                             }
-                        }
-
-                        Item { Layout.fillWidth: true }
-
-                        Ui.BorderSurface {
-                            id: searchBar
-                            Layout.fillWidth: true
-                            Layout.preferredWidth: root.searchFieldWidth
-                            Layout.maximumWidth: root.searchFieldWidth
-                            Layout.minimumWidth: 0
-                            Layout.preferredHeight: scopeKey.Layout.preferredHeight + Style.spacing.sm * 2
-                            radius: Style.cornerRadius
-                            color: "transparent"
-                            borderSpec: Border.flat(filterField.activeFocus ? Color.accent
-                                : searchHover.hovered ? Color.menu.selectedBorder : Color.menu.border,
-                                Style.normalBorderWidth)
-
-                            HoverHandler { id: searchHover }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.IBeamCursor
-                                onClicked: filterField.forceActiveFocus()
-                            }
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: Style.spacing.xl
-                                anchors.rightMargin: Style.spacing.xl
-                                anchors.topMargin: Style.spacing.sm
-                                anchors.bottomMargin: Style.spacing.sm
-                                spacing: Style.spacing.md
-                                Text {
-                                    text: "󰍉"
-                                    textFormat: Text.PlainText
-                                    color: Color.menu.text
-                                    opacity: 0.55
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.heading
-                                }
-                                TextField {
-                                    id: filterField
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    text: root.filterText
-                                    placeholderText: root.appFilter ? "Type to filter " + root.appFilter + " windows…" : "Type to filter windows…"
-                                    color: Color.menu.text
-                                    opacity: text ? 1 : 0.6
-                                    font.family: Style.font.menuFamily
-                                    font.pixelSize: Style.font.heading
-                                    verticalAlignment: TextInput.AlignVCenter
-                                    selectByMouse: true
-                                    background: null
-                                    leftPadding: 0
-                                    rightPadding: 0
-                                    onTextEdited: root.setFilter(text)
-                                    Keys.priority: Keys.BeforeItem
-                                    Keys.onPressed: function(event) {
-                                        if ([Qt.Key_Escape, Qt.Key_Tab, Qt.Key_Backtab, Qt.Key_Up, Qt.Key_Down, Qt.Key_Return, Qt.Key_Enter].indexOf(event.key) >= 0
-                                                || (event.key === Qt.Key_Backspace && !filterField.text))
-                                            root.handleKey(event, overviewArea.windowLayout);
-                                        else
-                                            event.accepted = false;
-                                    }
-                                }
-                            }
-                        }
-
-                        Item { Layout.fillWidth: true }
-
-                        WorkspaceStrip {
-                            id: workspaceStrip
-                            controller: root
-                            screenName: String(overviewWindow.modelData.name || "")
-                            chipHeight: statusGroup.implicitHeight
                         }
                     }
 
@@ -2042,7 +1814,7 @@ Item {
                         visible: root.showFooter
 
                         Text {
-                            text: "← ↑ ↓ → navigate   Space preview   "
+                            text: "Type to filter windows   ← ↑ ↓ → navigate   Space preview   "
                                 + (root.appFilter ? "Tab next app   Backspace all apps" : "Tab next workspace   Shift+Tab previous")
                                 + "   Drag to a workspace to move   Shift+Q close   Enter open   Esc close"
                             textFormat: Text.PlainText
@@ -2052,43 +1824,6 @@ Item {
                             font.pixelSize: Style.font.bodySmall
                         }
 
-                        Text {
-                            id: settingsControl
-                            property bool hovered: false
-                            text: "Settings"
-                            textFormat: Text.PlainText
-                            color: settingsControl.hovered ? Style.hoverStateColor(Color.menu.text, Color.accent) : Color.menu.text
-                            font.family: Style.font.menuFamily
-                            font.pixelSize: Style.font.bodySmall
-                            font.bold: true
-
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onEntered: settingsControl.hovered = true
-                                onExited: settingsControl.hovered = false
-                                onClicked: root.openSettings()
-                            }
-                        }
-                    }
-                }
-
-                Loader {
-                    id: settingsLayerLoader
-                    anchors.fill: parent
-                    active: root.settingsOpen
-                    z: 200
-                    onLoaded: {
-                        if (overviewWindow.acceptsKeyboard)
-                            Qt.callLater(overviewWindow.focusSettingsCategory);
-                    }
-
-                    sourceComponent: Component {
-                        SettingsView {
-                            controller: root
-                            hostWindow: overviewWindow
-                        }
                     }
                 }
             }
@@ -2100,7 +1835,7 @@ Item {
                 x: root.hotCornerOnLeft ? 0 : parent.width - width
                 y: root.hotCornerOnTop ? 0 : parent.height - height
                 z: 100
-                enabled: root.hotCornerEnabled
+                enabled: root.hotCornerActive
                 onTop: root.hotCornerOnTop
                 onLeft: root.hotCornerOnLeft
                 onEntered: root.triggerHotCorner()

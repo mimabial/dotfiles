@@ -28,7 +28,6 @@ WeatherStats 1.0 WeatherStats.qml
 AppMenu 1.0 AppMenu.qml
 BatteryButton 1.0 BatteryButton.qml
 ControlCenter 1.0 ControlCenter.qml
-QuickSettings 1.0 QuickSettings.qml
 MenuBarPopup 1.0 MenuBarPopup.qml
 NowPlaying 1.0 NowPlaying.qml
 SoundMenu 1.0 SoundMenu.qml

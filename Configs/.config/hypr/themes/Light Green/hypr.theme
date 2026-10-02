@@ -2,11 +2,14 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Tela-green-light
 $COLOR_SCHEME = prefer-light
+
 $NVIM_SCHEME = aether
 $NVIM_BACKGROUND = light
 $NVIM_TRANSPARENCY = false
+
 $CURSOR_THEME = Adwaita
 $CURSOR_SIZE = 30
+
 $FONT = JetBrainsMono Nerd Font
 $BAR_FONT = JetBrainsMono Nerd Font
 $MENU_FONT = JetBrainsMono Nerd Font
@@ -17,7 +20,7 @@ $NOTIFICATION_FONT = JetBrainsMono Nerd Font Mono
 general {
     gaps_in = 4
     gaps_out = 8
-    border_size = 2
+    border_size = 3
     col.active_border = rgb(85b34c)
     col.inactive_border = rgba(a09080cc)
     layout = dwindle

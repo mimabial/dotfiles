@@ -28,7 +28,8 @@ Column {
                 height: Style.px(62)
                 radius: root.shell.rounding
                 color: hovered ? root.shell.alpha(root.shell.foreground, .1) : "transparent"
-                border.color: hovered ? root.shell.alpha(root.shell.role("br", root.shell.foreground), .35) : "transparent"
+                border.color: hovered && root.shell.mode !== "winbar"
+                    ? root.shell.alpha(root.shell.role("br", root.shell.foreground), .35) : "transparent"
                 Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
                 Column {
                     anchors.centerIn: parent

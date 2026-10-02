@@ -7,19 +7,25 @@ import "StartMenuModel.js" as StartMenuModel
 
 PopupCard {
     id: root
-    popupName: "start"
-    keyboardHint: placeEditorOpen ? "Enter save place · Esc cancel" : "Type to search · ↑↓ move · Enter open · Esc close"
+    popupName: root.shell.popupName === "spotlight" ? "spotlight" : "start"
+    keyboardHint: placeEditorOpen ? "Enter save place · Esc cancel"
+        : browseOnly ? "↑↓ move · Enter open · Esc close" : "Type to search · ↑↓ move · Enter open · Esc close"
     wantsKeyboard: true
     contentWidth: Style.px(620)
     contentHeight: layoutColumn.implicitHeight + padding * 2
 
     property string searchQuery: ""
+    property var recentFiles: []
+    property var indexedDocuments: []
+    readonly property bool spotlight: popupName === "spotlight"
+    readonly property bool browseOnly: shell.mode === "winbar" && !spotlight
+    readonly property bool indexedSearchEnabled: !spotlight || shell.mode === "winbar"
     property int selectedEntryIndex: 0
     readonly property bool searchActive: searchQuery.trim() !== ""
-    readonly property int fixedContentHeight: Style.px(30) + Style.sm + padding * 2
+    readonly property int fixedContentHeight: (browseOnly ? 0 : searchHeader.height + layoutColumn.spacing) + padding * 2
     readonly property int availableContentHeight: root.maxHeight - root.fixedContentHeight
-    readonly property int desiredBrowseHeight: placesColumn.implicitHeight + paneSeparator.height
-        + Style.sm * 2 + menuPane.contentHeight
+    readonly property int desiredBrowseHeight: Math.max(placesColumn.implicitHeight + paneSeparator.height
+        + Style.sm * 2 + menuPane.contentHeight, applicationList.y + Style.popupRowHeight)
 
     // What Hyprland leaves a tiled window on this monitor, so the card lines up
     // with the windows behind it instead of picking a size of its own. The
@@ -78,7 +84,7 @@ PopupCard {
         placeEditorOpen = false
         placeEditorError = ""
         placeField.text = ""
-        searchField.forceActiveFocus()
+        if (browseOnly) resumeKeyboard(); else searchField.forceActiveFocus()
     }
     function validatePlaceInput() {
         const raw = placeField.text.trim()
@@ -107,12 +113,38 @@ PopupCard {
             hiddenDefaultPaths = hiddenDefaultPaths.concat([place.path])
         savePlacePreferences()
     }
+    function removeRecentFile(uri) {
+        if (recentRemovalProcess.running) return
+        recentRemovalProcess.uri = uri
+        recentRemovalProcess.running = true
+    }
 
     property var menus: ({})
 
-    readonly property var searchResults: StartMenuModel.search(searchQuery, availableApplications, menus, places)
-    readonly property var selectableEntries: searchActive ? searchResults : availableApplications
+    function filePath(uri) {
+        return uri.startsWith("file://") ? decodeURIComponent(uri.replace(/^file:\/\/(localhost)?/, "")) : uri
+    }
+    readonly property var searchResults: {
+        const results = StartMenuModel.search(searchQuery, availableApplications, menus, places,
+            spotlight ? recentFiles : [], false)
+        if (indexedSearchEnabled)
+            for (const file of indexedDocuments)
+                if (!results.some(result => result.type === "file" && filePath(result.file.uri) === file.uri))
+                    results.push({type: "file", file: file})
+        if (spotlight && searchActive) results.push({type: "fileSearch", query: searchQuery.trim()})
+        return results
+    }
+    readonly property var browseEntries: browseOnly
+        ? recentFiles.map(file => ({type: "file", file: file})).concat(availableApplications)
+        : availableApplications
+    readonly property var selectableEntries: searchActive ? searchResults : browseEntries
 
+    function searchDocuments() {
+        indexedDocuments = []
+        if (!open || !indexedSearchEnabled || !searchActive || documentSearchProcess.running) return
+        documentSearchProcess.query = searchQuery.trim()
+        documentSearchProcess.running = true
+    }
 
     function runMenuAction(target) {
         shell.run(["hyprshell", "rofi/menutree", "--action", target])
@@ -129,6 +161,16 @@ PopupCard {
             shell.closePopup()
             return
         }
+        if (item.type === "file") {
+            shell.run(["xdg-open", item.file.uri])
+            shell.closePopup()
+            return
+        }
+        if (item.type === "fileSearch") {
+            shell.run([shell.home + "/.local/lib/hypr/launch/file-finder.sh", item.query])
+            shell.closePopup()
+            return
+        }
         const app = item.type === "app" ? item.app : item
         app.execute()
         shell.closePopup()
@@ -142,8 +184,10 @@ PopupCard {
     function moveSelection(step) {
         if (selectableEntries.length === 0) return
         selectedEntryIndex = Math.max(0, Math.min(selectableEntries.length - 1, selectedEntryIndex + step))
-        const list = searchActive ? searchResultList : applicationList
-        list.positionViewAtIndex(selectedEntryIndex, ListView.Contain)
+        if (searchActive) searchResultList.positionViewAtIndex(selectedEntryIndex, ListView.Contain)
+        else if (browseOnly && selectedEntryIndex < recentFiles.length)
+            recentList.positionViewAtIndex(selectedEntryIndex, ListView.Contain)
+        else applicationList.positionViewAtIndex(selectedEntryIndex - (browseOnly ? recentFiles.length : 0), ListView.Contain)
     }
     function typeKey(event, field) {
         if (event.key === Qt.Key_Backspace) { field.text = field.text.slice(0, -1); return true }
@@ -161,23 +205,39 @@ PopupCard {
         }
         if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) { moveSelection(event.key === Qt.Key_Down ? 1 : -1); return true }
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { activateEntry(selectableEntries[selectedEntryIndex]); return true }
-        return typeKey(event, searchField) || defaultKey(event)
+        return browseOnly ? defaultKey(event) : typeKey(event, searchField) || defaultKey(event)
     }
     onOpenChanged: {
         searchField.text = ""
-        selectedEntryIndex = 0
+        selectedEntryIndex = browseOnly ? -1 : 0
         placeEditorOpen = false
         placeEditorError = ""
         placeField.text = ""
         menuPane.reset()
         if (open) {
-            searchField.forceActiveFocus()
+            if (browseOnly) resumeKeyboard(); else searchField.forceActiveFocus()
             menuTreeProcess.running = true
+            if (spotlight || browseOnly) recentFilesProcess.running = true
             windowGeometryProcess.running = true
             shell.refreshMenuState()
         }
     }
-    onSearchQueryChanged: selectedEntryIndex = 0
+    onSearchQueryChanged: { selectedEntryIndex = 0; searchDocuments() }
+    onSpotlightChanged: {
+        searchDocuments()
+        if (open && shell.mode === "winbar") {
+            searchField.text = ""
+            selectedEntryIndex = browseOnly ? -1 : 0
+            placeEditorOpen = false
+            placeEditorError = ""
+            placeField.text = ""
+            menuPane.reset()
+            if (spotlight) {
+                searchField.forceActiveFocus()
+                recentFilesProcess.running = true
+            } else resumeKeyboard()
+        }
+    }
 
     property FileView pinsConfigFile: FileView {
         path: root.shell.home + "/.config/quickshell/pins.json"
@@ -264,6 +324,29 @@ PopupCard {
             try { root.menus = JSON.parse(text) } catch (error) {}
         } }
     }
+    property Process recentFilesProcess: Process {
+        command: ["python3", root.shell.home + "/.local/lib/hypr/quickshell/recent-items.py"]
+        stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.recentFiles = JSON.parse(text) }
+    }
+    property Process recentRemovalProcess: Process {
+        property string uri: ""
+        command: ["python3", root.shell.home + "/.local/lib/hypr/quickshell/recent-items.py", "remove", uri]
+        stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.recentFiles = JSON.parse(text) }
+    }
+    property Process documentSearchProcess: Process {
+        property string query: ""
+        command: ["baloosearch6", "-l", String(Math.max(1, Math.floor(root.contentPaneHeight / Style.popupRowHeight))),
+            "-d", root.shell.home + "/Documents", "--", query]
+        stdout: StdioCollector { id: documentSearchOutput; waitForEnd: true }
+        onExited: code => {
+            if (code === 0 && root.open && root.indexedSearchEnabled && query === root.searchQuery.trim())
+                root.indexedDocuments = String(documentSearchOutput.text).split("\n")
+                    .filter(path => path.startsWith(root.shell.home + "/Documents/"))
+                    .map(path => ({text: path.split("/").pop(), uri: path}))
+            else if (root.open && root.indexedSearchEnabled && root.searchActive && query !== root.searchQuery.trim())
+                Qt.callLater(root.searchDocuments)
+        }
+    }
 
     extraGrabWindows: [flyout, flyout2, flyout3, flyout4]
 
@@ -302,6 +385,8 @@ PopupCard {
         anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sm
 
         Rectangle {
+            id: searchHeader
+            visible: !root.browseOnly
             width: parent.width; height: Style.px(30); radius: root.shell.rounding
             color: root.shell.alpha(root.shell.foreground, .06)
             border.color: root.shell.alpha(root.shell.role("br", root.shell.foreground), .3)
@@ -320,7 +405,8 @@ PopupCard {
                 anchors.verticalCenter: parent.verticalCenter
                 height: Style.px(22)
                 leftPadding: 0; rightPadding: 0; topPadding: 0; bottomPadding: 0
-                placeholderText: "Search apps, actions, places — Enter launches, Esc closes"
+                placeholderText: root.spotlight && root.shell.mode === "winbar" ? "Search apps, actions, places, recent files, documents"
+                    : root.spotlight ? "Search apps, actions, places, recent files" : "Search apps, actions, places, documents"
                 color: root.shell.foreground
                 font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                 background: null
@@ -348,18 +434,23 @@ PopupCard {
             model: root.searchResults
             readonly property bool overflowing: contentHeight > height
             ScrollBar.vertical: PopupScrollBar { shell: root.shell }
-            delegate: PopupRow {
+            delegate: StartMenuRow {
                 required property var modelData
                 required property int index
                 width: searchResultList.width; shell: root.shell
                 rightInset: searchResultList.overflowing ? Style.md : 0
                 iconSource: modelData.type === "app" ? Quickshell.iconPath(modelData.app.icon, true) : ""
                 icon: modelData.type === "action" ? modelData.entry.icon
-                    : modelData.type === "place" ? modelData.place.icon : ""
+                    : modelData.type === "place" ? modelData.place.icon
+                    : modelData.type === "file" ? "\u{f0219}" : ""
                 title: modelData.type === "app" ? modelData.app.name
-                    : modelData.type === "action" ? modelData.entry.path : modelData.place.label
+                    : modelData.type === "action" ? modelData.entry.path
+                    : modelData.type === "file" ? modelData.file.text
+                    : modelData.type === "fileSearch" ? "Find more files for “" + modelData.query + "”…" : modelData.place.label
                 detail: modelData.type === "app" ? (modelData.app.genericName || modelData.app.comment)
-                    : modelData.type === "place" ? modelData.place.path : ""
+                    : modelData.type === "place" ? modelData.place.path
+                    : modelData.type === "file" ? modelData.file.uri
+                    : modelData.type === "fileSearch" ? "File Finder" : ""
                 value: modelData.type === "app" && root.pinnedApplicationIds.indexOf(modelData.app.id) >= 0 ? "\u{f0403}" : ""
                 cursored: index === root.selectedEntryIndex
                 onClicked: button => button === Qt.RightButton
@@ -368,7 +459,7 @@ PopupCard {
         }
 
         Row {
-            visible: !root.searchActive
+            visible: !root.searchActive && !root.spotlight
             width: parent.width
             spacing: Style.sectionGap
 
@@ -383,17 +474,44 @@ PopupCard {
                     onLaunched: app => root.activateEntry(app)
                     onUnpinned: app => root.toggleApplicationPin(app)
                 }
-                PopupSection { id: appsHeader; shell: root.shell; text: "ALL APPS" }
+                PopupSection { visible: recentList.visible; shell: root.shell; text: "RECENT FILES" }
+                ListView {
+                    id: recentList
+                    visible: root.browseOnly && root.recentFiles.length > 0
+                    width: parent.width
+                    readonly property int visibleRows: Math.min(5, root.recentFiles.length)
+                    height: visibleRows * Style.popupRowHeight + Math.max(0, visibleRows - 1) * spacing
+                    clip: true; spacing: 2
+                    model: root.recentFiles
+                    readonly property bool overflowing: contentHeight > height
+                    ScrollBar.vertical: PopupScrollBar { shell: root.shell }
+                    delegate: StartMenuRow {
+                        required property var modelData
+                        required property int index
+                        width: recentList.width; shell: root.shell
+                        rightInset: recentList.overflowing ? Style.md : 0
+                        icon: "\u{f0219}"
+                        title: modelData.text
+                        value: hovered ? "\u{f0156}" : ""
+                        valueClickable: true
+                        valueHoverColor: root.shell.role("error", root.shell.foreground)
+                        cursored: index === root.selectedEntryIndex
+                        onValueClicked: root.removeRecentFile(modelData.uri)
+                        onClicked: button => button === Qt.RightButton
+                            ? root.removeRecentFile(modelData.uri)
+                            : root.activateEntry({type: "file", file: modelData})
+                    }
+                }
+                PopupSection { shell: root.shell; text: "ALL APPS" }
                 ListView {
                     id: applicationList
                     width: parent.width
-                    height: root.contentPaneHeight - appsHeader.height - Style.sm
-                        - (pinnedGrid.visible ? pinnedGrid.height + Style.sm : 0)
+                    height: Math.max(0, root.contentPaneHeight - y)
                     clip: true; spacing: 2
                     model: root.availableApplications
                     readonly property bool overflowing: contentHeight > height
                     ScrollBar.vertical: PopupScrollBar { shell: root.shell }
-                    delegate: PopupRow {
+                    delegate: StartMenuRow {
                         required property var modelData
                         required property int index
                         width: applicationList.width; shell: root.shell
@@ -402,7 +520,7 @@ PopupCard {
                         title: modelData.name
                         detail: modelData.genericName || modelData.comment
                         value: root.pinnedApplicationIds.indexOf(modelData.id) >= 0 ? "\u{f0403}" : ""
-                        cursored: index === root.selectedEntryIndex
+                        cursored: index + (root.browseOnly ? root.recentFiles.length : 0) === root.selectedEntryIndex
                         onClicked: button => button === Qt.RightButton
                             ? root.toggleApplicationPin(modelData) : root.activateEntry(modelData)
                     }
@@ -420,20 +538,22 @@ PopupCard {
                     PopupSection { shell: root.shell; text: "PLACES" }
                     Repeater {
                         model: root.places
-                        PopupRow {
+                        StartMenuRow {
                             required property var modelData
                             width: placesColumn.width; shell: root.shell
                             implicitHeight: Style.px(24)
                             icon: modelData.icon
                             title: modelData.label
                             value: hovered ? "\u{f0156}" : ""
-                            valueColor: root.shell.role("error", root.shell.foreground)
+                            valueClickable: true
+                            valueHoverColor: root.shell.role("error", root.shell.foreground)
+                            onValueClicked: root.removePlace(modelData)
                             onClicked: button => button === Qt.RightButton
                                 ? root.removePlace(modelData)
                                 : root.activateEntry({type: "place", place: modelData})
                         }
                     }
-                    PopupRow {
+                    StartMenuRow {
                         visible: !root.placeEditorOpen
                         width: placesColumn.width; shell: root.shell
                         implicitHeight: Style.px(24)

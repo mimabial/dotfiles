@@ -192,12 +192,17 @@ end
 exec(mod, "Q", "[Window Management] close panel or focused window", "hyprshell window/close-focused.sh")
 bind("ALT", "F4", "[Window Management] close focused window", hl.dsp.window.close())
 bind(mod .. " SHIFT", "Q", "[Window Management] force kill focused window", hl.dsp.window.kill())
-bind(
-	mod,
-	"F",
-	"[Window Management] toggle fullscreen",
-	hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" })
-)
+local toggle_fullscreen = hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" })
+bind(mod, "F", "[Window Management] toggle fullscreen", function()
+	if vars.get("WORKFLOW") ~= "macos" then
+		hl.dispatch(toggle_fullscreen)
+		return
+	end
+	local window = hl.get_active_window()
+	if window then
+		hl.dispatch(hl.dsp.exec_cmd("python3 " .. vars.get("scrPath") .. "/window/mac-spaces.py toggle " .. window.address))
+	end
+end)
 bind(
 	mod,
 	"M",
@@ -374,6 +379,7 @@ exec(mod .. " CTRL", "D", "[Launcher|Menus] focus dock", "quickshell ipc call do
 bind(mod, "A", "[Launcher|Menus] Exposé window overview", hl.dsp.event("expose.window-overview:toggle"))
 bind(mod .. " SHIFT", "A", "[Launcher|Menus] Exposé app windows", hl.dsp.event("expose.window-overview:app"))
 exec(mod, "SPACE", "[Launcher|Menus] menu tree", "pkill -x rofi || hyprshell menutree")
+exec("CTRL", "F2", "[Launcher|Menus] focus menu bar", "quickshell ipc call bar menuBar")
 exec(mod, "V", "[Launcher|Menus] clipboard", "quickshell ipc call bar popup cliphist")
 exec(mod .. " SHIFT", "V", "[Launcher|Menus] clipboard manager", "pkill -x rofi || hyprshell cliphist.sh")
 

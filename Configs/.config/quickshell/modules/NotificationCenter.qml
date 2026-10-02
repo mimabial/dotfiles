@@ -59,6 +59,7 @@ ClockButton {
                 onRemoveRequested: root.archive(["remove", String(modelData.key)])
             }
         }
+        PopupRow { width: parent.width; shell: root.shell; title: "Show All Notifications…"; onClicked: root.shell.togglePopup("notifications") }
         Process {
             id: history
             command: ["hyprshell", "notify/history"]

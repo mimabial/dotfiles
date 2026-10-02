@@ -29,9 +29,9 @@
   "clickToMinimize": true,
   "iconSize": 36,
   "recentApps": [
-    "org.tui.Settings",
-    "org.tui.Nvtop",
-    "org.tui.Rmpc"
+    "xdg-desktop-portal-gtk",
+    "org.pwmt.zathura",
+    "org.qbittorrent.qBittorrent"
   ],
   "showRecents": true,
   "showIndicators": true

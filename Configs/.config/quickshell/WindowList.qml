@@ -15,7 +15,8 @@ Item {
     property bool pins: false
     property bool dash: false
     property var pinned: []
-    readonly property int dashWidth: Style.px(6)
+    readonly property bool ungroup: shell.layoutName === "winbar" && shell.prefs.winbarCombine === "never"
+    readonly property bool combinedLabels: shell.layoutName === "winbar" && shell.prefs.winbarButtonType === "icon-label"
     readonly property int activeDashWidth: Style.px(16)
     readonly property var box: shell.style.box("taskbar")
     property int iconSize: 18
@@ -24,10 +25,11 @@ Item {
     readonly property var buttonBox: shell.style.box("#taskbar button")
     readonly property real buttonInset: Math.max(buttonBox.borderWidth, buttonBox.borderBottomWidth || 0)
     readonly property real buttonWidth: Math.max(Style.px(24), scaledIcon + buttonBox.margin[1] + buttonBox.margin[3] + buttonBox.padding[1] + buttonBox.padding[3] + 2 * buttonInset)
+    readonly property real buttonHeight: scaledIcon + buttonBox.margin[0] + buttonBox.margin[2] + buttonBox.padding[0] + buttonBox.padding[2] + 2 * buttonInset
     readonly property real spanX: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * box.borderWidth
     readonly property real spanY: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * box.borderWidth
     implicitWidth: slots.length ? strip.implicitWidth + spanX : 0
-    implicitHeight: slots.length ? strip.implicitHeight + spanY : 0
+    implicitHeight: slots.length ? buttonHeight + spanY : 0
     visible: slots.length > 0
 
     property Item popupAnchor: root
@@ -62,18 +64,37 @@ Item {
     }
 
     function refreshSlots() {
-        const fingerprint = AppModel.windowFingerprint(windows) + "\u0001" + pinned.join("\u0002")
+        const fingerprint = AppModel.windowFingerprint(windows) + "\u0001" + windows.map(window => window.address).join("\u0002") + "\u0001" + pinned.join("\u0002") + "\u0001" + ungroup
         if (fingerprint === lastFingerprint) return
         lastFingerprint = fingerprint
-        const next = AppModel.withPins(pinned, AppModel.recordsFor(windows))
+        const groups = AppModel.withPins(pinned, AppModel.recordsFor(windows))
+        const next = []
+        for (const record of groups) {
+            const matches = ungroup ? AppModel.windowsFor(record, windows) : []
+            if (!matches.length) next.push(record)
+            else for (const window of matches)
+                next.push({key: record.key + ":" + window.address, desktopId: record.desktopId, address: window.address})
+        }
         if (!AppModel.sameKeys(next, slots)) slots = next
     }
     onWindowsChanged: refreshSlots()
     onPinnedChanged: refreshSlots()
-    function isPinned(record) { return !!record && pinned.some(id => String(id).toLowerCase() === record.key) }
+    onUngroupChanged: refreshSlots()
+    function isPinned(record) { return !!record && pinned.some(id => String(id).toLowerCase() === String(record.desktopId).toLowerCase()) }
     function togglePin(record) {
-        pinned = isPinned(record) ? pinned.filter(id => String(id).toLowerCase() !== record.key) : pinned.concat(record.desktopId)
+        pinned = isPinned(record) ? pinned.filter(id => String(id).toLowerCase() !== String(record.desktopId).toLowerCase()) : pinned.concat(record.desktopId)
         pinsFile.setText(JSON.stringify(pinned, null, 2) + "\n")
+    }
+    function movePin(source, target, after) {
+        const next = pinned.slice()
+        const from = next.findIndex(id => String(id).toLowerCase() === String(source.desktopId).toLowerCase())
+        if (from < 0) return
+        const moved = next.splice(from, 1)[0]
+        const to = next.findIndex(id => String(id).toLowerCase() === String(target.desktopId).toLowerCase())
+        if (to < 0) return
+        next.splice(to + (after ? 1 : 0), 0, moved)
+        pinned = next
+        pinsFile.setText(JSON.stringify(next, null, 2) + "\n")
     }
     FileView {
         id: pinsFile
@@ -135,8 +156,9 @@ Item {
         } else if (window.toplevel && window.toplevel.wayland) window.toplevel.wayland.activate()
     }
     function activate(record) {
-        const matches = AppModel.windowsFor(record, windows)
+        const matches = windowsFor(record)
         if (!matches.length) { launch(record); return }
+        if (record.address) { focusWindow(matches[0]); return }
         const index = AppModel.nextWindowIndex(matches, activeAddress)
         focusWindow(matches[index])
     }
@@ -160,25 +182,29 @@ Item {
         const workspace = first ? DockModel.workspaceLabel(shell.dock ? shell.dock.liveWsNameOf(first) : first.workspaceName) : ""
         return workspace ? "[" + workspace + "]" : ""
     }
-    function windowsFor(record) { return AppModel.windowsFor(record, windows) }
+    function windowsFor(record) { return record && record.address ? windows.filter(window => window.address === record.address) : AppModel.windowsFor(record, windows) }
 
     Row {
         id: strip
         anchors.left: parent.left
         anchors.leftMargin: root.box.margin[3] + root.box.padding[3] + root.box.borderWidth
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.verticalCenterOffset: (root.box.margin[0] + root.box.padding[0] - root.box.margin[2] - root.box.padding[2]) / 2
+        anchors.top: parent.top; anchors.topMargin: root.box.margin[0] + root.box.padding[0] + root.box.borderWidth
+        anchors.bottom: parent.bottom; anchors.bottomMargin: root.box.margin[2] + root.box.padding[2] + root.box.borderWidth
         spacing: root.slotSpacing
         Repeater {
             model: root.slots
             delegate: Item {
                 id: slot
                 required property var modelData
-                readonly property var matched: AppModel.windowsFor(modelData, root.windows)
+                readonly property var matched: root.windowsFor(modelData)
                 property int selectedWindowIdx: -1
+                property bool wasDragged: false
                 readonly property bool running: matched.length > 0
+                readonly property bool labeled: running && (root.ungroup || root.combinedLabels)
+                readonly property string buttonLabel: modelData.address && matched.length
+                    ? matched[0].title || root.labelFor(modelData) : root.labelFor(modelData)
                 readonly property bool active: matched.some(window => window.address === root.activeAddress)
-                    || (!!root.activeAppId && String(modelData.desktopId || "").toLowerCase() === root.activeAppId)
+                    || (!modelData.address && !!root.activeAppId && String(modelData.desktopId || "").toLowerCase() === root.activeAppId)
                 readonly property bool urgent: !active && !!root.shell.dock && matched.some(window => root.shell.dock.urgentMap[window.address])
                 property real pulse: 1
                 SequentialAnimation on pulse {
@@ -195,8 +221,8 @@ Item {
                     if (!spec) return "transparent"
                     return Array.isArray(spec) ? root.shell.alpha(root.shell.role(spec[0], fallback), spec[1] ?? 1) : root.shell.role(spec, fallback)
                 }
-                width: root.buttonWidth
-                height: root.scaledIcon + box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * borderInset
+                width: root.buttonWidth + (slot.labeled ? root.scaledIcon * 5 : 0)
+                height: strip.height
                 Rectangle {
                     id: frame
                     anchors.fill: parent
@@ -209,17 +235,31 @@ Item {
                 }
                 SideBorder { id: taskSideBorder; shell: root.shell; host: slot; hovered: mouse.containsMouse }
                 IconImage {
-                    anchors.centerIn: parent
-                    anchors.verticalCenterOffset: -1
+                    id: icon
+                    x: slot.labeled ? slot.box.margin[3] + slot.box.padding[3] : (slot.width - width) / 2
+                    y: (slot.height - height + slot.box.margin[0] + slot.box.padding[0] - slot.box.margin[2] - slot.box.padding[2]) / 2
                     width: root.scaledIcon; height: root.scaledIcon
                     source: root.iconFor(slot.modelData)
+                }
+                Text {
+                    visible: slot.labeled
+                    x: icon.x + icon.width + Style.sm
+                    width: slot.width - x - slot.box.margin[1] - slot.box.padding[1]
+                    anchors.verticalCenter: icon.verticalCenter
+                    text: slot.buttonLabel
+                    textFormat: Text.PlainText
+                    elide: Text.ElideRight
+                    color: root.shell.foreground
+                    font.family: root.shell.fontFamily
+                    font.pixelSize: Style.bodySmall
                 }
                 Rectangle {
                     visible: root.dash && slot.running
                     anchors.horizontalCenter: frame.horizontalCenter
                     anchors.bottom: frame.bottom; anchors.bottomMargin: Style.xxs
-                    width: slot.active ? root.activeDashWidth : root.dashWidth; height: indicators.dotSize; radius: height / 2
-                    color: slot.urgent ? root.shell.urgent : slot.active ? root.shell.accent : root.shell.alpha(root.shell.foreground, .5)
+                    width: slot.active ? root.activeDashWidth : indicators.dotSize; height: indicators.dotSize; radius: height / 2
+                    color: slot.urgent ? root.shell.urgent : mouse.containsMouse ? root.shell.role("hvr_br", root.shell.accent)
+                        : slot.active ? root.shell.accent : root.shell.alpha(root.shell.foreground, .5)
                     opacity: slot.urgent ? 0.4 + 0.6 * slot.pulse : 1
                     Behavior on width { NumberAnimation { duration: 140; easing.type: Easing.OutQuad } }
                 }
@@ -285,6 +325,7 @@ Item {
                     anchors.fill: parent
                     acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
                     hoverEnabled: true
+                    onPressed: slot.wasDragged = false
                     onExited: slot.selectedWindowIdx = -1
                     onWheel: wheel => {
                         if (!wheel.angleDelta.y || !slot.matched.length) return
@@ -296,12 +337,40 @@ Item {
                         tooltip.showNow()
                     }
                     onClicked: event => {
+                        if (slot.wasDragged) return
                         if (event.button === Qt.RightButton) menu.openActions(slot.modelData, slot)
                         else if (event.button === Qt.MiddleButton) root.launch(slot.modelData)
                         else if (slot.selectedWindowIdx >= 0 && slot.selectedWindowIdx < slot.matched.length)
                             root.focusWindow(slot.matched[slot.selectedWindowIdx])
                         else root.activate(slot.modelData)
                         slot.selectedWindowIdx = -1
+                    }
+                }
+                DragHandler {
+                    id: pinDrag
+                    target: null
+                    enabled: root.pins && root.shell.layoutName === "winbar" && root.isPinned(slot.modelData)
+                    onActiveChanged: {
+                        if (active) { slot.wasDragged = true; pinMarker.Drag.active = true }
+                        else if (pinMarker.Drag.active) pinMarker.Drag.drop()
+                    }
+                }
+                Item {
+                    id: pinMarker
+                    width: 1; height: 1
+                    x: pinDrag.centroid.position.x; y: pinDrag.centroid.position.y
+                    Drag.source: slot
+                    Drag.keys: ["taskbar-pin"]
+                    Drag.proposedAction: Qt.MoveAction
+                }
+                DropArea {
+                    anchors.fill: parent
+                    keys: ["taskbar-pin"]
+                    onDropped: drop => {
+                        const source = drop.source as Item
+                        if (!source || source === slot || source.modelData.desktopId === slot.modelData.desktopId || !root.isPinned(slot.modelData)) return
+                        drop.acceptProposedAction()
+                        root.movePin(source.modelData, slot.modelData, drop.x >= width / 2)
                     }
                 }
                 TaskbarTooltip {

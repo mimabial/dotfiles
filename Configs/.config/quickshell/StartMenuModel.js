@@ -45,7 +45,7 @@ function flattenMenu(menus, menuId, prefix, output, visited) {
     }
     return output
 }
-function search(query, apps, menus, availablePlaces) {
+function search(query, apps, menus, availablePlaces, recentFiles = [], includeFileSearch = false) {
     const needle = query.trim().toLowerCase()
     if (!needle) return []
     const matches = []
@@ -57,5 +57,8 @@ function search(query, apps, menus, availablePlaces) {
         if (entry.path.toLowerCase().includes(needle)) matches.push({type: "action", entry: entry})
     for (const place of availablePlaces)
         if (place.label.toLowerCase().includes(needle)) matches.push({type: "place", place: place})
+    for (const file of recentFiles)
+        if (file.text.toLowerCase().includes(needle)) matches.push({type: "file", file: file})
+    if (includeFileSearch) matches.push({type: "fileSearch", query: query.trim()})
     return matches
 }

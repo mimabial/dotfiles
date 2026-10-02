@@ -48,7 +48,7 @@ Loader {
     DragHandler {
         id: handle
         target: null
-        enabled: !root.spacer && root.moduleId !== "tray" && root.item !== null && root.shell.barModules.includes("tray")
+        enabled: !root.spacer && root.moduleId !== "tray" && root.moduleId !== "taskbar" && root.item !== null && root.shell.barModules.includes("tray")
         dragThreshold: 8
         onActiveChanged: {
             if (active) { root.shell.dragKey = root.moduleKey; marker.Drag.active = true }

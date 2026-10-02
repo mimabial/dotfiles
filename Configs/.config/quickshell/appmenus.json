@@ -12,5 +12,11 @@
   },
   "mpv": {
     "Playback": [["Play/Pause", "", "space"], ["Mute", "", "M"], ["Full Screen", "", "F"]]
+  },
+  "org.kde.dolphin, dolphin": {
+    "File": [["New Window", "CTRL", "N"], ["New Tab", "CTRL", "T"], ["Close Tab", "CTRL", "W"], ["Reopen Closed Tab", "CTRL SHIFT", "T"], null, ["Rename", "", "F2"], ["Duplicate Here", "CTRL", "D"], ["Move to Trash", "", "Delete"], ["Properties", "ALT", "Return"]],
+    "Edit": [["Filter", "CTRL", "I"], ["Find", "CTRL", "F"], ["Invert Selection", "CTRL SHIFT", "A"]],
+    "View": [["Show Hidden Files", "CTRL", "H"], ["Split View", "", "F3"], ["Reload", "", "F5"], ["Places Panel", "", "F9"], ["Information Panel", "", "F11"]],
+    "Tools": [["Open Terminal", "SHIFT", "F4"], ["Open Search Tool", "CTRL SHIFT", "F"]]
   }
 }

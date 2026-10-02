@@ -40,7 +40,7 @@ Item {
   // Each bar layout pins the bar to one screen edge; while it shows, the dock
   // takes the opposite one so the two never share a side.
   readonly property string barEdge: root.shell ? String(root.shell.barEdge) : "top"
-  readonly property bool barShown: root.shell ? root.shell.barShown === true : false
+  readonly property bool barShown: root.shell ? root.shell.barShown === true || (root.shell.mode === "winbar" && root.shell.prefs.winbarAutoHide) : false
   property string dockEdge: "bottom"
   readonly property string edge: root.barShown
     ? (root.barEdge === "top" ? "bottom" : "top")

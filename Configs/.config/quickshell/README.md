@@ -42,7 +42,7 @@ call.
 | --- | --- | --- | --- |
 | `top` | `horizontal` | top | three-section horizontal bar |
 | `bottom` | `horizontal` | bottom | three-section horizontal bar |
-| `winbar` | `winbar` | bottom | Windows 11 taskbar: weather widget, centered Start/Search/Task View/apps, overflow, Quick Settings, clock |
+| `winbar` | `winbar` | bottom | Windows 11 taskbar: Start/apps, search icon, weather widget, overflow, separate Wi-Fi/sound/battery controls, clock, Exposé strip |
 | `totebar` | `horizontal` | top | workspaces on the left, utilities on the right |
 | `macos` | `horizontal` | top | macOS menu bar: hyprmenu dropdown, focused-app menus, status items, clock |
 
@@ -54,7 +54,7 @@ an existing group to add it, or use Dock Settings → App Groups. A group
 auto-dissolves when one app remains.
 
 The horizontal `taskbar` module in `top`, `bottom`, and `winbar` groups running
-windows by app and removes each icon when its last window closes. Left-click
+windows by app by default and removes each icon when its last window closes. Left-click
 focuses an app and cycles its windows when one is already focused; middle-click
 launches another instance. Right-click offers window, launcher, minimize, and
 close actions. Hover shows the app name and its open window titles. It shows
@@ -62,6 +62,12 @@ windows from all workspaces, including special workspaces. `"pins": true` keeps 
 apps listed in `taskbar/pins.json` first, running or not, and adds Pin/Unpin to the
 right-click menu; `"dash": true` draws one Windows-style dash per app, wide and
 accented for the focused one, instead of a dot per window.
+The `winbar` combines each app's windows into one button or shows separate window
+buttons. Separate window buttons always show icon and title; Combined button type
+selects icons or icons with app labels for grouped buttons. The Start button's
+right-click menu controls combining and auto-hide. Pinned apps can be reordered
+by dragging their buttons. App context menus also list recent files whose
+recorded application name matches the app.
 
 The `winbar` tray is the Windows overflow, adapted from
 [omarchy-tray](https://github.com/TyRichards/omarchy-tray): left-click the chevron
@@ -126,41 +132,37 @@ text reads `author — quote`; otherwise it shows just the quote. Idle text elid
 at `maxLabelWidth` or the available bar width. Otherwise the module collapses
 when `Media.player` is null.
 
-In `macos`, `menu` takes `dropdown: true`: a left click opens the menutree
-(`rofi/menutree --dump-json`) as a macOS dropdown whose submenus cascade on hover;
-right and middle click keep their start-menu actions. `appmenu` shows the focused app in bold with File/Edit/View/Window menus that
+In `macos`, `menu` takes `dropdown: true`: a left click opens system actions, recent documents,
+Force Quit, and the full menutree under Hyprmenu; right and middle click keep their
+start-menu actions. `appmenu` shows the focused app in bold with File/Edit/View/Window/Help menus that
 act on that window through Hyprland dispatchers; with no window focused it shows the file
-manager's App, File, and Go menus, as Finder does. Edit sends its combo with
+manager's App, File, Go, and Help menus, as Finder does. Edit sends its combo with
 `send_shortcut`, moving copy/paste to Ctrl+Shift in terminals and disabling the
 combos a terminal reads as signals. `controlcenter` holds Wi-Fi, Bluetooth, Night
 Shift and Keep Awake tiles with display, sound and now-playing controls; `battery`
-opens the power popup; `spotlight` runs menutree's Search All. `nowplaying` shows a playback glyph only while a
+opens the power popup; `spotlight` searches apps, menu actions, places, and recent files, with an option to search more files in File Finder. `nowplaying` shows a playback glyph only while a
 player is active and opens a compact card: artwork, title, artist, a seek bar, and
 previous/play/next. The `*-menu` modules (`sound`, `wifi`, `bluetooth`, `vpn`,
 `display`) and `battery` wrap the regular buttons with a compact `modules/MacCard.qml`:
 a switch or slider, the devices, and a "… Settings…" row that opens the full popup.
 Sound lists inputs only once more than one microphone exists; Wi-Fi shows the eight
 strongest networks. `notification-center` is the clock with a month calendar (click for
-the full calendar) and the five latest notifications. Both menus render
-`modules/MenuBarPopup.qml` items `{text, glyph, shortcut, checked, submenu, run}`,
+the full calendar), the five latest notifications, and a link to the full archive. Both menus render
+`modules/MenuBarPopup.qml` items `{text, shortcut, checked, submenu, run}`,
 where `null` is a separator, `submenu` is a nested item list, and `run` is a
 command array or a function. Arrow keys walk every level: → or Enter opens a
-submenu, ← or Esc backs out one level.
+submenu, ← or Esc backs out one level, and ←/→ switch top-level menus.
 
 The `winbar` recreates the Windows 11 taskbar. `widgets` shows the weather icon,
 temperature and condition and opens the weather popup. `menu` takes the Windows
-logo through its `text` prop; `search` is the search box and opens the Start
-menu; `taskview` toggles Exposé. `quicksettings` draws the network, volume and
-battery icons as one button: its flyout holds Wi-Fi, Bluetooth, Energy saver,
-Night light, Do not disturb and Cast tiles, the brightness and volume sliders, the
-playing media and the battery level. The `›` on a tile or slider opens that
-detail popup, which the module creates on first use unless a module hosting the
-same popup (`wifi`, `bluetooth`, `volume`, `battery`, …) is live on the bar; a tray
-widget is live only while the flyout is open, so a popup it hosts opens by name
-(`bar popup bitwarden`) with the flyout closed too.
+logo through its `text` prop and opens apps and recent files; `spotlight` searches
+recent files and indexed Documents in one popup.
+`wifi-menu`, `sound-menu`, and `battery` each
+open their own compact popup, with a link to the full network, audio, or power
+popup.
 `notifications` takes `themed: true` to draw its bell from the style's symbolic
-icons. `showdesktop` is the sliver at the right edge: it switches to an empty
-workspace, and back when that workspace is still empty.
+icons. `expose-strip` is the sliver at the right edge: hovering opens Exposé.
+The Exposé hot corner is inactive while the Windows bar is shown.
 
 `appmenus.json` adds per-app menus, keyed by lowercase app id (comma-separated ids
 share an entry). Each item is `[label, mods, key]` sent with `send_shortcut`, or `null`

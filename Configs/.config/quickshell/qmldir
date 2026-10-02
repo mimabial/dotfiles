@@ -79,6 +79,7 @@ ScriptButton 1.0 ScriptButton.qml
 StartButton 1.0 StartButton.qml
 StartMenuFlyout 1.0 StartMenuFlyout.qml
 StartMenuPane 1.0 StartMenuPane.qml
+StartMenuRow 1.0 StartMenuRow.qml
 StartPinnedGrid 1.0 StartPinnedGrid.qml
 StartPopup 1.0 StartPopup.qml
 SubmapButton 1.0 SubmapButton.qml

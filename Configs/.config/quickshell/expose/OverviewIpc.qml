@@ -83,17 +83,6 @@ Scope {
     function backgroundDim(value: real): string {
         return String(root.controller.setBackgroundDim(value));
     }
-    function settings(mode: string): string {
-        if (mode === "open")
-            root.controller.openSettings();
-        else if (mode === "close")
-            root.controller.closeSettings();
-        else if (mode === "toggle")
-            root.controller.settingsOpen ? root.controller.closeSettings() : root.controller.openSettings();
-        else
-            return "expected open, close, or toggle";
-        return mode;
-    }
     function hotCorner(mode: string): string {
         if (mode !== "on" && mode !== "off")
             return "expected on or off";

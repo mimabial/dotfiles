@@ -50,9 +50,9 @@ PopupCard {
         switch (event.key) {
         case Qt.Key_Down: case Qt.Key_Tab: move(1); return true
         case Qt.Key_Up: case Qt.Key_Backtab: move(-1); return true
-        case Qt.Key_Right: if (keyRow?.item.submenu) enter(); return true
+        case Qt.Key_Right: if (keyRow?.item.submenu) enter(); else if (!keyLevel) shell.switchMenu(1); return true
         case Qt.Key_Return: case Qt.Key_Enter: case Qt.Key_Space: enter(); return true
-        case Qt.Key_Left: if (keyLevel) back(); return true
+        case Qt.Key_Left: if (keyLevel) back(); else shell.switchMenu(-1); return true
         case Qt.Key_Escape: keyLevel ? back() : shell.closePopup(); return true
         }
         return false
@@ -76,9 +76,9 @@ PopupCard {
                     menuWidth: column.width
                     text: item?.text ?? ""
                     readonly property bool marked: typeof item?.checked === "function" ? item.checked() : !!item?.checked
-                    glyph: marked ? "✓" : item?.glyph ?? ""
+                    glyph: marked ? "✓" : ""
                     textColor: marked ? Commons.Color.bar.active : Commons.Color.menu.text
-                    shortcut: item?.shortcut ?? ""
+                    shortcut: item?.submenu ? "›" : item?.shortcut ?? ""
                     disabled: !item?.run && !item?.submenu
                     cursored: column.menu.keyRow === row
                     highlighted: column.menu.path[column.level]?.row === row
@@ -108,7 +108,7 @@ PopupCard {
             rect.width: flyout.branch ? flyout.branch.row.width : 1
             rect.height: flyout.branch ? flyout.branch.row.height : 1
             onAnchoring: {
-                if (!flyout.branch) return
+                if (!flyout.branch || !flyout.anchor.window) return
                 const point = flyout.anchor.window.contentItem.mapFromItem(flyout.branch.row, 0, 0)
                 flyout.anchor.rect.x = Math.round(point.x)
                 flyout.anchor.rect.y = Math.round(point.y - flyout.menu.padding)

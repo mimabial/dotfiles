@@ -14,16 +14,21 @@ Rectangle {
     property string detail: ""
     property string value: ""
     property real valueWidth: 0
+    property bool valueClickable: false
     property color titleColor: shell.foreground
     property color detailColor: shell.alpha(shell.foreground, .55)
     property color valueColor: shell.alpha(shell.foreground, .7)
+    property color valueHoverColor: valueColor
     property bool active: false
+    property bool hoverBorder: true
     // a row with nothing to click should not light up or take the keyboard cursor
     property bool interactive: true
     property real rightInset: 0
     // marks the row for PopupCard's keyboard cursor, and shows where it sits
     readonly property bool navigable: interactive && enabled
     readonly property bool hovered: mouse.containsMouse
+    readonly property bool valueHovered: valueClickable && valueText.visible && hovered
+        && mouse.mouseX >= valueText.mapToItem(root, 0, 0).x - Style.controlPaddingX / 2
     property bool cursored: false
     property bool selected: false
     // for rows that are a bare label, with no icon or value to align against
@@ -31,11 +36,13 @@ Rectangle {
     // pills after the title: [{text, color}]
     property var badges: []
     signal clicked(int button)
+    signal valueClicked()
     implicitHeight: Math.max(Style.popupRowHeight, Math.max(textColumn.implicitHeight, iconImage.visible ? root.iconSize : 0) + Style.controlPaddingY * 2)
-    readonly property color highlight: selected ? shell.hoverEdge(.85)
+    readonly property color highlight: !hoverBorder && hovered ? "transparent"
+        : selected ? shell.hoverEdge(.85)
         : active ? shell.alpha(shell.role("act_br", shell.accent), .5)
         : cursored ? shell.hoverEdge(.85)
-        : (interactive && mouse.containsMouse) ? shell.hoverEdge(.6)
+        : (interactive && mouse.containsMouse && hoverBorder) ? shell.hoverEdge(.6)
         : "transparent"
     color: (interactive && (mouse.containsMouse || cursored || selected)) ? shell.hoverFill()
         : active ? shell.alpha(shell.role("act_bg", shell.accent), .2) : "transparent"
@@ -99,7 +106,18 @@ Rectangle {
             }
             Text { visible: text !== ""; width: parent.width; text: root.detail; color: root.detailColor; font.family: root.shell.fontFamily; font.pixelSize: Style.caption; elide: Text.ElideRight }
         }
-        Text { id: valueText; visible: text !== ""; width: root.valueWidth > 0 ? root.valueWidth : implicitWidth; anchors.verticalCenter: parent.verticalCenter; text: root.value; color: root.valueColor; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+        Text { id: valueText; visible: text !== ""; width: root.valueWidth > 0 ? root.valueWidth : implicitWidth; anchors.verticalCenter: parent.verticalCenter; text: root.value; color: root.valueHovered ? root.valueHoverColor : root.valueColor; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
     }
-    MouseArea { id: mouse; anchors.fill: parent; enabled: root.enabled && root.interactive; hoverEnabled: root.interactive; acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton; onClicked: event => root.clicked(event.button) }
+    MouseArea {
+        id: mouse
+        anchors.fill: parent
+        enabled: root.enabled && root.interactive
+        hoverEnabled: root.interactive
+        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+        cursorShape: root.valueHovered ? Qt.PointingHandCursor : Qt.ArrowCursor
+        onClicked: event => {
+            if (event.button === Qt.LeftButton && root.valueHovered) root.valueClicked()
+            else root.clicked(event.button)
+        }
+    }
 }

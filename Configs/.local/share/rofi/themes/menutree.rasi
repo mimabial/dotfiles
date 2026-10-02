@@ -68,7 +68,7 @@ entry {
     background-color:            transparent;
     text-color:                  @foreground;
     placeholder:                 "";
-    placeholder-color:           @active;
+    placeholder-color:           @separator;
 }
 
 textbox-prompt-colon {
@@ -98,7 +98,7 @@ listview {
     lines:                       10;
     cycle:                       true;
     dynamic:                     true;
-    scrollbar:                   true;
+    scrollbar:                   false;
     layout:                      vertical;
     reverse:                     false;
     fixed-height:                false;

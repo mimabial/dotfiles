@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import qs.Commons as Commons
 import "dock" as Dock
 
@@ -16,6 +17,7 @@ PopupCard {
     background: Commons.Color.menu.background
     borderColor: Commons.Color.menu.border
     property var record: null
+    property var recentFiles: []
     property int selectedWindowIdx: -1
     readonly property var actionWindows: record ? taskbar.windowsFor(record) : []
     readonly property var desktopActions: {
@@ -32,6 +34,8 @@ PopupCard {
         if (!popupEnabled) return
         taskbar.popupAnchor = anchor
         record = item
+        recentFiles = []
+        if (shell.layoutName === "winbar") recentProcess.running = true
         selectedWindowIdx = -1
         shell.popupCenteredName = ""
         shell.popupName = popupName
@@ -48,6 +52,11 @@ PopupCard {
         for (const window of actionWindows)
             if (window.toplevel && window.toplevel.wayland) window.toplevel.wayland.close()
         shell.closePopup()
+    }
+    Process {
+        id: recentProcess
+        command: ["python3", root.shell.home + "/.local/lib/hypr/quickshell/recent-items.py", "app", root.record ? root.taskbar.labelFor(root.record) : ""]
+        stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.recentFiles = JSON.parse(text) }
     }
     Item {
         id: actionHost
@@ -92,8 +101,16 @@ PopupCard {
                 }
             }
             MenuDivider { visible: root.desktopActions.length > 0 }
+            Repeater {
+                model: root.recentFiles
+                delegate: ContextRow {
+                    required property var modelData
+                    text: modelData.text
+                    onTriggered: { root.shell.run(["xdg-open", modelData.uri]); root.shell.closePopup() }
+                }
+            }
+            MenuDivider { visible: root.recentFiles.length > 0 }
             ContextRow {
-                visible: root.desktopActions.length === 0
                 text: root.actionWindows.length ? "New Window" : "Launch"
                 disabled: !root.record || !root.taskbar.entryFor(root.record)
                 onTriggered: { root.taskbar.launch(root.record); root.shell.closePopup() }

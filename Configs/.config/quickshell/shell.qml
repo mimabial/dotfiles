@@ -5,6 +5,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
+import Quickshell.Wayland
 import Quickshell.Services.UPower
 import qs.systemstats
 import "ClockFormats.js" as ClockFormats
@@ -34,8 +35,11 @@ ShellRoot {
     property bool stateReady: false
     property string mode: workflow === "gaming" ? "hidden" : style.ready ? String(barLayout.panel || "") : ""
     property bool userHidden: false
+    property bool barRevealed: false
     readonly property bool barShown: (mode === "horizontal" || mode === "winbar") && !userHidden
+        && (mode !== "winbar" || !prefs.winbarAutoHide || barRevealed || popupName !== "")
     property string popupName: ""
+    property var menuBarHeadings: []
     property string dragKey: ""
     property var barLayout: ({})
     property var layoutData: ({})
@@ -207,6 +211,9 @@ ShellRoot {
             property bool barBlur: true
             property real barOpacity: -1
             property bool barFloating: false
+            property bool winbarAutoHide: false
+            property string winbarCombine: "always"
+            property string winbarButtonType: "icon-label"
             property string trayHidden: "[]"
             property string trayPinned: "[]"
             property bool trayShowIcons: true
@@ -261,10 +268,6 @@ ShellRoot {
         next[name] = value
         exposeConfig = next
         exposeSettingsFile.setText(JSON.stringify(next, null, 2) + "\n")
-    }
-    function resetExposeSettings() {
-        exposeConfig = Object.assign({}, exposeDefaults)
-        exposeSettingsFile.setText(JSON.stringify(exposeConfig, null, 2) + "\n")
     }
     function mediaColor(output) {
         const classes = output && output.class ? [].concat(output.class) : []
@@ -325,6 +328,15 @@ ShellRoot {
     property string popupCenteredName: ""
     function togglePopup(name, centered) { popupCenteredName = centered === true ? name : ""; popupName = popupName === name ? "" : name }
     function closePopup() { popupName = "" }
+    function toggleWinbarCombine() { prefs.winbarCombine = prefs.winbarCombine === "never" ? "always" : "never" }
+    function setWinbarButtonType(type) { prefs.winbarButtonType = type }
+    function switchMenu(step) {
+        const names = ["hyprmenu"].concat(menuBarHeadings.map(title => "appmenu:" + title))
+        const index = names.indexOf(popupName)
+        if (index < 0) return
+        popupCenteredName = ""
+        popupName = names[(index + step + names.length) % names.length]
+    }
     function toggleBarBlur() { prefs.barBlur = !prefs.barBlur }
     function toggleBarFloating() { prefs.barFloating = !prefs.barFloating }
     function refreshBarFloatGap() { if (!barGapProbe.running) barGapProbe.running = true }
@@ -505,8 +517,8 @@ ShellRoot {
     LayerBlur { surface: "hypr-shell-reload"; enabled: shellRoot.prefs.barBlur; ignoreAlpha: 0.1 }
 
     onModeChanged: closePopup()
-    onLayoutNameChanged: { layoutData = ({}); barLayout = ({}); layoutFile.reload() }
-    onUserHiddenChanged: if (userHidden) closePopup()
+    onLayoutNameChanged: { barRevealed = false; layoutData = ({}); barLayout = ({}); layoutFile.reload() }
+    onUserHiddenChanged: if (userHidden) { barRevealed = false; closePopup() }
     onTimeVisibilityChanged: timeVisibilityWrite.restart()
     Component.onCompleted: { restorePowerProfile(); refreshBarFloatGap() }
 
@@ -531,6 +543,7 @@ ShellRoot {
         // value or a re-evaluated font.family; this is the one to verify against
         function reloadHard(): void { Quickshell.reload(true) }
         function popup(name: string): void { shellRoot.togglePopup(name, true) }
+        function menuBar(): void { if (shellRoot.layoutName === "macos") shellRoot.togglePopup("hyprmenu") }
         function bookmarks(): void { shellRoot.togglePopup("bookmarks", true) }
         function blur(): void { shellRoot.toggleBarBlur() }
         function opacity(percent: string): void { shellRoot.prefs.barOpacity = percent === "auto" ? -1 : Number(percent) / 100 }
@@ -576,5 +589,24 @@ ShellRoot {
     Variants {
         model: shellRoot.stateReady && (shellRoot.mode === "horizontal" || shellRoot.mode === "winbar") ? Quickshell.screens : []
         delegate: Component { HorizontalBar { required property var modelData; shell: shellRoot; screen: modelData } }
+    }
+    Variants {
+        model: shellRoot.mode === "winbar" && shellRoot.prefs.winbarAutoHide && !shellRoot.barShown && !shellRoot.userHidden ? Quickshell.screens : []
+        delegate: Component {
+            PanelWindow {
+                required property var modelData
+                screen: modelData
+                anchors.left: true; anchors.right: true; anchors.bottom: true
+                implicitHeight: Style.xs
+                color: "transparent"
+                exclusionMode: ExclusionMode.Ignore
+                WlrLayershell.namespace: "hypr-shell-bar-reveal"
+                WlrLayershell.layer: WlrLayer.Top
+                Item {
+                    anchors.fill: parent
+                    HoverHandler { onHoveredChanged: if (hovered) shellRoot.barRevealed = true }
+                }
+            }
+        }
     }
 }

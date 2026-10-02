@@ -82,7 +82,7 @@ PopupWindow {
             spacing: Style.xxs
             Repeater {
                 model: root.items
-                delegate: PopupRow {
+                delegate: StartMenuRow {
                     id: row
                     required property var modelData
                     width: flyColumn.width; height: Style.popupRowHeight; shell: root.shell
@@ -91,7 +91,7 @@ PopupWindow {
                     valueWidth: Style.px(18)
                     readonly property bool checked: root.shell.menuTargetActive(modelData.target) ?? modelData.checked
                     active: modelData.kind === "submenu" && root.openSubId === modelData.target
-                    color: row.highlight
+                    color: row.hoverBorder ? row.highlight : row.hovered ? root.shell.hoverFill() : "transparent"
                     value: modelData.chevron || (checked ? "✓" : "")
                     onHoveredChanged: {
                         if (!hovered) return

@@ -44,7 +44,7 @@ Column {
         spacing: 2
         model: root.items
         ScrollBar.vertical: PopupScrollBar { shell: root.shell }
-        delegate: PopupRow {
+        delegate: StartMenuRow {
             id: row
             required property var modelData
             width: menuList.width; shell: root.shell

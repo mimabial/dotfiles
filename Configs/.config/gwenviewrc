@@ -4,6 +4,9 @@ CropRatioHeight=9
 CropRatioIndex=5
 CropRatioWidth=16
 
+[FullScreen]
+FullScreenModeActive=true
+
 [General]
 FullScreenBackground=FullScreenBackground::Image
 LastUsedVersion=210800
@@ -19,31 +22,31 @@ ThumbnailSplitterSizes=512,146
 MenuBar=Disabled
 
 [Recent Files]
-File1[$e]=$HOME/.config/hypr/themes/Frosted Glass/wallpapers/wallhaven-og32ql.jpg
-File10[$e]=$HOME/.config/hypr/themes/Graphite Mono/wallpapers/a_hallway_with_lights_on_the_ceiling.png
-File2[$e]=$HOME/.config/hypr/themes/Frosted Glass/wallpapers/wallhaven-p9w9gp.jpg
-File3[$e]=$HOME/Pictures/Wallpapers/wallhaven-e7vl5k.png
-File4[$e]=$HOME/.config/hypr/themes/Frosted Glass/wallpapers/wallhaven-k8x2kd.png
-File5[$e]=$HOME/Pictures/Wallpapers/wallhaven-e83yvl.png
-File6[$e]=$HOME/.config/hypr/themes/Frosted Glass/wallpapers/wallhaven-57r8x5.png
-File7[$e]=$HOME/Pictures/Wallpapers/wallhaven-ex2oro.png
-File8[$e]=$HOME/Pictures/Wallpapers/wallhaven-o5ow2m.png
-File9[$e]=$HOME/.config/hypr/themes/Graphite Mono/wallpapers/wallhaven-5y3pd8.png
-Name1[$e]=wallhaven-og32ql.jpg
-Name10[$e]=a_hallway_with_lights_on_the_ceiling.png
-Name2[$e]=wallhaven-p9w9gp.jpg
-Name3[$e]=wallhaven-e7vl5k.png
-Name4[$e]=wallhaven-k8x2kd.png
-Name5[$e]=wallhaven-e83yvl.png
-Name6[$e]=wallhaven-57r8x5.png
-Name7[$e]=wallhaven-ex2oro.png
-Name8[$e]=wallhaven-o5ow2m.png
-Name9[$e]=wallhaven-5y3pd8.png
+File1[$e]=$HOME/Pictures/Wallpapers/wallhaven-e7vl5k.png
+File10[$e]=$HOME/Wallpapers/space_suit.png
+File2[$e]=$HOME/.config/hypr/themes/Frosted Glass/wallpapers/wallhaven-k8x2kd.png
+File3[$e]=$HOME/Pictures/Wallpapers/wallhaven-e83yvl.png
+File4[$e]=$HOME/.config/hypr/themes/Frosted Glass/wallpapers/wallhaven-57r8x5.png
+File5[$e]=$HOME/Pictures/Wallpapers/wallhaven-ex2oro.png
+File6[$e]=$HOME/Pictures/Wallpapers/wallhaven-o5ow2m.png
+File7[$e]=$HOME/.config/hypr/themes/Graphite Mono/wallpapers/wallhaven-5y3pd8.png
+File8[$e]=$HOME/.config/hypr/themes/Graphite Mono/wallpapers/a_hallway_with_lights_on_the_ceiling.png
+File9[$e]=$HOME/Pictures/wallhaven-yqk91l.jpg
+Name1[$e]=wallhaven-e7vl5k.png
+Name10[$e]=space_suit.png
+Name2[$e]=wallhaven-k8x2kd.png
+Name3[$e]=wallhaven-e83yvl.png
+Name4[$e]=wallhaven-57r8x5.png
+Name5[$e]=wallhaven-ex2oro.png
+Name6[$e]=wallhaven-o5ow2m.png
+Name7[$e]=wallhaven-5y3pd8.png
+Name8[$e]=a_hallway_with_lights_on_the_ceiling.png
+Name9[$e]=wallhaven-yqk91l.jpg
 
 [SideBar]
 InformationSplitterSizes=231,244
 IsVisible ViewMode=true
-SideBarSplitterSizes=345,590
+SideBarSplitterSizes=346,1547
 
 [StatusBar]
 IsVisible BrowseMode=false

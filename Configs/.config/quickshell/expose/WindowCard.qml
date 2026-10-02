@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import Quickshell.Hyprland
 import Quickshell.Wayland
 import "WindowModel.js" as WindowModel
+import ".." as Shell
 import qs.Commons
 import qs.Ui as Ui
 
@@ -29,9 +30,11 @@ Item {
     readonly property bool integratedFooter: card.controller.windowFooterStyle === "integrated"
     readonly property bool overlayFooter: card.controller.windowFooterStyle === "overlay"
     readonly property bool centeredFooter: card.controller.windowFooterStyle === "centered"
+    readonly property bool inMacSpace: WindowModel.workspaceName(modelData).indexOf("macspace_") === 0
+    property bool actionHovered: false
     readonly property string windowTitle: String(modelData.title || WindowModel.appIdFor(modelData) || "Untitled window")
     readonly property string applicationName: WindowModel.appIdFor(modelData) || "Application"
-    readonly property string workspaceName: card.controller.workspaceName(modelData)
+    readonly property string workspaceName: card.inMacSpace ? "Space" : card.controller.workspaceName(modelData)
     readonly property string iconSource: card.controller.iconFor(modelData)
     readonly property color outlineColor: focusedWindow ? Color.accent : (selected ? Color.menu.selectedBorder : Color.menu.border)
     readonly property var outlineSpec: Border.flat(outlineColor, card.controller.outlineWidth)
@@ -84,29 +87,15 @@ Item {
 
     MouseArea {
         anchors.fill: parent
-        enabled: !card.controller.settingsOpen && (card.controller.previewIndex < 0 || card.previewed)
+        enabled: card.controller.previewIndex < 0 || card.previewed
         hoverEnabled: true
-        onEnabledChanged: {
-            if (!enabled) {
-                card.hovered = false;
-                if (card.controller.hoveredIndex === card.slot)
-                    card.controller.hoveredIndex = -1;
-
-            }
-        }
+        onEnabledChanged: if (!enabled) card.hovered = false
         onEntered: {
             card.hovered = true;
-            if (card.acceptsKeyboard) {
-                card.controller.hoveredIndex = card.slot;
+            if (card.acceptsKeyboard)
                 card.controller.selectedIndex = card.slot;
-            }
         }
-        onExited: {
-            card.hovered = false;
-            if (card.acceptsKeyboard && card.controller.hoveredIndex === card.slot)
-                card.controller.hoveredIndex = -1;
-
-        }
+        onExited: card.hovered = false
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
         onClicked: function(mouse) {
             if (mouse.button === Qt.MiddleButton)
@@ -119,11 +108,12 @@ Item {
     DragHandler {
         id: dragHandler
         target: null
-        enabled: !card.controller.settingsOpen && card.controller.previewIndex < 0
+        enabled: card.controller.previewIndex < 0
         onActiveChanged: if (!active) card.Drag.drop()
     }
 
     ColumnLayout {
+        id: cardLayout
         anchors.fill: parent
         anchors.margins: Style.spacing.sm
         spacing: card.overlayFooter ? 0 : Style.spacing.sm
@@ -140,7 +130,7 @@ Item {
                 anchors.centerIn: parent
                 width: Math.min(parent.width, parent.height * windowAspectRatio)
                 height: Math.min(parent.height, parent.width / windowAspectRatio)
-                radius: Math.max(0, Style.cornerRadius - Style.spacing.xs)
+                radius: Style.cornerRadius
                 color: Color.background
                 clip: true
                 layer.enabled: true
@@ -201,6 +191,39 @@ Item {
                 visible: false
                 layer.enabled: true
                 layer.smooth: true
+            }
+
+            Rectangle {
+                id: spaceAction
+                anchors.top: previewFrame.top
+                anchors.right: previewFrame.right
+                anchors.margins: Style.spacing.sm
+                z: 6
+                width: actionIcon.implicitWidth + Style.spacing.xs * 2
+                height: width
+                radius: Style.cornerRadius
+                color: Util.alpha(Color.menu.background, Style.popupSurfaceOpacity)
+                border.width: Style.normalBorderWidth
+                border.color: Color.menu.border
+                visible: !card.dragging && (card.hovered || card.selected || card.actionHovered)
+
+                Shell.SymbolicIcon {
+                    id: actionIcon
+                    anchors.centerIn: parent
+                    name: card.inMacSpace ? "view-restore" : "view-fullscreen"
+                    context: "actions"
+                    color: Color.menu.text
+                    size: Style.font.heading
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onEntered: card.actionHovered = true
+                    onExited: card.actionHovered = false
+                    onClicked: card.controller.toggleFullscreen(card.modelData)
+                }
             }
 
         }
