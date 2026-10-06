@@ -70,7 +70,8 @@ ComboBox {
         contentItem: ListView {
             id: list; clip: true; model: root.popup.visible ? root.delegateModel : null
             currentIndex: root.highlightedIndex
-            ScrollIndicator.vertical: ScrollIndicator {}
+            ScrollBar.vertical: PopupScrollBar { shell: root.shell }
         }
     }
+    PopupPointer { shell: root.shell; row: root }
 }

@@ -54,7 +54,7 @@
     "badgeSize": 7.0,
     "badgeFontWeight": 700,
     "badgeOffsetX": -8.0,
-    "badgeOffsetY": 18.0
+    "badgeOffsetY": 20.0
   },
   "menu": {
     "iconBox": 14.0,
@@ -83,6 +83,9 @@
     "iconBox": 8.0,
     "margin": [4.0, 2.0, 4.0, 2.0],
     "padding": [0.0, 8.0, 0.0, 8.0]
+  },
+  "updates": {
+    "color": ["fg", 1.0]
   },
   "language": {
     "fontSize": 11.0

@@ -5,7 +5,7 @@ step through them without one. `Super + T` then `M` flips between the light and
 dark variant of whichever one you are on.
 
 Switching a theme repaints the compositor, the bar, both terminals, rofi, dunst,
-GTK, Qt, Firefox, Chromium, Gimp, tmux, rmpc, wlogout and the lock screen. Fifteen
+GTK, Qt, Firefox, Chromium, Gimp, tmux, rmpc and the lock screen. Sixteen
 renderers, all driven from a single `active-palette.json`. There is no app left
 behind on the old colors, because being left behind is what the whole pipeline
 exists to prevent.

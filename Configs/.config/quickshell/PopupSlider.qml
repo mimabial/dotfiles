@@ -90,4 +90,5 @@ Item {
         }
         handle: Rectangle { implicitWidth: Style.knobSize; implicitHeight: Style.knobSize; x: slider.leftPadding + slider.visualPosition * (slider.availableWidth - width); y: slider.topPadding + slider.availableHeight / 2 - height / 2; width: Style.knobSize; height: Style.knobSize; radius: Style.knobSize / 2; color: root.shell.foreground }
     }
+    PopupPointer { shell: root.shell; row: root }
 }

@@ -17,7 +17,6 @@ menu_register_all() {
   menu_add_item main "  Learn" submenu learn
   menu_add_item main "󰞅  Insert" submenu trigger_insert
   menu_add_item main "  Capture" submenu trigger_capture
-  menu_add_item main "󰕍  Share" submenu trigger_share
   menu_add_item main "󰔎  Toggle" submenu trigger_toggle
   menu_add_item main "󰢵  Style" submenu style
   menu_add_item main "  Setup" submenu setup
@@ -66,7 +65,6 @@ menu_open_argument() {
         *learn*) menu_show_menu learn ;;
         *insert*) menu_show_menu trigger_insert ;;
         *capture*) menu_show_menu trigger_capture ;;
-        *share*) menu_show_menu trigger_share ;;
         *toggle*) menu_show_menu trigger_toggle ;;
         *style*) menu_show_menu style ;;
         *theme*) menu_run_action style_theme ;;

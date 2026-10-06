@@ -18,6 +18,8 @@ route_details="$(ip route get "${probe}" 2>/dev/null || true)"
 iface="$(awk '{ for (i = 1; i <= NF; i++) if ($i == "dev") { print $(i + 1); exit } }' <<<"${route_details}")"
 gateway="$(awk '{ for (i = 1; i <= NF; i++) if ($i == "via") { print $(i + 1); exit } }' <<<"${route_details}")"
 address="$(ip -o -4 addr show dev "${iface}" 2>/dev/null | awk '{ print $4; exit }')"
+profile_iface="$(ip -j -4 route show default | jq -r 'min_by(.metric // 0).dev // empty')"
+[[ -n "${profile_iface}" ]] || profile_iface="${iface}"
 
 dns_json='[]'
 if command -v resolvectl >/dev/null 2>&1 && [[ -n "${iface}" ]]; then
@@ -37,15 +39,16 @@ fi
 
 band=""
 signal=""
-if command -v nmcli >/dev/null 2>&1 && [[ -n "${iface}" ]]; then
+if command -v nmcli >/dev/null 2>&1 && [[ -n "${profile_iface}" ]]; then
   # IN-USE marks the connected AP; FREQ tells us which band it sits in.
-  wifi_line="$(nmcli -t -f IN-USE,SIGNAL,FREQ dev wifi list ifname "${iface}" --rescan no 2>/dev/null \
+  wifi_line="$(nmcli -t -f IN-USE,SIGNAL,FREQ dev wifi list ifname "${profile_iface}" --rescan no 2>/dev/null \
     | awk -F: '$1 == "*" { print $2 " " $3; exit }' || true)"
   signal="${wifi_line%% *}"
-  freq="${wifi_line##* }"
+  freq="${wifi_line#* }"
+  freq="${freq%% *}"
   [[ "${signal}" =~ ^[0-9]+$ ]] || signal=""
   if [[ "${freq}" =~ ^[0-9]+$ ]]; then
-    if ((freq >= 5000)); then band="5 GHz"; else band="2.4 GHz"; fi
+    if ((freq >= 5925)); then band="6 GHz"; elif ((freq >= 4900)); then band="5 GHz"; else band="2.4 GHz"; fi
   fi
 fi
 
@@ -60,32 +63,33 @@ fi
 # The active profile, so the panel can show and flip its autoconnect flag.
 uuid=""
 autoconnect=""
-if command -v nmcli >/dev/null 2>&1 && [[ -n "${iface}" ]]; then
-  uuid="$(nmcli -g GENERAL.CON-UUID device show "${iface}" 2>/dev/null | head -n 1 || true)"
+if command -v nmcli >/dev/null 2>&1 && [[ -n "${profile_iface}" ]]; then
+  uuid="$(nmcli -g GENERAL.CON-UUID device show "${profile_iface}" 2>/dev/null | head -n 1 || true)"
+  [[ "${uuid}" == -- ]] && uuid=""
   [[ -n "${uuid}" ]] && autoconnect="$(nmcli -g connection.autoconnect connection show "${uuid}" 2>/dev/null | head -n 1 || true)"
 fi
 
 # Second sample: the first pays ARP plus the Wi-Fi radio waking, reading 20x high.
 latency() {
   local host="$1"
-  [[ -n "${host}" ]] || return 0
+  [[ -n "${host}" ]] || { printf '{"ms":null,"loss":null}'; return 0; }
   LC_ALL=C ping -n -c 2 -i 0.2 -W 1 "${host}" 2>/dev/null \
-    | awk -F'time[=<]' '/time[=<]/ { split($2, part, " "); value = part[1] } END { print value }' || true
+    | awk -F'time[=<]' '/time[=<]/ { split($2, part, " "); value = part[1] } /packet loss/ { match($0, /([0-9.]+)% packet loss/, parts); loss = parts[1] } END { printf "{\"ms\":%s,\"loss\":%s}", value == "" ? "null" : value, loss == "" ? "null" : loss }' || true
 }
 router_ms="$(latency "${gateway}")"
 internet_ms="$(latency "${probe}")"
 
 jq -cn \
   --arg iface "${iface}" --arg address "${address}" --arg gateway "${gateway}" \
+  --arg profileIface "${profile_iface}" \
   --arg band "${band}" --arg signal "${signal}" \
   --arg rx "${rx}" --arg tx "${tx}" \
-  --arg router "${router_ms}" --arg internet "${internet_ms}" \
+  --argjson router "${router_ms}" --argjson internet "${internet_ms}" \
   --arg uuid "${uuid}" --arg autoconnect "${autoconnect}" \
   --argjson dns "${dns_json}" \
-  '{iface: $iface, address: $address, gateway: $gateway, band: $band, dns: $dns,
+  '{iface: $iface, profileIface: $profileIface, address: $address, gateway: $gateway, band: $band, dns: $dns,
     uuid: $uuid, autoconnect: ($autoconnect == "yes"),
     signal: (if $signal == "" then null else ($signal | tonumber) end),
     rx: (if $rx == "" then null else ($rx | tonumber) end),
     tx: (if $tx == "" then null else ($tx | tonumber) end),
-    ping: {router: (if $router == "" then null else ($router | tonumber) end),
-           internet: (if $internet == "" then null else ($internet | tonumber) end)}}'
+    ping: {router: $router.ms, internet: $internet.ms}, packetLoss: $internet.loss}'

@@ -124,7 +124,8 @@ Validate with `jq empty layouts/<name>.json`, then run
 `"icon"` (a playback-state glyph), `"mpris"` (cover art, metadata, and optional
 transport controls), and `"cava"` (an audio spectrum with an optional playback glyph).
 Cava uses the default audio input monitor and shares one process per bars/FPS/smoothing configuration across displays;
-it runs only while its appearance is visible and media is playing. `noIcon: true`
+it runs while its appearance is visible and media is playing, or no player exists
+(`showWhenIdle`), and sleeps after a second of silence. `noIcon: true`
 hides its playback glyph. Its `props` include `cavaBars` (positive integer, default `16`),
 `cavaBarWidth` (default `2`), `cavaGap` (default `1`), and `cavaPosition` (`"center"`,
 `"top"`, or `"bottom"`). Width and gap scale with the bar's UI size. The default
@@ -139,8 +140,9 @@ Peak caps use the theme's error color and
 hold for 320 ms before falling at a rate independent of FPS. Right-click changes
 last until the module reloads; set `cavaMode` in layout props for its initial mode.
 It takes `showWhenIdle: true` to keep a placeholder when no player is
-running. The `countdown` and idle `mpris`/`cava` views show a music-box glyph (`idleIcon`)
-and a short quote that advances on each hover (`idleQuotes`); `icon` shows only the glyph.
+running. The `countdown` and idle `mpris` views show a music-box glyph (`idleIcon`)
+and a short quote that advances on each hover (`idleQuotes`); `icon` shows only the glyph,
+and `cava` the glyph beside a live spectrum of system audio.
 With `showArtist: true`, the
 text reads `author — quote`; otherwise it shows just the quote. Idle text elides
 at `maxLabelWidth` or the available bar width. Otherwise the module collapses
@@ -281,6 +283,21 @@ A panel opens with `PopupHero`. Its top-level column uses `Style.sectionGap`; ea
 `PopupToggleRow`. Controls take `Style.controlHeight`; chosen state is
 `shell.selectedFill()`/`selectedEdge()`, secondary text `shell.mutedText`/`faintText`.
 
+Popup cards fit the screen and scroll overflow in both directions. Scrollbars
+stay visible while content overflows. Pointer movement and keyboard navigation
+share the cursor; Ctrl+Tab and Ctrl+Shift+Tab visit neighbouring bar popups,
+including panels loaded on demand. Popup transitions follow Hyprland's
+`animations:enabled` setting.
+
+The network popup shows connection failures with password retry, captive portal
+login, explicit Disconnect and Forget actions, copyable addresses, packet loss,
+DNS presets or custom servers, available Wi-Fi bands, and a cancellable Cloudflare
+speed test. Traffic follows the routed interface; profile changes apply to the
+underlying connection when a VPN carries traffic. Enterprise Wi-Fi opens
+`nm-connection-editor`. Network changes and rates use events and the shared stats
+sampler. Wi-Fi sharing can reveal the saved password on request and clears it on
+close; OWE sharing has no password.
+
 The standalone `date` module opens the calendar. `datetime` opens the
 alarm/timer/stopwatch popup where configured as the timer clock.
 
@@ -384,7 +401,7 @@ sudo install -D -o root -g root -m 0644 ~/.local/lib/hypr/system/power-manager-b
 | role | files |
 | --- | --- |
 | entry and shared state | `shell.qml`, `Style.qml`, `Theme.qml` |
-| standalone panels | `dock/`, `expose/`, `lockview/` (hyprlock layout explorer) |
+| standalone panels | `dock/`, `expose/`, `lockview/` (hyprlock layout explorer), `SessionMenu.qml` (logout menu, IPC `sessionmenu toggle`) |
 | layer blur | `LayerBlur.qml` |
 | panels | `HorizontalBar.qml`, `BarSection.qml`, `BarModuleLoader.qml` |
 | primitives | `BarButton.qml`, `ScriptButton.qml`, `DrawerGroup.qml`, `SideBorder.qml`, `Popup*.qml`, `LazyPopup.qml` |
@@ -408,7 +425,7 @@ add `systemctl` calls to layout switching, module actions, reloads, or providers
 - IDs inside a `Component` are private to it; expose values through properties.
 - Anchors are ignored inside `Row`, `Column`, and `Grid`; wrap when necessary.
 - A derived property can shadow a base property with the same name.
-- `PopupCard`'s default property accepts Items, not handlers.
+- `PopupCard`'s default property accepts Items and nonvisual QObjects through `Item.data`.
 - Masked text fields contain separators even when they have no digits.
 - An array nested in a `property var` comes back as a list wrapper, so
   `Array.isArray` is false; test for the other case (`typeof run === "function"`).
@@ -420,16 +437,16 @@ add `systemctl` calls to layout switching, module actions, reloads, or providers
 ```bash
 # Not bare `qmllint` — $PATH resolves to the qt5 build, which resolves no types
 # and exits 0 on anything that merely parses.
-/usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml -I ~/.config/quickshell ~/.config/quickshell/<changed>.qml
+/usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml -I ~/.config/quickshell -I ~/.cache/qmllint ~/.config/quickshell/<changed>.qml
 jq empty ~/.config/quickshell/layouts/*.json ~/.config/quickshell/styles/*.json
 n=$(quickshell log | wc -l)
-quickshell ipc call bar reload
 quickshell log | tail -n +$((n + 1)) | grep -v font.db
 ```
 
 Layout, style, state, theme, and font files are watched and update in place.
-Quickshell normally reloads changed QML itself; the IPC reload is the deterministic
-verification path. Popup-only errors may not appear until the popup is opened, so
+Quickshell reloads changed QML itself; do not stack an IPC reload on it.
+Batch QML writes while the shell is stopped to avoid consecutive watcher reloads.
+Restart for URL-loaded components, directory imports, or font changes. Popup-only errors may not appear until the popup is opened, so
 open the ones you changed — a clean reload log does not cover them.
 
 Every QML directory declares its types in a `qmldir`, so lint resolves `Style` and

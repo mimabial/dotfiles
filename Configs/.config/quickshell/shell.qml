@@ -15,6 +15,7 @@ ShellRoot {
     id: shellRoot
     property string home: Quickshell.env("HOME")
     property string lockviewScreen: ""
+    property string sessionMenuScreen: ""
     property string workflow: "default"
     property string themeName: ""
     property string layoutName: "top"
@@ -295,6 +296,27 @@ ShellRoot {
     // click outside
     property bool focusPriming: false
     property var popupCard: null
+    function switchPopup(direction) {
+        if (!popupCard) return
+        const window = popupCard.anchorWindow, buttons = []
+        function collect(item) {
+            for (const child of item.children) {
+                if (!child.visible || !child.enabled) continue
+                const button = child as BarButton
+                if (button && button.hasPopup && !("popupsAllowed" in button && !button.popupsAllowed)
+                    && !("popupEnabled" in button && !button.popupEnabled)) buttons.push(button)
+                else collect(child)
+            }
+        }
+        collect(window.contentItem)
+        const vertical = popupCard.position !== "top" && popupCard.position !== "bottom"
+        buttons.sort((a, b) => {
+            const first = a.mapToItem(window.contentItem, 0, 0), second = b.mapToItem(window.contentItem, 0, 0)
+            return vertical ? first.y - second.y : first.x - second.x
+        })
+        const index = buttons.indexOf(popupCard.anchorItem)
+        if (buttons.length > 1) buttons[index < 0 ? direction > 0 ? 0 : buttons.length - 1 : (index + direction + buttons.length) % buttons.length].clicked(Qt.LeftButton)
+    }
     property var mediaPopup: null
     function run(command, onExited) {
         if (!onExited) return Quickshell.execDetached(command)
@@ -529,6 +551,10 @@ ShellRoot {
         active: shellRoot.lockviewScreen !== ""
         Component.onCompleted: lockviewLoader.setSource(Qt.resolvedUrl("lockview/LockView.qml"), { shell: shellRoot })
     }
+    LazyLoader {
+        active: shellRoot.sessionMenuScreen !== ""
+        SessionMenu { shell: shellRoot }
+    }
     LayerBlur { surface: "hypr-shell-bar"; enabled: shellRoot.prefs.barBlur; ignoreAlpha: 0.1 }
     LayerBlur { surface: "hypr-shell-reload"; enabled: shellRoot.prefs.barBlur; ignoreAlpha: 0.1 }
 
@@ -602,6 +628,10 @@ ShellRoot {
         function open(): void { shellRoot.lockviewScreen = Hyprland.focusedMonitor?.name ?? Quickshell.screens[0].name }
         function close(): void { shellRoot.lockviewScreen = "" }
         function toggle(): void { if (shellRoot.lockviewScreen) lockviewIpc.close(); else lockviewIpc.open() }
+    }
+    IpcHandler {
+        target: "sessionmenu"
+        function toggle(): void { shellRoot.sessionMenuScreen = shellRoot.sessionMenuScreen ? "" : Hyprland.focusedMonitor?.name ?? Quickshell.screens[0].name }
     }
     Variants {
         model: shellRoot.stateReady && (shellRoot.mode === "horizontal" || shellRoot.mode === "winbar") ? Quickshell.screens : []

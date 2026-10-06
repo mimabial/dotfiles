@@ -14,7 +14,7 @@ Rectangle {
     implicitWidth: label.implicitWidth + (glyph.visible ? glyph.implicitWidth + content.spacing : 0) + Style.controlPaddingX * 2
     implicitHeight: Style.controlHeight
     radius: shell.rounding
-    color: selected ? shell.selectedFill() : mouse.containsMouse || cursored ? shell.hoverFill() : "transparent"
+    color: selected ? shell.selectedFill() : cursored || (!shell.popupCard?.open && mouse.containsMouse) ? shell.hoverFill() : "transparent"
     border.color: cursored ? shell.hoverEdge(.85) : selected ? shell.selectedEdge() : "transparent"
     Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
 
@@ -32,4 +32,5 @@ Rectangle {
         }
     }
     MouseArea { id: mouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.clicked(Qt.LeftButton) }
+    PopupPointer { shell: root.shell; row: root }
 }

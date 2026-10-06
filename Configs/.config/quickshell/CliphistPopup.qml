@@ -255,7 +255,7 @@ PopupCard {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 0
                     opacity: row.cursored ? 1 : 0
-                    Behavior on opacity { NumberAnimation { duration: 90 } }
+                    Behavior on opacity { NumberAnimation { duration: Style.duration(90) } }
                     PopupIconButton {
                         shell: root.shell; keyboardEnabled: false
                         visible: row.isImage
@@ -293,7 +293,7 @@ PopupCard {
             // fixed at five lines: a pane that grew with each entry would resize
             // the list under the cursor as you move down it
             property real paneHeight: lineProbe.implicitHeight * (root.previewExpanded ? 16 : 5)
-            Behavior on paneHeight { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+            Behavior on paneHeight { NumberAnimation { duration: Style.duration(120); easing.type: Easing.OutCubic } }
             PopupSeparator { shell: root.shell }
             Image {
                 id: previewImage

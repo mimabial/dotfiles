@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Controls
 import Quickshell.Io
 import Quickshell.Services.Pipewire
 
@@ -198,6 +199,7 @@ PopupCard {
             PopupSection { visible: !root.microphoneMode; shell: root.shell; text: "OUTPUT DEVICE" }
             ListView {
                 visible: !root.microphoneMode; width: parent.width; height: Math.min(contentHeight, Style.px(85)); spacing: Style.sm; clip: true; model: root.microphoneMode ? [] : root.outputs
+                ScrollBar.vertical: PopupScrollBar { shell: root.shell }
                 delegate: PopupRow { required property var modelData; width: ListView.view.width; shell: root.shell; icon: "󰓃"; title: root.name(modelData); detail: modelData === root.sink ? "Default" : ""; active: modelData === root.sink; onClicked: Pipewire.preferredDefaultAudioSink = modelData }
             }
         }
@@ -207,6 +209,7 @@ PopupCard {
             ListView {
                 visible: root.microphoneMode && root.inputs.length > 0
                 width: parent.width; height: Math.min(contentHeight, Style.px(85)); spacing: Style.sm; clip: true; model: root.microphoneMode ? root.inputs : []
+                ScrollBar.vertical: PopupScrollBar { shell: root.shell }
                 delegate: PopupRow { required property var modelData; width: ListView.view.width; shell: root.shell; icon: "󰍬"; title: root.name(modelData); detail: modelData === root.source ? "Default" : ""; active: modelData === root.source; onClicked: Pipewire.preferredDefaultAudioSource = modelData }
             }
         }
@@ -216,6 +219,7 @@ PopupCard {
             PopupSection { visible: !root.microphoneMode && root.playbacks.length > 0; shell: root.shell; text: "PLAYBACK APPLICATIONS" }
             ListView {
                 visible: !root.microphoneMode && root.playbacks.length > 0; width: parent.width; height: Math.min(contentHeight, Style.px(150)); spacing: Style.sm; clip: true; model: root.microphoneMode ? [] : root.playbacks
+                ScrollBar.vertical: PopupScrollBar { shell: root.shell }
                 delegate: StreamControl { required property var modelData; stream: modelData }
             }
         }
@@ -224,6 +228,7 @@ PopupCard {
             PopupSection { visible: root.microphoneMode && root.recordings.length > 0; shell: root.shell; text: "RECORDING APPLICATIONS" }
             ListView {
                 visible: root.microphoneMode && root.recordings.length > 0; width: parent.width; height: Math.min(contentHeight, Style.px(150)); spacing: Style.sm; clip: true; model: root.microphoneMode ? root.recordings : []
+                ScrollBar.vertical: PopupScrollBar { shell: root.shell }
                 delegate: StreamControl { required property var modelData; stream: modelData; recording: true }
             }
         }
@@ -241,6 +246,7 @@ PopupCard {
             ListView {
                 width: parent.width; height: parent.height - y - cardMessage.height - Style.sectionGap
                 model: root.audioCards; spacing: Style.xs; clip: true
+                ScrollBar.vertical: PopupScrollBar { shell: root.shell }
                 delegate: PopupRow {
                     required property var modelData
                     width: ListView.view.width; shell: root.shell; icon: modelData.bluetooth ? "󰂯" : "󰓃"
@@ -267,6 +273,7 @@ PopupCard {
             ListView {
                 width: parent.width; height: parent.height - y - profileMessage.height - Style.sectionGap
                 model: root.selectedAudioCard ? root.selectedAudioCard.profiles : []; spacing: Style.xs; clip: true
+                ScrollBar.vertical: PopupScrollBar { shell: root.shell }
                 delegate: PopupRow {
                     required property var modelData
                     width: ListView.view.width; shell: root.shell; icon: "󰓃"

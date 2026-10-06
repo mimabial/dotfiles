@@ -778,7 +778,7 @@ PopupCard {
                         anchors.left: parent.left; height: parent.height; radius: Math.min(height / 2, root.shell.rounding)
                         width: Math.max(root.stats.done > 0 ? height : 0, parent.width * root.stats.ratio)
                         color: heroMascot.inkColor
-                        Behavior on width { NumberAnimation { duration: 340; easing.type: Easing.OutCubic } }
+                        Behavior on width { NumberAnimation { duration: Style.duration(340); easing.type: Easing.OutCubic } }
                     }
                     Rectangle {
                         visible: root.stats.total > 0 && root.stats.done < root.stats.total

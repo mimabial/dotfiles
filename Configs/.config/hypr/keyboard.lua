@@ -3,7 +3,7 @@
 hl.config({
     input = {
         kb_layout = "us,fr",
-        kb_variant = ",",
+        kb_variant = "altgr-intl,",
         kb_options = "",
     },
 })

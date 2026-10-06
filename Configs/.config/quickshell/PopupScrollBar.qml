@@ -10,7 +10,8 @@ ScrollBar {
     readonly property real idleAlpha: shell.popupName === "start" ? hoverAlpha / 2 : hoverAlpha
     policy: size < 1 ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
     padding: 0
-    width: Style.sm
+    implicitWidth: Style.sm
+    implicitHeight: Style.sm
     hoverEnabled: true
     contentItem: Rectangle {
         radius: width / 2

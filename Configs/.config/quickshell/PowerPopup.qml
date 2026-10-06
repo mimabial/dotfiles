@@ -222,7 +222,7 @@ PopupCard {
                 Rectangle {
                     width: parent.width * Math.max(0, Math.min(1, root.battery ? root.battery.percentage : 0))
                     height: parent.height; radius: parent.radius; color: root.accentColor
-                    Behavior on width { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+                    Behavior on width { NumberAnimation { duration: Style.duration(260); easing.type: Easing.OutCubic } }
                 }
             }
             Rectangle {

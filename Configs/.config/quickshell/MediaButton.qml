@@ -61,6 +61,7 @@ Item {
     readonly property Item simpleItem: simpleLoader.item as Item
     readonly property bool hasPlayer: player !== null
     readonly property bool mprisView: mprisAppearance && shown
+    readonly property bool quoteView: !hasPlayer && showWhenIdle && !iconAppearance && !cavaAppearance
     readonly property bool shown: hasPlayer || showWhenIdle
     readonly property int artSize: Math.max(Style.px(12), Style.px(albumArtSize))
     readonly property int fixedWidth: (transport.visible ? transport.implicitWidth + contents.spacing : 0)
@@ -114,19 +115,19 @@ Item {
             shell: root.shell
             opensPopup: true
             css: "mediaplayer"
-            maxWidth: !root.player && root.showWhenIdle && !root.iconAppearance
+            maxWidth: root.quoteView
                 ? Math.min(Style.px(root.maxLabelWidth), root.fillAvailableWidth ? Math.max(1, root.width) : Style.px(root.maxLabelWidth))
                 : 0
             textColor: !root.player && root.showWhenIdle ? shell.alpha(shell.foreground, .5)
                 : box.color !== undefined ? styleColor("color")
                 : shell.alpha(shell.role("act_fg", shell.foreground), .7)
-            leadingIcon: !root.noIcon && !root.player && root.showWhenIdle && !root.iconAppearance ? root.idleIcon : ""
+            leadingIcon: !root.noIcon && root.quoteView ? root.idleIcon : ""
             text: root.player ? root.cavaAppearance ? (root.noIcon ? "" : Media.icon(root.player)) : (root.noIcon ? Media.remaining(root.player)
                 : Media.icon(root.player) + (root.iconAppearance ? "" : "  " + Media.remaining(root.player)))
-                : root.showWhenIdle ? (root.iconAppearance ? root.idleIcon : root.idleText) : ""
+                : root.quoteView ? root.idleText : root.noIcon ? "" : root.idleIcon
             tooltip: root.cavaAppearance && root.hasPlayer ? root.displayText : ""
             trailingWidth: spectrum.active ? spectrum.width + (text ? Style.sm : 0) : 0
-            onHoveredChanged: if (hovered && !root.player && !root.iconAppearance) root.cycleIdleQuote()
+            onHoveredChanged: if (hovered && root.quoteView) root.cycleIdleQuote()
             onClicked: button => button === Qt.RightButton ? root.rightClick()
                 : button === Qt.MiddleButton ? Media.next() : root.shell.togglePopup("media")
             onWheeled: delta => root.wheel(delta)
@@ -136,8 +137,9 @@ Item {
             }
             Loader {
                 id: spectrum
-                active: root.cavaAppearance && root.hasPlayer
-                opacity: root.player?.isPlaying ? 1 : 0.1
+                readonly property bool live: !root.player || root.player.isPlaying
+                active: root.cavaAppearance
+                opacity: spectrum.live ? 1 : 0.1
                 anchors.right: parent.right
                 anchors.rightMargin: readout.box.margin[1] + readout.paintedBorderWidth + readout.box.padding[1]
                 anchors.verticalCenter: parent.verticalCenter
@@ -146,7 +148,7 @@ Item {
                 sourceComponent: Component {
                     CavaView {
                         shell: root.shell
-                        playing: !!root.player?.isPlaying
+                        playing: spectrum.live
                         barCount: root.cavaBars
                         barWidth: Style.px(root.cavaBarWidth)
                         gap: Style.px(root.cavaGap)

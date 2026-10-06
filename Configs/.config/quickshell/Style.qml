@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 
 // Shared spacing and type tokens. Every popup metric comes from here — a value
 // invented at a use site is how the padding drifted in the first place.
@@ -46,7 +47,9 @@ Singleton {
     readonly property real selectedBorderAlpha: 0.5
     readonly property real mutedTextAlpha: 0.55
     readonly property real faintTextAlpha: 0.4
-    readonly property int hoverDuration: 180
+    property bool reduceMotion: false
+    function duration(milliseconds) { return reduceMotion ? 0 : milliseconds }
+    readonly property int hoverDuration: duration(180)
     readonly property int tooltipDelay: 400
 
     // hyprshell system/text-size writes the application body size directly.
@@ -55,6 +58,21 @@ Singleton {
     function px(size) { return Math.round(size * uiScale) }
     function fontPx(nominalSize) { return Math.round(nominalSize * textSize / 12) }
     function typePx(ratio) { return Math.max(1, Math.round(textSize * ratio)) }
+
+    property Process animationProbe: Process {
+        command: ["hyprctl", "-j", "getoption", "animations:enabled"]
+        running: true
+        stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
+            try { root.reduceMotion = JSON.parse(text).bool === false }
+            catch (error) { console.warn("animation setting: " + error) }
+        } }
+    }
+    property Connections animationEvents: Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name === "configreloaded" && !root.animationProbe.running) root.animationProbe.running = true
+        }
+    }
 
     readonly property int caption: typePx(0.78)
     readonly property int bodySmall: typePx(0.89)

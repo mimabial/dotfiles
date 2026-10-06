@@ -34,7 +34,7 @@ PopupCard {
   property string currentUrl: ""
   property string artPath: ""
   property color dynamicAccent: Commons.Color.accent
-  Behavior on dynamicAccent { ColorAnimation { duration: 500; easing.type: Easing.InOutQuad } }
+  Behavior on dynamicAccent { ColorAnimation { duration: Style.duration(500); easing.type: Easing.InOutQuad } }
   property string timeCurrent: "00:00"
   property string timeTotal: "00:00"
   property real curSecs: 0.0

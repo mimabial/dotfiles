@@ -18,13 +18,8 @@ wireguard_globs=(wg* mullvad*)
 openvpn_ifaces=(tun0)
 
 emit_state() {
-  local class="$1"
-  local text="$2"
-  local tooltip="$3"
-
-  cat <<EOF
-{ "class": "${class}", "text": "${text}", "tooltip": "${tooltip}" }
-EOF
+  local tooltip="${3//\"/\\\"}"
+  printf '{ "class": "%s", "text": "%s", "tooltip": "%s" }\n' "$1" "$2" "${tooltip//$'\n'/\\n}"
   exit 0
 }
 

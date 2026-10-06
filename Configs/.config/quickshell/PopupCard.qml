@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import Quickshell
 import Quickshell.Hyprland
 
@@ -54,7 +55,7 @@ PopupWindow {
         : position === "top" ? 0
         : position === "bottom" ? height - cardHeight
         : Math.max(0, Math.min(height - cardHeight, availablePlacement.anchor - cardHeight / 2))
-    implicitWidth: contentWidth
+    implicitWidth: anchorWindow && anchorWindow.screen ? Math.min(contentWidth, anchorWindow.screen.width - margin * 2) : contentWidth
     implicitHeight: anchorWindow && anchorWindow.screen ? maxHeight : cardHeight
     mask: Region { item: card }
 
@@ -68,11 +69,16 @@ PopupWindow {
         const hostButton = anchorItem as BarButton
         if (hostButton) hostButton.popupCards = hostButton.popupCards.concat(root)
     }
+    Component.onDestruction: {
+        const hostButton = root.anchorItem as BarButton
+        if (hostButton) hostButton.popupCards = hostButton.popupCards.filter(card => card !== root)
+    }
 
     // Rows opt in with `navigable`; the card walks its own content rather than
     // asking each panel to maintain a list.
     property int cursorIndex: -1
     property var navigableRows: []
+    property point pointerPosition: Qt.point(-1, -1)
     onCursorIndexChanged: syncKeyboardCursor()
 
     function collectNavigableRows(item, found) {
@@ -130,17 +136,25 @@ PopupWindow {
     function revealCursor() {
         if (cursorIndex < 0) return
         const row = navigableRows[cursorIndex]
-        for (let item = row.parent; item && item !== contentHost; item = item.parent) {
+        for (let item = row.parent; item && item !== root.contentItem; item = item.parent) {
             if (!(item instanceof Flickable)) continue
             const top = row.mapToItem(item.contentItem, 0, 0).y
             item.contentY = Math.max(0, Math.min(item.contentHeight - item.height,
                 Math.max(top + row.height - item.height, Math.min(top, item.contentY))))
-            break
         }
     }
     function selectRow(item) {
         rebuildRows()
         const index = navigableRows.indexOf(item)
+        if (index >= 0) cursorIndex = index
+    }
+    function followPointer(item, x, y) {
+        if (!open) return
+        const point = item.mapToItem(root.contentItem, x, y)
+        if (point.x === pointerPosition.x && point.y === pointerPosition.y) return
+        pointerPosition = point
+        let index = navigableRows.indexOf(item)
+        if (index < 0) { rebuildRows(); index = navigableRows.indexOf(item) }
         if (index >= 0) cursorIndex = index
     }
     function activateCursor() {
@@ -167,6 +181,10 @@ PopupWindow {
     // The bar and focusable popup content both route here. Derived cards
     // override handleKey and fall back to this.
     function defaultKey(event) {
+        if ((event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) && (event.modifiers & Qt.ControlModifier)) {
+            shell.switchPopup(event.key === Qt.Key_Backtab || (event.modifiers & Qt.ShiftModifier) ? -1 : 1)
+            return true
+        }
         switch (event.key) {
         case Qt.Key_Down:
         case Qt.Key_Tab:    moveCursor(1);    return true
@@ -216,7 +234,7 @@ PopupWindow {
             anchors.topMargin: root.position === "top" ? 0 : root.headerHeight
             anchors.bottomMargin: root.position === "top" ? root.headerHeight : 0
             opacity: root.open ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+            Behavior on opacity { NumberAnimation { duration: Style.duration(140); easing.type: Easing.OutCubic } }
             color: root.shell.alpha(root.background, root.surfaceOpacity)
             border.color: root.shell.alpha(root.borderColor, root.borderOpacity)
             border.width: root.shell.borderWidth
@@ -227,7 +245,21 @@ PopupWindow {
                 anchors.bottomMargin: root.padding + root.keyboardHintHeight
                 focus: root.open
                 Keys.onPressed: event => event.accepted = root.handleKey(event)
-                Item { id: contentHost; anchors.fill: parent }
+                Flickable {
+                    id: contentScroll
+                    anchors.fill: parent
+                    contentWidth: contentHost.width
+                    contentHeight: contentHost.height
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    ScrollBar.vertical: PopupScrollBar { shell: root.shell }
+                    ScrollBar.horizontal: PopupScrollBar { shell: root.shell }
+                    Item {
+                        id: contentHost
+                        width: Math.max(contentScroll.width, root.contentWidth - root.padding * 2)
+                        height: Math.max(contentScroll.height, root.contentHeight - root.padding * 2)
+                    }
+                }
             }
             Text {
                 id: hintText

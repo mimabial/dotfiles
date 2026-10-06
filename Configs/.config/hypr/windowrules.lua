@@ -180,7 +180,6 @@ hl.window_rule({
 	["float"] = true,
 	["center"] = true,
 })
-hl.window_rule({ ["name"] = "localsend", ["match"] = { ["class"] = "^(localsend)$" }, ["float"] = true, ["center"] = true })
 hl.window_rule({
 	["name"] = "lua:windowrules:97",
 	["match"] = { ["class"] = "^(org\\.kde\\.keditfiletype)$" },
@@ -190,7 +189,7 @@ hl.layer_rule({ ["name"] = "lua:windowrules:105", ["match"] = { ["namespace"] = 
 hl.layer_rule({ ["name"] = "lua:windowrules:106", ["match"] = { ["namespace"] = "rofi" }, ["ignore_alpha"] = 0 })
 hl.layer_rule({ ["name"] = "lua:windowrules:107", ["match"] = { ["namespace"] = "notifications" }, ["blur"] = true })
 hl.layer_rule({ ["name"] = "lua:windowrules:108", ["match"] = { ["namespace"] = "notifications" }, ["ignore_alpha"] = 0 })
-hl.layer_rule({ ["name"] = "lua:windowrules:109", ["match"] = { ["namespace"] = "logout_dialog" }, ["blur"] = true })
+hl.layer_rule({ ["name"] = "lua:windowrules:109", ["match"] = { ["namespace"] = "hypr-shell-session" }, ["blur"] = true })
 hl.layer_rule({
 	["name"] = "bitwarden-popup-private",
 	["match"] = { ["namespace"] = "hypr-shell-bitwarden" },

@@ -13,6 +13,7 @@ MENU_SUBMENU_GLYPH_3="${MENU_SUBMENU_GLYPH_3:-󰶻}"
 MENU_CHECK_GLYPH="${MENU_CHECK_GLYPH:-✓}"
 MENU_NAV_HINT="${MENU_NAV_HINT:-<span size=\"x-small\">  ← Back · → Open 
 [Tab] Search · [Esc] Close</span>}"
+MENU_SEARCH_HINT="${MENU_SEARCH_HINT:-<span size=\"x-small\">← Back · [Enter] Open · [Esc] Close</span>}"
 MENU_COPY_HINT="${MENU_COPY_HINT:-<span size=\"x-small\">[Enter] Apply · [Alt+C] Copy</span>}"
 MENU_MULTI_HINT="${MENU_MULTI_HINT:-<span size=\"x-small\">[Shift+Enter] Mark · [Enter] Confirm</span>}"
 
@@ -113,7 +114,7 @@ menu_content_theme_override() {
 
   case "${footer_mode}" in
     tree) footer_px=$((text_px * 2 + MENU_FOOTER_CHROME_PX)) ;;
-    copy | multi) footer_px=$((text_px + MENU_FOOTER_CHROME_PX)) ;;
+    search | copy | multi) footer_px=$((text_px + MENU_FOOTER_CHROME_PX)) ;;
   esac
 
   read -r mon_width mon_height < <(rofi_focused_monitor_logical_size)
@@ -167,6 +168,10 @@ menu_append_nav_args() {
       nav_args_ref+=(-kb-move-char-back "" -kb-move-char-forward "" -kb-element-next ""
         -kb-custom-1 "Left" -kb-custom-2 "Right" -kb-custom-3 "Tab")
       nav_args_ref+=(-mesg "${MENU_NAV_HINT}")
+      ;;
+    search)
+      nav_args_ref+=(-kb-move-char-back "" -kb-custom-1 "Left")
+      nav_args_ref+=(-mesg "${MENU_SEARCH_HINT}")
       ;;
     copy)
       nav_args_ref+=(-kb-custom-1 "Alt+c")
@@ -241,7 +246,7 @@ menu() {
     esac
     shift 2
   done
-  case "${nav_keys}" in "" | tree | copy | multi) ;; *) printf 'menu: invalid navigation mode: %s\n' "${nav_keys}" >&2; return 2 ;; esac
+  case "${nav_keys}" in "" | tree | search | copy | multi) ;; *) printf 'menu: invalid navigation mode: %s\n' "${nav_keys}" >&2; return 2 ;; esac
   case "${row_mode}" in "" | detail) ;; *) printf 'menu: invalid row mode: %s\n' "${row_mode}" >&2; return 2 ;; esac
 
   local options_rendered="" measured_rows="" width_override="" selected_row=""
@@ -661,8 +666,13 @@ menu_show_search() {
   options="$(IFS="${MENU_ROW_SEP}"; printf '%s' "${rows[*]}")"
 
   MENU_PROMPT_GLYPH="${HYPR_MENU_GLYPHS[search_all]:-}"
-  selection="$(menu "Search" "${options}" --rows detail)"
+  selection="$(menu "Search" "${options}" --nav search --rows detail)"
   rofi_exit=$?
+
+  if ((rofi_exit == MENU_EXIT_BACK)); then
+    menu_exit_or_show "${menu_id}"
+    return 0
+  fi
 
   ((rofi_exit == 0)) || exit 0
 

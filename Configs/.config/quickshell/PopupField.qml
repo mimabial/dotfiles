@@ -42,10 +42,12 @@ TextField {
     }
     Keys.onTabPressed: event => {
         if (!shell.popupCard) { event.accepted = false; return }
+        if (event.modifiers & Qt.ControlModifier) { shell.switchPopup(1); return }
         shell.popupCard.resumeKeyboard(); shell.popupCard.moveCursor(1)
     }
     Keys.onBacktabPressed: event => {
         if (!shell.popupCard) { event.accepted = false; return }
+        if (event.modifiers & Qt.ControlModifier) { shell.switchPopup(-1); return }
         shell.popupCard.resumeKeyboard(); shell.popupCard.moveCursor(-1)
     }
 

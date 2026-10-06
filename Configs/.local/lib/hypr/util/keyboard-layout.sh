@@ -345,9 +345,9 @@ case "${action}" in
     current=$(active_index)
     if (( index < current )); then requested=$((current - 1)); elif (( index == current )); then requested=${index}; else requested=$current; fi
     (( requested < count - 1 )) || requested=$((count - 2))
-    (( index == 0 )) && safe_old_index=1 || safe_old_index=0
     next=$(jq -c --argjson index "${index}" '.layouts |= del(.[$index])' <<<"${payload}")
-    commit_candidate "${next}" "${requested}" "${safe_old_index}" "${current}"
+    index_in_every_keymap=0
+    commit_candidate "${next}" "${requested}" "${index_in_every_keymap}" "${current}"
     ;;
   --shortcut)
     shortcut=${2:-}

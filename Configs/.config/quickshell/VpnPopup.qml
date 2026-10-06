@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import Quickshell.Io
 
 PopupCard {
@@ -11,6 +12,7 @@ PopupCard {
     contentHeight: vpnColumn.implicitHeight + padding * 2
 
     property string backend: "mullvad"
+    property bool refreshPending: false
     property var status: ({provider: "mullvad", state: "checking"})
     property var nmStatus: ({available: false, profiles: [], connected: false, active: null})
     property string pendingAction: ""
@@ -85,6 +87,7 @@ PopupCard {
                 return locationList.positionViewAtIndex(i, ListView.Center)
     }
     function moveResult(step) {
+        clearCursor()
         const count = locationRows.length + resultOffset
         if (!count) return
         resultIndex = resultIndex < 0 ? (step > 0 ? 0 : count - 1) : (resultIndex + step + count) % count
@@ -104,6 +107,7 @@ PopupCard {
     }
 
     function refresh(force) {
+        if (statusProc.running || nmStatusProc.running) { refreshPending = true; return }
         if (!statusProc.running) statusProc.running = true
         if (!nmStatusProc.running) nmStatusProc.running = true
         if (force) { loadRelays(true); if (settingsOpen) loadSettings() }
@@ -112,7 +116,7 @@ PopupCard {
     function loadSettings() {
         if (settingsProc.running) return
         settingsProc.action = "load"
-        settingsProc.command = ["hyprshell", "system/vpn-status", "--settings"]
+        settingsProc.command = [root.shell.home + "/.local/lib/hypr/system/vpn-status.sh", "--settings"]
         settingsProc.running = true
     }
     function toggleSettings() {
@@ -133,7 +137,7 @@ PopupCard {
     function nmAction(action, profile) {
         if (!profile || nmActionProc.running) return
         nmError = ""; nmPending = action === "connect" ? "connecting" : "disconnecting"
-        nmActionProc.command = ["hyprshell", "system/vpn-networkmanager", "--" + action, profile.uuid]
+        nmActionProc.command = [root.shell.home + "/.local/lib/hypr/system/vpn-networkmanager.sh", "--" + action, profile.uuid]
         nmActionProc.running = true
     }
     function setLocation(args) {
@@ -158,7 +162,7 @@ PopupCard {
     function setSetting(name, enabled) {
         if (settingsProc.running) return
         settingsError = ""; settingsProc.action = name
-        settingsProc.command = ["hyprshell", "system/vpn-status", "--set", name, enabled ? "on" : "off"]
+        settingsProc.command = [root.shell.home + "/.local/lib/hypr/system/vpn-status.sh", "--set", name, enabled ? "on" : "off"]
         settingsProc.running = true
     }
     function copyIp() {
@@ -191,29 +195,43 @@ PopupCard {
         return defaultKey(event)
     }
 
+    property Connections resultSelection: Connections {
+        target: root
+        function onCursorIndexChanged() {
+            const row = root.navigableRows[root.cursorIndex]
+            if (root.browsing !== "" && row && "resultPosition" in row) root.resultIndex = row.resultPosition
+        }
+    }
+
     onBrowsingChanged: { cursorIndex = -1; resultIndex = -1; pinCurrent() }
     onFilterChanged: { cursorIndex = -1; resultIndex = -1 }
     onOpenChanged: {
-        if (open) { refresh(); loadRelays(); if (settingsOpen) loadSettings() }
+        if (open) { refresh(); if (backend === "mullvad") loadRelays(); if (settingsOpen) loadSettings() }
         else { browsing = ""; filter = "" }
     }
 
     property Process statusProc: Process {
-        command: ["hyprshell", "system/vpn-status"]
+        command: [root.shell.home + "/.local/lib/hypr/system/vpn-status.sh"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.applyStatus(text) }
+        onExited: if (root.refreshPending && !root.nmStatusProc.running) { root.refreshPending = false; Qt.callLater(root.refresh) }
     }
     property Process nmStatusProc: Process {
-        command: ["hyprshell", "system/vpn-networkmanager"]
+        command: [root.shell.home + "/.local/lib/hypr/system/vpn-networkmanager.sh"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.applyNmStatus(text) }
+        onExited: if (root.refreshPending && !root.statusProc.running) { root.refreshPending = false; Qt.callLater(root.refresh) }
     }
-    property Timer poll: Timer { interval: 5000; running: root.open; repeat: true; onTriggered: root.refresh() }
+    property Process nmEvents: Process {
+        command: ["nmcli", "monitor"]
+        running: root.open && root.backend === "networkmanager"
+        stdout: SplitParser { onRead: root.refresh() }
+    }
     property Process tunnelTransitions: Process {
         command: ["mullvad", "status", "listen"]
         running: root.open && root.backend === "mullvad" && root.status.provider === "mullvad"
         stdout: SplitParser { onRead: root.refresh() }
     }
     property Process relayProc: Process {
-        command: ["hyprshell", "system/vpn-relays"]
+        command: [root.shell.home + "/.local/lib/hypr/system/vpn-relays.py"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             try { const next = JSON.parse(text) || ({}); if (next.countries && next.countries.length) root.relays = next }
             catch (error) {}
@@ -221,7 +239,7 @@ PopupCard {
         } }
     }
     property Process actionProc: Process {
-        command: ["hyprshell", "quickshell/vpn-toggle"]
+        command: [root.shell.home + "/.local/lib/hypr/quickshell/vpn-toggle.sh"]
         stderr: StdioCollector { id: actionStderr; waitForEnd: true }
         onExited: (code, status) => {
             root.pendingAction = ""
@@ -373,12 +391,13 @@ PopupCard {
                 Rectangle {
                     id: searchCaret; visible: root.browsing !== ""; x: searchText.x + Math.min(searchText.implicitWidth, searchText.width - width)
                     anchors.verticalCenter: parent.verticalCenter; width: Math.max(1, Style.px(1)); height: Style.bodySmall + Style.xs; color: root.shell.accent
-                    SequentialAnimation on opacity { running: searchCaret.visible; loops: Animation.Infinite; NumberAnimation { to: 0; duration: 500 } NumberAnimation { to: 1; duration: 500 } }
+                    SequentialAnimation on opacity { running: searchCaret.visible && !Style.reduceMotion; loops: Animation.Infinite; NumberAnimation { to: 0; duration: 500 } NumberAnimation { to: 1; duration: 500 } }
                 }
                 Text { visible: root.filter === ""; anchors.left: searchCaret.right; anchors.leftMargin: Style.xs; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: root.openCountry ? "Filter cities…" : "Filter countries or cities…"; color: root.shell.faintText; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; elide: Text.ElideRight }
             }
             ListView {
                 id: locationList
+                ScrollBar.vertical: PopupScrollBar { shell: root.shell }
                 visible: root.browsing !== ""
                 width: parent.width
                 height: Math.min(contentHeight, Style.px(208))
@@ -391,6 +410,7 @@ PopupCard {
                         width: parent.width; shell: root.shell
                         icon: "󰇧"; title: "Automatic"; detail: "Closest relay"
                         active: root.currentLocation.kind === "any"
+                        readonly property int resultPosition: 0
                         selected: root.resultIndex === 0
                         onClicked: root.setLocation(["any"])
                     }
@@ -407,6 +427,7 @@ PopupCard {
                         title: root.openCountry ? "Anywhere in " + root.openCountry.name : ""
                         detail: root.openCountry ? root.relayCount(root.openCountry.relays) : ""
                         active: root.currentLocation.kind === "country"
+                        readonly property int resultPosition: 0
                         selected: root.resultIndex === 0
                         onClicked: root.setLocation([root.openCountry.code])
                     }
@@ -426,7 +447,8 @@ PopupCard {
                     title: searchedCity ? modelData.name + ", " + modelData.countryName : modelData.name
                     detail: root.relayCount(modelData.relays)
                     active: current
-                    selected: index + root.resultOffset === root.resultIndex
+                    readonly property int resultPosition: index + root.resultOffset
+                    selected: resultPosition === root.resultIndex
                     onClicked: root.chooseLocation(modelData)
                 }
             }

@@ -7,11 +7,14 @@ set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 
-hypr_help_guard "Usage: hyprshell system/network-qr [interface]
+hypr_help_guard "Usage: hyprshell system/network-qr [--password] [interface]
 Print the joined network's credentials as a 0/1 QR matrix with a meta header.
 Requires qrencode and an active nmcli Wi-Fi connection." "$@"
 
-command -v qrencode >/dev/null 2>&1 || { echo "network-qr: qrencode is not installed" >&2; exit 1; }
+password_only=false
+if [[ ${1:-} == --password ]]; then password_only=true; shift; fi
+[[ $# -le 1 ]] || exit 2
+if ! $password_only; then command -v qrencode >/dev/null 2>&1 || { echo "network-qr: qrencode is not installed" >&2; exit 1; }; fi
 command -v nmcli >/dev/null 2>&1 || { echo "network-qr: nmcli is not installed" >&2; exit 1; }
 
 interface="${1:-}"
@@ -35,9 +38,12 @@ password="${fields[2]-}"
 [[ -n "${ssid}" ]] || { echo "network-qr: could not read the SSID" >&2; exit 1; }
 
 case "${key_mgmt}" in
-  "" | none) security="nopass"; password="" ;;
-  *) security="WPA" ;;
+  "" | none | owe) security="nopass"; password="" ;;
+  wpa-psk | sae) security="WPA" ;;
+  *) echo "Enterprise Wi-Fi cannot be shared as a password QR code." >&2; exit 1 ;;
 esac
+if $password_only; then printf '%s' "$password"; exit; fi
+[[ $security == nopass || -n $password ]] || { echo "The saved Wi-Fi password is not available." >&2; exit 1; }
 
 # ;  ,  :  \  and " are structural in the WIFI: payload and must be escaped.
 escape_wifi_qr() { sed 's/\\/\\\\/g; s/;/\\;/g; s/,/\\,/g; s/:/\\:/g; s/"/\\"/g' <<<"${1-}"; }

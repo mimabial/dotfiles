@@ -763,7 +763,7 @@ PopupCard {
         color: root.shell.alpha(tint, tileArea.containsMouse ? (danger ? .18 : .12) : .04)
         border.width: 1
         border.color: cursored ? root.shell.hoverEdge(.85) : root.shell.alpha(tint, tileArea.containsMouse ? (danger ? .45 : .22) : danger ? .25 : .08)
-        Behavior on color { ColorAnimation { duration: 60 } }
+        Behavior on color { ColorAnimation { duration: Style.duration(60) } }
         Row {
             id: tileContent; anchors.centerIn: parent; spacing: Style.px(6)
             Text {

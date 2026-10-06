@@ -15,7 +15,6 @@ SEARCH_ROOTS=(
   "${XDG_CONFIG_HOME:-$HOME/.config}/rofi"
   "${XDG_DATA_HOME:-$HOME/.local/share}/rofi"
   "${XDG_CONFIG_HOME:-$HOME/.config}/dunst"
-  "${XDG_CONFIG_HOME:-$HOME/.config}/wlogout"
   "${XDG_CONFIG_HOME:-$HOME/.config}/kitty"
   "${XDG_CONFIG_HOME:-$HOME/.config}/alacritty"
   "${XDG_CONFIG_HOME:-$HOME/.config}/fontconfig"
@@ -293,7 +292,6 @@ reference_scope() {
       "${data_home}/hypr/variables.meta" | \
       "${config_home}/rofi/"* | \
       "${config_home}/dunst/"* | \
-      "${config_home}/wlogout/"* | \
       "${config_home}/kitty/"* | \
       "${config_home}/alacritty/"* | \
       "${config_home}/qutebrowser/"* | \

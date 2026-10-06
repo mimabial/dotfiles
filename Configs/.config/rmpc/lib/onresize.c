@@ -14,6 +14,8 @@
 #define THEME_MEDIUM "pywal16"
 #define THEME_LARGE "pywal16-big"
 #define THEME_WIDE "pywal16-wide"
+#define WIDE_MIN_COLUMNS 100
+#define TALL_MIN_ROWS 24
 
 static int build_path(char *buffer, size_t size, const char *base, const char *suffix) {
     int written = snprintf(buffer, size, "%s%s", base, suffix);
@@ -42,10 +44,10 @@ static int env_dimension(const char *name, unsigned short *value) {
 }
 
 static const char *theme_for_size(unsigned short rows, unsigned short columns) {
-    if (columns < 120) {
-        return rows < 30 ? THEME_SMALL : THEME_MEDIUM;
+    if (columns < WIDE_MIN_COLUMNS) {
+        return rows < TALL_MIN_ROWS ? THEME_SMALL : THEME_MEDIUM;
     }
-    return rows < 30 ? THEME_WIDE : THEME_LARGE;
+    return rows < TALL_MIN_ROWS ? THEME_WIDE : THEME_LARGE;
 }
 
 static int terminal_size(unsigned short *rows, unsigned short *columns) {

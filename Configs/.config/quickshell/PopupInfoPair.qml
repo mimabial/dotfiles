@@ -19,8 +19,9 @@ Item {
         id: pairValue
         anchors.right: parent.right; width: Math.min(implicitWidth, parent.width)
         text: root.value || "—"; elide: Text.ElideRight
-        color: mouse.containsMouse || root.cursored ? root.shell.accent : root.shell.foreground
+        color: root.cursored || (!root.shell.popupCard?.open && mouse.containsMouse) ? root.shell.accent : root.shell.foreground
         font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
     }
     MouseArea { id: mouse; anchors.fill: parent; enabled: root.interactive; hoverEnabled: enabled; cursorShape: Qt.PointingHandCursor; onClicked: root.clicked(Qt.LeftButton) }
+    PopupPointer { shell: root.shell; row: root }
 }

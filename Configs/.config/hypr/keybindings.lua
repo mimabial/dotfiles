@@ -310,8 +310,8 @@ bind(mod, "Z", "[Window Management|Mouse] move window", hl.dsp.window.drag(), { 
 bind(mod, "X", "[Window Management|Mouse] resize window", hl.dsp.window.resize(), { mouse = true })
 hl.bind(chord(mod, "X"), refill_scrolling_pair, { drag = true })
 
-exec("CTRL ALT", "DELETE", "[Window Management] logout menu", "hyprshell logout-launch.sh 2")
-exec(mod, "ESCAPE", "[Window Management] logout menu", "hyprshell logout-launch.sh 2")
+exec("CTRL ALT", "DELETE", "[Window Management] logout menu", "hyprshell logout-launch.sh")
+exec(mod, "ESCAPE", "[Window Management] logout menu", "hyprshell logout-launch.sh")
 
 -- Applications and launchers
 exec(

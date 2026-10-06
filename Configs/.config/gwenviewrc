@@ -22,31 +22,31 @@ ThumbnailSplitterSizes=512,146
 MenuBar=Disabled
 
 [Recent Files]
-File1[$e]=$HOME/Pictures/Wallpapers/wallhaven-e7vl5k.png
-File10[$e]=$HOME/Wallpapers/space_suit.png
-File2[$e]=$HOME/.config/hypr/themes/Frosted Glass/wallpapers/wallhaven-k8x2kd.png
-File3[$e]=$HOME/Pictures/Wallpapers/wallhaven-e83yvl.png
-File4[$e]=$HOME/.config/hypr/themes/Frosted Glass/wallpapers/wallhaven-57r8x5.png
-File5[$e]=$HOME/Pictures/Wallpapers/wallhaven-ex2oro.png
-File6[$e]=$HOME/Pictures/Wallpapers/wallhaven-o5ow2m.png
-File7[$e]=$HOME/.config/hypr/themes/Graphite Mono/wallpapers/wallhaven-5y3pd8.png
-File8[$e]=$HOME/.config/hypr/themes/Graphite Mono/wallpapers/a_hallway_with_lights_on_the_ceiling.png
-File9[$e]=$HOME/Pictures/wallhaven-yqk91l.jpg
-Name1[$e]=wallhaven-e7vl5k.png
-Name10[$e]=space_suit.png
-Name2[$e]=wallhaven-k8x2kd.png
-Name3[$e]=wallhaven-e83yvl.png
-Name4[$e]=wallhaven-57r8x5.png
-Name5[$e]=wallhaven-ex2oro.png
-Name6[$e]=wallhaven-o5ow2m.png
-Name7[$e]=wallhaven-5y3pd8.png
-Name8[$e]=a_hallway_with_lights_on_the_ceiling.png
-Name9[$e]=wallhaven-yqk91l.jpg
+File1[$e]=$HOME/Pictures/Wallpapers/wallhaven-o5ow2m.png
+File10[$e]=$HOME/Pictures/wallhaven-vp2m68.png
+File2[$e]=$HOME/.config/hypr/themes/Graphite Mono/wallpapers/wallhaven-5y3pd8.png
+File3[$e]=$HOME/.config/hypr/themes/Graphite Mono/wallpapers/a_hallway_with_lights_on_the_ceiling.png
+File4[$e]=$HOME/Pictures/wallhaven-yqk91l.jpg
+File5[$e]=$HOME/Wallpapers/space_suit.png
+File6[$e]=$HOME/Pictures/wallhaven-4o8mmp.jpg
+File7[$e]=$HOME/Pictures/wallhaven-4vljzm.jpg
+File8[$e]=$HOME/Pictures/wallhaven-5g9lq7.jpg
+File9[$e]=$HOME/Pictures/wallhaven-7j2kwv.jpg
+Name1[$e]=wallhaven-o5ow2m.png
+Name10[$e]=wallhaven-vp2m68.png
+Name2[$e]=wallhaven-5y3pd8.png
+Name3[$e]=a_hallway_with_lights_on_the_ceiling.png
+Name4[$e]=wallhaven-yqk91l.jpg
+Name5[$e]=space_suit.png
+Name6[$e]=wallhaven-4o8mmp.jpg
+Name7[$e]=wallhaven-4vljzm.jpg
+Name8[$e]=wallhaven-5g9lq7.jpg
+Name9[$e]=wallhaven-7j2kwv.jpg
 
 [SideBar]
 InformationSplitterSizes=231,244
 IsVisible ViewMode=true
-SideBarSplitterSizes=346,1547
+SideBarSplitterSizes=354,1565
 
 [StatusBar]
 IsVisible BrowseMode=false

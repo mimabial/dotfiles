@@ -52,12 +52,6 @@ menu_register_domain_trigger() {
   menu_add_item trigger_screenrecord_display "󰖁  No Audio" action trigger_screenrecord_display
   menu_add_item trigger_screenrecord_display "󰕾  With Audio" action trigger_screenrecord_display_audio
 
-  menu_define trigger_share "Share"
-  menu_add_item trigger_share "  Clipboard" action trigger_share_clipboard
-  menu_add_item trigger_share "󰈔  File" action trigger_share_file
-  menu_add_item trigger_share "󰉋  Folder" action trigger_share_folder
-  menu_add_item trigger_share "󰥦  Receive" action trigger_share_receive
-
   menu_define trigger_toggle "Toggle"
   menu_add_item trigger_toggle "󰔎  Nightlight" action trigger_toggle_nightlight
   menu_add_item trigger_toggle "󱫖  Keep Awake" action trigger_toggle_keep_awake
@@ -89,10 +83,6 @@ menu_run_action_trigger() {
     trigger_screenrecord_region_audio) hyprshell capture/screenrecord.sh --start --region --audio ;;
     trigger_screenrecord_display) hyprshell capture/screenrecord.sh --start --output ;;
     trigger_screenrecord_display_audio) hyprshell capture/screenrecord.sh --start --output --audio ;;
-    trigger_share_clipboard) trigger_spawn_detached hyprshell util/share.sh clipboard ;;
-    trigger_share_file) trigger_spawn_detached uwsm-app -- tui-terminal-exec --hypr-profile dialog --app-id org.tui.Share --title Share -- hyprshell util/share.sh file ;;
-    trigger_share_folder) trigger_spawn_detached uwsm-app -- tui-terminal-exec --hypr-profile dialog --app-id org.tui.Share --title Share -- hyprshell util/share.sh folder ;;
-    trigger_share_receive) hyprshell util/share.sh receive ;;
     trigger_color_picker) hyprshell rofi/color-picker.sh ;;
     trigger_capture_qr) trigger_spawn_detached hyprshell capture/qr.sh ;;
     trigger_insert_emoji) hyprshell rofi/run-after-close.sh -- hyprshell rofi/emoji-picker.sh ;;

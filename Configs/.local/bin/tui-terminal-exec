@@ -227,6 +227,7 @@ main() {
   local terminal_pid exit_code=0
 
   parse_args options terminal_args command "$@"
+  [[ "${options[app_id]}" != org.tui.Rmpc ]] || TERMINAL_TUI=kitty
   validate_geometry options || return 2
   apply_geometry_profile options || return 2
   resolve_percentages options || return 2

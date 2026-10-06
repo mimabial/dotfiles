@@ -18,7 +18,7 @@ Rectangle {
     color: checked ? shell.alpha(shell.role("act_bg", shell.accent), .55)
         : shell.alpha(shell.foreground, .12)
     border.color: cursored ? shell.hoverEdge(.85)
-        : shell.alpha(shell.foreground, mouse.containsMouse ? .45 : .22)
+        : shell.alpha(shell.foreground, !shell.popupCard?.open && mouse.containsMouse ? .45 : .22)
     border.width: cursored ? 2 : 1
     Behavior on color { ColorAnimation { duration: Style.hoverDuration } }
     Rectangle {
@@ -35,4 +35,5 @@ Rectangle {
         id: mouse; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true
         cursorShape: Qt.PointingHandCursor; onClicked: root.clicked(Qt.LeftButton)
     }
+    PopupPointer { shell: root.shell; row: root }
 }

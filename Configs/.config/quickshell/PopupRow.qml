@@ -30,6 +30,7 @@ Rectangle {
     readonly property bool valueHovered: valueClickable && valueText.visible && hovered
         && mouse.mouseX >= valueText.mapToItem(root, 0, 0).x - Style.controlPaddingX / 2
     property bool cursored: false
+    readonly property bool highlighted: cursored || (!shell.popupCard?.open && hovered)
     property bool selected: false
     // for rows that are a bare label, with no icon or value to align against
     property bool centerTitle: false
@@ -41,10 +42,9 @@ Rectangle {
     readonly property color highlight: !hoverBorder && hovered ? "transparent"
         : selected ? shell.hoverEdge(.85)
         : active ? shell.selectedEdge()
-        : cursored ? shell.hoverEdge(.85)
-        : (interactive && mouse.containsMouse && hoverBorder) ? shell.hoverEdge(.6)
+        : highlighted ? shell.hoverEdge(.85)
         : "transparent"
-    color: (interactive && (mouse.containsMouse || cursored || selected)) ? shell.hoverFill()
+    color: (interactive && (highlighted || selected)) ? shell.hoverFill()
         : active ? shell.selectedFill() : "transparent"
     border.color: highlight
     radius: shell.rounding
@@ -70,7 +70,7 @@ Rectangle {
                     readonly property real overflow: Math.max(0, titleText.implicitWidth - width)
                     readonly property int scrollDuration: Math.max(600, overflow * 34)
                     // elide is what the row shows at rest; hovering reads the rest of it
-                    readonly property bool scrolling: root.hovered && overflow > 0
+                    readonly property bool scrolling: root.hovered && overflow > 0 && !Style.reduceMotion
                     onScrollingChanged: if (!scrolling) titleText.x = 0
                     Text {
                         id: titleText
@@ -114,10 +114,11 @@ Rectangle {
         enabled: root.enabled && root.interactive
         hoverEnabled: root.interactive
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-        cursorShape: root.valueHovered ? Qt.PointingHandCursor : Qt.ArrowCursor
+        cursorShape: Qt.PointingHandCursor
         onClicked: event => {
             if (event.button === Qt.LeftButton && root.valueHovered) root.valueClicked()
             else root.clicked(event.button)
         }
     }
+    PopupPointer { shell: root.shell; row: root }
 }

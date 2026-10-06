@@ -29,9 +29,9 @@
   "clickToMinimize": true,
   "iconSize": 36,
   "recentApps": [
+    "org.tui.Rmpc",
     "xdg-desktop-portal-gtk",
-    "signal",
-    "org.tui.Terminal"
+    "signal"
   ],
   "showRecents": true,
   "showIndicators": true
