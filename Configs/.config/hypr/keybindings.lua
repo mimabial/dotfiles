@@ -1,4 +1,6 @@
 local vars = require("vars")
+local refill_scrolling_pair = require("core").refill_scrolling_pair
+local usable_edges = require("core").usable_edges
 
 local mod = vars.get("mainMod", "SUPER")
 local terminal = vars.get("TERMINAL", "alacritty")
@@ -39,6 +41,10 @@ end
 -- for their memory and their stop jobs stall the next login.
 local function app(command)
 	return "hyprshell app -- " .. command
+end
+
+local function menu(id)
+	return "pkill -x rofi || hyprshell rofi/menutree --menu-id " .. id
 end
 
 -- Submaps give each domain its own key namespace, so no bind needs punctuation.
@@ -111,7 +117,24 @@ local function layout_action(layout, action)
 			return
 		end
 		run_action(action)
+		hl.dispatch(hl.dsp.event("layout"))
 	end
+end
+
+local function resize_column(direction)
+	local step = { [1] = "colresize +conf", [-1] = "colresize -conf" }
+	return layout_action("scrolling", function()
+		local window = hl.get_active_window()
+		local width = window and window.size.x
+		hl.dispatch(hl.dsp.layout(step[direction]))
+		if window and (window.size.x - width) * direction < 0 then
+			hl.dispatch(hl.dsp.layout(step[-direction]))
+			local left, right = usable_edges(window.workspace)
+			local usable_width = right - left + 2 * hl.get_config("general.border_size")
+			hl.dispatch(hl.dsp.layout(string.format("colresize %+f", (width - window.size.x) / usable_width)))
+		end
+		refill_scrolling_pair()
+	end)
 end
 
 -- Window management
@@ -214,10 +237,16 @@ exec(mod, "P", "[Window Management] toggle pin", "hyprshell window/windowpin.sh"
 bind(mod, "G", "[Window Management] toggle group", hl.dsp.group.toggle())
 bind(mod .. " SHIFT", "F", "[Window Management] toggle floating", toggle_floating)
 
+local function niri_or(niri_action, action)
+	return function()
+		hl.dispatch(vars.get("WORKFLOW") == "niri" and niri_action or action)
+	end
+end
+
 bind(mod, "LEFT", "[Window Management|Focus] focus left", hl.dsp.focus({ direction = "left" }))
 bind(mod, "RIGHT", "[Window Management|Focus] focus right", hl.dsp.focus({ direction = "right" }))
-bind(mod, "UP", "[Window Management|Focus] focus up", hl.dsp.focus({ direction = "up" }))
-bind(mod, "DOWN", "[Window Management|Focus] focus down", hl.dsp.focus({ direction = "down" }))
+bind(mod, "UP", "[Window Management|Focus] focus up or previous workspace in niri", niri_or(hl.dsp.focus({ workspace = "r-1" }), hl.dsp.focus({ direction = "up" })))
+bind(mod, "DOWN", "[Window Management|Focus] focus down or next workspace in niri", niri_or(hl.dsp.focus({ workspace = "r+1" }), hl.dsp.focus({ direction = "down" })))
 
 local function cycle_window(options)
 	return function()
@@ -256,6 +285,9 @@ local function resize_window(x, y)
 		end
 
 		hl.dispatch(hl.dsp.window.resize({ x = x, y = y, relative = true }))
+		if x ~= 0 then
+			refill_scrolling_pair()
+		end
 	end
 end
 
@@ -273,8 +305,10 @@ bind(mod .. " ALT", "DOWN", "[Window Management|Resize] grow height", resize_win
 
 bind(mod, "mouse:272", "[Window Management|Mouse] move window", hl.dsp.window.drag(), { mouse = true })
 bind(mod, "mouse:273", "[Window Management|Mouse] resize window", hl.dsp.window.resize(), { mouse = true })
+hl.bind(chord(mod, "mouse:273"), refill_scrolling_pair, { drag = true })
 bind(mod, "Z", "[Window Management|Mouse] move window", hl.dsp.window.drag(), { mouse = true })
 bind(mod, "X", "[Window Management|Mouse] resize window", hl.dsp.window.resize(), { mouse = true })
+hl.bind(chord(mod, "X"), refill_scrolling_pair, { drag = true })
 
 exec("CTRL ALT", "DELETE", "[Window Management] logout menu", "hyprshell logout-launch.sh 2")
 exec(mod, "ESCAPE", "[Window Management] logout menu", "hyprshell logout-launch.sh 2")
@@ -381,7 +415,7 @@ bind(mod .. " SHIFT", "A", "[Launcher|Menus] Exposé app windows", hl.dsp.event(
 exec(mod, "SPACE", "[Launcher|Menus] menu tree", "pkill -x rofi || hyprshell menutree")
 exec("CTRL", "F2", "[Launcher|Menus] focus menu bar", "quickshell ipc call bar menuBar")
 exec(mod, "V", "[Launcher|Menus] clipboard", "quickshell ipc call bar popup cliphist")
-exec(mod .. " SHIFT", "V", "[Launcher|Menus] clipboard manager", "pkill -x rofi || hyprshell cliphist.sh")
+exec(mod, "S", "[Launcher|Menus] spotlight", "quickshell ipc call bar popup spotlight")
 
 -- Hardware controls
 exec(mod, "F10", "[Hardware|Audio] mute output", "hyprshell volume-control.sh -o m", { locked = true })
@@ -489,6 +523,12 @@ submap_leader("window", mod, "W", function()
 	end
 
 	submap_cycle("T", "[Window Mode|Layout] cycle global layout", "hyprshell window/layout-toggle.sh")
+	submap_cycle(
+		"SHIFT + T",
+		"[Window Mode|Layout] cycle global layout backward",
+		"hyprshell window/layout-toggle.sh previous"
+	)
+	submap_exec("U", "[Window Mode|Layout] select global layout", menu("trigger_toggle_workspace_layout"))
 	submap_action(
 		"S",
 		"[Window Mode|Dwindle] toggle window split",
@@ -520,20 +560,12 @@ submap_leader("window", mod, "W", function()
 		"[Window Mode|Scrolling] focus next column",
 		layout_action("scrolling", hl.dsp.layout("focus +col"))
 	)
-	submap_action(
-		"E",
-		"[Window Mode|Scrolling] shrink column",
-		layout_action("scrolling", hl.dsp.layout("colresize -conf"))
-	)
-	submap_action(
-		"SHIFT + E",
-		"[Window Mode|Scrolling] grow column",
-		layout_action("scrolling", hl.dsp.layout("colresize +conf"))
-	)
+	submap_action("E", "[Window Mode|Scrolling] shrink column", resize_column(-1))
+	submap_action("SHIFT + E", "[Window Mode|Scrolling] grow column", resize_column(1))
 	submap_action(
 		"X",
 		"[Window Mode|Scrolling] expand column",
-		layout_action("scrolling", hl.dsp.layout("colresize expand"))
+		layout_action("scrolling", hl.dsp.layout("fit expand"))
 	)
 	submap_action("V", "[Window Mode|Scrolling] promote window", layout_action("scrolling", hl.dsp.layout("promote")))
 	submap_action(
@@ -636,24 +668,16 @@ submap_leader("theming", mod, "T", function()
 		"[Theming] install Nerd Font",
 		"pkill -x rofi || hyprshell rofi/menutree --action install_font"
 	)
-	submap_exec(
-		"B",
-		"[Theming] select bar layout",
-		"hyprshell rofi/run-after-close.sh -- hyprshell quickshell/layout select"
-	)
+	submap_exec("B", "[Theming] select bar layout", menu("style_bar_layout"))
 	submap_exec("SHIFT + B", "[Theming] reload bar", "quickshell ipc call bar reload")
 	submap_exec("C", "[Theming] cycle bar layout", "hyprshell quickshell/layout next")
 	submap_exec("SHIFT + C", "[Theming] cycle bar layout backward", "hyprshell quickshell/layout previous")
 	submap_exec("H", "[Theming] toggle bar", "hyprshell quickshell/visibility toggle")
 	submap_exec("SHIFT + H", "[Theming] toggle floating bar", "quickshell ipc call bar floating")
 	submap_exec("V", "[Theming] look and feel", "hyprshell window/settings.sh")
-	submap_exec(
-		"A",
-		"[Theming] select animation",
-		"hyprshell rofi/run-after-close.sh -- hyprshell animations.sh --select"
-	)
-	submap_exec("S", "[Theming] select shader", "hyprshell rofi/run-after-close.sh -- hyprshell shaders.sh --select")
-	submap_exec("M", "[Theming] color mode", "pkill -x rofi || hyprshell theme/color-mode -m")
+	submap_exec("A", "[Theming] select animation", menu("style_animations"))
+	submap_exec("S", "[Theming] select shader", menu("style_shaders"))
+	submap_exec("M", "[Theming] color mode", menu("style_color_mode"))
 	submap_exec("R", "[Theming] select rofi theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh -s")
 	submap_exec("L", "[Theming] select launcher style", "hyprshell rofi-launch.sh -s")
 	submap_exec("K", "[Theming] select lock layout", "quickshell ipc call lockview open")
@@ -761,7 +785,7 @@ submap_leader("utilities", mod, "U", function()
 	submap_exec("Q", "[System] close all windows", "hyprshell window/close-all.sh")
 	submap_exec("N", "[System] toggle nightlight", "hyprshell system/hyprsunset.sh -t")
 	submap_exec("A", "[System] toggle keep awake", "hyprshell session/toggle-keep-awake.sh")
-	submap_exec("W", "[System] select workflow", "pkill -x rofi || hyprshell workflows --select")
+	submap_exec("W", "[System] select workflow", menu("style_workflow"))
 	submap_exec("O", "[System] audio output switcher", "hyprshell controls/volume-control.sh -t")
 	submap_exec("S", "[System] cycle monitor scale", "hyprshell system/monitor-scale.sh")
 	submap_exec("SHIFT + S", "[System] cycle monitor scale backward", "hyprshell system/monitor-scale.sh --reverse")
@@ -791,8 +815,18 @@ end
 
 bind(mod .. " CTRL", "RIGHT", "[Workspaces] next relative workspace", hl.dsp.focus({ workspace = "r+1" }))
 bind(mod .. " CTRL", "LEFT", "[Workspaces] previous relative workspace", hl.dsp.focus({ workspace = "r-1" }))
-bind(mod .. " CTRL", "UP", "[Workspaces] previous workspace", hl.dsp.focus({ workspace = "previous" }))
-bind(mod .. " CTRL", "DOWN", "[Workspaces] nearest empty workspace", hl.dsp.focus({ workspace = "empty" }))
+bind(
+	mod .. " CTRL",
+	"UP",
+	"[Workspaces] previous workspace",
+	niri_or(hl.dsp.focus({ workspace = "r-1" }), hl.dsp.focus({ workspace = "previous" }))
+)
+bind(
+	mod .. " CTRL",
+	"DOWN",
+	"[Workspaces] nearest empty workspace",
+	niri_or(hl.dsp.focus({ workspace = "r+1" }), hl.dsp.focus({ workspace = "empty" }))
+)
 bind(mod, "TAB", "[Workspaces] next existing workspace", hl.dsp.focus({ workspace = "e+1" }))
 bind(mod .. " SHIFT", "TAB", "[Workspaces] previous existing workspace", hl.dsp.focus({ workspace = "e-1" }))
 

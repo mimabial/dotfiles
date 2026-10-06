@@ -3,7 +3,7 @@
 A workflow is a named set of tradeoffs applied in one keystroke. `Super + U` then
 `W` picks one.
 
-There are six. Four you choose:
+There are eight. Six you choose:
 
 **default** — no workflow configuration. The theme and your look-and-feel
 overrides decide everything.
@@ -16,8 +16,13 @@ night light, and removes transparency and distracting effects. When you leave,
 it restores only the runtime settings it changed; manual changes made while the
 workflow is active are left alone.
 
-**windows** — a window-focused workspace: the scrolling layout, the winbar bar
+**windows** — a window-focused workspace: the dwindle layout, the winbar bar
 layout, effects disabled.
+
+**niri** — scrollable tiling with half-width columns and vertical workspaces, on
+the plain top or bottom bar.
+
+**macos** — the master layout under the macos bar.
 
 And two you do not:
 
@@ -49,7 +54,6 @@ turns that half off while leaving GameMode's half in place.
 
 ```bash
 hyprshell util/workflows --list
-hyprshell util/workflows --select
 hyprshell util/workflows --set windows
 hyprshell util/workflows --set presentation
 ```
@@ -75,6 +79,13 @@ runtime.config("general.layout", "scrolling")
 ```
 
 `WORKFLOW_QUICKSHELL_LAYOUT` is how `windows` switches the bar to `winbar` and
-puts it back when you leave. `hl.layer_rule` and `hl.window_rule` work here too —
-that is how `windows` kills the bar and notification animations and pushes the
-terminals to near-opaque.
+puts it back when you leave — unless your old bar sat on the other edge, in
+which case you get top or bottom on the edge you were on. winbar itself moves to
+the edge your previous bar was on, so only `macos`, whose bar exists only at the
+top, changes edges. It takes a space-separated set: `niri` sets `"top bottom"`,
+so entering it from another bar picks the one on that bar's edge (winbar's moved
+edge included) and the bar picker offers only those two. A workflow that sets
+`general.layout` owns the window layout, and the layout toggle refuses while it
+is active. `hl.layer_rule` and `hl.window_rule` work here too — that is how
+`windows` kills the bar and notification animations and pushes the terminals to
+near-opaque.

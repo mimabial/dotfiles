@@ -2,16 +2,16 @@
   "panel": "winbar",
   "edge": "bottom",
   "left": [
-    {
-      "id": "menu",
-      "props": {
-        "text": "",
-        "taskbarSettings": true
-      }
-    },
     "weather"
   ],
   "center": [
+    {
+      "id": "menu",
+      "props": {
+        "text": "",
+        "taskbarSettings": true
+      }
+    },
     {
       "id": "taskbar",
       "props": {
@@ -38,10 +38,10 @@
     "tray",
     "language",
     "spotlight",
+    "task-view",
     "wifi-menu",
     "sound-menu",
     "battery",
-    "datetime",
     {
       "id": "notifications",
       "props": {
@@ -49,6 +49,7 @@
         "themed": true
       }
     },
-    "expose-strip"
+    "datetime",
+    "launcher-strip"
   ]
 }

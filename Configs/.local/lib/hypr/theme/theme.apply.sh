@@ -35,9 +35,9 @@ theme_apply_preserve_job_logs=0
 theme_apply_quiet=false
 theme_apply_generation=""
 theme_apply_started_ms=""
-declare -ga theme_apply_job_names=()
 declare -ga theme_apply_job_pids=()
-declare -ga theme_apply_job_required=()
+declare -gA theme_apply_job_name_by_pid=()
+declare -gA theme_apply_job_requirement_by_pid=()
 declare -ga theme_apply_color_sync_args=()
 
 theme_apply_timing_enabled() {
@@ -181,9 +181,9 @@ theme_apply_prepare_job_log_dir() {
 }
 
 theme_apply_reset_jobs() {
-  theme_apply_job_names=()
   theme_apply_job_pids=()
-  theme_apply_job_required=()
+  theme_apply_job_name_by_pid=()
+  theme_apply_job_requirement_by_pid=()
 }
 
 theme_apply_next_generation() {
@@ -237,9 +237,10 @@ theme_apply_start_job() {
     exit "${rc}"
   ) >"${log_file}" 2>&1 &
 
-  theme_apply_job_names+=("${name}")
-  theme_apply_job_required+=("${required}")
-  theme_apply_job_pids+=("$!")
+  local job_pid=$!
+  theme_apply_job_pids+=("${job_pid}")
+  theme_apply_job_name_by_pid["${job_pid}"]="${name}"
+  theme_apply_job_requirement_by_pid["${job_pid}"]="${required}"
 }
 
 theme_apply_log_job_failure() {
@@ -259,7 +260,6 @@ theme_apply_log_job_failure() {
 
 theme_apply_wait_jobs() {
   local job_log_dir="$1"
-  local i=""
   local name=""
   local pid=""
   local required=""
@@ -269,10 +269,9 @@ theme_apply_wait_jobs() {
   local duration_ms="0"
   local failed=0
 
-  for i in "${!theme_apply_job_pids[@]}"; do
-    name="${theme_apply_job_names[$i]}"
-    pid="${theme_apply_job_pids[$i]}"
-    required="${theme_apply_job_required[$i]}"
+  for pid in "${theme_apply_job_pids[@]}"; do
+    name="${theme_apply_job_name_by_pid[$pid]}"
+    required="${theme_apply_job_requirement_by_pid[$pid]}"
     status_file="${job_log_dir}/${name}.status"
     log_file="${job_log_dir}/${name}.log"
 

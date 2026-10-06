@@ -15,7 +15,6 @@ BarTooltip 1.0 BarTooltip.qml
 Bitwarden 1.0 Bitwarden.qml
 GlyphInk 1.0 GlyphInk.qml
 BitwardenPopup 1.0 BitwardenPopup.qml
-BrightnessPopup 1.0 BrightnessPopup.qml
 BluetoothPopup 1.0 BluetoothPopup.qml
 BookmarkEditor 1.0 BookmarkEditor.qml
 BookmarkBackend 1.0 BookmarkBackend.qml
@@ -34,6 +33,7 @@ ClockworkPage 1.0 ClockworkPage.qml
 ClockworkState 1.0 ClockworkState.qml
 ColorModePopup 1.0 ColorModePopup.qml
 ColorPickerPopup 1.0 ColorPickerPopup.qml
+ColumnMap 1.0 ColumnMap.qml
 ConverterPopup 1.0 ConverterPopup.qml
 DesktopPopup 1.0 DesktopPopup.qml
 DisksPopup 1.0 DisksPopup.qml
@@ -45,6 +45,7 @@ LayerBlur 1.0 LayerBlur.qml
 LazyPopup 1.0 LazyPopup.qml
 LogoutButton 1.0 LogoutButton.qml
 MediaButton 1.0 MediaButton.qml
+CavaView 1.0 CavaView.qml
 MediaControls 1.0 MediaControls.qml
 MediaPopup 1.0 MediaPopup.qml
 MicrophoneButton 1.0 MicrophoneButton.qml
@@ -85,6 +86,7 @@ StartMenuPane 1.0 StartMenuPane.qml
 StartMenuRow 1.0 StartMenuRow.qml
 StartPinnedGrid 1.0 StartPinnedGrid.qml
 StartPopup 1.0 StartPopup.qml
+SpotlightRow 1.0 SpotlightRow.qml
 SubmapButton 1.0 SubmapButton.qml
 SudokuPopup 1.0 SudokuPopup.qml
 TasksPopup 1.0 TasksPopup.qml
@@ -109,7 +111,9 @@ TaskbarPopup 1.0 TaskbarPopup.qml
 TaskbarTooltip 1.0 TaskbarTooltip.qml
 WorkspacePopup 1.0 WorkspacePopup.qml
 Workspaces 1.0 Workspaces.qml
+singleton AudioPorts 1.0 AudioPorts.qml
 singleton Backlight 1.0 Backlight.qml
+singleton Cava 1.0 Cava.qml
 singleton Media 1.0 Media.qml
 singleton Mirroring 1.0 Mirroring.qml
 singleton Privacy 1.0 Privacy.qml

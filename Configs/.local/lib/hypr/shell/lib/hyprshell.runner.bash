@@ -205,6 +205,7 @@ append_command_candidate() {
   local base_path="$1"
   local resolved=""
 
+  [[ -f "${base_path}.sh" || -f "${base_path}.py" || -f "${base_path}" ]] || return 0
   resolved="$(resolve_script_target "${base_path}")" || return 0
   CANDIDATES+=("${resolved}")
 }

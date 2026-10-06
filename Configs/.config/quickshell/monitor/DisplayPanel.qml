@@ -171,9 +171,6 @@ Panel {
   readonly property var previewCoordinator: {
     return root.shell ? root.shell.monitorPreviewCoordinator : null
   }
-  readonly property bool barIconDimmed: root.serviceStateKnown
-    && !root.managedChecked
-    && !root.serviceActionPending
   readonly property color foreground: shell.foreground
   readonly property color dim: Qt.darker(foreground, 1.5)
   readonly property color urgent: shell.urgent

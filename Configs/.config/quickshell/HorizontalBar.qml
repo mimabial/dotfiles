@@ -8,7 +8,7 @@ BarSurface {
         id: moduleCatalog
         shell: root.shell; popupsAllowed: root.popupsAllowed
         taskbarAvailableWidth: Math.max(0, rightRow.x - leftRow.x - leftRow.width
-            - centerFallback.leftInset - centerFallback.rightInset)
+            - centerFallback.leftInset - centerFallback.rightInset - centerFallback.widthBesideTaskbar)
     }
     readonly property var registry: moduleCatalog.registry
     readonly property var centerModules: layout.center || []
@@ -87,7 +87,7 @@ BarSurface {
         id: gapTarget
         anchors.fill: parent
         z: -1
-        enabled: root.shell.layoutName === "winbar"
+        enabled: root.shell.barModules.includes("tray")
         keys: ["bar-module", "tray-module"]
         onDropped: drop => {
             const module = drop.source as BarModuleLoader

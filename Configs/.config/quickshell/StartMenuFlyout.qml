@@ -10,7 +10,6 @@ PopupWindow {
     property Item anchorItem: null
     property int contentWidth: Style.px(230)
     property int padding: Style.popupPadding
-    property string mappedMenuId: ""
     readonly property bool open: menuId !== "" && anchorItem !== null && items.length > 0
     readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null
     property string openSubId: ""
@@ -32,18 +31,12 @@ PopupWindow {
     function labelIcon(label) { const m = label.match(/^(\S+)\s{2,}/); return m ? m[1] : "" }
     function labelText(label) { const m = label.match(/^\S+\s{2,}(.*)$/); return m ? m[1] : label }
     function closeSubmenu() { openSubId = ""; openRow = null }
-    function remapMenu() {
-        mappedMenuId = ""
-        if (menuId !== "") showNextMenu.restart()
-    }
     onOpenChanged: if (!open) closeSubmenu()
-    onMenuIdChanged: { closeSubmenu(); remapMenu() }
-    onMenusChanged: remapMenu()
+    onMenuIdChanged: closeSubmenu()
     onAnchorItemChanged: if (root.open) anchor.updateAnchor()
-    onVisibleChanged: if (!visible && open && mappedMenuId === menuId) dismissed()
-    Timer { id: showNextMenu; interval: 0; onTriggered: root.mappedMenuId = root.menuId }
+    onVisibleChanged: if (!visible && open) dismissed()
 
-    visible: open && mappedMenuId === menuId
+    visible: open
     color: "transparent"
     implicitWidth: contentWidth
     implicitHeight: flyColumn.implicitHeight + padding * 2

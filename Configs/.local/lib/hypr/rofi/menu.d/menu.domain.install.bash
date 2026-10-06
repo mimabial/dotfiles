@@ -39,9 +39,10 @@ run_dev_env_install() {
 
 menu_register_domain_install() {
   menu_define install "Install"
-  menu_add_item install "󰣇  Package" action install_package
+  menu_add_item install "󰏖  Package" action install_package
   menu_add_item install "󰣇  AUR" action install_aur
   menu_add_item install "  Font" action install_font
+  menu_add_item install "󰗊  Language" action install_language
   menu_add_item install "󰵮  Development" submenu install_development
   menu_add_item install "󱚤  AI" submenu install_ai
   menu_add_item install "  Gaming" submenu install_gaming
@@ -50,10 +51,10 @@ menu_register_domain_install() {
   menu_add_item install "󰍲  Windows VM" action install_windows
 
   menu_define install_ai "Install"
-  menu_add_item install_ai "󱚤  Claude Code" action install_ai_claude
-  menu_add_item install_ai "󱚤  OpenAI Codex" action install_ai_openai
+  menu_add_item install_ai "󰛄  Claude Code" action install_ai_claude
+  menu_add_item install_ai "󱙺  OpenAI Codex" action install_ai_openai
   menu_add_item install_ai "󱚤  Ollama" action install_ai_ollama
-  menu_add_item install_ai "󱚤  opencode" action install_ai_opencode
+  menu_add_item install_ai "󰚩  opencode" action install_ai_opencode
 
   menu_define install_gaming "Install"
   menu_add_item install_gaming "  Steam" action install_gaming_steam

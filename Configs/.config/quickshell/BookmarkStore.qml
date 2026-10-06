@@ -612,15 +612,6 @@ Item {
     return removed ? root.save(next, false) : false
   }
 
-  function findByUrl(url) {
-    var key = root.canonicalUrl(url)
-    for (var i = 0; i < root.bookmarks.length; i++) {
-      if (root.canonicalUrl(root.bookmarks[i].url) === key)
-        return root.bookmarks[i]
-    }
-    return null
-  }
-
   function recordOpen(id) {
     if (!root.canMutate)
       return false

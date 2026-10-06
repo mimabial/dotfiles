@@ -5,10 +5,11 @@ QtObject {
     id: root
     required property string home
     property string styleName: "horizontal"
+    property string variant: ""
     property var theme: ({ rounding: 0, borderSize: 0, palette: {} })
     property var baseRules: ({})
     property var overrides: ({})
-    readonly property var rules: resolve(baseRules, overrides)
+    readonly property var rules: resolveRules(baseRules, variant ? mergeRules(overrides, overrides[variant] ?? {}) : overrides)
     property string loadedStyle: ""
     readonly property bool ready: loadedStyle === styleName
 
@@ -21,34 +22,59 @@ QtObject {
         justify: "center"
     })
 
-    function box(name) { const key = String(name || ""); return rules[key] || (key.includes(".") ? box(key.slice(0, key.lastIndexOf("."))) : rules[""] || fallback) }
-    function resolve(rawBase, rawOver) {
-        const base = expand(rawBase), over = expand(rawOver), out = {}, root = merge(fallback, base[""] || {})
-        const build = key => {
-            if (key in out) return out[key]
-            const dotted = key.includes(".")
-            const rule = merge(dotted ? build(key.slice(0, key.lastIndexOf("."))) : root, base[key] || {})
-            // a dotted rule's prefix already carries the style's "" rule; applying all
-            // of it again would undo the style's own prefix rule, so only let it beat base[key]
-            return out[key] = merge(merge(rule, dotted ? within(over[""] || {}, base[key] || {}) : over[""] || {}), over[key] || {})
+    function box(name) {
+        const selector = String(name || "")
+        if (rules[selector]) return rules[selector]
+        const parentEnd = selector.lastIndexOf(".")
+        return parentEnd >= 0 ? box(selector.slice(0, parentEnd)) : rules[""] || fallback
+    }
+    function resolveRules(baseGroups, styleGroups) {
+        const baseRulesBySelector = expandGroupedRules(baseGroups)
+        const styleRulesBySelector = expandGroupedRules(styleGroups)
+        const resolvedRules = {}
+        const rootBaseRule = mergeRules(fallback, baseRulesBySelector[""] || {})
+        const rootStyleRule = styleRulesBySelector[""] || {}
+        const resolveSelector = selector => {
+            if (selector in resolvedRules) return resolvedRules[selector]
+            const parentEnd = selector.lastIndexOf(".")
+            const inheritedRule = parentEnd >= 0 ? resolveSelector(selector.slice(0, parentEnd)) : rootBaseRule
+            const baseRule = baseRulesBySelector[selector] || {}
+            const matchingStyleDefaults = parentEnd >= 0 ? matchingFields(rootStyleRule, baseRule) : rootStyleRule
+            const ruleWithBase = mergeRules(inheritedRule, baseRule)
+            const ruleWithStyleDefaults = mergeRules(ruleWithBase, matchingStyleDefaults)
+            resolvedRules[selector] = mergeRules(ruleWithStyleDefaults, styleRulesBySelector[selector] || {})
+            return resolvedRules[selector]
         }
-        for (const layer of [base, over]) for (const key in layer) build(key)
-        return out
+        for (const layer of [baseRulesBySelector, styleRulesBySelector])
+            for (const selector in layer) resolveSelector(selector)
+        return resolvedRules
     }
-    function expand(layer) {
-        const out = {}
-        for (const group in layer) for (const key of group.split(",").map(name => name.trim())) out[key] = merge(out[key] || {}, layer[group])
-        return out
+    function expandGroupedRules(groups) {
+        const expandedRules = {}
+        for (const group in groups)
+            for (const selector of group.split(",").map(name => name.trim()))
+                expandedRules[selector] = mergeRules(expandedRules[selector] || {}, groups[group])
+        return expandedRules
     }
-    function within(rule, shape) {
-        const out = {}
-        for (const key in shape) if (key in rule) out[key] = rule[key] && shape[key] && typeof rule[key] === "object" && typeof shape[key] === "object" && !Array.isArray(rule[key]) && !Array.isArray(shape[key]) ? within(rule[key], shape[key]) : rule[key]
-        return out
+    function mergeableObjects(first, second) {
+        return first && second && typeof first === "object" && typeof second === "object"
+            && !Array.isArray(first) && !Array.isArray(second)
     }
-    function merge(base, over) {
-        const out = Object.assign({}, base)
-        for (const key in over) out[key] = out[key] && over[key] && typeof out[key] === "object" && typeof over[key] === "object" && !Array.isArray(out[key]) && !Array.isArray(over[key]) ? merge(out[key], over[key]) : over[key]
-        return out
+    function matchingFields(styleRule, baseRule) {
+        const matching = {}
+        for (const key in baseRule) {
+            if (!(key in styleRule)) continue
+            matching[key] = mergeableObjects(styleRule[key], baseRule[key])
+                ? matchingFields(styleRule[key], baseRule[key]) : styleRule[key]
+        }
+        return matching
+    }
+    function mergeRules(baseRule, overrideRule) {
+        const merged = Object.assign({}, baseRule)
+        for (const key in overrideRule)
+            merged[key] = mergeableObjects(merged[key], overrideRule[key])
+                ? mergeRules(merged[key], overrideRule[key]) : overrideRule[key]
+        return merged
     }
 
     property FileView themeFile: FileView {

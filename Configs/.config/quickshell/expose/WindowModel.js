@@ -186,6 +186,75 @@ function composeRows(rows, scale, width, height, gap, padding, footerHeight) {
     return result;
 }
 
+function composeStrips(toplevels, width, height, rowGap, padding, footerHeight, followedIndex) {
+    var niriOverviewZoom = 0.5, strips = {}, result = [], specialScreenOffsets = {}, followedStrip = null;
+    var footerSpace = footerHeight > 0 ? footerHeight + padding : 0;
+    var zoomedGap = function(from, to) { return Math.max(0, to - from) * niriOverviewZoom; };
+    for (var index = 0; index < toplevels.length; index++) {
+        var ipc = ipcFor(toplevels[index]), monitor = toplevels[index].monitor;
+        if (!ipc.at || !ipc.workspace || !monitor)
+            continue;
+        var special = ipc.workspace.id < 0;
+        var id = special ? Infinity : ipc.workspace.id;
+        var strip = strips[id] = strips[id] || { id: id, screenLeft: monitor.x, screenWidth: monitor.width / monitor.scale, columns: {}, cards: [] };
+        if (special && !(ipc.workspace.id in specialScreenOffsets))
+            specialScreenOffsets[ipc.workspace.id] = Object.keys(specialScreenOffsets).length * strip.screenWidth;
+        var screenX = ipc.at[0] + (special ? specialScreenOffsets[ipc.workspace.id] : 0);
+        var column = strip.columns[screenX] = strip.columns[screenX] || { screenX: screenX, screenRight: -Infinity, width: 0, cards: [] };
+        var card = {
+            index: index,
+            screenY: ipc.at[1],
+            screenBottom: ipc.at[1] + ipc.size[1],
+            width: ipc.size[0] * niriOverviewZoom + padding * 2,
+            height: ipc.size[1] * niriOverviewZoom + padding * 2 + footerSpace
+        };
+        column.screenRight = Math.max(column.screenRight, screenX + ipc.size[0]);
+        column.width = Math.max(column.width, card.width);
+        column.cards.push(card);
+        strip.cards.push(card);
+        if (index === followedIndex)
+            followedStrip = strip;
+    }
+    var stackTop = 0, ordered = Object.values(strips).sort(function(a, b) { return a.id - b.id; });
+    ordered.forEach(function(strip) {
+        var columns = Object.values(strip.columns).sort(function(a, b) { return a.screenX - b.screenX; });
+        var firstOnScreen = columns.find(function(column) { return column.screenRight > strip.screenLeft; }) || columns[columns.length - 1];
+        var left = 0, previous = null;
+        strip.top = stackTop;
+        strip.height = 0;
+        columns.forEach(function(column) {
+            left += previous ? zoomedGap(previous.screenRight, column.screenX) : 0;
+            if (column === firstOnScreen)
+                strip.x = (width - strip.screenWidth * niriOverviewZoom) / 2 + (column.screenX - strip.screenLeft) * niriOverviewZoom - padding - left;
+            var top = 0, above = null;
+            column.cards.sort(function(a, b) { return a.screenY - b.screenY; }).forEach(function(card) {
+                top += above ? zoomedGap(above.screenBottom, card.screenY) : 0;
+                card.x = left;
+                card.y = top;
+                top += card.height;
+                above = card;
+            });
+            strip.height = Math.max(strip.height, top);
+            left += column.width;
+            previous = column;
+        });
+        stackTop += strip.height + rowGap;
+    });
+    var centered = followedStrip || ordered[0];
+    var centerFollowed = centered ? (height - centered.height) / 2 - centered.top : 0;
+    ordered.forEach(function(strip) {
+        strip.cards.forEach(function(card) {
+            result[card.index] = { x: strip.x + card.x, y: centerFollowed + strip.top + card.y, width: card.width, height: card.height };
+        });
+    });
+    if (followedStrip) {
+        var followed = result[followedIndex];
+        var panIntoView = Math.max(-followed.x, Math.min(0, width - followed.x - followed.width));
+        followedStrip.cards.forEach(function(card) { result[card.index].x += panIntoView; });
+    }
+    return result;
+}
+
 function directionalIndex(selected, dx, dy, layout) {
     if (!layout || !layout[selected])
         return -1;

@@ -36,36 +36,70 @@ hl.config({
     general = {snap = {enabled = true}},
 })
 
-local function sync_scrolling_width()
-    local ws = hl.get_active_special_workspace() or hl.get_active_workspace()
-    if ws and ws.tiled_layout == "scrolling" then
-        local windows = hl.get_windows({workspace = ws, floating = false, mapped = true})
-        local overflow = #windows > 2
-        hl.dispatch(hl.dsp.layout("colresize all " .. (overflow and 0.45 or 0.5)))
-        if not overflow then hl.dispatch(hl.dsp.layout("fit all")); return end
-        local m, gaps, border = ws.monitor, hl.get_config("general.gaps_out"), hl.get_config("general.border_size")
-        local left, right = m.position.x + m.reserved.left + gaps.left + border, m.position.x + m.size.width / m.scale - m.reserved.right - gaps.right - border
-        table.sort(windows, function(a, b) return a.at.x < b.at.x end)
-        local active, index, shift = hl.get_active_window(), 0, 0
-        if not active then return end
-        for i, w in ipairs(windows) do if w.address == active.address then index = i; break end end
-        if #windows > 3 and index > 1 and index < #windows then
-            local pair = math.min(index, #windows - 2)
-            shift = (left + right - windows[pair].at.x - windows[pair + 1].at.x - windows[pair + 1].size.x) / 2
-        else
-            local first, last = windows[1], windows[#windows]
-            shift = first.at.x > left and left - first.at.x or last.at.x + last.size.x < right and right - last.at.x - last.size.x or 0
-        end
-        if shift == 0 then return end
-        local no_warps = hl.get_config("cursor.no_warps")
-        hl.dispatch(hl.dsp.layout("move " .. (shift > 0 and "+" or "") .. shift))
-        hl.config({cursor = {no_warps = true}})
-        hl.dispatch(hl.dsp.focus({window = "address:" .. active.address}))
-        hl.config({cursor = {no_warps = no_warps}})
-    end
+local function focus_without_warp(window)
+    local no_warps = hl.get_config("cursor.no_warps")
+    hl.config({cursor = {no_warps = true}})
+    hl.dispatch(hl.dsp.focus({window = "address:" .. window.address}))
+    hl.config({cursor = {no_warps = no_warps}})
 end
-for _, event in ipairs({"window.open", "window.destroy", "window.move_to_workspace", "window.active", "workspace.active"}) do hl.on(event, sync_scrolling_width) end
-sync_scrolling_width()
+
+local function scrolling_columns(ws)
+    local windows = hl.get_windows({workspace = ws, floating = false, mapped = true})
+    table.sort(windows, function(a, b) return a.at.x < b.at.x end)
+    local columns = {}
+    for _, window in ipairs(windows) do
+        if #columns == 0 or columns[#columns].at.x ~= window.at.x then columns[#columns + 1] = window end
+    end
+    return columns
+end
+
+local function usable_edges(ws)
+    local m, gaps, border = ws.monitor, hl.get_config("general.gaps_out"), hl.get_config("general.border_size")
+    return m.position.x + m.reserved.left + gaps.left + border, m.position.x + m.size.width / m.scale - m.reserved.right - gaps.right - border
+end
+
+local function fills_screen(ws, columns)
+    local left, right = usable_edges(ws)
+    return columns[#columns].at.x + columns[#columns].size.x - columns[1].at.x >= right - left - 1
+end
+
+local function sync_scrolling(window, expand_to_fill)
+    local ws = hl.get_active_special_workspace() or hl.get_active_workspace()
+    if not ws or ws.tiled_layout ~= "scrolling" or window and (window.workspace ~= ws or window.floating) then return end
+    local active = hl.get_active_window()
+    if not active or active.floating or active.workspace ~= ws then return end
+    local columns = scrolling_columns(ws)
+    if expand_to_fill and not fills_screen(ws, columns) then hl.dispatch(hl.dsp.layout("fit expand")) end
+    if #columns <= 2 then return end
+    local left, right = usable_edges(ws)
+    local index, shift = 0, 0
+    for i, w in ipairs(columns) do if w.at.x == active.at.x then index = i; break end end
+    if #columns > 3 and index > 1 and index < #columns then
+        local pair = math.min(index, #columns - 2)
+        shift = (left + right - columns[pair].at.x - columns[pair + 1].at.x - columns[pair + 1].size.x) / 2
+    else
+        local first, last = columns[1], columns[#columns]
+        shift = first.at.x > left and left - first.at.x or last.at.x + last.size.x < right and right - last.at.x - last.size.x or 0
+    end
+    if shift == 0 then return end
+    hl.dispatch(hl.dsp.layout("move " .. (shift > 0 and "+" or "") .. shift))
+    focus_without_warp(active)
+end
+
+local function refill_scrolling_pair()
+    local ws, active = hl.get_active_special_workspace() or hl.get_active_workspace(), hl.get_active_window()
+    if not (ws and active and ws.tiled_layout == "scrolling") or active.floating then return end
+    local columns = scrolling_columns(ws)
+    if #columns ~= 2 or fills_screen(ws, columns) then return end
+    focus_without_warp(columns[1].at.x == active.at.x and columns[2] or columns[1])
+    hl.dispatch(hl.dsp.layout("fit expand"))
+    focus_without_warp(active)
+end
+for _, event in ipairs({"window.open", "window.move_to_workspace"}) do hl.on(event, function(window) sync_scrolling(window) end) end
+local expand_after_close = false
+hl.on("window.close", function(window) expand_after_close = not window.floating and window.workspace == (hl.get_active_special_workspace() or hl.get_active_workspace()) end)
+for _, event in ipairs({"window.destroy", "window.active", "workspace.active"}) do hl.on(event, function() sync_scrolling(nil, expand_after_close); expand_after_close = false end) end
+sync_scrolling()
 
 hl.curve("wind", {type = "bezier", points = {{0.05, 0.9}, {0.1, 1.05}}})
 hl.curve("winIn", {type = "bezier", points = {{0.1, 1.1}, {0.1, 1.1}}})
@@ -147,6 +181,8 @@ local startup = {
     vars.get("start.IDLE_DAEMON"),
     vars.get("start.LID_INHIBITOR"),
     vars.get("start.IDLE_MANAGER"),
+    vars.get("start.MONITOR_WATCH"),
+    vars.get("start.POWER_PROFILE_AUTO"),
     vars.get("start.ZSH_ZCOMPDUMP"),
     vars.get("start.AUTH_DIALOGUE"),
     vars.get("start.LOCATION_AGENT"),
@@ -165,6 +201,8 @@ local startup = {
     vars.get("start.FFTAB_BRIDGE"),
     vars.get("start.GAMEMODE"),
     vars.get("start.TORRENT"),
+    vars.get("start.CALDAV"),
+    vars.get("start.CALDAV_SYNC"),
 }
 
 hl.on("hyprland.start", function()
@@ -175,4 +213,4 @@ hl.on("hyprland.start", function()
     end
 end)
 
-return {vars = vars, runtime = runtime}
+return {vars = vars, runtime = runtime, refill_scrolling_pair = refill_scrolling_pair, usable_edges = usable_edges}

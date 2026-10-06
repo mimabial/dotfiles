@@ -233,6 +233,32 @@ show_remove_font_menu() {
   esac
 }
 
+show_language_menu() {
+  local action="$1" parent="$2" empty_label="No languages" script="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/language.sh"
+  local rows="" selection=""
+
+  rows="$("${script}" "${action}")"
+  selection="$(menu "${action^} Language" "${rows:-${empty_label}}" --select "$("${script}" current "${action}")")"
+  case "${selection}" in
+    "${empty_label}" | "" | "CNCLD") menu_exit_or_show "${parent}" ;;
+  esac
+  case "${action}" in
+    install | remove) present_terminal --hypr-profile dialog --app-id org.language.Manage --title "${action^} Language" -- hyprshell system/language "${action}" "${selection##* }" ;;
+    *) dunstify -a Language -i preferences-desktop-locale "${action^} language" "$("${script}" "${action}" "${selection##* }" 2>&1)" ;;
+  esac
+}
+
+show_input_language_menu() {
+  local layouts="" selection="" layout="" variant=""
+
+  layouts="$(xkbcli list | awk -F"'" '/^option_groups:/ { exit } /^- layout:/ { layout = $2 } /^  variant:/ { variant = $2 }
+    layout && /^  description:/ { sub(/^  description: /, ""); print $0 "\t" layout "\t" variant }')"
+  selection="$(menu "Input Language" "$(cut -f1 <<<"${layouts}")" --select "$(hyprctl -j devices | jq -r '.keyboards[] | select(.main).active_keymap')")"
+  [[ -n "${selection}" && "${selection}" != "CNCLD" ]] || menu_exit_or_show setup_language
+  IFS=$'\t' read -r _ layout variant < <(awk -F'\t' -v description="${selection}" '$1 == description { print; exit }' <<<"${layouts}")
+  hyprshell util/keyboard-layout --select "${layout}" "${variant}" >/dev/null
+}
+
 show_media_genre_menu() {
   local empty_label="Music library is empty"
   local library=""
@@ -314,6 +340,21 @@ menu_run_action_dynamic() {
       ;;
     remove_font)
       show_remove_font_menu
+      ;;
+    install_language)
+      show_language_menu install install
+      ;;
+    remove_language)
+      show_language_menu remove remove
+      ;;
+    setup_language_system)
+      show_language_menu system setup_language
+      ;;
+    setup_language_display)
+      show_language_menu display setup_language
+      ;;
+    setup_language_input)
+      show_input_language_menu
       ;;
     media_genres)
       show_media_genre_menu

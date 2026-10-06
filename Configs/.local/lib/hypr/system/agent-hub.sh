@@ -7,6 +7,8 @@ source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || ex
 hypr_help_guard "Usage: hyprshell system/agent-hub
 Focus or launch the Agent Hub TUI." "$@"
 
-exec hyprshell launch/focus.sh org.tui.AgentHub -- \
-  hyprshell launch/terminal-present.sh \
-  --hypr-cells 72 24 --app-id org.tui.AgentHub --title "Agent Hub" -- agent-tui
+exec hyprshell launch/focus.sh org.tui.AgentHub -- bash -ec '
+  read -r columns rows < <(agent-tui --size)
+  exec hyprshell launch/terminal-present.sh \
+    --hypr-cells "$columns" "$rows" --app-id org.tui.AgentHub --title "Agent Hub" -- agent-tui
+'

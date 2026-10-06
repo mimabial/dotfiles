@@ -130,6 +130,7 @@ Item {
     property string appFilter: ""
     property string workspaceScope: "all"
     property int selectedIndex: 0
+    property var followedWindow: null
     property int previewIndex: -1
     property int previewExitIndex: -1
     property bool previewSlowMotion: false
@@ -224,6 +225,7 @@ Item {
         if (!blurRestoreInFlight)
             root.restoringDesktopBlur = false;
         root.filterText = "";
+        root.followedWindow = Hyprland.activeToplevel;
         root.appFilter = String(app || "");
         root.workspaceScope = root.appFilter ? "all" : root.initialWorkspaceScope;
         if (root.surfaceMounted) {
@@ -350,15 +352,6 @@ Item {
             ? Easing.OutQuart
             : (next > root.motionProgress ? Easing.OutCubic : Easing.InCubic);
         overviewMotionAnimation.start();
-    }
-
-    function previewAnimation() {
-        if (!root.surfaceMounted)
-            return;
-        overviewMotionAnimation.stop();
-        root.motionTarget = 1;
-        root.motionProgress = 0;
-        root.animateMotionTo(1);
     }
 
     function completeMotion() {
@@ -966,13 +959,6 @@ Item {
         return Hyprland.focusedWorkspace || null;
     }
 
-    function activeWorkspaceLabelForScreen(screenName) {
-        var workspace = root.workspaceForScreen(screenName);
-        if (!workspace)
-            return "—";
-        return root.formatWorkspaceLabel(workspace.name || workspace.id || "—");
-    }
-
     function workspaceScopeLabelForScreen(screenName) {
         if (root.workspaceScope === "all")
             return "All workspaces";
@@ -1177,6 +1163,7 @@ Item {
 
         var previousPreviewIndex = root.previewIndex;
         root.selectedIndex = bestIndex;
+        root.followedWindow = root.filteredToplevels[bestIndex];
         if (previousPreviewIndex >= 0) {
             root.previewSlowMotion = false;
             root.previewNavigationSlowMotion = slowMotion === true;
@@ -1587,7 +1574,6 @@ Item {
 
             onCardToplevelsSourceChanged: overviewWindow.syncCardToplevels()
             Component.onCompleted: overviewWindow.syncCardToplevels()
-            readonly property string screenWorkspaceLabel: root.activeWorkspaceLabelForScreen(String(modelData.name || ""))
             readonly property string screenScopeLabel: root.workspaceScopeLabelForScreen(String(modelData.name || ""))
             readonly property real screenRatio: overviewWindow.screen && overviewWindow.screen.height > 0
                 ? overviewWindow.screen.width / overviewWindow.screen.height
@@ -1747,9 +1733,25 @@ Item {
                         id: overviewArea
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        clip: root.shell.workflow === "niri"
                         readonly property var windowLayout: {
                             var revision = root.modelRevision;
-                            return root.computeWindowLayout(overviewWindow.screenToplevels, width, height, Style.spacing.huge * 2, Style.spacing.sm, root.windowFooterHeight, overviewWindow.screenRatio);
+                            return root.shell.workflow === "niri"
+                                ? WindowModel.composeStrips(overviewWindow.screenToplevels, width, height, Style.spacing.huge * 2, Style.spacing.sm, root.windowFooterHeight, overviewWindow.screenToplevels.indexOf(root.followedWindow))
+                                : root.computeWindowLayout(overviewWindow.screenToplevels, width, height, Style.spacing.huge * 2, Style.spacing.sm, root.windowFooterHeight, overviewWindow.screenRatio);
+                        }
+
+                        WheelHandler {
+                            readonly property int notchDelta: 120
+                            property real pendingDelta: 0
+                            enabled: root.shell.workflow === "niri"
+                            onWheel: event => {
+                                pendingDelta += event.angleDelta.y;
+                                if (Math.abs(pendingDelta) < notchDelta)
+                                    return;
+                                root.moveDirectional(0, pendingDelta > 0 ? -1 : 1, overviewArea.windowLayout);
+                                pendingDelta = 0;
+                            }
                         }
 
                         Item {

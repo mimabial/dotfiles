@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import Quickshell
 import Quickshell.Io
 import "LanguageModel.js" as Model
 import "Ui" as Ui
@@ -23,6 +24,12 @@ PopupCard {
     property bool busy: false
     property string statusText: ""
     property bool statusError: false
+    property var generatedLocales: []
+    property string systemLocale: ""
+    property string displayOverride: ""
+    readonly property string displayLocale: displayOverride || systemLocale
+    readonly property string sessionLocale: Quickshell.env("LANG") || ""
+    readonly property string languageHelper: shell.home + "/.local/lib/hypr/system/language.sh"
 
     readonly property var configured: Model.normalizeLayouts(report.configured)
     readonly property int activeIndex: Math.max(0, Math.min(Number(report.activeIndex || 0), configured.length - 1))
@@ -30,7 +37,10 @@ PopupCard {
     readonly property string switchOption: String(report.switchOption || "")
     readonly property var pickerOptions: view === "add"
         ? Model.unusedLayoutOptions(catalog, configured)
-        : view === "shortcut" ? Model.shortcutOptions(catalog) : []
+        : view === "shortcut" ? Model.shortcutOptions(catalog)
+        : view === "system" || view === "display" ? generatedLocales : []
+    readonly property var currentOption: view === "system" ? systemLocale
+        : view === "display" ? displayLocale : view === "shortcut" ? switchOption : null
     readonly property var filteredOptions: Model.filterOptions(pickerOptions, query)
     readonly property int pickerHeight: Math.min(Style.px(300), Math.max(Style.popupRowHeight, filteredOptions.length * (Style.px(45) + Style.xxs)))
 
@@ -85,6 +95,18 @@ PopupCard {
         actionProc.running = true
     }
 
+    function localeLabel(locale) {
+        return (generatedLocales.find(item => item.value === locale) || {label: locale}).label
+    }
+
+    function setLocale(scope, locale) {
+        if (busy) return
+        busy = true
+        statusError = false
+        statusText = "Setting the " + scope + " language…"
+        localeProc.exec([languageHelper, scope, locale])
+    }
+
     function chooseOption(index) {
         if (index < 0 || index >= filteredOptions.length) return
         const option = filteredOptions[index]
@@ -92,6 +114,8 @@ PopupCard {
             runAction(["--add", option.layout, option.variant], "Keyboard layout added.")
         else if (view === "shortcut")
             runAction(["--shortcut", option.value || "none"], "Switching shortcut updated.")
+        else if (view === "system" || view === "display")
+            setLocale(view, option.value)
     }
 
     function requestDelete(index) {
@@ -147,6 +171,9 @@ PopupCard {
         showMain()
         refresh()
         ensureCatalog()
+        localeConf.reload()
+        displayConf.reload()
+        generatedLocalesProc.running = true
     }
 
     property Process reportProc: Process {
@@ -210,6 +237,39 @@ PopupCard {
         }
     }
 
+    property FileView localeConf: FileView {
+        path: "/etc/locale.conf"
+        onLoaded: root.systemLocale = (text().match(/^LANG=(.*)$/m) || ["", ""])[1]
+    }
+
+    property FileView displayConf: FileView {
+        path: root.shell.home + "/.config/uwsm/env.d/02-language.sh"
+        printErrors: false
+        onLoaded: root.displayOverride = (text().match(/^export LANG=(.*)$/m) || ["", ""])[1]
+        onLoadFailed: root.displayOverride = ""
+    }
+
+    property Process generatedLocalesProc: Process {
+        command: [root.languageHelper, "system"]
+        stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.generatedLocales = Model.parseLocales(text) }
+    }
+
+    property Process localeProc: Process {
+        stdout: StdioCollector { id: localeStdout; waitForEnd: true }
+        stderr: StdioCollector { id: localeStderr; waitForEnd: true }
+        onExited: code => {
+            root.busy = false
+            if (code === 0) {
+                root.localeConf.reload()
+                root.displayConf.reload()
+                root.showMain(localeStdout.text.trim())
+                return
+            }
+            root.statusError = true
+            root.statusText = String(localeStderr.text || "The system language could not be set.").trim()
+        }
+    }
+
     Column {
         id: panelColumn
         anchors.left: parent.left
@@ -218,11 +278,12 @@ PopupCard {
 
         PopupHero {
             shell: root.shell
-            title: root.view === "main" ? "Keyboard languages"
-                : root.view === "add" ? "Add a layout" : "Switch shortcut"
-            status: root.view === "main" && root.activeLayout
-                ? Model.descriptionFor(root.catalog, root.activeLayout.layout, root.activeLayout.variant)
-                : root.view === "add" ? "Installed XKB layouts and variants" : "Supported XKB group options"
+            title: ({main: "Languages", add: "Add a layout", shortcut: "Switch shortcut",
+                system: "System language", display: "Display language"})[root.view]
+            status: root.view === "main"
+                ? (root.activeLayout ? Model.descriptionFor(root.catalog, root.activeLayout.layout, root.activeLayout.variant) : "")
+                : ({add: "Installed XKB layouts and variants", shortcut: "Supported XKB group options",
+                    system: "Login screen, services and new accounts", display: "Your account; the system language resets it"})[root.view]
         }
 
         PopupSeparator { shell: root.shell }
@@ -318,6 +379,24 @@ PopupCard {
                     detail: Model.shortcutLabel(root.catalog, root.switchOption)
                     onClicked: root.showPicker("shortcut")
                 }
+
+                PopupRow {
+                    width: parent.width
+                    shell: root.shell
+                    icon: "󰀄"
+                    title: "Display language"
+                    detail: root.localeLabel(root.displayLocale) + (root.displayLocale !== root.sessionLocale ? " · applies at next login" : "")
+                    onClicked: root.showPicker("display")
+                }
+
+                PopupRow {
+                    width: parent.width
+                    shell: root.shell
+                    icon: "󰇧"
+                    title: "System language"
+                    detail: root.localeLabel(root.systemLocale)
+                    onClicked: root.showPicker("system")
+                }
             }
         }
 
@@ -357,7 +436,8 @@ PopupCard {
                     rightPadding: 0
                     topPadding: 0
                     bottomPadding: 0
-                    placeholderText: root.view === "add" ? "Search layouts and variants…" : "Search shortcuts…"
+                    placeholderText: root.view === "add" ? "Search layouts and variants…"
+                        : root.view === "shortcut" ? "Search shortcuts…" : "Search languages…"
                     color: root.shell.foreground
                     font.family: root.shell.fontFamily
                     font.pixelSize: Style.bodySmall
@@ -410,7 +490,7 @@ PopupCard {
                     shell: root.shell
                     title: pickerRow.modelData.label
                     detail: pickerRow.modelData.description
-                    active: root.view === "shortcut" && String(pickerRow.modelData.value || "") === root.switchOption
+                    active: String(pickerRow.modelData.value || "") === root.currentOption
                     cursored: pickerRow.index === root.optionIndex
                     onClicked: root.chooseOption(pickerRow.index)
                     MouseArea {
@@ -428,7 +508,7 @@ PopupCard {
                 shell: root.shell
                 icon: "󰁍"
                 title: "Back"
-                detail: "Keep the current keyboard settings"
+                detail: "Keep the current settings"
                 onClicked: root.showMain()
             }
         }

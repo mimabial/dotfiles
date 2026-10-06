@@ -4,11 +4,11 @@
 menu_register_domain_gaming() {
   menu_define gaming "Gaming"
   menu_add_item gaming "  Game Launcher" action gaming_launcher
-  menu_add_item gaming "  Steam Games" action gaming_launcher_steam
+  menu_add_item gaming "󰸳  Steam Games" action gaming_launcher_steam
   menu_add_item gaming "󰺵  Lutris Games" action gaming_launcher_lutris
   menu_add_item gaming "󱇙  Sudoku" action gaming_sudoku
   menu_add_item gaming "  Steam" action gaming_steam
-  menu_add_item gaming "󰺵  Lutris" action gaming_lutris
+  menu_add_item gaming "  Lutris" action gaming_lutris
   menu_add_item gaming "󰜺  Stop Lutris Wine" action gaming_wine_stop
 }
 

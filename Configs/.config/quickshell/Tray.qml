@@ -107,7 +107,7 @@ Item {
         BarButton {
             id: chevron
             shell: root.shell; css: "tray.chevron"
-            text: root.expanded ? "\ueab4" : "\ueab7"
+            text: root.expanded !== overflow.onTop ? "\ueab4" : "\ueab7"
             backgroundColor: root.expanded && box.open ? shell.styleColor(box.open.backgroundColor, "transparent") : styleColor("backgroundColor")
             Layout.fillHeight: true
             onClicked: button => {

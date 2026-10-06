@@ -3,6 +3,7 @@ local vars = require("vars")
 
 vars.set("WORKFLOW_ICON", "󰕭")
 vars.set("WORKFLOW_DESCRIPTION", "Scrollable tiling like niri // half-width columns, vertical workspaces")
+vars.set("WORKFLOW_QUICKSHELL_LAYOUT", "top bottom")
 
 runtime.config("general.layout", "scrolling")
 runtime.config("scrolling.column_width", 0.5)

@@ -3,9 +3,7 @@
 set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
-hypr_runtime_require state rofi || exit 1
-# shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
+hypr_runtime_require state || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/window/stateful-choice.common.bash"
 
@@ -16,11 +14,10 @@ animations_state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/
 show_help() {
   cat <<HELP
 Usage: $0 [OPTIONS]
-Select, set or reload the active Hyprland animation preset.
+Set or reload the active Hyprland animation preset.
 
 Options:
-    --select | -S       Select an animation from the available options
-    --set NAME          Set an animation without opening the selector
+    --set NAME          Set an animation
     --list              List selectable animations as name, icon and description
     --reload | -r       Reload the current animation
     --help   | -h       Show this help message
@@ -46,36 +43,6 @@ list_animations() {
   } | sed '/^$/d' | while IFS= read -r name; do
     printf '%s\t\t\n' "${name}"
   done
-}
-
-select_animation() {
-  local animation_items=""
-  local rofi_select=""
-  local selected_animation=""
-
-  animation_items="$(list_animation_names)"
-  animation_items=$(printf 'Disable Animation\n%s\n' "${animation_items}" | sed '/^$/d')
-
-  rofi_select="$(state_get "HYPR_ANIMATION" "default")"
-  rofi_select="${rofi_select/disable/Disable Animation}"
-
-  hypr_stateful_choice_select \
-    "Select animation" \
-    " 󰪏 Animation" \
-    "clipboard" \
-    "${ROFI_ANIMATION_SCALE:-}" \
-    "${ROFI_ANIMATION_FONT:-${ROFI_FONT:-}}" \
-    "${rofi_select}" \
-    "${animation_items}" \
-    selected_animation
-
-  [[ -n "${selected_animation}" ]] || exit 0
-
-  case "${selected_animation}" in
-    "Disable Animation") selected_animation="disable" ;;
-  esac
-
-  apply_animation "${selected_animation}" "Animation selected"
 }
 
 write_animation_state() {
@@ -117,16 +84,12 @@ if [[ -z "${*}" ]]; then
   exit 1
 fi
 
-LONGOPTS="select,set:,list,reload,help"
-PARSED=$(getopt --options Srh --longoptions "${LONGOPTS}" --name "$0" -- "$@") || exit 2
+LONGOPTS="set:,list,reload,help"
+PARSED=$(getopt --options rh --longoptions "${LONGOPTS}" --name "$0" -- "$@") || exit 2
 eval set -- "${PARSED}"
 
 while true; do
   case "$1" in
-    -S | --select)
-      select_animation
-      exit 0
-      ;;
     --set)
       [[ -n "${2:-}" ]] || {
         echo "Error: --set requires an animation name" >&2

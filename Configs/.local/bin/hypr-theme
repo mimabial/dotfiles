@@ -24,10 +24,10 @@ usage_error() {
   exit 2
 }
 
-cmd="${1:-}"
-[[ -n "${cmd}" ]] || usage_error
+subcommand="${1:-}"
+[[ -n "${subcommand}" ]] || usage_error
 shift
-[[ "$cmd" == --help || "$cmd" == -h ]] && { usage; exit 0; }
+[[ "$subcommand" == --help || "$subcommand" == -h ]] && { usage; exit 0; }
 
 positional=()
 variant="${HYPR_COLOR_VARIANT:-dark}"
@@ -39,9 +39,6 @@ while (($#)); do
       shift
       [[ "${1:-}" =~ ^(dark|light)$ ]] || { echo "hypr-theme: --variant requires dark|light" >&2; exit 2; }
       variant="$1"
-      ;;
-    --variant=dark|--variant=light)
-      variant="${1#--variant=}"
       ;;
     --help|-h)  usage; exit 0 ;;
     --)         shift; positional+=("$@"); break ;;
@@ -59,28 +56,20 @@ COLOR_GEN_LOCK="$(hypr_lock_path color_gen)"
 exec {COLOR_GEN_LOCK_FD}>"${COLOR_GEN_LOCK}"
 flock "${COLOR_GEN_LOCK_FD}"
 
-if [[ "${cmd}" == "wallpaper" && "${HYPR_THEME_REQUIRE_CURRENT_WALLPAPER:-0}" == 1 ]]; then
+if [[ "${subcommand}" == "wallpaper" && "${HYPR_THEME_REQUIRE_CURRENT_WALLPAPER:-0}" == 1 ]]; then
   current_wall="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current/wall.set"
   target_wall="${positional[0]:-}"
   [[ -e "${current_wall}" && -e "${target_wall}" ]] || exit 0
   [[ "$(readlink -f -- "${current_wall}")" == "$(readlink -f -- "${target_wall}")" ]] || exit 0
 fi
 
-write_hypr_theme_state() {
-  local theme="$1"
-
-  [[ -n "${theme}" ]] || return 0
-  state_set "HYPR_THEME" "${theme}" "staterc"
-}
-
-resolve_palette() {
-  local subcmd="$1"
+prepare_palette() {
+  local subcommand="$1"
   local target="${2:-}"
-  case "${subcmd}" in
+  case "${subcommand}" in
     apply)
       [[ -n "${target}" ]] || { echo "hypr-theme apply: pack name required" >&2; exit 2; }
       python3 "${RENDER_DIR}/_palette.py" --theme "${target}" --out "${PALETTE}"
-      write_hypr_theme_state "${target}"
       ;;
     wallpaper)
       [[ -n "${target}" ]] || { echo "hypr-theme wallpaper: image path required" >&2; exit 2; }
@@ -94,17 +83,16 @@ resolve_palette() {
 
 run_renderers() {
   local -a renderers=()
-  mapfile -t renderers < <(
-    find "${RENDER_DIR}" -maxdepth 1 -type f -executable \
-      \( -name '*.sh' -o -name '*.py' \) \
-      ! -name '_*' \
-      | LC_ALL=C sort
-  )
+  local renderer name
+  local LC_COLLATE=C
+  for renderer in "${RENDER_DIR}"/*; do
+    [[ -f "${renderer}" && ! -L "${renderer}" && -x "${renderer}" && "${renderer##*/}" != _* ]] || continue
+    [[ "${renderer}" == *.sh || "${renderer}" == *.py ]] && renderers+=("${renderer}")
+  done
   ((${#renderers[@]})) || { echo "hypr-theme: no renderers in ${RENDER_DIR}" >&2; return 0; }
 
   local -a pids=() names=()
   local -i failed=0
-  local renderer name
   for renderer in "${renderers[@]}"; do
     name="${renderer##*/}"
     name="${name%.*}"
@@ -152,12 +140,22 @@ reload_clients() {
   fi
 }
 
-case "${cmd}" in
+case "${subcommand}" in
   apply|wallpaper|refresh)
-    resolve_palette "${cmd}" "${positional[0]:-}"
+    prepare_palette "${subcommand}" "${positional[0]:-}"
+    if [[ "${subcommand}" == apply ]]; then
+      state_set "HYPR_THEME" "${positional[0]}" "staterc"
+    fi
+    if [[ "${subcommand}" == refresh ]]; then
+      render_change_dir="$(mktemp -d "${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}/hypr-theme.XXXXXX")"
+      export HYPR_THEME_CHANGED_FILE="${render_change_dir}/rendered"
+      trap 'rm -rf -- "${render_change_dir}"' EXIT
+    fi
     render_failed=0
     run_renderers || render_failed=1
-    reload_clients
+    if [[ "${subcommand}" != refresh || -e "${HYPR_THEME_CHANGED_FILE:-}" || "${render_failed}" -ne 0 ]]; then
+      reload_clients
+    fi
     exit "${render_failed}"
     ;;
   *)

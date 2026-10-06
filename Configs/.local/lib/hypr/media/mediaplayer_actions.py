@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import sys
 import time
 from pathlib import Path
 
@@ -32,21 +31,6 @@ PLAYER_CYCLE_STEPS = {
     "cycle-previous": -1,
 }
 
-ACTION_LABELS = {
-    "play": "Play",
-    "pause": "Pause",
-    "next": "Next",
-    "previous": "Previous",
-    "stop": "Stop",
-    "shuffle-on": "Shuffle On",
-    "shuffle-off": "Shuffle Off",
-    "repeat": "Repeat Track",
-    "loop": "Repeat Playlist",
-    "disable-loop": "Disable Repeat",
-    "show-player": "Show Player",
-    "cancel": "Cancel",
-}
-
 CAPABILITY_BY_ACTION = {
     "next": "CanGoNext",
     "previous": "CanGoPrevious",
@@ -58,80 +42,6 @@ PROPERTY_BY_ACTION = {
     "loop": "LoopStatus",
     "disable-loop": "LoopStatus",
 }
-
-ROFI_MENU_SCRIPT = r"""
-set -euo pipefail
-
-command -v rofi >/dev/null 2>&1 || exit 1
-
-hyprshell_path="$(command -v hyprshell)" || exit 1
-# shellcheck source=/dev/null
-source "${hyprshell_path}" || exit 1
-# shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash" || exit 1
-
-if hypr_user_pgrep -x rofi >/dev/null 2>&1; then
-  hypr_user_pkill -x rofi
-  exit 0
-fi
-
-menu_lines="${MEDIA_MENU_LINES:-5}"
-[[ "${menu_lines}" =~ ^[0-9]+$ ]] || menu_lines=5
-((menu_lines < 1)) && menu_lines=1
-
-font_scale=""
-font_name=""
-font_override=""
-window_override=""
-rofi_position=""
-media_window_theme=""
-
-media_width_em="${ROFI_MEDIAPLAYER_MENU_WIDTH_EM:-24}"
-measured_height_em=$(((menu_lines * 13 + 4) / 5 + 9))
-media_height_em="${ROFI_MEDIAPLAYER_MENU_HEIGHT_EM:-${measured_height_em}}"
-[[ "${media_width_em}" =~ ^[0-9]+([.][0-9]+)?$ ]] || media_width_em=24
-[[ "${media_height_em}" =~ ^[0-9]+([.][0-9]+)?$ ]] || media_height_em="${measured_height_em}"
-
-rofi_prepare_standard_context \
-  font_scale font_name font_override window_override \
-  "${ROFI_MEDIAPLAYER_MENU_SCALE:-${ROFI_MENU_SCALE:-}}" \
-  "${ROFI_MEDIAPLAYER_MENU_FONT:-${ROFI_MENU_FONT:-${ROFI_FONT:-}}}" \
-  listview same
-
-rofi_picker_compute_window_geometry \
-  rofi_position media_window_theme \
-  "${font_name}" "${font_scale}" \
-  "${media_width_em}" "${media_height_em}" \
-  360 220
-
-# Live clipboard-theme geometry is approximately 2.6em per row plus 9em of
-# input/list chrome. Round upward for clamping, then let Rofi size naturally.
-if [[ "${media_window_theme}" =~ width:\ *([0-9]+)px ]]; then
-  media_window_theme="window { width: ${BASH_REMATCH[1]}px; }"
-fi
-
-theme_ref="${ROFI_MEDIAPLAYER_MENU_STYLE:-${ROFI_MEDIAPLAYER_STYLE:-clipboard}}"
-placeholder="${MEDIA_MENU_PLACEHOLDER:- Media}"
-prompt="${MEDIA_MENU_PROMPT:-Media}"
-
-rofi_args=(
-  -dmenu
-  -i
-  -format i
-  -no-custom
-  -no-show-icons
-  -hover-select
-  -me-select-entry ""
-  -me-accept-entry MousePrimary
-  -p "${prompt}"
-  -theme "$(rofi_resolve_theme "${theme_ref}")"
-  -theme-str "entry { placeholder: \"${placeholder}\"; } listview { lines: ${menu_lines}; } ${rofi_position} ${window_override}"
-  -theme-str "${font_override}"
-  -theme-str "${media_window_theme}"
-)
-rofi "${rofi_args[@]}"
-"""
-
 
 def active_player_state_path() -> Path:
     if os.environ.get("HYPR_STATE_HOME"):
@@ -299,98 +209,6 @@ def action_supported(props: dict, action: str) -> bool:
     if prop:
         return prop in props
     return True
-
-
-def dynamic_menu_entries(
-    player: str,
-    props: dict | None = None,
-) -> list[tuple[str, str]]:
-    if props is None:
-        props = fetch_player_properties(player)
-    status = _prop_string(props, "PlaybackStatus") or player_status(player)
-    entries: list[tuple[str, str]] = [
-        (ACTION_LABELS["show-player"], "show-player")
-    ]
-
-    if action_supported(props, "play-pause"):
-        label = ACTION_LABELS["pause"] if status == "Playing" else ACTION_LABELS["play"]
-        entries.append((label, "play-pause"))
-    if action_supported(props, "next"):
-        entries.append((ACTION_LABELS["next"], "next"))
-    if action_supported(props, "previous"):
-        entries.append((ACTION_LABELS["previous"], "previous"))
-    entries.append((ACTION_LABELS["stop"], "stop"))
-
-    if action_supported(props, "shuffle"):
-        shuffle = _prop_bool(props, "Shuffle")
-        label = ACTION_LABELS["shuffle-off"] if shuffle else ACTION_LABELS["shuffle-on"]
-        entries.append((label, "shuffle"))
-
-    loop_status = _prop_string(props, "LoopStatus")
-    if loop_status is not None:
-        if loop_status != "Track":
-            entries.append((ACTION_LABELS["repeat"], "repeat"))
-        if loop_status != "Playlist":
-            entries.append((ACTION_LABELS["loop"], "loop"))
-        if loop_status != "None":
-            entries.append((ACTION_LABELS["disable-loop"], "disable-loop"))
-
-    entries.append((ACTION_LABELS["cancel"], "cancel"))
-
-    return entries
-
-
-def rofi_menu_index(labels: list[str], player: str) -> int | None:
-    if not labels:
-        return None
-
-    env = os.environ.copy()
-    env["MEDIA_MENU_LINES"] = str(len(labels))
-    env["MEDIA_MENU_PROMPT"] = f"Media: {player.split('.')[0]}"
-    env["MEDIA_MENU_PLACEHOLDER"] = " Media"
-
-    proc = subprocess.run(
-        ["bash", "-c", ROFI_MENU_SCRIPT],
-        input="\n".join(labels) + "\n",
-        text=True,
-        capture_output=True,
-        env=env,
-        check=False,
-    )
-
-    if proc.returncode != 0:
-        if proc.returncode not in (1, 130) and proc.stderr.strip():
-            print(proc.stderr.strip(), file=sys.stderr)
-        return None
-
-    output = proc.stdout.strip()
-    if not output:
-        return None
-    try:
-        index = int(output.splitlines()[-1])
-    except ValueError:
-        return None
-    return index if 0 <= index < len(labels) else None
-
-
-def run_menu(explicit_player: str = "") -> int:
-    player = resolve_player(explicit_player)
-    if not player:
-        return 0
-    player_props = fetch_player_properties(player)
-    entries = dynamic_menu_entries(player, player_props)
-    if not entries:
-        return 0
-
-    labels = [label for label, _ in entries]
-    selected_index = rofi_menu_index(labels, player)
-    if selected_index is None:
-        return 0
-
-    action = entries[selected_index][1]
-    if action == "cancel":
-        return 0
-    return run_resolved_action(action, player, player_props)
 
 
 def run_resolved_action(

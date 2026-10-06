@@ -15,6 +15,9 @@ Item {
     readonly property real leftInset: styleBox.margin[3] + styleBox.padding[3]
     readonly property real contentCenterOffset: (leftInset - rightInset) / 2
     readonly property bool stretches: modules.some(entry => (entry.id || entry) === "spacer" || !!(entry.props && entry.props.fillAvailableWidth))
+    readonly property real widthBesideTaskbar: Array.from(content.children)
+        .filter(child => "moduleId" in child && child.moduleId !== "taskbar" && child.visible)
+        .reduce((width, child) => width + child.implicitWidth + content.spacing, 0)
     implicitWidth: content.implicitWidth + leftInset + rightInset
     implicitHeight: content.implicitHeight + topInset + bottomInset
     RowLayout {

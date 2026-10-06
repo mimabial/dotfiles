@@ -92,14 +92,30 @@ def list_dir(path: str, limit: int = DIRECTORY_ENTRY_LIMIT) -> list[str]:
     return names
 
 
-def read_text(path: str, default: str = "") -> str:
+def fd_targets(pid: str):
+    for fd in list_dir(f"/proc/{pid}/fd", FD_SCAN_LIMIT):
+        try:
+            yield fd, os.readlink(f"/proc/{pid}/fd/{fd}")
+        except OSError:
+            pass
+
+
+def read_raw(path: str, limit: int = FILE_READ_LIMIT) -> bytearray | None:
+    raw = bytearray()
     try:
-        with open(path, "rb") as handle:
-            raw = handle.read(FILE_READ_LIMIT + 1)
-        if len(raw) > FILE_READ_LIMIT:
-            return default
-        return raw.decode("utf-8").strip()
-    except (OSError, UnicodeDecodeError):
+        with open(path, "rb", buffering=0) as handle:
+            while len(raw) <= limit and (chunk := handle.read(PAGE_SIZE)):
+                raw += chunk
+    except OSError:
+        return None
+    return raw if len(raw) <= limit else None
+
+
+def read_text(path: str, default: str = "") -> str:
+    raw = read_raw(path)
+    try:
+        return default if raw is None else raw.decode("utf-8").strip()
+    except UnicodeDecodeError:
         return default
 
 
@@ -457,23 +473,28 @@ class GpuSampler:
         self.devices: dict[str, str] = {}
         self.names: dict[str, str] = {}
         self.hwmons: dict[str, str] = {}
+        self.slots: dict[str, str] = {}
+        self.drm_fds: dict[str, tuple[int, list[str]]] = {}
+        self.intel_busy: dict[tuple[str, str], int] = {}
+        self.intel_stamp: int | None = None
+        self.intel_util: float | None = None
         self._detect()
 
     def _detect(self) -> None:
         drm = "/sys/class/drm"
-        if os.path.isdir(drm):
-            for card in list_dir(drm):
-                if not re.fullmatch(r"card\d+", card):
-                    continue
-                device = f"{drm}/{card}/device"
-                vendor = read_text(f"{device}/vendor").lower()
-                kind = {"0x1002": "amd", "0x8086": "intel", "0x10de": "nvidia"}.get(vendor)
-                if kind and kind not in self.devices:
-                    self.devices[kind] = device
+        for card in list_dir(drm):
+            if not re.fullmatch(r"card\d+", card):
+                continue
+            device = f"{drm}/{card}/device"
+            vendor = read_text(f"{device}/vendor").lower()
+            kind = {"0x1002": "amd", "0x8086": "intel", "0x10de": "nvidia"}.get(vendor)
+            if kind and kind not in self.devices:
+                self.devices[kind] = device
         preferred = self._preferred_kind()
         self.kind = preferred if preferred in self.devices else next((kind for kind in ("amd", "intel", "nvidia") if kind in self.devices), None)
         for kind, device in self.devices.items():
-            self.names[kind] = self._pci_name(device) or kind.upper()
+            self.slots[kind] = os.path.basename(os.path.realpath(device))
+            self.names[kind] = self._pci_name(self.slots[kind]) or kind.upper()
             for hw in list_dir(f"{device}/hwmon"):
                 self.hwmons[kind] = f"{device}/hwmon/{hw}"
                 break
@@ -489,13 +510,7 @@ class GpuSampler:
         return None
 
     @staticmethod
-    def _pci_name(device: str) -> str:
-        try:
-            slot = os.path.basename(os.path.realpath(device))
-        except OSError:
-            return ""
-        if not command_path("lspci"):
-            return ""
+    def _pci_name(slot: str) -> str:
         for line in run(["lspci", "-mm", "-s", slot]).splitlines():
             fields = re.findall(r'"([^"]*)"', line)
             if len(fields) >= 3:
@@ -574,9 +589,43 @@ class GpuSampler:
             return None
         return read_float(f"{hwmon}/{chosen}")
 
+    def _drm_fdinfos(self) -> list[str]:
+        fds = {}
+        for pid in filter(str.isdigit, list_dir("/proc", PROCESS_SCAN_LIMIT)):
+            try:
+                fd_count = os.stat(f"/proc/{pid}/fd").st_size
+            except OSError:
+                continue
+            cached = self.drm_fds.get(pid)
+            if cached is None or cached[0] != fd_count:
+                cached = fd_count, [f"/proc/{pid}/fdinfo/{fd}" for fd, target in fd_targets(pid) if target.startswith("/dev/dri/")]
+            fds[pid] = cached
+        self.drm_fds = fds
+        return [path for _, paths in fds.values() for path in paths]
+
+    def _intel_utilization(self) -> float | None:
+        busy: dict[tuple[str, str], int] = {}
+        for path in self._drm_fdinfos():
+            info = read_text(path)
+            fields = dict(re.findall(r"^(drm-[\w-]+):\t(.*)$", info, re.M))
+            if fields.get("drm-pdev") == self.slots["intel"]:
+                for engine, ns in re.findall(r"^drm-engine-([\w-]+):\t(\d+) ns$", info, re.M):
+                    busy[fields["drm-client-id"], engine] = int(ns)
+        now = time.monotonic_ns()
+        busy_by_engine: dict[str, int] = {}
+        for (client, engine), ns in busy.items():
+            last = self.intel_busy.get((client, engine))
+            if last is not None:
+                busy[client, engine] = max(ns, last)
+                busy_by_engine[engine] = busy_by_engine.get(engine, 0) + busy[client, engine] - last
+        stamp, self.intel_busy, self.intel_stamp = self.intel_stamp, busy, now
+        if stamp is None:
+            return None
+        return round(min(100.0, max(busy_by_engine.values(), default=0) * 100 / (now - stamp)), 1)
+
     def _sysfs_sample(self, kind: str) -> dict:
         card = self.devices[kind]
-        util = read_float(f"{card}/gpu_busy_percent")
+        util = self.intel_util if kind == "intel" else read_float(f"{card}/gpu_busy_percent")
         mem_used = read_float(f"{card}/mem_info_vram_used")
         mem_total = read_float(f"{card}/mem_info_vram_total")
         temp = self._hwmon_value(kind, "temp", ("edge", "junction"))
@@ -593,7 +642,9 @@ class GpuSampler:
             "mhz": mhz, "maxMhz": max_mhz, "fan": None,
         }
 
-    def sample(self) -> dict | None:
+    def sample(self, slow: bool) -> dict | None:
+        if slow and "intel" in self.devices:
+            self.intel_util = self._intel_utilization()
         snapshots = []
         for kind in ("nvidia", "amd", "intel"):
             if kind not in self.devices:
@@ -1295,14 +1346,10 @@ class ProcessSampler:
             if not entry.isdigit():
                 continue
             pid = int(entry)
-            try:
-                with open(f"/proc/{pid}/stat", "rb") as handle:
-                    raw_stat = handle.read(PROC_FILE_LIMIT + 1)
-                if len(raw_stat) > PROC_FILE_LIMIT:
-                    continue
-                stat = raw_stat.decode("utf-8", "replace")
-            except OSError:
+            raw_stat = read_raw(f"/proc/{pid}/stat", PROC_FILE_LIMIT)
+            if raw_stat is None:
                 continue
+            stat = raw_stat.decode("utf-8", "replace")
             close = stat.rfind(")")
             open_paren = stat.find("(")
             if close < 0 or open_paren < 0:
@@ -1316,19 +1363,12 @@ class ProcessSampler:
             ticks = int(fields[11]) + int(fields[12])
             rss = int(fields[21]) * PAGE_SIZE
             read_bytes = write_bytes = 0
-            try:
-                with open(f"/proc/{pid}/io", "rb") as handle:
-                    raw_io = handle.read(PROC_FILE_LIMIT + 1)
-                    if len(raw_io) > PROC_FILE_LIMIT:
-                        raw_io = b""
-                    for line in raw_io.splitlines():
-                        if line.startswith(b"read_bytes:"):
-                            read_bytes = int(line.split()[1])
-                        elif line.startswith(b"write_bytes:"):
-                            write_bytes = int(line.split()[1])
-                            break
-            except OSError:
-                pass
+            for line in (read_raw(f"/proc/{pid}/io", PROC_FILE_LIMIT) or b"").splitlines():
+                if line.startswith(b"read_bytes:"):
+                    read_bytes = int(line.split()[1])
+                elif line.startswith(b"write_bytes:"):
+                    write_bytes = int(line.split()[1])
+                    break
             current[pid] = (ticks, rss, read_bytes, write_bytes)
             prev = self.prev.get(pid)
             cpu = 0.0
@@ -1433,16 +1473,8 @@ class ProcessSampler:
             if not entry.isdigit():
                 continue
             pid = int(entry)
-            try:
-                fds = list_dir(f"/proc/{pid}/fd", FD_SCAN_LIMIT)
-            except OSError:
-                continue
             name: str | None = None
-            for fd in fds:
-                try:
-                    target = os.readlink(f"/proc/{pid}/fd/{fd}")
-                except OSError:
-                    continue
+            for _, target in fd_targets(entry):
                 if not target.startswith("socket:["):
                     continue
                 ino = target[8:-1]
@@ -1640,7 +1672,7 @@ def main() -> int:
         for key, fn in (
             ("cpu", cpu.sample),
             ("power", lambda: power.sample(elapsed)),
-            ("gpu", gpu.sample),
+            ("gpu", lambda: gpu.sample(slow_due)),
             ("mem", sample_memory),
             ("disks", lambda: disks.sample(elapsed, now)),
             ("net", lambda: net.sample(elapsed, now, detail > 0)),

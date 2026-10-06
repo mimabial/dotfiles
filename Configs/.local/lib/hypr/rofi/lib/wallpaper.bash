@@ -24,7 +24,7 @@ rofi_wallpaper_theme_has_fixed_ratio() {
 # Themes that move the list beside the preview once the wallpaper is portrait,
 # rather than letting a tall preview push the rows off the window.
 rofi_wallpaper_theme_splits_listbox() {
-  [[ "$1" == "style_1" || "$1" == "color_mode_1" ]]
+  [[ "$1" == "style_1" ]]
 }
 
 rofi_wallpaper_post_clamp_reduction_px() {

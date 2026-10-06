@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell.Io
 import Quickshell.Services.Pipewire
 
 BarButton {
@@ -26,11 +25,10 @@ BarButton {
     ]
     // the active port is the only thing that tracks the analog jack, and
     // pipewire does not expose it — it has to come from pulse directly
-    property string activePort: ""
-    function probePort() { if (!portProbe.running) portProbe.running = true }
+    readonly property string activePort: AudioPorts.port(root.sink ? root.sink.name : "")
     function clampVolume() { if (sink && sink.audio && sink.audio.volume > shell.volumeLimit) sink.audio.volume = shell.volumeLimit }
     function volumeAction(action) { shell.run(["hyprshell", "volume-control.sh", "-o", action]) }
-    onSinkChanged: { probePort(); shell.refreshVolumeRange(); clampVolume() }
+    onSinkChanged: { shell.refreshVolumeRange(); clampVolume() }
     onActivePortChanged: shell.refreshVolumeRange()
 
     readonly property string portKey: {
@@ -51,19 +49,6 @@ BarButton {
     readonly property string portIcon: { const hit = portIcons.find(entry => entry[0] === root.portKey); return hit ? hit[1] : "" }
     readonly property string mutedPortIcon: ["headphone", "hands-free", "headset"].includes(root.portKey) ? "󱡒" : ""
 
-    Process {
-        id: portProbe
-        command: ["pactl", "--format=json", "list", "sinks"]
-        stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
-            try {
-                const name = root.sink ? root.sink.name : ""
-                const found = JSON.parse(text).find(entry => entry.name === name)
-                root.activePort = found ? String(found.active_port || "") : ""
-            } catch (error) { root.activePort = "" }
-        } }
-    }
-    // only changes when something is physically plugged in
-    Timer { interval: 3000; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.probePort() }
     readonly property bool zeroVolume: root.sink ? Math.round(root.sink.audio.volume * 100) === 0 : false
     readonly property string volumeIcon: !root.sink || root.zeroVolume ? "" : root.sink.audio.volume < .34 ? ""
         : root.sink.audio.volume < .67 ? "" : ""

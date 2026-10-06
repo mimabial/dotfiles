@@ -29,12 +29,20 @@ BarButton {
         items: open ? [
             {text: "Combine app windows", checked: root.shell.prefs.winbarCombine !== "never",
                 run: () => root.shell.toggleWinbarCombine()},
+            {text: "Highlight labels", checked: root.shell.prefs.winbarHighlightLabels,
+                run: () => root.shell.prefs.winbarHighlightLabels = !root.shell.prefs.winbarHighlightLabels},
+            {text: "Limit label width", checked: root.shell.prefs.winbarLimitLabels,
+                run: () => root.shell.prefs.winbarLimitLabels = !root.shell.prefs.winbarLimitLabels},
             {text: "Automatically hide taskbar", checked: root.shell.prefs.winbarAutoHide,
                 run: () => {
                     const enabled = !root.shell.prefs.winbarAutoHide
                     if (enabled) root.shell.barRevealed = true
                     root.shell.prefs.winbarAutoHide = enabled
-                }}
+                }},
+            {text: "Small taskbar", checked: root.shell.prefs.winbarSmall,
+                run: () => root.shell.prefs.winbarSmall = !root.shell.prefs.winbarSmall},
+            {text: "Taskbar position", submenu: [["Bottom", "bottom"], ["Top", "top"]].map(([text, edge]) => ({text, checked: root.shell.barEdge === edge,
+                run: () => { root.shell.prefs.winbarEdge = edge; root.shell.run(["hyprshell", "render/dunst.py"]) }}))}
         ] : []
     }
     function forceQuitItems() {

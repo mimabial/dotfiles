@@ -127,11 +127,6 @@ monitor_internal_name() {
     | jq -r '[.[] | select(.name | test("^(eDP|LVDS)"))][0].name // empty'
 }
 
-monitor_focused_name() {
-  hypr_monitors_json \
-    | jq -r '([.[] | select(.focused == true)][0] // .[0]).name // empty'
-}
-
 monitor_external_active_name() {
   hypr_monitors_json \
     | jq -r '[.[] | select((.name | test("^(eDP|LVDS)") | not) and (.disabled != true))][0].name // empty'

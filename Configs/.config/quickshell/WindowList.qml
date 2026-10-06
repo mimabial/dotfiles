@@ -17,7 +17,10 @@ Item {
     property bool dash: false
     property var pinned: []
     readonly property bool ungroup: shell.layoutName === "winbar" && shell.prefs.winbarCombine === "never"
-    readonly property int activeDashWidth: Style.px(16)
+    readonly property bool highlightLabels: ungroup && shell.prefs.winbarHighlightLabels
+    readonly property int activeDashWidth: Math.round(scaledIcon * 3 / 4)
+    readonly property int runningDashWidth: Math.round(scaledIcon / 4)
+    readonly property real dashThickness: shell.windowBorderWidth
     readonly property var box: shell.style.box("taskbar")
     property int iconSize: 18
     readonly property int scaledIcon: Math.round(box.iconSize !== undefined ? box.iconSize : iconSize)
@@ -25,7 +28,7 @@ Item {
     readonly property var buttonBox: shell.style.box("#taskbar button")
     readonly property real buttonInset: Math.max(buttonBox.borderWidth, buttonBox.borderBottomWidth || 0)
     readonly property real buttonWidth: Math.max(Style.px(24), scaledIcon + buttonBox.margin[1] + buttonBox.margin[3] + buttonBox.padding[1] + buttonBox.padding[3] + 2 * buttonInset)
-    readonly property real labelExtraWidth: scaledIcon * 5
+    readonly property real labelCap: Math.min(fittedLabelCap(), shell.prefs.winbarLimitLabels ? scaledIcon * 5 : Infinity)
     readonly property real buttonHeight: scaledIcon + buttonBox.margin[0] + buttonBox.margin[2] + buttonBox.padding[0] + buttonBox.padding[2] + 2 * buttonInset
     readonly property real spanX: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * box.borderWidth
     readonly property real spanY: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * box.borderWidth
@@ -44,6 +47,7 @@ Item {
         ? String(ToplevelManager.activeToplevel.appId || "").toLowerCase() : ""
     property string lastFingerprint: "\u0000"
     FontMetrics { id: labelMetrics; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+    FontMetrics { id: boldLabelMetrics; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; font.bold: true }
 
     function neededWidth() {
         let width = 0
@@ -54,7 +58,24 @@ Item {
         }
         return slots.length ? spanX + width + (slots.length - 1) * slotSpacing : 0
     }
-    function labelWidth(label) { return Math.min(labelExtraWidth, Math.ceil(labelMetrics.advanceWidth(label))) }
+    function naturalLabelWidth(label) { return Math.ceil((highlightLabels ? boldLabelMetrics : labelMetrics).advanceWidth(label)) }
+    function labelWidth(label) { return Math.min(labelCap, naturalLabelWidth(label)) }
+    function fittedLabelCap() {
+        if (!ungroup) return Infinity
+        const labels = []
+        for (const record of slots) {
+            const matches = windowsFor(record)
+            if (matches.length) labels.push(naturalLabelWidth(buttonLabel(record, matches)))
+        }
+        labels.sort((a, b) => a - b)
+        let room = availableWidth - spanX - slots.length * (buttonWidth + slotSpacing) + slotSpacing - labels.length * Style.sm
+        for (const [index, width] of labels.entries()) {
+            const share = room / (labels.length - index)
+            if (width > share) return Math.max(0, Math.floor(share))
+            room -= width
+        }
+        return Infinity
+    }
 
     function windowDescriptors() {
         const serial = windowSerial
@@ -227,6 +248,9 @@ Item {
                     || (!modelData.address && !!root.activeAppId && String(modelData.desktopId || "").toLowerCase() === root.activeAppId)
                 readonly property bool urgent: !active && !!root.shell.dock && matched.some(window => root.shell.dock.urgentMap[window.address])
                 readonly property bool minimized: root.shell.layoutName === "winbar" && running && matched.every(window => root.windowParked(window))
+                readonly property color stateColor: urgent ? root.shell.urgent : minimized ? root.shell.role("info", root.shell.foreground)
+                    : mouse.containsMouse ? root.shell.role("hvr_br", root.shell.accent)
+                    : active ? root.shell.accent : root.shell.alpha(root.shell.foreground, .5)
                 property real pulse: 1
                 SequentialAnimation on pulse {
                     running: slot.urgent
@@ -258,7 +282,7 @@ Item {
                 IconImage {
                     id: icon
                     x: slot.labeled ? slot.box.margin[3] + slot.box.padding[3] : (slot.width - width) / 2
-                    y: (slot.height - height + slot.box.margin[0] + slot.box.padding[0] - slot.box.margin[2] - slot.box.padding[2]) / 2
+                    y: (slot.height - height + slot.box.margin[0] - slot.box.margin[2] + (root.highlightLabels ? 0 : slot.box.padding[0] - slot.box.padding[2])) / 2
                     width: root.scaledIcon; height: root.scaledIcon
                     source: root.iconFor(slot.modelData)
                 }
@@ -270,18 +294,17 @@ Item {
                     text: slot.buttonLabel
                     textFormat: Text.PlainText
                     elide: Text.ElideRight
-                    color: root.shell.foreground
+                    color: root.highlightLabels ? slot.stateColor : root.shell.foreground
                     font.family: root.shell.fontFamily
                     font.pixelSize: Style.bodySmall
+                    font.bold: root.highlightLabels && slot.active
                 }
                 Rectangle {
-                    visible: root.dash && slot.running
+                    visible: root.dash && slot.running && !root.highlightLabels
                     anchors.horizontalCenter: frame.horizontalCenter
                     anchors.bottom: frame.bottom; anchors.bottomMargin: Style.xxs
-                    width: slot.active ? root.activeDashWidth : indicators.dotSize; height: indicators.dotSize; radius: height / 2
-                    color: slot.urgent ? root.shell.urgent : slot.minimized ? root.shell.role("info", root.shell.foreground)
-                        : mouse.containsMouse ? root.shell.role("hvr_br", root.shell.accent)
-                        : slot.active ? root.shell.accent : root.shell.alpha(root.shell.foreground, .5)
+                    width: slot.active ? root.activeDashWidth : root.runningDashWidth; height: root.dashThickness; radius: height / 2
+                    color: slot.stateColor
                     opacity: slot.urgent ? 0.4 + 0.6 * slot.pulse : 1
                     Behavior on width { NumberAnimation { duration: 140; easing.type: Easing.OutQuad } }
                 }

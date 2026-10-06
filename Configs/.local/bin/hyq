@@ -3,7 +3,6 @@
 
 import argparse
 import json
-import logging
 import os
 import re
 import sys
@@ -13,34 +12,6 @@ from typing import Any
 HYPR_LIB_DIR = Path(__file__).resolve().parent.parent / "lib/hypr"
 sys.path.insert(0, str(HYPR_LIB_DIR))
 from pyutils.hyprlang import HyprlangParser  # noqa: E402
-
-logger = logging.getLogger("hyq")
-
-
-class SchemaDefaults:
-    def __init__(self, schema_path: str):
-        self.defaults: dict[str, Any] = {}
-        if not os.path.exists(schema_path):
-            logger.error("Schema file not found: %s", schema_path)
-            return
-
-        try:
-            with open(schema_path) as schema_file:
-                schema = json.load(schema_file)
-            options = (
-                schema.get("hyprlang_schema", []) if isinstance(schema, dict) else []
-            )
-            self.defaults = {
-                option["value"]: option["data"]["default"]
-                for option in options
-                if "value" in option and "default" in option.get("data", {})
-            }
-            logger.debug("Loaded schema from %s", schema_path)
-        except json.JSONDecodeError as error:
-            logger.error("Failed to parse schema JSON: %s", error)
-
-    def get_default(self, key: str) -> Any | None:
-        return self.defaults.get(key)
 
 
 def infer_scalar_type(value: Any) -> str:
@@ -95,7 +66,7 @@ def regex_matches_start(value: str, pattern: str) -> bool:
     try:
         return bool(re.match(pattern, value))
     except re.error:
-        logger.error("Invalid regex pattern: %s", pattern)
+        print(f"Invalid regex pattern: {pattern}", file=sys.stderr)
         return False
 
 
@@ -119,17 +90,10 @@ def parse_query_input(query_str: str) -> tuple[str, str | None, str | None]:
     return match.group(1), match.group(2) or None, match.group(3) or None
 
 
-def process_query(
-    parser: HyprlangParser,
-    schema: SchemaDefaults | None,
-    query_str: str,
-) -> dict[str, Any]:
+def process_query(parser: HyprlangParser, query_str: str) -> dict[str, Any]:
     query, expected_type, expected_regex = parse_query_input(query_str)
 
     value = parser.query(query)
-
-    if value is None and schema:
-        value = schema.get_default(query)
 
     if value is None:
         return {"key": query, "value": "", "type": "NULL", "flags": []}
@@ -221,7 +185,6 @@ examples:
         required=True,
         help="Query to execute (format: query[expectedType][expectedRegex])",
     )
-    parser.add_argument("--schema", help="Schema file")
     parser.add_argument(
         "--allow-missing", action="store_true", help="Allow missing values"
     )
@@ -231,7 +194,6 @@ examples:
     parser.add_argument(
         "--source", "-s", action="store_true", help="Follow the source command"
     )
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     parser.add_argument(
         "--delimiter",
         "-D",
@@ -241,11 +203,6 @@ examples:
 
     args = parser.parse_args()
 
-    if args.debug:
-        logging.basicConfig(level=logging.DEBUG, format="[%(levelname)s] %(message)s")
-    else:
-        logging.basicConfig(level=logging.WARNING)
-
     config_file = args.config_file
     if not os.path.exists(config_file):
         print(
@@ -253,12 +210,10 @@ examples:
         )
         return 1
 
-    schema = SchemaDefaults(args.schema) if args.schema else None
-
     hypr_parser = HyprlangParser(follow_source=args.source)
     hypr_parser.parse_file(config_file)
 
-    results = [process_query(hypr_parser, schema, query) for query in args.queries]
+    results = [process_query(hypr_parser, query) for query in args.queries]
 
     if args.export == "json":
         export_json(results)

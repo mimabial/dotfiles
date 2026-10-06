@@ -30,7 +30,6 @@ SEARCH_ROOTS=(
 SEARCH_GLOBS=(
   '!**/.git/**'
   '!**/plugins/**'
-  '!**/nvm/**'
   '!**/chromium/**'
   '!**/GIMP/**'
   '!**/libreoffice/**'
@@ -227,15 +226,16 @@ classify_match_kind() {
 
 # Keeps the highest-ranked reference seen so far; best_* belong to the caller.
 record_best_match() {
-  local kind="$1"
-  local match="$2"
+  local -n best_score_ref="$1" best_kind_ref="$2" best_match_ref="$3"
+  local kind="$4"
+  local match="$5"
   local score=""
 
   score=$(reference_rank "${kind}" "${match}")
-  ((score > best_score)) || return 0
-  best_score=${score}
-  best_kind="${kind}"
-  best_match="${match}"
+  ((score > best_score_ref)) || return 0
+  best_score_ref=${score}
+  best_kind_ref="${kind}"
+  best_match_ref="${match}"
 }
 
 is_commented_match() {
@@ -332,7 +332,7 @@ find_best_reference_for_family() {
       key="${match}"
       [[ -n "${seen_matches[$key]:-}" ]] && continue
       seen_matches["$key"]=1
-      record_best_match explicit "${match}"
+      record_best_match best_score best_kind best_match explicit "${match}"
     done
     while IFS= read -r match; do
       [[ -n "${match}" ]] || continue
@@ -340,7 +340,7 @@ find_best_reference_for_family() {
       key="${match}"
       [[ -n "${seen_matches[$key]:-}" ]] && continue
       seen_matches["$key"]=1
-      record_best_match "$(classify_match_kind "$family" "$match")" "${match}"
+      record_best_match best_score best_kind best_match "$(classify_match_kind "$family" "$match")" "${match}"
       # rg searches the roots in parallel, so equal-ranked references would
       # otherwise be reported from whichever file happened to match first.
     done < <({ rg "${RG_ARGS[@]}" -- "${alias_regex}" "${ACTIVE_SEARCH_ROOTS[@]}" 2>/dev/null || true; } | sort)

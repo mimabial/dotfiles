@@ -137,8 +137,8 @@ theme_desktop_resolve_values() {
   theme_desktop_load_looknfeel_cursor_values
 
   if [[ "${revert_colors:-0}" -eq 1 ]] \
-    || [[ "${selected_color_mode:-0}" -eq 2 && "${resolved_color_variant:-}" == "light" ]] \
-    || [[ "${selected_color_mode:-0}" -eq 3 && "${resolved_color_variant:-}" == "dark" ]]; then
+    || [[ "${selected_color_mode:-0}" == "${STATE_COLOR_MODE_DARK}" && "${resolved_color_variant:-}" == "light" ]] \
+    || [[ "${selected_color_mode:-0}" == "${STATE_COLOR_MODE_LIGHT}" && "${resolved_color_variant:-}" == "dark" ]]; then
     if [[ "${resolved_color_variant}" == "dark" ]]; then
       COLOR_SCHEME="prefer-light"
     else

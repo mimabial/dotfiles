@@ -28,11 +28,6 @@ def monitors() -> list[dict]:
     return json.loads(hyprctl("monitors", "all", "-j"))
 
 
-def apply_lua(code: str) -> None:
-    """Hyprland rejects `hyprctl keyword` under the Lua parser; eval is the way in."""
-    hyprctl("eval", code)
-
-
 def reload() -> None:
     hyprctl("reload")
 

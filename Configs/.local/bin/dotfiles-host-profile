@@ -2,13 +2,10 @@
 
 set -euo pipefail
 
-# shellcheck source=/dev/null
-source "${HOME}/.local/bin/.common.bash"
-
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles/Configs}"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
 STATE_FILE="${STATE_DIR}/host-profile"
-SYNC_MANIFEST_FILE="${DOTFILES_SYNC_MANIFEST:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/dotfiles-sync.conf}"
+SYNC_MANIFEST_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/dotfiles-sync.conf"
 
 usage() {
   cat <<USAGE
@@ -22,6 +19,11 @@ Commands:
   apply --dry-run     Preview host profile changes without writing
   help                Show this help
 USAGE
+}
+
+die() {
+  printf '%s\n' "$*" >&2
+  exit 1
 }
 
 require_rsync() {
@@ -132,17 +134,8 @@ apply_target() {
   local rel="$2"
   local dry_run="$3"
   local src="${host_dir}/${rel}"
-  local nested_src=""
   local dest="${HOME}/${rel}"
   local output=""
-
-  if [[ "${rel}" == ".config/hypr/gpu.lua" ]] && ! path_exists "${src}"; then
-    nested_src="$(find "${host_dir}/.config/hypr" -mindepth 2 -maxdepth 2 \
-      \( -type f -o -type l \) -name "${rel##*/}" -print -quit 2>/dev/null || true)"
-    if [[ -n "${nested_src}" ]] && path_exists "${nested_src}"; then
-      src="${nested_src}"
-    fi
-  fi
 
   if path_exists "${src}"; then
     if $dry_run; then
@@ -214,11 +207,7 @@ case "${command_name}" in
     ;;
   set)
     [[ $# -ge 1 ]] || die "Usage: ${0##*/} set <profile>"
-    profile="$1"
-    set_profile "${profile}"
-    if [[ "${2:-}" == "--apply" ]]; then
-      apply_profile "${profile}" false
-    fi
+    set_profile "$1"
     ;;
   apply)
     dry_run=false

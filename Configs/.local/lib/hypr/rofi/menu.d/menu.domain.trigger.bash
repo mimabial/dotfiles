@@ -27,30 +27,30 @@ menu_register_domain_trigger() {
   menu_add_item trigger_capture "󰐲  QR Code" action trigger_capture_qr
 
   menu_define trigger_screenshot "Screenshot"
-  menu_add_item trigger_screenshot "  Smart with Editing" action trigger_screenshot_edit
-  menu_add_item trigger_screenshot "  Smart to Clipboard" action trigger_screenshot_clipboard
-  menu_add_item trigger_screenshot "  Smart Save" action trigger_screenshot_save
+  menu_add_item trigger_screenshot "󰏫  Smart with Editing" action trigger_screenshot_edit
+  menu_add_item trigger_screenshot "󰅇  Smart to Clipboard" action trigger_screenshot_clipboard
+  menu_add_item trigger_screenshot "󰆓  Smart Save" action trigger_screenshot_save
   menu_add_item trigger_screenshot "󱂬  Window" action trigger_screenshot_window
   menu_add_item trigger_screenshot "󰍹  Focused Monitor" action trigger_screenshot_monitor
   menu_add_item trigger_screenshot "󰹑  All Outputs" action trigger_screenshot_all
   menu_add_item trigger_screenshot "󱉶  OCR Area" action trigger_screenshot_ocr
 
   menu_define trigger_screenrecord "Screenrecord"
-  menu_add_item trigger_screenrecord "  Window" submenu trigger_screenrecord_window
-  menu_add_item trigger_screenrecord "  Region" submenu trigger_screenrecord_region
-  menu_add_item trigger_screenrecord "  Display" submenu trigger_screenrecord_display
+  menu_add_item trigger_screenrecord "󱂬  Window" submenu trigger_screenrecord_window
+  menu_add_item trigger_screenrecord "󰆞  Region" submenu trigger_screenrecord_region
+  menu_add_item trigger_screenrecord "󰍹  Display" submenu trigger_screenrecord_display
 
   menu_define trigger_screenrecord_window "Audio"
-  menu_add_item trigger_screenrecord_window "  No Audio" action trigger_screenrecord_window
-  menu_add_item trigger_screenrecord_window "  With Audio" action trigger_screenrecord_window_audio
+  menu_add_item trigger_screenrecord_window "󰖁  No Audio" action trigger_screenrecord_window
+  menu_add_item trigger_screenrecord_window "󰕾  With Audio" action trigger_screenrecord_window_audio
 
   menu_define trigger_screenrecord_region "Audio"
-  menu_add_item trigger_screenrecord_region "  No Audio" action trigger_screenrecord_region
-  menu_add_item trigger_screenrecord_region "  With Audio" action trigger_screenrecord_region_audio
+  menu_add_item trigger_screenrecord_region "󰖁  No Audio" action trigger_screenrecord_region
+  menu_add_item trigger_screenrecord_region "󰕾  With Audio" action trigger_screenrecord_region_audio
 
   menu_define trigger_screenrecord_display "Audio"
-  menu_add_item trigger_screenrecord_display "  No Audio" action trigger_screenrecord_display
-  menu_add_item trigger_screenrecord_display "  With Audio" action trigger_screenrecord_display_audio
+  menu_add_item trigger_screenrecord_display "󰖁  No Audio" action trigger_screenrecord_display
+  menu_add_item trigger_screenrecord_display "󰕾  With Audio" action trigger_screenrecord_display_audio
 
   menu_define trigger_share "Share"
   menu_add_item trigger_share "  Clipboard" action trigger_share_clipboard

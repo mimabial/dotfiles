@@ -293,6 +293,7 @@ accepts `category/name`, `name.sh` and `name.py` too.
 | `bookmarks/` | Bookmark store for the rofi bookmarks picker       | `bookmark_helper.py`, `bookmark_store_init.sh`                                    |
 | `calendar/`  | Agenda, alarms/timers behind the bar popups        | `agenda.sh`, `alarm-timer.sh`                                                     |
 | `capture/`   | Screenshot, screenrecord, QR decode                | `screenshot.sh`, `screenrecord.sh`, `grimblast.sh`, `qr.sh`                       |
+| `clipboard/` | Clipboard history behind the bar popup             | `cliphist.sh`                                                                     |
 | `controls/`  | Hardware controls                                  | `brightness-control.sh`, `volume-control.sh`, `window-mute.py`                    |
 | `core/`      | Shared foundations                                 | `common.sh`, `state.sh`, `notify.sh`, `rofi.sh`, `wallpaper.catalog.sh`           |
 | `fonts/`     | Font management                                    | `font-set.sh`, `font-list.sh`, `font-get.sh`, `find-unused.sh`                    |
@@ -305,7 +306,7 @@ accepts `category/name`, `name.sh` and `name.py` too.
 | `pyutils/`   | Shared Python modules                              | `hyprctl.py`, `lock_paths.py`, `logger.py`, `shell_env.py`, `pip_env.py`       |
 | `quickshell/`| Active bar layout/style/visibility helpers         | `layout.sh`, `style-map.py`, `style-map-watch.sh`, `visibility.sh`                |
 | `render/`    | Per-app theme/palette renderers                    | `dunst.py`, `gtk.py`, `kitty.sh`, `rofi.sh`, `quickshell.sh`, `_palette.py`       |
-| `rofi/`      | Rofi menus and pickers                             | `menutree.sh`, `emoji-picker.sh`, `cliphist.sh`, `run-after-close.sh`             |
+| `rofi/`      | Rofi menus and pickers                             | `menutree.sh`, `emoji-picker.sh`, `glyph-picker.sh`, `run-after-close.sh`         |
 | `runtime/`   | Hyprshell runtime init                             | `init.bash`, `lock_paths.sh`                                                      |
 | `service/`   | Service restart/refresh, managed-config inspection | `restart.sh`, `config.sh`, `managed.sh`, `domain.sh`, `show-managed-split.sh`     |
 | `session/`   | Lock, idle, logout                                 | `lock-screen.sh`, `idle-manager.sh`, `hyprlock.sh`                                |
@@ -344,22 +345,24 @@ hyprctl reload
 # files directly. Usage: hyq -Q '<query>' <file>
 hyq -Q '$CURSOR_THEME' ~/.config/hypr/themes/theme.meta
 
-# Select or set the active Quickshell layout (a silent no-op, exit 0, while the
-# windows or macos workflow owns the bar)
-hyprshell quickshell/layout select
+# Set or cycle the active Quickshell layout (a silent no-op, exit 0, while the
+# active workflow pins one bar layout — windows, macos; niri limits it to top/bottom).
+# The picker is the menutree Style → Bar → Layout submenu (mod+T B), filtered the same way.
 hyprshell quickshell/layout set top
+hyprshell quickshell/layout next
 
 # Soft Quickshell reload (reuses the engine; see "Reload Behavior")
 quickshell ipc call bar reload
 
 # Switch workflow profile. Selectable: default, editing, windows, presentation, niri, macos.
 # gaming and powersaver exist but are automatic (GameMode / power-saver profile)
-# and are excluded from the picker; while one owns the workflow, --set fails.
-hyprshell util/workflows --select
+# and are excluded from the menutree Style → Workflow submenu (mod+U W); while one
+# owns the workflow, --set fails.
+hyprshell util/workflows --set windows
 
-# Switch animation preset / shader
-hyprshell animations.sh
-hyprshell shaders.sh
+# Set animation preset / shader (pickers: menutree Style → Animations / Shaders)
+hyprshell animations.sh --set default
+hyprshell shaders.sh --set neutral
 
 # Auto-theme (light/dark by location/time) — daemon control
 auto-theme {start|stop|status|toggle}
@@ -404,7 +407,6 @@ cd ~/dotfiles && ./update.sh
 | `dotfiles-sync`          | Mirror live config back into `~/dotfiles/`                         |
 | `dotfiles-host-profile`  | Select / apply per-host profile                                    |
 | `auto-theme`             | Auto light/dark theme daemon control                               |
-| `preview` / `preview-ai` | File preview helpers (used by fzf, AI flows)                       |
 | `installed_packages`     | Snapshot of explicitly installed packages                          |
 | `tui-terminal-exec`      | Terminal launcher with app-id/title and optional Hyprland geometry |
 
@@ -449,6 +451,11 @@ Many daemons currently started via `start.*` (`vars.lua`) run as systemd user un
 `hyprland-wallpaper`); without `-u` it is a transient app2unit
 unit named `app-Hyprland-<name>@<id>.service`, not the packaged `<name>.service`. Target
 the running unit, or use the daemon's own reload where it has one.
+
+A `start.*` var runs only if `core.lua`'s `startup` list names it; defining it in `vars.lua`
+alone starts nothing. The session is `ly-dm → start-hyprland`, not uwsm, so
+`graphical-session.target` never activates and an enabled unit `WantedBy` it does not start on
+its own: give it a `start.*` entry (`hyprshell service/control start <unit>` stays init-agnostic).
 
 These load their Python/shell once at startup, so editing a script under
 `~/.local/lib/hypr/` changes nothing until the unit restarts — and a fresh `python3`
@@ -521,8 +528,9 @@ exec(mod, "F", "[Launcher|Apps] file manager", "nautilus")
 
 Verify with `hyprctl configerrors`, then diff the live set against the intent.
 `hyprctl binds -j` is unusable here — it exits 5 and emits field/value-misaligned
-JSON — so parse the plain output instead (this lists described binds only, which is
-every bind declared in `keybindings.lua`):
+JSON — so parse the plain output instead (this lists described binds only: every
+`bind`/`exec` in `keybindings.lua`, but not the two raw `hl.bind` drag companions of the
+mouse resize binds):
 
 ```bash
 hyprctl binds | awk '/^\tmodmask:/{m=$2} /^\tsubmap:/{s=$2} /^\tkey:/{k=$2} /^\tdescription:/{sub(/^\tdescription: /,"");print m"\t"k"\t"s"\t"$0}' | sort

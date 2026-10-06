@@ -212,7 +212,7 @@ record_vpn_state_and_reconnect_if_needed() {
   state_file="${runtime_dir}/quickshell-vpn-last"
 
   [[ -f "${state_file}" ]] && previous_state="$(<"${state_file}")"
-  printf '%s\n' "${vpn_state}" >"${state_file}" || true
+  [[ "${previous_state}" == "${vpn_state}" ]] || printf '%s\n' "${vpn_state}" >"${state_file}" || true
 
   case "${previous_state}:${vpn_state}" in
     connected:disconnected | connected:error | connected:none)

@@ -1,6 +1,8 @@
+import json
 import sys
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -40,13 +42,13 @@ class CliampTests(unittest.TestCase):
 
     @patch.object(cliamp, "save_now_playing")
     @patch.object(cliamp, "save_queue")
-    @patch.object(cliamp, "send_mpv_cmd", return_value={"data": "/music/two.opus"})
+    @patch.object(cliamp, "send_mpv_cmd", return_value={"data": [{"id": 2, "current": True}]})
     @patch.object(cliamp, "read_queue")
     def test_reconcile_updates_current_metadata(self, read, _send, save, remember):
         read.return_value = [
-            {"url": "/music/one.opus", "title": "One", "artist": "A"},
-            {"url": "/music/two.opus", "title": "Two", "artist": "B"},
-            {"url": "/music/three.opus", "title": "Three", "artist": "C"},
+            {"playlist_id": 1, "url": "/music/one.opus", "title": "One", "artist": "A"},
+            {"playlist_id": 2, "url": "/music/two.opus", "title": "Two", "artist": "B"},
+            {"playlist_id": 3, "url": "/music/three.opus", "title": "Three", "artist": "C"},
         ]
 
         remaining = cliamp.reconcile_queue()
@@ -54,6 +56,19 @@ class CliampTests(unittest.TestCase):
         self.assertEqual(remaining, [read.return_value[2]])
         save.assert_called_once_with(remaining)
         remember.assert_called_once_with("Two", "B", "/music/two.opus")
+
+    @patch.object(cliamp, "save_queue")
+    @patch.object(cliamp, "send_mpv_cmd", return_value={"data": [{"id": 1, "current": True}]})
+    @patch.object(cliamp, "read_queue", return_value=[{"playlist_id": 2, "url": "/music/repeated.opus"}])
+    def test_current_song_does_not_consume_queued_repeat(self, read, _send, save):
+        self.assertEqual(cliamp.reconcile_queue(), read.return_value)
+        save.assert_not_called()
+
+    def test_blank_artist_does_not_inherit_previous_artist(self):
+        with TemporaryDirectory() as directory, patch.object(cliamp, "NOW_PLAYING_PATH", str(Path(directory) / "playing.json")):
+            cliamp.save_now_playing("Previous", "Kaey", "/music/previous.opus")
+            cliamp.save_now_playing("Sins For U", "", "https://www.youtube.com/watch?v=f9l5Z5Vu_c0")
+            self.assertEqual(json.loads(Path(cliamp.NOW_PLAYING_PATH).read_text())["artist"], "")
 
 
 if __name__ == "__main__":

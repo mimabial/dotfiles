@@ -28,7 +28,7 @@ Commands:
     clean                     Remove cached thumbnails with no matching wallpapers
 
 Options:
-    -b, --backend <backend>   Set wallpaper backend to use (awww, hyprpaper, etc.)
+    -b, --backend <backend>   Set wallpaper backend to use (default: awww)
     -G, --global              Set wallpaper as global
         --wait-lock           Wait for the current wallpaper operation to finish
         --no-notify           Suppress wallpaper notifications for this run

@@ -5,8 +5,6 @@ PALETTE_ARG="${1:-}"
 render_init chrome manifest.json nonexistent.theme
 
 THEME_DIR="${OUT_DIR}/Pywal16-chrome-theme"
-IMG_DIR="${THEME_DIR}/images"
-IMG_FILE="${IMG_DIR}/theme_ntp_background_norepeat.png"
 MANIFEST="${THEME_DIR}/manifest.json"
 OUT_FILE="${MANIFEST}"
 
@@ -65,4 +63,4 @@ EOF
 rm -rf -- "${THEME_DIR}"
 mv -f "${staging}" "${THEME_DIR}"
 trap - EXIT
-render-cache store chrome "${hash}"
+render_cache_store chrome "${hash}"

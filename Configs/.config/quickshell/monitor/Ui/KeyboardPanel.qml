@@ -15,8 +15,6 @@ PopupWindow {
   property var borderSpec: Border.surfaceSpec("popups", "border", Color.popups.border, Math.max(1, Style.space(1)))
   property bool centerOnBar: false
   property bool open: false
-  property bool popoutSwitching: false
-  property bool popoutSwitchClosing: false
   property Item focusTarget: null
   property bool focusSettling: false
   default property alias panelContent: contentHolder.data
@@ -40,7 +38,6 @@ PopupWindow {
     if (cap !== undefined && Number(cap) > 0) available = Math.min(available, Number(cap))
     return Math.round(Math.min(desired, available))
   }
-  function cappedContentHeight(height) { return fittedContentHeight(height - padding * 2) }
 
   visible: open || card.opacity > 0
   color: "transparent"

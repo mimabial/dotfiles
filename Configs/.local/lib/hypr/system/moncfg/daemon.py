@@ -22,8 +22,8 @@ PROTOCOL_VERSION = 1
 
 # Fields the panel edits but that are derived from `mode`, so they are
 # recomputed rather than written straight through.
-DERIVED = ("width", "height", "refresh")
-DIRECTIVES = ("output_key", "snap_distance", "snap_beside")
+DERIVED_OUTPUT_FIELDS = ("width", "height", "refresh")
+EDIT_DIRECTIVES = ("output_key", "snap_distance", "snap_beside")
 
 
 def log(message: str) -> None:
@@ -148,7 +148,7 @@ def edit_profile(profile: dict, edit: dict) -> dict:
         return draft
 
     for field, value in edit.items():
-        if field not in DIRECTIVES + DERIVED:
+        if field not in EDIT_DIRECTIVES + DERIVED_OUTPUT_FIELDS:
             output[field] = value
     if "mode" in edit:
         apply_mode(output)
@@ -355,15 +355,15 @@ class Daemon:
         timeout = max(1, int(params.get("timeout_seconds", 10) or 10))
         # The rollback target is live state, not the stored profile: whatever is
         # on screen now is what the user gets back if they do nothing.
-        previous = profiles.capture("__previous__", self.monitors)
+        live_rollback_profile = profiles.capture("__previous__", self.monitors)
         active = profiles.by_name(str(self.state.get("active_profile", "")))
-        previous["workspaces"] = self.state.get("applied_workspaces", (active or {}).get("workspaces", {}))
+        live_rollback_profile["workspaces"] = self.state.get("applied_workspaces", (active or {}).get("workspaces", {}))
         transaction = {
             "id": "preview-%d" % int(time.time() * 1000),
             "deadline": _iso(time.time() + timeout),
             "save_on_commit": bool(params.get("save_on_commit", False)),
             "profile": profile,
-            "previous": previous,
+            "rollback_profile": live_rollback_profile,
         }
         self.preview = transaction
         self.activate(profile, remember=False)
@@ -384,7 +384,7 @@ class Daemon:
                 profiles.save(profile)
             self.activate(profile)
         else:
-            render.apply(transaction["previous"])
+            render.apply(transaction["rollback_profile"])
         self.refresh_monitors()
         return {"transaction_id": transaction["id"], "kept": keep}
 

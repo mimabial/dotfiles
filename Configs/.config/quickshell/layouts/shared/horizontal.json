@@ -2,50 +2,88 @@
   "panel": "horizontal",
   "style": "horizontal",
   "left": [
-    { "id": "workspaces", "props": { "compactStyle": true } },
     {
-      "id": "mediaplayer",
+      "id": "workspaces",
       "props": {
-        "appearance": "mpris",
-        "fillAvailableWidth": true,
-        "showAlbumArt": true,
-        "maxLabelWidth": 360,
-        "showControls": false,
-        "showArtist": true,
-        "randomizeProgressShape": true,
-        "showWhenIdle": true
+        "compactStyle": false,
+        "activeOnly": false,
+        "showAll": true,
+        "numerals": "hindi"
       }
-    }
+    },
+    "systemstats"
   ],
   "centerAnchor": "datetime",
   "center": [
     "submap",
     "caffeine",
     "datetime",
-    { "id": "updates", "props": { "hideWhenCurrent": false } },
+    {
+      "id": "updates",
+      "props": {
+        "hideWhenCurrent": false
+      }
+    },
     "weather"
   ],
   "right": [
-    "systemstats",
+    {
+      "id": "mediaplayer",
+      "props": {
+        "appearance": "cava",
+        "fillAvailableWidth": false,
+        "showAlbumArt": false,
+        "noIcon": true,
+        "maxLabelWidth": 360,
+        "showControls": false,
+        "showArtist": false,
+        "randomizeProgressShape": true,
+        "showWhenIdle": true,
+        "cavaBars": 10,
+        "cavaBarWidth": 5,
+        "cavaGap": 2,
+        "cavaPosition": "bottom",
+        "cavaMode": "foobar",
+        "cavaFps": 30,
+        "cavaGain": 1,
+        "cavaSmoothing": 77
+      }
+    },
+    "tray",
     "volume",
     "microphone",
     "privacy",
     "display",
-    "tasks",
-    {
-      "id": "appearance",
-      "props": {
-        "alwaysOpen": false,
-        "reverse": true
-      }
-    },
-    "bitwarden",
     "vpn",
     "wifi",
-    { "id": "bluetooth", "props": { "showReadout": true } },
-    { "id": "removable", "props": { "showBadge": true } },
-    { "id": "notifications", "props": { "showBadge": true } },
+    {
+      "id": "bluetooth",
+      "props": {
+        "showReadout": true
+      }
+    },
+    "tasks",
+    {
+      "id": "notifications",
+      "props": {
+        "showBadge": true
+      }
+    }
+  ],
+  "tray": [
+    "bitwarden",
     "agents",
-    "powerprofile"
+    "powerprofile",
+    {
+      "id": "removable",
+      "props": {
+        "showBadge": true
+      }
+    },
+    "wallpaper",
+    "colormode",
+    "barlayout",
+    "windowlayout",
+    "workflows"
   ]
 }

@@ -20,9 +20,7 @@ QtObject {
     readonly property int hoverDuration: Active.Style.hoverDuration
 
     readonly property int normalBorderWidth: Math.max(1, Active.Style.px(1))
-    readonly property int hoverBorderWidth: normalBorderWidth
     readonly property int selectedBorderWidth: 0
-    readonly property int focusBorderWidth: hoverBorderWidth
     readonly property real normalFillAlpha: 0.04
     readonly property real selectedFillAlpha: Active.Style.selectedFillAlpha
     readonly property real pressedFillAlpha: 0.22

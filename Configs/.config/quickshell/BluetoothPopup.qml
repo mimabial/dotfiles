@@ -108,7 +108,6 @@ PopupCard {
         return key && values && values[key] !== undefined ? values[key] : null
     }
     function pendingAction(address) { return String(mapValue(pendingActions, address) || "") }
-    function pendingKind(address) { return String(mapValue(pendingKinds, address) || "") }
     function actionFailure(address) { return mapValue(deviceActionFailures, address) }
     function setMapValue(values, address, value) {
         const key = Model.normalizedAddress(address)

@@ -41,6 +41,7 @@
 
   "weather": {
     "iconColor": ["fg", 1.0],
+    "hover": { "iconColor": ["hvr_fg", 1.0] },
     "iconPadRight": 5.0,
     "valuePadLeft": 5.0
   },
@@ -71,10 +72,12 @@
     "fontSize": 12.0
   },
   "microphone": {
-    "fontSize": 11.0
+    "fontWeight": 700,
+    "fontSize": 10.0
   },
   "microphone.muted": {
-    "fontSize": 11.0
+    "fontWeight": 700,
+    "fontSize": 10.0
   },
   "volume-slider": { "margin": [6.0, 0.0, 6.0, 0.0] },
   "volume-slider trough": {
@@ -97,9 +100,6 @@
     "borderWidth": 1,
     "borderColor": ["c0", 0.4]
   },
-  "desktop-group": {
-    "margin": [0.0, 0.0, 0.0, 0.0]
-  },
   "bitwarden": {
     "fontSize": 14.0
   },
@@ -109,7 +109,7 @@
   "wifi": {
     "fontSize": 14.0
   },
-  "bluetooth": {
+  "bluetooth, tasks, notifications, removable, microphone": {
     "badgeColor": ["accent", 0.5],
     "badgeSize": 7.0
   },
@@ -121,15 +121,10 @@
     "fontSize": 10.0
   },
   "bluetooth.connected": {
-    "fontSize": 13.0
-  },
-  "tasks": {
-    "badgeColor": ["accent", 0.5],
-    "badgeSize": 7.0
+    "fontSize": 12.0
   },
   "notifications": {
-    "badgeColor": ["accent", 0.5],
-    "badgeSize": 7.0,
+    "fontSize": 12.0,
     "backgroundColor": null
   },
   "github": {
@@ -147,10 +142,7 @@
   },
 
   "removable": {
-    "badgeColor": ["accent", 0.5],
-    "fontSize": 14.0,
-    "badgeSize": 7.0,
-    "badgeOffsetY": 3.0
+    "fontSize": 14.0
   },
   "tray": {
     "backgroundColor": ["alt_bg", 0.1],

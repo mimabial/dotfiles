@@ -11,8 +11,9 @@ way back in.
 browser, `Super + E` a file manager, `Super + C` your editor. Open two of them
 back to back and you will see Hyprland tile them side by side.
 
-`Super + Arrow` moves focus between windows. `Super + Shift + Arrow` moves the
-window itself. `Super + Q` closes it.
+`Super + Arrow` moves focus between windows; in niri, `Super + Up/Down` switches
+to the previous/next workspace. `Super + Shift + Arrow` moves the window itself.
+`Super + Q` closes it.
 
 `Super + H` then `H` prints the live keybinding cheatsheet — read out of the
 running compositor, not out of a file that drifts from it. If you only remember

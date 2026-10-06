@@ -2,15 +2,28 @@
 # Sourced module; strict mode is owned by the entrypoint.
 
 menu_add_presets() {
-  local menu_id="$1" icon="$2" kind="$3" path="" name=""
+  local menu_id="$1" default_icon="$2" kind="$3" extension="$4" icon_key="$5" path="" name="" icon="" line=""
+  local pattern="vars\\.set\\(\"${icon_key}\",[[:space:]]*\"([^\"]+)\""
+  local -A preset_icons=(
+    [animations/blink]="󰈈" [animations/bounce]="󰠆" [animations/default]="󰗘" [animations/disable]="󰏥"
+    [animations/flash]="󰉁" [animations/optimized]="󰓅" [animations/vertical]="󰡏"
+    [shaders/color-vision]="󰴄" [shaders/grayscale]="󱎖" [shaders/invert-colors]="󰌁"
+    [shaders/neutral]="󰜺" [shaders/vibrance]="󰏘"
+  )
   local -A seen=()
-  shift 3
-  for path in "${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/${kind}"/*.lua \
-    "${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/${kind}"/*.lua; do
+  shift 5
+  for path in "${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/${kind}"/*."${extension}" \
+    "${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/${kind}"/*."${extension}"; do
     name="${path##*/}"
-    name="${name%.lua}"
+    name="${name%."${extension}"}"
     [[ -f "${path}" && -z "${seen[${name}]:-}" && " $* " != *" ${name} "* ]] || continue
     seen["${name}"]=1
+    icon="${preset_icons["${kind}/${name}"]:-${default_icon}}"
+    while [[ -n "${icon_key}" ]] && IFS= read -r line; do
+      [[ "${line}" =~ ${pattern} ]] || continue
+      icon="${BASH_REMATCH[1]}"
+      break
+    done <"${path}"
     menu_add_item "${menu_id}" "${icon}  ${name^}" action "${menu_id}_${name}"
   done
 }
@@ -23,13 +36,14 @@ menu_opacity_percent() {
 
 menu_add_opacity() {
   local menu_id="$1" line="" name=""
+  local -A opacity_icons=([Opaque]="󰝤" [Glass]="󱡓" ["Frosted Glass"]="󰂵" [Translucent]="󱎖" [Transparent]="󰄱")
   menu_define "${menu_id}" "Opacity" choice
-  menu_add_item "${menu_id}" "󰃟  $2" action "${menu_id}_auto"
+  menu_add_item "${menu_id}" "󰘮  $2" action "${menu_id}_auto"
   while IFS= read -r line; do
     [[ "${line}" =~ name:\ \"([^\"]+)\",\ value:\ ([0-9.]+) ]] || continue
     name="${BASH_REMATCH[1]}" REPLY="${BASH_REMATCH[2]}"
     menu_opacity_percent
-    menu_add_item "${menu_id}" "󰃟  ${name} (${REPLY}%)" action "${menu_id}_${REPLY}"
+    menu_add_item "${menu_id}" "${opacity_icons[${name}]:-󰃟}  ${name} (${REPLY}%)" action "${menu_id}_${REPLY}"
   done <"${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/Opacity.js"
 }
 
@@ -39,6 +53,8 @@ menu_register_domain_style() {
   local layout_label=""
   local size=""
   local layout_name=""
+  local -a workflow_layouts=()
+  local -A layout_icons=([top]="󱔓" [bottom]="󱂩" [macos]="󰀵" [winbar]="󰖳")
 
   menu_define style "Style"
   menu_add_item style "󰸌  Theme" action style_theme
@@ -48,12 +64,13 @@ menu_register_domain_style() {
   menu_add_item style "󰇊  Dock" submenu style_dock
   menu_add_item style "󰕸  Exposé" submenu style_expose
   menu_add_item style "󰹑  Animations" submenu style_animations
+  menu_add_item style "󰆗  Shaders" submenu style_shaders
   menu_add_item style "󰏘  Lock Layout" action style_lock_layout
   menu_add_item style "  Workflow" submenu style_workflow
   menu_add_item style "󰩨  Theme Menu Style" action style_theme_menu
   menu_add_item style "󰀻  Launcher Style" action style_launcher
   menu_add_item style "  Font" action style_font
-  menu_add_item style "  Text Size" submenu style_text_size
+  menu_add_item style "  Text Size" submenu style_text_size
 
   menu_define style_bar "Bar"
   menu_add_item style_bar "󰍜  Layout" submenu style_bar_layout
@@ -69,13 +86,15 @@ menu_register_domain_style() {
   menu_add_opacity style_dock_opacity "Auto (Theme)"
 
   menu_define style_bar_layout "Layout" choice
+  read -ra workflow_layouts <<<"$(state_get WORKFLOW_QUICKSHELL_LAYOUT "")"
   for layout_file in "${layout_dir}"/*.json; do
     [[ -f "${layout_file}" ]] || continue
     layout_name="${layout_file##*/}"
     layout_name="${layout_name%.json}"
+    ((${#workflow_layouts[@]} == 0)) || [[ " ${workflow_layouts[*]} " == *" ${layout_name} "* ]] || continue
     layout_label="${layout_name//-/ }"
     layout_label="${layout_label^}"
-    menu_add_item style_bar_layout "󰍜  ${layout_label}" action "style_bar_layout_${layout_name}"
+    menu_add_item style_bar_layout "${layout_icons[${layout_name}]:-󰍜}  ${layout_label}" action "style_bar_layout_${layout_name}"
   done
 
   menu_define style_color_mode "Color Mode" choice
@@ -86,10 +105,13 @@ menu_register_domain_style() {
   menu_add_item style_color_mode "󰔎  Auto" action style_color_mode_auto
 
   menu_define style_animations "Animations" choice
-  menu_add_presets style_animations "󰹑" animations
+  menu_add_presets style_animations "󰹑" animations lua ""
+
+  menu_define style_shaders "Shaders" choice
+  menu_add_presets style_shaders "󰆗" shaders frag ""
 
   menu_define style_workflow "Workflow" choice
-  menu_add_presets style_workflow "" workflows gaming powersaver
+  menu_add_presets style_workflow "" workflows lua WORKFLOW_ICON gaming powersaver
 
   menu_define style_text_size "Text Size" choice
   for size in $("${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/text-size.sh" --list); do
@@ -138,6 +160,7 @@ menu_run_action_style() {
       quickshell ipc --any-display call expose hotCorner on >/dev/null
       ;;
     style_animations_*) hyprshell animations.sh --set "${action_id#style_animations_}" ;;
+    style_shaders_*) hyprshell shaders.sh --set "${action_id#style_shaders_}" ;;
     style_text_size_*) hyprshell system/text-size.sh "${action_id#style_text_size_}" ;;
     style_lock_layout) hyprshell rofi/run-after-close.sh -- hyprshell session/hyprlock.sh --select ;;
     style_workflow_*) hyprshell util/workflows.sh --set "${action_id#style_workflow_}" ;;
@@ -153,15 +176,16 @@ menu_active_style() {
   local target="$1" bar="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/bar.json"
   local dock="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/dock/settings.json"
   local expose="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/expose/settings.json"
-  local -a color_modes=([1]=auto [2]=dark [3]=light)
+  local -a color_modes=(["${STATE_COLOR_MODE_AUTO}"]=auto ["${STATE_COLOR_MODE_DARK}"]=dark ["${STATE_COLOR_MODE_LIGHT}"]=light)
 
   case "${target}" in
     style_bar_layout_*) menu_choice "${target}" style_bar_layout_ state_get QUICKSHELL_LAYOUT_NAME top ;;
     style_workflow_*) menu_choice "${target}" style_workflow_ state_get HYPR_WORKFLOW default ;;
     style_animations_*) menu_choice "${target}" style_animations_ state_get HYPR_ANIMATION default ;;
+    style_shaders_*) menu_choice "${target}" style_shaders_ state_get HYPR_SHADER neutral ;;
     style_text_size_*) menu_choice "${target}" style_text_size_ state_get TEXT_SIZE 12 ;;
     style_color_mode_source_*) menu_choice "${target}" style_color_mode_source_ state_get selected_color_source theme ;;
-    style_color_mode_*) menu_state selected_color_mode state_get selected_color_mode 2 && [[ "${target#style_color_mode_}" == "${color_modes[REPLY]:-}" ]] ;;
+    style_color_mode_*) menu_state selected_color_mode state_get selected_color_mode "${STATE_COLOR_MODE_DARK}" && [[ "${target#style_color_mode_}" == "${color_modes[REPLY]:-}" ]] ;;
     style_bar_blur) menu_json_flag "${bar}" barBlur true ;;
     style_bar_floating) menu_json_flag "${bar}" barFloating false ;;
     style_bar_opacity_*) menu_json_value "${bar}" barOpacity -1 && menu_opacity_percent && [[ "${target#style_bar_opacity_}" == "${REPLY}" ]] ;;

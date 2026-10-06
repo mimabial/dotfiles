@@ -2,11 +2,13 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Fluent-yellow-dark
 $COLOR_SCHEME = prefer-dark
+
 $NVIM_SCHEME = pywal
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
-$CURSOR_THEME = Emo
-$CURSOR_SIZE = 30
+
+$CURSOR_THEME = Skyrim-by-ru5tyshark-cursors
+$CURSOR_SIZE = 40
 
 general {
     col.active_border = rgba(c87d2af5) rgba(fffaf0f5) 45deg

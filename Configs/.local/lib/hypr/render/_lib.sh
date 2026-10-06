@@ -16,6 +16,7 @@ RENDER_PALETTE_ROLES_JQ='
   }'
 RENDER_PALETTE_NUMBERED_JQ='
   + ([range(0; 16)] | map({key: ("c" + tostring), value: $c[.]}) | from_entries)'
+RENDER_HASH_DIR="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render-hashes"
 
 # bg, fg and the sixteen numbered colours as c[0..15].
 render_read_palette() {
@@ -44,9 +45,10 @@ render_init() {
   mkdir -p "${OUT_DIR}"
 
   PACK_OVERRIDE=""
-  local mode source
-  mode="$(jq -r '.mode // ""' "${PALETTE}")"
-  source="$(jq -r '.source // ""' "${PALETTE}")"
+  local mode source metadata
+  metadata="$(jq -r '.mode // "", .source // ""' "${PALETTE}")"
+  mode="${metadata%%$'\n'*}"
+  source="${metadata#*$'\n'}"
   if [[ "${mode}" == "theme" && "${source}" == theme:* ]]; then
     local candidate="${HOME}/.config/hypr/themes/${source#theme:}/${pack_basename}"
     [[ -f "${candidate}" ]] && PACK_OVERRIDE="${candidate}"
@@ -65,17 +67,30 @@ render_begin() {
 }
 
 render_input_hash() {
-  {
-    cat "${PALETTE}"
-    [[ -n "${PACK_OVERRIDE}" ]] && cat "${PACK_OVERRIDE}"
-    cat "${RENDERER_SOURCE}"
-  } | { xxh64sum 2>/dev/null || md5sum; } | awk '{print $1}'
+  local -a inputs=("${PALETTE}")
+  [[ -z "${PACK_OVERRIDE}" ]] || inputs+=("${PACK_OVERRIDE}")
+  inputs+=("${RENDERER_SOURCE}")
+  local digest
+  digest="$(cat "${inputs[@]}" | { xxh64sum 2>/dev/null || md5sum; })"
+  printf '%s\n' "${digest%% *}"
 }
 
 # Returns 0 (skip) when cache hits and output exists; 1 otherwise.
 render_should_skip() {
-  local hash="$1"
-  render-cache hit? "${APP}" "${hash}" && [[ -f "${OUT_FILE}" ]]
+  local hash="$1" stored="${RENDER_HASH_DIR}/${APP}"
+  [[ "${HYPR_FORCE_REGEN:-0}" != 1 && -n "${hash}" && -f "${stored}" && -f "${OUT_FILE}" ]] &&
+    [[ "$(<"${stored}")" == "${hash}" ]]
+}
+
+# Marks the run as changed for hypr-theme, then records the hash unless --no-cache.
+render_cache_store() {
+  local app="$1" hash="$2" tmp
+  [[ -z "${HYPR_THEME_CHANGED_FILE:-}" ]] || : >"${HYPR_THEME_CHANGED_FILE}"
+  [[ "${HYPR_NO_CACHE:-0}" != 1 ]] || return 0
+  mkdir -p "${RENDER_HASH_DIR}"
+  tmp="$(mktemp "${RENDER_HASH_DIR}/.${app}.XXXXXX")"
+  printf '%s\n' "${hash}" >"${tmp}"
+  mv -f "${tmp}" "${RENDER_HASH_DIR}/${app}"
 }
 
 # Echoes a temp file path inside OUT_DIR. Caller writes to it, then calls render_commit.
@@ -86,7 +101,7 @@ render_temp() {
 render_commit() {
   local tmp="$1" hash="$2"
   mv -f "${tmp}" "${OUT_FILE}"
-  render-cache store "${APP}" "${hash}"
+  render_cache_store "${APP}" "${hash}"
 }
 
 # Copies a pack-override file verbatim, skipping the first line if it's the conventional

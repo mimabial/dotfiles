@@ -131,7 +131,6 @@ old_source_states=$(project_endpoint_states "$old_sources_payload" "$source_filt
   exit 1
 }
 mapfile -t old_sinks < <(jq -r '.[].index' <<<"$old_sink_states")
-mapfile -t old_sources < <(jq -r '.[].index' <<<"$old_source_states")
 
 old_sink_inputs=()
 old_sink_input_mutes=()

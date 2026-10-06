@@ -32,21 +32,20 @@ Item {
     readonly property string prompt: pam.active ? pam.message : ""
 
     // A job whose session changed underneath it answers for a vault that is gone.
-    function sh(script, args, done, env) {
-        const asked = session
-        const job = jobComponent.createObject(root, {
-            command: ["bash", "-c", script, "bitwarden"].concat(args || []),
-            environment: Object.assign({ BW_SESSION: session || null, BW_NOINTERACTION: "true" }, env || {})
+    function runShellScript(script, commandArgs, onFinished, environment) {
+        const requestedSession = session
+        const commandProcess = jobComponent.createObject(root, {
+            command: ["bash", "-c", script, "bitwarden"].concat(commandArgs || []),
+            environment: Object.assign({ BW_SESSION: session || null, BW_NOINTERACTION: "true" }, environment || {})
         })
-        // counted down after `done`, so a job it chains keeps `busy` up without a gap
-        job.exited.connect(code => {
-            try { if (done && asked === session) done(code, job.stdout.text, job.stderr.text) }
-            finally { --pending; job.destroy() }
+        commandProcess.exited.connect(code => {
+            try { if (onFinished && requestedSession === session) onFinished(code, commandProcess.stdout.text, commandProcess.stderr.text) }
+            finally { --pending; commandProcess.destroy() }
         })
         ++pending
-        job.running = true
+        commandProcess.running = true
     }
-    function bw(args, done, env) { sh('bw "$@"', args, done, env) }
+    function runBitwardenCommand(commandArgs, onFinished, environment) { runShellScript('bw "$@"', commandArgs, onFinished, environment) }
     function failed(code, err) {
         if (!code) return false
         error = Model.lastLine(err) || "bw exited with " + code
@@ -79,7 +78,7 @@ Item {
     }
     function release() { if (pam.active) pam.abort(); notice = ""; touch() }
     function probe() {
-        bw(["status"], (code, out) => {
+        runBitwardenCommand(["status"], (code, out) => {
             if (code === 127) { status = "missing"; return }
             const state = JSON.parse(out)
             email = state.userEmail || ""
@@ -90,19 +89,19 @@ Item {
         })
     }
     function load() {
-        bw(["list", "items"], (code, out, err) => {
+        runBitwardenCommand(["list", "items"], (code, out, err) => {
             if (!failed(code, err)) items = JSON.parse(out).sort((a, b) => a.name.localeCompare(b.name))
         })
-        bw(["list", "folders"], (code, out) => { if (!code) folders = JSON.parse(out).filter(folder => folder.id) })
+        runBitwardenCommand(["list", "folders"], (code, out) => { if (!code) folders = JSON.parse(out).filter(folder => folder.id) })
     }
-    function sync() { bw(["sync"], (code, out, err) => { if (!failed(code, err)) load() }) }
+    function sync() { runBitwardenCommand(["sync"], (code, out, err) => { if (!failed(code, err)) load() }) }
     function lock() {
         if (!session) return
-        bw(["lock"])
+        runBitwardenCommand(["lock"])
         forget()
     }
     function logout() {
-        bw(["logout"], () => { forget(); disarm(); status = "unauthenticated"; email = "" })
+        runBitwardenCommand(["logout"], () => { forget(); disarm(); status = "unauthenticated"; email = "" })
     }
     function terminal(title, script, args) {
         Quickshell.execDetached(["hyprshell", "launch/terminal-present", "--app-id", "org.hypr.Bitwarden", "--title", title, "--",
@@ -124,7 +123,7 @@ Item {
             ? '[ -s "$1" ] || exit 3; BW_PASSWORD="$(' + decode + ' < "$1")" || exit 5; export BW_PASSWORD; bw unlock --passwordenv BW_PASSWORD --raw'
             : 'bw unlock --passwordenv BW_PASSWORD --raw || exit 1'
                 + (arm ? '; (umask 077; printf %s "$BW_PASSWORD" | ' + (arm === "pin" ? pinCipher : "cat") + ' > "$1") || exit 4' : "")
-        sh(script, [unlockFile], (code, out, err) => {
+        runShellScript(script, [unlockFile], (code, out, err) => {
             if (code === 0 || code === 4) {
                 sessionFile.setText(out.trim())
                 adopt(out.trim())
@@ -136,16 +135,16 @@ Item {
             error = code === 3 ? "Unlock with your master password once to arm quick unlock"
                 : code === 5 ? "Wrong PIN" : Model.lastLine(err) || "Unlock failed"
             if (stored && code !== 3 && (settings.quickUnlock !== "pin" || ++pinFailures >= 3)) {
-                sh('rm -f "$1"', [unlockFile])
+                runShellScript('rm -f "$1"', [unlockFile])
                 pinFailures = 0
                 error += " — quick unlock disarmed, use your master password"
             }
         }, env)
     }
-    function disarm() { sh('rm -f "$1"', [unlockFile]); settings.quickUnlock = ""; pinFailures = 0 }
+    function disarm() { runShellScript('rm -f "$1"', [unlockFile]); settings.quickUnlock = ""; pinFailures = 0 }
     function scan() { if (!pam.active && ["fingerprint", "fido2"].includes(settings.quickUnlock)) pam.start() }
     function detectUnlockMethods() {
-        sh('fprintd-list "$USER" 2>/dev/null | grep -q " - #" && echo fingerprint; [ -s /etc/fido2/fido2 ] && echo fido2', [],
+        runShellScript('fprintd-list "$USER" 2>/dev/null | grep -q " - #" && echo fingerprint; [ -s /etc/fido2/fido2 ] && echo fido2', [],
             (code, out) => unlockMethods = ["pin"].concat(out.split("\n").filter(Boolean)))
     }
 
@@ -156,17 +155,17 @@ Item {
     function copy(value, label) {
         if (!value) return
         copied = value
-        sh('printf %s "$VALUE" | wl-copy --sensitive >/dev/null 2>&1', [], null, { VALUE: value })
+        runShellScript('printf %s "$VALUE" | wl-copy --sensitive >/dev/null 2>&1', [], null, { VALUE: value })
         if (settings.clearClipboardSeconds > 0) clipboardClear.restart()
         notice = label + " copied"
         touch()
     }
     function clearClipboard() {
         clipboardClear.stop()
-        if (copied) sh('[ "$(wl-paste -n 2>/dev/null)" = "$VALUE" ] && wl-copy --clear', [], null, { VALUE: copied })
+        if (copied) runShellScript('[ "$(wl-paste -n 2>/dev/null)" = "$VALUE" ] && wl-copy --clear', [], null, { VALUE: copied })
         copied = ""
     }
-    function totp(item, done) { bw(["get", "totp", item.id], (code, out, err) => { if (!failed(code, err)) done(out.trim()) }) }
+    function totp(item, done) { runBitwardenCommand(["get", "totp", item.id], (code, out, err) => { if (!failed(code, err)) done(out.trim()) }) }
     function copyTotp(item) { totp(item, code => copy(code, "TOTP code")) }
     function copyPassword(item) {
         copy(Model.read(item, "login.password"), "Password")
@@ -176,7 +175,7 @@ Item {
     }
 
     function save(item, done) {
-        sh('printf %s "$ITEM" | base64 -w0 | bw ' + (item.id ? 'edit item "$1"' : "create item"), item.id ? [item.id] : [], (code, out, err) => {
+        runShellScript('printf %s "$ITEM" | base64 -w0 | bw ' + (item.id ? 'edit item "$1"' : "create item"), item.id ? [item.id] : [], (code, out, err) => {
             if (failed(code, err)) return
             const saved = JSON.parse(out)
             items = items.filter(entry => entry.id !== saved.id).concat([saved]).sort((a, b) => a.name.localeCompare(b.name))
@@ -184,18 +183,18 @@ Item {
         }, { ITEM: JSON.stringify(item) })
     }
     function remove(item) {
-        bw(["delete", "item", item.id], (code, out, err) => { if (!failed(code, err)) items = items.filter(entry => entry.id !== item.id) })
+        runBitwardenCommand(["delete", "item", item.id], (code, out, err) => { if (!failed(code, err)) items = items.filter(entry => entry.id !== item.id) })
     }
     function createSend(payload) {
-        sh('printf %s "$SEND" | base64 -w0 | bw send create', [], (code, out, err) => {
+        runShellScript('printf %s "$SEND" | base64 -w0 | bw send create', [], (code, out, err) => {
             if (!failed(code, err)) copy(JSON.parse(out).accessUrl, "Send link")
         }, { SEND: JSON.stringify(payload) })
     }
     function download(item, attachment) {
-        sh('dir="$(xdg-user-dir DOWNLOAD 2>/dev/null)"; dir="${dir:-$HOME/Downloads}"; mkdir -p "$dir" && bw get attachment "$1" --itemid "$2" --output "$dir/" >/dev/null && printf %s "$dir/$3"',
+        runShellScript('dir="$(xdg-user-dir DOWNLOAD 2>/dev/null)"; dir="${dir:-$HOME/Downloads}"; mkdir -p "$dir" && bw get attachment "$1" --itemid "$2" --output "$dir/" >/dev/null && printf %s "$dir/$3"',
             [attachment.id, item.id, attachment.fileName], (code, out, err) => { if (!failed(code, err)) notice = "Saved " + out })
     }
-    function generate(options, done) { bw(Model.generateArgs(options), (code, out, err) => { if (!failed(code, err)) done(out.trim()) }) }
+    function generate(options, done) { runBitwardenCommand(Model.generateArgs(options), (code, out, err) => { if (!failed(code, err)) done(out.trim()) }) }
 
     FileView {
         id: sessionFile

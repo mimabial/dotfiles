@@ -3,89 +3,23 @@ set -euo pipefail
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
-hypr_runtime_require state system rofi || exit 1
-# shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
+hypr_runtime_require state system || exit 1
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$HOME/.local/lib}/hypr/theme/pairs.sh"
 export_hypr_config
 
-hypr_help_guard "Usage: hyprshell theme/color-mode [-q] [m|n|p|--set <theme|pywal> [dark|light|auto]]
-Choose a palette source and colour mode: menu (m), next (n), prev (p), or explicit --set (default: next)." "$@"
+hypr_help_guard "Usage: hyprshell theme/color-mode [-q] [n|p|--set <theme|pywal> [dark|light|auto]]
+Choose a palette source and colour mode: next (n), prev (p), or explicit --set (default: next)." "$@"
 
-color_source_labels=("Theme" "Pywal")
-color_source_values=("theme" "pywal")
-color_mode_labels=("Dark" "Light" "Auto")
-color_mode_values=(2 3 1)
+color_mode_values=("${STATE_COLOR_MODE_DARK}" "${STATE_COLOR_MODE_LIGHT}" "${STATE_COLOR_MODE_AUTO}")
 MODE_SWITCH_LOCK_FD=""
-COLOR_MODE_NOTIFY_ID="${COLOR_MODE_NOTIFY_ID:-95}"
-COLOR_MODE_NOTIFY_STACK_TAG="${COLOR_MODE_NOTIFY_STACK_TAG:-color-mode}"
 color_mode_notify=1
-
-color_mode_resolve_existing_path() {
-  local path="$1"
-  local resolved_dir=""
-
-  [[ -e "${path}" ]] || return 1
-
-  if command -v realpath >/dev/null 2>&1; then
-    realpath "${path}"
-    return
-  fi
-
-  if command -v readlink >/dev/null 2>&1; then
-    readlink -f "${path}" 2>/dev/null && return
-  fi
-
-  resolved_dir="$(cd "$(dirname "${path}")" && pwd -P)" || return 1
-  printf '%s/%s\n' "${resolved_dir}" "$(basename "${path}")"
-}
-
-color_mode_load_selected_policy() {
-  if declare -F state_get >/dev/null 2>&1; then
-    selected_color_source="$(state_get "selected_color_source" "${selected_color_source:-}")"
-    selected_color_mode="$(state_get "selected_color_mode" "${selected_color_mode:-}")"
-  else
-    selected_color_source="${selected_color_source:-theme}"
-    selected_color_mode="${selected_color_mode:-2}"
-  fi
-
-  selected_color_source="$(state_resolve_color_source "${selected_color_source}" "${selected_color_mode}")"
-  selected_color_mode="$(state_resolve_color_mode "${selected_color_mode}" "${BACKGROUND_MODE:-}")"
-}
-
-color_mode_load_selected_policy
-
-rofi_color_mode_script_mode() {
-  local stage="${ROFI_COLOR_MODE_STAGE:-source}"
-
-  case "${ROFI_RETV:-0}" in
-    0)
-      if [[ "${stage}" == "mode" ]]; then
-        printf '\0prompt\x1fMode\n'
-        printf '\0no-custom\x1ftrue\n'
-        printf '%s\n' "${color_mode_labels[@]}"
-      else
-        printf '\0prompt\x1fColors\n'
-        printf '\0no-custom\x1ftrue\n'
-        printf '%s\n' "${color_source_labels[@]}"
-      fi
-      ;;
-    1)
-      [[ -n "${ROFI_COLOR_MODE_OUT:-}" ]] && printf '%s\n' "$1" >"${ROFI_COLOR_MODE_OUT}"
-      ;;
-  esac
-}
-
-if [[ "${1:-}" == "--rofi-script-mode" ]]; then
-  rofi_color_mode_script_mode "${2:-}"
-  exit 0
-fi
+selected_color_mode="$(state_get selected_color_mode)"
+selected_color_source="$(state_resolve_color_source "$(state_get selected_color_source)" "${selected_color_mode}")"
+selected_color_mode="$(state_resolve_color_mode "${selected_color_mode}" "${BACKGROUND_MODE:-}")"
 
 acquire_mode_switch_lock() {
   MODE_SWITCH_LOCK="$(hypr_lock_path mode_switch)"
-  # Keep the mode-switch lock FD dynamic so the lock ownership is explicit and
-  # we do not depend on an unexplained fixed descriptor number.
   exec {MODE_SWITCH_LOCK_FD}>"${MODE_SWITCH_LOCK}"
   ! flock -n "${MODE_SWITCH_LOCK_FD}" && {
     print_log -sec "color-mode" -stat "wait" "Another mode operation in progress, waiting..."
@@ -102,105 +36,6 @@ color_mode_release_lock() {
     MODE_SWITCH_LOCK_FD=""
   fi
   return "${exit_code}"
-}
-
-color_mode_rofi_select() {
-  local stage="$1"
-  local selected_row="$2"
-  local output_name="$3"
-  local selection_file=""
-  local script_path=""
-  local rofi_mode_name="color-mode"
-  local font_scale=""
-  local font_name=""
-  local r_scale=""
-  local r_override=""
-  local rofi_theme_file=""
-  local width_override=""
-  local margin_px=""
-  local selection=""
-  local -a width_override_args=()
-
-  font_scale="$(rofi_effective_font_scale "${ROFI_LAUNCH_SCALE:-${ROFI_PYWAL16_SCALE:-}}")"
-  font_name="$(rofi_effective_font_name "${ROFI_LAUNCH_FONT:-${ROFI_PYWAL16_FONT:-${ROFI_FONT:-}}}")"
-  r_scale="$(rofi_font_override "${font_name}" "${font_scale}")"
-  local launch_style suffix
-  launch_style="$(state_get "ROFI_LAUNCH_STYLE" "style_11")"
-  suffix="${launch_style#style_}"
-  [[ "${suffix}" =~ ^[0-9]+$ ]] || suffix=11
-  rofi_theme_file="$(rofi_resolve_theme "color_mode_${suffix}" 2>/dev/null || true)"
-  [[ -f "${rofi_theme_file}" ]] || rofi_theme_file="$(rofi_resolve_theme color_mode_11)"
-  r_override="$(rofi_window_override "${rofi_theme_file}")"
-  margin_px="${ROFI_PYWAL16_MARGIN_PX:-${ROFI_PYWAL16_MARGIN:-0}}"
-  [[ "${margin_px}" =~ ^[0-9]+$ ]] || margin_px=0
-  width_override="$(rofi_wallpaper_width_override "${rofi_theme_file}" "${font_name}" "${font_scale}" "${margin_px}" 2>/dev/null || true)"
-  if [[ -n "${width_override}" ]]; then
-    width_override_args=(-theme-str "${width_override}")
-  fi
-
-  selection_file="$(mktemp "${TMPDIR:-/tmp}/rofi-color-mode.XXXXXX")" || exit 1
-  script_path="$(color_mode_resolve_existing_path "${BASH_SOURCE[0]}" || printf '%s\n' "${BASH_SOURCE[0]}")"
-
-  selection="$(
-    ROFI_COLOR_MODE_STAGE="${stage}" ROFI_COLOR_MODE_OUT="${selection_file}" rofi \
-      -show "${rofi_mode_name}" \
-      -modi "${rofi_mode_name}:${script_path} --rofi-script-mode" \
-      -theme-str "${r_scale}" \
-      -theme-str "${r_override}" \
-      "${width_override_args[@]}" \
-      -theme-str 'textbox-prompt-colon {str: "";}' \
-      -theme "${rofi_theme_file}" \
-      -selected-row "${selected_row}"
-  )"
-
-  if [[ -z "${selection}" && -s "${selection_file}" ]]; then
-    selection="$(<"${selection_file}")"
-  fi
-  rm -f "${selection_file}"
-
-  [[ -n "${selection}" ]] || return 1
-  printf -v "${output_name}" '%s' "${selection}"
-}
-
-color_mode_index() {
-  case "${1}" in
-    2) printf '0\n' ;;
-    3) printf '1\n' ;;
-    1) printf '2\n' ;;
-  esac
-}
-
-select_color_mode_with_rofi() {
-  local source_row=0
-  local mode_row=0
-  local source_label=""
-  local mode_label=""
-  local i=""
-
-  pkill -u "$USER" rofi && exit 0
-  [[ "${selected_color_source}" == "pywal" ]] && source_row=1
-  mode_row="$(color_mode_index "${selected_color_mode}")"
-
-  color_mode_rofi_select source "${source_row}" source_label || exit 0
-  for i in "${!color_source_labels[@]}"; do
-    if [[ "${color_source_labels[i]}" == "${source_label}" ]]; then
-      target_color_source="${color_source_values[i]}"
-      break
-    fi
-  done
-
-  color_mode_rofi_select mode "${mode_row}" mode_label || exit 0
-  for i in "${!color_mode_labels[@]}"; do
-    if [[ "${color_mode_labels[i]}" == "${mode_label}" ]]; then
-      target_color_mode="${color_mode_values[i]}"
-      break
-    fi
-  done
-
-  if [[ -z "${target_color_source:-}" || -z "${target_color_mode:-}" ]]; then
-    print_log -sec "color-mode" -err "menu" "invalid selection"
-    exit 1
-  fi
 }
 
 cycle_color_mode() {
@@ -221,9 +56,9 @@ set_color_mode_from_arg() {
   local mode_arg="$1"
 
   case "${mode_arg,,}" in
-    1 | auto) target_color_mode=1 ;;
-    2 | dark) target_color_mode=2 ;;
-    3 | light) target_color_mode=3 ;;
+    "${STATE_COLOR_MODE_AUTO}" | auto) target_color_mode="${STATE_COLOR_MODE_AUTO}" ;;
+    "${STATE_COLOR_MODE_DARK}" | dark) target_color_mode="${STATE_COLOR_MODE_DARK}" ;;
+    "${STATE_COLOR_MODE_LIGHT}" | light) target_color_mode="${STATE_COLOR_MODE_LIGHT}" ;;
     *) return 1 ;;
   esac
 }
@@ -260,12 +95,12 @@ set_policy_from_args() {
   esac
 }
 
-auto_theme_systemd_available() {
+auto_theme_supervised() {
   [[ "$(hypr_init_system)" != "other" ]]
 }
 
 start_auto_theme_service() {
-  if ! auto_theme_systemd_available; then
+  if ! auto_theme_supervised; then
     print_log -sec "color-mode" -warn "auto" "no service manager (systemd/runit) for auto-theme"
     return 1
   fi
@@ -277,46 +112,23 @@ start_auto_theme_service() {
 }
 
 refresh_auto_theme_service() {
-  auto_theme_systemd_available || return 0
+  auto_theme_supervised || return 0
   hypr_svc_user_signal auto-theme USR2 || true
 }
 
 stop_auto_theme_service() {
-  if auto_theme_systemd_available; then
+  if auto_theme_supervised; then
     hypr_svc_user stop auto-theme || true
   fi
 }
 
 resolve_wallpaper() {
-  local resolved_path=""
-  local cache_wall="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current/wall.set"
-  if [ -e "${cache_wall}" ]; then
-    resolved_path="$(color_mode_resolve_existing_path "${cache_wall}" || true)"
-    if [ -f "${resolved_path}" ]; then
-      echo "${resolved_path}"
-      return 0
-    fi
-  fi
-
-  local theme="${HYPR_THEME:-}"
-  if [[ -z "${theme}" ]] && declare -F state_get >/dev/null 2>&1; then
-    theme="$(state_get "HYPR_THEME" "")"
-  fi
-
-  if [[ -z "${theme}" ]]; then
-    print_log -sec "color-mode" -err "wallpaper" "HYPR_THEME is not set"
-    return 1
-  fi
-
-  local theme_wall="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${theme}/wall.set"
-  if [ -e "${theme_wall}" ]; then
-    resolved_path="$(color_mode_resolve_existing_path "${theme_wall}" || true)"
-    if [ -f "${resolved_path}" ]; then
-      echo "${resolved_path}"
-      return 0
-    fi
-  fi
-
+  local wall=""
+  for wall in "${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current/wall.set" \
+    "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${HYPR_THEME}/wall.set"; do
+    realpath -e "${wall}" 2>/dev/null && return
+  done
+  print_log -sec "color-mode" -err "wallpaper" "no wall.set for ${HYPR_THEME}"
   return 1
 }
 
@@ -335,8 +147,8 @@ apply_color_policy() {
   }
 
   case "${target_color_mode}" in
-    2) target_polarity="dark" ;;
-    3) target_polarity="light" ;;
+    "${STATE_COLOR_MODE_DARK}") target_polarity="dark" ;;
+    "${STATE_COLOR_MODE_LIGHT}") target_polarity="light" ;;
   esac
 
   if [[ -n "${target_polarity}" && "$(theme_polarity "${HYPR_THEME}")" != "${target_polarity}" ]]; then
@@ -350,8 +162,8 @@ apply_color_policy() {
   fi
 
   case "${target_color_mode}" in
-    2) target_mode="dark" ;;
-    3) target_mode="light" ;;
+    "${STATE_COLOR_MODE_DARK}") target_mode="dark" ;;
+    "${STATE_COLOR_MODE_LIGHT}") target_mode="light" ;;
     *)
       target_mode="$(state_get_color_variant 2>/dev/null || true)"
       [[ "${target_mode}" =~ ^(dark|light)$ ]] || target_mode="${BACKGROUND_MODE:-}"
@@ -376,7 +188,6 @@ parse_target_policy() {
   target_color_mode="${selected_color_mode}"
 
   case "${1:-}" in
-    m | -m | --menu) select_color_mode_with_rofi ;;
     n | -n | --next) cycle_color_mode n ;;
     p | -p | --prev) cycle_color_mode p ;;
     -s | --set) set_policy_from_args "${2:-}" "${3:-}" ;;
@@ -384,7 +195,7 @@ parse_target_policy() {
     *) cycle_color_mode n ;;
   esac
 
-  if [[ ! "${target_color_source}" =~ ^(theme|pywal)$ || ! "${target_color_mode}" =~ ^[1-3]$ ]]; then
+  if [[ ! "${target_color_source}" =~ ^(theme|pywal)$ ]] || ! state_color_mode_is_valid "${target_color_mode}"; then
     echo "Error: invalid target color policy: ${target_color_source}/${target_color_mode}"
     exit 1
   fi
@@ -401,27 +212,10 @@ persist_color_policy() {
 }
 
 notify_color_mode_changed() {
+  local -A mode_labels=(["${STATE_COLOR_MODE_AUTO}"]=Auto ["${STATE_COLOR_MODE_DARK}"]=Dark ["${STATE_COLOR_MODE_LIGHT}"]=Light)
   [[ "${color_mode_notify}" -eq 1 ]] || return 0
-  local mode_label=""
-  local label=""
-  local -a args=(-a "Color mode" -t 2000 -i "preferences-desktop-theme")
-
-  case "${target_color_mode}" in
-    1) mode_label="Auto" ;;
-    2) mode_label="Dark" ;;
-    3) mode_label="Light" ;;
-  esac
-  label="${target_color_source^} · ${mode_label}"
-
-  if command -v dunstify >/dev/null 2>&1; then
-    dunstify "${args[@]}" -r "${COLOR_MODE_NOTIFY_ID}" --stack-tag "${COLOR_MODE_NOTIFY_STACK_TAG}" \
-      "Color mode" "${label}" >/dev/null 2>&1 || true
-    return 0
-  fi
-
-  notify_send_safe "${args[@]}" \
-    -h "string:x-canonical-private-synchronous:${COLOR_MODE_NOTIFY_STACK_TAG}" \
-    "Color mode" "${label}" >/dev/null 2>&1 || true
+  send_ephemeral_notif color-mode -a "Color mode" -t 2000 -i preferences-desktop-theme \
+    "Color mode" "${target_color_source^} · ${mode_labels[${target_color_mode}]}" || true
 }
 
 revert_failed_auto_mode() {
@@ -429,7 +223,7 @@ revert_failed_auto_mode() {
   target_color_source="${previous_color_source}"
   target_color_mode="${previous_color_mode}"
   persist_color_policy
-  if [ "${target_color_mode}" -ne 1 ]; then
+  if [[ "${target_color_mode}" != "${STATE_COLOR_MODE_AUTO}" ]]; then
     stop_auto_theme_service
     apply_color_policy || exit 1
   fi
@@ -449,7 +243,7 @@ apply_manual_mode() {
     target_color_source="${previous_color_source}"
     target_color_mode="${previous_color_mode}"
     persist_color_policy
-    if [[ "${previous_color_mode}" -eq 1 ]]; then
+    if [[ "${previous_color_mode}" == "${STATE_COLOR_MODE_AUTO}" ]]; then
       start_auto_theme_service || true
       refresh_auto_theme_service
     fi
@@ -466,7 +260,7 @@ main() {
   parse_target_policy "$@"
   load_previous_color_policy
 
-  if [ "${target_color_mode}" -eq 1 ]; then
+  if [[ "${target_color_mode}" == "${STATE_COLOR_MODE_AUTO}" ]]; then
     apply_auto_mode
   else
     apply_manual_mode

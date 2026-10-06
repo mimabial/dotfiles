@@ -20,7 +20,7 @@ if [[ "$(hypr_init_system)" == "other" ]]; then
   exit 0
 fi
 
-if [[ "${selected_color_mode}" -eq 1 ]]; then
+if [[ "${selected_color_mode}" == "${STATE_COLOR_MODE_AUTO}" ]]; then
   hypr_svc_user start auto-theme || {
     warn_startup "failed to start auto-theme service"
     exit 0

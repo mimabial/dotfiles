@@ -39,26 +39,56 @@ function flattenMenu(menus, menuId, prefix, output, visited) {
     visited.push(menuId)
     for (const item of menu.items) {
         if (!item.searchable) continue
-        const path = prefix === "" ? labelText(item.label) : prefix + " › " + labelText(item.label)
+        const label = labelText(item.label)
+        const path = prefix === "" ? label : prefix + " › " + label
         if (item.kind === "submenu") flattenMenu(menus, item.target, path, output, visited)
-        else output.push({icon: labelIcon(item.label), path: path, target: item.target})
+        else output.push({icon: labelIcon(item.label), label, parent: prefix, path, target: item.target, checked: item.checked})
     }
     return output
 }
-function search(query, apps, menus, availablePlaces, recentFiles = [], includeFileSearch = false) {
-    const needle = query.trim().toLowerCase()
+function filePath(uri) {
+    return uri.startsWith("file://") ? decodeURIComponent(uri.replace(/^file:\/\/(localhost)?/, "")) : uri
+}
+function plainText(text) {
+    return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+}
+const searchGroups = {app: 0, action: 1, place: 2, file: 3}
+function searchCandidate(result, title, details) {
+    const name = plainText(title)
+    const words = name.split(/[^a-z0-9]+/).filter(Boolean)
+    return {result, name, wordStarts: " " + words.join(" "), initials: words.map(word => word[0]).join(""),
+        text: name + " " + plainText(details)}
+}
+function fileCandidates(files) {
+    return files.map(file => searchCandidate({type: "file", file}, file.text, ""))
+}
+function searchIndex(apps, menus, places, recentFiles) {
+    return [].concat(
+        apps.map(app => searchCandidate({type: "app", app}, app.name, [app.genericName, app.comment, app.keywords].join(" "))),
+        flattenMenu(menus, "main", "", [], []).map(entry => searchCandidate({type: "action", entry}, entry.label, entry.parent)),
+        places.map(place => searchCandidate({type: "place", place}, place.label, "")),
+        fileCandidates(recentFiles))
+}
+function matchScore(candidate, query) {
+    if (!query.split(" ").every(term => candidate.text.includes(term) || candidate.initials.includes(term))) return 0
+    return candidate.name === query || candidate.name.startsWith(query + ".") ? 5
+        : candidate.name.startsWith(query) ? 4
+        : candidate.wordStarts.includes(" " + query) ? 3
+        : candidate.name.includes(query) ? 2 : 1
+}
+function search(query, index, documents) {
+    const needle = plainText(query.trim()).replace(/\s+/g, " ")
     if (!needle) return []
-    const matches = []
-    for (const app of apps) {
-        const text = (app.name + " " + app.genericName + " " + app.comment + " " + app.keywords).toLowerCase()
-        if (text.includes(needle)) matches.push({type: "app", app: app})
-    }
-    for (const entry of flattenMenu(menus, "main", "", [], []))
-        if (entry.path.toLowerCase().includes(needle)) matches.push({type: "action", entry: entry})
-    for (const place of availablePlaces)
-        if (place.label.toLowerCase().includes(needle)) matches.push({type: "place", place: place})
-    for (const file of recentFiles)
-        if (file.text.toLowerCase().includes(needle)) matches.push({type: "file", file: file})
-    if (includeFileSearch) matches.push({type: "fileSearch", query: query.trim()})
+    const matches = [], paths = new Set()
+    index.concat(fileCandidates(documents)).forEach((candidate, order) => {
+        const score = matchScore(candidate, needle)
+        const path = candidate.result.file ? filePath(candidate.result.file.uri) : null
+        if (!score || paths.has(path)) return
+        if (path) paths.add(path)
+        matches.push({candidate, score, order})
+    })
     return matches
+        .sort((a, b) => searchGroups[a.candidate.result.type] - searchGroups[b.candidate.result.type]
+            || b.score - a.score || a.order - b.order)
+        .map(match => Object.assign({score: match.score}, match.candidate.result))
 }

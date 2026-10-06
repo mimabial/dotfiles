@@ -26,7 +26,6 @@ Use the layout helper instead of editing state directly:
 
 ```bash
 hyprshell quickshell/layout list
-hyprshell quickshell/layout select
 hyprshell quickshell/layout next
 hyprshell quickshell/layout previous
 hyprshell quickshell/layout set top
@@ -42,7 +41,7 @@ call.
 | --- | --- | --- | --- |
 | `top` | `horizontal` | top | three-section horizontal bar |
 | `bottom` | `horizontal` | bottom | three-section horizontal bar |
-| `winbar` | `winbar` | bottom | Windows 11 taskbar: Start/apps, search icon, weather widget, overflow, separate Wi-Fi/sound/battery controls, clock, Exposé strip |
+| `winbar` | `winbar` | bottom | Windows 11 taskbar: Start/apps, Task View, search icon, weather widget, overflow, separate Wi-Fi/sound/battery controls, clock, launcher strip |
 | `totebar` | `horizontal` | top | workspaces on the left, utilities on the right |
 | `macos` | `horizontal` | top | macOS menu bar: hyprmenu dropdown, focused-app menus, status items, clock |
 
@@ -64,7 +63,10 @@ right-click menu; `"dash": true` draws one Windows-style dash per app, wide and
 accented for the focused one, instead of a dot per window.
 The `winbar` combines each app's windows into one button or shows separate window
 buttons. Separate window buttons show icon and title; combined buttons show icons
-only. The Start button's right-click menu controls combining and auto-hide.
+only. The Start button's right-click menu controls combining, label highlighting
+(uncombined labels take the indicator colours and the dashes hide), a label width
+limit (5× the icon; off, labels fill the free space), auto-hide, the
+taskbar position (bottom or top), and the small taskbar: one row, with a `winbarSmall` clock and the weather icon with its temperature as a badge.
 Pinned apps can be reordered by dragging their buttons. App context menus also
 list recent files whose
 recorded application name matches the app.
@@ -118,14 +120,26 @@ Validate with `jq empty layouts/<name>.json`, then run
 | change a popup | the matching `*Popup.qml` |
 | change provider output | the existing helper under `~/.local/lib/hypr/` |
 
-Composed modules such as `appearance` own
-drawers. Style the drawer frame by its `css` key and its children by their own
-keys.
-
 `mediaplayer` supports `appearance: "countdown"` (the default remaining-time readout),
-`"icon"` (a playback-state glyph), and `"mpris"` (cover art, metadata, and optional
-transport controls). It takes `showWhenIdle: true` to keep a placeholder when no player is
-running. The `countdown` and idle `mpris` views show a music-box glyph (`idleIcon`)
+`"icon"` (a playback-state glyph), `"mpris"` (cover art, metadata, and optional
+transport controls), and `"cava"` (an audio spectrum with an optional playback glyph).
+Cava uses the default audio input monitor and shares one process per bars/FPS/smoothing configuration across displays;
+it runs only while its appearance is visible and media is playing. `noIcon: true`
+hides its playback glyph. Its `props` include `cavaBars` (positive integer, default `16`),
+`cavaBarWidth` (default `2`), `cavaGap` (default `1`), and `cavaPosition` (`"center"`,
+`"top"`, or `"bottom"`). Width and gap scale with the bar's UI size. The default
+`"center"` grows in both directions; `"top"` grows downward and `"bottom"` upward.
+`cavaMode` selects `"bars"` (default), `"foobar"` (bars with held peak caps), `"dots"`,
+`"wave"` (a connected spectrum line), `"mirror"` (always centered), or `"blocks"`.
+Right-click cycles these modes in the Cava appearance; other appearances retain play/pause.
+`cavaFps` sets a positive frame rate (default `20`), `cavaGain` multiplies heights
+(default `1`), and `cavaSmoothing` sets Cava noise reduction from `0` (fast/noisy)
+to `100` (slow/smooth), default `77`. Gain and mode changes reuse the stream.
+Peak caps use the theme's error color and
+hold for 320 ms before falling at a rate independent of FPS. Right-click changes
+last until the module reloads; set `cavaMode` in layout props for its initial mode.
+It takes `showWhenIdle: true` to keep a placeholder when no player is
+running. The `countdown` and idle `mpris`/`cava` views show a music-box glyph (`idleIcon`)
 and a short quote that advances on each hover (`idleQuotes`); `icon` shows only the glyph.
 With `showArtist: true`, the
 text reads `author — quote`; otherwise it shows just the quote. Idle text elides
@@ -140,7 +154,7 @@ manager's App, File, Go, and Help menus, as Finder does. Edit sends its combo wi
 `send_shortcut`, moving copy/paste to Ctrl+Shift in terminals and disabling the
 combos a terminal reads as signals. `controlcenter` holds Wi-Fi, Bluetooth, Night
 Shift and Keep Awake tiles with display, sound and now-playing controls; `battery`
-opens the power popup; `spotlight` searches apps, menu actions, places, and recent files, with an option to search more files in File Finder. `nowplaying` shows a playback glyph only while a
+opens the power popup; `spotlight` searches apps, menu actions, places, recent files, and indexed Documents, with an option to search more files in File Finder; `SUPER+S` opens it in any layout, through `PopupHost.qml` where no `menu` module is live. `nowplaying` shows a playback glyph only while a
 player is active and opens a compact card: artwork, title, artist, a seek bar, and
 previous/play/next. The `*-menu` modules (`sound`, `wifi`, `bluetooth`, `vpn`,
 `display`) and `battery` wrap the regular buttons with a compact `modules/MacCard.qml`:
@@ -161,7 +175,7 @@ recent files and indexed Documents in one popup.
 open their own compact popup, with a link to the full network, audio, or power
 popup.
 `notifications` takes `themed: true` to draw its bell from the style's symbolic
-icons. `expose-strip` is the sliver at the right edge: hovering opens Exposé.
+icons. `task-view` opens Exposé on click; `launcher-strip` is the sliver at the right edge: hovering opens the Rofi app launcher.
 The Exposé hot corner is inactive while the Windows bar is shown.
 
 `appmenus.json` adds per-app menus, keyed by lowercase app id (comma-separated ids
@@ -211,7 +225,9 @@ Use the layout module id as the style key for a single button or readout.
 Grouped modules style their children separately: for example, `weather` styles its
 readouts as `weather` (`temp`), `weather.minmax`, and `weather.sunrise`, while
 `datetime` contains `clock.time`. A dotted key names a child or state, and inherits
-from its prefix. These are JSON style rules, despite the QML property name `css`.
+from its prefix. While the small taskbar is on, the style's `small` section is merged over
+its rules, so dotted states inherit it.
+These are JSON style rules, despite the QML property name `css`.
 `.modules-left`, `.modules-center`, and `.modules-right` set each bar section's
 margin, padding, and spacing. A key may list several names separated by commas,
 `"clock, battery": {"margin": [0, 4, 0, 4]}`; it merges into each name in file
@@ -238,7 +254,7 @@ Important geometry rules:
 - A button's count badge (`BarButton.badgeText`, used by `notifications`,
   `bluetooth`, and `removable`) is an `md-numeric_<n>` glyph (`9+` past nine)
   drawn as an exponent past the glyph's top-right. `badgeColor` sets its
-  colour and opacity; otherwise it follows the glyph. `badgeSize` sets its px size (default 9);
+  colour and opacity; otherwise it follows the glyph. `badgeBackgroundColor` paints a pill behind it. `badgeSize` sets its px size (default 9);
   `badgeOffsetX`/`badgeOffsetY` nudge it, positive right and down. It tracks the
   glyph, not the module frame, so it stays put as the bar widens.
 
@@ -336,10 +352,9 @@ sudo install -D -o root -g root -m 0644 ~/.local/lib/hypr/system/power-manager-b
   misses the budget lands on the next listing, and cached art costs nothing.
   Files, Recents, and the local half of search all go through it.
 - Adding to the queue writes `~/.cache/cliamp/queue.json` *and* appends to mpv's
-  own playlist, so the entry carries the `target` mpv was handed (a direct stream
-  URL or the FIFO for YouTube, the file path otherwise). `reconcile_queue()`
-  matches on it to drop entries mpv advanced into by itself, which is what keeps
-  the visible queue and the playlist from disagreeing.
+  own playlist. Each entry carries mpv's `playlist_id`; `reconcile_queue()` uses
+  the current ID to drop consumed entries. YouTube falls back to mpv's URL loader
+  when direct stream resolution fails, so queued songs never share an audio pipe.
 - The Bitwarden vault (`Bitwarden.qml`, one per shell) keeps its session key in
   `$XDG_RUNTIME_DIR/bitwarden-session` and any armed quick-unlock secret in
   `$XDG_RUNTIME_DIR/bitwarden-unlock`, so neither outlives the login. The terminal

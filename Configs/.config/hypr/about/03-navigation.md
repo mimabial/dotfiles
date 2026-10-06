@@ -1,9 +1,10 @@
 # Navigation
 
 Everything happens on the keyboard. `Super + Arrow` moves focus in that
-direction, and `Super + Shift + Arrow` picks the window up and moves it. That is
-the whole convention in one line: plain `Super` acts, `Shift` does the stronger
-version of the same thing.
+direction; in niri, `Super + Up/Down` switches to the previous/next workspace.
+`Super + Shift + Arrow` picks the window up and moves it. That is the whole
+convention in one line: plain `Super` acts, `Shift` does the stronger version of
+the same thing.
 
 You close a window with `Super + Q`, or `Alt + F4` if your fingers already know
 that one. `Super + Shift + Q` force-kills it when it has stopped answering.

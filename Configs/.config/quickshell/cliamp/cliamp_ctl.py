@@ -33,8 +33,6 @@ except Exception:
 
 SOCK_PATH = os.path.join(RUN_DIR, "mpv.sock")
 START_LOCK = os.path.join(RUN_DIR, "mpv.lock")
-STREAM_FIFO = os.path.join(RUN_DIR, "stream.fifo")
-STREAM_PID_FILE = os.path.join(RUN_DIR, "stream_ytdlp.pid")
 SPECTRUM_PID_FILE = os.path.join(RUN_DIR, "spectrum.pid")
 SPECTRUM_TARGET_FILE = os.path.join(RUN_DIR, "spectrum-target.json")
 MUSIC_DIR = os.path.realpath(os.path.expanduser(os.environ.get("CLIAMP_MUSIC_DIR", "~/Music")))
@@ -48,6 +46,7 @@ HISTORY_MAX_BYTES = 96 * 1024
 HISTORY_KEEP = 400
 HISTORY_PLAYLIST_LIMIT = 99
 NOW_PLAYING_PATH = os.path.join(CACHE_DIR, "now_playing.json")
+RESUME_CHECKPOINT_SECONDS = 10
 QUEUE_PATH = os.path.join(CACHE_DIR, "queue.json")
 EXTERNAL_QUEUE_CACHE_PATH = os.path.join(CACHE_DIR, "external_queue.json")
 STREAM_CACHE_PATH = os.path.join(CACHE_DIR, "stream_cache.json")
@@ -209,8 +208,8 @@ def save_tracked_proc(pid_file, pid, signature=None):
     except Exception:
         pass
 
-def launch_hyprland_worker(command, pid_file="", signature=None, output=""):
-    worker = [sys.executable, os.path.abspath(__file__), "_worker", pid_file, json.dumps(signature), output, *command]
+def launch_hyprland_worker(command, pid_file="", signature=None):
+    worker = [sys.executable, os.path.abspath(__file__), "_worker", pid_file, json.dumps(signature), *command]
     dispatch = f"hl.dsp.exec_cmd({json.dumps(shlex.join(worker), ensure_ascii=False)})"
     subprocess.run(["hyprctl", "dispatch", dispatch], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 
@@ -236,9 +235,9 @@ def save_queue(q_list):
     except Exception:
         pass
 
-def add_to_queue(url, title=None, artist=None, target=None):
+def add_to_queue(url, title=None, artist=None, playlist_id=None):
     real_url, final_title, final_artist = resolve_track_url(url, title, artist)
-    if not real_url:
+    if not real_url or playlist_id is None:
         return {"success": False, "error": "Unable to resolve track"}
     q = read_queue()
     m = re.search(r"(?:v=|youtu\.be/)([0-9A-Za-z_-]{11})", real_url)
@@ -250,9 +249,7 @@ def add_to_queue(url, title=None, artist=None, target=None):
         "title": final_title,
         "artist": final_artist,
         "thumb": thumb,
-        # what mpv was handed for this entry: a direct stream URL or the FIFO for
-        # youtube, the file path otherwise. reconcile_queue() matches on it.
-        "target": target or ""
+        "playlist_id": playlist_id
     })
     save_queue(q)
     return {"success": True, "queue": q}
@@ -297,12 +294,12 @@ def reconcile_queue():
     q = read_queue()
     if not q:
         return q
-    res = send_mpv_cmd(["get_property", "path"])
-    playing = (res or {}).get("data")
-    if not playing:
+    res = send_mpv_cmd(["get_property", "playlist"])
+    playing_id = next((entry["id"] for entry in (res or {}).get("data", []) if entry.get("current")), None)
+    if playing_id is None:
         return q
     for i, track in enumerate(q):
-        if playing not in (track.get("target"), track.get("url")):
+        if playing_id != track.get("playlist_id"):
             continue
         q = q[i + 1:]
         save_queue(q)
@@ -399,7 +396,7 @@ def dir_tracks(rel="", limit=500):
 def append_tracks(tracks):
     for full, title, artist in tracks:
         appended = queue_item(full, title, artist)
-        add_to_queue(full, title, artist, appended.get("target"))
+        add_to_queue(full, title, artist, appended.get("playlist_id"))
 
 def queue_dir(rel="", limit=500):
     """Append every track under one library folder, in listing order."""
@@ -481,8 +478,6 @@ def save_now_playing(title, artist, url="", pos=0):
             title = cur.get("title", "")
         if not title:
             title = cur.get("title", "")
-        if not artist:
-            artist = cur.get("artist", "")
         if not url:
             url = cur.get("url", "")
         with open(NOW_PLAYING_PATH, "w", encoding="utf-8") as f:
@@ -523,8 +518,14 @@ def send_mpv_cmds(commands, timeout=1.0):
 def send_mpv_cmd(cmd_list, timeout=1.0):
     return send_mpv_cmds([cmd_list], timeout)[0]
 
-def load_mpv(url, mode, title):
-    return send_mpv_cmd(["loadfile", url, mode, -1, {"force-media-title": title or ""}])
+def load_mpv(url, mode, title, artist=""):
+    target, options = url, {"force-media-title": title or ""}
+    if is_youtube_url(url):
+        save_youtube_meta(url, title, artist)
+        target = resolve_youtube_stream_url(url) or url
+        options["ytdl-format"] = "18/best"
+    result = send_mpv_cmd(["loadfile", target, mode, -1, options]) or {}
+    return (result.get("data") or {}).get("playlist_entry_id")
 
 def is_mpv_running(timeout=0.2):
     if not os.path.exists(SOCK_PATH):
@@ -617,7 +618,6 @@ def record_history(title, artist, url, dur):
                 if key in f.read().decode("utf-8", "ignore").rsplit("[[entry]]", 1)[-1]:
                     return
         if not dur and os.path.isfile(url):
-            # lazy import: status polls this module twice a second and never gets here
             try:
                 from mutagen import File as MutagenFile
                 dur = MutagenFile(url).info.length or 0
@@ -917,7 +917,7 @@ VIS_MODES = {
     "siriwave", "soundcloud_wave", "telegram_wave",
     "daw_wave", "led_scrubber", "heatmap_wave", "grounded_wave",
     "retro", "matrix", "binary", "terrain", "mosaic",
-    "scatter", "rain", "butterfly",
+    "scatter", "butterfly",
     "plasma", "osc_warp", "crt_scanline", "cyber_tunnel",
 }
 DEFAULT_VIS_MODE = "osc_warp"
@@ -1055,6 +1055,30 @@ def apply_audio_fx(preset_name=None, loudnorm=None, spatial=None):
 def set_eq(preset_name):
     return apply_audio_fx(preset_name=preset_name)
 
+def watch_status():
+    properties = ("time-pos", "duration", "pause", "media-title", "volume", "speed", "idle-active", "path", "af")
+    last_checkpoint = None
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as peer:
+            peer.connect(SOCK_PATH)
+            peer.sendall("".join(json.dumps({"command": ["observe_property", index, name]}) + "\n"
+                                 for index, name in enumerate(properties)).encode())
+            with peer.makefile("rb") as stream:
+                for line in stream:
+                    event = json.loads(line)
+                    if event.get("event") != "property-change":
+                        continue
+                    if event["name"] == "time-pos" and event.get("data") is not None:
+                        position = int(float(event["data"]))
+                        if last_checkpoint is None or abs(position - last_checkpoint) >= RESUME_CHECKPOINT_SECONDS:
+                            get_status()
+                            last_checkpoint = int(read_now_playing().get("pos") or 0)
+                    sys.stdout.buffer.write(line)
+                    sys.stdout.buffer.flush()
+    except OSError:
+        pass
+
+
 def get_status():
     if not is_mpv_running():
         cur_eq = get_current_eq()
@@ -1140,7 +1164,7 @@ def get_status():
         vol_data = vol_res.get("data") if vol_res else None
         vol = int(vol_data) if vol_data is not None else 80
 
-        if state == "playing" and np.get("url") and abs(int(cur_s) - int(np.get("pos") or 0)) >= 10:
+        if state == "playing" and np.get("url") and abs(int(cur_s) - int(np.get("pos") or 0)) >= RESUME_CHECKPOINT_SECONDS:
             save_now_playing(track, artist, np["url"], int(cur_s))
 
         resume = {"title": np.get("title", ""), "artist": np.get("artist", ""), "url": np.get("url", ""), "pos": np.get("pos", 0)} if np.get("url") else None
@@ -1522,37 +1546,6 @@ def resolve_youtube_stream_url(url):
         pass
     return None
 
-def stream_youtube(url):
-    """Stream YouTube audio to mpv via a secure private FIFO pipe fallback."""
-    terminate_tracked_pid(STREAM_PID_FILE, expected_signature=["yt-dlp", STREAM_FIFO])
-    os.makedirs(RUN_DIR, mode=0o700, exist_ok=True)
-    try:
-        os.chmod(RUN_DIR, 0o700)
-    except Exception:
-        pass
-
-    if os.path.lexists(STREAM_FIFO):
-        try:
-            if os.path.islink(STREAM_FIFO) or not os.path.exists(STREAM_FIFO):
-                os.unlink(STREAM_FIFO)
-            else:
-                stat = os.stat(STREAM_FIFO)
-                if stat.st_uid != os.getuid():
-                    raise PermissionError(f"FIFO {STREAM_FIFO} is not owned by current user")
-                os.remove(STREAM_FIFO)
-        except Exception as e:
-            if not isinstance(e, FileNotFoundError):
-                raise
-
-    os.mkfifo(STREAM_FIFO, 0o600)
-    try:
-        os.chmod(STREAM_FIFO, 0o600)
-    except Exception:
-        pass
-
-    command = ["yt-dlp", "--no-warnings", "-f", "18/best", "-o", "-", "--", url]
-    launch_hyprland_worker(command, STREAM_PID_FILE, ["yt-dlp", STREAM_FIFO], STREAM_FIFO)
-
 def resolve_track_url(url, title=None, artist=None):
     """Resolves any track item (Spotify URL, query string, or local path) to a playable URL and metadata."""
     if not url:
@@ -1590,24 +1583,14 @@ def play_item(url, title=None, artist=None):
         return {"success": False, "error": "Unable to resolve track"}
     start_mpv_daemon()
     start_spectrum_daemon()
+    if load_mpv(real_url, "replace", final_title, final_artist) is None:
+        return {"success": False, "error": "Unable to load track"}
     record_history(final_title, final_artist, real_url, 0)
     save_now_playing(final_title, final_artist, real_url)
-    
-    stream_target = real_url
-    if is_youtube_url(real_url):
-        save_youtube_meta(real_url, final_title, final_artist)
-        direct_url = resolve_youtube_stream_url(real_url)
-        if direct_url:
-            stream_target = direct_url
-        else:
-            stream_youtube(real_url)
-            stream_target = STREAM_FIFO
-
-    load_mpv(stream_target, "replace", final_title)
-    for queued in read_queue():
-        target = queued.get("target") or queued.get("url")
-        if target:
-            load_mpv(target, "append", queued.get("title"))
+    queue = read_queue()
+    for queued in queue:
+        queued["playlist_id"] = load_mpv(queued["url"], "append", queued.get("title"), queued.get("artist"))
+    save_queue(queue)
     if final_title:
         launch_prefetch("lyrics", final_title, final_artist, real_url)
     send_mpv_cmd(["set_property", "pause", False])
@@ -1634,22 +1617,10 @@ def queue_item(url, title=None, artist=None):
     if not real_url:
         return {"success": False, "error": "Unable to resolve track"}
     start_mpv_daemon()
-
-    stream_target = real_url
-    if is_youtube_url(real_url):
-        save_youtube_meta(real_url, final_title, final_artist)
-        direct_url = resolve_youtube_stream_url(real_url)
-        if direct_url:
-            stream_target = direct_url
-        else:
-            stream_youtube(real_url)
-            stream_target = STREAM_FIFO
-
-    load_mpv(stream_target, "append", final_title)
-    return {"success": True, "target": stream_target}
+    playlist_id = load_mpv(real_url, "append", final_title, final_artist)
+    return {"success": playlist_id is not None, "playlist_id": playlist_id}
 
 def stop_daemon():
-    terminate_tracked_pid(STREAM_PID_FILE, expected_signature=["yt-dlp", STREAM_FIFO])
     terminate_tracked_pid(SPECTRUM_PID_FILE, expected_signature="spectrum.py")
     if os.path.exists(SOCK_PATH):
         send_mpv_cmd(["quit"])
@@ -1663,11 +1634,9 @@ if __name__ == "__main__":
 
     action = sys.argv[1]
     if action == "_worker":
-        pid_file, signature, output, command = sys.argv[2], json.loads(sys.argv[3]), sys.argv[4], sys.argv[5:]
+        pid_file, signature, command = sys.argv[2], json.loads(sys.argv[3]), sys.argv[4:]
         if pid_file:
             save_tracked_proc(pid_file, os.getpid(), signature)
-        if output:
-            os.dup2(os.open(output, os.O_WRONLY), 1)
         os.execvp(command[0], command)
     elif action == "_prefetch":
         kind, args = sys.argv[2], sys.argv[3:]
@@ -1679,6 +1648,8 @@ if __name__ == "__main__":
             download_thumbnail(*args)
     elif action == "status":
         print(json.dumps(get_status()))
+    elif action == "watch":
+        watch_status()
     elif action == "history":
         lim = int(sys.argv[2]) if len(sys.argv) > 2 else 30
         print(json.dumps(parse_history(lim)))
@@ -1789,7 +1760,7 @@ if __name__ == "__main__":
         t = sys.argv[3] if len(sys.argv) > 3 else ""
         a = sys.argv[4] if len(sys.argv) > 4 else ""
         appended = queue_item(url, t, a)
-        print(json.dumps(add_to_queue(url, t, a, appended.get("target"))))
+        print(json.dumps(add_to_queue(url, t, a, appended.get("playlist_id"))))
     elif action in ["queue_list", "get_queue"]:
         source = sys.argv[2] if len(sys.argv) > 2 else ""
         if source == "mpd":

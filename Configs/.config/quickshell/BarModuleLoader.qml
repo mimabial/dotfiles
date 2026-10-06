@@ -80,7 +80,7 @@ Loader {
         id: barTarget
         anchors.fill: parent
         z: 10
-        enabled: !root.hosted && !root.spacer && root.moduleId !== "tray" && root.shell.layoutName === "winbar"
+        enabled: !root.hosted && !root.spacer && root.moduleId !== "tray" && root.shell.barModules.includes("tray")
         keys: ["bar-module", "tray-module"]
         onDropped: drop => {
             const source = drop.source as BarModuleLoader

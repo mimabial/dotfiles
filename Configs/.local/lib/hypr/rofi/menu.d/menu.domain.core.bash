@@ -23,7 +23,7 @@ menu_register_domain_core() {
 
   menu_define learn_keybindings "Keybindings"
   menu_add_item learn_keybindings "  Hyprland" action learn_keybindings_hyprland
-  menu_add_item learn_keybindings "  Kitty" action learn_keybindings_kitty
+  menu_add_item learn_keybindings "󰄛  Kitty" action learn_keybindings_kitty
   menu_add_item learn_keybindings "  Tmux" action learn_keybindings_tmux
 
   menu_define learn_scripting "Scripting"

@@ -44,7 +44,11 @@ ShellRoot {
     property var barLayout: ({})
     property var layoutData: ({})
     readonly property var barSections: ["left", "center", "right", "tray"]
-    function moduleIds(sections) { return sections.reduce((all, key) => all.concat(Array.isArray(barLayout[key]) ? barLayout[key] : []), []).map(item => typeof item === "string" ? item : String(item.id || "")) }
+    function moduleIds(sections) {
+        const entries = sections.reduce((allEntries, section) =>
+            allEntries.concat(Array.isArray(barLayout[section]) ? barLayout[section] : []), [])
+        return entries.map(entry => typeof entry === "string" ? entry : String(entry.id || ""))
+    }
     readonly property var barModules: moduleIds(barSections)
     // the tray's modules exist only while its flyout is open
     property bool trayOpen: false
@@ -60,48 +64,57 @@ ShellRoot {
         const instance = typeof entry === "string" || entry.trayInstance == null ? "" : String(entry.trayInstance)
         return layoutName + ":" + section + ":" + id + (instance ? ":instance:" + instance : "")
     }
-    function assignTrayInstances(data) {
-        if (data.panel !== "winbar") return false
-        let changed = false
+    function parseTrayKey(key) {
+        const parts = key.split(":")
+        return { section: parts[1], entryId: parts.slice(2).join(":") }
+    }
+    function ensureUniqueTrayInstances(layout) {
+        if (layout.panel !== "winbar") return false
+        let assignedInstances = false
         for (const section of barSections) {
-            if (!Array.isArray(data[section])) continue
-            const seen = new Set()
-            const used = new Set(data[section].filter(entry => typeof entry === "object" && entry && entry.trayInstance != null)
+            if (!Array.isArray(layout[section])) continue
+            const seenKeys = new Set()
+            const usedInstances = new Set(layout[section].filter(entry => typeof entry === "object" && entry && entry.trayInstance != null)
                 .map(entry => String(entry.trayInstance)))
-            let next = 1
-            for (let index = 0; index < data[section].length; index++) {
-                let entry = data[section][index]
-                let key = trayKey(section, entry)
-                if (seen.has(key)) {
+            let nextInstanceNumber = 1
+            for (let index = 0; index < layout[section].length; index++) {
+                let entry = layout[section][index]
+                let moduleKey = trayKey(section, entry)
+                if (seenKeys.has(moduleKey)) {
                     let instance
-                    do { instance = "auto-" + next++ } while (used.has(instance))
-                    used.add(instance)
+                    do { instance = "auto-" + nextInstanceNumber++ } while (usedInstances.has(instance))
+                    usedInstances.add(instance)
                     entry = typeof entry === "string" ? { id: entry, trayInstance: instance }
                         : Object.assign({}, entry, { trayInstance: instance })
-                    data[section][index] = entry
-                    key = trayKey(section, entry)
-                    changed = true
+                    layout[section][index] = entry
+                    moduleKey = trayKey(section, entry)
+                    assignedInstances = true
                 }
-                seen.add(key)
+                seenKeys.add(moduleKey)
             }
         }
-        return changed
+        return assignedInstances
     }
-    function moveBarModule(key, section, target, after) {
-        if (layoutName !== "winbar" || !barSections.includes(section) || target === key) return
-        const from = key.split(":")[1], data = JSON.parse(JSON.stringify(layoutData))
-        const index = (data[from] || []).findIndex(entry => trayKey(from, entry) === key)
-        const unlistedIcon = key.split(":").slice(2).join(":")
-        if (index < 0 && !unlistedIcon.startsWith("icon:")) return
-        const entry = index < 0 ? unlistedIcon : data[from].splice(index, 1)[0]
-        data[section] = data[section] || []
-        let position = data[section].findIndex(item => trayKey(section, item) === target)
-        if (position < 0) position = data[section].length
-        else if (after) position++
-        data[section].splice(position, 0, entry)
-        assignTrayInstances(data)
-        layoutData = data; barLayout = data
-        layoutFile.setText(JSON.stringify(data, null, 2) + "\n")
+    function saveMovedBarLayout(layout) {
+        const output = JSON.stringify(layout, null, 2) + "\n"
+        if (layoutData.extends) { loadSharedLayout(output); sharedLayoutFile.setText(output) }
+        else { layoutData = layout; barLayout = layout; layoutFile.setText(output) }
+    }
+    function moveBarModule(sourceKey, destinationSection, targetKey, afterTarget) {
+        if (!barModules.includes("tray") || !barSections.includes(destinationSection) || targetKey === sourceKey) return
+        const source = parseTrayKey(sourceKey)
+        const editableLayout = JSON.parse(layoutData.extends ? sharedLayoutFile.text() : JSON.stringify(layoutData))
+        const sourceIndex = (editableLayout[source.section] || []).findIndex(entry => trayKey(source.section, entry) === sourceKey)
+        if (sourceIndex < 0 && !source.entryId.startsWith("icon:")) return
+        const movingEntry = sourceIndex < 0 ? source.entryId : editableLayout[source.section].splice(sourceIndex, 1)[0]
+        editableLayout[destinationSection] = editableLayout[destinationSection] || []
+        const destinationEntries = editableLayout[destinationSection]
+        let insertionIndex = destinationEntries.findIndex(entry => trayKey(destinationSection, entry) === targetKey)
+        if (insertionIndex < 0) insertionIndex = destinationEntries.length
+        else if (afterTarget) insertionIndex++
+        destinationEntries.splice(insertionIndex, 0, movingEntry)
+        ensureUniqueTrayInstances(editableLayout)
+        saveMovedBarLayout(editableLayout)
     }
     function toggleTrayIcon(id) {
         prefs.trayHidden = JSON.stringify(trayHidden.includes(id) ? trayHidden.filter(item => item !== id) : trayHidden.concat(id))
@@ -109,7 +122,7 @@ ShellRoot {
     function toggleTrayPin(id) {
         prefs.trayPinned = JSON.stringify(trayPinned.includes(id) ? trayPinned.filter(item => item !== id) : trayPinned.concat(id))
     }
-    readonly property string clockKind: barLayout.clock || (mode === "winbar" ? "winbar" : "top")
+    readonly property string clockKind: barLayout.clock || (mode === "winbar" ? (prefs.winbarSmall ? "winbarSmall" : "winbar") : "top")
     readonly property var selectedClockFormat: ClockFormats.selected(clockKind, prefs[clockKind + "Clock"])
     readonly property bool clockOnBar: !userHidden && ["datetime", "notification-center"].some(id => barModules.includes(id))
     readonly property bool dateModuleVisible: clockOnBar && selectedClockFormat.hasDate
@@ -124,14 +137,14 @@ ShellRoot {
     readonly property int timerNow: Math.floor(timerNowMs / 1000)
     readonly property var activeEntries: timerItems.filter(item => Number(item.epoch) > timerNow).sort((a, b) => a.epoch - b.epoch)
     readonly property var activeTimers: activeEntries.filter(item => item.kind === "timer")
-    readonly property var activeAlarms: activeEntries.filter(item => item.kind === "alarm")
     readonly property alias clockwork: clockworkState
     readonly property alias bitwarden: bitwardenVault
     readonly property alias systemStats: systemStatsService
+    readonly property var wallpaper: Wallpaper
     readonly property var monitorPreviewCoordinator: monitorPreviewGuardLoader.item
     readonly property var dock: dockLoader.item
     readonly property var expose: overviewLoader.item
-    property Theme style: Theme { home: shellRoot.home; styleName: String(shellRoot.barLayout.style || shellRoot.layoutName) }
+    property Theme style: Theme { home: shellRoot.home; styleName: String(shellRoot.barLayout.style || shellRoot.layoutName); variant: shellRoot.prefs.winbarSmall ? "small" : "" }
     readonly property var palette: style.palette
     readonly property color background: role("bg", "#1f2430")
     readonly property color foreground: role("fg", "#ffffff")
@@ -192,8 +205,9 @@ ShellRoot {
     // unscaled: the card's frame has to read as the same weight as the frames on
     // the windows behind it, and Hyprland draws those in raw pixels
     readonly property real borderWidth: style.border
+    property real windowBorderWidth: style.border
     readonly property real moduleRadius: mode === "winbar" ? 0 : rounding
-    readonly property string barEdge: String(barLayout.edge || "top")
+    readonly property string barEdge: String((barLayout.panel === "winbar" && prefs.winbarEdge) || barLayout.edge || "top")
     property real barFloatGap: Style.popupGap
     readonly property real barOpacity: prefs.barOpacity >= 0 ? prefs.barOpacity : workflow === "powersaver" ? 1 : workflow === "windows" ? .5 : .4
     readonly property color barColor: alpha(background, barOpacity)
@@ -209,12 +223,18 @@ ShellRoot {
             id: prefsAdapter
             property int topClock: 2
             property int winbarClock: 0
+            property int winbarSmallClock: 0
             property int macosClock: 0
             property bool barBlur: true
             property real barOpacity: -1
             property bool barFloating: false
             property bool winbarAutoHide: false
             property string winbarCombine: "always"
+            property bool winbarSmall: false
+            property bool winbarWeatherBadge: false
+            property string winbarEdge: ""
+            property bool winbarHighlightLabels: false
+            property bool winbarLimitLabels: false
             property string trayHidden: "[]"
             property string trayPinned: "[]"
             property bool trayShowIcons: true
@@ -269,14 +289,6 @@ ShellRoot {
         next[name] = value
         exposeConfig = next
         exposeSettingsFile.setText(JSON.stringify(next, null, 2) + "\n")
-    }
-    function mediaColor(output) {
-        const classes = output && output.class ? [].concat(output.class) : []
-        const playerRoles = { firefox: "c3", elisa: "c4", mpd: "c2", spotify: "c2", chromium: "c1", chrome: "c1", brave: "c1", vlc: "c5", mpv: "c5" }
-        if (classes.includes("nothing-playing")) return alpha(role("c8", foreground), .4)
-        if (classes.includes("stopped")) return alpha(role("c8", foreground), .6)
-        const player = classes.find(name => playerRoles[name])
-        return alpha(role(playerRoles[player] || "accent", accent), player ? .85 : .7)
     }
     // true while a bar is priming keyboard focus for a freshly opened panel;
     // the focus grab clears during that transition and must not be read as a
@@ -339,8 +351,8 @@ ShellRoot {
     }
     function toggleBarBlur() { prefs.barBlur = !prefs.barBlur }
     function toggleBarFloating() { prefs.barFloating = !prefs.barFloating }
-    function refreshBarFloatGap() { if (!barGapProbe.running) barGapProbe.running = true }
-    function refreshMenuState() { refreshBarFloatGap(); if (!pausedProbe.running) pausedProbe.running = true }
+    function refreshWindowMetrics() { if (!windowMetricsProbe.running) windowMetricsProbe.running = true }
+    function refreshMenuState() { refreshWindowMetrics(); if (!pausedProbe.running) pausedProbe.running = true }
     function menuTargetActive(target) {
         const toggles = {
             style_bar_blur: prefs.barBlur, style_bar_floating: prefs.barFloating,
@@ -358,11 +370,13 @@ ShellRoot {
         const prefix = Object.keys(choices).find(prefix => target.startsWith(prefix))
         return toggles[target] ?? (prefix === undefined ? undefined : target === prefix + choices[prefix])
     }
-    function loadBarFloatGap(raw) {
-        try {
-            const firstCssValue = String(JSON.parse(raw).css || "").trim().split(/\s+/)[0]
-            const gap = parseFloat(firstCssValue)
-            if (isFinite(gap)) barFloatGap = Math.max(0, gap)
+    function loadWindowMetrics(raw) {
+        for (const chunk of String(raw).split(/\n\s*\n/)) try {
+            const data = JSON.parse(chunk)
+            if (data.option === "general:gaps_out") {
+                const gap = parseFloat(String(data.css || "").trim().split(/\s+/)[0])
+                if (isFinite(gap)) barFloatGap = Math.max(0, gap)
+            } else if (data.option === "general:border_size" && typeof data.int === "number") windowBorderWidth = data.int
         } catch (error) {}
     }
     function barLayoutIcon() { return ({top:"", bottom:""})[barEdge] || "" }
@@ -373,11 +387,11 @@ ShellRoot {
     function loadBarLayout(raw) {
         try {
             const data = JSON.parse(raw)
-            const changed = assignTrayInstances(data)
+            const assignedInstances = ensureUniqueTrayInstances(data)
             layoutData = data
             if (layoutData.extends) { barLayout = ({}); sharedLayoutFile.reload() }
             else setBarLayout(layoutData)
-            if (changed) layoutFile.setText(JSON.stringify(data, null, 2) + "\n")
+            if (assignedInstances) layoutFile.setText(JSON.stringify(data, null, 2) + "\n")
         } catch (error) { console.warn("layout " + layoutName + ": " + error); barLayout = ({}) }
     }
     function loadSharedLayout(raw) {
@@ -450,7 +464,7 @@ ShellRoot {
     FileView { path: Quickshell.env("XDG_RUNTIME_DIR") + "/hypr/caffeine-windows"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadCaffeineWindowState(text()); onFileChanged: reload() }
     FileView { path: shellRoot.home + "/.local/state/hypr/window-layout.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.windowLayout = String(text()).match(/layout\s*=\s*["']([^"']+)/)?.[1] ?? ""; onFileChanged: reload() }
     FileView { id: layoutFile; path: shellRoot.home + "/.config/quickshell/layouts/" + shellRoot.layoutName + ".json"; watchChanges: true; atomicWrites: true; printErrors: false; onPathChanged: reload(); onLoaded: shellRoot.loadBarLayout(text()); onFileChanged: reload() }
-    FileView { id: sharedLayoutFile; path: shellRoot.layoutData.extends ? shellRoot.home + "/.config/quickshell/layouts/shared/" + shellRoot.layoutData.extends + ".json" : ""; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadSharedLayout(text()); onFileChanged: reload() }
+    FileView { id: sharedLayoutFile; path: shellRoot.layoutData.extends ? shellRoot.home + "/.config/quickshell/layouts/shared/" + shellRoot.layoutData.extends + ".json" : ""; watchChanges: true; atomicWrites: true; printErrors: false; onLoaded: shellRoot.loadSharedLayout(text()); onFileChanged: reload() }
     FileView {
         id: baseFontFile
         path: shellRoot.home + "/.config/hypr/vars.lua"
@@ -474,7 +488,7 @@ ShellRoot {
     Timer { id: timeVisibilityWrite; interval: 0; running: true; onTriggered: timeVisibilityFile.setText(shellRoot.timeVisibility) }
     Timer { interval: 1000; repeat: true; running: shellRoot.activeEntries.length > 0; triggeredOnStart: true; onTriggered: shellRoot.timerNowMs = Date.now() }
     Process { id: volumeRangeProbe; command: [shellRoot.home + "/.local/lib/hypr/controls/volume-control.sh", "--limits"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadVolumeRange(text) } }
-    Process { id: barGapProbe; command: ["hyprctl", "-j", "getoption", "general:gaps_out"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadBarFloatGap(text) } }
+    Process { id: windowMetricsProbe; command: ["hyprctl", "-j", "--batch", "getoption general:gaps_out ; getoption general:border_size"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadWindowMetrics(text) } }
     Process { id: pausedProbe; command: ["dunstctl", "is-paused"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.notificationsPaused = text.trim() === "true" } }
     Process {
         id: powerProfileRestore
@@ -522,7 +536,7 @@ ShellRoot {
     onLayoutNameChanged: { barRevealed = false; layoutData = ({}); barLayout = ({}); layoutFile.reload() }
     onUserHiddenChanged: if (userHidden) { barRevealed = false; closePopup() }
     onTimeVisibilityChanged: timeVisibilityWrite.restart()
-    Component.onCompleted: { restorePowerProfile(); refreshBarFloatGap() }
+    Component.onCompleted: { restorePowerProfile(); refreshWindowMetrics() }
 
     Connections {
         target: UPower
@@ -530,7 +544,7 @@ ShellRoot {
     }
     Connections {
         target: Hyprland
-        function onRawEvent(event) { if (event && event.name === "configreloaded") shellRoot.refreshBarFloatGap() }
+        function onRawEvent(event) { if (event && event.name === "configreloaded") shellRoot.refreshWindowMetrics() }
     }
 
     IpcHandler {
@@ -550,6 +564,7 @@ ShellRoot {
         function blur(): void { shellRoot.toggleBarBlur() }
         function opacity(percent: string): void { shellRoot.prefs.barOpacity = percent === "auto" ? -1 : Number(percent) / 100 }
         function floating(): void { shellRoot.toggleBarFloating() }
+        function winbarEdge(edge: string): void { shellRoot.prefs.winbarEdge = edge }
         function floatingState(): string { return JSON.stringify({ enabled: shellRoot.prefs.barFloating, gap: shellRoot.barFloatGap }) }
         function popupName(): string { return shellRoot.popupName }
     }

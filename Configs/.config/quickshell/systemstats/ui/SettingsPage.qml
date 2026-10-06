@@ -313,7 +313,7 @@ Column {
 
     ChoiceRow {
       label: "Bar labels"
-      options: [{ value: "text", label: "Letters" }, { value: "icon", label: "Icons" }]
+      options: [{ value: "text", label: "Letters" }, { value: "icon", label: "Icons" }, { value: "none", label: "None" }]
       value: String(Model.settingValue(root.settings, "barLabels"))
       onChanged: function(value) { root.set("barLabels", value) }
     }

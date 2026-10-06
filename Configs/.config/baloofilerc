@@ -1,3 +1,4 @@
 [General]
 dbVersion=2
 folders[$e]=$HOME/Documents/
+only basic indexing=true

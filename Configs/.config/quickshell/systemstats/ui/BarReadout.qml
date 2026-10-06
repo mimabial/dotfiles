@@ -190,7 +190,7 @@ Item {
 
     // Every module but sensors: one label, then graph and/or figure.
     Text {
-      visible: root.module !== "sensors" && root.labelMode !== "text"
+      visible: root.module !== "sensors" && root.labelMode === "icon"
       textFormat: Text.PlainText
       text: root.glyph
       color: root.glyphColor
@@ -243,7 +243,7 @@ Item {
         verticalItemAlignment: Grid.AlignVCenter
 
         Text {
-          visible: root.labelMode !== "text"
+          visible: root.labelMode === "icon"
           textFormat: Text.PlainText
           text: sensorPair.reading.icon || "󰔏"
           color: sensorPair.readingColor

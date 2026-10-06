@@ -1,7 +1,8 @@
 # Animations and shaders
 
-Two small pipelines that work the same way: a directory of presets, a picker, and
-a generated Lua fragment the compositor loads.
+Two small pipelines that work the same way: a directory of presets, a picker in
+the menu tree (`Super + T` then `A` or `S`, or Style in `Super + Space`), and a
+generated Lua fragment the compositor loads.
 
 ## Animations
 
@@ -12,10 +13,10 @@ the GPU is busy · **bounce**, **blink**, **flash**, **vertical** — variations
 different curves and directions · **disable** — none at all
 
 ```bash
-hyprshell animations.sh
+hyprshell animations.sh --set bounce
 ```
 
-The picker writes `~/.local/state/hypr/animations.lua`, which Hyprland loads as a
+Setting one writes `~/.local/state/hypr/animations.lua`, which Hyprland loads as a
 real module. Per-leaf animation keywords like `animations:windows` are keywords
 rather than options, so `hyprctl getoption` cannot enumerate them — if you want to
 know what a preset actually does, read the preset.
@@ -32,7 +33,7 @@ Five screen shaders:
 vision deficiency simulation
 
 ```bash
-hyprshell shaders.sh
+hyprshell shaders.sh --set grayscale
 ```
 
 Same arrangement: `~/.config/hypr/shaders/` shadows

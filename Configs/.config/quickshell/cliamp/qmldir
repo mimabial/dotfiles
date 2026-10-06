@@ -1,7 +1,9 @@
 EqPicker 1.0 EqPicker.qml
 LyricsLine 1.0 LyricsLine.qml
+MediaRow 1.0 MediaRow.qml
 Player 1.0 Player.qml
-RowLike 1.0 RowLike.qml
+RowGlyph 1.0 RowGlyph.qml
 TrackList 1.0 TrackList.qml
+TrackRow 1.0 TrackRow.qml
 Transport 1.0 Transport.qml
 VisPicker 1.0 VisPicker.qml

@@ -27,7 +27,6 @@ import "visualizers/binary.js" as VisBinary
 import "visualizers/terrain.js" as VisTerrain
 import "visualizers/mosaic.js" as VisMosaic
 import "visualizers/scatter.js" as VisScatter
-import "visualizers/rain.js" as VisRain
 import "visualizers/butterfly.js" as VisButterfly
 import "visualizers/plasma.js" as VisPlasma
 import "visualizers/osc_warp.js" as VisOscWarp
@@ -184,7 +183,7 @@ Item {
     "heatmap_wave": VisHeatmapWave.render, "grounded_wave": VisGroundedWave.render,
     "retro": VisRetro.render,
     "matrix": VisMatrix.render, "binary": VisBinary.render, "terrain": VisTerrain.render,
-    "mosaic": VisMosaic.render, "scatter": VisScatter.render, "rain": VisRain.render,
+    "mosaic": VisMosaic.render, "scatter": VisScatter.render,
     "butterfly": VisButterfly.render, "plasma": VisPlasma.render,
     "osc_warp": VisOscWarp.render, "crt_scanline": VisCRTScanline.render,
     "cyber_tunnel": VisCyberTunnel.render
@@ -205,7 +204,7 @@ Item {
     "heatmap_wave": "Heatmap Wave", "grounded_wave": "Baseline Wave",
     "retro": "Retro",
     "matrix": "Matrix", "binary": "Binary", "terrain": "Terrain",
-    "mosaic": "Mosaic", "scatter": "Scatter", "rain": "Rain",
+    "mosaic": "Mosaic", "scatter": "Scatter",
     "butterfly": "Butterfly", "plasma": "Liquid Plasma",
     "osc_warp": "Oscilloscope Warp", "crt_scanline": "CRT Radar Scope",
     "cyber_tunnel": "3D Cyber Tunnel"

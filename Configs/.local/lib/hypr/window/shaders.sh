@@ -3,9 +3,7 @@
 set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
-hypr_runtime_require state rofi || exit 1
-# shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
+hypr_runtime_require state || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/window/stateful-choice.common.bash"
 
@@ -18,11 +16,10 @@ compiled_shader_file="${shaders_cache_dir}/compiled.cache.glsl"
 show_help() {
   cat <<HELP
 Usage: $0 [OPTIONS]
-Select, set or reload the active screen shader.
+Set or reload the active screen shader.
 
 Options:
-    --select | -S       Select a shader from the available options
-    --set NAME          Set a shader without opening the selector
+    --set NAME          Set a shader
     --list              List selectable shaders as name, icon and description
     --reload | -r       Reload the current shader
     --quiet  | -q       Suppress success notifications
@@ -80,36 +77,6 @@ list_shaders() {
   } | sed '/^$/d' | while IFS= read -r name; do
     printf '%s\t\t\n' "${name}"
   done
-}
-
-select_shader() {
-  local shader_items=""
-  local selected_shader=""
-
-  shader_items="$(list_shader_names)"
-  if resolve_shader_path neutral >/dev/null 2>&1; then
-    shader_items=$(printf 'neutral\n%s\n' "${shader_items}" | sed '/^$/d')
-  fi
-
-  [[ -n "${shader_items}" ]] || {
-    send_ephemeral_notif "hypr-shader-error" -t 3000 -i "preferences-desktop-display" "Error" "No shader files found in ${shaders_user_dir} or ${shaders_shared_dir}"
-    exit 1
-  }
-
-  hypr_stateful_choice_select \
-    "Select shader" \
-    "🎨 Select shader..." \
-    "clipboard" \
-    "${ROFI_SHADER_SCALE:-}" \
-    "${ROFI_SHADER_FONT:-${ROFI_FONT:-}}" \
-    "$(normalize_shader_name "$(state_get "HYPR_SHADER" "neutral")")" \
-    "${shader_items}" \
-    selected_shader
-
-  [[ -n "${selected_shader}" ]] || exit 0
-  selected_shader="$(normalize_shader_name "${selected_shader}")"
-
-  hypr_stateful_choice_apply "HYPR_SHADER" "${selected_shader}" "hypr-shader" "Shader selected" compile_and_activate_shader
 }
 
 reload_shader() {
@@ -207,8 +174,8 @@ if [[ -z "${*}" ]]; then
   exit 1
 fi
 
-LONG_OPTS="select,set:,list,help,reload,quiet"
-SHORT_OPTS="Shrq"
+LONG_OPTS="set:,list,help,reload,quiet"
+SHORT_OPTS="hrq"
 PARSED=$(getopt --options "${SHORT_OPTS}" --longoptions "${LONG_OPTS}" --name "$0" -- "$@") || exit 2
 eval set -- "${PARSED}"
 
@@ -217,9 +184,6 @@ shader_set_name=""
 
 while true; do
   case "$1" in
-    -S | --select)
-      action="select"
-      ;;
     --set)
       action="set"
       shader_set_name="${2:-}"
@@ -252,9 +216,6 @@ while true; do
 done
 
 case "${action}" in
-  select)
-    select_shader
-    ;;
   set)
     [[ -n "${shader_set_name}" ]] || {
       echo "Error: --set requires a shader name" >&2

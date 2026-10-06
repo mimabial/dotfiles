@@ -83,7 +83,6 @@ PopupWindow {
             || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) { activateCursor(); return true }
         return false
     }
-    // see StartMenuFlyout: equal-size sibling rows do not re-trigger anchoring
     onAnchorItemChanged: if (root.open) anchor.updateAnchor()
 
     visible: open
@@ -91,7 +90,6 @@ PopupWindow {
     implicitWidth: contentWidth
     implicitHeight: flyColumn.implicitHeight + padding * 2
 
-    // see StartMenuFlyout: row-sized rect so the compositor can flip this level
     anchor {
         window: root.anchorWindow
         adjustment: PopupAdjustment.FlipX | PopupAdjustment.Slide

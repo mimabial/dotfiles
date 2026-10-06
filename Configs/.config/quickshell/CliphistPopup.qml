@@ -2,14 +2,12 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import Quickshell.Io
+import "Ui" as Ui
 
-// Full replacement for the rofi clipboard menu: history, favourites, search
-// and per-entry delete/favourite. OCR and QR live on the capture submap, since
-// they select a screen region rather than reading from history.
 PopupCard {
     id: root
     popupName: "cliphist"
-    keyboardHint: "Type to search · ↑↓ move · Enter copy · Del remove · Esc close"
+    keyboardHint: wipeDialog.opened ? "←→/Tab choose · Enter confirm · Esc cancel" : "Type to search · ↑↓ move · Enter copy · Del remove · Esc close"
     contentWidth: Style.px(430)
     contentHeight: Style.px(470)
 
@@ -65,12 +63,13 @@ PopupCard {
     onPreviewImageKeyChanged: {
         previewImagePath = ""
         if (previewImageKey !== "")
-            imageProc.exec(["python3", shell.home + "/.local/lib/hypr/rofi/cliphist.image.py", previewImageKey])
+            imageProc.exec([shell.home + "/.local/lib/hypr/clipboard/cliphist.sh", "--panel-image", previewImageKey])
     }
 
     // the search box can never hold focus (the bar owns it), so typing is routed
     // through the field's text, which stays the single source of truth
     function handleKey(event) {
+        if (wipeDialog.opened) return wipeDialog.handleKey(event)
         if (event.key === Qt.Key_Delete && searchField.text === "" && rows.length > 0) {
             deleteRow(rows[Math.max(0, cursorIndex)]); return true
         }
@@ -99,7 +98,7 @@ PopupCard {
     }
 
     onOpenChanged: {
-        if (!open) { filter = ""; view = "history"; previewExpanded = false; return }
+        if (!open) { filter = ""; view = "history"; previewExpanded = false; wipeDialog.opened = false; return }
         refresh()
         searchField.forceActiveFocus()
     }
@@ -333,8 +332,24 @@ PopupCard {
             PopupRow {
                 width: parent.width; shell: root.shell
                 icon: "\u{f0a79}"; title: "Clear all"
-                onClicked: root.act(["-w"], false)
+                onClicked: { wipeDialog.selectedIndex = 0; wipeDialog.opened = true }
             }
+        }
+    }
+
+    Ui.ConfirmDialog {
+        id: wipeDialog
+        anchors.fill: parent
+        z: 10
+        message: "Clear clipboard history? Favourites are kept."
+        confirmText: "Clear"
+        background: root.background
+        foreground: root.shell.foreground
+        fontFamily: root.shell.fontFamily
+        onCanceled: opened = false
+        onConfirmed: {
+            opened = false
+            root.act(["--wipe"], false)
         }
     }
 }

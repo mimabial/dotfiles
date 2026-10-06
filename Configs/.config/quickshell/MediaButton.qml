@@ -1,10 +1,20 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import Quickshell.Services.Mpris
 
 Item {
     id: root
     required property var shell
     property string appearance: "countdown"
+    property int cavaBars: 16
+    property real cavaBarWidth: 2
+    property real cavaGap: 1
+    property string cavaPosition: "center"
+    property string cavaMode: "bars"
+    property int cavaFps: 20
+    property real cavaGain: 1
+    property int cavaSmoothing: 77
+    property bool noIcon: false
     property bool popupEnabled: true
     property int albumArtSize: 18
     property bool showAlbumArt: true
@@ -45,8 +55,9 @@ Item {
     readonly property var idleQuote: idleQuotes.length ? idleQuotes[idleQuoteIndex % idleQuotes.length] : null
     readonly property string idleText: idleQuote
         ? (showArtist && idleQuote.author ? idleQuote.author + " — " : "") + idleQuote.text : ""
+    readonly property bool cavaAppearance: appearance === "cava"
     readonly property bool mprisAppearance: appearance === "mpris"
-    readonly property bool iconAppearance: appearance === "icon"
+    readonly property bool iconAppearance: appearance === "icon" && !noIcon
     readonly property var player: Media.player
     readonly property Item simpleItem: simpleLoader.item as Item
     readonly property bool hasPlayer: player !== null
@@ -54,7 +65,7 @@ Item {
     readonly property bool shown: hasPlayer || showWhenIdle
     readonly property int artSize: Math.max(Style.px(12), Style.px(albumArtSize))
     readonly property int fixedWidth: (transport.visible ? transport.implicitWidth + contents.spacing : 0)
-        + artSize + metadata.spacing + Style.px(12)
+        + (noIcon ? 0 : artSize + metadata.spacing) + Style.px(12)
     readonly property string displayText: !hasPlayer ? idleText : showArtist && Media.artist && Media.title
         ? Media.artist + " — " + Media.title : Media.title || Media.artist
 
@@ -70,9 +81,13 @@ Item {
 
     function wheel(delta) { if (delta > 0) Media.previous(); else if (delta < 0) Media.next() }
     function cycleIdleQuote() { if (idleQuotes.length > 1) idleQuoteIndex = (idleQuoteIndex + 1) % idleQuotes.length }
+    function rightClick() {
+        if (cavaAppearance) cavaMode = Cava.modes[(Cava.modes.indexOf(cavaMode) + 1) % Cava.modes.length]
+        else Media.playPause()
+    }
     function metadataClick(button) {
         if (button === Qt.MiddleButton) Media.previous()
-        else if (button === Qt.RightButton) Media.playPause()
+        else if (button === Qt.RightButton) rightClick()
         else shell.togglePopup("media")
     }
 
@@ -90,12 +105,13 @@ Item {
         width: root.simpleItem ? root.simpleItem.implicitWidth : 0
         // swapping left/horizontalCenter anchors after creation briefly sets both, which pins width to 0
         x: root.fillAvailableWidth ? 0 : (root.width - width) / 2
-        active: !root.mprisView
+        active: root.shown && !root.mprisView
         sourceComponent: simpleView
     }
     Component {
         id: simpleView
         BarButton {
+            id: readout
             shell: root.shell
             opensPopup: true
             css: "mediaplayer"
@@ -105,13 +121,44 @@ Item {
             textColor: !root.player && root.showWhenIdle ? shell.alpha(shell.foreground, .5)
                 : box.color !== undefined ? styleColor("color")
                 : shell.alpha(shell.role("act_fg", shell.foreground), .7)
-            leadingIcon: !root.player && root.showWhenIdle && !root.iconAppearance ? root.idleIcon : ""
-            text: root.player ? Media.icon(root.player) + (root.iconAppearance ? "" : "  " + Media.remaining(root.player))
+            leadingIcon: !root.noIcon && !root.player && root.showWhenIdle && !root.iconAppearance ? root.idleIcon : ""
+            text: root.player ? root.cavaAppearance ? (root.noIcon ? "" : Media.icon(root.player)) : (root.noIcon ? Media.remaining(root.player)
+                : Media.icon(root.player) + (root.iconAppearance ? "" : "  " + Media.remaining(root.player)))
                 : root.showWhenIdle ? (root.iconAppearance ? root.idleIcon : root.idleText) : ""
+            tooltip: root.cavaAppearance && root.hasPlayer ? root.displayText : ""
+            trailingWidth: spectrum.active ? spectrum.width + (text ? Style.sm : 0) : 0
             onHoveredChanged: if (hovered && !root.player && !root.iconAppearance) root.cycleIdleQuote()
-            onClicked: button => button === Qt.RightButton ? Media.playPause()
+            onClicked: button => button === Qt.RightButton ? root.rightClick()
                 : button === Qt.MiddleButton ? Media.next() : root.shell.togglePopup("media")
             onWheeled: delta => root.wheel(delta)
+            Binding on implicitHeight {
+                when: spectrum.active
+                value: Math.max(readout.box.minHeight, root.artSize) + readout.verticalInsets
+            }
+            Loader {
+                id: spectrum
+                active: root.cavaAppearance && root.hasPlayer
+                opacity: root.player?.isPlaying ? 1 : root.player?.playbackState === MprisPlaybackState.Paused ? 0.25 : 0.1
+                anchors.right: parent.right
+                anchors.rightMargin: readout.box.margin[1] + readout.paintedBorderWidth + readout.box.padding[1]
+                anchors.verticalCenter: parent.verticalCenter
+                width: (item as Item)?.implicitWidth ?? 0
+                height: root.artSize
+                sourceComponent: Component {
+                    CavaView {
+                        shell: root.shell
+                        playing: !!root.player?.isPlaying
+                        barCount: root.cavaBars
+                        barWidth: Style.px(root.cavaBarWidth)
+                        gap: Style.px(root.cavaGap)
+                        position: root.cavaPosition
+                        mode: root.cavaMode
+                        frameRate: root.cavaFps
+                        gain: root.cavaGain
+                        smoothing: root.cavaSmoothing
+                    }
+                }
+            }
         }
     }
 
@@ -144,6 +191,7 @@ Item {
           Item {
             id: artContainer
             width: root.artSize; height: root.artSize
+            visible: !root.noIcon
             anchors.verticalCenter: parent.verticalCenter
 
             Rectangle { anchors.fill: parent; radius: Style.px(3); color: root.shell.alpha(root.shell.foreground, .08) }

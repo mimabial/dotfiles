@@ -14,8 +14,9 @@ remove_gaming_package() {
 
 menu_register_domain_system() {
   menu_define remove "Remove"
-  menu_add_item remove "󰣇  Package" action remove_package
+  menu_add_item remove "󰏖  Package" action remove_package
   menu_add_item remove "  Font" action remove_font
+  menu_add_item remove "󰗊  Language" action remove_language
   menu_add_item remove "  Web App" action remove_webapp
   menu_add_item remove "  TUI" action remove_tui
   menu_add_item remove "  Gaming" submenu remove_gaming
@@ -41,8 +42,8 @@ menu_register_domain_system() {
   menu_add_item update "󰃤  Collect debug log" action update_debug_log
 
   menu_define update_process "Desktop processes"
-  menu_add_item update_process "  Restart Hypridle" action update_process_hypridle
-  menu_add_item update_process "  Restart Hyprsunset" action update_process_hyprsunset
+  menu_add_item update_process "󰒲  Restart Hypridle" action update_process_hypridle
+  menu_add_item update_process "󰖚  Restart Hyprsunset" action update_process_hyprsunset
   menu_add_item update_process "󰍜  Reload Quickshell" action update_process_quickshell
   menu_add_item update_process "󰀻  Close Rofi instances" action update_process_rofi
   menu_add_item update_process "󰒓  Restart desktop portals" action update_process_portals
@@ -54,8 +55,8 @@ menu_register_domain_system() {
   menu_add_item update_hardware "󰋊  Repair NTFS mount" action update_hardware_ntfs
 
   menu_define update_password "Change password"
-  menu_add_item update_password "  Change drive encryption password" action update_password_drive
-  menu_add_item update_password "  Change user password" action update_password_user
+  menu_add_item update_password "󰋊  Change drive encryption password" action update_password_drive
+  menu_add_item update_password "󰀋  Change user password" action update_password_user
 
   menu_define system "System"
   menu_add_item system "󱂬  Window Sessions" submenu system_session

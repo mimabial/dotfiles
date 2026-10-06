@@ -30,7 +30,6 @@ Usage: $0 [OPTIONS]
 Switch the active workflow profile, or report the one the bar should show.
 
 Options:
-    --select | -S       Select a workflow from the available options
     --set               Set the given workflow
     --reconcile         Restore the active workflow's runtime side effects
     --list              List selectable workflows as name, icon and description
@@ -69,92 +68,58 @@ get_workflow_description() {
   printf '%s\n' "${description:-No description available}"
 }
 
-apply_quickshell_workflow() {
-  local layout current_layout_name saved_layout target_layout=""
-  local last_applied
+current_bar_edge() {
+  PYTHONPATH="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}" python3 -c 'from pyutils.bar_position import bar_position; print(bar_position())'
+}
 
-  layout="$(get_workflow_quickshell_layout "${current_workflow_path}")"
+bar_layout_on_current_edge() {
+  PYTHONPATH="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}" python3 - "$@" <<'PY'
+import sys
+from pyutils.bar_position import bar_position
+edge = bar_position()
+print(next((layout for layout in sys.argv[1:] if bar_position(layout) == edge), sys.argv[1]))
+PY
+}
+
+apply_quickshell_workflow() {
+  local current_layout_name saved_layout target_layout=""
+  local last_applied allowed
+
+  read -ra allowed <<<"$(get_workflow_quickshell_layout "${current_workflow_path}")"
   current_layout_name="$(state_get "QUICKSHELL_LAYOUT_NAME" "top")"
   saved_layout="$(state_get "WORKFLOW_QUICKSHELL_PREV_LAYOUT" "")"
   last_applied="$(state_get "WORKFLOW_QUICKSHELL_LAST_APPLIED_LAYOUT" "")"
 
-  if [[ -n "${layout}" ]]; then
-    if [[ "${workflow_previous_name}" != "${current_workflow}" ]]; then
-      [[ "${current_layout_name}" != "${layout}" ]] && target_layout="${layout}"
-      [[ -n "${target_layout}" && -z "${saved_layout}" ]] && state_set "WORKFLOW_QUICKSHELL_PREV_LAYOUT" "${current_layout_name}" "staterc"
+  if ((${#allowed[@]})); then
+    if [[ "${workflow_previous_name}" != "${current_workflow}" && " ${allowed[*]} " != *" ${current_layout_name} "* ]]; then
+      target_layout="$(bar_layout_on_current_edge "${allowed[@]}")"
+      [[ -z "${saved_layout}" ]] && state_set "WORKFLOW_QUICKSHELL_PREV_LAYOUT" "${current_layout_name}" "staterc"
     fi
   elif [[ -n "${saved_layout}" ]]; then
     state_set "WORKFLOW_QUICKSHELL_PREV_LAYOUT" "" "staterc"
     if [[ -z "${last_applied}" || "${current_layout_name}" == "${last_applied}" ]]; then
-      [[ "${current_layout_name}" != "${saved_layout}" ]] && target_layout="${saved_layout}"
+      target_layout="$(bar_layout_on_current_edge "${saved_layout}" top bottom)"
+      [[ "${target_layout}" == "${current_layout_name}" ]] && target_layout=""
     fi
   fi
 
   [[ -n "${target_layout}" ]] || return 0
+  if [[ "${target_layout}" == winbar ]]; then
+    quickshell ipc call bar winbarEdge "$(current_bar_edge)" >/dev/null 2>&1 || true
+  fi
   state_set "WORKFLOW_QUICKSHELL_LAST_APPLIED_LAYOUT" "${target_layout}" "staterc"
   state_set "QUICKSHELL_LAYOUT_NAME" "${target_layout}" "staterc"
   hyprshell render/dunst.py >/dev/null 2>&1 || true
 }
 
 sync_workflow_flags() {
-  local windows=0 gaming=0
-  [[ "${current_workflow}" == windows ]] && windows=1
-  [[ "${current_workflow}" == gaming ]] && gaming=1
-  state_set HYPR_FOCUSMODE "${windows}" staterc
-  state_set HYPR_GAMEMODE "${gaming}" staterc
+  state_set WORKFLOW_WINDOW_LAYOUT "$(sed -n 's/^[[:space:]]*runtime\.config("general\.layout",[[:space:]]*"\([^"]*\)").*/\1/p' "${current_workflow_path}" | head -n1)" staterc
+  state_set WORKFLOW_QUICKSHELL_LAYOUT "$(get_workflow_quickshell_layout "${current_workflow_path}")" staterc
 }
 
 get_workflow_quickshell_layout() {
   local workflow_path="$1"
   sed -n 's/^[[:space:]]*vars\.set("WORKFLOW_QUICKSHELL_LAYOUT",[[:space:]]*"\([^"]*\)").*/\1/p' "${workflow_path}" | head -n1
-}
-
-select_workflow() {
-  local default_path default_icon workflow_list workflow_path workflow_name workflow_icon
-  local selected_workflow
-  local workflow_count=1
-  local max_lines=11
-  local menu_lines=0
-
-  hypr_runtime_require rofi
-  # shellcheck source=/dev/null
-  source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
-
-  default_path="$(resolve_workflow_path default)" || {
-    dunstify -t 3000 -i "preferences-desktop-display" "Error" "Default workflow not found in ${workflows_user_dir} or ${workflows_shared_dir}"
-    exit 1
-  }
-  default_icon="$(get_workflow_icon "${default_path}")"
-  workflow_list="${default_icon}\t default"
-
-  while IFS= read -r workflow_name; do
-    [[ "${workflow_name}" == "default" || "${workflow_name}" == "gaming" || "${workflow_name}" == "powersaver" ]] && continue
-    workflow_path="$(resolve_workflow_path "${workflow_name}")" || continue
-    workflow_icon="$(get_workflow_icon "${workflow_path}")"
-    workflow_list="${workflow_list}\n${workflow_icon}\t ${workflow_name}"
-    workflow_count=$((workflow_count + 1))
-  done < <(list_workflow_names)
-
-  menu_lines=$((workflow_count < max_lines ? workflow_count : max_lines))
-
-  # 2em per row plus 8em of chrome, matching the clipboard picker it shares a theme with
-  HYPR_STATEFUL_CHOICE_WIDTH_EM=24 \
-    HYPR_STATEFUL_CHOICE_HEIGHT_EM=$((2 * menu_lines + 8)) \
-    hypr_stateful_choice_select \
-    "Select workflow" \
-    " Workflow" \
-    "clipboard" \
-    "${ROFI_WORKFLOW_SCALE:-}" \
-    "${ROFI_WORKFLOW_FONT:-${ROFI_FONT:-}}" \
-    "${workflow_previous_name}" \
-    "$(printf '%b' "${workflow_list}")" \
-    selected_workflow \
-    -theme-str "listview { lines: ${menu_lines}; }"
-
-  [[ -n "${selected_workflow}" ]] || exit 0
-
-  selected_workflow=$(awk -F'\t' '{print $2}' <<<"${selected_workflow}" | xargs)
-  state_set "HYPR_WORKFLOW" "${selected_workflow}" "staterc"
 }
 
 handle_list() {
@@ -225,19 +190,13 @@ if [[ -z "${*}" ]]; then
   exit 1
 fi
 
-LONG_OPTS="select,set:,reconcile,list,bar,help"
-SHORT_OPTS="Sh"
+LONG_OPTS="set:,reconcile,list,bar,help"
+SHORT_OPTS="h"
 PARSED=$(getopt --options "${SHORT_OPTS}" --longoptions "${LONG_OPTS}" --name "$0" -- "$@") || exit 2
 eval set -- "${PARSED}"
 
 while true; do
   case "$1" in
-    -S | --select)
-      workflow_locked && exit 1
-      select_workflow
-      apply_workflow_update
-      exit 0
-      ;;
     --set)
       [[ -n "${2:-}" ]] || {
         echo "Error: --set requires a workflow name"

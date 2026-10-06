@@ -47,6 +47,9 @@ from auto_theme_support import (
 from auto_theme_watch import InotifyPathWatcher
 from pyutils.lock_paths import runtime_lock_path
 
+AUTO_COLOR_MODE = 1
+LEGACY_THEME_COLOR_MODE = "0"
+
 
 class WakeupPipe:
     def __init__(self):
@@ -169,7 +172,7 @@ class AutoThemeDaemon:
         source = staterc_values.get("selected_color_source")
         if source in ("theme", "pywal"):
             return source
-        return "theme" if staterc_values.get("selected_color_mode") in (None, "0") else "pywal"
+        return "theme" if staterc_values.get("selected_color_mode") in (None, LEGACY_THEME_COLOR_MODE) else "pywal"
 
     def _active_palette_matches(self, mode: Literal["light", "dark"], staterc_values: dict) -> bool:
         palette = read_active_palette()
@@ -210,7 +213,7 @@ class AutoThemeDaemon:
     def _is_auto_mode(self) -> bool:
         raw = read_staterc().get("selected_color_mode")
         try:
-            return int(raw) == 1 if raw is not None else False
+            return int(raw) == AUTO_COLOR_MODE if raw is not None else False
         except ValueError:
             return False
 

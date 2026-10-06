@@ -7,11 +7,14 @@ Item {
     id: root
     required property var shell
     readonly property var box: shell.style.box("workspaces")
+    readonly property color inactiveColor: shell.alpha(shell.foreground, .5)
+    readonly property color inactiveWindowColor: shell.alpha(shell.foreground, .10)
     property bool activeOnly: false
     property bool hideActive: false
     property bool popupEnabled: false
     property bool compactStyle: false
     property bool fixedCompactSlots: true
+    property bool showAll: false
     property string numerals: "standard"
     readonly property var numeralSets: ({
         standard: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"],
@@ -52,7 +55,6 @@ Item {
         anchors.rightMargin: root.box.margin[1] + root.box.padding[1] + root.trailingGap
         anchors.bottomMargin: root.box.margin[2] + root.box.padding[2]
         anchors.leftMargin: root.box.margin[3] + root.box.padding[3]
-        columns: 20
         rows: 1
         columnSpacing: root.compactStyle ? Style.px(1) : 0
         rowSpacing: 0
@@ -67,7 +69,7 @@ Item {
                 readonly property bool occupied: ws !== null && ws.toplevels.values.length > 0
                 property bool shown: root.compactStyle && root.fixedCompactSlots
                     ? index < 5 || index < 10 && ws !== null
-                    : ws !== null && (!root.activeOnly || ws.focused) && (!root.hideActive || !ws.focused)
+                    : root.showAll && index < 5 || ws !== null && (!root.activeOnly || ws.focused) && (!root.hideActive || !ws.focused)
                 shell: root.shell
                 opensPopup: true
                 css: focused ? "#workspaces button.active" : "#workspaces button"
@@ -75,8 +77,11 @@ Item {
                 fixedWidth: root.compactStyle ? Style.px(20 + Math.max(0, numeral.length - 1) * 7) : 0
                 text: root.compactStyle && focused ? "󱓻" : numeral
                 fontSize: Style.fontPx(box.fontSize)
-                fontWeight: !root.compactStyle && ((ws && ws.urgent) || (root.activeOnly && root.numerals !== "roman")) ? Font.Bold : Font.Normal
-                textColor: root.compactStyle ? root.shell.foreground : ws && ws.urgent ? root.shell.role("warning", root.shell.foreground) : box.color !== undefined ? styleColor("color") : root.shell.alpha(root.shell.role(hovered || root.activeOnly && root.numerals === "roman" ? "hvr_br" : root.activeOnly ? "act_br" : "br", root.shell.foreground), root.activeOnly && root.numerals === "roman" ? .7 : root.activeOnly || hovered ? .8 : .2)
+                textColor: root.compactStyle ? root.shell.foreground
+                    : ws && ws.urgent ? root.shell.role("warning", root.shell.foreground)
+                    : box.color !== undefined ? styleColor("color")
+                    : !focused && !hovered ? (occupied ? root.inactiveColor : root.inactiveWindowColor)
+                    : root.shell.alpha(root.shell.role(hovered || focused && root.numerals === "roman" ? "hvr_br" : "act_br", root.shell.foreground), occupied ? 1 : focused && root.numerals === "roman" ? .7 : .8)
                 opacity: root.compactStyle && !occupied && !focused ? .5 : 1
                 visible: shown
                 onClicked: button => {
@@ -87,6 +92,15 @@ Item {
                 onWheeled: delta => root.gotoWorkspace(delta > 0 ? "r-1" : "r+1")
                 Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
             }
+        }
+
+        Loader {
+            active: root.shell.workflow === "niri"
+            visible: active
+            Layout.alignment: Qt.AlignTop
+            Layout.topMargin: Math.floor((grid.height - implicitHeight) / 2)
+            Layout.leftMargin: root.box.margin[3]
+            sourceComponent: ColumnMap { shell: root.shell; inactiveColor: root.inactiveColor; inactiveWindowColor: root.inactiveWindowColor }
         }
     }
 

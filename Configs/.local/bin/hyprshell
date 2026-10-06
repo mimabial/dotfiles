@@ -112,10 +112,6 @@ case "${1:-}" in
   logout)
     hyprlogout
     ;;
-  pypr)
-    hyprshell_load_python_helpers || exit 1
-    run_pypr "$@"
-    ;;
   pip)
     hyprshell_load_python_helpers || exit 1
     run_pip "$@"

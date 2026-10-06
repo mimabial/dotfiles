@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 # Sourced module; strict mode is owned by the entrypoint.
 
+vpn_common_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
-source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/provider-notify.common.bash"
+source "${vpn_common_dir}/provider-notify.common.bash"
 # shellcheck source=/dev/null
-source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/provider-state.common.bash"
+source "${vpn_common_dir}/provider-state.common.bash"
+unset vpn_common_dir
 
 quickshell_state_init
 
 vpn_load_env() {
-  QUICKSHELL_VPN_PROVIDER="$(quickshell_state_value "QUICKSHELL_VPN_PROVIDER" "${QUICKSHELL_VPN_PROVIDER:-}")"
-  QUICKSHELL_VPN_ALLOW_AUTO_GEOLOCATION="$(quickshell_state_value "QUICKSHELL_VPN_ALLOW_AUTO_GEOLOCATION" "${QUICKSHELL_VPN_ALLOW_AUTO_GEOLOCATION:-}")"
-  QUICKSHELL_VPN_AUTO_RECONNECT="$(quickshell_state_value "QUICKSHELL_VPN_AUTO_RECONNECT" "${QUICKSHELL_VPN_AUTO_RECONNECT:-}")"
+  quickshell_state_value QUICKSHELL_VPN_PROVIDER "${QUICKSHELL_VPN_PROVIDER:-}" QUICKSHELL_VPN_PROVIDER
+  quickshell_state_value QUICKSHELL_VPN_ALLOW_AUTO_GEOLOCATION "${QUICKSHELL_VPN_ALLOW_AUTO_GEOLOCATION:-}" QUICKSHELL_VPN_ALLOW_AUTO_GEOLOCATION
+  quickshell_state_value QUICKSHELL_VPN_AUTO_RECONNECT "${QUICKSHELL_VPN_AUTO_RECONNECT:-}" QUICKSHELL_VPN_AUTO_RECONNECT
   export QUICKSHELL_VPN_PROVIDER QUICKSHELL_VPN_ALLOW_AUTO_GEOLOCATION QUICKSHELL_VPN_AUTO_RECONNECT
 }
 

@@ -107,42 +107,14 @@ paste_string() {
   fi
 }
 
-ini_write() {
-  local config_file="${1}"
-  local group="${2}"
-  local key="${3}"
-  local value="${4}"
-
-  [[ -n "${config_file}" && -n "${group}" && -n "${key}" ]] || return 1
-
-  if [[ ! -f "${config_file}" ]]; then
-    mkdir -p "$(dirname "${config_file}")" || return 1
-    : >"${config_file}" || return 1
-  fi
-
-  if command -v kwriteconfig6 >/dev/null 2>&1 &&
-    kwriteconfig6 --file "${config_file}" --group "${group}" --key "${key}" "${value}" 2>/dev/null; then
-    return 0
-  fi
-
-  ini_write_fallback "${config_file}" "${group}" "${key}" "${value}"
-}
-
-ini_write_fallback() { ini_write_rewrite "$1" /dev/null single "$2" "$3" "$4"; }
-
 # Batch records bypass KConfig cascade and immutability handling.
-ini_write_records() { ini_write_rewrite "$1" /dev/stdin records; }
-
-ini_write_rewrite() {
+ini_write_records() {
   local config_file="${1}"
-  local records_file="$2" write_mode="$3" ini_group="${4:-}" ini_key="${5:-}" ini_value="${6:-}"
   local config_dir="" tmp_file=""
 
   [[ -z "${config_file}" ]] && return 1
   config_dir="${config_file%/*}"
   [[ "${config_dir}" != "${config_file}" ]] || config_dir=.
-
-  [[ "${write_mode}" != single || (-n "${ini_group}" && -n "${ini_key}") ]] || return 1
 
   if [[ ! -f "${config_file}" ]]; then
     mkdir -p "${config_dir}" || return 1
@@ -151,7 +123,7 @@ ini_write_rewrite() {
 
   tmp_file="$(mktemp "${config_dir}/.ini-write.XXXXXX")" || return 1
 
-  INI_WRITE_MODE="${write_mode}" INI_GROUP="${ini_group}" INI_KEY="${ini_key}" INI_VALUE="${ini_value}" awk -F'\t' '
+  awk -F'\t' '
     function queue(sec, key, value) {
       if (!((sec, key) in pending)) keys[sec, ++key_count[sec]] = key
       if (!(sec in group_seen)) group_order[++group_total] = sec
@@ -166,10 +138,6 @@ ini_write_rewrite() {
           written[sec, k] = 1
         }
       }
-    }
-    BEGIN {
-      if (ENVIRON["INI_WRITE_MODE"] == "single")
-        queue(ENVIRON["INI_GROUP"], ENVIRON["INI_KEY"], ENVIRON["INI_VALUE"])
     }
     FILENAME == ARGV[1] {
       if (NF < 3 || $1 == "" || $2 == "") next
@@ -229,7 +197,7 @@ ini_write_rewrite() {
         }
       }
     }
-  ' "${records_file}" "${config_file}" >"${tmp_file}" || {
+  ' /dev/stdin "${config_file}" >"${tmp_file}" || {
     rm -f "${tmp_file}"
     return 1
   }

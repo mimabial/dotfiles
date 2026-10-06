@@ -30,6 +30,11 @@ Singleton {
     readonly property int knobSize: Math.max(14, Math.round(controlHeight * 0.38))
     readonly property int sliderHeight: knobSize + sm
 
+    readonly property int spotlightWidth: px(750)
+    readonly property int spotlightSearchHeight: px(56)
+    readonly property int spotlightSectionHeight: px(24)
+    readonly property int spotlightListHeight: px(456)
+
     // Popup surfaces. PopupCard defaults from these, and the qs.Commons shim
     // re-exports them so ported panels land on the same glass as the bar's own.
     readonly property real popupSurfaceOpacity: 0.75

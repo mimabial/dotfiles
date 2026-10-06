@@ -19,7 +19,7 @@ Item {
   component MenuDivider: DockMenuDivider { menuWidth: folderStackPopover.rowWidth }
 
   required property var shell
-  readonly property bool dockActive: root.shell.workflow !== "windows"
+  readonly property bool dockActive: !["windows", "niri"].includes(root.shell.workflow)
   property alias contextSelectedWindowIdx: contextMenu.selectedWindowIdx
   property alias dockCardItem: dockCard
 
@@ -1764,12 +1764,6 @@ Item {
     return (target && target.address) ? root.minimizeToplevel(target.address) : false
   }
 
-  function minimizeApp(entry) {
-    return root.minimizeMode === "all"
-      ? root.minimizeAllWindows(entry)
-      : root.minimizeOneWindow(entry)
-  }
-
   // Everything the dock remembers about a window is keyed by address, so one
   // pass over the live windows is enough to drop what closed.
   function pruneWindowState() {
@@ -2964,15 +2958,6 @@ Item {
               else tile.doRestore()
             }
 
-            function doClose() {
-              for (var i = 0; i < groupWins.length; i++) {
-                var w = groupWins[i]
-                if (w && w.address) root.hyprDispatch(
-                  'hl.dsp.window.close({ window = "address:' + w.address + '" })',
-                  "closewindow address:" + w.address)
-              }
-            }
-
             readonly property real tileMain: root.tileMainSize * (root.waveHover ? tile.magnifyScale : 1)
             // A tile is shorter than a slot across the dock and used to anchor
             // itself centred, which a Grid child may not do. The delegate now
@@ -3056,11 +3041,6 @@ Item {
                 // so an immediate captureFrame() warns "no recording context".
                 // A short event-driven retry (never a polling loop) gets every
                 // tile its frame exactly once, after the session is ready.
-                function requestFrame() {
-                  if (hasContent || !captureSource) return
-                  captureRetry.attempts = 0
-                  captureRetry.restart()
-                }
                 onCaptureSourceChanged: {
                   captureRetry.attempts = 0
                   captureRetry.restart()

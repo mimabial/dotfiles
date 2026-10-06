@@ -154,10 +154,6 @@ function tierRamp(tiers, height) {
   return out
 }
 
-function specTierRamp(d, height) {
-  return tierRamp(specTiers(d), height)
-}
-
 function playerTierRamp(d, height) {
   return tierRamp(playerTiers(d), height)
 }

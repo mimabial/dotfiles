@@ -133,8 +133,8 @@ menu_run_rofi() { MENU_RUN_ARGS=("$@"); }
 MENU_FONT_SCALE_CACHE="" MENU_FONT_NAME_CACHE="" MENU_WIDTH_OVERRIDE_CACHE=""
 MENU_BORDER_RADIUS="" MENU_WINDOW_THEME_CACHE=""
 menu_metrics_cache_init
-assert_eq 220 "$(menu_text_column_px)" 'text column excludes the applied window border'
-assert_has "$(menu_content_theme_override Rows 2)" 'width: 500px;' 'search width fits the widest label'
+assert_eq 200 "$(menu_text_column_px)" 'text column excludes the applied window border'
+assert_has "$(menu_content_theme_override Rows 2)" 'width: 520px;' 'search width fits the widest label'
 rofi_focused_monitor_logical_size() { printf '800 600'; }
 assert_has "$(menu_content_theme_override Rows 2)" 'width: 480px;' 'search monitor cap'
 rofi_focused_monitor_logical_size() { printf '1920 1080'; }

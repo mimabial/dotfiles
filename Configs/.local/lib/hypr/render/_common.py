@@ -1,17 +1,29 @@
 """Shared helpers for render/*.py renderers."""
 
 import os
-import subprocess
 import tempfile
 from pathlib import Path
 
+HASH_DIR = (
+    Path(os.environ.get("HYPR_CACHE_HOME") or Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "hypr")
+    / "render-hashes"
+)
+
 
 def cache_hit(app: str, digest: str) -> bool:
-    return subprocess.run(["render-cache", "hit?", app, digest]).returncode == 0
+    if os.environ.get("HYPR_FORCE_REGEN") == "1" or not digest:
+        return False
+    try:
+        return (HASH_DIR / app).read_text().strip() == digest
+    except OSError:
+        return False
 
 
 def cache_store(app: str, digest: str) -> None:
-    subprocess.run(["render-cache", "store", app, digest])
+    if changed_file := os.environ.get("HYPR_THEME_CHANGED_FILE"):
+        Path(changed_file).touch()
+    if os.environ.get("HYPR_NO_CACHE") != "1":
+        atomic_write(HASH_DIR / app, digest + "\n")
 
 
 def atomic_write(path: Path, content: str) -> None:

@@ -29,7 +29,7 @@ rofi_container_radius_override() {
   theme_name="${theme_name%.rasi}"
 
   case "${theme_name}" in
-    style_11 | color_mode_11)
+    style_11)
       printf 'inputbar {border-radius: %spx 0px 0px %spx;} inputbox {border-radius: %spx 0px 0px %spx;} listbox {border-radius: 0px %spx %spx 0px;}' \
         "${base_border_radius}" "${base_border_radius}" \
         "${base_border_radius}" "${base_border_radius}" \
@@ -65,20 +65,12 @@ rofi_window_override() {
   fi
 
   case "${theme_name}" in
-    style_11 | color_mode_11) element_radius="${base_border_radius}" ;;
+    style_11) element_radius="${base_border_radius}" ;;
   esac
   container_override="$(rofi_container_radius_override "${theme_file}" "${base_border_radius}")"
 
-  local prompt_radius=""
-  case "${theme_name}" in
-    color_mode_11) prompt_radius="${base_border_radius}" ;;
-    color_mode_1)  prompt_radius="${window_radius}" ;;
-  esac
-  local prompt_override=""
-  [[ -n "${prompt_radius}" ]] && prompt_override="textbox-prompt-colon {border-radius: ${prompt_radius}px;} prompt {border-radius: ${prompt_radius}px;}"
-
-  printf 'window {border: %spx; border-radius: %spx;} %s %s element {border-radius: %spx;} button {border-radius: %spx;}' \
-    "${hypr_width}" "${window_radius}" "${container_override}" "${prompt_override}" "${element_radius}" "${elem_border}"
+  printf 'window {border: %spx; border-radius: %spx;} %s element {border-radius: %spx;} button {border-radius: %spx;}' \
+    "${hypr_width}" "${window_radius}" "${container_override}" "${element_radius}" "${elem_border}"
 }
 
 rofi_default_border_radius() {

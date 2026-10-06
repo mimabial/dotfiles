@@ -53,44 +53,6 @@ hypr_stateful_choice_list_names() {
   done
 }
 
-# Anything after the output variable is appended to the rofi command line, for
-# per-caller theme overrides. Set HYPR_STATEFUL_CHOICE_{WIDTH,HEIGHT}_EM to size
-# the window to its content; without them the theme's own size applies and the
-# window is placed at the cursor.
-hypr_stateful_choice_select() {
-  local title="$1"
-  local prompt="$2"
-  local icon="$3"
-  local scale="$4"
-  local font="$5"
-  local current="$6"
-  local items="$7"
-  local -n selected_ref="$8"
-  shift 8
-  local width_em="${HYPR_STATEFUL_CHOICE_WIDTH_EM:-}"
-  local height_em="${HYPR_STATEFUL_CHOICE_HEIGHT_EM:-}"
-  local font_name="" font_scale="" position="" window_theme=""
-  local -a rofi_args=()
-
-  if [[ -n "${width_em}" && -n "${height_em}" ]]; then
-    font_scale="$(rofi_effective_font_scale "${scale}")"
-    font_name="$(rofi_effective_font_name "${font}")"
-    rofi_picker_compute_window_geometry \
-      position window_theme "${font_name}" "${font_scale}" \
-      "${width_em}" "${height_em}" \
-      $((width_em * font_scale * ROFI_EM_PX_PER_SCALE)) \
-      $((height_em * font_scale * ROFI_EM_PX_PER_SCALE))
-  fi
-
-  rofi_build_standard_menu_args rofi_args "${title}" "${prompt}" "${icon}" "${scale}" "${font}" \
-    wallbox same "${position}"
-  [[ -n "${window_theme}" ]] && rofi_args+=(-theme-str "${window_theme}")
-  [[ -n "${current}" ]] && rofi_args+=(-select "${current}")
-  rofi_args+=("$@")
-
-  selected_ref="$(printf '%s\n' "${items}" | sed '/^$/d' | rofi_with_background_theme "${rofi_args[@]}")"
-}
-
 # hypr_stateful_choice_write_lua <out-file> [--load <path>] [--config <key> <value>] <NAME=VALUE>...
 # Writes the generated Lua fragment Hyprland picks up through runtime.load.
 hypr_stateful_choice_write_lua() {

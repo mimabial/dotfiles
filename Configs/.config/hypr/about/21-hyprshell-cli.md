@@ -6,9 +6,9 @@ with no arguments and it lists every one of them.
 ```bash
 hyprshell theme.switch.sh -s "Tokyo Night"   # switch theme
 hyprshell wallpaper next --global            # next wallpaper, regenerate colors
-hyprshell util/workflows --select            # pick a workflow
-hyprshell animations.sh                      # animation preset
-hyprshell shaders.sh                         # screen shader
+hyprshell util/workflows --set windows       # switch workflow
+hyprshell animations.sh --set bounce         # animation preset
+hyprshell shaders.sh --set grayscale         # screen shader
 ```
 
 Targets are listed as `category/name`, but the runner is forgiving — `theme/theme.switch`,

@@ -416,11 +416,6 @@ function rateParts(n) {
   return { value: p.value, unit: p.unit + "/s" }
 }
 
-function rateText(n) {
-  var p = rateParts(n)
-  return p.value + " " + p.unit
-}
-
 // Ultra-compact rate for the bar: "0", "34K", "1.2M".
 function compactRate(n) {
   var v = Number(n)
@@ -459,12 +454,6 @@ function tempParts(celsius, unit) {
 function tempText(celsius, unit) {
   var p = tempParts(celsius, unit)
   return p.value + p.unit
-}
-
-function tempLongText(celsius, unit) {
-  var v = tempValue(celsius, unit)
-  if (!isFinite(v)) return "—"
-  return Math.round(v) + (unit === "Fahrenheit" ? "°F" : "°C")
 }
 
 function freqText(mhz) {
@@ -560,6 +549,7 @@ function emptyHistory() {
 
 function emptyPeakBucket() { return { slots: [], series: {} } }
 
+var PEAK_SERIES_LIMIT = 128
 var PEAK_HISTORY_KEYS = [
   "cpuUser", "cpuSystem", "cpuTotal", "cpuTemp", "gpu", "gpuTemp", "vram",
   "memUsed", "memPressure", "netRx", "netTx", "diskRead", "diskWrite",
@@ -578,6 +568,11 @@ function peakValue(value) {
   return isFinite(number) && number >= 0 && number <= 1e15 ? number : null
 }
 
+function raisesPeak(previous, current) {
+  var value = peakValue(current)
+  return value !== null && (peakValue(previous) === null || value > Number(previous))
+}
+
 function normalizePeakBucket(raw, limit) {
   if (!raw || !Array.isArray(raw.slots) || !raw.series || typeof raw.series !== "object") return emptyPeakBucket()
   var slots = raw.slots.slice(-limit)
@@ -586,7 +581,7 @@ function normalizePeakBucket(raw, limit) {
     if (!Number.isSafeInteger(slots[i]) || (i > 0 && slots[i] <= slots[i - 1])) return emptyPeakBucket()
   }
   var series = {}
-  var keys = Object.keys(raw.series).slice(0, 128)
+  var keys = Object.keys(raw.series).slice(0, PEAK_SERIES_LIMIT)
   for (var j = 0; j < keys.length; j++) {
     var key = keys[j], values = raw.series[key]
     if (!validPeakKey(key) || !Array.isArray(values) || values.length < slots.length) continue
@@ -596,9 +591,12 @@ function normalizePeakBucket(raw, limit) {
 }
 
 function peakBucket(previous, slot, values, limit) {
-  var old = previous || emptyPeakBucket()
-  var slots = Array.isArray(old.slots) ? old.slots.slice() : []
-  var series = {}, oldSeries = old.series || {}
+  var old = previous || emptyPeakBucket(), oldSeries = old.series || {}
+  var previousSlots = Array.isArray(old.slots) ? old.slots : [], end = previousSlots.length - 1
+  if (previousSlots[end] === slot && previousSlots.length <= limit && Object.keys(values).every(function(key) {
+    return !validPeakKey(key) || Array.isArray(oldSeries[key]) && !raisesPeak(oldSeries[key][end], values[key])
+  })) return old
+  var slots = previousSlots.slice(), series = {}
   for (var key in oldSeries) if (Array.isArray(oldSeries[key])) series[key] = oldSeries[key].slice()
   var last = slots.length ? slots[slots.length - 1] : slot - 1
   if (last > slot) { slots = []; series = {}; last = slot - 1 }
@@ -608,18 +606,22 @@ function peakBucket(previous, slot, values, limit) {
       for (var existing in series) series[existing].push(null)
     }
   }
-  var index = slots.length - 1
+  var index = slots.length - 1, seriesCount = Object.keys(series).length
   for (var current in values) {
     if (!validPeakKey(current)) continue
     if (!series[current]) {
-      if (Object.keys(series).length >= 128) continue
+      if (seriesCount >= PEAK_SERIES_LIMIT) continue
       series[current] = Array(slots.length).fill(null)
+      seriesCount++
     }
     var value = peakValue(values[current]), prior = series[current][index]
     if (value !== null) series[current][index] = prior === null || prior === undefined ? value : Math.max(prior, value)
   }
-  slots = slots.slice(-limit)
-  for (var stored in series) series[stored] = series[stored].slice(-limit)
+  if (slots.length > limit) {
+    var excess = slots.length - limit
+    slots.splice(0, excess)
+    for (var stored in series) series[stored].splice(0, excess)
+  }
   return { slots: slots, series: series }
 }
 
@@ -673,17 +675,17 @@ function pushHistory(arr, value, max) {
 }
 
 function powerBucket(previous, slot, cpu, gpu, limit) {
-  var old = previous || {}
-  var slots = Array.isArray(old.slots) ? old.slots.slice() : []
+  var old = previous || {}, previousSlots = Array.isArray(old.slots) ? old.slots : [], end = previousSlots.length - 1
+  if (previousSlots[end] === slot && previousSlots.length <= limit && Array.isArray(old.cpu) && Array.isArray(old.gpu)
+      && !raisesPeak(old.cpu[end], cpu) && !raisesPeak(old.gpu[end], gpu)) return old
+  var slots = previousSlots.slice()
   var cpus = Array.isArray(old.cpu) ? old.cpu.slice() : []
   var gpus = Array.isArray(old.gpu) ? old.gpu.slice() : []
   var last = slots.length ? slots[slots.length - 1] : slot - 1
   if (last > slot) { slots = []; cpus = []; gpus = []; last = slot - 1 }
   if (last === slot) {
-    var end = slots.length - 1
-    var nextCpu = peakValue(cpu), nextGpu = peakValue(gpu)
-    if (nextCpu !== null) cpus[end] = peakValue(cpus[end]) === null ? nextCpu : Math.max(cpus[end], nextCpu)
-    if (nextGpu !== null) gpus[end] = peakValue(gpus[end]) === null ? nextGpu : Math.max(gpus[end], nextGpu)
+    if (raisesPeak(cpus[end], cpu)) cpus[end] = peakValue(cpu)
+    if (raisesPeak(gpus[end], gpu)) gpus[end] = peakValue(gpu)
   } else {
     for (var next = Math.max(last + 1, slot - limit + 1); next <= slot; next++) {
       slots.push(next)
@@ -691,7 +693,8 @@ function powerBucket(previous, slot, cpu, gpu, limit) {
       gpus.push(next === slot ? peakValue(gpu) : null)
     }
   }
-  return { slots: slots.slice(-limit), cpu: cpus.slice(-limit), gpu: gpus.slice(-limit) }
+  if (slots.length > limit) { var excess = slots.length - limit; slots.splice(0, excess); cpus.splice(0, excess); gpus.splice(0, excess) }
+  return { slots: slots, cpu: cpus, gpu: gpus }
 }
 
 function maxOf(arr, count) {
@@ -737,16 +740,6 @@ function temperatureColor(ramp, celsius, critical, fallback) {
   var stops = Array.isArray(ramp) && ramp.length ? ramp : FALLBACK_TEMPERATURE_RAMP
   for (var i = 0; i < stops.length; i++) if (normalized >= stops[i].threshold) return stops[i].color || fallback
   return fallback
-}
-
-function parseColorsToml(text) {
-  var out = {}
-  var lines = String(text || "").split("\n")
-  for (var i = 0; i < lines.length; i++) {
-    var m = lines[i].match(/^\s*([A-Za-z0-9_-]+)\s*=\s*["']?(#[0-9A-Fa-f]{6})/)
-    if (m) out[m[1]] = m[2]
-  }
-  return out
 }
 
 function hueOf(c) {

@@ -67,7 +67,7 @@ app is either in front of you or out of the way.
 
 | key | action |
 | --- | ------ |
-| `Super + Arrow` | focus |
+| `Super + Arrow` | focus; in niri, Up/Down switches workspaces |
 | `Super + Shift + Arrow` | move window |
 | `Alt + Tab` | cycle to next window and reveal it |
 | `Alt + Shift + Tab` | cycle backward |

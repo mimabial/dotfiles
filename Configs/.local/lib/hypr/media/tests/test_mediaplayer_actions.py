@@ -6,8 +6,7 @@ from unittest.mock import patch
 MEDIA_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(MEDIA_DIR))
 
-import mediaplayer_actions
-from mediaplayer_actions import cycle_player, dynamic_menu_entries, run_action, run_menu
+from mediaplayer_actions import cycle_player, run_action
 from mediaplayer_presenter import (
     focus_empty_workspace,
     focus_window,
@@ -18,52 +17,7 @@ from mediaplayer_presenter import (
 )
 
 
-class MediaPlayerMenuTests(unittest.TestCase):
-    def test_menu_clamps_using_every_action_without_hiding_rows(self):
-        menu_script = mediaplayer_actions.ROFI_MENU_SCRIPT
-
-        self.assertNotIn("menu_lines > 8", menu_script)
-        self.assertIn("menu_lines * 13 + 4", menu_script)
-        self.assertIn('media_window_theme="window { width:', menu_script)
-
-    @patch("mediaplayer_actions.player_status", return_value="Playing")
-    @patch(
-        "mediaplayer_actions.fetch_player_properties",
-        return_value={
-            "PlaybackStatus": "Playing",
-            "CanPlay": True,
-            "CanPause": True,
-            "CanGoNext": False,
-            "CanGoPrevious": False,
-        },
-    )
-    def test_menu_puts_show_player_first(self, _properties, _status):
-        self.assertEqual(
-            ("Show Player", "show-player"),
-            dynamic_menu_entries("mpd")[0],
-        )
-
-    @patch("mediaplayer_actions.run_resolved_action", return_value=0)
-    @patch("mediaplayer_actions.rofi_menu_index", return_value=0)
-    @patch(
-        "mediaplayer_actions.dynamic_menu_entries",
-        return_value=[("Show Player", "show-player")],
-    )
-    @patch("mediaplayer_actions.fetch_player_properties", return_value={})
-    @patch("mediaplayer_actions.resolve_player", return_value="mpd")
-    def test_menu_reuses_resolved_player_properties(
-        self,
-        _resolve,
-        fetch_properties,
-        menu_entries,
-        _menu_index,
-        run_resolved,
-    ):
-        self.assertEqual(run_menu(), 0)
-        fetch_properties.assert_called_once_with("mpd")
-        menu_entries.assert_called_once_with("mpd", {})
-        run_resolved.assert_called_once_with("show-player", "mpd", {})
-
+class MediaPlayerActionTests(unittest.TestCase):
     @patch("mediaplayer_actions.resolve_player")
     @patch("mediaplayer_actions.write_active_player_state")
     @patch("mediaplayer_actions.read_active_player_state", return_value="")

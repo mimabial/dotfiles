@@ -46,7 +46,10 @@ Item {
   readonly property bool processesSearchable: currentTab === "cpu" || currentTab === "disks" || currentTab === "network"
   readonly property string disksSource: String(Model.settingValue(settings, "disksSource") || "all")
   readonly property string barSensors: String(Model.settingValue(settings, "barSensors") || "cpu")
-  readonly property string barLabels: String(Model.settingValue(settings, "barLabels")).toLowerCase() === "icon" ? "icon" : "text"
+  readonly property string barLabels: {
+    const value = String(Model.settingValue(settings, "barLabels")).toLowerCase()
+    return value === "icon" || value === "none" ? value : "text"
+  }
   readonly property bool opened: panel.open
   implicitWidth: inlineReadouts.width + leftInset + rightInset + Style.space(2)
   implicitHeight: barSize + topInset + bottomInset

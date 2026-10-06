@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -23,6 +24,7 @@ PopupCard {
   readonly property color dim: shell.alpha(foreground, 0.55)
   readonly property color surface: shell.role("bg", shell.background)
   readonly property string fontFamily: shell.fontFamily
+  readonly property var media: Media
 
   property bool isRunning: false
   property string playbackState: "stopped"
@@ -50,6 +52,7 @@ PopupCard {
   // response is only trusted when nothing happened for its whole lifetime.
   property int _commandGen: 0
   property int _statusGen: 0
+  property bool statusPending: false
   property string eqText: "Custom"
   property var audioFx: ({ "eq": "Flat", "loudnorm": false, "spatial": false })
   property int _preMuteVol: 80
@@ -94,7 +97,7 @@ PopupCard {
   property bool isSearching: false
   property string searchQuery: ""
   property string loadingVid: ""
-  property string selectedTab: "history"
+  property string selectedTab: "recents"
   property string urlInputText: ""
   property string visMode: "osc_warp"
   property bool visBackground: true
@@ -108,7 +111,7 @@ PopupCard {
     "siriwave", "soundcloud_wave", "telegram_wave",
     "daw_wave", "led_scrubber", "heatmap_wave", "grounded_wave",
     "retro", "matrix", "binary", "terrain", "mosaic",
-    "scatter", "rain", "butterfly",
+    "scatter", "butterfly",
     "plasma", "osc_warp", "crt_scanline", "cyber_tunnel"
   ]
 
@@ -171,8 +174,7 @@ PopupCard {
     root.shuffleMode = p.shuffleSupported ? p.shuffle : false
     root.repeatMode = !p.loopSupported || p.loopState === MprisLoopState.None ? "off"
       : p.loopState === MprisLoopState.Track ? "track" : "all"
-    if (trackChanged || !p.positionSupported) root.applyMprisPosition(0)
-    root.requestMprisPosition()
+    root.updatePosition(p.positionSupported ? p.position : 0)
     root.resumeVisible = false
     const localPath = newUrl.startsWith("file://") ? decodeURIComponent(newUrl.slice(7)) : ""
     if (trackChanged && localPath && newTrack !== "No track loaded") {
@@ -188,7 +190,7 @@ PopupCard {
     return true
   }
 
-  function applyMprisPosition(seconds) {
+  function updatePosition(seconds) {
     const value = Number(seconds)
     if (!Number.isFinite(value)) return
     root.curSecs = Math.max(0, root.totalSecs > 0 ? Math.min(value, root.totalSecs) : value)
@@ -196,21 +198,6 @@ PopupCard {
     root.timeCurrent = Media.time(root.curSecs)
     root._lastStatusTime = Date.now()
     if (playerComp.lyricsVisible) playerComp.updateLyricsPosition(root.curSecs)
-  }
-
-  function requestMprisPosition() {
-    const p = root.mprisPlayer
-    if (!p || !p.positionSupported || mprisPositionProc.running) return
-    const service = String(p.dbusName || "")
-    if (!service) {
-      root.applyMprisPosition(p.position)
-      return
-    }
-    mprisPositionProc.source = service
-    mprisPositionProc.command = ["dbus-send", "--session", "--print-reply=literal", "--dest=" + service,
-      "/org/mpris/MediaPlayer2", "org.freedesktop.DBus.Properties.Get",
-      "string:org.mpris.MediaPlayer2.Player", "string:Position"]
-    mprisPositionProc.running = true
   }
 
   onMprisPlayerChanged: {
@@ -309,8 +296,8 @@ PopupCard {
       return true
     }
     const row = root.navigableRows[root.cursorIndex]
-    if (event.key === Qt.Key_Q && row && row.queueKeyboard) { row.queueKeyboard(); return true }
-    if (event.key === Qt.Key_Delete && row && row.removeKeyboard) { row.removeKeyboard(); return true }
+    if (event.key === Qt.Key_Q && row && row.enqueue) { row.enqueue(); return true }
+    if (event.key === Qt.Key_Delete && row && row.dequeue) { row.dequeue(); return true }
     if (event.key === Qt.Key_E) { root.showPane(root.eqPickerOpen ? "" : "eq"); return true }
     if (event.key === Qt.Key_V) { root.showPane(root.visPickerOpen ? "" : "vis"); return true }
     if (event.key === Qt.Key_Y) { playerComp.toggleLyrics(); return true }
@@ -324,7 +311,8 @@ PopupCard {
   }
 
   function refresh() {
-    if (statusProc.running || actionProc.running) return
+    if (statusProc.running) { root.statusPending = true; return }
+    if (actionProc.running) return
     root._statusGen = root._commandGen
     statusProc.running = true
   }
@@ -428,7 +416,7 @@ PopupCard {
         recents.push({
           title: h.title || "Track",
           artist: h.artist || "",
-          duration: h.duration_secs ? (Math.floor(h.duration_secs / 60) + ":" + (h.duration_secs % 60 < 10 ? "0" + (h.duration_secs % 60) : (h.duration_secs % 60))) : "",
+          duration: h.duration_secs ? Media.time(h.duration_secs) : "",
           url: h.path || (h.title + " " + h.artist)
         })
       }
@@ -504,7 +492,7 @@ PopupCard {
     startQueueLoad()
   }
 
-  function playQueueItem(item, index) {
+  function playQueueItem(item) {
     if (item.current === true) { togglePlayback(); return }
     if (item.backend === "mpd") { runCmd(["mpd_play", String(item.position)]); return }
     if (item.backend === "youtube" && root.mprisPlayer) {
@@ -512,7 +500,7 @@ PopupCard {
     }
     if (!item.url || !item.url.trim()) return
     playUrl(item.url, item.title, item.artist, true)
-    removeFromQueue(item.queueIndex === undefined ? index : item.queueIndex)
+    removeFromQueue(item.queueIndex)
   }
 
   function clearQueue() {
@@ -548,7 +536,7 @@ PopupCard {
     root.searchQuery = ""
     root.searchResults = []
     root.isSearching = false
-    root.selectedTab = "history"
+    root.selectedTab = "recents"
   }
 
   function playPlaylist(pl) {
@@ -619,31 +607,24 @@ PopupCard {
     liveProc.running = true
   }
 
-  Process {
-    id: mprisPositionProc
-    property string source: ""
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        const p = root.mprisPlayer
-        if (p && String(p.dbusName || "") === mprisPositionProc.source)
-          root.applyMprisPosition(parseInt(text.split("int64")[1]) / 1000000)
-      }
-    }
-  }
-
   Connections {
     target: root.mprisPlayer
     function onMetadataChanged() { root.syncMpris() }
     function onPlaybackStateChanged() { root.syncMpris() }
-    function onPositionChanged() { root.syncMpris() }
+    function onPositionChanged() { root.updatePosition(root.mprisPlayer.position) }
     function onLengthChanged() { root.syncMpris() }
     function onVolumeChanged() { root.syncMpris() }
     function onRateChanged() { root.syncMpris() }
   }
 
+  Connections {
+    target: Media
+    function onElapsedChanged() { if (root.open && root.mprisPlayer) root.updatePosition(Media.elapsed) }
+  }
+
   Process {
     id: statusProc
+    onRunningChanged: if (!running && root.statusPending) { root.statusPending = false; root.refresh() }
     command: ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "status"]
     stdout: StdioCollector {
       waitForEnd: true
@@ -823,25 +804,7 @@ PopupCard {
       root.loadingVid = ""
       root.refresh()
       if (root.open) root.loadQueue()
-      // On cold start (first play after reboot) mpv needs 1-4s to boot + buffer.
-      // Poll again at 1s and 3.5s so the UI catches the playing state.
-      coldStartTimer.restart()
     }
-  }
-
-  Timer {
-    id: coldStartTimer
-    interval: 1000; repeat: false; running: false
-    onTriggered: {
-      root.refresh()
-      coldStartTimer2.restart()
-    }
-  }
-
-  Timer {
-    id: coldStartTimer2
-    interval: 2500; repeat: false; running: false
-    onTriggered: root.refresh()
   }
 
   // Avoids the first post-reboot play paying mpv's startup cost.
@@ -855,11 +818,23 @@ PopupCard {
     id: spectrumProc
   }
 
-  Timer {
-    id: pollTimer
-    interval: 500
-    running: root.open; repeat: true; triggeredOnStart: true
-    onTriggered: if (root.mprisPlayer) root.requestMprisPosition(); else root.refresh()
+  Process {
+    command: ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "watch"]
+    running: root.open && !root.externalMedia && root.isRunning
+    onRunningChanged: if (!running && root.open && !root.externalMedia) root.refresh()
+    stdout: SplitParser { onRead: line => {
+        const event = JSON.parse(line)
+        if (event.name === "time-pos") root.updatePosition(event.data)
+        else root.refresh()
+    } }
+  }
+  Instantiator {
+    model: ["vis_mode.txt", "vis_bg.txt", "vis_bg_pulse.txt", "audio_fx.json", "eq.json"]
+    delegate: FileView {
+      required property string modelData
+      path: root.shell.home + "/.cache/cliamp/" + modelData; watchChanges: root.open; printErrors: false
+      onFileChanged: { reload(); root.refresh() }
+    }
   }
 
   readonly property var _xdg: Quickshell.env("XDG_RUNTIME_DIR") || "/run/user/1000"

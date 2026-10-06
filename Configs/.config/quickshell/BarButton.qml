@@ -29,11 +29,12 @@ Item {
     readonly property bool usesIconFont: labelText.length > 0
         && !/[^\ue000-\uf8ff\ud800-\udfff\u23fb-\u23fe\u2b58]/.test(labelText)
     property real fontSize: Style.fontPx(box.fontSize)
+    property real iconSize: 0
     property string symbol: ""
     property string symbolContext: "status"
     readonly property bool symbolic: symbol !== ""
     readonly property bool boxedIcon: symbolic || usesIconFont && box.iconBox !== undefined
-    readonly property real iconBoxPx: Style.fontPx(box.iconBox ?? box.fontSize)
+    readonly property real iconBoxPx: iconSize || Style.fontPx(box.iconBox ?? box.fontSize)
     readonly property rect glyphInk: (glyphProbe.item as GlyphInk)?.ink ?? Qt.rect(0, 0, 0, 0)
     readonly property bool fitsIconBox: boxedIcon && glyphInk.width > 0
     readonly property real iconMaxAspect: 1.2
@@ -124,7 +125,7 @@ Item {
     Loader {
         id: symbolLoader
         active: root.symbolic; anchors.centerIn: label
-        sourceComponent: Component { SymbolicIcon { name: root.symbol; context: root.symbolContext; directory: root.box.symbols ?? ""; color: label.color; size: Math.round(root.iconBoxPx * 1.15) } }
+        sourceComponent: Component { SymbolicIcon { name: root.symbol; context: root.symbolContext; directory: root.box.symbols ?? ""; color: label.color; size: Math.round(root.iconSize || root.iconBoxPx * 1.15) } }
     }
     Text {
         id: icon
@@ -160,7 +161,9 @@ Item {
         elide: Text.ElideRight
         text: root.text
     }
+    Rectangle { anchors.fill: badge; anchors.leftMargin: -Style.xxs; anchors.rightMargin: -Style.xxs; radius: height / 2; visible: badge.visible; color: root.styleColor("badgeBackgroundColor") }
     Text {
+        id: badge
         visible: root.badgeText !== ""
         x: root.paintedLabelBounds.x + root.paintedLabelBounds.width + (root.box.badgeOffsetX || 0)
         y: root.paintedLabelBounds.y + (root.box.badgeOffsetY || 0)
@@ -168,6 +171,7 @@ Item {
         color: root.box.badgeColor === undefined ? label.color : root.styleColor("badgeColor")
         font.family: root.shell.iconGlyphFont
         font.pixelSize: Style.px(root.box.badgeSize || 9)
+        font.weight: root.box.badgeFontWeight ?? Font.Normal
     }
     Rectangle { anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: 8; anchors.rightMargin: 2; height: 1; visible: root.cornerOutline.a > 0; color: root.cornerOutline }
     Rectangle { anchors.top: parent.top; anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.rightMargin: 2; anchors.bottomMargin: 8; width: 1; visible: root.cornerOutline.a > 0; color: root.cornerOutline }

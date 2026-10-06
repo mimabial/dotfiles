@@ -62,25 +62,8 @@ service_call() {
 
 main() {
   case "${1:-}" in
-    start)
-      printf '%s\n' "Starting auto-theme daemon..."
-      service_call start
-      ;;
-    stop)
-      printf '%s\n' "Stopping auto-theme daemon..."
-      service_call stop
-      ;;
-    restart)
-      printf '%s\n' "Restarting auto-theme daemon..."
-      service_call restart
-      ;;
-    enable)
-      printf '%s\n' "Enabling auto-theme daemon..."
-      service_call enable
-      ;;
-    disable)
-      printf '%s\n' "Disabling auto-theme daemon..."
-      service_call disable
+    start | stop | restart | enable | disable)
+      service_call "$1"
       ;;
     status)
       service_call status || true

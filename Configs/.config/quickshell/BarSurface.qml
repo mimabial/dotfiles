@@ -33,7 +33,7 @@ PanelWindow {
 
     Rectangle {
         id: surface
-        readonly property var box: root.shell.style.box("bar")
+        readonly property var box: root.shell.style.box("bar." + root.shell.barEdge)
         anchors.fill: parent; color: root.shell.barColor; radius: root.shell.prefs.barFloating ? root.shell.rounding : 0
         SideBorder { shell: root.shell; host: surface }
     }

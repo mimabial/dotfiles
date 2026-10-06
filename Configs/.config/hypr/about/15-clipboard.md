@@ -4,9 +4,7 @@ The clipboard has history, it survives the app that put something on it closing,
 and it covers images as well as text.
 
 `Super + V` opens the history as a bar popup — search it, pick an entry, and it
-goes back on the clipboard. `Super + Shift + V` opens the same history in rofi
-instead, for when you want the launcher's keyboard handling rather than the
-popup's.
+goes back on the clipboard.
 
 ## What is running
 

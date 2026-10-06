@@ -32,20 +32,33 @@
     "borderTopWidth": 1.0,
     "borderTopColor": ["fg", 0.08]
   },
+  "bar.top": {
+    "borderTopWidth": 0.0,
+    "borderBottomWidth": 1.0,
+    "borderBottomColor": ["fg", 0.08]
+  },
   "weather": {
     "justify": "left",
     "leadingIconSize": 20.0,
     "leadingIconGap": 8.0,
     "iconColor": ["c3", 1.0],
+    "hover": { "iconColor": ["fg", 1.0] },
     "padding": [0.0, 10.0, 0.0, 8.0],
     "fontSize": 10.0
   },
+  "weather.badge": {
+    "color": ["c3", 1.0],
+    "hover": { "color": ["fg", 1.0] },
+    "badgeColor": ["fg", 1.0],
+    "badgeBackgroundColor": ["bg", 1.0],
+    "badgeSize": 7.0,
+    "badgeFontWeight": 700,
+    "badgeOffsetX": -8.0,
+    "badgeOffsetY": 18.0
+  },
   "menu": {
     "iconBox": 14.0,
-    "color": ["accent", 1.0],
-    "hover": {
-      "color": ["accent", 1.0]
-    },
+    "color": ["fg", 1.0],
     "fontWeight": 400
   },
   "taskbar": {
@@ -79,15 +92,36 @@
     "fontWeight": 400,
     "fontSize": 10.0
   },
+  "task-view, wifi, volume, battery, notifications": {
+    "iconBox": 10.0
+  },
   "notifications": {
     "badgeOffsetY": -3.0
   },
-  "expose-strip": {
+  "launcher-strip": {
     "minWidth": 6.0,
     "margin": [0.0, 0.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0],
     "borderRadius": 0.0,
     "borderLeftWidth": 1.0,
     "borderLeftColor": ["fg", 0.2]
+  },
+  "small": {
+    "menu": {
+      "iconBox": 12.0
+    },
+    "taskbar": {
+      "iconSize": 24.0
+    },
+    "#taskbar button": {
+      "margin": [1.0, 2.0, 1.0, 2.0]
+    },
+    "spotlight": { "iconBox": 9.0 },
+    "task-view, wifi, volume, battery, notifications": {
+      "iconBox": 8.0
+    },
+    "tray.chevron": {
+      "iconBox": 5.5
+    }
   }
 }

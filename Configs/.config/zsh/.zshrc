@@ -117,10 +117,3 @@ export KEYTIMEOUT=1
 
 typeset -gU path PATH
 path=("$HOME/.npm-global/bin" $path)
-
-export NVM_DIR="$HOME/.config/nvm"
-_nvm_load() {
-  unfunction nvm _nvm_load 2>/dev/null
-  [[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh"
-}
-nvm() { _nvm_load && nvm "$@"; }

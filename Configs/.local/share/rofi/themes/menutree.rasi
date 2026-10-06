@@ -6,9 +6,13 @@
 @import "~/.config/rofi/colors.rasi"
 
 * {
-    /* rofi/menu.engine.bash overrides the prompt and selection radius per launch */
+    /* rofi/menu.engine.bash overrides element-border-radius per launch */
     element-border-radius:       8px;
     window-border-radius:        12px;
+    menu-padding:                20px;
+    menu-spacing:                10px;
+    menu-icon-padding:           10px 12px;
+    menu-list-margin:            10px 0px 0px 0px;
 }
 
 /*****----- Main Window -----*****/
@@ -17,7 +21,7 @@ window {
     location:                    center;
     anchor:                      center;
     fullscreen:                  false;
-    width:                       295px;
+    width:                       400px;
     x-offset:                    0px;
     y-offset:                    0px;
     enabled:                     true;
@@ -39,7 +43,7 @@ mainbox {
        row off centre. Identical layout once the listview has rows. */
     spacing:                     0px;
     margin:                      0px;
-    padding:                     10px;
+    padding:                     @menu-padding;
     border:                      0px solid;
     border-radius:               0px;
     border-color:                @border;
@@ -50,7 +54,7 @@ mainbox {
 /*****----- Inputbar -----*****/
 inputbar {
     enabled:                     true;
-    spacing:                     0px;
+    spacing:                     @menu-spacing;
     margin:                      0px;
     padding:                     0px;
     border:                      0px;
@@ -58,37 +62,55 @@ inputbar {
     border-color:                @border;
     background-color:            transparent;
     text-color:                  @foreground;
-    children:                    [ "entry", "textbox-prompt-colon" ];
+    orientation:                 vertical;
+    children:                    [ "promptbar", "entry" ];
+}
+
+promptbar {
+    orientation:                 horizontal;
+    expand:                      false;
+    spacing:                     @menu-spacing;
+    margin:                      0px;
+    background-color:            transparent;
+    children:                    [ "textbox-prompt-colon", "textbox-prompt-label" ];
 }
 
 entry {
+    border:                      0px;
     enabled:                     true;
-    padding:                     8px;
+    padding:                     @menu-spacing;
     border-radius:               @element-border-radius;
-    background-color:            transparent;
+    background-color:            @background;
+    border-color:                transparent;
     text-color:                  @foreground;
     placeholder:                 "";
     placeholder-color:           @separator;
 }
 
 textbox-prompt-colon {
-    border:                      1px;
-    enabled:                     true;
     expand:                      false;
-    str:                         "";
-    padding:                     6px 12px;
-    text-color:                  @separator;
+    border:                      2px;
+    padding:                     @menu-icon-padding;
     border-radius:               @element-border-radius;
-    background-color:            @background-alpha;
     border-color:                @accent;
-}
-
-prompt {
-    enabled:                     true;
-    padding:                     8px;
-    border-radius:               @element-border-radius;
     background-color:            transparent;
     text-color:                  @foreground;
+    str:                         "";
+}
+
+textbox-prompt-colon, textbox-prompt-label {
+    horizontal-align:            0.5;
+    vertical-align:              0.5;
+}
+
+textbox-prompt-label {
+    border:                      2px;
+    expand:                      false;
+    padding:                     @menu-spacing;
+    border-radius:               @element-border-radius;
+    border-color:                @selected-background;
+    background-color:            transparent;
+    text-color:                  @selected-foreground;
 }
 
 /*****----- Listview -----*****/
@@ -105,7 +127,7 @@ listview {
     fixed-columns:               true;
 
     spacing:                     5px;
-    margin:                      20px 0px 0px 0px;
+    margin:                      @menu-list-margin;
     padding:                     0px;
     border:                      0px solid;
     border-radius:               0px;
@@ -128,7 +150,7 @@ element {
     enabled:                     true;
     spacing:                     10px;
     margin:                      0px;
-    padding:                     10px;
+    padding:                     14px;
     border:                      0px solid;
     border-radius:               @element-border-radius;
     border-color:                @border;
@@ -143,7 +165,8 @@ element normal.normal {
 }
 
 element selected.normal {
-    background-color:            @selected-background;
+    border:                      2px;
+    border-color:            @selected-background;
     text-color:                  @selected-foreground;
 }
 

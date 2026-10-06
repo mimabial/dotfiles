@@ -101,7 +101,7 @@ wallpaper_set_paths() {
 #
 # Output / side effects:
 #   The adapter is responsible for displaying the wallpaper via its native
-#   IPC (awww img, hyprctl hyprpaper reload, mpvpaper exec, ...). It MUST
+#   IPC (e.g. awww img). It MUST
 #   exit 0 on success. Errors should print via print_log -err and exit
 #   non-zero so the caller can warn.
 #

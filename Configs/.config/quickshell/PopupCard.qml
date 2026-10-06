@@ -37,22 +37,23 @@ PopupWindow {
     // The window keeps one height and the card moves inside it: a popup resized
     // under a still pointer leaves Qt with stale surface coordinates until the
     // next motion, so the following click lands on whatever used to sit there.
-    property int placements: 0
-    readonly property var span: {
-        const screen = placements >= 0 && anchorWindow ? anchorWindow.screen : null
+    property int placementRevision: 0
+    readonly property var availablePlacement: {
+        const screen = placementRevision >= 0 && anchorWindow ? anchorWindow.screen : null
         if (!screen || !anchorItem) return {top: 0, height: cardHeight, anchor: 0}
         const origin = windowOrigin(), itemTop = origin.y + anchorWindow.contentItem.mapFromItem(anchorItem, 0, 0).y
         const top = !centered && position === "top" ? itemTop + anchorItem.height + margin : margin
         const bottom = !centered && position === "bottom" ? itemTop - margin : screen.height - margin
-        return {top: top, height: bottom - top, anchor: itemTop + anchorItem.height / 2 - top}
+        return {top: top, height: Math.max(1, bottom - top), anchor: itemTop + anchorItem.height / 2 - top}
     }
     // a panel that sizes itself from content reads maxHeight to shrink its own panes first
-    readonly property int maxHeight: span.height
+    readonly property int maxHeight: availablePlacement.height
     readonly property int cardHeight: Math.min(contentHeight + keyboardHintHeight, maxHeight - headerHeight) + headerHeight
-    readonly property int cardY: centered ? (height - cardHeight) / 2
+    property int centeredHeight: cardHeight
+    readonly property int cardY: centered ? Math.max(0, (height - centeredHeight) / 2)
         : position === "top" ? 0
         : position === "bottom" ? height - cardHeight
-        : Math.max(0, Math.min(height - cardHeight, span.anchor - cardHeight / 2))
+        : Math.max(0, Math.min(height - cardHeight, availablePlacement.anchor - cardHeight / 2))
     implicitWidth: contentWidth
     implicitHeight: anchorWindow && anchorWindow.screen ? maxHeight : cardHeight
     mask: Region { item: card }
@@ -158,7 +159,7 @@ PopupWindow {
         cursorIndex = -1
         syncKeyboardCursor()
     }
-    onOpenChanged: if (open) ++placements; else clearCursor()
+    onOpenChanged: if (open) ++placementRevision; else clearCursor()
 
     property bool wantsKeyboard: false
     property Binding activeCardBinding: Binding { target: root.shell; property: "popupCard"; value: root; when: root.open }
@@ -203,7 +204,7 @@ PopupWindow {
             let x = root.leftAligned ? 0 : root.anchorItem.width / 2 - root.width / 2
             anchor.rect.x = Math.round(root.centered ? (root.anchorWindow.screen.width - root.width) / 2 - origin.x
                 : root.anchorWindow.contentItem.mapFromItem(root.anchorItem, x, 0).x)
-            anchor.rect.y = Math.round(root.span.top - origin.y)
+            anchor.rect.y = Math.round(root.availablePlacement.top - origin.y)
         }
     }
     Item {

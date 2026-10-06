@@ -262,10 +262,9 @@ main() {
   last_notified_percentage=$battery_percentage
   previous_notified_status=$battery_status
   last_full_notification_time=0
-  local battery_path=""
-  battery_path="$(upower -e | grep battery || true)"
-  [[ -n "${battery_path}" ]] || return 0
-  dbus-monitor --system "type='signal',interface='org.freedesktop.DBus.Properties',path='${battery_path}'" 2>/dev/null | while read -r property_change_signal; do process_battery_state_change; done
+  upower --monitor | while IFS= read -r event; do
+    [[ "${event}" == *"/battery_BAT"* ]] && process_battery_state_change
+  done
 }
 
 verbose=false

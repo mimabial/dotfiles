@@ -14,8 +14,8 @@ refute() {
 test_parser() (
   show_help() { exit 90; }
   source "${WALLPAPER_DIR}/lib/parse.bash"
-  parse_wallpaper_args_modern --backend hyprpaper -Gn
-  [[ "${wallpaper_setter_flag}:${wallpaper_backend}:${set_as_global}" == n:hyprpaper:true ]]
+  parse_wallpaper_args_modern --backend hyprlock -Gn
+  [[ "${wallpaper_setter_flag}:${wallpaper_backend}:${set_as_global}" == n:hyprlock:true ]]
   ! (parse_wallpaper_args_modern next --set /tmp/wall 2>/dev/null)
 )
 

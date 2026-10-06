@@ -67,8 +67,7 @@ Singleton {
     }
     function chooseActivePlayer() {
         const preferred = preferredPlayer()
-        if (preferred && preferred.isPlaying) return preferred
-        return firstMatching(true, false) || firstMatching(true, true) || preferred
+        return preferred || firstMatching(true, false) || firstMatching(true, true)
             || firstMatching(false, false) || firstMatching(false, true) || null
     }
 

@@ -5,7 +5,6 @@ ButtonGroup 1.0 ButtonGroup.qml
 CursorSurface 1.0 CursorSurface.qml
 KeyboardPanel 1.0 KeyboardPanel.qml
 NumberField 1.0 NumberField.qml
-OpticalGlyph 1.0 OpticalGlyph.qml
 Panel 1.0 Panel.qml
 PanelKeyCatcher 1.0 PanelKeyCatcher.qml
 PanelSectionHeader 1.0 PanelSectionHeader.qml

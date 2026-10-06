@@ -2,11 +2,14 @@
 """Interactive terminal view of the cached AI-agent usage records."""
 
 import argparse
+import ctypes
 import curses
 import fcntl
 import json
 import os
+import select
 import shutil
+import signal
 import struct
 import subprocess
 import sys
@@ -90,6 +93,10 @@ MIN_LABEL_WIDTH = 16
 MAX_LABEL_WIDTH = 24
 SECTION_GAP_MAX = 1
 CACHE_MAX_AGE_SECONDS = 900
+IN_CLOSE_WRITE = 0x00000008
+IN_MOVED_FROM = 0x00000040
+IN_MOVED_TO = 0x00000080
+IN_DELETE = 0x00000200
 HINT = ("\u2190\u2192 agent   Enter launch   d default   s set default   r refresh", "q close")
 
 
@@ -135,6 +142,19 @@ def mtime_ns(path):
         return path.stat().st_mtime_ns
     except OSError:
         return 0
+
+
+def watch_cache_changes():
+    CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    libc = ctypes.CDLL(None, use_errno=True)
+    event_fd = libc.inotify_init1(os.O_NONBLOCK | os.O_CLOEXEC)
+    if event_fd < 0:
+        raise OSError(ctypes.get_errno(), "inotify_init1")
+    if libc.inotify_add_watch(event_fd, os.fsencode(CACHE_FILE.parent), IN_CLOSE_WRITE | IN_MOVED_FROM | IN_MOVED_TO | IN_DELETE) < 0:
+        error = OSError(ctypes.get_errno(), "inotify_add_watch")
+        os.close(event_fd)
+        raise error
+    return event_fd
 
 
 def parse_time(value):
@@ -258,6 +278,13 @@ def installed_agent_paths():
     return {spec.command: shutil.which(spec.command) for spec in AGENTS.values()}
 
 
+def required_terminal_size(records, agent_paths):
+    return (
+        max(MIN_COLS, max(map(len, footer_hint(agent_paths))) + RIGHT_MARGIN),
+        max(MIN_ROWS, max((content_height(record) for record in records), default=0) + 1),
+    )
+
+
 def progress(value, width, divisions=1):
     width = max(1, width)
     fraction = max(0.0, min(1.0, float(value)))
@@ -277,56 +304,13 @@ def progress(value, width, divisions=1):
     return " ".join(segments)
 
 
-def snapshot(records, selected_id=""):
-    if not records:
-        return "Agent Hub\n\nNo AI coding subscription data found. Press r in the TUI to collect usage."
-    selected = next(
-        (record for record in records if record.get("id") == selected_id), records[0]
-    )
-    chosen = recommended_agent(records)
-    lines = ["Agent Hub", "\u2500" * 72]
-    tabs = [f"[{record.get('name', record.get('id', 'Agent'))}]" for record in records]
-    headline = (selected.get("name", "Agent"), selected.get("tierLabel") or selected.get("usageStatusText"), usage_summary(selected))
-    lines += ["  ".join(tabs), " \u00b7 ".join(str(part) for part in headline if part)]
-    if chosen:
-        lines.append(
-            f"Recommended  {chosen.get('name', chosen.get('id', 'Agent'))} \u00b7 {usage_summary(chosen)}"
-        )
-    lines += ["", "GO LIMITS" if selected.get("id") == "opencode" else "LIMITS"]
-    if status := go_limit_status(selected):
-        lines.append(status)
-    for limit in selected.get("limits") or []:
-        percent = max(0.0, min(1.0, limit_percent(limit)))
-        reset = resets_in(limit.get("resetsAt"))
-        lines.append(
-            f"{limit.get('label', 'Limit')!s:22} "
-            f"[{progress(percent, 28, USAGE_BAR_SEGMENTS.get(window_kind(limit), 1))}] "
-            f"{percent:>4.0%}  resets in {reset}"
-        )
-    lines += ["", "TOKENS BY DAY"]
-    days = selected.get("recentDays") or []
-    peak = max((int(day.get("messageCount") or 0) for day in days), default=0)
-    for day in days:
-        value = int(day.get("messageCount") or 0)
-        lines.append(
-            f"{day.get('date', '')!s:12} [{progress(value / peak if peak else 0, 28)}] {compact(value):>7}"
-        )
-    lines += ["", "TOKENS BY MODEL"]
-    models = model_totals(selected)[:5]
-    peak = models[0][1] if models else 0
-    for name, value in models:
-        lines.append(
-            f"{name[:24]:24} [{progress(value / peak if peak else 0, 26)}] {compact(value):>7}"
-        )
-    return "\n".join(lines)
-
-
 class Dashboard:
     def __init__(self, screen):
         self.screen = screen
         self.records = load_records()
         self.selected = 0
         self.refresh_process = None
+        self.refresh_pidfd = None
         self.message = ""
         self.tab_spans = []
         self.message_error = False
@@ -345,7 +329,7 @@ class Dashboard:
 
     def configure_screen(self):
         curses.curs_set(0)
-        self.screen.timeout(250)
+        self.screen.nodelay(True)
         self.screen.keypad(True)
         # Avoid curses' click-delay because this UI does not distinguish drags.
         curses.mousemask(curses.BUTTON1_PRESSED | curses.BUTTON1_CLICKED)
@@ -355,8 +339,7 @@ class Dashboard:
 
     def fit_window_to_content(self):
         rows, columns = self.screen.getmaxyx()
-        needed_columns = max(MIN_COLS, max(map(len, footer_hint(self.agent_paths))) + 2)
-        needed_rows = max(MIN_ROWS, max((content_height(record) for record in self.records), default=0) + 1)
+        needed_columns, needed_rows = required_terminal_size(self.records, self.agent_paths)
         if rows >= needed_rows and columns >= needed_columns:
             return
         try:
@@ -424,29 +407,27 @@ class Dashboard:
         self.message_until = time.monotonic() + seconds
 
     def refresh(self, force=True):
-        if self.refresh_process and self.refresh_process.poll() is None:
+        if self.refresh_process:
             self.note("Usage refresh is already running")
             return
         command = ["hyprshell", "system/agent-usage", "--write"]
         if force:
             command.append("--force")
         try:
-            self.refresh_process = subprocess.Popen(
+            process = subprocess.Popen(
                 command,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
+            self.refresh_pidfd = os.pidfd_open(process.pid)
+            self.refresh_process = process
             self.note("Refreshing usage...", 60)
         except OSError as error:
             self.note(f"Could not refresh: {error}", error=True)
 
-    def poll(self):
-        status = None
-        if self.refresh_process and self.refresh_process.poll() is not None:
-            status = self.refresh_process.returncode
-            self.refresh_process = None
+    def update_cache(self, force=False):
         mtime = mtime_ns(CACHE_FILE)
-        if mtime != self.last_mtime or status == 0:
+        if mtime != self.last_mtime or force:
             current_id = self.current().get("id") if self.current() else ""
             self.records = load_records()
             self.selected = next(
@@ -459,11 +440,14 @@ class Dashboard:
             )
             self.last_mtime = mtime
             self.fit_window_to_content()
-        if status is not None:
-            self.note(
-                "Usage refreshed" if status == 0 else "Usage refresh failed",
-                error=status != 0,
-            )
+
+    def finish_refresh(self):
+        status = self.refresh_process.wait()
+        os.close(self.refresh_pidfd)
+        self.refresh_pidfd = None
+        self.refresh_process = None
+        self.update_cache(force=status == 0)
+        self.note("Usage refreshed" if status == 0 else "Usage refresh failed", error=status != 0)
 
     def click(self):
         try:
@@ -805,39 +789,62 @@ class Dashboard:
         return True
 
     def run(self):
-        while True:
-            self.poll()
+        cache_events_fd = watch_cache_changes()
+        resize_read, resize_write = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
+        previous_wakeup_fd = signal.set_wakeup_fd(resize_write, warn_on_full_buffer=False)
+        previous_resize_handler = signal.signal(signal.SIGWINCH, lambda *_: None)
+        stdin_fd = sys.stdin.fileno()
+        try:
+            self.update_cache()
             self.draw()
-            if not self.handle_key(self.screen.getch()):
-                return
+            while True:
+                watched = [stdin_fd, cache_events_fd, resize_read]
+                if self.refresh_pidfd is not None:
+                    watched.append(self.refresh_pidfd)
+                timeout = max(0, self.message_until - time.monotonic()) if self.message else None
+                ready, _, _ = select.select(watched, [], [], timeout)
+                if not ready:
+                    self.message = ""
+                if resize_read in ready and signal.SIGWINCH in os.read(resize_read, 4096):
+                    size = os.get_terminal_size(stdin_fd)
+                    curses.resizeterm(size.lines, size.columns)
+                    self.fit_window_to_content()
+                if cache_events_fd in ready:
+                    os.read(cache_events_fd, 4096)
+                    self.update_cache()
+                if self.refresh_pidfd in ready:
+                    self.finish_refresh()
+                if stdin_fd in ready:
+                    key = self.screen.getch()
+                    while key != -1:
+                        if not self.handle_key(key):
+                            return
+                        key = self.screen.getch()
+                self.draw()
+        finally:
+            if previous_resize_handler is not None:
+                signal.signal(signal.SIGWINCH, previous_resize_handler)
+            signal.set_wakeup_fd(previous_wakeup_fd)
+            os.close(resize_read)
+            os.close(resize_write)
+            os.close(cache_events_fd)
+            if self.refresh_pidfd is not None:
+                os.close(self.refresh_pidfd)
 
 
 def main():
     parser = argparse.ArgumentParser(description="AI coding subscription dashboard")
     parser.add_argument(
-        "--snapshot",
-        action="store_true",
-        help="print the current dashboard data without curses",
-    )
-    parser.add_argument(
-        "--agent", default="", help="provider id to select with --snapshot"
-    )
-    parser.add_argument(
         "--size",
         action="store_true",
-        help="print the minimum terminal columns and rows",
+        help="print the terminal columns and rows needed for the current dashboard",
     )
     args = parser.parse_args()
     if args.size:
-        print(MIN_COLS, MIN_ROWS)
-        return
-    if args.snapshot:
-        print(snapshot(load_records(), args.agent))
+        print(*required_terminal_size(load_records(), installed_agent_paths()))
         return
     if not sys.stdin.isatty() or not sys.stdout.isatty():
-        parser.error(
-            "the interactive dashboard requires a terminal; use --snapshot for plain output"
-        )
+        parser.error("the interactive dashboard requires a terminal")
     curses.wrapper(lambda screen: Dashboard(screen).run())
 
 

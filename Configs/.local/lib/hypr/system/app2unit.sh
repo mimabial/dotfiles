@@ -12,7 +12,6 @@ unit=""
 description=""
 silent=""
 part=true
-part_set=false
 terminal=false
 terminal_options=false
 open=false

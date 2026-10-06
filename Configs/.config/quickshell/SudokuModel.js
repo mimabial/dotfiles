@@ -131,11 +131,6 @@ function isBoardComplete(state) {
     for (var i = 0; i < 81; i++) if (!state.givens[i] && state.entries[i] !== state.solution[i]) return false
     return true
 }
-function digitCount(state, digit) {
-    var count = 0
-    for (var i = 0; i < 81; i++) if (state.givens[i] === digit || state.entries[i] === digit) count++
-    return count
-}
 function applyDigit(state, index, digit) {
     if (state.status === STATUS_WON || index < 0 || index > 80 || digit < 1 || digit > 9 || state.givens[index]) return state
     var next = clone(state); next.selected = index

@@ -101,7 +101,7 @@ reconcile_mode() {
   if idle_manual_enabled; then
     manual_on=1
   fi
-  if idle_audio_enabled && audio_playing; then
+  if (( ! manual_on )) && idle_audio_enabled && audio_playing; then
     audio_on=1
   fi
   if idle_fullscreen_enabled; then
@@ -117,7 +117,7 @@ reconcile_mode() {
   if [[ "${desired_mode}" != "${last_mode}" ]]; then
     apply_mode_transition "${desired_mode}"
     last_mode="${desired_mode}"
-  else
+  elif [[ "${1:-}" == watchdog ]]; then
     enforce_mode_state "${desired_mode}"
   fi
 }
@@ -175,7 +175,7 @@ watch_hyprland_events() {
       nc -U "${socket_path}" 2>/dev/null |
         grep --line-buffered -E '^(fullscreen|openwindow|closewindow|movewindow(v2)?|workspace(v2)?|focusedmon(v2)?|changefloatingmode|monitor(added|removed)(v2)?)>>' |
         while read -r _; do
-          kill -USR1 "$$" 2>/dev/null || true
+          idle_fullscreen_enabled && kill -USR1 "$$" 2>/dev/null || true
         done
       sleep "${HYPRLAND_FOLLOW_RETRY}"
     done
@@ -208,7 +208,7 @@ reconcile_mode
 while :; do
   sleep "${WATCHDOG_INTERVAL}" &
   WAKE_SLEEP_PID="$!"
-  wait "${WAKE_SLEEP_PID}" 2>/dev/null || true
+  if wait "${WAKE_SLEEP_PID}" 2>/dev/null; then wake_reason=watchdog; else wake_reason=event; fi
   WAKE_SLEEP_PID=""
-  reconcile_mode
+  reconcile_mode "${wake_reason}"
 done

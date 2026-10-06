@@ -19,7 +19,8 @@ menu_register_domain_setup() {
   local default_browser="${BROWSER:-}"
   local default_editor="${EDITOR:-}"
   local default_terminal="${TERMINAL:-}"
-  local profile="" profile_label=""
+  local profile="" profile_label="" scale=""
+  local -A profile_icons=([power-saver]="󰌪" [balanced]="󰗑" [performance]="󱐋")
 
   default_browser="${default_browser##*/}"
   default_editor="${default_editor##*/}"
@@ -33,6 +34,7 @@ menu_register_domain_setup() {
 
   menu_define setup "Setup"
   menu_add_item setup "  Defaults" submenu setup_default
+  menu_add_item setup "󰗊  Language" submenu setup_language
   menu_add_item setup "  Audio" action setup_audio
   menu_add_item setup "  Wifi" action setup_wifi
   menu_add_item setup "  Bluetooth" action setup_bluetooth
@@ -46,14 +48,24 @@ menu_register_domain_setup() {
   menu_define setup_power_profile "Power Profile" choice
   for profile in $("${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/powerprofiles.sh"); do
     profile_label="${profile//-/ }"
-    menu_add_item setup_power_profile "  ${profile_label^}" action "setup_power_profile_${profile}"
+    menu_add_item setup_power_profile "${profile_icons[${profile}]:-}  ${profile_label^}" action "setup_power_profile_${profile}"
   done
 
   menu_define setup_monitors "Monitors"
-  menu_add_item setup_monitors "󰍹  Edit Config" action setup_monitors_config
-  menu_add_item setup_monitors "󰍹  Set Scale" action setup_monitor_scale
-  menu_add_item setup_monitors "󰍹  Toggle Laptop Display" action setup_monitor_laptop_toggle
-  menu_add_item setup_monitors "󰍹  Toggle Mirroring" action setup_monitor_mirror_toggle
+  menu_add_item setup_monitors "󱇧  Edit Config" action setup_monitors_config
+  menu_add_item setup_monitors "󰩨  Set Scale" submenu setup_monitor_scale
+  menu_add_item setup_monitors "󰌢  Toggle Laptop Display" action setup_monitor_laptop_toggle
+  menu_add_item setup_monitors "󰍺  Toggle Mirroring" action setup_monitor_mirror_toggle
+
+  menu_define setup_monitor_scale "Scale" choice
+  for scale in $(bash "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/monitor-scale.sh" --list); do
+    menu_add_item setup_monitor_scale "󰍹  ${scale}x" action "setup_monitor_scale_${scale}"
+  done
+
+  menu_define setup_language "Language"
+  menu_add_item setup_language "󰇧  System" action setup_language_system
+  menu_add_item setup_language "󰀄  Display" action setup_language_display
+  menu_add_item setup_language "󰌌  Input" action setup_language_input
 
   menu_define setup_default "Defaults"
   menu_add_item setup_default "󰚩  Agent" submenu setup_default_agent
@@ -77,17 +89,17 @@ menu_register_domain_setup() {
 
   menu_define setup_default_terminal "Default Terminal" choice
   setup_add_default_item setup_default_terminal "${default_terminal}" alacritty "  Alacritty" setup_default_terminal_alacritty alacritty
-  setup_add_default_item setup_default_terminal "${default_terminal}" kitty "  Kitty" setup_default_terminal_kitty kitty
+  setup_add_default_item setup_default_terminal "${default_terminal}" kitty "󰄛  Kitty" setup_default_terminal_kitty kitty
 
   menu_define setup_default_editor "Default Editor" choice
   setup_add_default_item setup_default_editor "${default_editor}" nvim "  Neovim" setup_default_editor_nvim nvim
   setup_add_default_item setup_default_editor "${default_editor}" code "  VSCode" setup_default_editor_code code
-  setup_add_default_item setup_default_editor "${default_editor}" cursor "  Cursor" setup_default_editor_cursor cursor
-  setup_add_default_item setup_default_editor "${default_editor}" zeditor "  Zed" setup_default_editor_zeditor zeditor
-  setup_add_default_item setup_default_editor "${default_editor}" sublime_text "  Sublime Text" setup_default_editor_sublime_text sublime_text
-  setup_add_default_item setup_default_editor "${default_editor}" hx "  Helix" setup_default_editor_hx hx
+  setup_add_default_item setup_default_editor "${default_editor}" cursor "  Cursor" setup_default_editor_cursor cursor
+  setup_add_default_item setup_default_editor "${default_editor}" zeditor "󰬡  Zed" setup_default_editor_zeditor zeditor
+  setup_add_default_item setup_default_editor "${default_editor}" sublime_text "  Sublime Text" setup_default_editor_sublime_text sublime_text
+  setup_add_default_item setup_default_editor "${default_editor}" hx "󰚄  Helix" setup_default_editor_hx hx
   setup_add_default_item setup_default_editor "${default_editor}" vim "  Vim" setup_default_editor_vim vim
-  setup_add_default_item setup_default_editor "${default_editor}" emacs "  Emacs" setup_default_editor_emacs emacs
+  setup_add_default_item setup_default_editor "${default_editor}" emacs "  Emacs" setup_default_editor_emacs emacs
 
   menu_define setup_security "Security"
   menu_add_item setup_security "󰈷  Fingerprint" action setup_security_fingerprint
@@ -113,7 +125,7 @@ menu_run_action_setup() {
     setup_bluetooth) hyprshell launch/bluetooth ;;
     setup_network) present_terminal --hypr-profile tui --app-id org.tui.Oryx --title Oryx -- sudo oryx ;;
     setup_monitors_config) open_in_editor ~/.config/hypr/monitors.lua ;;
-    setup_monitor_scale) hyprshell rofi/run-after-close.sh -- hyprshell system/monitor-scale.sh --select ;;
+    setup_monitor_scale_*) hyprshell system/monitor-scale.sh "${action_id#setup_monitor_scale_}" ;;
     setup_monitor_laptop_toggle) hyprshell system/monitor-internal.sh toggle ;;
     setup_monitor_mirror_toggle) hyprshell system/monitor-mirror.sh toggle ;;
     setup_keybindings) open_in_editor ~/.config/hypr/keybindings.lua ;;
@@ -132,9 +144,14 @@ menu_run_action_setup() {
 
 menu_register_action_handler menu_run_action_setup
 
+setup_focused_monitor_scale() {
+  hyprctl -j monitors | jq -r '[.[] | select(.focused)][0].scale * 100 | round / 100'
+}
+
 menu_active_setup() {
   case "$1" in
     setup_power_profile_*) menu_choice "$1" setup_power_profile_ hypr_power_profile ;;
+    setup_monitor_scale_*) menu_choice "$1" setup_monitor_scale_ setup_focused_monitor_scale ;;
     *) return 1 ;;
   esac
 }

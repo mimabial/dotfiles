@@ -38,7 +38,7 @@ bind(mod .. " SHIFT", "F", "[Window Management] toggle fullscreen", hl.dsp.windo
 bind(mod .. " ALT", "F", "[Window Management] toggle maximize", hl.dsp.window.fullscreen({mode = "maximized", action = "toggle"}))
 bind(mod, "J", "[Window Management] toggle window split", hl.dsp.layout("togglesplit"))
 exec(mod .. " SHIFT", "J", "[Window Management] toggle workspace layout", "hyprshell window/layout-toggle.sh")
-bind(mod, "PERIOD", "[Window Management] move focused column", hl.dsp.layout("move +col"))
+bind(mod, "code:60", "[Window Management] move focused column", hl.dsp.layout("move +col"))
 bind(mod, "COMMA", "[Window Management] swap column left", hl.dsp.layout("swapcol l"))
 
 bind(mod, "LEFT", "[Window Management|Focus] focus left", hl.dsp.focus({direction = "left"}))
@@ -98,7 +98,7 @@ exec(mod, "A", "[Launcher|Menus] application finder", "hyprshell rofi-launch.sh 
 exec(mod .. " CTRL", "TAB", "[Launcher|Menus] window switcher", "hyprshell rofi-launch.sh w")
 exec(mod .. " CTRL", "F", "[Launcher|Menus] file finder", "pkill -x rofi || hyprshell launch/file-finder.sh")
 exec(mod, "SPACE", "[Launcher|Menus] menu tree", "pkill -x rofi || hyprshell menutree")
-exec(mod, "SLASH", "[Launcher|Menus] keybinding hints", "pkill -x rofi || hyprshell keybinds/keybinds_hint.sh")
+exec(mod, "code:61", "[Launcher|Menus] keybinding hints", "pkill -x rofi || hyprshell keybinds/keybinds_hint.sh")
 exec(mod, "E", "[Launcher|Menus] emoji picker", "pkill -x rofi || hyprshell emoji-picker.sh")
 exec(mod, "G", "[Launcher|Menus] glyph picker", "pkill -x rofi || hyprshell glyph-picker.sh")
 exec(mod, "H", "[Launcher|Menus] box drawing picker", "pkill -x rofi || hyprshell boxdraw-picker.sh")
@@ -130,8 +130,7 @@ exec("", "XF86MonBrightnessDown", "[Hardware|Brightness] decrease", "hyprshell b
 
 -- Utilities
 exec(mod, "K", "[Utilities] switch keyboard layout", "hyprshell keyboard-switch.sh", {locked = true})
-exec(mod, "M", "[Utilities] windows mode", "hyprshell util/workflow-toggle.sh windows")
-exec(mod .. " SHIFT", "M", "[Utilities] game mode", "hyprshell util/workflow-toggle.sh gaming")
+exec(mod, "M", "[Utilities] select workflow", "pkill -x rofi || hyprshell rofi/menutree --menu-id style_workflow")
 exec(mod .. " SHIFT", "G", "[Utilities] game launcher", "pkill -x rofi || hyprshell gaming/launcher.sh")
 
 exec(mod .. " CTRL", "DELETE", "[Utilities|Monitors] toggle laptop display", "hyprshell system/monitor-internal.sh toggle")
@@ -152,12 +151,12 @@ exec(mod .. " CTRL", "R", "[Utilities|Recording] stop recording", "hyprshell scr
 -- Theme and wallpaper
 exec(mod, "APOSTROPHE", "[Theming] next wallpaper", "hyprshell wallpaper next --global")
 exec(mod, "SEMICOLON", "[Theming] previous wallpaper", "hyprshell wallpaper previous --global")
-exec(mod, "BRACKETRIGHT", "[Theming] next theme", "hyprshell theme.switch.sh -n --quiet")
-exec(mod, "BRACKETLEFT", "[Theming] previous theme", "hyprshell theme.switch.sh -p --quiet")
+exec(mod, "code:35", "[Theming] next theme", "hyprshell theme.switch.sh -n --quiet")
+exec(mod, "code:34", "[Theming] previous theme", "hyprshell theme.switch.sh -p --quiet")
 exec(mod, "W", "[Theming] select wallpaper", "hyprshell rofi/run-after-close.sh -- hyprshell wallpaper select --global")
 exec(mod, "T", "[Theming] select theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh")
-exec(mod .. " SHIFT", "C", "[Theming] color mode", "pkill -x rofi || hyprshell color-mode.sh -m")
-exec(mod, "N", "[Theming] select font", "pkill -x rofi || hyprshell fonts/font-picker.sh")
+exec(mod .. " SHIFT", "C", "[Theming] color mode", "pkill -x rofi || hyprshell rofi/menutree --menu-id style_color_mode")
+exec(mod, "N", "[Theming] select font", "pkill -x rofi || hyprshell rofi/menutree --action style_font")
 exec(mod .. " SHIFT", "T", "[Theming] select rofi theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh -s")
 exec(mod .. " SHIFT", "A", "[Theming] select launcher style", "hyprshell rofi-launch.sh -s")
 

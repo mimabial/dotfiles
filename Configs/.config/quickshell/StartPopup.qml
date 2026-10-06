@@ -8,18 +8,20 @@ import "StartMenuModel.js" as StartMenuModel
 PopupCard {
     id: root
     popupName: root.shell.popupName === "spotlight" ? "spotlight" : "start"
-    keyboardHint: placeEditorOpen ? "Enter save place · Esc cancel"
+    keyboardHint: spotlight ? ""
+        : placeEditorOpen ? "Enter save place · Esc cancel"
         : browseOnly ? "↑↓ move · Enter open · Esc close" : "Type to search · ↑↓ move · Enter open · Esc close"
     wantsKeyboard: true
-    contentWidth: Style.px(620)
+    contentWidth: spotlight ? Style.spotlightWidth : Style.px(620)
     contentHeight: layoutColumn.implicitHeight + padding * 2
+    padding: spotlight ? 0 : Style.popupPadding
+    centeredHeight: spotlight ? spotlightChromeHeight + Style.spotlightListHeight : cardHeight
 
     property string searchQuery: ""
     property var recentFiles: []
     property var indexedDocuments: []
     readonly property bool spotlight: popupName === "spotlight"
     readonly property bool browseOnly: shell.mode === "winbar" && !spotlight
-    readonly property bool indexedSearchEnabled: !spotlight || shell.mode === "winbar"
     property int selectedEntryIndex: 0
     readonly property bool searchActive: searchQuery.trim() !== ""
     readonly property int fixedContentHeight: (browseOnly ? 0 : searchHeader.height + layoutColumn.spacing) + padding * 2
@@ -121,16 +123,9 @@ PopupCard {
 
     property var menus: ({})
 
-    function filePath(uri) {
-        return uri.startsWith("file://") ? decodeURIComponent(uri.replace(/^file:\/\/(localhost)?/, "")) : uri
-    }
+    readonly property var searchIndex: StartMenuModel.searchIndex(availableApplications, menus, places, spotlight ? recentFiles : [])
     readonly property var searchResults: {
-        const results = StartMenuModel.search(searchQuery, availableApplications, menus, places,
-            spotlight ? recentFiles : [], false)
-        if (indexedSearchEnabled)
-            for (const file of indexedDocuments)
-                if (!results.some(result => result.type === "file" && filePath(result.file.uri) === file.uri))
-                    results.push({type: "file", file: file})
+        const results = StartMenuModel.search(searchQuery, searchIndex, indexedDocuments)
         if (spotlight && searchActive) results.push({type: "fileSearch", query: searchQuery.trim()})
         return results
     }
@@ -138,10 +133,67 @@ PopupCard {
         ? recentFiles.map(file => ({type: "file", file: file})).concat(availableApplications)
         : availableApplications
     readonly property var selectableEntries: searchActive ? searchResults : browseEntries
+    readonly property var selectedEntry: selectableEntries[selectedEntryIndex]
+
+    readonly property int spotlightChromeHeight: Style.spotlightSearchHeight + Style.xl * 2
+        + Style.popupRowHeight + searchRule.height + footerRule.height
+    readonly property int spotlightGutter: Style.xl + Style.controlPaddingX
+    readonly property var spotlightKinds: ({
+        app: {section: "Applications", kind: "Application", verb: "Open"},
+        action: {section: "Commands", kind: "Command", verb: "Run"},
+        place: {section: "Places", kind: "Place", verb: "Open"},
+        file: {section: "Files", kind: "File", verb: "Open"},
+        fileSearch: {section: "Files", kind: "File Finder", verb: "Search"}
+    })
+    readonly property var spotlightHeadings: searchResults.map((item, index) => {
+        const section = spotlightKinds[item.type].section
+        return index > 0 && spotlightKinds[searchResults[index - 1].type].section === section ? "" : section
+    })
+    readonly property int spotlightListHeight: Math.max(0, Math.min(
+        searchResults.length * Style.popupRowHeight + spotlightHeadings.filter(Boolean).length * Style.spotlightSectionHeight,
+        Style.spotlightListHeight, maxHeight - spotlightChromeHeight))
+    function tildePath(path) {
+        return path.startsWith(shell.home) ? "~" + path.slice(shell.home.length) : path
+    }
+    function spotlightEntry(item) {
+        const row = (title, detail, icon, iconSource = "", checked = false) => ({title, detail, icon, iconSource, checked})
+        switch (item.type) {
+        case "app": return row(item.app.name, item.app.genericName || item.app.comment, "", Quickshell.iconPath(item.app.icon, true))
+        case "action": return row(item.entry.label, item.entry.parent, item.entry.icon, "",
+            (shell.menuTargetActive(item.entry.target) ?? item.entry.checked) === true)
+        case "place": return row(item.place.label, tildePath(item.place.path), item.place.icon)
+        case "file": return row(item.file.text, tildePath(StartMenuModel.filePath(item.file.uri).replace(/\/[^/]*$/, "")),
+            item.file.folder ? "\u{f024b}" : "\u{f0219}")
+        }
+        return row("Find more files for “" + item.query + "”…", "", "\u{f0349}")
+    }
+    function secondaryLabel(item) {
+        return !item ? ""
+            : item.type === "app" ? (pinnedApplicationIds.includes(item.app.id) ? "Unpin" : "Pin")
+            : item.type === "place" ? "Remove" : ""
+    }
+    property var lastPointer: null
+    function followPointer(index, position) {
+        const moved = lastPointer !== null && (position.x !== lastPointer.x || position.y !== lastPointer.y)
+        lastPointer = position
+        if (moved) { selectedEntryIndex = index; holdSelection() }
+    }
+    property var heldSelection: null
+    function selectionKey(result) { return result?.app ?? result?.entry ?? result?.place ?? result?.file ?? result?.type }
+    function holdSelection() { if (searchActive) heldSelection = {query: searchQuery, key: selectionKey(selectedEntry)} }
+    function bestMatchIndex() {
+        return searchResults.reduce((best, result, index) => (result.score ?? 0) > (searchResults[best].score ?? 0) ? index : best, 0)
+    }
+    onSearchResultsChanged: if (searchActive) {
+        const held = heldSelection?.query === searchQuery
+            ? searchResults.findIndex(result => selectionKey(result) === heldSelection.key) : -1
+        selectedEntryIndex = held >= 0 ? held : bestMatchIndex()
+        Qt.callLater(revealSelection)
+    }
 
     function searchDocuments() {
         indexedDocuments = []
-        if (!open || !indexedSearchEnabled || !searchActive || documentSearchProcess.running) return
+        if (!open || !searchActive || documentSearchProcess.running) return
         documentSearchProcess.query = searchQuery.trim()
         documentSearchProcess.running = true
     }
@@ -181,10 +233,17 @@ PopupCard {
         else if (item.type === "place") removePlace(item.place)
         else activateEntry(item)
     }
+    function activateSelection(event) {
+        if (event.modifiers & Qt.ShiftModifier) activateSecondaryEntry(selectedEntry); else activateEntry(selectedEntry)
+    }
     function moveSelection(step) {
         if (selectableEntries.length === 0) return
         selectedEntryIndex = Math.max(0, Math.min(selectableEntries.length - 1, selectedEntryIndex + step))
-        if (searchActive) searchResultList.positionViewAtIndex(selectedEntryIndex, ListView.Contain)
+        holdSelection()
+        revealSelection()
+    }
+    function revealSelection() {
+        if (searchActive) (spotlight ? spotlightList : searchResultList).positionViewAtIndex(selectedEntryIndex, ListView.Contain)
         else if (browseOnly && selectedEntryIndex < recentFiles.length)
             recentList.positionViewAtIndex(selectedEntryIndex, ListView.Contain)
         else applicationList.positionViewAtIndex(selectedEntryIndex - (browseOnly ? recentFiles.length : 0), ListView.Contain)
@@ -204,12 +263,14 @@ PopupCard {
             return typeKey(event, placeField)
         }
         if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) { moveSelection(event.key === Qt.Key_Down ? 1 : -1); return true }
-        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { activateEntry(selectableEntries[selectedEntryIndex]); return true }
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { activateSelection(event); return true }
         return browseOnly ? defaultKey(event) : typeKey(event, searchField) || defaultKey(event)
     }
     onOpenChanged: {
         searchField.text = ""
         selectedEntryIndex = browseOnly ? -1 : 0
+        lastPointer = null
+        heldSelection = null
         placeEditorOpen = false
         placeEditorError = ""
         placeField.text = ""
@@ -222,7 +283,7 @@ PopupCard {
             shell.refreshMenuState()
         }
     }
-    onSearchQueryChanged: { selectedEntryIndex = 0; searchDocuments() }
+    onSearchQueryChanged: { if (!searchActive) selectedEntryIndex = 0; searchDocuments() }
     onSpotlightChanged: {
         searchDocuments()
         if (open && shell.mode === "winbar") {
@@ -335,15 +396,18 @@ PopupCard {
     }
     property Process documentSearchProcess: Process {
         property string query: ""
-        command: ["baloosearch6", "-l", String(Math.max(1, Math.floor(root.contentPaneHeight / Style.popupRowHeight))),
-            "-d", root.shell.home + "/Documents", "--", query]
+        command: ["sh", "-c", 'baloosearch6 -d "$1" -- "$2" | xargs -rd "\\n" ls -1dp -- 2>/dev/null', "sh",
+            root.shell.home + "/Documents", query.split(/\s+/).map(term => "filename:" + term).join(" ")]
         stdout: StdioCollector { id: documentSearchOutput; waitForEnd: true }
-        onExited: code => {
-            if (code === 0 && root.open && root.indexedSearchEnabled && query === root.searchQuery.trim())
+        onExited: {
+            if (root.open && query === root.searchQuery.trim())
                 root.indexedDocuments = String(documentSearchOutput.text).split("\n")
-                    .filter(path => path.startsWith(root.shell.home + "/Documents/"))
-                    .map(path => ({text: path.split("/").pop(), uri: path}))
-            else if (root.open && root.indexedSearchEnabled && root.searchActive && query !== root.searchQuery.trim())
+                    .filter(line => line.startsWith(root.shell.home + "/Documents/"))
+                    .map(line => {
+                        const path = line.replace(/\/$/, "")
+                        return {text: path.split("/").pop(), uri: path, folder: path !== line}
+                    })
+            else if (root.open && root.searchActive && query !== root.searchQuery.trim())
                 Qt.callLater(root.searchDocuments)
         }
     }
@@ -382,41 +446,45 @@ PopupCard {
 
     Column {
         id: layoutColumn
-        anchors.left: parent.left; anchors.right: parent.right; spacing: Style.sm
+        anchors.left: parent.left; anchors.right: parent.right; spacing: root.spotlight ? 0 : Style.sm
 
         Rectangle {
             id: searchHeader
             visible: !root.browseOnly
-            width: parent.width; height: Style.controlHeight; radius: root.shell.rounding
-            color: root.shell.alpha(root.shell.foreground, .06)
-            border.color: root.shell.alpha(root.shell.role("br", root.shell.foreground), .3)
+            readonly property int textSize: root.spotlight ? Style.display : Style.bodySmall
+            width: parent.width; height: root.spotlight ? Style.spotlightSearchHeight : Style.controlHeight
+            radius: root.shell.rounding
+            color: root.spotlight ? "transparent" : root.shell.alpha(root.shell.foreground, .06)
+            border.color: root.spotlight ? "transparent" : root.shell.alpha(root.shell.role("br", root.shell.foreground), .3)
             Text {
                 id: searchGlyph
-                anchors.left: parent.left; anchors.leftMargin: Style.controlPaddingX
+                anchors.left: parent.left; anchors.leftMargin: root.spotlight ? root.spotlightGutter : Style.controlPaddingX
                 anchors.verticalCenter: parent.verticalCenter
                 text: "\u{f0349}"
                 color: root.shell.mutedText
-                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+                font.family: root.shell.fontFamily; font.pixelSize: searchHeader.textSize
             }
             TextField {
                 id: searchField
-                anchors.left: searchGlyph.right; anchors.leftMargin: Style.xs
-                anchors.right: countText.left; anchors.rightMargin: Style.xs
+                anchors.left: searchGlyph.right; anchors.leftMargin: root.spotlight ? Style.xl : Style.xs
+                anchors.right: root.spotlight ? parent.right : countText.left
+                anchors.rightMargin: root.spotlight ? root.spotlightGutter : Style.xs
                 anchors.verticalCenter: parent.verticalCenter
                 leftPadding: 0; rightPadding: 0; topPadding: 0; bottomPadding: 0
-                placeholderText: root.spotlight && root.shell.mode === "winbar" ? "Search apps, actions, places, recent files, documents"
-                    : root.spotlight ? "Search apps, actions, places, recent files" : "Search apps, actions, places, documents"
+                placeholderText: root.spotlight ? "Search apps, actions, places, recent files, documents" : "Search apps, actions, places, documents"
+                Binding on placeholderTextColor { when: root.spotlight; value: root.shell.faintText }
                 color: root.shell.foreground
-                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+                font.family: root.shell.fontFamily; font.pixelSize: searchHeader.textSize
                 background: null
                 onTextChanged: root.searchQuery = text
                 Keys.onDownPressed: root.moveSelection(1)
                 Keys.onUpPressed: root.moveSelection(-1)
-                Keys.onReturnPressed: root.activateEntry(root.selectableEntries[root.selectedEntryIndex])
-                Keys.onEnterPressed: root.activateEntry(root.selectableEntries[root.selectedEntryIndex])
+                Keys.onReturnPressed: event => root.activateSelection(event)
+                Keys.onEnterPressed: event => root.activateSelection(event)
             }
             Text {
                 id: countText
+                visible: !root.spotlight
                 anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.selectableEntries.length
@@ -425,12 +493,72 @@ PopupCard {
             }
         }
 
+        Column {
+            visible: root.spotlight && root.searchActive
+            width: parent.width
+            PopupSeparator { id: searchRule; shell: root.shell; x: Style.xl; width: parent.width - Style.xl * 2 }
+            Item {
+                width: parent.width; height: root.spotlightListHeight + Style.xl * 2
+                ListView {
+                    id: spotlightList
+                    anchors.fill: parent; anchors.topMargin: Style.xl; anchors.bottomMargin: Style.xl
+                    clip: true; boundsBehavior: Flickable.StopAtBounds
+                    model: root.spotlight ? root.searchResults : []
+                    ScrollBar.vertical: PopupScrollBar { shell: root.shell }
+                    delegate: SpotlightRow {
+                        required property var modelData
+                        required property int index
+                        readonly property var entry: root.spotlightEntry(modelData)
+                        width: spotlightList.width; shell: root.shell
+                        section: root.spotlightHeadings[index] ?? ""
+                        icon: entry.icon; iconSource: entry.iconSource
+                        title: entry.title; detail: entry.detail
+                        kind: modelData.file?.folder ? "Folder" : root.spotlightKinds[modelData.type].kind
+                        cursored: index === root.selectedEntryIndex
+                        checked: entry.checked
+                        onPointerMoved: position => root.followPointer(index, position)
+                        onClicked: button => button === Qt.RightButton
+                            ? root.activateSecondaryEntry(modelData) : root.activateEntry(modelData)
+                    }
+                }
+            }
+            PopupSeparator { id: footerRule; shell: root.shell; x: Style.xl; width: parent.width - Style.xl * 2 }
+            Item {
+                width: parent.width; height: Style.popupRowHeight
+                Text {
+                    anchors.left: parent.left; anchors.leftMargin: root.spotlightGutter
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.searchResults.length + (root.searchResults.length === 1 ? " result" : " results")
+                    color: root.shell.faintText
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                }
+                Row {
+                    anchors.right: parent.right; anchors.rightMargin: root.spotlightGutter
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: Style.xxxl
+                    Text {
+                        visible: text !== ""
+                        text: root.searchActive && root.selectedEntry ? "↵  " + root.spotlightKinds[root.selectedEntry.type].verb : ""
+                        color: root.shell.mutedText
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                    }
+                    Text {
+                        readonly property string label: root.secondaryLabel(root.selectedEntry)
+                        visible: label !== ""
+                        text: "⇧↵  " + label
+                        color: root.shell.faintText
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                    }
+                }
+            }
+        }
+
         ListView {
             id: searchResultList
-            visible: root.searchActive
+            visible: root.searchActive && !root.spotlight
             width: parent.width; height: root.contentPaneHeight
             clip: true; spacing: 2
-            model: root.searchResults
+            model: root.spotlight ? [] : root.searchResults
             readonly property bool overflowing: contentHeight > height
             ScrollBar.vertical: PopupScrollBar { shell: root.shell }
             delegate: StartMenuRow {
@@ -441,7 +569,7 @@ PopupCard {
                 iconSource: modelData.type === "app" ? Quickshell.iconPath(modelData.app.icon, true) : ""
                 icon: modelData.type === "action" ? modelData.entry.icon
                     : modelData.type === "place" ? modelData.place.icon
-                    : modelData.type === "file" ? "\u{f0219}" : ""
+                    : modelData.type === "file" ? (modelData.file.folder ? "\u{f024b}" : "\u{f0219}") : ""
                 title: modelData.type === "app" ? modelData.app.name
                     : modelData.type === "action" ? modelData.entry.path
                     : modelData.type === "file" ? modelData.file.text

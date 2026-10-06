@@ -125,6 +125,13 @@ function shortcutLabel(catalog, value) {
     return item ? item.label : value
 }
 
+function parseLocales(text) {
+    return String(text || "").split("\n").filter(Boolean).map(function(line) {
+        var parts = line.split(" — ")
+        return {value: parts[1], label: parts[0], description: parts[1]}
+    })
+}
+
 function filterOptions(options, query) {
     var needle = String(query || "").trim().toLowerCase()
     if (!needle) return options || []
@@ -141,6 +148,7 @@ if (typeof module !== "undefined") module.exports = {
     labelFor: labelFor,
     normalizeLayouts: normalizeLayouts,
     parseCatalog: parseCatalog,
+    parseLocales: parseLocales,
     shortcutLabel: shortcutLabel,
     shortcutOptions: shortcutOptions,
     unusedLayoutOptions: unusedLayoutOptions

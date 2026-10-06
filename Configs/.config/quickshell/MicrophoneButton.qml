@@ -11,6 +11,7 @@ BarButton {
     readonly property bool live: source && !source.audio.muted
     css: live ? "microphone" : "microphone.muted"
     text: !root.source || root.source.audio.muted ? "" : ""
+    badgeText: recordingCount > 0 ? countGlyph(recordingCount) : ""
     smoothTextColor: false
     textColor: recordingCount ? shell.alpha(shell.role("error", shell.foreground), .25 + blink.phase * .75) : shell.foreground
     tooltip: !root.source ? "No input device"
@@ -28,14 +29,6 @@ BarButton {
         running: root.recordingCount > 0; loops: Animation.Infinite
         NumberAnimation { target: blink; property: "phase"; from: 0; to: 1; duration: 600 }
         NumberAnimation { target: blink; property: "phase"; from: 1; to: 0; duration: 600 }
-    }
-    Rectangle {
-        visible: root.recordingCount > 0
-        anchors.top: parent.top; anchors.right: parent.right
-        anchors.topMargin: -Style.xxs; anchors.rightMargin: -Style.xxs
-        height: Style.px(12); width: Math.max(height, badge.implicitWidth + Style.sm)
-        radius: height / 2; color: root.shell.urgent
-        Text { id: badge; anchors.centerIn: parent; text: String(root.recordingCount); color: root.shell.background; font.family: root.shell.fontFamily; font.pixelSize: Style.px(9); font.bold: true }
     }
     AudioPopup { anchorItem: root; shell: root.shell; microphoneMode: true; popupEnabled: root.popupEnabled }
 }

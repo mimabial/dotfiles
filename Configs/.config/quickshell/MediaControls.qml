@@ -89,7 +89,7 @@ QtObject {
     if (p) {
       if (p.canSeek && p.positionSupported) {
         p.position = sec
-        controls.controller.applyMprisPosition(sec)
+        controls.controller.updatePosition(sec)
       }
       return
     }

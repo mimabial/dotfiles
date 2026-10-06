@@ -22,13 +22,9 @@ focused one only.
 
 ## Backends
 
-The wallpaper is drawn by a backend, and there are several: `awww` is the default
-animated one, `hyprpaper` is the plain static one, `mpvpaper` plays video, and
-there is a KDE service backend for when Plasma components are in play.
-
-```bash
-hyprshell wallpaper next --backend hyprpaper
-```
+The wallpaper is drawn by a backend, `wallpaper/wallpaper.<backend>.sh`; `awww`,
+the animated one, is the default and the only one shipped. A backend name with no
+script still gets its own `<backend>.png` link in the current-wallpaper directory.
 
 `--backend` also decides which cache the wallpaper is written into, which is how
 the lock screen gets its own copy at its own size:

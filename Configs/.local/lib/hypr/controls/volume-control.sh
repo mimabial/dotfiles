@@ -54,7 +54,6 @@ Devices:
   -i    Input device (default source)
   -o    Output device (default sink)
   -p    Player application
-  -s    Select output device
   -t    Toggle to next output device
   -q    Quiet mode (no notifications)
 
@@ -239,19 +238,6 @@ toggle_player_mute() {
   printf 'false\n'
 }
 
-set_output_by_description() {
-  local selection="$1"
-  local sink_id=""
-
-  sink_id="$(list_sinks_tsv | awk -F'\t' -v sel="${selection}" '$2==sel { print $1; exit }')"
-  if [[ -z "${sink_id}" ]]; then
-    dunstify -u critical -a "Volume control" -i "dialog-error" "Audio Output" "Unable to resolve: ${selection}"
-    return 1
-  fi
-
-  set_default_output "${sink_id}" "${selection}"
-}
-
 move_application_streams() {
   local old_sink="$1" new_sink="$2" old_index="" metadata="" streams=""
   local input="" object_id="" target=""
@@ -295,25 +281,6 @@ set_default_output() {
       -i "dialog-error" "Error activating ${sink_name}"
     return 1
   fi
-}
-
-select_output_via_rofi() {
-  local choice=""
-  local font_override=""
-
-  require_commands rofi pw-dump jq wpctl pactl dunstify || return 1
-
-  # sourced here, not at the top: the volume keys are the hot path and never
-  # reach rofi. The size is resolved per launch; without it the menu falls back
-  # to the 10 hardcoded in notification.rasi.
-  # shellcheck source=/dev/null
-  source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash"
-  font_override="$(rofi_font_override "$(rofi_effective_font_name)" "$(rofi_effective_font_scale)")"
-
-  choice="$(list_sinks_tsv | cut -f2 | awk 'NF' | sort -u |
-    rofi_with_background_theme -dmenu -theme "notification" -p "Audio Output" -theme-str "${font_override}")" || return 0
-  [[ -n "${choice}" ]] || return 0
-  set_output_by_description "${choice}"
 }
 
 toggle_output_to_next_sink() {
@@ -420,7 +387,7 @@ main() {
   local step=""
   local opt=""
 
-  while getopts "iop:stq" opt; do
+  while getopts "iop:tq" opt; do
     case "${opt}" in
       i)
         device_kind="source"
@@ -440,10 +407,6 @@ main() {
           print_log -sec "volume" -err "missing" "playerctl is required for -p"
           return 1
         }
-        ;;
-      s)
-        select_output_via_rofi
-        return $?
         ;;
       t)
         toggle_output_to_next_sink

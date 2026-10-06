@@ -44,7 +44,6 @@ sanitize_hypr_theme() {
   local buffer_file=""
   local pattern=""
   local line=""
-  local line_esc=""
   local log_line=""
   local -a warn_regex=(
     "^ *exec"
@@ -323,11 +322,11 @@ prepare_active_theme_config() {
 theme_switch_reconcile_color_mode() {
   local mode polarity desired
   mode="${selected_color_mode}"
-  [[ "${mode}" =~ ^[1-3]$ ]] || return 0
+  state_color_mode_is_valid "${mode}" || return 0
   polarity="$(theme_polarity "${selected_theme}")"
-  [[ "${polarity}" == "light" ]] && desired=3 || desired=2
+  [[ "${polarity}" == "light" ]] && desired="${STATE_COLOR_MODE_LIGHT}" || desired="${STATE_COLOR_MODE_DARK}"
 
-  if [[ "${mode}" == "1" ]]; then
+  if [[ "${mode}" == "${STATE_COLOR_MODE_AUTO}" ]]; then
     [[ "${theme_switch_selection_requested}" -eq 1 && "${theme_switch_from_auto}" -eq 0 ]] || return 0
     theme_switch_auto_mode_changed=1
     hypr_svc_user stop auto-theme || true
@@ -343,7 +342,7 @@ main() {
   local -a theme_apply_cmd=("${LIB_DIR}/hypr/theme/theme.apply.sh")
 
   parse_theme_switch_args "$@"
-  if [[ "${theme_switch_from_auto}" -eq 1 && "${selected_color_mode:-}" != 1 ]]; then
+  if [[ "${theme_switch_from_auto}" -eq 1 && "${selected_color_mode:-}" != "${STATE_COLOR_MODE_AUTO}" ]]; then
     print_log -sec "theme.switch" -stat "skip" "Auto mode is no longer active"
     return 0
   fi

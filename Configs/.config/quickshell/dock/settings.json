@@ -30,8 +30,8 @@
   "iconSize": 36,
   "recentApps": [
     "xdg-desktop-portal-gtk",
-    "libreoffice-writer",
-    "signal"
+    "org.tui.Terminal",
+    "org.tui.Rmpc"
   ],
   "showRecents": true,
   "showIndicators": true

@@ -8,6 +8,17 @@ if ! declare -F hypr_runtime_subdir >/dev/null 2>&1; then
 fi
 unset _hypr_state_dir
 
+STATE_COLOR_MODE_AUTO=1
+STATE_COLOR_MODE_DARK=2
+STATE_COLOR_MODE_LIGHT=3
+
+state_color_mode_is_valid() {
+  case "${1:-}" in
+    "${STATE_COLOR_MODE_AUTO}" | "${STATE_COLOR_MODE_DARK}" | "${STATE_COLOR_MODE_LIGHT}") return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 state_resolve_color_source() {
   local source="${1-}"
   local mode="${2-}"
@@ -17,10 +28,11 @@ state_resolve_color_source() {
       printf '%s\n' "${source}"
       ;;
     *)
-      case "${mode}" in
-        1 | 2 | 3) printf 'pywal\n' ;;
-        *) printf 'theme\n' ;;
-      esac
+      if state_color_mode_is_valid "${mode}"; then
+        printf 'pywal\n'
+      else
+        printf 'theme\n'
+      fi
       ;;
   esac
 }
@@ -29,14 +41,13 @@ state_resolve_color_mode() {
   local mode="${1-}"
   local variant="${2-}"
 
-  case "${mode}" in
-    1 | 2 | 3)
-      printf '%s\n' "${mode}"
-      ;;
-    *)
-      [[ "${variant}" == "light" ]] && printf '3\n' || printf '2\n'
-      ;;
-  esac
+  if state_color_mode_is_valid "${mode}"; then
+    printf '%s\n' "${mode}"
+  elif [[ "${variant}" == "light" ]]; then
+    printf '%s\n' "${STATE_COLOR_MODE_LIGHT}"
+  else
+    printf '%s\n' "${STATE_COLOR_MODE_DARK}"
+  fi
 }
 
 export_hypr_config() {

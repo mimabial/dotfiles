@@ -24,6 +24,10 @@ Item {
         sourceComponent: Component { BitwardenPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
     }
     Host {
+        popup: "spotlight"; owners: ["menu"]
+        sourceComponent: Component { StartPopup { popupName: "spotlight"; anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
+    }
+    Host {
         popup: "bookmarks"; owners: ["menu"]
         sourceComponent: Component { Bookmarks { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
     }

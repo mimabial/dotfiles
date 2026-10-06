@@ -9,7 +9,7 @@ hyprshell_builtin_commands() {
     "--release-notes" "release-notes" \
     "list" "--list-script" "--list-script-path" \
     "--completions" "completions" \
-    "pyinit" "init" "--init" "lock-session" "logout" "pip" "pypr" "app" "resolve"
+    "pyinit" "init" "--init" "lock-session" "logout" "pip" "app" "resolve"
 }
 
 initialized() {

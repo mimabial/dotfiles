@@ -23,7 +23,6 @@ PopupCard {
     // Sunday, which is not what everyone wants.
     property int weekStartOverride: -1
     readonly property int weekStart: weekStartOverride >= 0 ? weekStartOverride : Qt.locale().firstDayOfWeek
-    readonly property string otherWeekStartName: Qt.locale().dayName(weekStart === 1 ? 0 : 1, Locale.LongFormat)
 
     property date selectedDate: today
     readonly property var weekdayLabels: {

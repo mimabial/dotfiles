@@ -4,45 +4,28 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/provider-state.common.bash"
 quickshell_state_init
+declare -F state_resolve_color_mode >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/state.sh"
 
 # Read the color policy from state files without sourcing them.
 selected_color_source="$(quickshell_state_value "selected_color_source" "")"
 selected_color_mode="$(quickshell_state_value "selected_color_mode" "")"
 background_mode="$(quickshell_state_value "BACKGROUND_MODE" "dark")"
 
-case "${selected_color_source}" in
-  theme | pywal) ;;
-  *)
-    if [[ "${selected_color_mode}" =~ ^[1-3]$ ]]; then
-      selected_color_source="pywal"
-    else
-      selected_color_source="theme"
-    fi
-    ;;
-esac
+selected_color_source="$(state_resolve_color_source "${selected_color_source}" "${selected_color_mode}")"
+selected_color_mode="$(state_resolve_color_mode "${selected_color_mode}" "${background_mode}")"
 
 case "${selected_color_mode}" in
-  1) selected_color_mode_label="Auto" ;;
-  2) selected_color_mode_label="Dark" ;;
-  3) selected_color_mode_label="Light" ;;
-  *)
-    if [[ "${background_mode}" == "light" ]]; then
-      selected_color_mode=3
-      selected_color_mode_label="Light"
-    else
-      selected_color_mode=2
-      selected_color_mode_label="Dark"
-    fi
-    ;;
+  "${STATE_COLOR_MODE_AUTO}") selected_color_mode_label="Auto" ;;
+  "${STATE_COLOR_MODE_DARK}") selected_color_mode_label="Dark" ;;
+  "${STATE_COLOR_MODE_LIGHT}") selected_color_mode_label="Light" ;;
 esac
 
 selected_color_source_label="${selected_color_source^}"
 
 case "${selected_color_mode}" in
-  1) icon="󰔎" ;;
-  2) icon="" ;;
-  3) icon="󰖙" ;;
-  *) icon="󰏘" ;;
+  "${STATE_COLOR_MODE_AUTO}") icon="󰔎" ;;
+  "${STATE_COLOR_MODE_DARK}") icon="" ;;
+  "${STATE_COLOR_MODE_LIGHT}") icon="󰖙" ;;
 esac
 
 cat <<EOF

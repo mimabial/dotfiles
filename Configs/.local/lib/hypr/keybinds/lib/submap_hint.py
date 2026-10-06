@@ -87,10 +87,12 @@ def build_hint(name):
     blocked = {
         "gaming": ("bar", "select workflow"),
         "powersaver": ("select workflow",) if profile_locked else (),
-        "windows": ("bar layout", "toggle bar", "cycle global layout"),
-        "niri": ("cycle global layout",),
-        "macos": ("bar layout",),
+        "windows": ("toggle bar",),
     }.get(workflow, ())
+    if state.get("WORKFLOW_WINDOW_LAYOUT"):
+        blocked += ("cycle global layout",)
+    if len(state.get("WORKFLOW_QUICKSHELL_LAYOUT", "").split()) == 1:
+        blocked += ("bar layout",)
     if blocked:
         submap_binds = [bind for bind in submap_binds if not any(text in bind["action_key"] for text in blocked)]
     if layout is not None:

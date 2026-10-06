@@ -37,7 +37,6 @@ BorderSurface {
 
     { id: "butterfly", name: "Butterfly", category: "particle", icon: "\uf1d8" },
     { id: "scatter", name: "Scatter", category: "particle", icon: "\uf005" },
-    { id: "rain", name: "Rain", category: "particle", icon: "\uf0e9" },
 
     { id: "plasma", name: "Liquid Plasma (2D)", category: "3d", icon: "\uf043" },
     { id: "osc_warp", name: "Oscilloscope Warp", category: "3d", icon: "\uf1fe" },

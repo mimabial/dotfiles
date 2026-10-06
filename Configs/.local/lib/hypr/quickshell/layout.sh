@@ -4,7 +4,7 @@ source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 
 usage() {
   cat <<EOF
-Usage: $0 [list|select|next|previous|set NAME]
+Usage: $0 [list|next|previous|set NAME]
 Show or change the active Quickshell bar layout.
 EOF
 }
@@ -25,31 +25,18 @@ files=("${layout_dir}"/*.json)
 mapfile -t layouts < <(printf '%s\n' "${files[@]}" | sed -E 's!.*/!!;s/\.json$//' | sort -u)
 action="${1:-next}"
 [[ "${action}" == list ]] && { printf '%s\n' "${layouts[@]}"; exit; }
-[[ "$(state_get HYPR_WORKFLOW default)" =~ ^(windows|macos)$ ]] && exit 0
-current="$(state_get QUICKSHELL_LAYOUT_NAME top)" step=1 i=0
-if [[ "${action}" == select ]]; then
-  hypr_runtime_require rofi
-  # geometry.bash carries the font, border and opacity overrides; without them
-  # the menu renders as the bare theme: no border, opaque black, default size
-  # shellcheck source=/dev/null
-  source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
-  rofi_args=()
-  rofi_build_standard_menu_args rofi_args 'Bar layout' 'Bar layout' "$(rofi_resolve_theme clipboard)"
-  # the theme carries no window width, so rofi sizes this list to
-  # whatever it likes; em keeps the clamp tracking the font
-  rofi_args+=(-theme-str "window { width: 20em; } listview { lines: ${#layouts[@]}; }")
-  target="$(printf '%s\n' "${layouts[@]}" | rofi_with_background_theme "${rofi_args[@]}" -no-custom -no-show-icons -select "${current}")" || exit 0
-  [[ -n "${target}" ]] || exit 0
-elif [[ "${action}" == set ]]; then
+read -ra workflow_layouts <<<"$(state_get WORKFLOW_QUICKSHELL_LAYOUT "")"
+((${#workflow_layouts[@]} == 1)) && exit 0
+((${#workflow_layouts[@]})) && layouts=("${workflow_layouts[@]}")
+current_layout="$(state_get QUICKSHELL_LAYOUT_NAME top)" direction=1 layout_index=0
+if [[ "${action}" == set ]]; then
   target="${2:-}"
-fi
-if [[ "${action}" =~ ^(select|set)$ ]]; then
   [[ " ${layouts[*]} " == *" ${target} "* ]] || { printf 'unknown bar layout: %s\n' "${target}" >&2; exit 1; }
 else
-  [[ "${action}" == previous ]] && step=-1
+  [[ "${action}" == previous ]] && direction=-1
   [[ "${action}" =~ ^(next|previous)$ ]] || { usage >&2; exit 1; }
-  for i in "${!layouts[@]}"; do [[ "${layouts[$i]}" == "${current}" ]] && break; done
-  target="${layouts[$(((i + step + ${#layouts[@]}) % ${#layouts[@]}))]}"
+  for layout_index in "${!layouts[@]}"; do [[ "${layouts[$layout_index]}" == "${current_layout}" ]] && break; done
+  target="${layouts[$(((layout_index + direction + ${#layouts[@]}) % ${#layouts[@]}))]}"
 fi
 state_set QUICKSHELL_LAYOUT_NAME "${target}" staterc
 # dunstrc bakes the notification origin at render time, so a bar that moved to

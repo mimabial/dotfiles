@@ -12,6 +12,7 @@ Options:
   --available                 list installed XKB layouts, variants, and options
   --use INDEX                 switch physical keyboards to layout INDEX
   --add LAYOUT [VARIANT]      add and activate an XKB layout/variant
+  --select LAYOUT [VARIANT]   switch to a layout/variant, adding it if needed
   --remove INDEX              remove a configured layout safely
   --shortcut OPTION|none      set or disable the XKB group shortcut" "$@"
 
@@ -297,6 +298,12 @@ acquire_config_lock() {
   state_acquire_lock "${config_file}" config_lock_fd \
     || die 'Keyboard settings are busy; try again in a moment.'
 }
+
+if [[ "${1:-}" == --select ]]; then
+  index=$(jq -r --arg layout "${2:-}" --arg variant "${3:-}" \
+    '.layouts | map(.layout == $layout and .variant == $variant) | index(true) // empty' <<<"$(current_payload)")
+  if [[ -n "${index}" ]]; then set -- --use "${index}"; else set -- --add "${2:-}" "${3:-}"; fi
+fi
 
 action=${1:-status}
 case "${action}" in

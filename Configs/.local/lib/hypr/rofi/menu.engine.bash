@@ -20,9 +20,9 @@ MENU_MULTI_BALLOT_ON="${MENU_MULTI_BALLOT_ON:-■}"
 MENU_MULTI_BALLOT_OFF="${MENU_MULTI_BALLOT_OFF:-□}"
 
 # Pixel costs from menutree.rasi.
-MENU_CONTENT_INNER_CHROME_PX=69
+MENU_CONTENT_INNER_CHROME_PX=89
 MENU_WINDOW_BORDER_PX=2
-MENU_VERTICAL_CHROME_PX=75
+MENU_VERTICAL_CHROME_PX=117
 MENU_ROW_CHROME_PX=25
 MENU_FOOTER_CHROME_PX=24
 
@@ -45,6 +45,7 @@ declare -gA HYPR_MENU_PROMPTS=()
 declare -gA HYPR_MENU_CHOICES=()
 declare -gA HYPR_MENU_LABELS=()
 declare -gA HYPR_MENU_PARENTS=()
+declare -gA HYPR_MENU_GLYPHS=()
 declare -gA HYPR_MENU_KINDS=()
 declare -gA HYPR_MENU_TARGETS=()
 declare -gA HYPR_MENU_SEARCHABLE=()
@@ -53,6 +54,8 @@ declare -ga HYPR_MENU_ACTION_HANDLERS=()
 declare -ga HYPR_MENU_ACTIVE_CHECKS=()
 declare -gA HYPR_MENU_MARKED=()
 declare -gA MENU_STATE=()
+MENU_ROOT_GLYPH=""
+MENU_PROMPT_GLYPH=""
 
 menu_exit_or_show() {
   [[ "${BACK_TO_EXIT}" == "true" ]] || menu_show_menu "${1:-main}"
@@ -126,7 +129,7 @@ menu_content_theme_override() {
   printf 'window { width: %spx; }' "${content_px}"
 
   if [[ "${mon_height}" =~ ^[0-9]+$ ]]; then
-    rows_max=$(((mon_height * 80 / 100 - MENU_VERTICAL_CHROME_PX - text_px - footer_px) / (text_px * lines_per_row + MENU_ROW_CHROME_PX)))
+    rows_max=$(((mon_height * 80 / 100 - MENU_VERTICAL_CHROME_PX - 2 * text_px - footer_px) / (text_px * lines_per_row + MENU_ROW_CHROME_PX)))
     ((rows_max < 1)) && rows_max=1
     printf ' listview { lines: %s; }' "${rows_max}"
   fi
@@ -242,10 +245,12 @@ menu() {
   case "${row_mode}" in "" | detail) ;; *) printf 'menu: invalid row mode: %s\n' "${row_mode}" >&2; return 2 ;; esac
 
   local options_rendered="" measured_rows="" width_override="" selected_row=""
-  local user_name="${USER:-user}" lines_per_row=1
+  local user_name="${USER:-user}" lines_per_row=1 glyph_font=""
   local -a rofi_args=()
 
   menu_metrics_cache_init
+  # Propo reports each icon's real width, so the glyph box fits the glyph and centring lands on it
+  glyph_font="${MENU_FONT_NAME_CACHE%% Nerd Font*} Nerd Font Propo ${MENU_FONT_SCALE_CACHE}"
 
   printf -v options_rendered '%b' "${options}"
   menu_measured_rows measured_rows "${options_rendered}" "${nav_keys}" "${row_mode}"
@@ -256,9 +261,13 @@ menu() {
 
   rofi_args+=("-theme-str" "$(rofi_font_override "${MENU_FONT_NAME_CACHE}" "${MENU_FONT_SCALE_CACHE}")")
   rofi_args+=("-theme-str" "${MENU_WINDOW_THEME_CACHE}")
-  rofi_args+=("-theme-str" "textbox-prompt-colon {border-radius: ${MENU_BORDER_RADIUS}px; str: \"${prompt}\";}")
+  rofi_args+=("-theme-str" "* {element-border-radius: ${MENU_BORDER_RADIUS}px;}")
+  # rofi's lexer runs a quoted value to the last quote on its line, so each one gets its own -theme-str
+  rofi_args+=("-theme-str" "textbox-prompt-colon {str: \"${MENU_PROMPT_GLYPH}\";}")
+  rofi_args+=("-theme-str" "textbox-prompt-label {str: \"${prompt}\";}")
+  rofi_args+=("-theme-str" "textbox-prompt-label {font: \"${MENU_FONT_NAME_CACHE} Bold ${MENU_FONT_SCALE_CACHE}\";}")
+  rofi_args+=("-theme-str" "textbox-prompt-colon {font: \"${glyph_font}\";}")
   rofi_args+=("-theme-str" "entry {placeholder: \"Hello ${user_name^}!\";}")
-  rofi_args+=("-theme-str" "element selected.normal {border-radius: ${MENU_BORDER_RADIUS}px;}")
   [[ -n "${width_override}" ]] && rofi_args+=("-theme-str" "${width_override}")
 
   menu_append_nav_args rofi_args "${nav_keys}"
@@ -337,6 +346,9 @@ menu_add_item() {
   HYPR_MENU_KINDS["${key}"]="${kind}"
   HYPR_MENU_TARGETS["${key}"]="${target}"
   HYPR_MENU_SEARCHABLE["${key}"]="${searchable}"
+  if [[ ! -v HYPR_MENU_GLYPHS["${target}"] && "${label}" =~ ^([^\ -~]+)[[:space:]] ]]; then
+    HYPR_MENU_GLYPHS["${target}"]="${BASH_REMATCH[1]}"
+  fi
 
   if [[ "${kind}" == "submenu" && -z "${HYPR_MENU_PARENTS["${target}"]:-}" ]]; then
     HYPR_MENU_PARENTS["${target}"]="${menu_id}"
@@ -475,6 +487,7 @@ menu_run_action() {
   local action_id="$1"
   local handler=""
 
+  MENU_PROMPT_GLYPH="${HYPR_MENU_GLYPHS["${action_id}"]:-}"
   for handler in "${HYPR_MENU_ACTION_HANDLERS[@]}"; do
     if "${handler}" "${action_id}"; then
       return 0
@@ -518,6 +531,7 @@ menu_show_menu() {
 
   menu_metrics_cache_init
   menu_render_options "${menu_id}" options preselect
+  MENU_PROMPT_GLYPH="${HYPR_MENU_GLYPHS["${menu_id}"]:-${MENU_ROOT_GLYPH}}"
   selection="$(menu "${prompt}" "${options}" --select "${preselect}" --nav tree)"
   rofi_exit=$?
 
@@ -646,6 +660,7 @@ menu_show_search() {
   row_item_keys=("" "${direct_item_keys[@]}" "${deeper_item_keys[@]}")
   options="$(IFS="${MENU_ROW_SEP}"; printf '%s' "${rows[*]}")"
 
+  MENU_PROMPT_GLYPH="${HYPR_MENU_GLYPHS[search_all]:-}"
   selection="$(menu "Search" "${options}" --rows detail)"
   rofi_exit=$?
 
