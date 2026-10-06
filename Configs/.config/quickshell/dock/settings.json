@@ -30,8 +30,8 @@
   "iconSize": 36,
   "recentApps": [
     "xdg-desktop-portal-gtk",
-    "org.tui.Terminal",
-    "org.tui.Rmpc"
+    "signal",
+    "org.tui.Terminal"
   ],
   "showRecents": true,
   "showIndicators": true

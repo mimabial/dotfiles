@@ -6,6 +6,7 @@ import ".."
 AudioButton {
     id: root
     property bool popupsAllowed: true
+    property bool mediaCard: false
     readonly property var devices: Pipewire.nodes.values.filter(node => node?.audio && !node.isStream)
     readonly property var inputs: devices.filter(node => !node.isSink)
     popupName: "sound-menu"; popupEnabled: popupsAllowed
@@ -24,6 +25,25 @@ AudioButton {
     }
     MacCard {
         anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: "sound-menu"; settings: "Sound"; settingsPopup: "audio"
+        Column {
+            width: parent.width; spacing: Style.xs; visible: root.mediaCard
+            PopupRow {
+                width: parent.width; shell: root.shell; visible: Media.hasMedia
+                iconSource: Media.artUrl; icon: Media.artUrl ? "" : "󰝚"; iconSize: Style.controlHeight
+                title: Media.title; detail: Media.artist; rightInset: mediaControls.width + Style.sm
+                onClicked: root.shell.togglePopup("media")
+                Row {
+                    id: mediaControls
+                    anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX; anchors.verticalCenter: parent.verticalCenter
+                    spacing: Style.xs
+                    PopupIconButton { shell: root.shell; glyph: "󰒮"; hint: "Previous"; enabled: !!Media.player?.canGoPrevious; glyphColor: enabled ? shell.foreground : shell.faintText; onClicked: Media.previous() }
+                    PopupIconButton { shell: root.shell; glyph: Media.player?.isPlaying ? "󰏤" : "󰐊"; hint: Media.player?.isPlaying ? "Pause" : "Play"; enabled: !!(Media.player?.canPlay || Media.player?.canPause || Media.player?.canTogglePlaying); onClicked: Media.playPause() }
+                    PopupIconButton { shell: root.shell; glyph: "󰒭"; hint: "Next"; enabled: Media.canNext(); glyphColor: enabled ? shell.foreground : shell.faintText; onClicked: Media.next() }
+                }
+            }
+            PopupRow { width: parent.width; shell: root.shell; title: "Open CLIamp…"; onClicked: root.shell.togglePopup("media") }
+            PopupSeparator { shell: root.shell }
+        }
         PopupSlider {
             width: parent.width; shell: root.shell; label: "Sound"; maximum: root.shell.volumeLimit
             value: root.sink?.audio?.volume ?? 0
@@ -39,5 +59,9 @@ AudioButton {
             model: root.inputs.length > 1 ? root.inputs : []
             Device { id: input; current: Pipewire.defaultAudioSource; onClicked: Pipewire.preferredDefaultAudioSource = input.modelData }
         }
+    }
+    LazyPopup {
+        shell: root.shell; popup: "media"; owners: ["mediaplayer", "nowplaying"]; popupsAllowed: root.mediaCard && root.popupsAllowed
+        sourceComponent: Component { MediaPopup { anchorItem: root; shell: root.shell; popupEnabled: root.mediaCard && root.popupsAllowed } }
     }
 }

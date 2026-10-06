@@ -50,7 +50,7 @@
     "color": ["c3", 1.0],
     "hover": { "color": ["fg", 1.0] },
     "badgeColor": ["fg", 1.0],
-    "badgeBackgroundColor": ["bg", 1.0],
+    "badgeBackgroundColor": null,
     "badgeSize": 7.0,
     "badgeFontWeight": 700,
     "badgeOffsetX": -8.0,

@@ -371,6 +371,10 @@ local function summon_app(class, workspace, command, focus_when_opened)
 end
 
 local numbered_special_workspaces = {
+	[6] = {
+		description = "[Launcher|Apps] Signal",
+		action = summon_app("signal", "special:signal", "signal-desktop"),
+	},
 	[8] = {
 		description = "[Launcher|Apps] web browser",
 		action = summon_app("firefox", "special:browser", browser),
@@ -413,6 +417,7 @@ exec(mod .. " CTRL", "D", "[Launcher|Menus] focus dock", "quickshell ipc call do
 bind(mod, "A", "[Launcher|Menus] Exposé window overview", hl.dsp.event("expose.window-overview:toggle"))
 bind(mod .. " SHIFT", "A", "[Launcher|Menus] Exposé app windows", hl.dsp.event("expose.window-overview:app"))
 exec(mod, "SPACE", "[Launcher|Menus] menu tree", "pkill -x rofi || hyprshell menutree")
+exec(mod .. " SHIFT", "SPACE", "[Launcher|Menus] start menu", "quickshell ipc call bar popup start")
 exec("CTRL", "F2", "[Launcher|Menus] focus menu bar", "quickshell ipc call bar menuBar")
 exec(mod, "V", "[Launcher|Menus] clipboard", "quickshell ipc call bar popup cliphist")
 exec(mod, "S", "[Launcher|Menus] spotlight", "quickshell ipc call bar popup spotlight")

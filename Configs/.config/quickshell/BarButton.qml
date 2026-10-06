@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Effects
 
 Item {
     id: root
@@ -122,46 +123,65 @@ Item {
         Behavior on border.color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
     }
     Loader { id: glyphProbe; active: root.boxedIcon && !root.symbolic; sourceComponent: Component { GlyphInk { glyph: root.labelText; family: root.shell.iconGlyphFont } } }
-    Loader {
-        id: symbolLoader
-        active: root.symbolic; anchors.centerIn: label
-        sourceComponent: Component { SymbolicIcon { name: root.symbol; context: root.symbolContext; directory: root.box.symbols ?? ""; color: label.color; size: Math.round(root.iconSize || root.iconBoxPx * 1.15) } }
-    }
-    Text {
-        id: icon
-        visible: root.leadingIcon !== ""
-        anchors.left: parent.left
-        anchors.leftMargin: root.box.margin[3] + root.paintedBorderWidth + root.box.padding[3]
-        anchors.verticalCenter: parent.verticalCenter
-        text: root.leadingIcon
-        color: root.box.iconColor === undefined ? label.color : root.interactiveColor("iconColor", root.styleColor("iconColor"))
-        Behavior on color { enabled: root.smoothTextColor; ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
-        font.family: root.shell.iconGlyphFont
-        font.pixelSize: root.leadingIconSize
-    }
-    TextMetrics { id: leadingIconMetrics; font: icon.font; text: icon.text }
-    Text {
-        id: label
-        visible: !((symbolLoader.item as SymbolicIcon)?.loaded ?? false)
+    Item {
+        id: glyphs
         anchors.fill: parent
-        anchors.topMargin: root.box.margin[0] + root.paintedBorderWidth + root.box.padding[0]
-        anchors.rightMargin: root.box.margin[1] + root.paintedBorderWidth + root.box.padding[1] + root.trailingWidth
-        anchors.bottomMargin: root.box.margin[2] + root.paintedBorderWidth + root.box.padding[2]
-        anchors.leftMargin: root.box.margin[3] + root.paintedBorderWidth + root.box.padding[3] + root.leadingIconWidth
-        color: root.interactiveColor("color", root.textColor)
-        Behavior on color { enabled: root.smoothTextColor; ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
-        font.family: root.usesIconFont ? root.shell.iconGlyphFont : root.shell.fontFamily
-        font.pixelSize: root.renderedFontSize
-        font.weight: root.fontWeight
-        transform: Translate { x: root.textOffsetX; y: root.textOffsetY }
-        rotation: root.textRotation
-        textFormat: root.textFormat
-        horizontalAlignment: root.textAlignment
-        verticalAlignment: Text.AlignVCenter
-        elide: Text.ElideRight
-        text: root.text
+        layer.enabled: badge.visible && root.box.badgeBackgroundColor === null
+        layer.effect: MultiEffect {
+            maskEnabled: true; maskInverted: true; maskSource: badgeMask
+            maskThresholdMin: 0.5; maskSpreadAtMin: 1
+        }
+        Loader {
+            id: symbolLoader
+            active: root.symbolic; anchors.centerIn: label
+            sourceComponent: Component { SymbolicIcon { name: root.symbol; context: root.symbolContext; directory: root.box.symbols ?? ""; color: label.color; size: Math.round(root.iconSize || root.iconBoxPx * 1.15) } }
+        }
+        Text {
+            id: icon
+            visible: root.leadingIcon !== ""
+            anchors.left: parent.left
+            anchors.leftMargin: root.box.margin[3] + root.paintedBorderWidth + root.box.padding[3]
+            anchors.verticalCenter: parent.verticalCenter
+            text: root.leadingIcon
+            color: root.box.iconColor === undefined ? label.color : root.interactiveColor("iconColor", root.styleColor("iconColor"))
+            Behavior on color { enabled: root.smoothTextColor; ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
+            font.family: root.shell.iconGlyphFont
+            font.pixelSize: root.leadingIconSize
+        }
+        TextMetrics { id: leadingIconMetrics; font: icon.font; text: icon.text }
+        Text {
+            id: label
+            visible: !((symbolLoader.item as SymbolicIcon)?.loaded ?? false)
+            anchors.fill: parent
+            anchors.topMargin: root.box.margin[0] + root.paintedBorderWidth + root.box.padding[0]
+            anchors.rightMargin: root.box.margin[1] + root.paintedBorderWidth + root.box.padding[1] + root.trailingWidth
+            anchors.bottomMargin: root.box.margin[2] + root.paintedBorderWidth + root.box.padding[2]
+            anchors.leftMargin: root.box.margin[3] + root.paintedBorderWidth + root.box.padding[3] + root.leadingIconWidth
+            color: root.interactiveColor("color", root.textColor)
+            Behavior on color { enabled: root.smoothTextColor; ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
+            font.family: root.usesIconFont ? root.shell.iconGlyphFont : root.shell.fontFamily
+            font.pixelSize: root.renderedFontSize
+            font.weight: root.fontWeight
+            transform: Translate { x: root.textOffsetX; y: root.textOffsetY }
+            rotation: root.textRotation
+            textFormat: root.textFormat
+            horizontalAlignment: root.textAlignment
+            verticalAlignment: Text.AlignVCenter
+            elide: Text.ElideRight
+            text: root.text
+        }
     }
-    Rectangle { anchors.fill: badge; anchors.leftMargin: -Style.xxs; anchors.rightMargin: -Style.xxs; radius: height / 2; visible: badge.visible; color: root.styleColor("badgeBackgroundColor") }
+    Item {
+        id: badgeMask
+        anchors.fill: glyphs
+        visible: false; layer.enabled: glyphs.layer.enabled
+        Rectangle {
+            x: badgeBackground.x; y: badgeBackground.y
+            width: badgeBackground.width; height: badgeBackground.height
+            radius: badgeBackground.radius; color: "black"
+        }
+    }
+    Rectangle { id: badgeBackground; anchors.fill: badge; anchors.leftMargin: -Style.xxs; anchors.rightMargin: -Style.xxs; radius: height / 2; visible: badge.visible; color: root.styleColor("badgeBackgroundColor") }
     Text {
         id: badge
         visible: root.badgeText !== ""

@@ -7,7 +7,13 @@ import "StartMenuModel.js" as StartMenuModel
 
 PopupCard {
     id: root
-    popupName: root.shell.popupName === "spotlight" ? "spotlight" : "start"
+    property string activePopupName: "start"
+    popupName: activePopupName
+    Binding on activePopupName {
+        when: root.shell.popupName === "start" || root.shell.popupName === "spotlight"
+        value: root.shell.popupName
+        restoreMode: Binding.RestoreNone
+    }
     keyboardHint: spotlight ? ""
         : placeEditorOpen ? "Enter save place · Esc cancel"
         : browseOnly ? "↑↓ move · Enter open · Esc close" : "Type to search · ↑↓ move · Enter open · Esc close"

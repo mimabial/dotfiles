@@ -7,7 +7,7 @@
 
 /*****----- Configuration -----*****/
 configuration {
-    modes:                      "drun";
+    /* modes:                      "drun"; */
     show-icons:                 true;
     display-drun:                " ";
     drun-display-format:        "{name}";
@@ -47,7 +47,7 @@ mainbox {
     border-radius:               0px 0px 0px 0px;
     border-color:                @selected-foreground;
     background-color:            transparent;
-    children:                    [ "inputbox", "listview" ];
+    children:                    [ "inputbox", "listview", "textbox-hints" ];
 }
 
 /*****----- Input Box -----*****/
@@ -185,4 +185,13 @@ textbox {
     vertical-align:              0.5;
     horizontal-align:            0.5;
     highlight:                   none;
+}
+
+textbox-hints {
+    expand:                      false;
+    markup:                      true;
+    content:                     "<span size=\"small\">Ctrl+Tab next mode  ·  Ctrl+Shift+Tab previous mode  ·  Enter open  ·  Esc close</span>";
+    text-color:                  @separator;
+    horizontal-align:            0.5;
+    background-color:            transparent;
 }

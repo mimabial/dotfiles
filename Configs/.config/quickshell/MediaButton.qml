@@ -1,6 +1,5 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import Quickshell.Services.Mpris
 
 Item {
     id: root
@@ -138,7 +137,7 @@ Item {
             Loader {
                 id: spectrum
                 active: root.cavaAppearance && root.hasPlayer
-                opacity: root.player?.isPlaying ? 1 : root.player?.playbackState === MprisPlaybackState.Paused ? 0.25 : 0.1
+                opacity: root.player?.isPlaying ? 1 : 0.1
                 anchors.right: parent.right
                 anchors.rightMargin: readout.box.margin[1] + readout.paintedBorderWidth + readout.box.padding[1]
                 anchors.verticalCenter: parent.verticalCenter

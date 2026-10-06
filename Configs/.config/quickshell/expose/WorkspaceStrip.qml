@@ -43,7 +43,7 @@ Item {
         readonly property real maxVisibleX: strip.width - width - Style.spacing.sm - newWorkspace.implicitWidth
         x: separator.visible
             ? Math.max(0, Math.min(maxVisibleX, strip.width / 2 - separator.x - separator.width / 2))
-            : (strip.width - width) / 2
+            : (strip.width - width - Style.spacing.sm - newWorkspace.implicitWidth) / 2
         spacing: Style.spacing.sm
 
         Repeater {

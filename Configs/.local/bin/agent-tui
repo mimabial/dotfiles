@@ -319,7 +319,6 @@ class Dashboard:
         self.default_agent = self.read_default_agent()
         self.agent_paths = installed_agent_paths()
         self.configure_screen()
-        self.fit_window_to_content()
         if (
             not self.records
             or self.cache_age() > CACHE_MAX_AGE_SECONDS
@@ -796,6 +795,7 @@ class Dashboard:
         stdin_fd = sys.stdin.fileno()
         try:
             self.update_cache()
+            self.fit_window_to_content()
             self.draw()
             while True:
                 watched = [stdin_fd, cache_events_fd, resize_read]

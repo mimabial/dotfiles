@@ -40,7 +40,12 @@
     "spotlight",
     "task-view",
     "wifi-menu",
-    "sound-menu",
+    {
+      "id": "sound-menu",
+      "props": {
+        "mediaCard": true
+      }
+    },
     "battery",
     {
       "id": "notifications",

@@ -1678,32 +1678,41 @@ Item {
                     }
 
                     Item {
+                        id: statusGroup
                         Layout.fillWidth: true
-                        Layout.preferredHeight: statusGroup.implicitHeight + Style.spacing.sm * 2
+                        Layout.preferredHeight: implicitHeight + Style.spacing.sm * 2
+                        implicitHeight: Math.max(windowCount.implicitHeight, statusSeparator.height, scopeGroup.implicitHeight)
+
+                        Rectangle {
+                            id: statusSeparator
+                            x: (workspaceStrip.workspaces.special.length > 0
+                                ? workspaceStrip.x + workspaceStrip.separatorCenterX - statusGroup.x
+                                : statusGroup.width / 2) - width / 2
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Math.max(1, Style.normalBorderWidth)
+                            height: Style.space(24)
+                            color: Color.menu.border
+                        }
+
+                        Text {
+                            id: windowCount
+                            anchors.right: statusSeparator.left
+                            anchors.rightMargin: Style.spacing.md
+                            anchors.verticalCenter: statusSeparator.verticalCenter
+                            text: overviewWindow.screenToplevels.length + " windows"
+                            textFormat: Text.PlainText
+                            color: Color.menu.text
+                            opacity: 0.55
+                            font.family: Style.font.menuFamily
+                            font.pixelSize: Style.font.bodySmall
+                        }
 
                         RowLayout {
-                            id: statusGroup
-                            x: workspaceStrip.workspaces.special.length > 0
-                                ? workspaceStrip.x + workspaceStrip.separatorCenterX - parent.x - statusSeparator.x - statusSeparator.width / 2
-                                : (parent.width - width) / 2
-                            anchors.verticalCenter: parent.verticalCenter
+                            id: scopeGroup
+                            anchors.left: statusSeparator.right
+                            anchors.leftMargin: Style.spacing.md
+                            anchors.verticalCenter: statusSeparator.verticalCenter
                             spacing: Style.spacing.md
-
-                            Text {
-                                text: overviewWindow.screenToplevels.length + " windows"
-                                textFormat: Text.PlainText
-                                color: Color.menu.text
-                                opacity: 0.55
-                                font.family: Style.font.menuFamily
-                                font.pixelSize: Style.font.bodySmall
-                            }
-
-                            Rectangle {
-                                id: statusSeparator
-                                Layout.preferredWidth: Math.max(1, Style.normalBorderWidth)
-                                Layout.preferredHeight: Style.space(24)
-                                color: Color.menu.border
-                            }
 
                             Image {
                                 id: appIcon

@@ -11,22 +11,7 @@
         "numerals": "hindi"
       }
     },
-    "systemstats"
-  ],
-  "centerAnchor": "datetime",
-  "center": [
-    "submap",
-    "caffeine",
-    "datetime",
-    {
-      "id": "updates",
-      "props": {
-        "hideWhenCurrent": false
-      }
-    },
-    "weather"
-  ],
-  "right": [
+    "systemstats",
     {
       "id": "mediaplayer",
       "props": {
@@ -48,7 +33,22 @@
         "cavaGain": 1,
         "cavaSmoothing": 77
       }
+    }
+  ],
+  "centerAnchor": "datetime",
+  "center": [
+    "submap",
+    "caffeine",
+    "datetime",
+    {
+      "id": "updates",
+      "props": {
+        "hideWhenCurrent": false
+      }
     },
+    "weather"
+  ],
+  "right": [
     "tray",
     "volume",
     "microphone",
