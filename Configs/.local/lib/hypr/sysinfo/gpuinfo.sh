@@ -4,7 +4,7 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell sysinfo/gpuinfo [--toggle|--use <gpu>|--reset|--stat <amd|intel|nvidia>]
 Emit GPU stats as bar JSON; flags manage GPU selection and cached state." "$@"
@@ -32,7 +32,7 @@ fi
 gpu_state_lib() {
   declare -F state_get >/dev/null 2>&1 && return 0
   # shellcheck source=/dev/null
-  source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/state.sh" 2>/dev/null || return 1
+  source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/state.bash" 2>/dev/null || return 1
 }
 
 restore_gpu_selection() {

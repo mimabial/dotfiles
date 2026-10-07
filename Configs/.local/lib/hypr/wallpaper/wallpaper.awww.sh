@@ -3,10 +3,9 @@ set -euo pipefail
 
 selected_wall="${1:-"${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/wallpaper/current}/wall.set"}"
 
-LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck disable=SC1090
-source "${LIB_DIR}/hypr/runtime/lock_paths.sh"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/lock_paths.bash"
 
 AWWW_LOCK="$(hypr_lock_path wallpaper_awww)"
 exec {awww_lock_fd}>"${AWWW_LOCK}"
@@ -27,7 +26,7 @@ wallpaper_awww_release_lock() {
 trap 'wallpaper_awww_release_lock "$?"' EXIT
 
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require wallpaper_catalog || exit 1
 
 wallpaper_daemon_socket() {

@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons
 
-// Legend row under a graph: "● User      86%    ● System     2%".
 // Items are {color, label, value, unit}; each takes an equal share of
 // the width with its figure pushed to the right edge of that share.
 Item {
@@ -51,7 +50,7 @@ Item {
             textFormat: Text.PlainText
             text: entry.modelData.label || ""
             color: root.foreground
-            opacity: 0.8
+            opacity: Style.secondaryTextAlpha
             font.family: root.fontFamily
             font.pixelSize: Style.font.bodySmall
             anchors.verticalCenter: parent.verticalCenter

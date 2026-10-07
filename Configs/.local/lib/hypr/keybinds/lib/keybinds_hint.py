@@ -232,7 +232,6 @@ def display_modifiers(modmask):
 
 
 def display_key_name(key):
-    """Map key_display to a more descriptive term."""
     key_map = {
         "edge:r:d": "Touch right edge downwards",
         "edge:r:l": "Touch right edge left",
@@ -264,7 +263,7 @@ DUNST_ROLES_FILE = os.path.join(
 
 
 def dunst_role_color(role):
-    """Resolved palette hex for a role, written by render/dunst; '' if unavailable."""
+    """Written by render/dunst; '' when unavailable."""
     try:
         with open(DUNST_ROLES_FILE) as f:
             for line in f:
@@ -277,7 +276,6 @@ def dunst_role_color(role):
 
 
 def hint_sort_key(mod_display, key_display):
-    """Group rows by modifier, keys sorted arrows/letters/named, ESCAPE last."""
     if key_display == "ESCAPE":
         return (1, 0, "", 0, 0, "")
     mod_rank = HINT_MOD_ORDER.get(mod_display, len(HINT_MOD_ORDER))
@@ -294,8 +292,8 @@ NUMBERED = re.compile(r"^(.*?)\s+(\d+)$")
 
 
 def collapse_numbered_series(entries):
-    """Fold "… workspace 1" through "… workspace 10" into a single row. Ten near
-    identical lines crowd out the rest of the submap in a notification."""
+    """Ten near-identical "workspace N" rows would crowd out the rest of the submap
+    in a notification."""
     series = defaultdict(list)
     singles = []
     for mod_display, key_display, description in entries:
@@ -323,7 +321,6 @@ def collapse_numbered_series(entries):
 
 
 def generate_hint(binds):
-    """Generate a Pango markup body listing binds, for a dunst notification."""
     entries = []
     for bind in binds:
         if bind.get("catch_all", False):
@@ -360,7 +357,6 @@ def generate_hint(binds):
 
 
 def generate_md(binds):
-    """Generate markdown table for binds data."""
     headers = ["Keys", "Action"]
 
     header_row = "| " + " | ".join(headers) + " |"
@@ -404,7 +400,6 @@ def generate_md(binds):
 
 
 def generate_dmenu(binds):
-    """Generate dmenu string for binds data."""
     dmenu_str = ""
     for bind in binds:
         mod_display = bind["mod_display"]
@@ -426,77 +421,56 @@ def generate_dmenu(binds):
     return dmenu_str
 
 
-def generate_rofi(binds):
-    """Generate rofi string for binds data with headers."""
-    rofi_str = ""
+HEADER_KEYS = ("header1", "header2", "header3", "header4", "header5")
+ROFI_SECTION_RULE = "━" * 80
+SUBHEADER_MARK = "\uf107"
+
+
+def rofi_bind_line(bind, delimiter):
+    displayed_keys = bind["displayed_keys"]
+    dispatcher = bind["dispatcher"]
+    arg = bind["arg"]
+    if dispatcher == "__lua":
+        dispatcher = "__lua_action"
+        arg = base64.urlsafe_b64encode(bind.get("action_key", "").encode("utf-8")).decode("ascii")
+    headers = " ".join(bind.get(key, "") for key in HEADER_KEYS)
+    repeated = "repeat" if bind.get("repeat", False) else ""
+    meta_data = f"{dispatcher} {arg} {repeated} {bind['keycode']} {headers} {bind.get('submap', '')} {displayed_keys}"
+    displayed_rofi_keys = f"{displayed_keys:<20} {delimiter:<5} {bind['description']}"
+    return f"{displayed_rofi_keys} ::: {dispatcher} ::: {arg} ::: {repeated} ::: {meta_data}"
+
+
+def group_by_headers(binds, delimiter):
     groups = {}
-
-    delimiter = os.getenv("ROFI_KEYBIND_HINT_DELIMITER", ">")
     for bind in binds:
-        catch_all = bind.get("catch_all", False)
-        if catch_all:  # hide the catch all keybind from the rofi menu
+        if bind.get("catch_all", False):
             continue
+        node = groups
+        *parents, last = (bind.get(key, "") for key in HEADER_KEYS)
+        for header in parents:
+            node = node.setdefault(header, {})
+        node.setdefault(last, []).append(rofi_bind_line(bind, delimiter))
+    return groups
 
-        displayed_keys = bind["displayed_keys"]
-        description = bind["description"]
-        dispatcher = bind["dispatcher"]
-        arg = bind["arg"]
-        if dispatcher == "__lua":
-            dispatcher = "__lua_action"
-            arg = base64.urlsafe_b64encode(
-                bind.get("action_key", "").encode("utf-8")
-            ).decode("ascii")
-        header1 = bind.get("header1", "")
-        header2 = bind.get("header2", "")
-        header3 = bind.get("header3", "")
-        header4 = bind.get("header4", "")
-        header5 = bind.get("header5", "")
-        submap = bind.get("submap", "")
-        repeated = "repeat" if bind.get("repeat", False) else ""
-        keycode = bind["keycode"]
-        meta_data = f"{dispatcher} {arg} {repeated} {keycode} {header1} {header2} {header3} {header4} {header5} {submap} {displayed_keys}"
 
-        displayed_rofi_keys = f"{displayed_keys:<20} {delimiter:<5} {description}"
-
-        if header1 not in groups:
-            groups[header1] = {}
-        if header2 not in groups[header1]:
-            groups[header1][header2] = {}
-        if header3 not in groups[header1][header2]:
-            groups[header1][header2][header3] = {}
-        if header4 not in groups[header1][header2][header3]:
-            groups[header1][header2][header3][header4] = {}
-        if header5 not in groups[header1][header2][header3][header4]:
-            groups[header1][header2][header3][header4][header5] = []
-
-        groups[header1][header2][header3][header4][header5].append(
-            f"{displayed_rofi_keys} ::: {dispatcher} ::: {arg} ::: {repeated} ::: {meta_data}"
-        )
-
-    def format_group(headers, level=0, parent_meta_data=""):
-        nonlocal rofi_str
-        if level == 0:
-            prefix = ""
-        elif level == 1:
-            prefix = ""
+def rofi_group_lines(headers, level=0, parent_meta_data=""):
+    prefix = "" if level == 0 else " " * (level - 1) + SUBHEADER_MARK
+    suffix = f"[{parent_meta_data}]" if parent_meta_data else ""
+    for header, subgroups in headers.items():
+        current_meta_data = f"{header}{suffix}".strip(" <")
+        if header:
+            yield f"{prefix} {header}  {suffix:>20} ::: ::: {current_meta_data}"
+        if isinstance(subgroups, dict):
+            yield from rofi_group_lines(subgroups, level + 1, current_meta_data)
         else:
-            prefix = " " * (level - 1) + ""
+            for binding in subgroups:
+                yield f"{binding} ::: ::: {current_meta_data}"
+            yield f"{ROFI_SECTION_RULE} ::: ::: {current_meta_data}"
 
-        suffix = f"[{parent_meta_data}]" if parent_meta_data else ""
 
-        for header, subgroups in headers.items():
-            current_meta_data = f"{header}{suffix}".strip(" <")
-            if header:
-                rofi_str += f"{prefix} {header}  {suffix:>20} ::: ::: {current_meta_data}\n"
-            if isinstance(subgroups, dict):
-                format_group(subgroups, level + 1, current_meta_data)
-            else:
-                for binding in subgroups:
-                    rofi_str += f"{binding} ::: ::: {current_meta_data}\n"
-                rofi_str += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ::: ::: {current_meta_data}\n"
-
-    format_group(groups)
-    return rofi_str
+def generate_rofi(binds):
+    groups = group_by_headers(binds, os.getenv("ROFI_KEYBIND_HINT_DELIMITER", ">"))
+    return "".join(line + "\n" for line in rofi_group_lines(groups))
 
 
 def annotate_bindings_with_display_metadata(binds_data):

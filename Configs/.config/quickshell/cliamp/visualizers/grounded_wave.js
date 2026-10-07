@@ -1,4 +1,3 @@
-// Grounded Wave — Single-sided bottom baseline spectrum visualizer with full color fill
 .pragma library
 .import "helpers.js" as H
 

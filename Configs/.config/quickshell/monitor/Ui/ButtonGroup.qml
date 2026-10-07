@@ -48,8 +48,7 @@ Row {
 
   function activateFocused() {
     if (_focusedIndex < 0 || _focusedIndex >= options.length) return
-    var v = optionValue(options[_focusedIndex])
-    root.changed(v)
+    root.changed(optionValue(options[_focusedIndex]))
   }
 
   onActiveFocusChanged: {

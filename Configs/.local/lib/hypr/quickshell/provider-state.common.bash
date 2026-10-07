@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 quickshell_state_init() {
   QUICKSHELL_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
   QUICKSHELL_STATERC_FILE="${QUICKSHELL_STATE_HOME}/hypr/staterc"

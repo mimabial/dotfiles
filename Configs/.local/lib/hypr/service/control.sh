@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell service/control <start|stop|restart|status|is-active|enable|disable|reset-failed> <service>" "$@"
 [[ "$#" -eq 2 ]] || exit 2

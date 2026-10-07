@@ -111,7 +111,7 @@ test_queue() (
 )
 
 test_index_helpers() (
-  source "${WALLPAPER_DIR%/wallpaper}/core/wallpaper.catalog.sh"
+  source "${WALLPAPER_DIR%/wallpaper}/core/wallpaper.catalog.bash"
   source "${WALLPAPER_DIR}/lib/catalog.bash"
   local -a wallpaper_paths=(/w/a.jpg "/w/b c.png" /w/東京.jpg)
 
@@ -136,7 +136,7 @@ test_index_helpers() (
 )
 
 test_select_adjacent() (
-  source "${WALLPAPER_DIR%/wallpaper}/core/wallpaper.catalog.sh"
+  source "${WALLPAPER_DIR%/wallpaper}/core/wallpaper.catalog.bash"
   source "${WALLPAPER_DIR}/lib/catalog.bash"
   source "${WALLPAPER_DIR}/lib/actions.bash"
   # stubs must follow the sources, or the libraries redefine them
@@ -200,7 +200,7 @@ test_prune_unreferenced() (
 test_prune_unreferenced
 
 test_selected_path_is_the_only_catalog_read() (
-  source "${WALLPAPER_DIR%/wallpaper}/core/wallpaper.catalog.sh"
+  source "${WALLPAPER_DIR%/wallpaper}/core/wallpaper.catalog.bash"
   source "${WALLPAPER_DIR}/lib/catalog.bash"
   source "${WALLPAPER_DIR}/lib/actions.bash"
   local -a wallpaper_paths=(/w/a.jpg /w/b.jpg /w/c.jpg)
@@ -255,7 +255,7 @@ test_link_selected_uses_the_path_it_is_given() (
 )
 
 test_theme_catalog_repairs_wall_link() (
-  source "${WALLPAPER_DIR%/wallpaper}/core/wallpaper.catalog.sh"
+  source "${WALLPAPER_DIR%/wallpaper}/core/wallpaper.catalog.bash"
   local temp_dir wall
   local -a theme_names=() theme_wallpapers=() WALLPAPER_FILETYPES=() WALLPAPER_OVERRIDE_FILETYPES=()
   temp_dir="$(mktemp -d)"; trap 'rm -rf -- "${temp_dir}"' EXIT

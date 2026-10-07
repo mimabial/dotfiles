@@ -1,8 +1,5 @@
-"""hyprmoncfgd: monitor profile daemon.
-
-Speaks line-delimited JSON-RPC over a unix socket. Every frame carries
-protocol_version 1; the panel silently drops frames that do not.
-"""
+"""Speaks line-delimited JSON-RPC over a unix socket. Every frame carries
+protocol_version 1; the panel silently drops frames that do not."""
 from __future__ import annotations
 
 import json
@@ -55,7 +52,6 @@ def _save_state(state: dict) -> None:
 
 
 def apply_mode(output: dict) -> None:
-    """Keep width/height/refresh consistent with whatever mode string is set."""
     mode = str(output.get("mode", ""))
     body = mode[:-2] if mode.endswith("Hz") else mode
     geometry, _, refresh = body.partition("@")
@@ -86,7 +82,6 @@ def centre(output: dict) -> tuple[float, float]:
 
 
 def snap(profile: dict, key: str, distance: float) -> None:
-    """Pull an output's edges onto a neighbour's when they land within tolerance."""
     if distance <= 0:
         return
     target = next((o for o in profile.get("outputs", []) if o.get("key") == key), None)
@@ -114,7 +109,6 @@ def snap(profile: dict, key: str, distance: float) -> None:
 
 
 def snap_beside(profile: dict, key: str, direction: str) -> None:
-    """Put an output flush against its nearest neighbour, centred along the shared edge."""
     outputs = placed(profile)
     target = next((o for o in outputs if o.get("key") == key), None)
     anchors = [o for o in outputs if o is not target]
@@ -133,7 +127,6 @@ def snap_beside(profile: dict, key: str, direction: str) -> None:
 
 
 def edit_profile(profile: dict, edit: dict) -> dict:
-    """Apply one panel edit to a draft profile and hand the draft back."""
     draft = json.loads(json.dumps(profile or {}))
     draft.setdefault("outputs", [])
     edit = edit or {}
@@ -329,7 +322,6 @@ class Daemon:
         return external or self.monitors
 
     def auto_switch(self) -> None:
-        """Pick the best-matching profile for the connected set and apply it."""
         if self.unmanaged or not self.auto or self.preview:
             return
         self.refresh_monitors()
@@ -395,78 +387,94 @@ class Daemon:
             self.finish_preview(transaction_id, keep=False, save=False)
         self.broadcast()
 
-    def handle(self, method: str, params: dict, client: socket.socket):
-        if method in ("subscribe", "status"):
-            if method == "subscribe":
-                with self.lock:
-                    if client not in self.clients:
-                        self.clients.append(client)
-            self.refresh_monitors()
-            return self.status_document(), False
+    def rpc_status(self, params: dict, client: socket.socket):
+        self.refresh_monitors()
+        return self.status_document(), False
 
-        if method == "editor_state":
-            self.refresh_monitors()
-            return self.editor_document(), False
+    def rpc_subscribe(self, params: dict, client: socket.socket):
+        with self.lock:
+            if client not in self.clients:
+                self.clients.append(client)
+        return self.rpc_status(params, client)
 
-        if method == "edit_profile":
-            draft = edit_profile(params.get("profile") or {}, params.get("edit") or {})
-            return {"profile": draft, "workspace_plan": workspaces.plan(draft)}, False
+    def rpc_editor_state(self, params: dict, client: socket.socket):
+        self.refresh_monitors()
+        return self.editor_document(), False
 
-        if method == "save":
-            profile = params.get("profile")
-            if not isinstance(profile, dict) or not str(profile.get("name", "")).strip():
-                raise ValueError("A profile needs a name before it can be saved")
-            saved = profiles.save(profile)
-            return {"profile": saved}, True
+    def rpc_edit_profile(self, params: dict, client: socket.socket):
+        draft = edit_profile(params.get("profile") or {}, params.get("edit") or {})
+        return {"profile": draft, "workspace_plan": workspaces.plan(draft)}, False
 
-        if method == "delete":
-            name = str(params.get("name", ""))
-            if not profiles.delete(name):
-                raise ValueError("No saved profile called %s" % name)
-            if self.state.get("active_profile") == name:
-                self.set_state(active_profile="")
-            return {"deleted": name}, True
+    def rpc_save(self, params: dict, client: socket.socket):
+        profile = params.get("profile")
+        if not isinstance(profile, dict) or not str(profile.get("name", "")).strip():
+            raise ValueError("A profile needs a name before it can be saved")
+        return {"profile": profiles.save(profile)}, True
 
-        if method == "apply":
-            if self.preview:
-                raise ValueError("Keep or revert the running display preview first")
-            name = str(params.get("profile_name", ""))
-            profile = profiles.by_name(name)
-            if not profile:
-                raise ValueError("No saved profile called %s" % name)
-            self.activate(profile)
-            return {"applied": name}, True
+    def rpc_delete(self, params: dict, client: socket.socket):
+        name = str(params.get("name", ""))
+        if not profiles.delete(name):
+            raise ValueError("No saved profile called %s" % name)
+        if self.state.get("active_profile") == name:
+            self.set_state(active_profile="")
+        return {"deleted": name}, True
 
-        if method == "preview":
-            return self.start_preview(params), True
+    def rpc_apply(self, params: dict, client: socket.socket):
+        if self.preview:
+            raise ValueError("Keep or revert the running display preview first")
+        name = str(params.get("profile_name", ""))
+        profile = profiles.by_name(name)
+        if not profile:
+            raise ValueError("No saved profile called %s" % name)
+        self.activate(profile)
+        return {"applied": name}, True
 
-        if method == "commit":
-            return (
-                self.finish_preview(
-                    str(params.get("transaction_id", "")), True, bool(params.get("save", False))
-                ),
-                True,
-            )
+    def rpc_preview(self, params: dict, client: socket.socket):
+        return self.start_preview(params), True
 
-        if method == "revert":
-            return self.finish_preview(str(params.get("transaction_id", "")), False, False), True
+    def rpc_commit(self, params: dict, client: socket.socket):
+        transaction = str(params.get("transaction_id", ""))
+        return self.finish_preview(transaction, True, bool(params.get("save", False))), True
 
-        if method == "set_profile_auto":
-            self.set_state(auto=bool(params.get("enabled", True)))
-            if self.auto:
-                self.auto_switch()
-            return {"enabled": self.auto}, True
+    def rpc_revert(self, params: dict, client: socket.socket):
+        return self.finish_preview(str(params.get("transaction_id", "")), False, False), True
 
-        if method == "manage":
-            self.set_state(unmanaged=False)
+    def rpc_set_profile_auto(self, params: dict, client: socket.socket):
+        self.set_state(auto=bool(params.get("enabled", True)))
+        if self.auto:
             self.auto_switch()
-            return {"unmanaged": False}, True
+        return {"enabled": self.auto}, True
 
-        if method == "unmanage":
-            self.set_state(unmanaged=True)
-            return {"unmanaged": True}, True
+    def rpc_manage(self, params: dict, client: socket.socket):
+        self.set_state(unmanaged=False)
+        self.auto_switch()
+        return {"unmanaged": False}, True
 
-        raise ValueError("Unknown method %s" % method)
+    def rpc_unmanage(self, params: dict, client: socket.socket):
+        self.set_state(unmanaged=True)
+        return {"unmanaged": True}, True
+
+    RPC_METHODS = {
+        "status": rpc_status,
+        "subscribe": rpc_subscribe,
+        "editor_state": rpc_editor_state,
+        "edit_profile": rpc_edit_profile,
+        "save": rpc_save,
+        "delete": rpc_delete,
+        "apply": rpc_apply,
+        "preview": rpc_preview,
+        "commit": rpc_commit,
+        "revert": rpc_revert,
+        "set_profile_auto": rpc_set_profile_auto,
+        "manage": rpc_manage,
+        "unmanage": rpc_unmanage,
+    }
+
+    def handle(self, method: str, params: dict, client: socket.socket):
+        handler = self.RPC_METHODS.get(method)
+        if handler is None:
+            raise ValueError("Unknown method %s" % method)
+        return handler(self, params, client)
 
     def serve_client(self, client: socket.socket) -> None:
         buffer = b""
@@ -515,7 +523,6 @@ class Daemon:
             self.broadcast()
 
     def watch_hyprland(self) -> None:
-        """Re-evaluate profiles when displays come and go."""
         while True:
             try:
                 for event, _payload in hypr.events():
@@ -528,7 +535,6 @@ class Daemon:
                 time.sleep(2)
 
     def watch_lid(self) -> None:
-        """Re-evaluate profiles when logind reports the lid opening or closing."""
         logind = subprocess.Popen(
             ["gdbus", "monitor", "--system", "--dest", "org.freedesktop.login1",
              "--object-path", "/org/freedesktop/login1"],
@@ -560,13 +566,16 @@ class Daemon:
             threading.Thread(target=self.serve_client, args=(client,), daemon=True).start()
 
 
+PR_SET_NAME = 15
+
+
 def set_process_name(name: str = "hyprmoncfgd") -> None:
     """Match on comm so `pgrep -x hyprmoncfgd` finds us behind the interpreter."""
     try:
         import ctypes
 
         ctypes.CDLL("libc.so.6", use_errno=True).prctl(
-            15, ctypes.c_char_p(name.encode()), 0, 0, 0
+            PR_SET_NAME, ctypes.c_char_p(name.encode()), 0, 0, 0
         )
     except (OSError, AttributeError):
         pass

@@ -16,7 +16,7 @@ BorderSurface {
   component ContextRow: DockMenuRow { menuWidth: contextMenu.rowWidth }
   component MenuDivider: DockMenuDivider { menuWidth: contextMenu.rowWidth }
   visible: contextMenu.dock.contextAppId !== ""
-  z: 100
+  z: contextMenu.dock.popoverZ
   color: Util.alpha(Color.menu.background, Style.popupSurfaceOpacity)
   borderSpec: Border.surfaceSpec("menu", "border",
     Util.alpha(Color.menu.border, Style.popupBorderOpacity), 1)
@@ -1108,11 +1108,11 @@ BorderSurface {
           var dir = wheel.angleDelta.y > 0 ? -1 : 1
           var len = contextMenu.dock.contextWindowList.length
           if (appContextMenuColumn.selectedWindowIdx < 0) {
-            var cur = 0
-            for (var c = 0; c < len; c++) {
-              if (contextMenu.dock.isWindowFocused(contextMenu.dock.contextWindowList[c])) { cur = c; break }
+            var focusedIndex = 0
+            for (var index = 0; index < len; index++) {
+              if (contextMenu.dock.isWindowFocused(contextMenu.dock.contextWindowList[index])) { focusedIndex = index; break }
             }
-            appContextMenuColumn.selectedWindowIdx = (cur + dir + len) % len
+            appContextMenuColumn.selectedWindowIdx = (focusedIndex + dir + len) % len
           } else {
             appContextMenuColumn.selectedWindowIdx = (appContextMenuColumn.selectedWindowIdx + dir + len) % len
           }

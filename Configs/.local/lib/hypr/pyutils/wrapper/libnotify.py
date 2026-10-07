@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# coding: utf-8
 
 import os
 import shutil
@@ -9,6 +8,7 @@ from typing import Optional
 
 DEFAULT_APP_NAME = "Hyprland"
 DEFAULT_URGENCY = "normal"
+SEND_TIMEOUT_SECONDS = 3
 
 
 def _is_gui_available():
@@ -25,12 +25,29 @@ def _has_dunstify():
 
 
 def _print_fallback(summary: str, body: Optional[str], app_name: Optional[str]):
-    """Print a human-readable fallback message to stdout."""
     prefix = f"[{app_name or DEFAULT_APP_NAME}]"
     message = f"{summary}"
     if body:
         message += f": {body}"
     print(f"{prefix} {message}")
+
+
+def dunstify_command(summary, body, urgency, expire_time, icon, category, app_name, replace_id):
+    command = [shutil.which("dunstify") or "dunstify"]
+    for flag, value in (
+        ("-u", urgency),
+        ("-t", expire_time),
+        ("-i", icon),
+        ("-c", category),
+        ("-a", app_name),
+        ("-r", replace_id),
+    ):
+        if value:
+            command.extend([flag, str(value)])
+    command.append(summary)
+    if body:
+        command.append(body)
+    return command
 
 
 def send(
@@ -42,70 +59,20 @@ def send(
     category: Optional[str] = None,
     app_name: Optional[str] = DEFAULT_APP_NAME,
     replace_id: Optional[int] = None,
-    transient: bool = False,
-    sync_tag: Optional[str] = None,
 ):
-    """Send a notification using dunstify.
-
-    Parameters
-    ----------
-    summary : str
-        The summary of the notification.
-    body : Optional[str]
-        The body of the notification.
-    urgency : Optional[str]
-        The urgency level (low, normal, critical).
-    expire_time : Optional[int]
-        The timeout in milliseconds at which to expire the notification.
-    icon : Optional[str]
-        The icon filename or stock icon to display.
-    category : Optional[str]
-        The notification category.
-    app_name : Optional[str]
-        The app name for the notification.
-    replace_id : Optional[int]
-        The ID of the notification to replace.
-    transient : bool
-        Compatibility flag for callers that want short-lived notifications.
-    sync_tag : Optional[str]
-        Stack/replacement tag for daemons that honor the
-        x-canonical-private-synchronous hint.
-    """
-    # Fall back to stdout when desktop notifications are unavailable.
     if not _is_gui_available() or not _has_dunstify():
         _print_fallback(summary, body, app_name)
         return
 
-    command = [shutil.which("dunstify") or "dunstify"]
-
-    if urgency:
-        command.extend(["-u", urgency])
-    if expire_time:
-        command.extend(["-t", str(expire_time)])
-    if icon:
-        command.extend(["-i", icon])
-    if category:
-        command.extend(["-c", category])
-    if app_name:
-        command.extend(["-a", app_name])
-    if replace_id:
-        command.extend(["-r", str(replace_id)])
-    if sync_tag:
-        command.extend(["-h", f"string:x-canonical-private-synchronous:{sync_tag}"])
-
-    command.append(summary)
-    if body:
-        command.append(body)
+    command = dunstify_command(summary, body, urgency, expire_time, icon, category, app_name, replace_id)
 
     def _send_in_background():
         try:
-            run(command, check=True, timeout=3, capture_output=True)
+            run(command, check=True, timeout=SEND_TIMEOUT_SECONDS, capture_output=True)
         except (CalledProcessError, TimeoutExpired, FileNotFoundError):
             _print_fallback(summary, body, app_name)
-            return
 
-    thread = threading.Thread(target=_send_in_background, daemon=True)
-    thread.start()
+    threading.Thread(target=_send_in_background, daemon=True).start()
 
 
 if __name__ == "__main__":

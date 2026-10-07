@@ -23,7 +23,6 @@ Options:
 
 Domains:
   hypr-config
-  hypr-state
   hyprlock
   hypridle
   rofi

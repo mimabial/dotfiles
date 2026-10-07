@@ -3,17 +3,19 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell fonts/find-unused
 Audit installed and local fonts not referenced by your config, then optionally remove them." "$@"
 
+MIN_ALIAS_LENGTH=4
 FONT_EXT_REGEX='\.(ttf|otf|ttc|otb|pfa|pfb|woff2?)$'
 LOCAL_FONT_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/fonts"
 SEARCH_ROOTS=(
   "${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
   "${XDG_CONFIG_HOME:-$HOME/.config}/rofi"
   "${XDG_DATA_HOME:-$HOME/.local/share}/rofi"
+  "${XDG_DATA_HOME:-$HOME/.local/share}/hypr"
   "${XDG_CONFIG_HOME:-$HOME/.config}/dunst"
   "${XDG_CONFIG_HOME:-$HOME/.config}/kitty"
   "${XDG_CONFIG_HOME:-$HOME/.config}/alacritty"
@@ -24,7 +26,7 @@ SEARCH_ROOTS=(
   "${XDG_CONFIG_HOME:-$HOME/.config}/tmux"
   "${XDG_CONFIG_HOME:-$HOME/.config}/wal"
   "${XDG_CONFIG_HOME:-$HOME/.config}/swappy"
-  "${LIB_DIR:-$HOME/.local/lib}/hypr"
+  "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}"
 )
 SEARCH_GLOBS=(
   '!**/.git/**'
@@ -223,7 +225,7 @@ classify_match_kind() {
   printf 'explicit\n'
 }
 
-# Keeps the highest-ranked reference seen so far; best_* belong to the caller.
+# The best_* variables belong to the caller.
 record_best_match() {
   local -n best_score_ref="$1" best_kind_ref="$2" best_match_ref="$3"
   local kind="$4"
@@ -254,7 +256,7 @@ reference_rank() {
     base=30
   elif [[ "${path}" == "${HOME}/.config/"* ]]; then
     base=20
-  elif [[ "${path}" == "${HOME}/.local/lib/hypr/"* ]]; then
+  elif [[ "${path}" == "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/"* ]]; then
     base=10
   fi
 
@@ -286,10 +288,11 @@ reference_scope() {
   fi
 
   case "${path}" in
-    "${config_home}/hypr/userfonts.lua" | \
+    "${config_home}/hypr/userprefs.lua" | \
+      "${config_home}/hypr/userfonts.lua" | \
       "${config_home}/hypr/themes/theme.meta" | \
-      "${config_home}/hypr/variables.meta" | \
-      "${data_home}/hypr/variables.meta" | \
+      "${config_home}/hypr/vars.lua" | \
+      "${data_home}/hypr/vars.lua" | \
       "${config_home}/rofi/"* | \
       "${config_home}/dunst/"* | \
       "${config_home}/kitty/"* | \
@@ -301,7 +304,7 @@ reference_scope() {
     "${config_home}/hypr/themes/"* | \
       "${config_home}/wal/templates/"* | \
       "${data_home}/rofi/"* | \
-      "${LIB_DIR:-$HOME/.local/lib}/hypr/"*)
+      "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/"*)
       printf 'installed-config\n'
       ;;
     *)
@@ -320,7 +323,7 @@ find_best_reference_for_family() {
 
   [[ -n "$family" ]] || return 1
   while IFS= read -r alias; do
-    [[ ${#alias} -ge 4 ]] || continue
+    [[ ${#alias} -ge "${MIN_ALIAS_LENGTH}" ]] || continue
     alias_regex="$(font_reference_regex "${alias}")"
     for match in "${LIVE_FONT_REFS[@]:-}"; do
       [[ -n "${match}" ]] || continue
@@ -585,8 +588,8 @@ section_header() {
   echo "======================================"
 }
 
-# Renders one classified package list; the array is passed by name because the
-# four lists differ only in their heading and bullet.
+# The array goes by name because the four lists differ only in their heading and
+# bullet.
 print_package_section() {
   local heading="$1" empty_message="$2" bullet="$3"
   local -n packages_ref="$4"

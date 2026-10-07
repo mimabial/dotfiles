@@ -10,6 +10,7 @@ import "BluetoothModel.js" as Model
 
 PopupCard {
     id: root
+    readonly property int maxSwitchWaits: 8
     popupName: "bluetooth"
     keyboardHint: page === "devices" ? "↑↓/Tab move · ←→ adjust · X forget · Enter select · Esc close" : "↑↓/Tab move · ←→ adjust · Enter select · Esc back"
     contentWidth: Style.px(440)
@@ -311,7 +312,7 @@ PopupCard {
             if (duplex && !Model.audioProfileHasInput(state, state.activeProfile)) {
                 if (entry.switchRequested) {
                     entry.switchWait = Number(entry.switchWait || 0) + 1
-                    if (entry.switchWait > 8) { entry.switchRequested = false; entry.switchWait = 0 }
+                    if (entry.switchWait > root.maxSwitchWaits) { entry.switchRequested = false; entry.switchWait = 0 }
                 } else if (setAudioProfile(device.address, duplex.value, key)) {
                     entry.switchRequested = true
                 }
@@ -474,10 +475,11 @@ PopupCard {
         id: discoveryStop
         interval: 700; repeat: true
         property int attempts: 0
+        readonly property int maxAttempts: 3
         running: !root.scanWanted && root.owesDiscoveryStop && root.adapter && root.adapter.discovering
         onRunningChanged: if (running) attempts = 0
         onTriggered: {
-            if (++attempts > 3) { root.owesDiscoveryStop = false; return }
+            if (++attempts > maxAttempts) { root.owesDiscoveryStop = false; return }
             root.adapter.discovering = false
         }
     }

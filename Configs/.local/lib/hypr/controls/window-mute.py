@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Toggle mute for the focused window's audio sink inputs."""
-
 from __future__ import annotations
 
 import json
@@ -24,6 +22,9 @@ NOTIFY_ID = 18
 ICON_THEME_DIR = "Pywal16-Icon"
 ICON_MUTED = "media/muted-speaker.svg"
 ICON_UNMUTED = "media/unmuted-speaker.svg"
+
+
+ALERT_NOTIFY_MS = 1200
 
 
 @dataclass(slots=True)
@@ -326,7 +327,7 @@ def main() -> int:
             "No audio stream for focused window",
             body=label,
             icon=_icon_path(ICON_MUTED),
-            timeout=1200,
+            timeout=ALERT_NOTIFY_MS,
         )
         print(f"No sink input for focused window: {app_class}", file=sys.stderr)
         return 1
@@ -343,7 +344,7 @@ def main() -> int:
             f"Failed to set {state.lower()}",
             body=f"{label} (stream {failed_id})",
             icon=_icon_path(ICON_MUTED),
-            timeout=1200,
+            timeout=ALERT_NOTIFY_MS,
         )
         print(f"Failed to set sink input {failed_id} to {state.lower()}.", file=sys.stderr)
         return 1

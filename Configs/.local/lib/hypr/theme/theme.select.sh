@@ -1,20 +1,19 @@
 #!/usr/bin/env bash
 
-LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state system rofi wallpaper_catalog || exit 1
 hypr_runtime_load_state || exit 1
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/wallpaper/lib/common.bash"
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/theme/pairs.sh"
+source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash"
+source "${HYPR_LIB_DIR}/wallpaper/lib/common.bash"
+source "${HYPR_LIB_DIR}/theme/pairs.sh"
 
 theme_select_notify() {
   local icon_path="$1"
   shift
 
-  local -a args=(-a "Theme select" -t 2000 -r 92)
+  local -a args=(-a "Theme select" -t "${NOTIFY_BRIEF_MS}" -r "${NOTIFY_ID_THEME_SELECT}")
   [[ -n "${icon_path}" ]] && args+=(-i "${icon_path}")
   notify_send_safe "${args[@]}" "$@" || true
 }
@@ -227,7 +226,7 @@ ensure_theme_thumbs() {
   local wall=""
   local hash=""
   local thumb=""
-  local queue_script="${LIB_DIR}/hypr/wallpaper/wallcache.daemon.sh"
+  local queue_script="${HYPR_LIB_DIR}/wallpaper/wallcache.daemon.sh"
 
   for wall in "${theme_wallpapers[@]}"; do
     [[ -n "${wall}" && -r "${wall}" ]] || continue
@@ -247,7 +246,7 @@ ensure_theme_thumbs() {
   if [[ -x "${queue_script}" ]]; then
     "${queue_script}" --enqueue "${cache_args[@]}" &>/dev/null &
   else
-    "${LIB_DIR}/hypr/wallpaper/wallpaper.cache.sh" "${cache_args[@]}" &>/dev/null &
+    "${HYPR_LIB_DIR}/wallpaper/wallpaper.cache.sh" "${cache_args[@]}" &>/dev/null &
   fi
 }
 
@@ -374,7 +373,7 @@ show_theme_selector() {
   )"
 
   [[ -n "${selection}" ]] || exit 0
-  "${LIB_DIR}/hypr/theme/theme.switch.sh" -s "${selection}"
+  "${HYPR_LIB_DIR}/theme/theme.switch.sh" -s "${selection}"
 }
 
 case "${1:-}" in

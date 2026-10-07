@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Curses calculator over a persistent qalc session."""
-
 from __future__ import annotations
 
 import argparse
 import curses
+from curses.ascii import ctrl
 import locale
 import os
 import queue
@@ -26,6 +25,10 @@ HISTORY_LIMIT = 1000
 # keep any single evaluation inside the frame read budget below
 TIME_LIMIT_MS = 400
 POLL_MS = 5
+KEYPAD_MIN_HEIGHT = 15
+SIDE_PANEL_MIN_WIDTH = 62
+ESCAPE = "\x1b"
+DELETE = "\x7f"
 
 SGR = re.compile(r"\x1b\[([0-9;]*)m")
 ANS = re.compile(r"\bans\b")
@@ -105,12 +108,9 @@ class QalcSession:
         threading.Thread(target=pump, daemon=True).start()
 
     def evaluate(self, expr: str, budget: float = 3.0) -> tuple[list[str], str]:
-        """Return the result lines and any note qalc wrote to stderr.
-
-        Piped qalc answers in a fixed frame: the echoed input, a blank line, the
+        """Piped qalc answers in a fixed frame: the echoed input, a blank line, the
         result, then an empty line. Internal blank lines inside a result carry
-        indentation, so only a truly empty line ends it.
-        """
+        indentation, so only a truly empty line ends it."""
         if not expr.strip():
             return [], ""
 
@@ -462,7 +462,7 @@ class Calculator:
         self.targets = []
 
         rows = self.keypad(width - 2)
-        keypad_height = len(rows) + 1 if height >= 15 else 0
+        keypad_height = len(rows) + 1 if height >= KEYPAD_MIN_HEIGHT else 0
         footer = height - 1
         result_row = footer - keypad_height - 1
         input_row = result_row - 1
@@ -523,7 +523,7 @@ class Calculator:
         return lines
 
     def panel_width(self, lines: list[tuple[str, str, object]], width: int) -> int:
-        if width < 62 or not lines:
+        if width < SIDE_PANEL_MIN_WIDTH or not lines:
             return 0
         needed = []
         for kind, label, payload in lines:
@@ -645,89 +645,75 @@ class Calculator:
         self.selection = (0, 0)
         self.dirty = True
 
-    def handle(self, key) -> bool:
+    def navigate(self, key) -> bool:
+        on_keys = self.focus == "keys"
         if key == curses.KEY_MOUSE:
             self.click()
-            return True
-        if key == curses.KEY_RESIZE:
-            return True
-        if key in ("\x03", "\x04") or key in (3, 4):
-            return False
-        if key in (curses.KEY_F1, curses.KEY_F2, curses.KEY_F3, curses.KEY_F4):
+        elif key == curses.KEY_RESIZE:
+            pass
+        elif key in (curses.KEY_F1, curses.KEY_F2, curses.KEY_F3, curses.KEY_F4):
             self.set_mode(MODES[key - curses.KEY_F1])
-            return True
-        if key in ("\t", 9, curses.KEY_BTAB):
-            self.focus = "keys" if self.focus == "input" else "input"
-            return True
-        if key in ("\x1b", 27):
+        elif key in ("\t", curses.KEY_BTAB):
+            self.focus = "input" if on_keys else "keys"
+        elif key == ESCAPE:
             # a bare ESC also arrives when a terminal sends an escape sequence
             # this build has no mapping for, so it must not be an instant exit.
             # It no longer exits at all: ncurses holds the byte for ESCDELAY
             # (1s by default) to tell it from a sequence, which made closing
             # look like a hang. ^C quits, as the hint says.
-            if self.focus == "keys":
+            if on_keys:
                 self.focus = "input"
             elif self.buffer:
                 self.edit("", 0)
-            return True
-        if key in ("\x0c", 12):
+        elif key == ctrl("l"):
             self.entries.clear()
-            return True
-        if key in ("\n", "\r", curses.KEY_ENTER) or key == 10:
-            if self.focus == "keys":
-                selected = self.selected()
-                if selected:
-                    self.press(selected)
-            else:
+        elif key in ("\n", "\r", curses.KEY_ENTER):
+            if not on_keys:
                 self.commit()
-            return True
-        if key in (curses.KEY_UP, 259):
-            self.move_selection(-1, 0) if self.focus == "keys" else self.recall(-1)
-            return True
-        if key in (curses.KEY_DOWN, 258):
-            self.move_selection(1, 0) if self.focus == "keys" else self.recall(1)
-            return True
-        if key in (curses.KEY_LEFT, 260):
-            if self.focus == "keys":
-                self.move_selection(0, -1)
+            elif selected := self.selected():
+                self.press(selected)
+        elif key in (curses.KEY_UP, curses.KEY_DOWN):
+            step = -1 if key == curses.KEY_UP else 1
+            self.move_selection(step, 0) if on_keys else self.recall(step)
+        elif key in (curses.KEY_LEFT, curses.KEY_RIGHT):
+            step = -1 if key == curses.KEY_LEFT else 1
+            if on_keys:
+                self.move_selection(0, step)
             else:
-                self.cursor = max(0, self.cursor - 1)
-            return True
-        if key in (curses.KEY_RIGHT, 261):
-            if self.focus == "keys":
-                self.move_selection(0, 1)
-            else:
-                self.cursor = min(len(self.buffer), self.cursor + 1)
-            return True
-        if key in (curses.KEY_HOME, 262, "\x01"):
+                self.cursor = min(len(self.buffer), max(0, self.cursor + step))
+        else:
+            return False
+        return True
+
+    def edit_line(self, key) -> bool:
+        before, after = self.buffer[: self.cursor], self.buffer[self.cursor:]
+        if key in (curses.KEY_HOME, ctrl("a")):
             self.cursor = 0
-            return True
-        if key in (curses.KEY_END, 360, "\x05"):
+        elif key in (curses.KEY_END, ctrl("e")):
             self.cursor = len(self.buffer)
-            return True
-        if key in (curses.KEY_BACKSPACE, 263, "\x7f", "\x08"):
+        elif key in (curses.KEY_BACKSPACE, DELETE, ctrl("h")):
             if self.cursor:
-                self.edit(self.buffer[: self.cursor - 1] + self.buffer[self.cursor:], self.cursor - 1)
-            return True
-        if key in (curses.KEY_DC, 330):
-            self.edit(self.buffer[: self.cursor] + self.buffer[self.cursor + 1:], self.cursor)
-            return True
-        if key == "\x15":
-            self.edit(self.buffer[self.cursor:], 0)
-            return True
-        if key == "\x0b":
-            self.edit(self.buffer[: self.cursor], self.cursor)
-            return True
-        if key == "\x17":
-            head = self.buffer[: self.cursor].rstrip()
-            cut = head.rfind(" ") + 1
-            self.edit(self.buffer[:cut] + self.buffer[self.cursor:], cut)
-            return True
-        if key == "\x19":
+                self.edit(before[:-1] + after, self.cursor - 1)
+        elif key == curses.KEY_DC:
+            self.edit(before + after[1:], self.cursor)
+        elif key == ctrl("u"):
+            self.edit(after, 0)
+        elif key == ctrl("k"):
+            self.edit(before, self.cursor)
+        elif key == ctrl("w"):
+            cut = before.rstrip().rfind(" ") + 1
+            self.edit(self.buffer[:cut] + after, cut)
+        elif key == ctrl("y"):
             text = plain(self.result) or (plain(self.entries[-1][1]) if self.entries else "")
             self.status = "copied" if copy(text) else "nothing to copy"
-            return True
-        if isinstance(key, str) and key.isprintable():
+        else:
+            return False
+        return True
+
+    def handle(self, key) -> bool:
+        if key in (ctrl("c"), ctrl("d")):
+            return False
+        if not (self.navigate(key) or self.edit_line(key)) and isinstance(key, str) and key.isprintable():
             self.edit(self.buffer[: self.cursor] + key + self.buffer[self.cursor:], self.cursor + 1)
         return True
 

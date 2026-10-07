@@ -1,4 +1,3 @@
-// Stereo — calibrated channel RMS, sample-peak and 4× true-peak meters.
 .pragma library
 .import "helpers.js" as H
 

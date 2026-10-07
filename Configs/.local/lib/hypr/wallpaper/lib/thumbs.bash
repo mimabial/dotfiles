@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 wallInventoryList=()
 declare -A wallInventoryHash=()
@@ -123,7 +122,6 @@ wallpaper_collect_valid_png_hashes() {
   done
 }
 
-# Deletes every file in dir whose name carries a hash the caller no longer holds.
 # The pattern must capture the hash as group 1.
 wallpaper_prune_unreferenced() {
   local hashset_name="$1"

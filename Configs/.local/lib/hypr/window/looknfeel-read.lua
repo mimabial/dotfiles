@@ -3,9 +3,6 @@
 -- keep in sync with Hyprland's, and a hand-edit that breaks the syntax gets a
 -- real error instead of being silently misread.
 --
---   lua looknfeel-read.lua <path>       run a file
---   lua looknfeel-read.lua -e <source>  run a string
---
 -- Output is one tab-separated record per line:
 --
 --   k  <key:path>  <type>  <value>                     a config setting

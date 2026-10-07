@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 wallpaper_catalog_hash_command() {
   local hash_cmd="${HYPR_HASH_COMMAND:-sha1sum}"
@@ -104,63 +103,67 @@ wallpaper_catalog_write_runtime_cache() {
   wallpaper_catalog_replace_if_changed "${tmp_cache}" "${cache_file}"
 }
 
+wallpaper_hash_inventory_into() {
+  local -n inventory_hash_ref="$1" inventory_list_ref="$2"
+  local hash_cmd="$3" regex_ext="$4" cache_hash_name="$5" cache_meta_name="$6"
+  shift 6
+  local wall_file wall_mtime wall_size wall_meta wall_hash
+
+  while IFS=$'\t' read -r -d '' wall_mtime wall_size wall_file; do
+    wall_meta="${wall_mtime}"$'\t'"${wall_size}"
+    wall_hash="$(wallpaper_catalog_hash_for_file "${wall_file}" "${wall_meta}" "${hash_cmd}" "${cache_hash_name}" "${cache_meta_name}")"
+    inventory_hash_ref["${wall_file}"]="${wall_hash}"
+    inventory_list_ref+=("${wall_file}")
+    printf '%s\t%s\t%s\n' "${wall_hash}" "${wall_meta}" "${wall_file}"
+  done < <(
+    find -H "$@" -type f -regextype posix-extended \
+      -iregex ".*\\.(${regex_ext})$" ! -path "*/logo/*" \
+      -printf '%T@\t%s\t%p\0' 2>/dev/null | sort -z -t$'\t' -k3
+  )
+}
+
+wallpaper_hashmap_fallback_into() {
+  local hash_name="$1" list_name="$2" cache_file="$3"
+  shift 3
+  local -n fallback_hash_ref="${hash_name}" fallback_list_ref="${list_name}"
+  local -a fallback_hash=() fallback_list=()
+  local i
+
+  wallpaper_scan_hashes_into fallback_hash fallback_list "$@" || return 1
+  fallback_list_ref=("${fallback_list[@]}")
+  for i in "${!fallback_list_ref[@]}"; do fallback_hash_ref["${fallback_list_ref[i]}"]="${fallback_hash[i]}"; done
+  wallpaper_catalog_write_runtime_cache "${cache_file}" "${hash_name}" "${list_name}" || true
+}
+
 wallpaper_hashmap_cached_into() {
   local hash_name="$1"
   local list_name="$2"
   shift 2
-  local -n hash_ref="${hash_name}"
   local -n list_ref="${list_name}"
   local -a wall_sources=("$@")
   [[ ${#wall_sources[@]} -gt 0 ]] || return 1
 
   local -a supported_files=()
-  local hash_cmd=""
+  local -A cache_hash=() cache_meta=()
+  local hash_cmd="" cache_file="" regex_ext="" tmp_cache=""
   wallpaper_supported_files_array supported_files
   hash_cmd="$(wallpaper_catalog_hash_command)"
-
-  local cache_root=""
-  local cache_dir=""
-  local cache_file=""
-  local cache_meta_file=""
-  cache_root="$(wallpaper_cache_root)"
-  cache_dir="${cache_root}/hashmap"
   cache_file="$(wallpaper_hashmap_cache_file "${wall_sources[@]}")"
-  cache_meta_file="${cache_file}.meta"
-  mkdir -p "${cache_dir}"
+  mkdir -p "$(wallpaper_cache_root)/hashmap"
 
-  wallpaper_catalog_write_meta "${cache_meta_file}" wall_sources supported_files
-
-  local -A cache_hash
-  local -A cache_meta
+  wallpaper_catalog_write_meta "${cache_file}.meta" wall_sources supported_files
   wallpaper_catalog_load_index "${cache_file}" cache_hash cache_meta
-
-  local regex_ext=""
   regex_ext="$(wallpaper_extensions_regex "${supported_files[@]}")"
 
-  local tmp_cache="${cache_file}.tmp"
+  tmp_cache="${cache_file}.tmp"
   : >"${tmp_cache}"
-
-  local wall_file wall_mtime wall_size wall_meta wall_hash
-  while IFS=$'\t' read -r -d '' wall_mtime wall_size wall_file; do
-    wall_meta="${wall_mtime}"$'\t'"${wall_size}"
-    wall_hash="$(wallpaper_catalog_hash_for_file "${wall_file}" "${wall_meta}" "${hash_cmd}" cache_hash cache_meta)"
-    hash_ref["${wall_file}"]="${wall_hash}"
-    list_ref+=("${wall_file}")
-    printf '%s\t%s\t%s\n' "${wall_hash}" "${wall_meta}" "${wall_file}"
-  done < <(
-    find -H "${wall_sources[@]}" -type f -regextype posix-extended \
-      -iregex ".*\\.(${regex_ext})$" ! -path "*/logo/*" \
-      -printf '%T@\t%s\t%p\0' 2>/dev/null | sort -z -t$'\t' -k3
-  ) >"${tmp_cache}"
+  wallpaper_hash_inventory_into "${hash_name}" "${list_name}" "${hash_cmd}" "${regex_ext}" cache_hash cache_meta \
+    "${wall_sources[@]}" >"${tmp_cache}"
 
   if [[ ${#list_ref[@]} -eq 0 ]]; then
-    local -a fallback_hash=() fallback_list=()
     rm -f "${tmp_cache}"
-    wallpaper_scan_hashes_into fallback_hash fallback_list "${wall_sources[@]}" || return 1
-    list_ref=("${fallback_list[@]}")
-    for i in "${!list_ref[@]}"; do hash_ref["${list_ref[i]}"]="${fallback_hash[i]}"; done
-    wallpaper_catalog_write_runtime_cache "${cache_file}" "${hash_name}" "${list_name}"
-    return 0
+    wallpaper_hashmap_fallback_into "${hash_name}" "${list_name}" "${cache_file}" "${wall_sources[@]}"
+    return
   fi
 
   wallpaper_catalog_replace_if_changed "${tmp_cache}" "${cache_file}"

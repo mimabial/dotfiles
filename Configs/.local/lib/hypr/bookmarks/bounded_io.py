@@ -1,5 +1,3 @@
-"""Bounded subprocess and regular-file I/O."""
-
 from __future__ import annotations
 
 import errno
@@ -14,7 +12,60 @@ from pathlib import Path
 
 
 class BoundedOutputError(ValueError):
-    """A child process exceeded its declared output budget."""
+    pass
+
+
+READ_CHUNK_BYTES = 64 * 1024
+TERMINATE_GRACE_SECONDS = 0.25
+
+
+def _time_left(deadline: float, command: list[str], timeout: float) -> float:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise subprocess.TimeoutExpired(command, timeout)
+    return remaining
+
+
+def _read_bounded_output(
+    process: subprocess.Popen[bytes],
+    selector: selectors.BaseSelector,
+    deadline: float,
+    output_limit: int,
+    command: list[str],
+    timeout: float,
+) -> bytes:
+    output = bytearray()
+    while True:
+        if not selector.select(_time_left(deadline, command, timeout)):
+            raise subprocess.TimeoutExpired(command, timeout)
+        chunk = os.read(
+            process.stdout.fileno(),
+            min(READ_CHUNK_BYTES, output_limit + 1 - len(output)),
+        )
+        if not chunk:
+            return bytes(output)
+        output.extend(chunk)
+        if len(output) > output_limit:
+            raise BoundedOutputError("Process output is too large")
+
+
+def _terminate_process_group(process: subprocess.Popen[bytes]) -> None:
+    if process.stdout is not None:
+        process.stdout.close()
+    if process.poll() is not None:
+        return
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    try:
+        process.wait(timeout=TERMINATE_GRACE_SECONDS)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait()
 
 
 def run_bounded_process(
@@ -25,14 +76,12 @@ def run_bounded_process(
     input_data: bytes | None = None,
     env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[bytes]:
-    """Capture stdout without allowing a child to fill unbounded memory."""
     if output_limit < 0 or timeout <= 0:
         raise ValueError("Process limits must be positive")
 
     input_stream = None
     process: subprocess.Popen[bytes] | None = None
     selector = selectors.DefaultSelector()
-    output = bytearray()
     try:
         if input_data is not None:
             input_stream = tempfile.TemporaryFile()
@@ -52,46 +101,13 @@ def run_bounded_process(
             raise OSError("Could not capture process output")
         selector.register(process.stdout, selectors.EVENT_READ)
 
-        while True:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise subprocess.TimeoutExpired(command, timeout)
-            events = selector.select(remaining)
-            if not events:
-                raise subprocess.TimeoutExpired(command, timeout)
-            chunk = os.read(
-                process.stdout.fileno(),
-                min(64 * 1024, output_limit + 1 - len(output)),
-            )
-            if not chunk:
-                break
-            output.extend(chunk)
-            if len(output) > output_limit:
-                raise BoundedOutputError("Process output is too large")
-
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            raise subprocess.TimeoutExpired(command, timeout)
-        return_code = process.wait(timeout=remaining)
-        return subprocess.CompletedProcess(command, return_code, bytes(output), None)
+        output = _read_bounded_output(process, selector, deadline, output_limit, command, timeout)
+        return_code = process.wait(timeout=_time_left(deadline, command, timeout))
+        return subprocess.CompletedProcess(command, return_code, output, None)
     finally:
         selector.close()
         if process is not None:
-            if process.stdout is not None:
-                process.stdout.close()
-            if process.poll() is None:
-                try:
-                    os.killpg(process.pid, signal.SIGTERM)
-                except ProcessLookupError:
-                    pass
-                try:
-                    process.wait(timeout=0.25)
-                except subprocess.TimeoutExpired:
-                    try:
-                        os.killpg(process.pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
-                    process.wait()
+            _terminate_process_group(process)
         if input_stream is not None:
             input_stream.close()
 
@@ -103,7 +119,7 @@ def read_limited_bytes(
     *,
     follow_symlinks: bool = True,
 ) -> bytes:
-    """Read one descriptor-validated regular file without blocking on special files."""
+    """Validated by descriptor, so a FIFO or device file cannot block the read."""
     flags = os.O_RDONLY | os.O_CLOEXEC | os.O_NONBLOCK
     if not follow_symlinks:
         if not hasattr(os, "O_NOFOLLOW"):
@@ -142,14 +158,13 @@ def read_limited_text(
     *,
     follow_symlinks: bool = True,
 ) -> str:
-    """Read one bounded regular file as UTF-8 text."""
     return read_limited_bytes(
         path, limit, description, follow_symlinks=follow_symlinks
     ).decode("utf-8", errors="replace")
 
 
 def existing_regular_mode(path: Path, description: str, default: int) -> int:
-    """Return a fixed path's mode without following symlinks or special files."""
+    """Never follows symlinks or opens special files."""
     try:
         info = path.lstat()
     except FileNotFoundError:

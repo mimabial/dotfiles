@@ -4,6 +4,12 @@ source "${BASH_SOURCE[0]%/*}/lib/temp-color.bash"
 # shellcheck source=/dev/null
 source "${BASH_SOURCE[0]%/*}/lib/map-floor.bash"
 
+# Levels run high, mid, low; icons run from below low up to at-or-above high.
+GPUINFO_UTIL_LEVELS=(90 60 30)
+GPUINFO_UTIL_ICONS=("󰾆" "󰾅" "󰓅" "")
+GPUINFO_TEMP_LEVELS=(85 65 45)
+GPUINFO_TEMP_ICONS=("" "" "" "")
+
 is_number() {
   [[ "$1" =~ ^-?[0-9]+([.][0-9]+)?$ ]]
 }
@@ -95,25 +101,17 @@ intel_gpu_top_util() {
 }
 
 resolve_bucket_icon() {
-  local value="$1" prev="$2" high="$3" mid="$4" low="$5" hyst="$6"
-  local state_key="$7" fallback_map="$8" bucket icon
-  shift 8
-  local -a icons=("$@")
+  local value="$1" prev="$2" hyst="$3" state_key="$4"
+  local -n levels_ref="$5" icons_ref="$6"
+  local bucket=""
 
-  bucket=$(hysteresis_bucket "${value}" "${prev}" "${high}" "${mid}" "${low}" "${hyst}")
+  bucket=$(hysteresis_bucket "${value}" "${prev}" "${levels_ref[@]}" "${hyst}")
   if [[ -n "${bucket}" ]]; then
     update_state_var "${state_key}" "${bucket}"
-    printf '%s\n' "${icons[${bucket}]}"
+    printf '%s\n' "${icons_ref[bucket]}"
     return 0
   fi
-
-  icon="$(map_floor "${fallback_map}" "${value}")"
-  if [[ "${state_key}" == "GPUINFO_TEMP_BUCKET" ]]; then
-    printf '%s\n' "${icon:0:1}"
-    return 0
-  fi
-
-  printf '%s\n' "${icon}"
+  map_floor "${levels_ref[0]}:${icons_ref[3]}, ${levels_ref[1]}:${icons_ref[2]}, ${levels_ref[2]}:${icons_ref[1]}, ${icons_ref[0]}" "${value}"
 }
 
 vendor_thermo_icon() {
@@ -148,6 +146,7 @@ append_tooltip_line() {
 build_tooltip() {
   local thermo="$1"
   local speed="$2"
+  local clock="$3"
   local line=""
 
   tooltip="$primary_gpu
@@ -156,10 +155,8 @@ $thermo Temperature: ${temperature}°C"
   if [[ -n "${utilization:-}" ]]; then
     append_tooltip_line "$speed Utilization: ${utilization}%"
   fi
-  if [[ -n "${core_clock:-}" ]]; then
-    append_tooltip_line " Clock Speed: ${core_clock} MHz"
-  elif [[ -n "${current_clock_speed:-}" ]] && [[ -n "${max_clock_speed:-}" ]]; then
-    append_tooltip_line " Clock Speed: ${current_clock_speed}/${max_clock_speed} MHz"
+  if [[ -n "${clock}" ]]; then
+    append_tooltip_line " Clock Speed: ${clock}"
   fi
   if [[ -n "${power_usage:-}" ]]; then
     line="󱪉 Power Usage: ${power_usage} W"
@@ -191,36 +188,20 @@ format_utilization_text() {
   printf -- '--󱉸\n'
 }
 
-generate_json() {
-  local util_high=90 util_mid=60 util_low=30
-  local temp_high=85 temp_mid=65 temp_low=45
-  local util_hyst="${GPUINFO_UTIL_HYSTERESIS:-5}"
-  local temp_hyst="${GPUINFO_TEMP_HYSTERESIS:-2}"
-
-  temp_lv="85:, 65:, 45:, "
-  util_lv="90:, 60:󰓅, 30:󰾅, 󰾆"
-
-  local speed thermo temp_color icon_text tooltip formatted_util
-  local util_icons=("󰾆" "󰾅" "󰓅" "")
-  local temp_icons=("" "" "" "")
-
-  speed="$(resolve_bucket_icon "${utilization}" "${GPUINFO_UTIL_BUCKET:-}" "${util_high}" "${util_mid}" "${util_low}" "${util_hyst}" "GPUINFO_UTIL_BUCKET" "${util_lv}" "${util_icons[@]}")"
-  thermo="$(resolve_bucket_icon "${temperature}" "${GPUINFO_TEMP_BUCKET:-}" "${temp_high}" "${temp_mid}" "${temp_low}" "${temp_hyst}" "GPUINFO_TEMP_BUCKET" "${temp_lv}" "${temp_icons[@]}")"
-  temp_color=$(get_temp_color "${temperature}")
-  icon_text="$(render_thermo_icon "${temp_color}")"
-  build_tooltip "${thermo}" "${speed}"
-  formatted_util="$(format_utilization_text)"
-
-  local sep=$'\r'
-
-  local clock=""
+gpu_clock_text_into() {
+  local -n clock_ref="$1"
+  clock_ref=""
   if [[ -n "${core_clock:-}" ]]; then
-    clock="${core_clock} MHz"
+    clock_ref="${core_clock} MHz"
   elif [[ -n "${current_clock_speed:-}" && -n "${max_clock_speed:-}" ]]; then
-    clock="${current_clock_speed}/${max_clock_speed} MHz"
+    clock_ref="${current_clock_speed}/${max_clock_speed} MHz"
   fi
+}
 
-  local line entry vendor name choices=""
+gpu_vendor_choices_into() {
+  local -n vendor_choices_ref="$1"
+  local line entry vendor name
+  vendor_choices_ref=""
   while IFS= read -r line; do
     entry="${line#\#}"
     [[ "$entry" == GPUINFO_*_ENABLE=1 ]] || continue
@@ -228,10 +209,26 @@ generate_json() {
     vendor="${entry#GPUINFO_}"
     vendor="${vendor%_ENABLE}"
     name="GPUINFO_${vendor}_GPU"
-    choices+="${vendor,,}"$'\t'"${!name:-${vendor,,}}"$'\t'
-    [[ "$entry" == "${GPUINFO_PRIORITY:-}" ]] && choices+=true || choices+=false
-    choices+=$'\n'
+    vendor_choices_ref+="${vendor,,}"$'\t'"${!name:-${vendor,,}}"$'\t'
+    [[ "$entry" == "${GPUINFO_PRIORITY:-}" ]] && vendor_choices_ref+=true || vendor_choices_ref+=false
+    vendor_choices_ref+=$'\n'
   done <"$gpuinfo_file"
+}
+
+generate_json() {
+  local util_hyst="${GPUINFO_UTIL_HYSTERESIS:-5}"
+  local temp_hyst="${GPUINFO_TEMP_HYSTERESIS:-2}"
+  local speed thermo temp_color icon_text tooltip formatted_util clock choices
+  local sep=$'\r'
+
+  speed="$(resolve_bucket_icon "${utilization}" "${GPUINFO_UTIL_BUCKET:-}" "${util_hyst}" GPUINFO_UTIL_BUCKET GPUINFO_UTIL_LEVELS GPUINFO_UTIL_ICONS)"
+  thermo="$(resolve_bucket_icon "${temperature}" "${GPUINFO_TEMP_BUCKET:-}" "${temp_hyst}" GPUINFO_TEMP_BUCKET GPUINFO_TEMP_LEVELS GPUINFO_TEMP_ICONS)"
+  temp_color=$(get_temp_color "${temperature}")
+  icon_text="$(render_thermo_icon "${temp_color}")"
+  gpu_clock_text_into clock
+  build_tooltip "${thermo}" "${speed}" "${clock}"
+  formatted_util="$(format_utilization_text)"
+  gpu_vendor_choices_into choices
 
   jq -n -c \
     --arg icon "$icon_text" \

@@ -2,7 +2,6 @@
 
 set -euo pipefail
 
-LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 queue_art_update() {
   local dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr" lock fd path last=0
@@ -20,7 +19,7 @@ queue_art_update() {
 
 case "${1:-}" in
   --mpris|--title|--artist|--source|--status|--length)
-    source "${LIB_DIR}/hypr/session/hyprlock.media.bash"
+    source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/session/hyprlock.media.bash"
     queue_art_update  # most layouts never ask for --source; this self-rate-limits
     "fn_${1#--}" "${2:-}"
     exit
@@ -29,7 +28,7 @@ esac
 
 # Theme renders can invoke this without hyprshell on PATH.
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state system notify wallpaper_catalog || exit 1
 hypr_runtime_load_state || exit 1
 
@@ -41,7 +40,6 @@ ensure_xdg_dirs() {
 
 setup_hyprlock_paths() {
   HYPR_CACHE_HOME="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME}/hypr}"
-  HYPR_LIB_DIR="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}"
   WALLPAPER_CACHE_DIR="${WALLPAPER_CACHE_DIR:-${HYPR_CACHE_HOME}/wallpaper}"
   WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${WALLPAPER_CACHE_DIR}/current}"
   WALLPAPER_VIDEO_DIR="${WALLPAPER_VIDEO_DIR:-${WALLPAPER_CURRENT_DIR}/thumbnails}"

@@ -8,39 +8,28 @@ usage() {
   printf 'Usage: hyprshell setup/default.sh agent|browser|terminal|editor [NAME]\n'
 }
 
-lua_default() {
-  local key="$1"
-  local fallback="$2"
-  local vars_file="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/vars.lua"
-  local value=""
-
-  value="$(sed -nE 's/^[[:space:]]*'"${key}"'[[:space:]]*=[[:space:]]*"([^"]*)".*/\1/p' "${vars_file}" | head -n 1)"
-  printf '%s\n' "${value:-${fallback}}"
-}
-
-set_lua_default() {
+set_user_pref() {
   local key="$1"
   local value="$2"
-  local vars_file="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/vars.lua"
+  local prefs_file="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/userprefs.lua"
+  local vars_import='local vars = require("vars")'
   local temp_file=""
 
-  [[ -r "${vars_file}" ]] || { printf 'Default config not found: %s\n' "${vars_file}" >&2; return 1; }
-  grep -Eq "^[[:space:]]*${key}[[:space:]]*=" "${vars_file}" || {
-    printf 'Default key not found: %s\n' "${key}" >&2
-    return 1
-  }
-
-  temp_file="$(mktemp "${vars_file}.tmp.XXXXXX")"
-  sed -E 's/^([[:space:]]*'"${key}"'[[:space:]]*=[[:space:]]*")[^"]*(",?[[:space:]]*)$/\1'"${value}"'\2/' \
-    "${vars_file}" >"${temp_file}"
-  chmod --reference="${vars_file}" "${temp_file}"
-  mv -f "${temp_file}" "${vars_file}"
+  touch "${prefs_file}"
+  temp_file="$(mktemp "${prefs_file}.tmp.XXXXXX")"
+  {
+    grep -qxF "${vars_import}" "${prefs_file}" || printf '%s\n' "${vars_import}"
+    grep -vF "vars.set(\"${key}\"," "${prefs_file}" || true
+    printf 'vars.set("%s", "%s")\n' "${key}" "${value}"
+  } >"${temp_file}"
+  chmod --reference="${prefs_file}" "${temp_file}"
+  mv -f "${temp_file}" "${prefs_file}"
 }
 
 notify_default() {
   local name="$1"
   local kind="$2"
-  dunstify -t 3000 -i preferences-system "Default ${kind}" "${name} is now the default ${kind,,}"
+  dunstify -t "${NOTIFY_MS}" -i preferences-system "Default ${kind}" "${name} is now the default ${kind,,}"
 }
 
 require_command() {
@@ -75,8 +64,8 @@ if [[ -z "${selection}" ]]; then
         zen.desktop) printf 'zen\n' ;;
       esac
       ;;
-    terminal) state_get TERMINAL "$(lua_default TERMINAL alacritty)" ;;
-    editor) state_get EDITOR "$(lua_default EDITOR nvim)" ;;
+    terminal) state_get TERMINAL "$(hypr_config_value_from_layers TERMINAL)" ;;
+    editor) state_get EDITOR "$(hypr_config_value_from_layers EDITOR)" ;;
     -h | --help | help) usage ;;
     *) usage >&2; exit 2 ;;
   esac
@@ -115,13 +104,13 @@ case "${kind}" in
     ;;
   browser)
     env -u BROWSER xdg-settings set default-web-browser "${desktop_id}"
-    set_lua_default BROWSER "${command_name}"
+    set_user_pref BROWSER "${command_name}"
     state_set BROWSER "${command_name}" env-overrides
     reload_desktop
     ;;
   terminal)
-    set_lua_default TERMINAL "${command_name}"
-    set_lua_default TERMINAL_TUI "${command_name}"
+    set_user_pref TERMINAL "${command_name}"
+    set_user_pref TERMINAL_TUI "${command_name}"
     state_set TERMINAL "${command_name}" env-overrides
     state_set TERMINAL_TUI "${command_name}" env-overrides
     mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}"
@@ -129,7 +118,7 @@ case "${kind}" in
     reload_desktop
     ;;
   editor)
-    set_lua_default EDITOR "${command_name}"
+    set_user_pref EDITOR "${command_name}"
     state_set EDITOR "${command_name}" env-overrides
     reload_desktop
     ;;

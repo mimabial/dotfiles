@@ -146,7 +146,8 @@ Item {
     property real motionTarget: 0
     // Cards bind to this instead of motionProgress so the animation only
     // notifies them twice, not once per frame.
-    readonly property bool motionSettled: root.motionProgress >= 0.999
+    readonly property real motionEpsilon: 0.001
+    readonly property bool motionSettled: root.motionProgress >= 1 - root.motionEpsilon
     property int lastRequestedBlur: -1
     property var iconCache: ({})
     property int modelRevision: 0
@@ -335,12 +336,12 @@ Item {
         overviewMotionAnimation.stop();
         root.motionTarget = next;
         var distance = Math.abs(next - root.motionProgress);
-        if (distance < 0.001) {
+        if (distance < root.motionEpsilon) {
             root.motionProgress = next;
             root.completeMotion();
             return;
         }
-        if (root.motionProgress <= 0.001 || root.motionProgress >= 0.999)
+        if (root.motionProgress <= root.motionEpsilon || root.motionSettled)
             root.slideMotionDirection = String(root.slideDirection[next > 0 ? "in" : "out"]);
         overviewMotionAnimation.from = root.motionProgress;
         overviewMotionAnimation.to = next;
@@ -1702,7 +1703,7 @@ Item {
                             text: overviewWindow.screenToplevels.length + " windows"
                             textFormat: Text.PlainText
                             color: Color.menu.text
-                            opacity: 0.55
+                            opacity: Style.mutedTextAlpha
                             font.family: Style.font.menuFamily
                             font.pixelSize: Style.font.bodySmall
                         }
@@ -1799,7 +1800,7 @@ Item {
                                     : "No open windows")
                             textFormat: Text.PlainText
                             color: Color.menu.text
-                            opacity: 0.7
+                            opacity: Style.secondaryTextAlpha
                             font.family: Style.font.menuFamily
                             font.pixelSize: Style.font.display
                         }
@@ -1816,7 +1817,7 @@ Item {
                                 + "   Drag to a workspace to move   Shift+Q close   Enter open   Esc close"
                             textFormat: Text.PlainText
                             color: Color.menu.text
-                            opacity: 0.55
+                            opacity: Style.mutedTextAlpha
                             font.family: Style.font.menuFamily
                             font.pixelSize: Style.font.bodySmall
                         }

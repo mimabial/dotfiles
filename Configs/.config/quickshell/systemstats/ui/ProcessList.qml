@@ -5,10 +5,7 @@ import qs.Commons
 import qs.Ui
 import "../Model.js" as Model
 
-// "PROCESSES" block: the top consumers with one or two right-aligned figure
-// columns. "All" unfolds it into every process, sorted by the page's own
-// column, with a search field; that state lives on the host so it follows
-// you from page to page.
+// The unfolded state lives on the host so it follows you from page to page.
 Column {
   id: root
 
@@ -108,7 +105,7 @@ Column {
           horizontalAlignment: Text.AlignRight
           text: modelData.title || ""
           color: root.foreground
-          opacity: 0.5
+          opacity: Style.mutedTextAlpha
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption
           font.bold: true
@@ -123,7 +120,7 @@ Column {
     width: parent.width
     text: root.caption
     color: root.foreground
-    opacity: 0.45
+    opacity: Style.faintTextAlpha
     font.family: root.fontFamily
     font.pixelSize: Style.font.caption
     wrapMode: Text.WordWrap
@@ -155,7 +152,7 @@ Column {
     visible: root.collecting || root.shown.length === 0
     text: root.collecting ? "Collecting…" : (root.expanded ? "No match" : root.emptyText)
     color: root.foreground
-    opacity: 0.45
+    opacity: Style.faintTextAlpha
     font.family: root.fontFamily
     font.pixelSize: Style.font.bodySmall
     topPadding: Style.space(2)
@@ -183,7 +180,6 @@ Column {
           textFormat: Text.PlainText
           text: procRow.proc.name || ""
           color: root.foreground
-          opacity: 0.9
           font.family: root.fontFamily
           font.pixelSize: Style.font.body
           elide: Text.ElideRight
@@ -197,7 +193,7 @@ Column {
           visible: (procRow.proc.count || 1) > 1
           text: "×" + (procRow.proc.count || 1)
           color: root.foreground
-          opacity: 0.4
+          opacity: Style.faintTextAlpha
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption
           anchors.verticalCenter: parent.verticalCenter
@@ -240,7 +236,7 @@ Column {
     visible: root.expanded && root.shown.length > root.maxRows
     text: "and " + (root.shown.length - root.maxRows) + " more — narrow the search"
     color: root.foreground
-    opacity: 0.45
+    opacity: Style.faintTextAlpha
     font.family: root.fontFamily
     font.pixelSize: Style.font.caption
     topPadding: Style.space(2)

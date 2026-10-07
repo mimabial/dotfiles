@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 run_lib_script() {
   local rel_path="$1"
@@ -70,87 +69,93 @@ list_script() {
   )
 }
 
+list_script_candidates() {
+  local dir=""
+  for dir in "${SCRIPT_DIRS[@]}"; do
+    find -L "${dir}" -maxdepth 2 -type f -name "*.sh" -printf '%P\t%p\n' 2>/dev/null
+    find -L "${dir}" -maxdepth 2 -type f -name "*.py" -printf '%P\t%p\n' 2>/dev/null |
+      while IFS=$'\t' read -r py_rel abs_path; do
+        if [[ -x "${abs_path}" ]] || grep -qs '__name__ == .__main__.' "${abs_path}"; then
+          printf '%s\t%s\n' "${py_rel}" "${abs_path}"
+        fi
+      done
+  done | sort -u
+}
+
 # A script that declares hypr_help_guard is announcing itself as user-facing;
 # the line after its "Usage:" is its summary. Scripts without one are pipeline
 # hooks other scripts invoke. One awk pass over every candidate, not one grep
 # per file.
+script_summaries() {
+  awk '
+    FNR == 1 { seen[FILENAME] = 1 }
+    # A "Usage:" inside a help/usage function is a declared contract; the same
+    # string in an error message is not, so only the former is trusted.
+    /^[a-zA-Z_]*(usage|help)[a-zA-Z_]*\(\) *\{/ { inhelp = 1 }
+    inhelp && /^\}/ { inhelp = 0 }
+    /description="/ && /ArgumentParser|^ *description="/ && !(FILENAME in desc) {
+      line = $0
+      sub(/^.*description="/, "", line)
+      sub(/".*$/, "", line)
+      if (line != "") desc[FILENAME] = line
+      next
+    }
+    (/hypr_help_guard "Usage:/ || (inhelp && /Usage:/)) && !(FILENAME in desc) {
+      text = ""
+      # the summary runs until the closing quote of the usage string
+      while ((getline line) > 0) {
+        # only a prose summary counts: an options table or another heading is not one
+        if (line ~ /^[ \t]*-/ && line ~ /[ \t][ \t]/) break
+        if (line ~ /^[ \t]*$/ || line ~ /^[ \t]*(cat|printf|echo|EOF|HELP|EOT)/) break
+        if (line ~ /^[ \t]*(Options|Usage|Commands|Arguments|Examples|Flags)[: ]/) break
+        done = (line ~ /" *"\$@"/)
+        sub(/" *"\$@".*$/, "", line)
+        gsub(/^[ \t]+|[ \t]+$/, "", line)
+        text = (text == "" ? line : text " " line)
+        if (done) break
+      }
+      if (text != "") desc[FILENAME] = text
+    }
+    END { for (f in seen) printf "%s\t%s\n", f, (f in desc ? desc[f] : "") }
+  ' "$@"
+}
+
+print_script_listing() {
+  local -n listing_rels_ref="$1" listing_abses_ref="$2" listing_summary_ref="$3"
+  local i=0 text=""
+  local -a hooks=()
+
+  printf 'Commands:\n'
+  for ((i = 0; i < ${#listing_rels_ref[@]}; i++)); do
+    text="${listing_summary_ref["${listing_abses_ref[i]}"]:-}"
+    if [[ -n "${text}" ]]; then
+      printf '  %-34s %s\n' "${listing_rels_ref[i]}" "${text}"
+    else
+      hooks+=("${listing_rels_ref[i]}")
+    fi
+  done
+  [[ ${#hooks[@]} -gt 0 ]] || return 0
+  printf '\nNo --help text (mostly pipeline hooks; run with care):\n'
+  printf '  %s\n' "${hooks[@]}"
+}
+
 list_script_described() {
+  local -a rels=() abses=()
+  local -A summary=()
+  local rel="" abs="" text=""
+
   collect_script_dirs
+  while IFS=$'\t' read -r rel abs; do
+    is_internal_script "${rel}" && continue
+    rels+=("${rel%.*}")
+    abses+=("${abs}")
+  done < <(list_script_candidates)
+  [[ ${#abses[@]} -gt 0 ]] || return 0
 
-  local dir=""
-  {
-    for dir in "${SCRIPT_DIRS[@]}"; do
-      find -L "${dir}" -maxdepth 2 -type f -name "*.sh" -printf '%P\t%p\n' 2>/dev/null
-      find -L "${dir}" -maxdepth 2 -type f -name "*.py" -printf '%P\t%p\n' 2>/dev/null |
-        while IFS=$'\t' read -r py_rel abs_path; do
-          if [[ -x "${abs_path}" ]] || grep -qs '__name__ == .__main__.' "${abs_path}"; then
-            printf '%s\t%s\n' "${py_rel}" "${abs_path}"
-          fi
-        done
-    done | sort -u
-  } | {
-    local -a rels=() abses=()
-    local rel="" abs=""
-    while IFS=$'\t' read -r rel abs; do
-      is_internal_script "${rel}" && continue
-      rels+=("${rel%.*}")
-      abses+=("${abs}")
-    done
-    [[ ${#abses[@]} -gt 0 ]] || return 0
-
-    awk '
-      FNR == 1 { seen[FILENAME] = 1 }
-      # A "Usage:" inside a help/usage function is a declared contract; the same
-      # string in an error message is not, so only the former is trusted.
-      /^[a-zA-Z_]*(usage|help)[a-zA-Z_]*\(\) *\{/ { inhelp = 1 }
-      inhelp && /^\}/ { inhelp = 0 }
-      /description="/ && /ArgumentParser|^ *description="/ && !(FILENAME in desc) {
-        line = $0
-        sub(/^.*description="/, "", line)
-        sub(/".*$/, "", line)
-        if (line != "") desc[FILENAME] = line
-        next
-      }
-      (/hypr_help_guard "Usage:/ || (inhelp && /Usage:/)) && !(FILENAME in desc) {
-        text = ""
-        # the summary runs until the closing quote of the usage string
-        while ((getline line) > 0) {
-          # only a prose summary counts: an options table or another heading is not one
-          if (line ~ /^[ \t]*-/ && line ~ /[ \t][ \t]/) break
-          if (line ~ /^[ \t]*$/ || line ~ /^[ \t]*(cat|printf|echo|EOF|HELP|EOT)/) break
-          if (line ~ /^[ \t]*(Options|Usage|Commands|Arguments|Examples|Flags)[: ]/) break
-          done = (line ~ /" *"\$@"/)
-          sub(/" *"\$@".*$/, "", line)
-          gsub(/^[ \t]+|[ \t]+$/, "", line)
-          text = (text == "" ? line : text " " line)
-          if (done) break
-        }
-        if (text != "") desc[FILENAME] = text
-      }
-      END { for (f in seen) printf "%s\t%s\n", f, (f in desc ? desc[f] : "") }
-    ' "${abses[@]}" | sort >"${TMPDIR:-/tmp}/.hyprshell-desc.$$"
-
-    local -A summary=()
-    while IFS=$'\t' read -r abs rel; do
-      summary["${abs}"]="${rel}"
-    done <"${TMPDIR:-/tmp}/.hyprshell-desc.$$"
-    rm -f "${TMPDIR:-/tmp}/.hyprshell-desc.$$"
-
-    local i=0 text=""
-    local -a hooks=()
-    printf 'Commands:\n'
-    for ((i = 0; i < ${#rels[@]}; i++)); do
-      text="${summary["${abses[i]}"]:-}"
-      if [[ -n "${text}" ]]; then
-        printf '  %-34s %s\n' "${rels[i]}" "${text}"
-      else
-        hooks+=("${rels[i]}")
-      fi
-    done
-    [[ ${#hooks[@]} -gt 0 ]] || return 0
-    printf '\nNo --help text (mostly pipeline hooks; run with care):\n'
-    printf '  %s\n' "${hooks[@]}"
-  }
+  while IFS=$'\t' read -r abs text; do
+    summary["${abs}"]="${text}"
+  done < <(script_summaries "${abses[@]}")
+  print_script_listing rels abses summary
 }
 
 list_script_path() {

@@ -25,6 +25,7 @@ Item {
     implicitWidth: 22; implicitHeight: 22
 
     Timer {
+        id: blinkSchedule
         interval: 3500; repeat: true
         running: root.animated && root.visible && root.eyes !== "happy" && root.eyes !== "flat"
         onTriggered: { root.blinking = true; blinkHold.restart(); interval = 2600 + Math.random() * 4200 }

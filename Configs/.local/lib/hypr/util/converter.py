@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Supply unit definitions and cached ECB rates to the Quickshell converter."""
-
 from __future__ import annotations
 
 import json

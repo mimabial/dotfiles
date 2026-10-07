@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell install/webapp-remove [name...]
 Remove web-app launchers and desktop entries (fzf multi-select when none given)." "$@"

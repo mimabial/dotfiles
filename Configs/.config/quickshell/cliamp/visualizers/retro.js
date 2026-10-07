@@ -1,4 +1,4 @@
-// Retro — vis_retro.go: 80s synthwave (sun + perspective grid + band wave)
+// Port of cliamp vis_retro.go.
 .pragma library
 .import "helpers.js" as H
 

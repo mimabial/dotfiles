@@ -20,7 +20,6 @@ import looknfeel_tui as tui  # noqa: E402
 
 
 def read(source):
-    """Run the reader over Lua source, returning parsed TSV records."""
     proc = subprocess.run(
         ["lua", str(READER), "-e", source],
         capture_output=True, text=True,
@@ -233,7 +232,7 @@ class CursorCliTest(unittest.TestCase):
             )
             script = "\n".join([
                 "set -e",
-                'source "$HOME/.local/lib/hypr/core/common.sh"',
+                'source "$HOME/.local/lib/hypr/core/common.bash"',
                 'source "$HOME/.local/lib/hypr/theme/lib/desktop.sync.bash"',
                 'CURSOR_THEME=default CURSOR_SIZE=24',
                 'HYPR_THEME="Rosé Pine" resolved_color_variant=dark',

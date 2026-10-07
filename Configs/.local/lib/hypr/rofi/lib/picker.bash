@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 # Rofi window geometry is budgeted in em but specified in px. font_scale is the
 # scale in tenths (TEXT_SIZE 12 -> 10), so one em is approximated at twice it.
@@ -8,9 +7,6 @@ ROFI_EM_PX_PER_SCALE=2
 
 # Mouse-driven dmenu selection: hovering highlights, primary click accepts.
 ROFI_MOUSE_SELECT_ARGS=(-sync -no-custom -hover-select -me-select-entry "" -me-accept-entry MousePrimary)
-# Picker helpers: CLI arg parsing, rasi arg list, indexed dmenu run, recent-entry
-# file ops, window geometry.
-# External deps: print_log (core/common); rofi_window_position_theme (core/rofi.sh); rofi_with_background_theme (geometry.bash).
 
 rofi_picker_parse_style_args() {
   local out_style_name="$1"
@@ -75,10 +71,8 @@ rofi_picker_run_indexed() {
   local selection_index=""
   local rofi_exit=0
 
-  # DATA_FILE holds "glyph<TAB>label" rows. Collapse each to one display column
-  # (1:1 per-line), let rofi return a 0-based index, then map it back to the
-  # untouched DATA_FILE line. Remaining args go verbatim to rofi (callers own
-  # -i, theme layering, -no-custom, etc.). A caller passing -sep (with -markup-rows
+  # DATA_FILE holds "glyph<TAB>label" rows. Remaining args go verbatim to rofi
+  # (callers own -i, theme layering, -no-custom, etc.). A caller passing -sep (with -markup-rows
   # and -eh 5) gets glyph, family prefix and name stacked over three lines, which
   # needs a NUL record so one entry can hold newlines; the glyph is grown with
   # markup, which only renders unclipped because -eh reserves the extra rows.
@@ -165,10 +159,13 @@ rofi_picker_save_recent_entry() {
 
 # Measured on the clipboard theme: a listview row costs ~2.09em and the base
 # chrome ~7.18em. Callers with extra chrome (such as a footer) may override it.
+ROFI_PICKER_ROW_EM=2.1
+ROFI_PICKER_CHROME_EM=7.3
+
 rofi_picker_listview_height_em() {
   local lines="$1"
-  local row_em="${2:-2.1}"
-  local chrome_em="${3:-7.3}"
+  local row_em="${2:-${ROFI_PICKER_ROW_EM}}"
+  local chrome_em="${3:-${ROFI_PICKER_CHROME_EM}}"
 
   [[ "${lines}" =~ ^[0-9]+$ ]] || return 1
   awk -v lines="${lines}" -v row="${row_em}" -v chrome="${chrome_em}" \

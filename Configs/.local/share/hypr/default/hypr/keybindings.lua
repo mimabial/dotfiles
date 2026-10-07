@@ -28,7 +28,6 @@ local function exec(modifiers, key, description, command, options)
     bind(modifiers, key, description, hl.dsp.exec_cmd(command), options)
 end
 
--- Window management
 bind(mod, "Q", "[Window Management] close focused window", hl.dsp.window.close())
 bind("ALT", "F4", "[Window Management] close focused window", hl.dsp.window.close())
 exec(mod .. " ALT", "Q", "[Window Management] close all windows", "hyprshell window/close-all.sh")
@@ -81,7 +80,6 @@ exec(mod, "L", "[Window Management] lock screen", "hyprshell lock-screen.sh")
 exec("CTRL ALT", "DELETE", "[Window Management] logout menu", "hyprshell logout-launch.sh 2")
 exec(mod, "I", "[Window Management] toggle keep awake", "hyprshell session/toggle-keep-awake.sh")
 
--- Applications and launchers
 exec(mod, "RETURN", "[Launcher|Apps] terminal in current directory", terminal .. [[ --working-directory "$(hyprshell terminal-cwd.sh)"]])
 exec(mod .. " SHIFT", "RETURN", "[Launcher|Apps] tmux session", terminal .. [[ --working-directory "$(hyprshell terminal-cwd.sh)" tmux new-session -A -s M]])
 exec(mod .. " ALT", "RETURN", "[Launcher|Apps] dropdown terminal", "hyprshell window/dropdown-terminal")
@@ -110,7 +108,6 @@ exec(mod .. " CTRL", "D", "[Launcher|Dev Tools] LazyDocker", "hyprshell launch/t
 exec(mod .. " CTRL", "T", "[Launcher|Dev Tools] htop", "hyprshell launch/tui.sh --app-id org.tui.Htop -- htop")
 exec(mod .. " ALT", "P", "[Launcher|Dev Tools] rmpc", "hyprshell launch/tui.sh --app-id org.tui.Rmpc -- rmpc")
 
--- Hardware controls
 exec(mod .. " SHIFT", "O", "[Hardware|Audio] output switcher", "hyprshell controls/volume-control.sh -t")
 exec(mod, "F10", "[Hardware|Audio] mute output", "hyprshell volume-control.sh -o m", {locked = true})
 exec(mod .. " CTRL", "F10", "[Hardware|Audio] mute focused window", "hyprshell window-mute.py", {locked = true})
@@ -128,7 +125,6 @@ exec("", "XF86AudioPrev", "[Hardware|Media] previous", "playerctl previous", {lo
 exec("", "XF86MonBrightnessUp", "[Hardware|Brightness] increase", "hyprshell brightness-control.sh i", {locked = true, repeating = true})
 exec("", "XF86MonBrightnessDown", "[Hardware|Brightness] decrease", "hyprshell brightness-control.sh d", {locked = true, repeating = true})
 
--- Utilities
 exec(mod, "K", "[Utilities] switch keyboard layout", "hyprshell keyboard-switch.sh", {locked = true})
 exec(mod, "M", "[Utilities] select workflow", "pkill -x rofi || hyprshell rofi/menutree --menu-id style_workflow")
 exec(mod .. " SHIFT", "G", "[Utilities] game launcher", "pkill -x rofi || hyprshell gaming/launcher.sh")
@@ -148,7 +144,6 @@ exec(mod .. " SHIFT", "R", "[Utilities|Recording] toggle webcam recording", "hyp
 exec(mod .. " ALT", "R", "[Utilities|Recording] toggle monitor recording", "hyprshell screenrecord --toggle --audio --output")
 exec(mod .. " CTRL", "R", "[Utilities|Recording] stop recording", "hyprshell screenrecord --quit")
 
--- Theme and wallpaper
 exec(mod, "APOSTROPHE", "[Theming] next wallpaper", "hyprshell wallpaper next --global")
 exec(mod, "SEMICOLON", "[Theming] previous wallpaper", "hyprshell wallpaper previous --global")
 exec(mod, "code:35", "[Theming] next theme", "hyprshell theme.switch.sh -n --quiet")
@@ -160,7 +155,6 @@ exec(mod, "N", "[Theming] select font", "pkill -x rofi || hyprshell rofi/menutre
 exec(mod .. " SHIFT", "T", "[Theming] select rofi theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh -s")
 exec(mod .. " SHIFT", "A", "[Theming] select launcher style", "hyprshell rofi-launch.sh -s")
 
--- Workspaces
 for workspace = 1, 10 do
     local code = "code:" .. tostring(workspace + 9)
     bind(mod, code, "[Workspaces] go to workspace " .. workspace, hl.dsp.focus({workspace = workspace}))

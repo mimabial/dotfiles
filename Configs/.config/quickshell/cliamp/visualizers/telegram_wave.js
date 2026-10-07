@@ -1,4 +1,3 @@
-// Telegram Wave — Full-width rounded capsule voice message waveform with full color fill
 .pragma library
 .import "helpers.js" as H
 

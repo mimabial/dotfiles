@@ -7,9 +7,9 @@ hypr_runtime_require state || exit 1
 refresh_hypr_instance_signature
 export HYPRLAND_INSTANCE_SIGNATURE
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/window/stateful-choice.common.bash"
+source "${HYPR_LIB_DIR}/window/stateful-choice.common.bash"
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/util/workflow.presentation.bash"
+source "${HYPR_LIB_DIR}/util/workflow.presentation.bash"
 
 workflows_user_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/workflows"
 workflows_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/workflows"
@@ -69,11 +69,11 @@ get_workflow_description() {
 }
 
 current_bar_edge() {
-  PYTHONPATH="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}" python3 -c 'from pyutils.bar_position import bar_position; print(bar_position())'
+  PYTHONPATH="${HYPR_LIB_DIR}" python3 -c 'from pyutils.bar_position import bar_position; print(bar_position())'
 }
 
 bar_layout_on_current_edge() {
-  PYTHONPATH="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}" python3 - "$@" <<'PY'
+  PYTHONPATH="${HYPR_LIB_DIR}" python3 - "$@" <<'PY'
 import sys
 from pyutils.bar_position import bar_position
 edge = bar_position()
@@ -157,7 +157,7 @@ write_workflow_state() {
     "WORKFLOW_PATH=${current_workflow_path}"
 
   printf "%s %s: %s\n" "${current_icon}" "${current_workflow}" "${current_description}"
-  send_ephemeral_notif "hypr-workflow" -t 2000 -i "preferences-desktop-display" "Workflow" "${current_icon} ${current_workflow}\n${current_description}"
+  send_ephemeral_notif "hypr-workflow" -t "${NOTIFY_BRIEF_MS}" -i "preferences-desktop-display" "Workflow" "${current_icon} ${current_workflow}\n${current_description}"
 }
 
 apply_workflow_update() {

@@ -53,7 +53,7 @@ PanelWindow {
     }
     Timer {
         id: focusPrime
-        interval: 150
+        interval: Style.focusPrimeDelay
         onTriggered: {
             root.exclusivePhase = false
             root.shell.focusPriming = false

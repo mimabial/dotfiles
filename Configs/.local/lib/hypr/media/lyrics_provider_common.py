@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""
-Shared lyrics provider logic for both single-song and album batch workflows.
-
-Features:
-- Shared multi-source fetching for single-track and album workflows
-- Synced-first strategy with plain fallback
-- Optional fast parallel mode
-- Lightweight metadata validation to reduce wrong-song matches
-"""
-
 from __future__ import annotations
 
 import json
@@ -161,7 +151,6 @@ def _strip_leading_boilerplate_lines(text: str, patterns: list[re.Pattern]) -> t
         if any(pattern.match(line) for pattern in patterns):
             removed += 1
             idx += 1
-            # Drop immediate blank lines after removed boilerplate.
             while idx < len(lines) and not lines[idx].strip():
                 idx += 1
             continue

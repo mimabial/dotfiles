@@ -24,7 +24,7 @@ Singleton {
             id: process
             required property string modelData
             readonly property var settings: JSON.parse(modelData)
-            readonly property string config: "[general]\nbars = " + settings.bars + "\nframerate = " + settings.fps + "\nsleep_timer = 1"
+            readonly property string config: "[general]\nbars = " + settings.bars + "\nframerate = " + settings.fps
                 + "\n[output]\nmethod = raw\nchannels = mono\nmono_option = average\nraw_target = /dev/stdout"
                 + "\ndata_format = ascii\nascii_max_range = " + root.maxValue + "\nbar_delimiter = 59\nframe_delimiter = 10\n"
                 + "[smoothing]\nnoise_reduction = " + settings.smoothing + "\n"

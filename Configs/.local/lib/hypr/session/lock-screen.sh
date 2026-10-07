@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
-LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell session/lock-screen [--get] [lockscreen-args...]
 Lock the screen via \$LOCKSCREEN under a systemd scope; --get prints the configured command." "$@"

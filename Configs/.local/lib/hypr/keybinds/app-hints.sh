@@ -5,7 +5,7 @@ set -euo pipefail
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require rofi || exit 1
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
+source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash"
 
 hypr_help_guard "Usage: hyprshell keybinds/app-hints <kitty|tmux>
 Read-only keybinding cheatsheet for an app, in rofi.
@@ -64,7 +64,7 @@ case "${app}" in
 esac
 
 if [[ -z "${binds}" ]]; then
-  dunstify -t 5000 -i dialog-error "Keybind hints" "No ${app} bindings found."
+  dunstify -t "${NOTIFY_LONG_MS}" -i dialog-error "Keybind hints" "No ${app} bindings found."
   exit 0
 fi
 

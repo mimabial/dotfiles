@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Collect OpenCode provider usage and optional Go limits."""
-
 import json
 import os
 import sqlite3
@@ -9,6 +7,8 @@ import time
 import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
+
+from agent_usage_common import RECENT_DAYS, ROLLING_MONTH_DAYS
 
 
 DATA_DIR = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "opencode"
@@ -49,7 +49,7 @@ def go_limits():
 
 def local_usage():
     now = datetime.now().astimezone()
-    dates = [(now - timedelta(days=offset)).strftime("%Y-%m-%d") for offset in range(6, -1, -1)]
+    dates = [(now - timedelta(days=offset)).strftime("%Y-%m-%d") for offset in range(RECENT_DAYS - 1, -1, -1)]
     recent = {day: {"date": day, "messageCount": 0, "cost": 0.0} for day in dates}
     providers = {}
     models = {}
@@ -58,7 +58,7 @@ def local_usage():
         return [], {}, list(recent.values()), False
 
     week_cutoff = round(datetime.fromisoformat(dates[0]).astimezone().timestamp() * 1000)
-    month_cutoff = round((now - timedelta(days=30)).timestamp() * 1000)
+    month_cutoff = round((now - timedelta(days=ROLLING_MONTH_DAYS)).timestamp() * 1000)
     query = """
         SELECT json_extract(data, '$.providerID'),
                COALESCE(json_extract(data, '$.modelID'), '?'),

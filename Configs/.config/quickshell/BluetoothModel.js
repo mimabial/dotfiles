@@ -1,4 +1,3 @@
-// Bluetooth device, PipeWire endpoint, and audio-profile projections.
 
 function toArray(values) {
     if (!values) return []
@@ -132,20 +131,11 @@ function bluetoothNodeMatchesDevice(node, device, direction, peers) {
 
     var labels = [normalizedIdentity(device.name), normalizedIdentity(device.deviceName)]
     var devices = toArray(peers)
-    for (var l = 0; l < labels.length; l++) {
-        var label = labels[l]
+    for (const label of labels) {
         if (!label) continue
-        var ambiguous = false
-        for (var p = 0; p < devices.length; p++) {
-            var peer = devices[p]
-            if (!peer || normalizedAddress(peer.address) === normalizedAddress(device.address)) continue
-            if (normalizedIdentity(peer.name) === label || normalizedIdentity(peer.deviceName) === label) {
-                ambiguous = true; break
-            }
-        }
-        if (!ambiguous)
-            for (var f = 0; f < fields.length; f++)
-                if (normalizedIdentity(fields[f]) === label) return true
+        var ambiguous = devices.some(peer => peer && normalizedAddress(peer.address) !== normalizedAddress(device.address)
+            && (normalizedIdentity(peer.name) === label || normalizedIdentity(peer.deviceName) === label))
+        if (!ambiguous && fields.some(field => normalizedIdentity(field) === label)) return true
     }
     return false
 }

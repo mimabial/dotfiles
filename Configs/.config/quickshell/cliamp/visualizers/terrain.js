@@ -1,5 +1,4 @@
-// Terrain — exact cliamp vis_terrain.go: a scrolling ridge silhouette whose height
-// is the mean spectrum energy, new dot columns entering from the right
+// Port of cliamp vis_terrain.go.
 .pragma library
 .import "helpers.js" as H
 
@@ -22,7 +21,6 @@ function render(ctx, d) {
   }
   var buf = s.terrainBuf
 
-  // Scroll left two dot columns per frame, then push two fresh heights in on the right.
   for (var x = 0; x < dotCols - 2; x++) buf[x] = buf[x + 2]
 
   var avg = 0

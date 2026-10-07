@@ -3,16 +3,14 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons
 
-// iStat-style bar history: one thin vertical bar per sample, newest at the
-// right, stacked bottom-to-top when several series are given. Bars are
-// snapped to device pixels so 1px marks stay crisp on fractional scales.
+// Bars are snapped to device pixels so 1px marks stay crisp on fractional scales.
 Canvas {
   id: root
 
   property var series: []
   property var colors: []
-  property real ceiling: 0        // 0 = auto-scale to the visible window
-  property real floor: 1          // minimum auto ceiling, keeps idle noise flat
+  property var ceiling
+  property real minimumCeiling: 1
   property real headroom: 1.06
   property int barWidth: 2
   property int gap: 1
@@ -54,8 +52,8 @@ Canvas {
     var baseH = root.showBaseline ? 1 : 0
     var usable = Math.max(1, height - baseH)
     var max = Number(root.ceiling)
-    if (!(max > 0)) {
-      max = Math.max(0.000001, Number(root.floor) || 0)
+    if (root.ceiling === undefined) {
+      max = Math.max(0.000001, Number(root.minimumCeiling) || 0)
       for (var i = Math.max(0, len - n); i < len; i++) {
         var sum = 0
         for (var k = 0; k < count; k++) sum += Number(list[k] ? list[k][i] : 0) || 0

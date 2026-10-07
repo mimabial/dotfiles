@@ -1,22 +1,13 @@
+/* Attribute: rofilaunch,launcher */
 
-/**
- * Attribute: rofilaunch,launcher
- * Super launcher rofi
- **/
-
-
-/*****----- Configuration -----*****/
 configuration {
-    /* modes:                      "drun"; */
     show-icons:                 true;
     display-drun:                " ";
     drun-display-format:        "{name}";
 }
 
-/*****----- Global Properties -----*****/
 @theme "~/.config/rofi/colors.rasi"
 
-/*****----- Main Window -----*****/
 window {
     transparency:                "real";
     location:                    center;
@@ -37,7 +28,6 @@ window {
     cursor:                      "default";
 }
 
-/*****----- Main Box -----*****/
 mainbox {
     enabled:                     true;
     spacing:                     60px;
@@ -50,7 +40,6 @@ mainbox {
     children:                    [ "inputbox", "listview", "textbox-hints" ];
 }
 
-/*****----- Input Box -----*****/
 inputbox {
     enabled:                     true;
     expand:                      false;
@@ -66,7 +55,6 @@ dummy {
     background-color:            transparent;
 }
 
-/*****----- Inputbar -----*****/
 inputbar {
     enabled:                     true;
     expand:                      false;
@@ -103,7 +91,6 @@ entry {
     placeholder-color:           inherit;
 }
 
-/*****----- Listview -----*****/
 listview {
     enabled:                     true;
     columns:                     7;
@@ -133,7 +120,6 @@ scrollbar {
     background-color:            @border;
 }
 
-/*****----- Elements -----*****/
 element {
     enabled:                     true;
     spacing:                     20px;
@@ -170,7 +156,6 @@ element-text {
     horizontal-align:            0.5;
 }
 
-/*****----- Message -----*****/
 error-message {
     padding:                     100px;
     border:                      0px solid;

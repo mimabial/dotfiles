@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 if ! declare -F rofi_effective_font_scale >/dev/null 2>&1; then
   # shellcheck source=/dev/null
-  source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/rofi/rofi.lib.bash"
+  source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/rofi/rofi.lib.bash"
 fi
 
 show_help() {
@@ -149,76 +148,77 @@ wallpaper_json() (
   wallpaper_catalog_emit_and_cache_json "${cache_home}" "${json_cache}"
 )
 
-wallpaper_select_monitor_geometry() {
-  local mon_x_res=""
-  local mon_y_res=""
+# Icon size in em at each measured monitor scale, interpolated linearly between
+# the points and extrapolated past both ends.
+WALLPAPER_ICON_EM_BY_SCALE="1.0:53 1.25:41 1.5:33 1.67:29 2.0:23"
+# wallpaper.rasi's own element-icon size.
+WALLPAPER_ICON_EM_DEFAULT=33
+WALLPAPER_ICON_EM_MIN=8
+WALLPAPER_ICON_EM_MAX=100
+# wallpaper.rasi spends 7em on the entry, the label and the listview padding.
+WALLPAPER_ROW_CHROME_EM=7
+WALLPAPER_ELEMENT_PX_PER_SCALE=$((16 + 8 + 5))
+WALLPAPER_LISTVIEW_INSET_PX_PER_SCALE=4
 
-  read -r mon_x_res mon_y_res < <(rofi_focused_monitor_logical_size)
-  [[ "${mon_x_res}" =~ ^[0-9]+$ ]] || mon_x_res=1920
-  [[ "${mon_y_res}" =~ ^[0-9]+$ ]] || mon_y_res=1080
-  printf '%s %s\n' "${mon_x_res}" "${mon_y_res}"
-}
-
-wallpaper_select_theme_override() {
-  local font_scale="$1"
-  local font_name="$2"
-  local monitor_width_px=""
-  local monitor_height_px=""
-  local border_radius=0
-  local element_border=0
-  local element_width=0
-  local available_width=0
-  local column_count=0
-  local icon_em=33
-  local max_icon_em=0
-  local row_chrome_em=7
-  local em_px=""
-  local em_px_milli=""
-  local mon_scale_milli=1000
+wallpaper_select_monitor_scale_milli() {
   local scale_json=""
 
-  border_radius="${HYPR_RUNTIME_BORDER_RADIUS:-${HYPR_BORDER_RADIUS:-0}}"
-  [[ "${border_radius}" =~ ^[0-9]+$ ]] || border_radius=0
-  [[ "${font_scale}" =~ ^[1-9][0-9]*$ ]] || font_scale=1
-  element_border=$((border_radius * 2))
-  read -r monitor_width_px monitor_height_px < <(wallpaper_select_monitor_geometry)
-  element_width=$(((16 + 8 + 5) * font_scale))
-  available_width=$((monitor_width_px - (4 * font_scale)))
-  column_count=$((available_width / element_width))
-  ((column_count > 0)) || column_count=1
-
   scale_json="$(hyprctl monitors -j 2>/dev/null | jq -r '[.[] | select(.focused==true)][0].scale // 1' 2>/dev/null)"
-  [[ "${scale_json}" =~ ^[0-9]+([.][0-9]+)?$ ]] && mon_scale_milli="$(rofi_decimal_milli "${scale_json}")"
-  # Piecewise linear through (1,53), (1.25,41), (1.5,33), (1.67,31); extrapolate beyond endpoints.
-  icon_em="$(awk -v s="${mon_scale_milli}" 'BEGIN {
-    n=5; x[1]=1.0; y[1]=53; x[2]=1.25; y[2]=41; x[3]=1.5; y[3]=33; x[4]=1.67; y[4]=29; x[5]=2.0; y[5]=23
+  if [[ "${scale_json}" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+    rofi_decimal_milli "${scale_json}"
+  else
+    printf '%s\n' "${ROFI_MILLI}"
+  fi
+}
+
+# The scale table only tracks monitor scale, but rofi resolves em against the font,
+# so a larger TEXT_SIZE grows the row until it no longer fits the viewport and rofi
+# renders an empty listview; the icon gets what the row chrome leaves.
+wallpaper_select_icon_em() {
+  local font_scale="$1" font_name="$2" monitor_height_px="$3"
+  local icon_em="" em_px="" em_px_milli="" max_icon_em=0
+
+  icon_em="$(awk -v s="$(wallpaper_select_monitor_scale_milli)" -v table="${WALLPAPER_ICON_EM_BY_SCALE}" 'BEGIN {
+    n = split(table, points, " ")
+    for (i = 1; i <= n; i++) { split(points[i], p, ":"); x[i] = p[1] + 0; y[i] = p[2] + 0 }
     v=s/1000
     if (v<=x[1])      em = y[1] + (v-x[1])*(y[2]-y[1])/(x[2]-x[1])
     else if (v>=x[n]) em = y[n] + (v-x[n])*(y[n]-y[n-1])/(x[n]-x[n-1])
     else for (i=1;i<n;i++) if (v>=x[i] && v<=x[i+1]) { em=y[i]+(v-x[i])*(y[i+1]-y[i])/(x[i+1]-x[i]); break }
     printf "%d\n", em+0.5
   }')"
-  [[ "${icon_em}" =~ ^[0-9]+$ ]] || icon_em=33
-  ((icon_em < 8)) && icon_em=8
-  ((icon_em > 100)) && icon_em=100
+  [[ "${icon_em}" =~ ^[0-9]+$ ]] || icon_em="${WALLPAPER_ICON_EM_DEFAULT}"
+  ((icon_em >= WALLPAPER_ICON_EM_MIN)) || icon_em="${WALLPAPER_ICON_EM_MIN}"
+  ((icon_em <= WALLPAPER_ICON_EM_MAX)) || icon_em="${WALLPAPER_ICON_EM_MAX}"
 
-  # The table above only tracks monitor scale, but rofi resolves em against the
-  # font, so a larger TEXT_SIZE grows the row until it no longer fits the
-  # viewport and rofi renders an empty listview. wallpaper.rasi spends 7em on
-  # the entry, the label and the listview padding; the icon gets what is left.
   em_px="$(rofi_font_text_height_px "${font_name}" "${font_scale}" 2>/dev/null || true)"
   em_px_milli="$(rofi_decimal_milli "${em_px}" 2>/dev/null || true)"
   if [[ "${em_px_milli}" =~ ^[1-9][0-9]*$ ]]; then
-    max_icon_em=$(((monitor_height_px * ROFI_MILLI / em_px_milli) - row_chrome_em))
-    if ((max_icon_em >= 8)) && ((icon_em > max_icon_em)); then
+    max_icon_em=$(((monitor_height_px * ROFI_MILLI / em_px_milli) - WALLPAPER_ROW_CHROME_EM))
+    if ((max_icon_em >= WALLPAPER_ICON_EM_MIN && icon_em > max_icon_em)); then
       icon_em="${max_icon_em}"
     fi
   fi
+  printf '%s\n' "${icon_em}"
+}
+
+wallpaper_select_theme_override() {
+  local font_scale="$1"
+  local font_name="$2"
+  local monitor_width_px="" monitor_height_px="" border_radius=0 column_count=0 icon_em=""
+
+  border_radius="${HYPR_RUNTIME_BORDER_RADIUS:-${HYPR_BORDER_RADIUS:-0}}"
+  [[ "${border_radius}" =~ ^[0-9]+$ ]] || border_radius=0
+  [[ "${font_scale}" =~ ^[1-9][0-9]*$ ]] || font_scale=1
+  read -r monitor_width_px monitor_height_px < <(rofi_focused_monitor_logical_size)
+  column_count=$(((monitor_width_px - WALLPAPER_LISTVIEW_INSET_PX_PER_SCALE * font_scale) / (WALLPAPER_ELEMENT_PX_PER_SCALE * font_scale)))
+  ((column_count > 0)) || column_count=1
+  icon_em="$(wallpaper_select_icon_em "${font_scale}" "${font_name}" "${monitor_height_px}")"
 
   cat <<EOF
 listview{columns:${column_count};}
 element-icon{size:${icon_em}em;}
-element{border-radius:${element_border}px;}
+element{border-radius:$((border_radius * 2))px;}
 EOF
 }
 

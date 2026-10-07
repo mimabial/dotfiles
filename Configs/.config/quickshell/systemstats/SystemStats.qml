@@ -256,7 +256,7 @@ Item {
       verticalAlignment: Text.AlignBottom
       text: message
       color: root.shell.foreground
-      opacity: 0.6
+      opacity: Style.mutedTextAlpha
       font.family: root.shell.fontFamily
       font.pixelSize: Style.font.bodySmall
       wrapMode: Text.WordWrap

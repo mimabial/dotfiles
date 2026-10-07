@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/desktop-entry.exec.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/desktop-entry.exec.bash"
 
 desktop_entry_escape_string_value() {
   local value="${1-}"

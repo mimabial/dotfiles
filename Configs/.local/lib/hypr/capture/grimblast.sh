@@ -37,7 +37,7 @@ grimblast_release_lockfile() {
 trap 'grimblast_release_lockfile "$?"' EXIT
 
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/capture/capture.select.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/capture/capture.select.bash"
 
 get_target_directory() {
   [[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/user-dirs.dirs" ]] &&
@@ -148,7 +148,7 @@ if [[ "${ACTION}" == "usage" ]]; then
 fi
 
 notify() {
-  dunstify -t 3000 -a grimblast "$@"
+  dunstify -t "${NOTIFY_MS}" -a grimblast "$@"
 }
 
 notify_ok() {
@@ -169,7 +169,7 @@ notify_with_open_folder_action() {
       if dbus-send --session --print-reply --dest=org.freedesktop.FileManager1 --type=method_call /org/freedesktop/FileManager1 org.freedesktop.FileManager1.ShowItems array:string:"file://$4" string:""; then
         :
       else
-        dunstify -t 3000 -a grimblast -i "dialog-error" "Error displaying folder with dbus-send"
+        dunstify -t "${NOTIFY_MS}" -a grimblast -i "dialog-error" "Error displaying folder with dbus-send"
         echo "Displayed: Error displaying folder with dbus-send"
       fi
     fi

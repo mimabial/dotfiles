@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 nerd_font_display_name_from_package() {
   local package_name="$1"
@@ -124,7 +123,7 @@ show_font_menu() {
   if ((menu_exit == MENU_EXIT_COPY)); then
     [[ "${font}" == "Theme Default" ]] && return 0
     printf '%s' "${font}" | wl-copy
-    send_ephemeral_notif "font-copy" -a "Font" -t 2000 "Copied" "${font}"
+    send_ephemeral_notif "font-copy" -a "Font" -t "${NOTIFY_BRIEF_MS}" "Copied" "${font}"
     return 0
   fi
 
@@ -234,7 +233,7 @@ show_remove_font_menu() {
 }
 
 show_language_menu() {
-  local action="$1" parent="$2" empty_label="No languages" script="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/language.sh"
+  local action="$1" parent="$2" empty_label="No languages" script="${HYPR_LIB_DIR}/system/language.sh"
   local rows="" selection=""
 
   rows="$("${script}" "${action}")"

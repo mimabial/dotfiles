@@ -1,18 +1,17 @@
-// ClassicLED — exact cliamp vis_classic_led.go: a Winamp-style LED matrix with
-// fast-attack bodies and peak caps that hold at the apex then fall
+// Port of cliamp vis_classic_led.go.
 .pragma library
 .import "helpers.js" as H
 
-var BAR_W = 2   // characters per bar
-var BAR_GAP = 1
-var FPS = 30    // classicLEDFPS: the dt fallback when elapsed time is unusable
+var BAR_CHARS = 2
+var BAR_GAP_CHARS = 1
+var FALLBACK_FPS = 30
 var RISE_RATE = 60.0
 var FALL_RATE = 16.0
 var PEAK_HOLD = 0.45
 var PEAK_FALL = 0.55
 
 function barCount(cols) {
-  return Math.max(1, Math.floor((cols + BAR_GAP) / (BAR_W + BAR_GAP)))
+  return Math.max(1, Math.floor((cols + BAR_GAP_CHARS) / (BAR_CHARS + BAR_GAP_CHARS)))
 }
 
 function onEnter(state) {
@@ -41,7 +40,7 @@ function render(ctx, d) {
   }
   var body = s.ledBody, peak = s.ledPeak, hold = s.ledHold
 
-  var frameDt = 1 / FPS
+  var frameDt = 1 / FALLBACK_FPS
   var now = Date.now()
   var dt = s.ledLast > 0 ? (now - s.ledLast) / 1000.0 : frameDt
   if (dt <= 0 || dt > 10 * frameDt) dt = frameDt
@@ -61,11 +60,11 @@ function render(ctx, d) {
   }
 
   var tiers = H.playerTiers(d)
-  var barPx = charW * BAR_W
-  var stepPx = charW * (BAR_W + BAR_GAP)
+  var barPx = charW * BAR_CHARS
+  var stepPx = charW * (BAR_CHARS + BAR_GAP_CHARS)
   var halfH = Math.max(1, Math.round(charH / 2))
   // Go left-pads the row, so the matrix sits against the right edge.
-  var padPx = Math.max(0, numCols - (bars * (BAR_W + BAR_GAP) - BAR_GAP)) * charW
+  var padPx = Math.max(0, numCols - (bars * (BAR_CHARS + BAR_GAP_CHARS) - BAR_GAP_CHARS)) * charW
 
   for (var b = 0; b < bars; b++) {
     var x = padPx + b * stepPx

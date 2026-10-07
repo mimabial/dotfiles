@@ -10,6 +10,9 @@ import "MediaModel.js" as MediaModel
 
 PopupCard {
   id: root
+  readonly property int volumeStep: 5
+  readonly property int seekStepSeconds: 5
+  readonly property int resumeMinSeconds: 5
   popupName: "media"
   keyboardHint: "Tab move · Space play · ↑↓ vol · ←→ seek · / search · Esc"
   padding: 0
@@ -77,9 +80,9 @@ PopupCard {
   readonly property bool currentLiked: root.isLiked(root.currentUrl, root.currentTrack, root.currentArtist)
   readonly property var likedIndex: {
     const index = ({})
-    for (const pl of root.playlistsList)
-      if (pl.name === "Liked")
-        for (const track of pl.tracks || []) index[MediaModel.likeKey(track.url, track.title, track.artist)] = true
+    for (const playlist of root.playlistsList)
+      if (playlist.name === "Liked")
+        for (const track of playlist.tracks || []) index[MediaModel.likeKey(track.url, track.title, track.artist)] = true
     return index
   }
   property var likedOverrides: ({})
@@ -153,28 +156,28 @@ PopupCard {
   }
 
   function syncMpris() {
-    const p = root.mprisPlayer
-    if (!p) return false
-    const metadata = p.metadata || ({})
-    const newTrack = String(p.trackTitle || "No track loaded")
-    const newArtist = Media.displayArtist(p)
+    const player = root.mprisPlayer
+    if (!player) return false
+    const metadata = player.metadata || ({})
+    const newTrack = String(player.trackTitle || "No track loaded")
+    const newArtist = Media.displayArtist(player)
     const newUrl = String(metadata["xesam:url"] || "")
     const trackChanged = newTrack !== root.currentTrack || newArtist !== root.currentArtist || newUrl !== root.currentUrl
     root.isRunning = true
-    root.playbackState = p.playbackState === MprisPlaybackState.Playing ? "playing"
-      : p.playbackState === MprisPlaybackState.Paused ? "paused" : "stopped"
+    root.playbackState = player.playbackState === MprisPlaybackState.Playing ? "playing"
+      : player.playbackState === MprisPlaybackState.Paused ? "paused" : "stopped"
     root.currentTrack = newTrack
     root.currentArtist = newArtist
     root.currentUrl = newUrl
-    root.artPath = String(p.trackArtUrl || "")
-    root.totalSecs = p.lengthSupported ? Number(p.length || 0) : 0
+    root.artPath = String(player.trackArtUrl || "")
+    root.totalSecs = player.lengthSupported ? Number(player.length || 0) : 0
     root.timeTotal = Media.time(root.totalSecs)
-    root.playbackSpeed = Number(p.rate || 1)
-    if (p.volumeSupported) root.volumePct = Math.round(Number(p.volume || 0) * 100)
-    root.shuffleMode = p.shuffleSupported ? p.shuffle : false
-    root.repeatMode = !p.loopSupported || p.loopState === MprisLoopState.None ? "off"
-      : p.loopState === MprisLoopState.Track ? "track" : "all"
-    root.updatePosition(p.positionSupported ? p.position : 0)
+    root.playbackSpeed = Number(player.rate || 1)
+    if (player.volumeSupported) root.volumePct = Math.round(Number(player.volume || 0) * 100)
+    root.shuffleMode = player.shuffleSupported ? player.shuffle : false
+    root.repeatMode = !player.loopSupported || player.loopState === MprisLoopState.None ? "off"
+      : player.loopState === MprisLoopState.Track ? "track" : "all"
+    root.updatePosition(player.positionSupported ? player.position : 0)
     root.resumeVisible = false
     const localPath = newUrl.startsWith("file://") ? decodeURIComponent(newUrl.slice(7)) : ""
     if (trackChanged && localPath && newTrack !== "No track loaded") {
@@ -286,10 +289,10 @@ PopupCard {
       return true
     }
     if (event.key === Qt.Key_Space) { root.togglePlayback(); return true }
-    if (event.key === Qt.Key_Up) { root.adjustVolume(5); return true }
-    if (event.key === Qt.Key_Down) { root.adjustVolume(-5); return true }
-    if (event.key === Qt.Key_Right) { root.seekTo(Math.min(root.totalSecs, root.curSecs + 5)); return true }
-    if (event.key === Qt.Key_Left) { root.seekTo(Math.max(0, root.curSecs - 5)); return true }
+    if (event.key === Qt.Key_Up) { root.adjustVolume(root.volumeStep); return true }
+    if (event.key === Qt.Key_Down) { root.adjustVolume(-root.volumeStep); return true }
+    if (event.key === Qt.Key_Right) { root.seekTo(Math.min(root.totalSecs, root.curSecs + root.seekStepSeconds)); return true }
+    if (event.key === Qt.Key_Left) { root.seekTo(Math.max(0, root.curSecs - root.seekStepSeconds)); return true }
     if (event.text === "/") {
       trackList.urlInput.forceActiveFocus()
       trackList.urlInput.selectAll()
@@ -407,9 +410,9 @@ PopupCard {
     Qt.callLater(loadPlaylists)
   }
 
-  function openPlaylist(pl) {
-    if (!pl) return
-    if (pl.name === "Recently Played") {
+  function openPlaylist(playlist) {
+    if (!playlist) return
+    if (playlist.name === "Recently Played") {
       var recents = []
       for (var i = 0; i < root.historyList.length; i++) {
         var h = root.historyList[i]
@@ -422,7 +425,7 @@ PopupCard {
       }
       root.activePlaylist = { name: "Recently Played", tracks: recents, system: true }
     } else {
-      root.activePlaylist = pl
+      root.activePlaylist = playlist
     }
   }
 
@@ -436,12 +439,12 @@ PopupCard {
     if (!url || !url.trim()) return
     const active = root.mprisPlayer
     if (active && active.isPlaying && active.canPause) active.pause()
-    var u = url.trim()
-    root.loadingVid = u
+    var target = url.trim()
+    root.loadingVid = target
     root.currentTrack = title || "Buffering..."
     root.currentArtist = artist || ""
     root.playbackState = "buffering"
-    runCmd([keepQueue ? "play_item" : "play_replace", u, title || "", artist || ""])
+    runCmd([keepQueue ? "play_item" : "play_replace", target, title || "", artist || ""])
     root.urlInputText = ""
   }
 
@@ -515,20 +518,20 @@ PopupCard {
 
   function searchTracks(query) {
     if (!query || !query.trim()) return
-    var q = query.trim()
-    if (q.indexOf("http://") === 0 || q.indexOf("https://") === 0) {
-      if (q.indexOf("list=") !== -1 || q.indexOf("/playlist/") !== -1 || q.indexOf("/album/") !== -1) {
-        importPlaylist(q)
+    var term = query.trim()
+    if (term.indexOf("http://") === 0 || term.indexOf("https://") === 0) {
+      if (term.indexOf("list=") !== -1 || term.indexOf("/playlist/") !== -1 || term.indexOf("/album/") !== -1) {
+        importPlaylist(term)
         root.selectedTab = "playlists"
         return
       }
-      playUrl(q)
+      playUrl(term)
       return
     }
     root.isSearching = true
-    root.searchQuery = q
+    root.searchQuery = term
     root.selectedTab = "search"
-    searchProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "search", q]
+    searchProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "search", term]
     searchProc.running = true
   }
 
@@ -539,13 +542,13 @@ PopupCard {
     root.selectedTab = "recents"
   }
 
-  function playPlaylist(pl) {
-    if (!pl || !pl.tracks || pl.tracks.length === 0) return
-    var t0 = pl.tracks[0]
-    playUrl(t0.url || (t0.title + " " + t0.artist), t0.title, t0.artist)
-    for (var i = 1; i < pl.tracks.length; i++) {
-      var t = pl.tracks[i]
-      queueUrl(t.url || (t.title + " " + t.artist), t.title, t.artist)
+  function playPlaylist(playlist) {
+    if (!playlist || !playlist.tracks || playlist.tracks.length === 0) return
+    var first = playlist.tracks[0]
+    playUrl(first.url || (first.title + " " + first.artist), first.title, first.artist)
+    for (var i = 1; i < playlist.tracks.length; i++) {
+      var track = playlist.tracks[i]
+      queueUrl(track.url || (track.title + " " + track.artist), track.title, track.artist)
     }
   }
 
@@ -671,9 +674,8 @@ PopupCard {
           if (data.audio_fx) root.audioFx = data.audio_fx
           if (data.resume && root.playbackState === "stopped") {
             root.resumeInfo = data.resume
-            // Below the seek threshold in the resume action, so Resume would do
-            // nothing the play button does not already do.
-            root.resumeVisible = Number(data.resume.pos || 0) > 5
+            // cliamp_ctl.py's RESUME_MIN_SECONDS: below it Resume would do nothing the play button does not.
+            root.resumeVisible = Number(data.resume.pos || 0) > root.resumeMinSeconds
               && String(data.resume.url || "") !== root.resumeDismissedUrl
           } else {
             root.resumeVisible = false

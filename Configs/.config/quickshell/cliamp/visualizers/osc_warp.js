@@ -1,4 +1,3 @@
-// Oscilloscope Warp — stereo audio deforming a four-loop 3D infinity braid.
 .pragma library
 .import "helpers.js" as H
 

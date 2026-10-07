@@ -3,12 +3,12 @@ set -u
 
 action="${1:-}"
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state || exit 1
 
 state_dir="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/gaming"
 previous_workflow_file="${state_dir}/gamemode-previous-workflow"
-workflows_script="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/util/workflows.sh"
+workflows_script="${HYPR_LIB_DIR}/util/workflows.sh"
 mkdir -p "${state_dir}" || exit 1
 exec {lock_fd}>"${state_dir}/gamemode-hook.lock" || exit 1
 flock "${lock_fd}" || exit 1

@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Provider-specific lyrics fetchers."""
-
 from __future__ import annotations
 
 import json
@@ -49,6 +47,20 @@ SIMPMUSIC_COOLDOWN_TTL = 60 * 60
 _SIMPMUSIC_COOLDOWN_LOCK = threading.Lock()
 _SIMPMUSIC_COOLDOWN_UNTIL = 0.0
 _SIMPMUSIC_NOTICE_UNTIL = 0.0
+SIMPMUSIC_CANDIDATE_LIMIT = 8
+SIMPMUSIC_LEAD_LINES = 3
+SIMPMUSIC_MIN_MATCH_SCORE = 0.35
+# Prefer strong title/artist matches and reward lyrics previews that actually
+# contain the requested title phrase/tokens, especially near the start.
+# Duration is intentionally excluded because SimpMusic duration metadata is
+# inconsistent for duplicate title/artist candidates.
+SIMPMUSIC_SCORE_WEIGHTS = {
+    "title": 0.45,
+    "artist": 0.25,
+    "album": 0.15,
+    "title_in_lyrics": 0.05,
+    "title_in_lead": 0.10,
+}
 
 
 def _parse_env_value(raw_value: str) -> str:
@@ -112,7 +124,6 @@ def _genius_token_from_file() -> str:
 
 
 def get_genius_token() -> str:
-    """Get an explicit Genius token, falling back to the private env file."""
     return next(
         (
             token
@@ -121,6 +132,38 @@ def get_genius_token() -> str:
         ),
         "",
     ) or _genius_token_from_file()
+
+
+def _response_ok(provider: str, failure: str, response) -> bool:
+    if response.status_code == 200:
+        return True
+    print(f"  [{provider}] {failure} with status {response.status_code}", file=sys.stderr)
+    return False
+
+
+def _lrc_length(seconds: float) -> str:
+    return f"{int(seconds // 60):02d}:{seconds % 60:05.2f}"
+
+
+def _lrc_timestamp(start_ms: int) -> str:
+    return f"[{start_ms // 60000:02d}:{(start_ms % 60000) / 1000:05.2f}]"
+
+
+def _lrc_header(artist: str, title: str, album: str = "", duration: float | None = None) -> list[str]:
+    header = [f"[ar:{artist}]", f"[ti:{title}]"]
+    if album:
+        header.append(f"[al:{album}]")
+    if duration:
+        header.append(f"[length:{_lrc_length(duration)}]")
+    return header + [""]
+
+
+def _lrclib_pick_track(results: list[dict], album: str) -> dict:
+    if album:
+        for track in results:
+            if track.get("albumName", "").lower() == album.lower():
+                return track
+    return results[0]
 
 
 def fetch_lyrics_lrclib(
@@ -132,15 +175,12 @@ def fetch_lyrics_lrclib(
     try:
         print(f"  [lrclib] Searching for: {artist} - {title}", file=sys.stderr)
 
-        search_params = {"track_name": title, "artist_name": artist}
         search_resp = http_get(
-            LRCLIB_API_SEARCH, params=search_params, timeout=DEFAULT_TIMEOUT
+            LRCLIB_API_SEARCH,
+            params={"track_name": title, "artist_name": artist},
+            timeout=DEFAULT_TIMEOUT,
         )
-        if search_resp.status_code != 200:
-            print(
-                f"  [lrclib] Search failed with status {search_resp.status_code}",
-                file=sys.stderr,
-            )
+        if not _response_ok("lrclib", "Search failed", search_resp):
             return None
 
         results = search_resp.json()
@@ -148,28 +188,18 @@ def fetch_lyrics_lrclib(
             print("  [lrclib] No search results", file=sys.stderr)
             return None
 
-        best_match = None
-        for track in results:
-            if album and track.get("albumName", "").lower() == album.lower():
-                best_match = track
-                break
-        if not best_match:
-            best_match = results[0]
-
-        get_params = {
-            "track_name": best_match["trackName"],
-            "artist_name": best_match["artistName"],
-            "album_name": best_match["albumName"],
-            "duration": best_match["duration"],
-        }
+        track = _lrclib_pick_track(results, album)
         get_resp = http_get(
-            LRCLIB_API_GET, params=get_params, timeout=DEFAULT_TIMEOUT
+            LRCLIB_API_GET,
+            params={
+                "track_name": track["trackName"],
+                "artist_name": track["artistName"],
+                "album_name": track["albumName"],
+                "duration": track["duration"],
+            },
+            timeout=DEFAULT_TIMEOUT,
         )
-        if get_resp.status_code != 200:
-            print(
-                f"  [lrclib] Get lyrics failed with status {get_resp.status_code}",
-                file=sys.stderr,
-            )
+        if not _response_ok("lrclib", "Get lyrics failed", get_resp):
             return None
 
         data = get_resp.json()
@@ -178,29 +208,16 @@ def fetch_lyrics_lrclib(
             print("  [lrclib] No synced lyrics available", file=sys.stderr)
             return None
 
-        lrc_lines = []
-        lrc_lines.append(f"[ar:{data.get('artistName', artist)}]")
-        lrc_lines.append(f"[ti:{data.get('trackName', title)}]")
-        if use_local_album and album:
-            lrc_lines.append(f"[al:{album}]")
-        elif data.get("albumName"):
-            lrc_lines.append(f"[al:{data.get('albumName')}]")
-        if data.get("duration"):
-            duration_sec = data["duration"]
-            minutes = int(duration_sec // 60)
-            seconds = duration_sec % 60
-            lrc_lines.append(f"[length:{minutes:02d}:{seconds:05.2f}]")
-        lrc_lines.append("")
-        lrc_lines.append(synced_lyrics)
-
-        print("  [lrclib] Found synced lyrics", file=sys.stderr)
-        return _build_result(
-            "lrclib",
-            "\n".join(lrc_lines),
-            data.get("artistName", artist),
-            data.get("trackName", title),
-            True,
+        result_artist = data.get("artistName", artist)
+        result_title = data.get("trackName", title)
+        header = _lrc_header(
+            result_artist,
+            result_title,
+            album if use_local_album and album else data.get("albumName") or "",
+            data.get("duration"),
         )
+        print("  [lrclib] Found synced lyrics", file=sys.stderr)
+        return _build_result("lrclib", "\n".join(header + [synced_lyrics]), result_artist, result_title, True)
 
     except Exception as e:  # noqa: BLE001 - provider boundary
         print(f"  [lrclib] Error: {e}", file=sys.stderr)
@@ -274,6 +291,25 @@ def _extract_yt_song_artist(song_info: dict, fallback: str) -> str:
     return fallback
 
 
+def _extract_yt_song_album(song_info: dict) -> str:
+    album = song_info.get("album")
+    if isinstance(album, dict):
+        return str(album.get("name") or "").strip()
+    if isinstance(album, str):
+        return album.strip()
+    return str(song_info.get("albumName") or "").strip()
+
+
+def _yt_timed_lines(payload: list) -> list[str]:
+    lines = []
+    for line in payload:
+        start_ms = _extract_yt_line_start_ms(line)
+        text = _extract_yt_line_text(line)
+        if start_ms is not None and text:
+            lines.append(f"{_lrc_timestamp(start_ms)}{text}")
+    return lines
+
+
 def fetch_lyrics_youtube(artist: str, title: str) -> ProviderResult | None:
     if not HAS_YTMUSIC:
         print("  [ytmusic] Skipped (ytmusicapi not installed)", file=sys.stderr)
@@ -286,8 +322,7 @@ def fetch_lyrics_youtube(artist: str, title: str) -> ProviderResult | None:
             return None
 
         print(f"  [ytmusic] Searching for: {artist} - {title}", file=sys.stderr)
-        search_query = f"{title} {artist}"
-        search_results = ytmusic.search(query=search_query, filter="songs", limit=1)
+        search_results = ytmusic.search(query=f"{title} {artist}", filter="songs", limit=1)
         if not search_results:
             print("  [ytmusic] No search results", file=sys.stderr)
             return None
@@ -295,78 +330,56 @@ def fetch_lyrics_youtube(artist: str, title: str) -> ProviderResult | None:
         song_info = search_results[0]
         matched_title = str(song_info.get("title") or song_info.get("name") or "").strip() or title
         matched_artist = _extract_yt_song_artist(song_info, artist)
-        album = song_info.get("album")
-        if isinstance(album, dict):
-            matched_album = str(album.get("name") or "").strip()
-        elif isinstance(album, str):
-            matched_album = album.strip()
-        else:
-            matched_album = str(song_info.get("albumName") or "").strip()
+        matched_album = _extract_yt_song_album(song_info)
         video_id = song_info.get("videoId")
         if not video_id:
             print("  [ytmusic] No videoId found", file=sys.stderr)
             return None
 
-        watch_playlist = ytmusic.get_watch_playlist(videoId=video_id)
-        lyrics_browse_id = watch_playlist.get("lyrics")
+        lyrics_browse_id = ytmusic.get_watch_playlist(videoId=video_id).get("lyrics")
         if not lyrics_browse_id:
             print("  [ytmusic] No lyrics browseId", file=sys.stderr)
             return None
 
-        lyrics_data = ytmusic.get_lyrics(
-            browseId=lyrics_browse_id,
-            timestamps=True,
-        )
+        lyrics_data = ytmusic.get_lyrics(browseId=lyrics_browse_id, timestamps=True)
         if not lyrics_data or not lyrics_data.get("lyrics"):
             print("  [ytmusic] No lyrics data", file=sys.stderr)
             return None
 
-        lrc_lines = []
-        lrc_lines.append(f"[ar:{matched_artist}]")
-        lrc_lines.append(f"[ti:{matched_title}]")
-        if matched_album:
-            lrc_lines.append(f"[al:{matched_album}]")
-        if song_info.get("duration_seconds"):
-            duration_sec = song_info["duration_seconds"]
-            minutes = int(duration_sec // 60)
-            seconds = duration_sec % 60
-            lrc_lines.append(f"[length:{minutes:02d}:{seconds:05.2f}]")
-        lrc_lines.append("")
-
+        header = _lrc_header(matched_artist, matched_title, matched_album, song_info.get("duration_seconds"))
         lyrics_payload = lyrics_data.get("lyrics")
-        synced = False
-
         if lyrics_data.get("hasTimestamps") and isinstance(lyrics_payload, list):
-            for line in lyrics_payload:
-                start_ms = _extract_yt_line_start_ms(line)
-                text = _extract_yt_line_text(line)
-                if start_ms is None or not text:
-                    continue
-                minutes = start_ms // 60000
-                seconds = (start_ms % 60000) / 1000
-                lrc_lines.append(f"[{minutes:02d}:{seconds:05.2f}]{text}")
-            synced = _is_lrc_synced("\n".join(lrc_lines))
+            body = _yt_timed_lines(lyrics_payload)
+            synced = _is_lrc_synced("\n".join(header + body))
             if synced:
                 print("  [ytmusic] Found synced lyrics", file=sys.stderr)
         else:
-            for line in _payload_to_plain_lines(lyrics_payload):
-                lrc_lines.append(f"[00:00.00]{line}")
+            body = [f"[00:00.00]{line}" for line in _payload_to_plain_lines(lyrics_payload)]
+            synced = False
             print("  [ytmusic] Found plain lyrics (no timestamps)", file=sys.stderr)
 
-        if not synced and len(lrc_lines) <= 4:
+        if not body:
             return None
 
-        return _build_result(
-            "ytmusic",
-            "\n".join(lrc_lines),
-            matched_artist,
-            matched_title,
-            synced,
-        )
+        return _build_result("ytmusic", "\n".join(header + body), matched_artist, matched_title, synced)
 
     except Exception as e:  # noqa: BLE001 - third-party client boundary
         print(f"  [ytmusic] Error: {e}", file=sys.stderr)
         return None
+
+
+def _simpmusic_title(candidate: dict) -> str:
+    return str(candidate.get("songTitle") or candidate.get("title") or candidate.get("name") or "")
+
+
+def _title_coverage(requested_title: str, token_patterns: list[re.Pattern], text: str) -> float:
+    if not (requested_title and text):
+        return 0.0
+    if requested_title in text:
+        return 1.0
+    if not token_patterns:
+        return 0.0
+    return sum(1 for pattern in token_patterns if pattern.search(text)) / len(token_patterns)
 
 
 def _pick_best_simpmusic_search_result(
@@ -384,68 +397,40 @@ def _pick_best_simpmusic_search_result(
     title_tokens = [token for token in requested_title.split() if len(token) > 1]
     title_token_patterns = [re.compile(rf"\b{re.escape(token)}\b") for token in title_tokens]
 
-    for candidate in results[:8]:
+    for candidate in results[:SIMPMUSIC_CANDIDATE_LIMIT]:
         if not isinstance(candidate, dict):
             continue
 
-        cand_title = str(
-            candidate.get("songTitle")
-            or candidate.get("title")
-            or candidate.get("name")
-            or ""
-        )
         cand_artist = str(candidate.get("artistName") or candidate.get("artist") or "")
         cand_album = str(candidate.get("albumName") or candidate.get("album") or "")
-
-        title_score = _similarity(title, cand_title)
-        artist_score = _similarity(artist, cand_artist) if cand_artist else 0.0
-
-        album_score = 0.0
-        if requested_album and cand_album:
-            album_score = _similarity(requested_album, cand_album)
-
         lyrics_preview = str(
             candidate.get("plainLyric")
             or candidate.get("plainLyrics")
             or candidate.get("lyrics")
             or ""
         )
-        lyrics_preview_norm = _normalize_text(lyrics_preview)
-        lead_preview = "\n".join(lyrics_preview.splitlines()[:3])
-        lead_preview_norm = _normalize_text(lead_preview)
-        title_in_lyrics = 0.0
-        if requested_title and lyrics_preview_norm:
-            if requested_title in lyrics_preview_norm:
-                title_in_lyrics = 1.0
-            elif title_token_patterns:
-                hits = sum(1 for pattern in title_token_patterns if pattern.search(lyrics_preview_norm))
-                title_in_lyrics = hits / len(title_token_patterns)
+        lead_preview = "\n".join(lyrics_preview.splitlines()[:SIMPMUSIC_LEAD_LINES])
 
-        title_in_lead = 0.0
-        if requested_title and lead_preview_norm:
-            if requested_title in lead_preview_norm:
-                title_in_lead = 1.0
-            elif title_token_patterns:
-                hits = sum(1 for pattern in title_token_patterns if pattern.search(lead_preview_norm))
-                title_in_lead = hits / len(title_token_patterns)
-
-        # Prefer strong title/artist matches and reward lyrics previews that actually
-        # contain the requested title phrase/tokens, especially near the start.
-        # Duration is intentionally excluded because SimpMusic duration metadata is
-        # inconsistent for duplicate title/artist candidates.
-        score = (
-            title_score * 0.45
-            + artist_score * 0.25
-            + album_score * 0.15
-            + title_in_lyrics * 0.05
-            + title_in_lead * 0.10
-        )
+        signals = {
+            "title": _similarity(title, _simpmusic_title(candidate)),
+            "artist": _similarity(artist, cand_artist) if cand_artist else 0.0,
+            "album": _similarity(requested_album, cand_album) if requested_album and cand_album else 0.0,
+            "title_in_lyrics": _title_coverage(
+                requested_title, title_token_patterns, _normalize_text(lyrics_preview)
+            ),
+            "title_in_lead": _title_coverage(
+                requested_title, title_token_patterns, _normalize_text(lead_preview)
+            ),
+        }
+        score = 0.0
+        for name, weight in SIMPMUSIC_SCORE_WEIGHTS.items():
+            score += signals[name] * weight
 
         if score > best_score:
             best_score = score
             best_result = candidate
 
-    if best_score < 0.35:
+    if best_score < SIMPMUSIC_MIN_MATCH_SCORE:
         return None
     return best_result
 
@@ -505,6 +490,47 @@ def _simpmusic_cooldown_active() -> bool:
     return True
 
 
+def _simpmusic_response(path: str, failure: str, **kwargs):
+    response = http_get(f"{SIMPMUSIC_API_BASE}/{path}", timeout=DEFAULT_TIMEOUT, **kwargs)
+    if response.status_code == 429:
+        _activate_simpmusic_cooldown()
+        return None
+    return response if _response_ok("simpmusic", failure, response) else None
+
+
+def _simpmusic_results(payload: object) -> list | None:
+    results = payload.get("data") if isinstance(payload, dict) else payload
+    return results if isinstance(results, list) and results else None
+
+
+def _simpmusic_details(payload: object) -> dict | None:
+    details = payload.get("data") if isinstance(payload, dict) else None
+    if isinstance(details, list):
+        details = details[0] if details else None
+    return details if isinstance(details, dict) else None
+
+
+def _simpmusic_result(best: dict, details: dict, artist: str, title: str) -> ProviderResult | None:
+    synced_lyrics = str(details.get("syncedLyrics") or details.get("lrc") or "").strip()
+    plain_lyrics = str(details.get("plainLyrics") or details.get("lyrics") or "").strip()
+    if not synced_lyrics and not plain_lyrics:
+        print("  [simpmusic] No lyrics content returned", file=sys.stderr)
+        return None
+
+    result_artist = str(best.get("artistName") or artist)
+    result_title = _simpmusic_title(best) or title
+    synced = bool(synced_lyrics)
+    body = synced_lyrics if synced else _to_lrc_from_plain(plain_lyrics)
+    print(f"  [simpmusic] Found {'synced' if synced else 'plain'} lyrics", file=sys.stderr)
+    return _build_result(
+        "simpmusic",
+        "\n".join(_lrc_header(result_artist, result_title) + [body]),
+        result_artist,
+        result_title,
+        synced,
+    )
+
+
 def fetch_lyrics_simpmusic(
     artist: str,
     title: str,
@@ -516,40 +542,16 @@ def fetch_lyrics_simpmusic(
             return None
 
         print(f"  [simpmusic] Searching for: {artist} - {title}", file=sys.stderr)
-
-        query = f"{title} {artist}".strip()
-        search_resp = http_get(
-            f"{SIMPMUSIC_API_BASE}/search",
-            params={"q": query},
-            timeout=DEFAULT_TIMEOUT,
-        )
-        if search_resp.status_code == 429:
-            _activate_simpmusic_cooldown()
-            return None
-        if search_resp.status_code != 200:
-            print(
-                f"  [simpmusic] Search failed with status {search_resp.status_code}",
-                file=sys.stderr,
-            )
+        search_resp = _simpmusic_response("search", "Search failed", params={"q": f"{title} {artist}".strip()})
+        if search_resp is None:
             return None
 
-        search_payload = search_resp.json()
-        if isinstance(search_payload, dict):
-            raw_results = search_payload.get("data")
-        else:
-            raw_results = search_payload
-
-        if not isinstance(raw_results, list) or not raw_results:
+        results = _simpmusic_results(search_resp.json())
+        if not results:
             print("  [simpmusic] No search results", file=sys.stderr)
             return None
 
-        best = _pick_best_simpmusic_search_result(
-            raw_results,
-            artist,
-            title,
-            album,
-            expected_duration,
-        )
+        best = _pick_best_simpmusic_search_result(results, artist, title, album, expected_duration)
         if not best:
             print("  [simpmusic] No suitable match in search results", file=sys.stderr)
             return None
@@ -559,63 +561,16 @@ def fetch_lyrics_simpmusic(
             print("  [simpmusic] Search result missing video id", file=sys.stderr)
             return None
 
-        details_resp = http_get(
-            f"{SIMPMUSIC_API_BASE}/{video_id}",
-            timeout=DEFAULT_TIMEOUT,
-        )
-        if details_resp.status_code == 429:
-            _activate_simpmusic_cooldown()
-            return None
-        if details_resp.status_code != 200:
-            print(
-                f"  [simpmusic] Lyrics fetch failed with status {details_resp.status_code}",
-                file=sys.stderr,
-            )
+        details_resp = _simpmusic_response(video_id, "Lyrics fetch failed")
+        if details_resp is None:
             return None
 
-        details_payload = details_resp.json()
-        details_data = details_payload.get("data") if isinstance(details_payload, dict) else None
-        if isinstance(details_data, list):
-            details_data = details_data[0] if details_data else None
-        if not isinstance(details_data, dict):
+        details = _simpmusic_details(details_resp.json())
+        if details is None:
             print("  [simpmusic] Invalid lyrics payload", file=sys.stderr)
             return None
 
-        synced_lyrics = str(
-            details_data.get("syncedLyrics") or details_data.get("lrc") or ""
-        ).strip()
-        plain_lyrics = str(
-            details_data.get("plainLyrics") or details_data.get("lyrics") or ""
-        ).strip()
-        if not synced_lyrics and not plain_lyrics:
-            print("  [simpmusic] No lyrics content returned", file=sys.stderr)
-            return None
-
-        result_artist = str(best.get("artistName") or artist)
-        result_title = str(
-            best.get("songTitle")
-            or best.get("title")
-            or best.get("name")
-            or title
-        )
-        lrc_lines = [f"[ar:{result_artist}]", f"[ti:{result_title}]", ""]
-
-        if synced_lyrics:
-            lrc_lines.append(synced_lyrics)
-            synced = True
-            print("  [simpmusic] Found synced lyrics", file=sys.stderr)
-        else:
-            lrc_lines.append(_to_lrc_from_plain(plain_lyrics))
-            synced = False
-            print("  [simpmusic] Found plain lyrics", file=sys.stderr)
-
-        return _build_result(
-            "simpmusic",
-            "\n".join(lrc_lines),
-            result_artist,
-            result_title,
-            synced,
-        )
+        return _simpmusic_result(best, details, artist, title)
 
     except Exception as e:  # noqa: BLE001 - provider boundary
         print(f"  [simpmusic] Error: {e}", file=sys.stderr)

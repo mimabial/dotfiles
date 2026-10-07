@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state || exit 1
 hypr_runtime_load_state || exit 1
 dock_mode_enabled=${BATTERY_NOTIFY_DOCK:-false}
@@ -90,18 +90,20 @@ run_configured_command() {
   esac
 }
 
+CRITICAL_COUNTDOWN_MIN_S=60
+
 notify_battery_thresholds() {
   if [[ "$battery_percentage" -ge "$unplug_charger_threshold" ]] && [[ "$battery_status" != "Discharging" ]] && [[ "$battery_status" != "Full" ]] && (((battery_percentage - last_notified_percentage) >= notification_percentage_step)); then
     printf -v battery_icon_level '%03d' "$(((battery_percentage + 5) / 10 * 10))"
     if $verbose; then echo "Prompt:UNPLUG: $unplug_charger_threshold $battery_status $battery_percentage $battery_icon_level"; fi
-    dunstify -a "Power" -t 5000 -r 5 -u "CRITICAL" -i "battery-${battery_icon_level:-100}-charging" "Battery Charged" "Battery is at $battery_percentage%. You can unplug the charger"
+    dunstify -a "Power" -t "${NOTIFY_LONG_MS}" -r "${NOTIFY_ID_BATTERY}" -u "CRITICAL" -i "battery-${battery_icon_level:-100}-charging" "Battery Charged" "Battery is at $battery_percentage%. You can unplug the charger"
     last_notified_percentage=$battery_percentage
   elif [[ "$battery_percentage" -le "$battery_critical_threshold" ]]; then
-    seconds_remaining=$((critical_countdown_seconds > 60 ? critical_countdown_seconds : 60))
+    seconds_remaining=$((critical_countdown_seconds > CRITICAL_COUNTDOWN_MIN_S ? critical_countdown_seconds : CRITICAL_COUNTDOWN_MIN_S))
     while [ $seconds_remaining -gt 0 ] && [[ $battery_status == "Discharging"* ]]; do
       for battery in /sys/class/power_supply/BAT*; do battery_status=$(<"$battery/status"); done
       if [[ $battery_status != "Discharging" ]]; then break; fi
-      dunstify -a "Power" -t 0 -r 5 -u "CRITICAL" -i "xfce4-battery-critical" "Battery Critically Low" "$battery_percentage% is critically low. Device will execute $execute_critical in $((seconds_remaining / 60)):$((seconds_remaining % 60)) ."
+      dunstify -a "Power" -t "${NOTIFY_STICKY_MS}" -r "${NOTIFY_ID_BATTERY}" -u "CRITICAL" -i "xfce4-battery-critical" "Battery Critically Low" "$battery_percentage% is critically low. Device will execute $execute_critical in $((seconds_remaining / 60)):$((seconds_remaining % 60)) ."
       seconds_remaining=$((seconds_remaining - 1))
       sleep 1
     done
@@ -109,7 +111,7 @@ notify_battery_thresholds() {
   elif [[ "$battery_percentage" -le "$battery_low_threshold" ]] && [[ "$battery_status" == "Discharging" ]] && (((last_notified_percentage - battery_percentage) >= notification_percentage_step)); then
     printf -v battery_icon_level '%d' "$(((battery_percentage + 5) / 10 * 10))"
     if $verbose; then echo "Prompt:LOW: $battery_low_threshold $battery_status $battery_percentage"; fi
-    dunstify -a "Power" -t 0 -r 5 -u "CRITICAL" -i "battery-level-${battery_icon_level:-10}-symbolic" "Battery Low" "Battery is at $battery_percentage%. Connect the charger."
+    dunstify -a "Power" -t "${NOTIFY_STICKY_MS}" -r "${NOTIFY_ID_BATTERY}" -u "CRITICAL" -i "battery-level-${battery_icon_level:-10}-symbolic" "Battery Low" "Battery is at $battery_percentage%. Connect the charger."
     last_notified_percentage=$battery_percentage
   fi
 }
@@ -131,7 +133,7 @@ handle_battery_status_transition() {
         urgency=NORMAL
         [[ $battery_percentage -le $battery_low_threshold ]] && urgency=CRITICAL
         printf -v battery_icon_level '%d' "$(((battery_percentage + 5) / 10 * 10))"
-        dunstify -a "Power" -t 3000 -r 5 -u "${urgency:-normal}" -i "battery-level-${battery_icon_level:-10}-symbolic" "Charger Plug Out" "Battery is at $battery_percentage%."
+        dunstify -a "Power" -t "${NOTIFY_MS}" -r "${NOTIFY_ID_BATTERY}" -u "${urgency:-normal}" -i "battery-level-${battery_icon_level:-10}-symbolic" "Charger Plug Out" "Battery is at $battery_percentage%."
         run_configured_command "${execute_discharging}"
       fi
       notify_battery_thresholds
@@ -143,7 +145,7 @@ handle_battery_status_transition() {
         urgency=NORMAL
         [[ $battery_percentage -ge $unplug_charger_threshold ]] && urgency=CRITICAL
         printf -v battery_icon_level '%03d' "$(((battery_percentage + 5) / 10 * 10))"
-        dunstify -a "Power" -t 3000 -r 5 -u "${urgency:-normal}" -i "battery-${battery_icon_level:-100}-charging" "Charger Plug In" "Battery is at $battery_percentage%."
+        dunstify -a "Power" -t "${NOTIFY_MS}" -r "${NOTIFY_ID_BATTERY}" -u "${urgency:-normal}" -i "battery-${battery_icon_level:-100}-charging" "Charger Plug In" "Battery is at $battery_percentage%."
         run_configured_command "${execute_charging}"
       fi
       notify_battery_thresholds
@@ -154,7 +156,7 @@ handle_battery_status_transition() {
         local now
         now=$(date +%s)
         if [[ "$previous_notified_status" == *"harging"* ]] || ((now - last_full_notification_time >= $((full_notification_interval_minutes * 60)))); then
-          dunstify -a "Power" -t 5000 -r 5 -u "CRITICAL" -i "battery-full-charging-symbolic" "Battery Full" "Please unplug your Charger"
+          dunstify -a "Power" -t "${NOTIFY_LONG_MS}" -r "${NOTIFY_ID_BATTERY}" -u "CRITICAL" -i "battery-full-charging-symbolic" "Battery Full" "Please unplug your Charger"
           previous_notified_status=$battery_status
           last_full_notification_time=$now
           run_configured_command "${execute_charging}"

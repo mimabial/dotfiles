@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 
 direction=${1:-}
 stream=${2:-}
@@ -27,7 +27,7 @@ else
   targets_key=sources
 fi
 
-state=$(timeout --kill-after=1s 2 pactl -f json list) || exit 1
+state=$(hypr_daemon_call pactl -f json list) || exit 1
 ids=$(jq -er --arg stream "$stream" --arg target "$target" \
   --arg streams "$streams_key" --arg targets "$targets_key" '
   (.[$streams] // [] | map(select((.index | tostring) == $stream))[0].properties."object.id") as $stream_id
@@ -40,12 +40,12 @@ ids=$(jq -er --arg stream "$stream" --arg target "$target" \
 }
 read -r stream_id target_id <<<"$ids"
 
-timeout --kill-after=1s 2 pactl "$move_command" "$stream" "$target" || exit 1
+hypr_daemon_call pactl "$move_command" "$stream" "$target" || exit 1
 
 if [[ $mode == override ]]; then
-  timeout --kill-after=1s 2 pw-metadata -n default -- "$stream_id" target.object "$target" Spa:Id >/dev/null || exit 1
-  timeout --kill-after=1s 2 pw-metadata -n default -- "$stream_id" target.node "$target_id" Spa:Id >/dev/null || exit 1
+  hypr_daemon_call pw-metadata -n default -- "$stream_id" target.object "$target" Spa:Id >/dev/null || exit 1
+  hypr_daemon_call pw-metadata -n default -- "$stream_id" target.node "$target_id" Spa:Id >/dev/null || exit 1
 else
-  timeout --kill-after=1s 2 pw-metadata -n default -- "$stream_id" target.object -1 Spa:Id >/dev/null || exit 1
-  timeout --kill-after=1s 2 pw-metadata -n default -- "$stream_id" target.node -1 Spa:Id >/dev/null || exit 1
+  hypr_daemon_call pw-metadata -n default -- "$stream_id" target.object -1 Spa:Id >/dev/null || exit 1
+  hypr_daemon_call pw-metadata -n default -- "$stream_id" target.node -1 Spa:Id >/dev/null || exit 1
 fi

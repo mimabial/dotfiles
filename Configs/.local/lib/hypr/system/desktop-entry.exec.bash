@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-HYPR_SYSTEM_DIR="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system"
+HYPR_SYSTEM_DIR="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system"
 
 desktop_entry_exec_query() {
   local mode="$1"

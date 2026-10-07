@@ -1,13 +1,9 @@
 #!/usr/bin/env bash
 
-# Returns the best working directory for terminal-launch keybinds.
-# Prefers Kitty's reported cwd for the focused Kitty window, then falls back
-# to the active terminal's child shell cwd, then finally $HOME.
-
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell launch/terminal-cwd
 Print the best working directory for terminal-launch keybinds." "$@"

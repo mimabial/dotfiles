@@ -1,3 +1,8 @@
+local home = os.getenv("HOME")
+local user_modules = (os.getenv("XDG_CONFIG_HOME") or home .. "/.config") .. "/hypr/?.lua"
+local shared_modules = (os.getenv("XDG_DATA_HOME") or home .. "/.local/share") .. "/hypr/?.lua"
+package.path = user_modules .. ";" .. shared_modules .. ";" .. package.path
+
 local core = require("core")
 local vars = core.vars
 local runtime = core.runtime
@@ -8,8 +13,8 @@ local state_home = vars.get("XDG_STATE_HOME")
 runtime.load(config_home .. "/hypr/themes/theme.lua")
 runtime.load(config_home .. "/hypr/userfonts.lua", true)
 require("gpu")
-runtime.load(state_home .. "/hypr/animations.lua")
-runtime.load(state_home .. "/hypr/shaders.lua")
+runtime.load(state_home .. "/hypr/animations.lua", true)
+runtime.load(state_home .. "/hypr/shaders.lua", true)
 
 hl.config({misc = {font_family = vars.get("FONT", "Cantarell")}})
 
@@ -55,7 +60,7 @@ require("keybindings")
 runtime.load(config_home .. "/hypr/monitors.lua")
 runtime.load(state_home .. "/hypr/monitor-toggles.lua", true)
 runtime.load(state_home .. "/hypr/window-layout.lua", true)
-runtime.load(state_home .. "/hypr/workflows.lua")
+runtime.load(state_home .. "/hypr/workflows.lua", true)
 require("workspaces")
 
 -- Generated monitor rules must load last.

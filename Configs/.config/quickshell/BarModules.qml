@@ -72,7 +72,8 @@ Item {
     Component { id: mod_wallpaper; WallpaperButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_colormode; ScriptButton {
         id: colorButton; shell: catalog.shell; css: "colormode"; tooltip: ""; Layout.fillHeight: true
-        command: ["hyprshell", "quickshell/color-mode"]; interval: 86400000; refreshKey: catalog.shell.palette
+        command: ["hyprshell", "quickshell/color-mode"]; polling: false; refreshKey: catalog.shell.palette
+        Component.onCompleted: refresh()
         onClicked: button => button === Qt.LeftButton
             ? catalog.shell.togglePopup("colormode")
             : catalog.shell.run(["hyprshell", "theme/color-mode", button === Qt.RightButton ? "-p" : "-n"])
@@ -87,7 +88,8 @@ Item {
     Component { id: mod_windowlayout; WindowLayoutButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_workflows; ScriptButton {
         shell: catalog.shell; css: "workflows"; opensPopup: true; Layout.fillHeight: true
-        command: ["hyprshell", "util/workflows", "--bar"]; interval: 86400000; refreshKey: catalog.shell.workflow
+        command: ["hyprshell", "util/workflows", "--bar"]; polling: false; refreshKey: catalog.shell.workflow
+        Component.onCompleted: refresh()
         onClicked: catalog.shell.togglePopup("desktop")
     } }
     Component { id: mod_colorpicker; ColorPickerButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }

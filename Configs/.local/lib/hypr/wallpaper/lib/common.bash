@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 run_detached() {
   (
@@ -19,24 +18,6 @@ run_low_prio() {
   fi
 }
 
-wallpaper_now_ms() {
-  date +%s%3N
-}
-
-# Same label format as theme.apply.sh's elapsed label.
-wallpaper_elapsed_label() {
-  local now_ms=""
-  local elapsed_ms=0
-  local centiseconds=0
-
-  [[ "${wallpaper_started_ms:-}" =~ ^[0-9]+$ ]] || return 1
-  now_ms="$(wallpaper_now_ms)"
-  elapsed_ms=$((now_ms - wallpaper_started_ms))
-  [[ "${elapsed_ms}" -ge 0 ]] || elapsed_ms=0
-  centiseconds=$(((elapsed_ms + 5) / 10))
-  printf '%d.%02ds' "$((centiseconds / 100))" "$((centiseconds % 100))"
-}
-
 wallpaper_cache_root() {
   local cache_root="${WALLPAPER_CACHE_DIR}"
   [[ -z "${cache_root}" ]] && cache_root="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/wallpaper"
@@ -48,16 +29,6 @@ wallpaper_resolve_path() {
   readlink -f -- "${input_path}" 2>/dev/null \
     || realpath -- "${input_path}" 2>/dev/null \
     || printf '%s' "${input_path}"
-}
-
-wallpaper_supported_files_array() {
-  local out_name="${1}"
-  local -n out_ref="${out_name}"
-
-  out_ref=("gif" "jpg" "jpeg" "png" "webp" "${WALLPAPER_FILETYPES[@]}")
-  if [[ ${#WALLPAPER_OVERRIDE_FILETYPES[@]} -gt 0 ]]; then
-    out_ref=("${WALLPAPER_OVERRIDE_FILETYPES[@]}")
-  fi
 }
 
 wallpaper_extensions_regex() {
@@ -121,13 +92,11 @@ wallpaper_theme_sources() {
 }
 
 wallpaper_queue_script() {
-  local lib_dir="${LIB_DIR:-$HOME/.local/lib}"
-  printf '%s\n' "${lib_dir}/hypr/wallpaper/wallcache.daemon.sh"
+  printf '%s\n' "${HYPR_LIB_DIR}/wallpaper/wallcache.daemon.sh"
 }
 
 wallpaper_cache_script() {
-  local lib_dir="${LIB_DIR:-$HOME/.local/lib}"
-  printf '%s\n' "${lib_dir}/hypr/wallpaper/wallpaper.cache.sh"
+  printf '%s\n' "${HYPR_LIB_DIR}/wallpaper/wallpaper.cache.sh"
 }
 
 wallpaper_enqueue_cache_jobs() {

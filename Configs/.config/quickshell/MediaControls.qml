@@ -3,16 +3,17 @@ import Quickshell.Services.Mpris
 
 QtObject {
   id: controls
+  readonly property int defaultVolume: 80
   required property var controller
   required property var media
 
   function togglePlayback() {
-    const p = controls.controller.mprisPlayer
-    if (p) {
-      if (p.isPlaying && p.canPause) p.pause()
-      else if (!p.isPlaying && p.canPlay) p.play()
-      else if (p.canTogglePlaying) p.togglePlaying()
-      controls.media.select(p)
+    const player = controls.controller.mprisPlayer
+    if (player) {
+      if (player.isPlaying && player.canPause) player.pause()
+      else if (!player.isPlaying && player.canPlay) player.play()
+      else if (player.canTogglePlaying) player.togglePlaying()
+      controls.media.select(player)
       controls.controller.syncMpris()
       return
     }
@@ -20,43 +21,43 @@ QtObject {
     controls.controller.runCmd(["toggle"])
   }
   function play() {
-    const p = controls.controller.mprisPlayer
-    if (p) { if (p.canPlay) p.play(); controls.media.select(p); controls.controller.syncMpris(); return }
+    const player = controls.controller.mprisPlayer
+    if (player) { if (player.canPlay) player.play(); controls.media.select(player); controls.controller.syncMpris(); return }
     controls.controller.playbackState = "playing"
     controls.controller.runCmd(["play"])
   }
   function pause() {
-    const p = controls.controller.mprisPlayer
-    if (p) { if (p.canPause) p.pause(); controls.media.select(p); controls.controller.syncMpris(); return }
+    const player = controls.controller.mprisPlayer
+    if (player) { if (player.canPause) player.pause(); controls.media.select(player); controls.controller.syncMpris(); return }
     controls.controller.playbackState = "paused"
     controls.controller.runCmd(["pause"])
   }
   function stop() {
-    const p = controls.controller.mprisPlayer
-    if (p) { if (p.canControl) p.stop(); controls.media.select(p); controls.controller.syncMpris(); return }
+    const player = controls.controller.mprisPlayer
+    if (player) { if (player.canControl) player.stop(); controls.media.select(player); controls.controller.syncMpris(); return }
     controls.controller.playbackState = "stopped"
     controls.controller.runCmd(["stop"])
   }
   function nextTrack() {
-    const p = controls.controller.mprisPlayer
-    if (p) { if (p.canGoNext) p.next(); controls.media.select(p); return }
+    const player = controls.controller.mprisPlayer
+    if (player) { if (player.canGoNext) player.next(); controls.media.select(player); return }
     controls.controller.runCmd(["next"])
   }
   function prevTrack() {
-    const p = controls.controller.mprisPlayer
-    if (p) { if (p.canGoPrevious) p.previous(); controls.media.select(p); return }
+    const player = controls.controller.mprisPlayer
+    if (player) { if (player.canGoPrevious) player.previous(); controls.media.select(player); return }
     controls.controller.runCmd(["prev"])
   }
   function toggleShuffle() {
-    const p = controls.controller.mprisPlayer
-    if (p) { if (p.shuffleSupported) p.shuffle = !p.shuffle; return }
+    const player = controls.controller.mprisPlayer
+    if (player) { if (player.shuffleSupported) player.shuffle = !player.shuffle; return }
     controls.controller.runCmd(["shuffle"])
   }
   function cycleRepeat() {
-    const p = controls.controller.mprisPlayer
-    if (p) {
-      if (p.loopSupported) p.loopState = p.loopState === MprisLoopState.None
-        ? MprisLoopState.Track : p.loopState === MprisLoopState.Track
+    const player = controls.controller.mprisPlayer
+    if (player) {
+      if (player.loopSupported) player.loopState = player.loopState === MprisLoopState.None
+        ? MprisLoopState.Track : player.loopState === MprisLoopState.Track
           ? MprisLoopState.Playlist : MprisLoopState.None
       return
     }
@@ -69,8 +70,8 @@ QtObject {
   
   function setVolume(pct) {
     controls.controller.volumePct = pct
-    const p = controls.controller.mprisPlayer
-    if (p) { if (p.volumeSupported) p.volume = pct / 100; return }
+    const player = controls.controller.mprisPlayer
+    if (player) { if (player.volumeSupported) player.volume = pct / 100; return }
     controls.controller.liveCmd(["volume_pct", String(pct)])
   }
   
@@ -79,16 +80,16 @@ QtObject {
       controls.controller._preMuteVol = controls.controller.volumePct
       setVolume(0)
     } else {
-      var target = (controls.controller._preMuteVol && controls.controller._preMuteVol > 0) ? controls.controller._preMuteVol : 80
+      var target = (controls.controller._preMuteVol && controls.controller._preMuteVol > 0) ? controls.controller._preMuteVol : controls.defaultVolume
       setVolume(target)
     }
   }
   
   function seekTo(sec) {
-    const p = controls.controller.mprisPlayer
-    if (p) {
-      if (p.canSeek && p.positionSupported) {
-        p.position = sec
+    const player = controls.controller.mprisPlayer
+    if (player) {
+      if (player.canSeek && player.positionSupported) {
+        player.position = sec
         controls.controller.updatePosition(sec)
       }
       return
@@ -102,8 +103,8 @@ QtObject {
     for (var i = 0; i < speeds.length; i++) { if (Math.abs(speeds[i] - cur) < 0.05) { idx = i; break } }
     var next = speeds[(idx + 1) % speeds.length]
     controls.controller.playbackSpeed = next
-    const p = controls.controller.mprisPlayer
-    if (p) { p.rate = Math.max(p.minRate, Math.min(p.maxRate, next)); return }
+    const player = controls.controller.mprisPlayer
+    if (player) { player.rate = Math.max(player.minRate, Math.min(player.maxRate, next)); return }
     controls.controller.runCmd(["speed", String(next)])
   }
 }

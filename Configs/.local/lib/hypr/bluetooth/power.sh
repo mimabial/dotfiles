@@ -2,26 +2,28 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell bluetooth/power {on|off|toggle|is-on}" "$@"
 
 bluetooth_is_powered() {
-  timeout 2s bluetoothctl show 2>/dev/null | grep -q 'Powered: yes'
+  hypr_daemon_call bluetoothctl show 2>/dev/null | grep -q 'Powered: yes'
 }
+
+BLUETOOTH_POWER_SWITCH_TIMEOUT_S=5
 
 power_on() {
   if rfkill list bluetooth >/dev/null 2>&1; then
     rfkill unblock bluetooth
   fi
-  bluetooth_is_powered || timeout 5s bluetoothctl power on >/dev/null
+  bluetooth_is_powered || timeout "${BLUETOOTH_POWER_SWITCH_TIMEOUT_S}s" bluetoothctl power on >/dev/null
 }
 
 power_off() {
   if rfkill list bluetooth >/dev/null 2>&1; then
     rfkill block bluetooth
   else
-    timeout 5s bluetoothctl power off >/dev/null
+    timeout "${BLUETOOTH_POWER_SWITCH_TIMEOUT_S}s" bluetoothctl power off >/dev/null
   fi
 }
 

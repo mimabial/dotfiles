@@ -7,7 +7,7 @@ ScriptButton {
     property bool popupEnabled: true
     css: "github"
     command: ["hyprshell", "github-notifications"]
-    interval: 3600000
+    interval: 60 * 60 * 1000
     onClicked: button => button === Qt.RightButton
         ? root.shell.run(["xdg-open", "https://github.com/notifications"])
         : root.shell.togglePopup("github")

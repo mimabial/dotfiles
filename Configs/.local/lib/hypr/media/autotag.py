@@ -1,17 +1,4 @@
 #!/usr/bin/env python3
-"""
-Look up track metadata online and write it into .mp3/.opus tags.
-
-Identification is by acoustic fingerprint (chromaprint -> AcoustID) when an API
-key is available, otherwise by text search against MusicBrainz using existing
-tags or the filename.
-
-Exit codes:
-  0 = every file resolved (or nothing to do)
-  1 = at least one file could not be identified
-  2 = internal/runtime error
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -71,6 +58,13 @@ from title_cleanup import clean_title
 from ytdlp_config import ytdlp_auth_args
 
 
+HTTP_TIMEOUT_S = 20
+EXACT_MATCH_SCORE = 0.999
+# The picture-type and text-encoding codes FLAC and ID3 share.
+PICTURE_TYPE_FRONT_COVER = 3
+ID3_ENCODING_UTF8 = 3
+
+
 class TrackTags(TypedDict, total=False):
     """Every key a provider may return. No provider returns all of them:
     artwork_url is iTunes-only, musicbrainz_* come from AcoustID/MusicBrainz,
@@ -92,6 +86,7 @@ class TrackTags(TypedDict, total=False):
 ACOUSTID_ENDPOINT = "https://api.acoustid.org/v2/lookup"
 MUSICBRAINZ_ENDPOINT = "https://musicbrainz.org/ws/2/recording"
 ITUNES_ENDPOINT = "https://itunes.apple.com/search"
+ITUNES_RESULT_LIMIT = 25
 DEEZER_ENDPOINT = "https://api.deezer.com/search"
 DEEZER_TRACK_ENDPOINT = "https://api.deezer.com/track"
 CONTACT = os.environ.get("AUTOTAG_CONTACT", "hyprshell-autotag")
@@ -173,7 +168,7 @@ def acoustid_key() -> str:
 
 
 class ResolutionCache:
-    """Persistent final lookup results, including expiring catalog misses."""
+    """Catalog misses are cached too, and expire."""
 
     def __init__(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -313,7 +308,7 @@ def http_get(url: str, params: dict, limiter: RateLimiter, attempts: int = 4):
     response = None
     for attempt in range(attempts):
         limiter.wait()
-        response = HTTP_SESSION.get(url, params=params, timeout=20)
+        response = HTTP_SESSION.get(url, params=params, timeout=HTTP_TIMEOUT_S)
         if response.status_code in (429, 503) and attempt < attempts - 1:
             time.sleep(delay)
             delay *= 2
@@ -336,7 +331,6 @@ def fingerprint(path: Path) -> tuple[int, str]:
 
 
 def pick_release(recording: dict, album: str = "") -> dict:
-    """Prefer an album over singles/compilations, then the earliest release."""
     groups = recording.get("releasegroups") or []
     if not groups:
         return {}
@@ -352,14 +346,11 @@ def pick_release(recording: dict, album: str = "") -> dict:
     return (albums or groups)[0]
 
 
-def from_acoustid(
-    path: Path,
-    key: str,
-    limiter: RateLimiter,
-    min_score: float,
-    candidates: list[tuple[str, str]] | None = None,
-    album: str = "",
-) -> TrackTags:
+def joined_names(people: list[dict]) -> str:
+    return ", ".join(person["name"] for person in people if person.get("name"))
+
+
+def acoustid_results(path: Path, key: str, limiter: RateLimiter) -> list[dict]:
     duration, fingerprint_data = fingerprint(path)
     response = http_get(
         ACOUSTID_ENDPOINT,
@@ -377,49 +368,59 @@ def from_acoustid(
     payload = response.json()
     if payload.get("status") != "ok":
         raise Unidentified(f"acoustid: {payload.get('error', {}).get('message', 'error')}")
+    return payload.get("results", [])
 
-    for result in sorted(payload.get("results", []), key=lambda r: r.get("score", 0), reverse=True):
+
+def rank_recordings_by_candidates(
+    recordings: list[dict], candidates: list[tuple[str, str]]
+) -> list[dict]:
+    ranked = []
+    for recording in recordings:
+        credited = joined_names(recording.get("artists") or [])
+        agreements = []
+        for artist, title in candidates:
+            _, wanted_credit, _ = track_identity(artist, title)
+            if (
+                title_similarity(recording["title"], title) >= MIN_TITLE_SIMILARITY
+                and artist_agrees(credited, wanted_credit)
+            ):
+                agreements.append(match_score(credited, recording["title"], artist, title))
+        if agreements:
+            ranked.append((max(agreements), recording))
+    return [recording for _, recording in sorted(ranked, key=lambda item: item[0], reverse=True)]
+
+
+def acoustid_tags(recording: dict, group: dict) -> TrackTags:
+    return {
+        "title": recording["title"],
+        "artist": joined_names(recording.get("artists") or []),
+        "album": group.get("title", ""),
+        "albumartist": joined_names(group.get("artists") or []),
+        "musicbrainz_trackid": recording.get("id", ""),
+        "musicbrainz_releasegroupid": group.get("id", ""),
+    }
+
+
+def from_acoustid(
+    path: Path,
+    key: str,
+    limiter: RateLimiter,
+    min_score: float,
+    candidates: list[tuple[str, str]] | None = None,
+    album: str = "",
+) -> TrackTags:
+    results = acoustid_results(path, key, limiter)
+    for result in sorted(results, key=lambda r: r.get("score", 0), reverse=True):
         if result.get("score", 0) < min_score:
             break
         recordings = [r for r in result.get("recordings") or [] if r.get("title")]
         if candidates:
-            ranked = []
-            for recording in recordings:
-                artists = recording.get("artists") or []
-                credited = ", ".join(a["name"] for a in artists if a.get("name"))
-                agreements = []
-                for artist, title in candidates:
-                    _, wanted_credit, _ = track_identity(artist, title)
-                    if (
-                        title_similarity(recording["title"], title)
-                        >= MIN_TITLE_SIMILARITY
-                        and artist_agrees(credited, wanted_credit)
-                    ):
-                        agreements.append(
-                            match_score(credited, recording["title"], artist, title)
-                        )
-                if agreements:
-                    ranked.append((max(agreements), recording))
-            recordings = [
-                recording
-                for _, recording in sorted(ranked, key=lambda item: item[0], reverse=True)
-            ]
-
+            recordings = rank_recordings_by_candidates(recordings, candidates)
         for recording in recordings:
-            artists = recording.get("artists") or []
             group = pick_release(recording, album)
             if album and not group:
                 continue
-            return {
-                "title": recording["title"],
-                "artist": ", ".join(a["name"] for a in artists if a.get("name")),
-                "album": group.get("title", ""),
-                "albumartist": ", ".join(
-                    a["name"] for a in (group.get("artists") or []) if a.get("name")
-                ),
-                "musicbrainz_trackid": recording.get("id", ""),
-                "musicbrainz_releasegroupid": group.get("id", ""),
-            }
+            return acoustid_tags(recording, group)
     raise Unidentified("no acoustid match above threshold")
 
 
@@ -439,27 +440,27 @@ def itunes_is_compilation(item: dict) -> bool:
     )
 
 
-def from_itunes(
-    artist: str,
-    title: str,
-    limiter: RateLimiter,
-    threshold: float,
-    album: str = "",
-) -> TrackTags:
-    if not title:
-        raise Unidentified("no title to search with")
+class ItunesRanking(NamedTuple):
+    best: dict | None
+    best_score: float
+    solo: dict | None
+    solo_score: float
+    album_match: dict | None
+    album_rank: tuple[float, float]
+    rejected_score: float
 
-    cleaned = clean_title(title)
+
+def itunes_search(artist: str, title: str, limiter: RateLimiter) -> list[dict]:
     results = []
     seen_results = set()
-    for query_artist, query_title in search_variants(artist, cleaned):
+    for query_artist, query_title in search_variants(artist, title):
         response = http_get(
             ITUNES_ENDPOINT,
             {
                 "term": f"{query_artist} {query_title}".strip(),
                 "media": "music",
                 "entity": "song",
-                "limit": 25,
+                "limit": ITUNES_RESULT_LIMIT,
             },
             limiter,
         )
@@ -474,91 +475,97 @@ def from_itunes(
                 results.append(item)
     if not results:
         raise Unidentified("no itunes match")
+    return results
 
-    best = None
-    best_score = 0.0
-    best_solo = None
-    best_solo_score = 0.0
-    best_album = None
-    best_album_rank = (0.0, 0.0)
-    rejected = 0.0
+
+def rank_itunes_results(results: list[dict], artist: str, title: str, album: str) -> ItunesRanking:
+    best = solo = album_match = None
+    best_score = solo_score = rejected_score = 0.0
+    album_rank = (0.0, 0.0)
     for item in results:
         cand_artist = item.get("artistName", "")
         cand_title = item.get("trackName", "")
-        score = match_score(cand_artist, cand_title, artist, cleaned)
-        if not candidate_agrees(cand_artist, cand_title, artist, cleaned):
-            rejected = max(rejected, score)
+        score = match_score(cand_artist, cand_title, artist, title)
+        if not candidate_agrees(cand_artist, cand_title, artist, title):
+            rejected_score = max(rejected_score, score)
             continue
         if score > best_score:
             best, best_score = item, score
-        if not itunes_is_compilation(item) and score > best_solo_score:
-            best_solo, best_solo_score = item, score
+        if not itunes_is_compilation(item) and score > solo_score:
+            solo, solo_score = item, score
         candidate_album = item.get("collectionName", "")
         if album_agrees(candidate_album, album):
             rank = (album_similarity(candidate_album, album), score)
-            if rank > best_album_rank:
-                best_album, best_album_rank = item, rank
+            if rank > album_rank:
+                album_match, album_rank = item, rank
+    return ItunesRanking(best, best_score, solo, solo_score, album_match, album_rank, rejected_score)
 
+
+def release_year(date: str | None) -> str:
+    return (date or "")[:len("YYYY")]
+
+
+def itunes_credit_similarity(item: dict, artist: str, title: str) -> float:
+    return credit_similarity(item.get("artistName", ""), item.get("trackName", ""), artist, title)
+
+
+def choose_itunes_match(
+    ranking: ItunesRanking, artist: str, title: str, album: str, threshold: float
+) -> dict:
+    best, best_score = ranking.best, ranking.best_score
     # A DJ mix's album and track number describe the mix, not the song. Only trade
     # down to one if the artist still agrees at least as well: the right song on a
     # mix beats the wrong artist on a studio release.
     if album:
-        if best_album is None or best_album_rank[1] < threshold:
+        if ranking.album_match is None or ranking.album_rank[1] < threshold:
             raise Unidentified("no itunes match on requested album")
-        best, best_score = best_album, best_album_rank[1]
-    else:
-        if (
-            best_solo is not None
-            and best_solo_score >= threshold
-            and artist
-            and credit_similarity(
-                best_solo.get("artistName", ""),
-                best_solo.get("trackName", ""),
-                artist,
-                cleaned,
-            ) < credit_similarity(
-                best.get("artistName", ""),
-                best.get("trackName", ""),
-                artist,
-                cleaned,
-            )
-        ):
-            best_solo = None
-        if best_solo is not None and best_solo_score >= threshold:
-            best, best_score = best_solo, best_solo_score
+        best, best_score = ranking.album_match, ranking.album_rank[1]
+    elif (
+        ranking.solo is not None
+        and ranking.solo_score >= threshold
+        and not (
+            artist
+            and itunes_credit_similarity(ranking.solo, artist, title)
+            < itunes_credit_similarity(best, artist, title)
+        )
+    ):
+        best, best_score = ranking.solo, ranking.solo_score
 
     if best is None or best_score < threshold:
         detail = f"{best_score:.2f}"
-        if best is None and rejected:
-            detail = f"{rejected:.2f}, failed title/artist gate"
+        if best is None and ranking.rejected_score:
+            detail = f"{ranking.rejected_score:.2f}, failed title/artist gate"
         raise Unidentified(f"itunes best match too weak ({detail})")
+    return best
 
+
+def itunes_tags(match: dict, album: str) -> TrackTags:
     # A matching album hint makes an intentional DJ mix/compilation safe. Without
     # one, keep its grouping metadata out of a standalone track.
-    compilation = itunes_is_compilation(best) and not album
+    compilation = itunes_is_compilation(match) and not album
     track_no = ""
-    if best.get("trackNumber") and not compilation:
-        track_no = str(best["trackNumber"])
-        if best.get("trackCount"):
-            track_no += f"/{best['trackCount']}"
+    if match.get("trackNumber") and not compilation:
+        track_no = str(match["trackNumber"])
+        if match.get("trackCount"):
+            track_no += f"/{match['trackCount']}"
 
     return {
-        "title": best.get("trackName", ""),
-        "artist": best.get("artistName", ""),
+        "title": match.get("trackName", ""),
+        "artist": match.get("artistName", ""),
         "albumartist": "" if compilation else primary_artist(
-            best.get("collectionArtistName") or "", best.get("artistName", "")
+            match.get("collectionArtistName") or "", match.get("artistName", "")
         ),
-        "album": "" if compilation else strip_release_suffix(best.get("collectionName", "")),
-        "date": "" if compilation else (best.get("releaseDate") or "")[:4],
+        "album": "" if compilation else strip_release_suffix(match.get("collectionName", "")),
+        "date": "" if compilation else release_year(match.get("releaseDate")),
         "tracknumber": track_no,
-        "genre": best.get("primaryGenreName", ""),
-        "artwork_url": (best.get("artworkUrl100") or "").replace(
+        "genre": match.get("primaryGenreName", ""),
+        "artwork_url": (match.get("artworkUrl100") or "").replace(
             "100x100bb.jpg", ARTWORK_SIZE
         ),
     }
 
 
-def from_deezer(
+def from_itunes(
     artist: str,
     title: str,
     limiter: RateLimiter,
@@ -567,14 +574,18 @@ def from_deezer(
 ) -> TrackTags:
     if not title:
         raise Unidentified("no title to search with")
-    if _deezer_blocked:
-        raise Unidentified(DEEZER_REFUSED)
-
     cleaned = clean_title(title)
+    results = itunes_search(artist, cleaned, limiter)
+    ranking = rank_itunes_results(results, artist, cleaned, album)
+    match = choose_itunes_match(ranking, artist, cleaned, album, threshold)
+    return itunes_tags(match, album)
+
+
+def deezer_search(artist: str, title: str, limiter: RateLimiter) -> list[dict]:
     results = []
     seen_results = set()
     try:
-        for query_artist, query_title in search_variants(artist, cleaned):
+        for query_artist, query_title in search_variants(artist, title):
             response = http_get(
                 DEEZER_ENDPOINT,
                 {"q": f"{query_artist} {query_title}".strip()},
@@ -600,7 +611,12 @@ def from_deezer(
             raise
     if not results:
         raise Unidentified("no deezer match")
+    return results
 
+
+def choose_deezer_match(
+    results: list[dict], artist: str, title: str, album: str, threshold: float
+) -> dict:
     best = None
     best_score = 0.0
     best_rank = (0.0, 0.0)
@@ -608,8 +624,8 @@ def from_deezer(
     for item in results:
         cand_artist = (item.get("artist") or {}).get("name", "")
         cand_title = item.get("title", "")
-        score = match_score(cand_artist, cand_title, artist, cleaned)
-        if not candidate_agrees(cand_artist, cand_title, artist, cleaned):
+        score = match_score(cand_artist, cand_title, artist, title)
+        if not candidate_agrees(cand_artist, cand_title, artist, title):
             rejected = max(rejected, score)
             continue
         candidate_album = (item.get("album") or {}).get("title", "")
@@ -627,21 +643,24 @@ def from_deezer(
         if best is None and rejected:
             detail = f"{rejected:.2f}, failed title/artist gate"
         raise Unidentified(f"deezer best match too weak ({detail})")
+    return best
 
-    deezer_artist = (best.get("artist") or {}).get("name", "")
+
+def deezer_tags(match: dict, limiter: RateLimiter) -> TrackTags:
+    deezer_artist = (match.get("artist") or {}).get("name", "")
     meta = {
-        "title": best.get("title", ""),
+        "title": match.get("title", ""),
         "artist": deezer_artist,
         "albumartist": primary_artist("", deezer_artist),
-        "album": strip_release_suffix((best.get("album") or {}).get("title", "")),
-        "artwork_url": (best.get("album") or {}).get("cover_big", ""),
+        "album": strip_release_suffix((match.get("album") or {}).get("title", "")),
+        "artwork_url": (match.get("album") or {}).get("cover_big", ""),
     }
 
     # Search hits omit the release date and track position; the track resource has them.
-    if best.get("id"):
+    if match.get("id"):
         try:
-            detail = http_get(f"{DEEZER_TRACK_ENDPOINT}/{best['id']}", {}, limiter).json()
-            meta["date"] = (detail.get("release_date") or "")[:4]
+            detail = http_get(f"{DEEZER_TRACK_ENDPOINT}/{match['id']}", {}, limiter).json()
+            meta["date"] = release_year(detail.get("release_date"))
             if detail.get("track_position"):
                 meta["tracknumber"] = str(detail["track_position"])
         except requests.RequestException:
@@ -649,8 +668,25 @@ def from_deezer(
     return meta
 
 
+def from_deezer(
+    artist: str,
+    title: str,
+    limiter: RateLimiter,
+    threshold: float,
+    album: str = "",
+) -> TrackTags:
+    if not title:
+        raise Unidentified("no title to search with")
+    if _deezer_blocked:
+        raise Unidentified(DEEZER_REFUSED)
+    cleaned = clean_title(title)
+    results = deezer_search(artist, cleaned, limiter)
+    match = choose_deezer_match(results, artist, cleaned, album, threshold)
+    return deezer_tags(match, limiter)
+
+
 def youtube_credit_metadata(url: str, timeout: int = 45) -> dict[str, str]:
-    """Read structured track credits from a YouTube URL without downloading it."""
+    """Metadata only; nothing is downloaded."""
     if not re.match(r"^https?://(?:www\.|music\.)?(?:youtube\.com|youtu\.be)/", url, re.I):
         raise Unidentified("no supported YouTube purl")
     executable = shutil.which("yt-dlp")
@@ -702,7 +738,6 @@ def youtube_credit_metadata(url: str, timeout: int = 45) -> dict[str, str]:
 
 
 def filename_credit_loss(path: Path, tags) -> list[str]:
-    """Return credits in the filename that are absent from the current tags."""
     file_artist, file_title = parse_filename(path)
     if not file_artist or not file_title:
         return []
@@ -715,7 +750,6 @@ def filename_credit_loss(path: Path, tags) -> list[str]:
 
 
 def recovered_youtube_artist(path: Path, tags) -> str:
-    """Verify a file's YouTube purl and return its complete artist credit."""
     purl = existing(tags, "purl")
     if not purl:
         raise Unidentified("file has no YouTube purl")
@@ -888,7 +922,6 @@ def has_artwork(path: Path, tags) -> bool:
 
 
 def embedded_artwork(path: Path) -> bytes:
-    """Return the first front-cover payload, independent of container format."""
     try:
         suffix = path.suffix.lower()
         if suffix == ".flac":
@@ -902,7 +935,7 @@ def embedded_artwork(path: Path) -> bytes:
         pictures = ID3(path).getall("APIC")
         if not pictures:
             return b""
-        front = next((picture for picture in pictures if picture.type == 3), pictures[0])
+        front = next((picture for picture in pictures if picture.type == PICTURE_TYPE_FRONT_COVER), pictures[0])
         return front.data
     except (ID3NoHeaderError, MutagenError, TypeError, ValueError):
         return b""
@@ -911,7 +944,7 @@ def embedded_artwork(path: Path) -> bytes:
 def embed_artwork(path: Path, data: bytes) -> None:
     width, height = jpeg_size(data)
     picture = Picture()
-    picture.data, picture.type, picture.mime = data, 3, "image/jpeg"
+    picture.data, picture.type, picture.mime = data, PICTURE_TYPE_FRONT_COVER, "image/jpeg"
     picture.width, picture.height, picture.depth = width, height, 24
 
     suffix = path.suffix.lower()
@@ -932,7 +965,7 @@ def embed_artwork(path: Path, data: bytes) -> None:
         except ID3NoHeaderError:
             frames = ID3()
         frames.delall("APIC")
-        frames.add(APIC(encoding=3, mime="image/jpeg", type=3, desc="Cover", data=data))
+        frames.add(APIC(encoding=ID3_ENCODING_UTF8, mime="image/jpeg", type=PICTURE_TYPE_FRONT_COVER, desc="Cover", data=data))
         frames.save(path)
 
 
@@ -965,7 +998,7 @@ def prepare_metadata(
     allow_credit_loss: bool = False,
     path: Path | None = None,
 ) -> dict:
-    """Apply output cleanup and prevent forced writes from narrowing credits."""
+    """Forced writes must not narrow the credits."""
     prepared = dict(meta)
     if not prepared.get("title"):
         return prepared
@@ -1103,12 +1136,9 @@ class AlbumArtworkGroup(NamedTuple):
 
 
 class Resolver:
-    """Provider lookups for one run.
-
-    The settings, rate limiters, AcoustID key and cache are constant for every
+    """The settings, rate limiters, AcoustID key and cache are constant for every
     file in a run, so they are held here instead of being threaded through each
-    resolution call.
-    """
+    resolution call."""
 
     def __init__(self, args, limiters: dict, acoustid_key: str = "",
                  cache: ResolutionCache | None = None, refresh_cache: bool = False):
@@ -1140,10 +1170,7 @@ class Resolver:
         return metadata
 
     def _read_cached_resolution(self, cache_key: str) -> dict | None:
-        """Cached metadata, or None when the lookup has to actually run.
-
-        A cached miss raises, the same as a fresh one would.
-        """
+        """A cached miss raises, the same as a fresh one would."""
         if self.cache is None or self.refresh_cache:
             return None
         cached = self.cache.get(cache_key)
@@ -1155,7 +1182,6 @@ class Resolver:
 
     def _from_fingerprint(self, path: Path, cache_key: str, candidates: list,
                           fallback_candidates: list, album: str) -> dict | None:
-        """AcoustID metadata, or None when it missed and a text search may follow."""
         try:
             return self._cache_identified_metadata(
                 cache_key,
@@ -1209,8 +1235,6 @@ class Resolver:
     def _search_tier(
         self, candidates: list, exact: bool, context: SearchContext
     ) -> dict | None:
-        """The tier's match: the first one when the credits are exact, else the
-        best-scoring across providers."""
         best = None
         best_score = 0.0
         for provider in self.args.provider_order:
@@ -1228,7 +1252,7 @@ class Resolver:
                 if score > best_score:
                     best = metadata
                     best_score = score
-                if score >= 0.999:
+                if score >= EXACT_MATCH_SCORE:
                     return metadata
             if not self.args.fallback:
                 break
@@ -1370,6 +1394,48 @@ def restore_youtube_credit_tags(
     return 1 if failed else 0
 
 
+def add_lookup_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--no-fingerprint", action="store_true",
+                        help="Skip AcoustID; match on existing tags or filename")
+    parser.add_argument("--no-fallback", dest="fallback", action="store_false",
+                        help="Fail instead of falling back to a MusicBrainz text search")
+    parser.add_argument("--min-score", type=float, default=0.5,
+                        help="Minimum AcoustID confidence (default: 0.5)")
+    parser.add_argument("--provider", default=DEFAULT_PROVIDER_ORDER,
+                        help="Comma-separated providers to try in order "
+                             f"(default: {DEFAULT_PROVIDER_ORDER}); "
+                             f"any of: {', '.join(PROVIDERS)}")
+    parser.add_argument("--fill", default=",".join(FILL_FIELDS),
+                        help="Only look a file up when one of these tags is missing "
+                             f"(default: {','.join(FILL_FIELDS)})")
+    parser.add_argument("--min-similarity", type=float, default=0.60,
+                        help="Minimum artist/title similarity (default: 0.60)")
+
+
+def add_artwork_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--no-artwork", dest="artwork", action="store_false",
+                        help="Skip embedding cover art from the provider")
+    parser.add_argument(
+        "--replace-artwork",
+        action="store_true",
+        help="Replace existing artwork; tracks in one album share one catalog cover",
+    )
+
+
+def add_cache_options(parser: argparse.ArgumentParser) -> None:
+    cache_group = parser.add_mutually_exclusive_group()
+    cache_group.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Do not read or write the persistent lookup cache",
+    )
+    cache_group.add_argument(
+        "--refresh-cache",
+        action="store_true",
+        help="Ignore cached lookups and replace them with fresh results",
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Look up track metadata and write it into .mp3/.opus/.flac files"
@@ -1394,39 +1460,9 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Only repair ARTIST tags from verified YouTube purl metadata",
     )
-    parser.add_argument("--no-fingerprint", action="store_true",
-                        help="Skip AcoustID; match on existing tags or filename")
-    parser.add_argument("--no-fallback", dest="fallback", action="store_false",
-                        help="Fail instead of falling back to a MusicBrainz text search")
-    parser.add_argument("--min-score", type=float, default=0.5,
-                        help="Minimum AcoustID confidence (default: 0.5)")
-    parser.add_argument("--provider", default=DEFAULT_PROVIDER_ORDER,
-                        help="Comma-separated providers to try in order "
-                             f"(default: {DEFAULT_PROVIDER_ORDER}); "
-                             f"any of: {', '.join(PROVIDERS)}")
-    parser.add_argument("--fill", default=",".join(FILL_FIELDS),
-                        help="Only look a file up when one of these tags is missing "
-                             f"(default: {','.join(FILL_FIELDS)})")
-    parser.add_argument("--min-similarity", type=float, default=0.60,
-                        help="Minimum artist/title similarity (default: 0.60)")
-    parser.add_argument("--no-artwork", dest="artwork", action="store_false",
-                        help="Skip embedding cover art from the provider")
-    parser.add_argument(
-        "--replace-artwork",
-        action="store_true",
-        help="Replace existing artwork; tracks in one album share one catalog cover",
-    )
-    cache_group = parser.add_mutually_exclusive_group()
-    cache_group.add_argument(
-        "--no-cache",
-        action="store_true",
-        help="Do not read or write the persistent lookup cache",
-    )
-    cache_group.add_argument(
-        "--refresh-cache",
-        action="store_true",
-        help="Ignore cached lookups and replace them with fresh results",
-    )
+    add_lookup_options(parser)
+    add_artwork_options(parser)
+    add_cache_options(parser)
     parser.add_argument("--ext", default="",
                         help="Comma-separated extensions to include "
                              f"(default: {','.join(sorted(e[1:] for e in SUPPORTED))})")
@@ -1440,8 +1476,6 @@ def replacing_artwork(args) -> bool:
 
 
 def parse_args(argv=None) -> tuple[argparse.Namespace, set[str]]:
-    """The parsed options, with the validated --fill list on args.fill_fields, plus
-    the extensions to collect."""
     parser = build_parser()
     args = parser.parse_args(argv)
 
@@ -1495,7 +1529,7 @@ def report_dry_run(path: Path, tags, meta: dict, args, in_album_group: bool) -> 
 
 
 def embed_track_artwork(path: Path, meta: dict, written: dict) -> None:
-    image = HTTP_SESSION.get(meta["artwork_url"], timeout=20)
+    image = HTTP_SESSION.get(meta["artwork_url"], timeout=HTTP_TIMEOUT_S)
     image.raise_for_status()
     if embedded_artwork(path) != image.content:
         embed_artwork(path, image.content)
@@ -1503,7 +1537,6 @@ def embed_track_artwork(path: Path, meta: dict, written: dict) -> None:
 
 
 def apply_album_artwork(group: AlbumArtworkGroup, resolver: Resolver) -> int:
-    """One catalog cover across an album's tracks. Returns the failure count."""
     args = resolver.args
     artwork_url = Counter(group.urls).most_common(1)[0][0]
 
@@ -1513,7 +1546,7 @@ def apply_album_artwork(group: AlbumArtworkGroup, resolver: Resolver) -> int:
         return 0
 
     try:
-        image = HTTP_SESSION.get(artwork_url, timeout=20)
+        image = HTTP_SESSION.get(artwork_url, timeout=HTTP_TIMEOUT_S)
         image.raise_for_status()
     except requests.RequestException as exc:
         print(f"!! {group.album}: artwork download failed: {exc}", file=sys.stderr)
@@ -1546,28 +1579,52 @@ def apply_album_artwork(group: AlbumArtworkGroup, resolver: Resolver) -> int:
     return failed
 
 
+def join_album_artwork_group(
+    album_artwork_groups: dict[tuple, AlbumArtworkGroup],
+    album_key: tuple,
+    album: str,
+    path: Path,
+    root: Path,
+) -> AlbumArtworkGroup:
+    group = album_artwork_groups.setdefault(album_key, AlbumArtworkGroup(album, [], {}, {}, []))
+    group.paths.append(path)
+    group.roots[path] = root
+    return group
+
+
+def report_written(path: Path, meta: TrackTags, written) -> None:
+    identity = f"{meta.get('artist') or '?'} - {meta.get('title') or '?'}"
+    if written:
+        print(f"OK {path.name}: {identity} [{', '.join(sorted(written))}]", flush=True)
+    else:
+        print(f"== {path.name}: {identity} (already tagged)", flush=True)
+
+
+def resolve_track_metadata(path: Path, root: Path, tags, resolver: Resolver) -> dict:
+    args = resolver.args
+    meta = prepare_metadata(
+        tags, resolver.resolve(path, root, tags), args.force, allow_credit_loss=args.allow_credit_loss, path=path
+    )
+    if meta.get("_preserved_credits"):
+        print(f".. {path.name}: preserved local credit(s): {meta['_preserved_credits']}", flush=True)
+    return meta
+
+
 def tag_file(
     path: Path,
     root: Path,
     resolver: Resolver,
     album_artwork_groups: dict[tuple, AlbumArtworkGroup],
 ) -> str:
-    """Tag one file. Returns "written", "skipped" (already complete) or "reported"
-    (dry run), and raises the same exceptions the providers and mutagen do.
-    """
     args = resolver.args
     replace_artwork = replacing_artwork(args)
     tags = read_tags(path)
     album, album_key = album_context(path, tags, root)
-
-    artwork_group = None
-    if args.artwork and replace_artwork and album_key:
-        artwork_group = album_artwork_groups.setdefault(
-            album_key,
-            AlbumArtworkGroup(album, [], {}, {}, []),
-        )
-        artwork_group.paths.append(path)
-        artwork_group.roots[path] = root
+    artwork_group = (
+        join_album_artwork_group(album_artwork_groups, album_key, album, path, root)
+        if args.artwork and replace_artwork and album_key
+        else None
+    )
 
     tidied = tidy_title(path, args.dry_run, tags)
     if tidied:
@@ -1579,16 +1636,7 @@ def tag_file(
     ):
         return "skipped"
 
-    meta = resolver.resolve(path, root, tags)
-    meta = prepare_metadata(
-        tags, meta, args.force, allow_credit_loss=args.allow_credit_loss, path=path
-    )
-    if meta.get("_preserved_credits"):
-        print(
-            f".. {path.name}: preserved local credit(s): {meta['_preserved_credits']}",
-            flush=True,
-        )
-
+    meta = resolve_track_metadata(path, root, tags, resolver)
     if artwork_group is not None:
         artwork_group.metadata[path] = meta
         if meta.get("artwork_url") and album_agrees(meta.get("album", ""), album):
@@ -1613,12 +1661,54 @@ def tag_file(
     if resolver.cache is not None and written:
         cache_resolution(resolver.cache, path, root, tags, args, bool(resolver.acoustid_key), meta)
 
-    identity = f"{meta.get('artist') or '?'} - {meta.get('title') or '?'}"
-    if written:
-        print(f"OK {path.name}: {identity} [{', '.join(sorted(written))}]", flush=True)
-    else:
-        print(f"== {path.name}: {identity} (already tagged)", flush=True)
+    report_written(path, meta, written)
     return "written"
+
+
+def make_resolver(args, lookup_key: str, cache) -> Resolver:
+    return Resolver(
+        args,
+        {
+            "acoustid": RateLimiter(ACOUSTID_INTERVAL),
+            "musicbrainz": RateLimiter(MUSICBRAINZ_INTERVAL),
+            "itunes": RateLimiter(ITUNES_INTERVAL),
+            "deezer": RateLimiter(DEEZER_INTERVAL),
+        },
+        lookup_key,
+        cache,
+        args.refresh_cache,
+    )
+
+
+def tag_files(
+    files: list[tuple[Path, Path]],
+    resolver: Resolver,
+    album_artwork_groups: dict[tuple, AlbumArtworkGroup],
+) -> tuple[int, int]:
+    failed = complete = 0
+    for path, root in files:
+        try:
+            if tag_file(path, root, resolver, album_artwork_groups) == "skipped":
+                complete += 1
+        except Unidentified as exc:
+            print(f"?? {path.name}: {exc}", file=sys.stderr)
+            failed += 1
+        except requests.RequestException as exc:
+            print(f"!! {path.name}: lookup failed: {exc}", file=sys.stderr)
+            failed += 1
+        except (MutagenError, OSError) as exc:
+            print(f"!! {path.name}: unreadable: {exc}", file=sys.stderr)
+            failed += 1
+    return failed, complete
+
+
+def close_lookup_cache(cache) -> None:
+    if cache is None:
+        return
+    if cache.hits:
+        print(f"reused {cache.hits} cached lookup(s)", file=sys.stderr)
+    configure_persistent_cache(None)
+    cache.close()
 
 
 def main() -> int:
@@ -1640,40 +1730,12 @@ def main() -> int:
             f"{config_home()}/acoustid/api.token); using text search",
             file=sys.stderr,
         )
-    lookup_key = "" if replacing_artwork(args) else key
 
     cache = open_lookup_cache(args)
     configure_persistent_cache(cache)
-    resolver = Resolver(
-        args,
-        {
-            "acoustid": RateLimiter(ACOUSTID_INTERVAL),
-            "musicbrainz": RateLimiter(MUSICBRAINZ_INTERVAL),
-            "itunes": RateLimiter(ITUNES_INTERVAL),
-            "deezer": RateLimiter(DEEZER_INTERVAL),
-        },
-        lookup_key,
-        cache,
-        args.refresh_cache,
-    )
-
-    failed = 0
-    complete = 0
+    resolver = make_resolver(args, "" if replacing_artwork(args) else key, cache)
     album_artwork_groups: dict[tuple, AlbumArtworkGroup] = {}
-
-    for path, root in files:
-        try:
-            if tag_file(path, root, resolver, album_artwork_groups) == "skipped":
-                complete += 1
-        except Unidentified as exc:
-            print(f"?? {path.name}: {exc}", file=sys.stderr)
-            failed += 1
-        except requests.RequestException as exc:
-            print(f"!! {path.name}: lookup failed: {exc}", file=sys.stderr)
-            failed += 1
-        except (MutagenError, OSError) as exc:
-            print(f"!! {path.name}: unreadable: {exc}", file=sys.stderr)
-            failed += 1
+    failed, complete = tag_files(files, resolver, album_artwork_groups)
 
     if args.artwork and replacing_artwork(args):
         for group in album_artwork_groups.values():
@@ -1682,12 +1744,9 @@ def main() -> int:
 
     if complete:
         print(f"\nskipped {complete} file(s) already carrying every --fill tag", file=sys.stderr)
-    if cache is not None:
-        if cache.hits:
-            print(f"reused {cache.hits} cached lookup(s)", file=sys.stderr)
-        configure_persistent_cache(None)
-        cache.close()
+    close_lookup_cache(cache)
     return 1 if failed else 0
+
 
 if __name__ == "__main__":
     try:

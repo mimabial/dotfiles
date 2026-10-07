@@ -6,7 +6,7 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "${script_dir}/service.lib.bash"
 # shellcheck source=/dev/null
-source "${script_dir}/../core/common.sh"
+source "${script_dir}/../core/common.bash"
 
 hypr_help_guard "Usage: hyprshell service/show-managed-split [path...]
 Show the managed/generated/per-host split for config paths (all when none given)." "$@"

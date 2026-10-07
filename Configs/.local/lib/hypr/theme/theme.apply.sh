@@ -2,19 +2,18 @@
 
 set -euo pipefail
 
-LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state system wallpaper_catalog || exit 1
 hypr_runtime_load_state || exit 1
 
 for theme_apply_lib in \
-  "${LIB_DIR}/hypr/theme/lib/desktop.sync.bash" \
-  "${LIB_DIR}/hypr/theme/color.apply.sh" \
-  "${LIB_DIR}/hypr/theme/lib/apply.phase_d.bash" \
-  "${LIB_DIR}/hypr/theme/pairs.sh" \
-  "${LIB_DIR}/hypr/fonts/font.sync.lib.bash"; do
+  "${HYPR_LIB_DIR}/theme/lib/desktop.sync.bash" \
+  "${HYPR_LIB_DIR}/theme/color.apply.bash" \
+  "${HYPR_LIB_DIR}/theme/lib/apply.phase_d.bash" \
+  "${HYPR_LIB_DIR}/theme/pairs.sh" \
+  "${HYPR_LIB_DIR}/fonts/font.sync.lib.bash"; do
   [[ -r "${theme_apply_lib}" ]] || {
     print_log -sec "theme.apply" -err "source" "missing ${theme_apply_lib}"
     exit 1
@@ -44,11 +43,6 @@ theme_apply_timing_enabled() {
   [[ "${HYPR_THEME_TIMING:-0}" == "1" || "${LOG_LEVEL:-}" == "debug" ]]
 }
 
-theme_apply_now_ms() {
-  local now="${EPOCHREALTIME/./}"
-  printf '%s\n' "${now:0:13}"
-}
-
 theme_apply_log_timing() {
   local name="$1"
   local duration_ms="$2"
@@ -66,25 +60,12 @@ theme_apply_timed_call() {
   local end_ms=""
   local rc=0
 
-  start_ms="$(theme_apply_now_ms)"
+  start_ms="$(hypr_now_ms)"
   "$@"
   rc=$?
-  end_ms="$(theme_apply_now_ms)"
+  end_ms="$(hypr_now_ms)"
   theme_apply_log_timing "${name}" "$((end_ms - start_ms))" "${rc}"
   return "${rc}"
-}
-
-theme_apply_elapsed_label() {
-  local now_ms=""
-  local elapsed_ms=0
-  local centiseconds=0
-
-  [[ "${theme_apply_started_ms:-}" =~ ^[0-9]+$ ]] || return 1
-  now_ms="$(theme_apply_now_ms)"
-  elapsed_ms=$((now_ms - theme_apply_started_ms))
-  [[ "${elapsed_ms}" -ge 0 ]] || elapsed_ms=0
-  centiseconds=$(((elapsed_ms + 5) / 10))
-  printf '%d.%02ds' "$((centiseconds / 100))" "$((centiseconds % 100))"
 }
 
 theme_apply_acquire_update_lock() {
@@ -130,7 +111,7 @@ theme_apply_commit_theme_metadata() {
   local staged_file="${HYPR_THEME_METADATA_FILE:-}"
   local live_file="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.meta"
   local lua_file="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.lua"
-  local converter="${LIB_DIR}/hypr/util/hypr-to-lua.py"
+  local converter="${HYPR_LIB_DIR}/util/hypr-to-lua.py"
 
   [[ -n "${staged_file}" && -f "${staged_file}" ]] || return 0
   mkdir -p "$(dirname "${live_file}")" || return 1
@@ -168,9 +149,9 @@ theme_apply_current_icon_theme() {
 }
 
 theme_apply_write_dunst_runtime() {
-  local r="${LIB_DIR}/hypr/render/dunst.py"
-  [[ -x "${r}" ]] || return 1
-  "${r}"
+  local dunst_renderer="${HYPR_LIB_DIR}/render/dunst.py"
+  [[ -x "${dunst_renderer}" ]] || return 1
+  "${dunst_renderer}"
 }
 
 theme_apply_prepare_job_log_dir() {
@@ -226,10 +207,10 @@ theme_apply_start_job() {
     local end_ms=""
     local rc=0
 
-    start_ms="$(theme_apply_now_ms)"
+    start_ms="$(hypr_now_ms)"
     "${fn}" "$@"
     rc=$?
-    end_ms="$(theme_apply_now_ms)"
+    end_ms="$(hypr_now_ms)"
     {
       printf 'rc=%s\n' "${rc}"
       printf 'duration_ms=%s\n' "$((end_ms - start_ms))"
@@ -248,13 +229,14 @@ theme_apply_log_job_failure() {
   local log_file="$2"
   local line=""
   local logged=0
+  local max_logged=6
 
   [[ -s "${log_file}" ]] || return 0
   while IFS= read -r line; do
     [[ -n "${line}" ]] || continue
     print_log -sec "theme.apply" -warn "${name}" "${line}"
     logged=$((logged + 1))
-    [[ "${logged}" -ge 6 ]] && break
+    [[ "${logged}" -ge "${max_logged}" ]] && break
   done <"${log_file}"
 }
 
@@ -334,19 +316,19 @@ theme_apply_display_wallpaper() {
   )
 
   env "${wallpaper_env[@]}" \
-    "${LIB_DIR}/hypr/wallpaper.sh" display --global --no-notify
+    "${HYPR_LIB_DIR}/wallpaper.sh" display --global --no-notify
 }
 
 theme_apply_notify_wallpaper_detached() {
   local notify_body="Theme: ${HYPR_THEME}"
   local elapsed_label=""
 
-  if elapsed_label="$(theme_apply_elapsed_label 2>/dev/null)"; then
+  if elapsed_label="$(hypr_elapsed_label "${theme_apply_started_ms:-}" 2>/dev/null)"; then
     notify_body+=$'\n'"Time: ${elapsed_label}"
   fi
 
   local -a notify_cmd=(
-    "${LIB_DIR}/hypr/wallpaper.sh"
+    "${HYPR_LIB_DIR}/wallpaper.sh"
     notify
     --global
     --notify-body
@@ -459,7 +441,7 @@ while (($#)); do
 done
 theme_apply_quiet="${quiet}"
 export theme_apply_quiet
-theme_apply_started_ms="$(theme_apply_now_ms)"
+theme_apply_started_ms="$(hypr_now_ms)"
 
 wallpaper_path=""
 if [[ "${selected_color_source}" == "theme" ]]; then

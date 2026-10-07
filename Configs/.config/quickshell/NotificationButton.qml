@@ -25,7 +25,6 @@ ScriptButton {
     // opening the panel moves the watermark, so re-read rather than waiting out
     // the poll to notice the badge should be gone
     refreshKey: shell.popupName === "notifications"
-    // left opens the panel, right still toggles do-not-disturb directly
     onClicked: button => {
         if (button !== Qt.RightButton) {
             shell.togglePopup("notifications")

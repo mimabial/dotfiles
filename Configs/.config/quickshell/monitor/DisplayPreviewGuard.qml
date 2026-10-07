@@ -308,6 +308,7 @@ Item {
   }
 
   Timer {
+    id: socketReconnectTimer
     interval: 750
     repeat: true
     running: root.socketPath !== "/hyprmoncfgd.sock" && !backendSocket.connected
@@ -479,7 +480,7 @@ Item {
                     ? root.actionError
                     : root.profileName + " · " + root.seconds + " seconds before the previous layout returns"))
               color: root.stage === "error" || root.actionError !== "" ? Color.urgent : Color.foreground
-              opacity: 0.68
+              opacity: Style.secondaryTextAlpha
               font.family: Style.font.family
               font.pixelSize: Style.font.body
               wrapMode: Text.WordWrap

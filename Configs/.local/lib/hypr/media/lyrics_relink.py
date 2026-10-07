@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Relink orphaned LRC files to audio files after unmanaged moves."""
-
 from __future__ import annotations
 
 import argparse

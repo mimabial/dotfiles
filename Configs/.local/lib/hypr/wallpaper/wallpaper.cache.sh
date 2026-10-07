@@ -2,10 +2,9 @@
 
 set -euo pipefail
 
-LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell wallpaper/wallpaper.cache [-w WALLPAPER] [-t THEME] [-f]
 Generate wallpaper thumbnail/blur caches: -w a single image, -t one theme,
@@ -41,18 +40,20 @@ prepare_cache_dirs() {
   [[ -d "${HYPR_CACHE_HOME}/wal" ]] || mkdir -p "${HYPR_CACHE_HOME}/wal"
 }
 
-resolve_cache_limits() {
-  local cores mem_avail_kb mem_avail_mb
-  local reserve_mb per_job_mb mem_budget_mb jobs_by_mem jobs_default cache_jobs
-  local magick_mem_mb magick_map_mb magick_threads
+CACHE_RESERVE_MB=2048
+CACHE_JOB_MB=1200
 
-  hypr_read_host_capacity
+env_count() {
+  local value="${!1:-}"
+  [[ "${value}" =~ ^[0-9]+$ ]] && printf '%s\n' "${value}" || printf '%s\n' "$2"
+}
 
-  reserve_mb="${WALLPAPER_CACHE_RESERVE_MB:-2048}"
-  per_job_mb="${WALLPAPER_CACHE_JOB_MB:-1200}"
-  [[ "${reserve_mb}" =~ ^[0-9]+$ ]] || reserve_mb=2048
-  [[ "${per_job_mb}" =~ ^[0-9]+$ ]] || per_job_mb=1200
+cache_job_count() {
+  local cores="$1" mem_avail_mb="$2"
+  local reserve_mb per_job_mb mem_budget_mb jobs_by_mem
 
+  reserve_mb="$(env_count WALLPAPER_CACHE_RESERVE_MB "${CACHE_RESERVE_MB}")"
+  per_job_mb="$(env_count WALLPAPER_CACHE_JOB_MB "${CACHE_JOB_MB}")"
   mem_budget_mb=$((mem_avail_mb - reserve_mb))
   if (( mem_budget_mb < per_job_mb )); then
     jobs_by_mem=1
@@ -61,57 +62,22 @@ resolve_cache_limits() {
   fi
   (( jobs_by_mem < 1 )) && jobs_by_mem=1
 
-  jobs_default=$cores
-  (( jobs_by_mem < jobs_default )) && jobs_default=$jobs_by_mem
-  cache_jobs="${jobs_default}"
   if [[ "${WALLPAPER_CACHE_JOBS:-}" =~ ^[0-9]+$ ]] && (( WALLPAPER_CACHE_JOBS > 0 )); then
-    cache_jobs="${WALLPAPER_CACHE_JOBS}"
+    printf '%s\n' "${WALLPAPER_CACHE_JOBS}"
+  elif (( jobs_by_mem < cores )); then
+    printf '%s\n' "${jobs_by_mem}"
+  else
+    printf '%s\n' "${cores}"
   fi
-
-  magick_mem_mb="${WALLPAPER_MAGICK_MEM_MB:-}"
-  [[ "${magick_mem_mb}" =~ ^[0-9]+$ ]] || magick_mem_mb=""
-  if [[ -z "${magick_mem_mb}" ]]; then
-    if (( mem_avail_mb > 0 )); then
-      magick_mem_mb=$((mem_avail_mb / 8))
-      (( magick_mem_mb < 256 )) && magick_mem_mb=256
-      (( magick_mem_mb > 1024 )) && magick_mem_mb=1024
-    else
-      magick_mem_mb=512
-    fi
-  fi
-
-  magick_map_mb="${WALLPAPER_MAGICK_MAP_MB:-}"
-  [[ "${magick_map_mb}" =~ ^[0-9]+$ ]] || magick_map_mb=""
-  if [[ -z "${magick_map_mb}" ]]; then
-    magick_map_mb=$((magick_mem_mb * 2))
-    (( magick_map_mb < 512 )) && magick_map_mb=512
-    (( magick_map_mb > 4096 )) && magick_map_mb=4096
-  fi
-
-  magick_threads="${WALLPAPER_MAGICK_THREADS:-}"
-  [[ "${magick_threads}" =~ ^[0-9]+$ ]] || magick_threads=""
-  if [[ -z "${magick_threads}" ]]; then
-    if (( cores > 4 )); then
-      magick_threads=4
-    elif (( cores > 0 )); then
-      magick_threads="${cores}"
-    else
-      magick_threads=1
-    fi
-  fi
-
-  export WALLPAPER_CACHE_JOBS="${cache_jobs}"
-  export WALLPAPER_MAGICK_MEM_MB="${magick_mem_mb}"
-  export WALLPAPER_MAGICK_MAP_MB="${magick_map_mb}"
-  export WALLPAPER_MAGICK_THREADS="${magick_threads}"
 }
 
-magick_limit_args() {
-  local -a args=()
-  [[ -n "${WALLPAPER_MAGICK_MEM_MB:-}" ]] && args+=(-limit memory "${WALLPAPER_MAGICK_MEM_MB}MiB")
-  [[ -n "${WALLPAPER_MAGICK_MAP_MB:-}" ]] && args+=(-limit map "${WALLPAPER_MAGICK_MAP_MB}MiB")
-  [[ -n "${WALLPAPER_MAGICK_THREADS:-}" ]] && args+=(-limit thread "${WALLPAPER_MAGICK_THREADS}")
-  printf '%s\0' "${args[@]}"
+resolve_cache_limits() {
+  local cores=0 mem_avail_mb=0
+
+  hypr_read_host_capacity cores mem_avail_mb
+  WALLPAPER_CACHE_JOBS="$(cache_job_count "${cores}" "${mem_avail_mb}")"
+  export WALLPAPER_CACHE_JOBS
+  hypr_export_magick_limits "${cores}" "${mem_avail_mb}"
 }
 
 wallpaper_is_video() {
@@ -140,7 +106,7 @@ ensure_video_still_frame() {
 
   temp_image="${TMPDIR:-/tmp}/${wallpaper_hash}.png"
   if [[ "${force}" -ne 1 ]]; then
-    send_ephemeral_notif "hypr-wallpaper-cache" -a "Wallpaper cache" -t 2000 "Extracting thumbnail from video wallpaper..."
+    send_ephemeral_notif "hypr-wallpaper-cache" -a "Wallpaper cache" -t "${NOTIFY_BRIEF_MS}" "Extracting thumbnail from video wallpaper..."
   fi
   extract_thumbnail "${wallpaper_path}" "${temp_image}"
   printf '%s\n' "${temp_image}"
@@ -247,7 +213,7 @@ build_wallcache() {
   local source_image="" temp_image=""
   local -a magick_args=()
 
-  mapfile -d '' -t magick_args < <(magick_limit_args)
+  hypr_magick_limit_args_into magick_args
   source_image="$(ensure_video_still_frame "${wallpaper_hash}" "${wallpaper_path}" "${force}")"
   [[ "${source_image}" == "${wallpaper_path}" ]] || temp_image="${source_image}"
 

@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 HYPR_SERVICE_LIB_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly HYPR_SERVICE_LIB_DIR
@@ -211,7 +210,6 @@ hypr_service_layer_source_path() {
 
   case "${layer}" in
     config) printf '%s/%s\n' "${default_root}" "${rel_path}" ;;
-    state) printf '%s/state/%s\n' "${default_root}" "${rel_path}" ;;
     *) hypr_service_die "Unsupported layer: ${layer}" ;;
   esac
 }
@@ -222,7 +220,6 @@ hypr_service_layer_target_path() {
 
   case "${layer}" in
     config) printf '%s/%s\n' "${XDG_CONFIG_HOME:-$HOME/.config}" "${rel_path}" ;;
-    state) printf '%s/%s\n' "${XDG_STATE_HOME:-$HOME/.local/state}" "${rel_path}" ;;
     *) hypr_service_die "Unsupported layer: ${layer}" ;;
   esac
 }
@@ -238,6 +235,121 @@ hypr_service_should_back_up() {
   esac
 }
 
+hypr_service_preserve_path() {
+  local source_path="$1"
+  local target_path="$2"
+  local display="$3"
+  local target_exists="$4"
+  local quiet="$5"
+
+  if [[ "${target_exists}" -eq 1 ]]; then
+    hypr_service_report "${quiet}" 'Preserved: %s\n' "${display}"
+    return 0
+  fi
+  if hypr_service_is_dry_run; then
+    hypr_service_report "${quiet}" 'Would populate: %s\n' "${display}"
+    return 0
+  fi
+  mkdir -p "$(dirname "${target_path}")"
+  cp -a "${source_path}" "${target_path}"
+  hypr_service_report "${quiet}" 'Populated: %s\n' "${display}"
+}
+
+hypr_service_trash_path() {
+  local target_path="$1"
+  local display="$2"
+  local target_exists="$3"
+  local backup_policy="$4"
+  local quiet="$5"
+
+  if [[ "${target_exists}" -eq 0 ]]; then
+    hypr_service_report "${quiet}" 'Missing: %s\n' "${display}"
+    return 0
+  fi
+  if hypr_service_is_dry_run; then
+    [[ "${backup_policy}" != "never" ]] && hypr_service_report "${quiet}" 'Would back up: %s\n' "${display}"
+    hypr_service_report "${quiet}" 'Would trash: %s\n' "${display}"
+    return 0
+  fi
+  if [[ "${backup_policy}" != "never" ]]; then
+    hypr_service_backup_target "${target_path}"
+  fi
+  rm -rf "${target_path}"
+  hypr_service_report "${quiet}" 'Trashed: %s\n' "${display}"
+}
+
+hypr_service_overwrite_file() {
+  local source_path="$1"
+  local target_path="$2"
+  local rel_path="$3"
+  local target_exists="$4"
+  local backup_policy="$5"
+  local show_diff="$6"
+  local quiet="$7"
+  local backup_path=""
+
+  if [[ "${target_exists}" -eq 1 ]] && ! hypr_service_file_changed "${source_path}" "${target_path}"; then
+    hypr_service_report "${quiet}" 'Unchanged: %s\n' "${target_path}"
+    return 0
+  fi
+  if hypr_service_is_dry_run; then
+    if [[ "${target_exists}" -eq 0 ]]; then
+      hypr_service_report "${quiet}" 'Would populate: %s\n' "${target_path}"
+      return 0
+    fi
+    if hypr_service_should_back_up "${backup_policy}" file; then
+      hypr_service_report "${quiet}" 'Would back up: %s\n' "${target_path}"
+    fi
+    hypr_service_report "${quiet}" 'Would overwrite: %s\n' "${target_path}"
+    hypr_service_report_diff "${show_diff}" "${rel_path}" "${target_path}" "${source_path}"
+    return 0
+  fi
+  if [[ "${target_exists}" -eq 1 ]] && hypr_service_should_back_up "${backup_policy}" file; then
+    hypr_service_backup_target "${target_path}"
+    backup_path="$(hypr_service_backup_root)$(hypr_service_target_relpath "${target_path}")"
+  fi
+  mkdir -p "$(dirname "${target_path}")"
+  cp -a "${source_path}" "${target_path}"
+  if [[ "${target_exists}" -eq 1 ]]; then
+    hypr_service_report "${quiet}" 'Overwritten: %s\n' "${target_path}"
+  else
+    hypr_service_report "${quiet}" 'Populated: %s\n' "${target_path}"
+  fi
+  if [[ -n "${backup_path}" ]] && [[ -f "${backup_path}" ]]; then
+    hypr_service_report_diff "${show_diff}" "${rel_path}" "${backup_path}" "${target_path}"
+  fi
+}
+
+hypr_service_sync_tree() {
+  local source_dir="$1"
+  local target_dir="$2"
+  local rel_path="$3"
+  local target_exists="$4"
+  local backup_policy="$5"
+  local quiet="$6"
+  local sync_plan=""
+
+  sync_plan="$(hypr_service_tree_itemized_output "${source_dir}" "${target_dir}")"
+  if [[ -z "${sync_plan}" ]]; then
+    hypr_service_report "${quiet}" 'Unchanged: %s/\n' "${target_dir}"
+    return 0
+  fi
+  if hypr_service_is_dry_run; then
+    if [[ "${target_exists}" -eq 1 ]] && hypr_service_should_back_up "${backup_policy}" tree; then
+      hypr_service_report "${quiet}" 'Would back up: %s/\n' "${target_dir}"
+    fi
+    hypr_service_report "${quiet}" 'Would sync: %s/\n' "${target_dir}"
+    hypr_service_report "${quiet}" '%s\n' "${sync_plan}"
+    return 0
+  fi
+  if [[ "${target_exists}" -eq 1 ]] && hypr_service_should_back_up "${backup_policy}" tree; then
+    hypr_service_backup_target "${target_dir}"
+  fi
+  mkdir -p "${target_dir}"
+  rsync -a --delete "${source_dir}/" "${target_dir}/" || hypr_service_die "Failed to sync directory ${rel_path}"
+  hypr_service_report "${quiet}" 'Synced: %s/\n' "${target_dir}"
+}
+
 hypr_service_apply_file() {
   local source_path="$1"
   local target_path="$2"
@@ -247,77 +359,18 @@ hypr_service_apply_file() {
   local show_diff="${6:-1}"
   local quiet="${7:-0}"
   local target_exists=0
-  local backup_path=""
+
   [[ "${mode}" == "trash" ]] || [[ -f "${source_path}" ]] || hypr_service_die "No template found for ${rel_path}: ${source_path}"
   [[ -e "${target_path}" || -L "${target_path}" ]] && target_exists=1
 
   case "${mode}" in
-    preserve)
-      if [[ "${target_exists}" -eq 1 ]]; then
-        hypr_service_report "${quiet}" 'Preserved: %s\n' "${target_path}"
-        return 0
-      fi
-      if hypr_service_is_dry_run; then
-        hypr_service_report "${quiet}" 'Would populate: %s\n' "${target_path}"
-        return 0
-      fi
-      mkdir -p "$(dirname "${target_path}")"
-      cp -a "${source_path}" "${target_path}"
-      hypr_service_report "${quiet}" 'Populated: %s\n' "${target_path}"
-      ;;
+    preserve) hypr_service_preserve_path "${source_path}" "${target_path}" "${target_path}" "${target_exists}" "${quiet}" ;;
     overwrite)
-      if [[ "${target_exists}" -eq 1 ]] && ! hypr_service_file_changed "${source_path}" "${target_path}"; then
-        hypr_service_report "${quiet}" 'Unchanged: %s\n' "${target_path}"
-        return 0
-      fi
-      if hypr_service_is_dry_run; then
-        if [[ "${target_exists}" -eq 1 ]]; then
-          if hypr_service_should_back_up "${backup_policy}" file; then
-            hypr_service_report "${quiet}" 'Would back up: %s\n' "${target_path}"
-          fi
-          hypr_service_report "${quiet}" 'Would overwrite: %s\n' "${target_path}"
-          hypr_service_report_diff "${show_diff}" "${rel_path}" "${target_path}" "${source_path}"
-        else
-          hypr_service_report "${quiet}" 'Would populate: %s\n' "${target_path}"
-        fi
-        return 0
-      fi
-      if [[ "${target_exists}" -eq 1 ]]; then
-        if hypr_service_should_back_up "${backup_policy}" file; then
-          hypr_service_backup_target "${target_path}"
-          backup_path="$(hypr_service_backup_root)$(hypr_service_target_relpath "${target_path}")"
-        fi
-      fi
-      mkdir -p "$(dirname "${target_path}")"
-      cp -a "${source_path}" "${target_path}"
-      if [[ "${target_exists}" -eq 1 ]]; then
-        hypr_service_report "${quiet}" 'Overwritten: %s\n' "${target_path}"
-      else
-        hypr_service_report "${quiet}" 'Populated: %s\n' "${target_path}"
-      fi
-      if [[ -n "${backup_path}" ]] && [[ -f "${backup_path}" ]]; then
-        hypr_service_report_diff "${show_diff}" "${rel_path}" "${backup_path}" "${target_path}"
-      fi
+      hypr_service_overwrite_file "${source_path}" "${target_path}" "${rel_path}" "${target_exists}" \
+        "${backup_policy}" "${show_diff}" "${quiet}"
       ;;
-    trash)
-      if [[ "${target_exists}" -eq 0 ]]; then
-        hypr_service_report "${quiet}" 'Missing: %s\n' "${target_path}"
-        return 0
-      fi
-      if hypr_service_is_dry_run; then
-        [[ "${backup_policy}" != "never" ]] && hypr_service_report "${quiet}" 'Would back up: %s\n' "${target_path}"
-        hypr_service_report "${quiet}" 'Would trash: %s\n' "${target_path}"
-        return 0
-      fi
-      if [[ "${backup_policy}" != "never" ]]; then
-        hypr_service_backup_target "${target_path}"
-      fi
-      rm -rf "${target_path}"
-      hypr_service_report "${quiet}" 'Trashed: %s\n' "${target_path}"
-      ;;
-    *)
-      hypr_service_die "Unsupported file mode: ${mode} (${rel_path})"
-      ;;
+    trash) hypr_service_trash_path "${target_path}" "${target_path}" "${target_exists}" "${backup_policy}" "${quiet}" ;;
+    *) hypr_service_die "Unsupported file mode: ${mode} (${rel_path})" ;;
   esac
 }
 
@@ -329,69 +382,15 @@ hypr_service_apply_tree() {
   local backup_policy="$5"
   local quiet="${6:-0}"
   local target_exists=0
-  local sync_plan=""
 
   [[ "${mode}" == "trash" ]] || [[ -d "${source_dir}" ]] || hypr_service_die "No template directory found for ${rel_path}: ${source_dir}"
   [[ -d "${target_dir}" ]] && target_exists=1
 
   case "${mode}" in
-    sync)
-      sync_plan="$(hypr_service_tree_itemized_output "${source_dir}" "${target_dir}")"
-      if [[ -z "${sync_plan}" ]]; then
-        hypr_service_report "${quiet}" 'Unchanged: %s/\n' "${target_dir}"
-        return 0
-      fi
-      if hypr_service_is_dry_run; then
-        if [[ "${target_exists}" -eq 1 ]]; then
-          if hypr_service_should_back_up "${backup_policy}" tree; then
-            hypr_service_report "${quiet}" 'Would back up: %s/\n' "${target_dir}"
-          fi
-        fi
-        hypr_service_report "${quiet}" 'Would sync: %s/\n' "${target_dir}"
-        hypr_service_report "${quiet}" '%s\n' "${sync_plan}"
-        return 0
-      fi
-      if [[ "${target_exists}" -eq 1 ]]; then
-        if hypr_service_should_back_up "${backup_policy}" tree; then
-          hypr_service_backup_target "${target_dir}"
-        fi
-      fi
-      mkdir -p "${target_dir}"
-      rsync -a --delete "${source_dir}/" "${target_dir}/" || hypr_service_die "Failed to sync directory ${rel_path}"
-      hypr_service_report "${quiet}" 'Synced: %s/\n' "${target_dir}"
-      ;;
-    preserve)
-      if [[ "${target_exists}" -eq 1 ]]; then
-        hypr_service_report "${quiet}" 'Preserved: %s/\n' "${target_dir}"
-        return 0
-      fi
-      if hypr_service_is_dry_run; then
-        hypr_service_report "${quiet}" 'Would populate: %s/\n' "${target_dir}"
-        return 0
-      fi
-      mkdir -p "$(dirname "${target_dir}")"
-      cp -a "${source_dir}" "${target_dir}"
-      hypr_service_report "${quiet}" 'Populated: %s/\n' "${target_dir}"
-      ;;
-    trash)
-      if [[ "${target_exists}" -eq 0 ]]; then
-        hypr_service_report "${quiet}" 'Missing: %s/\n' "${target_dir}"
-        return 0
-      fi
-      if hypr_service_is_dry_run; then
-        [[ "${backup_policy}" != "never" ]] && hypr_service_report "${quiet}" 'Would back up: %s/\n' "${target_dir}"
-        hypr_service_report "${quiet}" 'Would trash: %s/\n' "${target_dir}"
-        return 0
-      fi
-      if [[ "${backup_policy}" != "never" ]]; then
-        hypr_service_backup_target "${target_dir}"
-      fi
-      rm -rf "${target_dir}"
-      hypr_service_report "${quiet}" 'Trashed: %s/\n' "${target_dir}"
-      ;;
-    *)
-      hypr_service_die "Unsupported tree mode: ${mode} (${rel_path})"
-      ;;
+    sync) hypr_service_sync_tree "${source_dir}" "${target_dir}" "${rel_path}" "${target_exists}" "${backup_policy}" "${quiet}" ;;
+    preserve) hypr_service_preserve_path "${source_dir}" "${target_dir}" "${target_dir}/" "${target_exists}" "${quiet}" ;;
+    trash) hypr_service_trash_path "${target_dir}" "${target_dir}/" "${target_exists}" "${backup_policy}" "${quiet}" ;;
+    *) hypr_service_die "Unsupported tree mode: ${mode} (${rel_path})" ;;
   esac
 }
 

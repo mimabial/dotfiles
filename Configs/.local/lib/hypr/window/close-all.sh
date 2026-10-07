@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-CORE_COMMON="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh"
+CORE_COMMON="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash"
 # shellcheck source=/dev/null
 source "${CORE_COMMON}" || exit 1
 

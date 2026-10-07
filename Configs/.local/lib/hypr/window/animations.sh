@@ -5,7 +5,7 @@ set -euo pipefail
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state || exit 1
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/window/stateful-choice.common.bash"
+source "${HYPR_LIB_DIR}/window/stateful-choice.common.bash"
 
 animations_user_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/animations"
 animations_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/animations"
@@ -50,7 +50,7 @@ write_animation_state() {
 
   current_animation="${1:-$(state_get "HYPR_ANIMATION" "default")}"
   animation_path="$(resolve_animation_path "${current_animation}")" || {
-    send_ephemeral_notif "hypr-animation-error" -t 3000 -i "preferences-desktop-display" "Error" "Animation '${current_animation}' not found in ${animations_user_dir} or ${animations_shared_dir}"
+    send_ephemeral_notif "hypr-animation-error" -t "${NOTIFY_MS}" -i "preferences-desktop-display" "Error" "Animation '${current_animation}' not found in ${animations_user_dir} or ${animations_shared_dir}"
     return 1
   }
 

@@ -116,7 +116,6 @@ PopupCard {
     property bool settingsOpen: false
     readonly property var readoutLabels: ({ temp: "Temperature", minmax: "High | low", sunrise: "Sunrise", sunset: "Sunset", rain: "Rain chance", wind: "Wind", humidity: "Humidity" })
     readonly property var shownReadouts: Weather.readouts()
-    // shown readouts first, in bar order, then the rest
     readonly property var orderedReadouts: shownReadouts.concat(Object.keys(readoutLabels).filter(id => !shownReadouts.includes(id)))
     function setReadouts(list) { Weather.savePrefs({readouts: list}) }
     function toggleReadout(id) { setReadouts(shownReadouts.includes(id) ? shownReadouts.filter(shown => shown !== id) : shownReadouts.concat([id])) }

@@ -23,6 +23,9 @@ except ImportError:
 _WEATHER_CODES_CACHE = None
 
 
+MILES_PER_KM = 0.621371
+
+
 def _load_weather_codes():
     global _WEATHER_CODES_CACHE
     if _WEATHER_CODES_CACHE is not None:
@@ -39,7 +42,6 @@ def _load_weather_codes():
 
 
 def get_weather_icon_from_code(weather_code):
-    """Get Nerd Font icon for a weather code"""
     codes = _load_weather_codes()
     return codes.get(str(weather_code), codes.get("default", "󰖐"))
 
@@ -47,10 +49,14 @@ def get_weather_icon_from_code(weather_code):
 CACHE_DIR = os.path.join(os.getenv("HOME"), ".cache/wttr")
 WEATHER_DATA_CACHE = os.path.join(CACHE_DIR, "weather_data.json")
 CACHE_EXPIRY = 3600
+ISO_HOUR_LENGTH = len("YYYY-MM-DDTHH")
+ISO_DATE_LENGTH = len("YYYY-MM-DD")
+UNKNOWN_WTTR_CODE = "119"
+REQUEST_TIMEOUT_SECONDS = 10
+LOCATION_TIMEOUT_SECONDS = 3
 
 
 def is_cache_valid():
-    """Check if cache exists and is not expired"""
     if not os.path.exists(WEATHER_DATA_CACHE):
         return False
     try:
@@ -69,11 +75,8 @@ def load_cache():
 
 
 def save_cache(weather_data):
-    """Save weather data to cache.
-
-    Written through a temp file and renamed: the bar watches this path, and a
-    plain write lets it read a half-finished file and report a parse error.
-    """
+    """Written through a temp file and renamed: the bar watches this path, and a
+    plain write lets it read a half-finished file and report a parse error."""
     try:
         os.makedirs(CACHE_DIR, exist_ok=True)
         handle, staging = tempfile.mkstemp(dir=CACHE_DIR)
@@ -126,7 +129,7 @@ def temp_pair(celsius):
 
 
 def wind_pair(kmph):
-    return str(round(kmph)), str(round(kmph * 0.621371))
+    return str(round(kmph)), str(round(kmph * MILES_PER_KM))
 
 
 def clock_12h(stamp):
@@ -147,16 +150,15 @@ def parse_coordinates(location):
 
 
 def geocode_candidates(name, count=5):
-    """Places matching a name. Open-Meteo only accepts coordinates, so a name
-    has to be resolved first, and ambiguous names ("Springfield") need the
-    caller to choose."""
+    """Open-Meteo only accepts coordinates, so a name has to be resolved first, and
+    ambiguous names ("Springfield") need the caller to choose."""
     if requests is None:
         return []
     try:
         response = requests.get(
             OPEN_METEO_GEOCODE_URL,
             params={"name": name.replace("_", " "), "count": count, "format": "json"},
-            timeout=10,
+            timeout=REQUEST_TIMEOUT_SECONDS,
         )
         response.raise_for_status()
         return response.json().get("results") or []
@@ -178,7 +180,6 @@ def geocode(name):
 
 
 def annotate_day_icons(weather):
-    """Attach a forecast glyph to each day, whichever provider supplied it."""
     for day in weather.get("weather", []):
         code = day.get("weatherCode")
         hours = day.get("hourly") or []
@@ -196,24 +197,22 @@ def annotate_day_icons(weather):
     return weather
 
 
-def to_wttr_shape(payload, city, country):
-    """Rewrite an Open-Meteo response into the j1 layout the getters expect."""
-    current = payload["current"]
-    daily = payload["daily"]
+def current_hour_index(current, hourly):
+    now = str(current.get("time", ""))[:ISO_HOUR_LENGTH]
+    stamps = hourly.get("time", [])
+    return next((i for i, stamp in enumerate(stamps) if stamp[:ISO_HOUR_LENGTH] == now), 0)
 
+
+def wttr_current_condition(current, hourly):
     code, description = WMO_CONDITIONS.get(
-        current.get("weather_code"), ("119", "Unknown")
+        current.get("weather_code"), (UNKNOWN_WTTR_CODE, "Unknown")
     )
     temp_c, temp_f = temp_pair(current["temperature_2m"])
     feels_c, feels_f = temp_pair(current["apparent_temperature"])
     wind_kmph, wind_miles = wind_pair(current["wind_speed_10m"])
 
-    hourly = payload.get("hourly", {})
-
     # dew point and visibility only come per hour; take the one covering "now"
-    stamps = hourly.get("time", [])
-    now = str(current.get("time", ""))[:13]
-    hour_index = next((i for i, stamp in enumerate(stamps) if stamp[:13] == now), 0)
+    hour_index = current_hour_index(current, hourly)
 
     def at_hour(key):
         series = hourly.get(key) or []
@@ -221,26 +220,49 @@ def to_wttr_shape(payload, city, country):
 
     dew_c, dew_f = temp_pair(at_hour("dew_point_2m") or 0)
     metres = at_hour("visibility")
+    return {
+        "temp_C": temp_c,
+        "temp_F": temp_f,
+        "FeelsLikeC": feels_c,
+        "FeelsLikeF": feels_f,
+        "windspeedKmph": wind_kmph,
+        "windspeedMiles": wind_miles,
+        "humidity": str(current.get("relative_humidity_2m", "")),
+        "uvIndex": str(round(current.get("uv_index") or 0)),
+        "cloudcover": str(round(current.get("cloud_cover") or 0)),
+        "pressure": str(round(current.get("surface_pressure") or 0)),
+        "DewPointC": dew_c,
+        "DewPointF": dew_f,
+        "visibility": "" if metres is None else str(round(metres / 1000)),
+        "weatherCode": code,
+        "weatherDesc": [{"value": description}],
+    }
 
+
+def wttr_hours_by_date(hourly):
     hours_by_date = {}
     for index, stamp in enumerate(hourly.get("time", [])):
         hour_c, hour_f = temp_pair(hourly["temperature_2m"][index])
-        hour_code, _ = WMO_CONDITIONS.get(hourly["weather_code"][index], ("119", ""))
-        hours_by_date.setdefault(stamp[:10], []).append({
+        hour_code, _ = WMO_CONDITIONS.get(hourly["weather_code"][index], (UNKNOWN_WTTR_CODE, ""))
+        hours_by_date.setdefault(stamp[:ISO_DATE_LENGTH], []).append({
             "time": stamp,
             "tempC": hour_c,
             "tempF": hour_f,
             "weatherCode": hour_code,
             "chanceofrain": str(hourly["precipitation_probability"][index] or 0),
         })
+    return hours_by_date
 
+
+def wttr_days(daily, hours_by_date):
     days = []
     for index, date in enumerate(daily["time"]):
         high_c, high_f = temp_pair(daily["temperature_2m_max"][index])
         low_c, low_f = temp_pair(daily["temperature_2m_min"][index])
         day_code, _ = WMO_CONDITIONS.get(
-            (daily.get("weather_code") or [None] * (index + 1))[index], ("119", "")
+            (daily.get("weather_code") or [None] * (index + 1))[index], (UNKNOWN_WTTR_CODE, "")
         )
+        hours = hours_by_date.get(date, [])
         days.append(
             {
                 "date": date,
@@ -255,35 +277,20 @@ def to_wttr_shape(payload, city, country):
                         "sunset": clock_12h(daily["sunset"][index]),
                     }
                 ],
-                "hourly": hours_by_date.get(date, []),
-                "chanceofrain": str(max(
-                    (int(hour["chanceofrain"]) for hour in hours_by_date.get(date, [])),
-                    default=0,
-                )),
+                "hourly": hours,
+                "chanceofrain": str(max((int(hour["chanceofrain"]) for hour in hours), default=0)),
             }
         )
+    return days
 
+
+def to_wttr_shape(payload, city, country):
+    """Rewrite an Open-Meteo response into the j1 layout the getters expect."""
+    hourly = payload.get("hourly", {})
+    current_condition = wttr_current_condition(payload["current"], hourly)
     return {
-        "current_condition": [
-            {
-                "temp_C": temp_c,
-                "temp_F": temp_f,
-                "FeelsLikeC": feels_c,
-                "FeelsLikeF": feels_f,
-                "windspeedKmph": wind_kmph,
-                "windspeedMiles": wind_miles,
-                "humidity": str(current.get("relative_humidity_2m", "")),
-                "uvIndex": str(round(current.get("uv_index") or 0)),
-                "cloudcover": str(round(current.get("cloud_cover") or 0)),
-                "pressure": str(round(current.get("surface_pressure") or 0)),
-                "DewPointC": dew_c,
-                "DewPointF": dew_f,
-                "visibility": "" if metres is None else str(round(metres / 1000)),
-                "weatherCode": code,
-                "weatherDesc": [{"value": description}],
-            }
-        ],
-        "weather": days,
+        "current_condition": [current_condition],
+        "weather": wttr_days(payload["daily"], wttr_hours_by_date(hourly)),
         "nearest_area": [
             {
                 "areaName": [{"value": city}],
@@ -315,7 +322,7 @@ def fetch_open_meteo(location, city, country):
                 "timezone": "auto",
                 "forecast_days": 7,
             },
-            timeout=10,
+            timeout=REQUEST_TIMEOUT_SECONDS,
         )
         response.raise_for_status()
         return to_wttr_shape(response.json(), city, country)
@@ -343,7 +350,7 @@ def fetch_wttr(location):
     try:
         response = requests.get(
             f"https://wttr.in/{location}?format=j1",
-            timeout=10,
+            timeout=REQUEST_TIMEOUT_SECONDS,
             headers={"User-Agent": "Mozilla/5.0"},
         )
         response.raise_for_status()
@@ -478,20 +485,20 @@ load_env_file(os.path.join(state_home, "hypr", "env-overrides"))
 
 temp_unit = os.getenv(
     "WEATHER_TEMPERATURE_UNIT", "c"
-).lower()  # c or f            (default: c)
+).lower()
 time_format = os.getenv(
     "WEATHER_TIME_FORMAT", "12h"
-).lower()  # 12h or 24h        (default: 12h)
+).lower()
 windspeed_unit = os.getenv(
     "WEATHER_WINDSPEED_UNIT", "km/h"
-).lower()  # km/h or mph       (default: Km/h)
+).lower()
 show_icon = os.getenv("WEATHER_SHOW_ICON", "True").lower() in (
     "true",
     "1",
     "t",
     "y",
     "yes",
-)  # True or False     (default: True)
+)
 show_location = os.getenv("WEATHER_SHOW_LOCATION", "False").lower() in (
     "true",
     "1",
@@ -524,7 +531,7 @@ if not get_location and cached_city:
 
 if not get_location and allow_auto_geolocation and requests is not None:
     try:
-        response = requests.get("https://ipinfo.io", timeout=3)
+        response = requests.get("https://ipinfo.io", timeout=LOCATION_TIMEOUT_SECONDS)
         data = response.json()
         loc = data.get("loc")
         city = data.get("city")

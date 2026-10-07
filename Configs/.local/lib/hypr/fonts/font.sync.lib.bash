@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 # Callers may source runtime/init.bash first, but these helpers also lazily
 # load it when they need layered config access.
@@ -9,9 +8,8 @@ font_sync_ensure_runtime() {
     return 0
   fi
 
-  local lib_dir="${LIB_DIR:-$HOME/.local/lib}"
   # shellcheck source=/dev/null
-  source "${lib_dir}/hypr/runtime/init.bash" || return 1
+  source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || return 1
 }
 
 font_sync_resolve_font_value() {

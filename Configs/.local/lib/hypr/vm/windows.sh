@@ -13,10 +13,21 @@ WINDOWS_DESKTOP_FILE="$WINDOWS_APP_DIR/windows-vm.desktop"
 WINDOWS_CONTAINER_NAME="hypr-windows"
 WINDOWS_WEB_UI_URL="http://127.0.0.1:8006"
 WINDOWS_RDP_HOST="127.0.0.1:3389"
+WINDOWS_IMAGE_RESERVE_GB=10
+WINDOWS_DISK_SIZES_GB=(32 64 128 256 512)
+WINDOWS_DEFAULT_DISK_GB=64
+WINDOWS_RAM_SIZES_GB=(2 4 8 16 32 64)
+WINDOWS_DEFAULT_RAM_GB=4
+RDP_POLL_SECONDS=2
+RDP_TIMEOUT_SECONDS=120
+RDP_SCALE_STEPS=(180 140)
+RDP_SCALE_SLACK_PERCENT=10
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/notify.bash" || exit 1
 
 check_prerequisites() {
-  local disk_size_gb=${1:-64}
-  local required_space=$((disk_size_gb + 10))
+  local disk_size_gb=${1:-${WINDOWS_DEFAULT_DISK_GB}}
+  local required_space=$((disk_size_gb + WINDOWS_IMAGE_RESERVE_GB))
   local available_space
 
   if [ ! -e /dev/kvm ]; then
@@ -25,7 +36,7 @@ check_prerequisites() {
     echo "Please enable virtualization in BIOS or run:"
     echo "  sudo modprobe kvm-intel  # for Intel CPUs"
     echo "  sudo modprobe kvm-amd    # for AMD CPUs"
-    dunstify -u critical -t 4000 -i "computer" "Windows VM" "KVM virtualization not available"
+    dunstify -u critical -t "${NOTIFY_ERROR_MS}" -i "computer" "Windows VM" "KVM virtualization not available"
     exit 1
   fi
 
@@ -33,7 +44,7 @@ check_prerequisites() {
   if [ "$available_space" -lt "$required_space" ]; then
     echo "❌ Insufficient disk space!"
     echo "   Available: ${available_space}GB"
-    echo "   Required: ${required_space}GB (${disk_size_gb}GB disk + 10GB for Windows image)"
+    echo "   Required: ${required_space}GB (${disk_size_gb}GB disk + ${WINDOWS_IMAGE_RESERVE_GB}GB for Windows image)"
     exit 1
   fi
 }
@@ -86,14 +97,17 @@ show_system_resources() {
   echo ""
 }
 
-build_ram_options() {
-  local size
-  RAM_OPTIONS=""
-  for size in 2 4 8 16 32 64; do
-    if [ "$size" -le "$TOTAL_RAM_GB" ]; then
-      RAM_OPTIONS="$RAM_OPTIONS ${size}G"
-    fi
+sizes_up_to() {
+  local limit="$1" size options=""
+  shift
+  for size in "$@"; do
+    ((size <= limit)) && options+=" ${size}G"
   done
+  printf '%s' "${options}"
+}
+
+build_ram_options() {
+  RAM_OPTIONS="$(sizes_up_to "$TOTAL_RAM_GB" "${WINDOWS_RAM_SIZES_GB[@]}")"
 }
 
 prompt_fzf_choice() {
@@ -107,7 +121,7 @@ prompt_fzf_choice() {
 
 prompt_ram_selection() {
   build_ram_options
-  SELECTED_RAM=$(prompt_fzf_choice "$RAM_OPTIONS" "Select RAM > " "How much RAM for Windows VM?" "4G")
+  SELECTED_RAM=$(prompt_fzf_choice "$RAM_OPTIONS" "Select RAM > " "How much RAM for Windows VM?" "${WINDOWS_DEFAULT_RAM_GB}G")
   [ -n "$SELECTED_RAM" ] || cancel_install
 }
 
@@ -127,32 +141,26 @@ prompt_cpu_selection() {
 }
 
 build_disk_options() {
-  local size
   local available_space
+  local min_disk_gb="${WINDOWS_DISK_SIZES_GB[0]}"
 
   available_space=$(available_home_space_gb)
-  MAX_DISK_GB=$((available_space - 10))
-  if [ "$MAX_DISK_GB" -lt 32 ]; then
+  MAX_DISK_GB=$((available_space - WINDOWS_IMAGE_RESERVE_GB))
+  if [ "$MAX_DISK_GB" -lt "$min_disk_gb" ]; then
     echo "❌ Insufficient disk space for Windows VM!"
     echo "   Available: ${available_space}GB"
-    echo "   Minimum required: 42GB (32GB disk + 10GB for Windows image)"
+    echo "   Minimum required: $((min_disk_gb + WINDOWS_IMAGE_RESERVE_GB))GB (${min_disk_gb}GB disk + ${WINDOWS_IMAGE_RESERVE_GB}GB for Windows image)"
     exit 1
   fi
 
-  DISK_OPTIONS=""
-  for size in 32 64 128 256 512; do
-    if [ "$size" -le "$MAX_DISK_GB" ]; then
-      DISK_OPTIONS="$DISK_OPTIONS ${size}G"
-    fi
-  done
-
-  DEFAULT_DISK="64G"
-  echo "$DISK_OPTIONS" | grep -q "64G" || DEFAULT_DISK="32G"
+  DISK_OPTIONS="$(sizes_up_to "$MAX_DISK_GB" "${WINDOWS_DISK_SIZES_GB[@]}")"
+  DEFAULT_DISK="${WINDOWS_DEFAULT_DISK_GB}G"
+  [[ " ${DISK_OPTIONS} " == *" ${DEFAULT_DISK} "* ]] || DEFAULT_DISK="${min_disk_gb}G"
 }
 
 prompt_disk_selection() {
   build_disk_options
-  SELECTED_DISK=$(prompt_fzf_choice "$DISK_OPTIONS" "Select Disk Size > " "Disk space for Windows VM (64GB+ recommended)" "$DEFAULT_DISK")
+  SELECTED_DISK=$(prompt_fzf_choice "$DISK_OPTIONS" "Select Disk Size > " "Disk space for Windows VM (${WINDOWS_DEFAULT_DISK_GB}GB+ recommended)" "$DEFAULT_DISK")
   [ -n "$SELECTED_DISK" ] || cancel_install
 
   DISK_SIZE_NUM=${SELECTED_DISK%G}
@@ -319,15 +327,15 @@ windows_container_status() {
 }
 
 notify_vm_starting() {
-  dunstify -r 42 -i "computer" "Windows VM" "Starting Windows VM\nThis can take 15-30 seconds" -t 0
+  dunstify -r "${NOTIFY_ID_WINDOWS_VM}" -i "computer" "Windows VM" "Starting Windows VM\nThis can take 15-30 seconds" -t "${NOTIFY_STICKY_MS}"
 }
 
 notify_vm_start_failed() {
-  dunstify -r 42 -u critical -t 5000 -i "computer" "Windows VM" "Failed to start Windows VM"
+  dunstify -r "${NOTIFY_ID_WINDOWS_VM}" -u critical -t "${NOTIFY_LONG_MS}" -i "computer" "Windows VM" "Failed to start Windows VM"
 }
 
 notify_vm_ready() {
-  dunstify -r 42 -t 2000 -i "computer" "Windows VM" "Windows VM is ready. Opening RDP session."
+  dunstify -r "${NOTIFY_ID_WINDOWS_VM}" -t "${NOTIFY_BRIEF_MS}" -i "computer" "Windows VM" "Windows VM is ready. Opening RDP session."
 }
 
 wait_for_rdp_ready() {
@@ -336,19 +344,19 @@ wait_for_rdp_ready() {
 
   echo "Waiting for Windows VM to be ready..."
   while (( ready_streak < 2 )); do
-    if nc -z 127.0.0.1 3389 2>/dev/null; then
+    if nc -z "${WINDOWS_RDP_HOST%:*}" "${WINDOWS_RDP_HOST##*:}" 2>/dev/null; then
       ready_streak=$((ready_streak + 1))
       continue
     fi
 
     ready_streak=0
-    sleep 2
+    sleep "${RDP_POLL_SECONDS}"
     wait_count=$((wait_count + 1))
-    if [ "$wait_count" -gt 60 ]; then
+    if ((wait_count > RDP_TIMEOUT_SECONDS / RDP_POLL_SECONDS)); then
       echo "❌ Timeout waiting for RDP!"
       echo "   The VM might still be installing Windows."
       echo "   Check progress at: $WINDOWS_WEB_UI_URL"
-      dunstify -r 42 -u critical -t 5000 -i "computer" "Windows VM" "Timed out waiting for RDP. The VM may still be installing."
+      dunstify -r "${NOTIFY_ID_WINDOWS_VM}" -u critical -t "${NOTIFY_LONG_MS}" -i "computer" "Windows VM" "Timed out waiting for RDP. The VM may still be installing."
       exit 1
     fi
   done
@@ -403,16 +411,17 @@ print_connection_banner() {
 }
 
 rdp_scale_flag() {
-  local hypr_scale scale_percent
+  local hypr_scale scale_percent step
 
   hypr_scale=$(hyprctl monitors -j | jq -r '.[0].scale')
   scale_percent=$(echo "$hypr_scale" | awk '{print int($1 * 100)}')
 
-  if [ "$scale_percent" -ge 170 ]; then
-    echo "/scale:180"
-  elif [ "$scale_percent" -ge 130 ]; then
-    echo "/scale:140"
-  fi
+  for step in "${RDP_SCALE_STEPS[@]}"; do
+    if ((scale_percent >= step - RDP_SCALE_SLACK_PERCENT)); then
+      echo "/scale:${step}"
+      return
+    fi
+  done
 }
 
 launch_rdp_session() {

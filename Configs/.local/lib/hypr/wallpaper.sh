@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
-LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state rofi wallpaper_catalog || exit 1
 hypr_runtime_load_state || exit 1
 
@@ -11,7 +10,7 @@ declare -gA wallpaper_hash_by_path=()
 declare -ga wallpaper_paths=()
 declare -ga wallpaper_source_paths=()
 
-wallpaper_started_ms="$(date +%s%3N)"
+wallpaper_started_ms="$(hypr_now_ms)"
 wallpaper_lock_fd=""
 
 wallpaper_release_lock() {
@@ -29,7 +28,7 @@ for wallpaper_lib in \
   ui.bash \
   parse.bash \
   dispatch.bash; do
-  wallpaper_lib="${LIB_DIR}/hypr/wallpaper/lib/${wallpaper_lib}"
+  wallpaper_lib="${HYPR_LIB_DIR}/wallpaper/lib/${wallpaper_lib}"
   if [[ ! -r "${wallpaper_lib}" ]]; then
     print_log -sec "wallpaper" -err "source" "missing ${wallpaper_lib}"
     exit 1

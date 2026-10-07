@@ -741,10 +741,10 @@ Panel {
     else if (index === 2) root.setWorkspaceCount(
       (String(settings.strategy || "") === "manual"
         ? Model.manualWorkspaceCount(settings)
-        : Number(settings.max_workspaces || 9)) + delta)
+        : Number(settings.max_workspaces || Model.DEFAULT_MAX_WORKSPACES)) + delta)
     else if (index === 3 && root.workspaceGroupSizeApplicable) {
       root.editWorkspaces({
-        group_size: Math.floor(root.bounded(Number(settings.group_size || 3) + delta,
+        group_size: Math.floor(root.bounded(Number(settings.group_size || Model.DEFAULT_GROUP_SIZE) + delta,
           1, root.workspaceValueMaximum))
       })
     }
@@ -1226,6 +1226,7 @@ Panel {
   Timer {
     id: previewRecoveryTimer
     property int attempts: 0
+    readonly property int maxAttempts: 20
     interval: 150
     repeat: true
     onRunningChanged: if (running) attempts = 0
@@ -1236,7 +1237,7 @@ Panel {
         return
       }
       root.showPopup()
-      if (attempts >= 20) stop()
+      if (attempts >= maxAttempts) stop()
     }
   }
 

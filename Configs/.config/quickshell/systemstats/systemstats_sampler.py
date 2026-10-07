@@ -1,7 +1,5 @@
 #!/usr/bin/python3
-"""System sampler for the Quickshell SystemStats module.
-
-Emits one JSON object per line on stdout at a fixed interval. Reads procfs and
+"""Emits one JSON object per line on stdout at a fixed interval. Reads procfs and
 sysfs directly (no psutil) so the only dependency is a Python 3 interpreter.
 
 Control lines on stdin:
@@ -51,11 +49,26 @@ PROCESS_SCAN_LIMIT = 16_384
 FD_SCAN_LIMIT = 4096
 SOCKET_SCAN_LIMIT = 16_384
 PROC_FILE_LIMIT = 64 * 1024
+PATH_TEXT_LIMIT = 4096
+FIELD_TEXT_LIMIT = 64
+SSID_TEXT_LIMIT = 128
+VOLUME_LIMIT = 256
+PERIPHERAL_LIMIT = 256
+MIN_VOLUME_BYTES = 64 * 1024 * 1024
+MAX_DEVICE_STACK_DEPTH = 4
+MAX_PLAUSIBLE_MILLIDEGREES = 200_000
+KERNEL_COMM_LENGTH = 15
+SENSOR_RESCAN_SECONDS = 30
+DETAIL_REFRESH_SECONDS = 10
+IDLE_REFRESH_SECONDS = 30
+MAX_RATE_GAP_SECONDS = 5.0
+SLOW_SAMPLE_SECONDS = 0.95
+MIN_INTERVAL_SECONDS = 0.1
+MAX_INTERVAL_SECONDS = 30.0
 TOOL_DIRS = ("/usr/bin", "/bin")
 
 
 def encode_payload(payload: dict) -> bytes:
-    """Serialize one bounded JSON-lines record for the QML stream parser."""
     encoded = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     if len(encoded) <= OUTPUT_LINE_LIMIT:
         return encoded + b"\n"
@@ -161,7 +174,6 @@ def kill_process_group(proc: subprocess.Popen) -> None:
 
 
 def run(cmd: list[str], timeout: float = 2.0) -> str:
-    """Run a fixed system helper with explicit time and output bounds."""
     if not cmd:
         return ""
     executable = command_path(cmd[0])
@@ -221,7 +233,6 @@ def run(cmd: list[str], timeout: float = 2.0) -> str:
 
 
 def bounded_lines(stream, limit: int):
-    """Yield decoded lines while draining and ignoring oversized input."""
     while True:
         raw = stream.readline(limit + 2)
         if not raw:
@@ -244,9 +255,6 @@ def rate(now: float | None, prev: float | None, elapsed: float) -> float:
         return 0.0
     delta = now - prev
     return max(0.0, delta / elapsed)
-
-
-# ----------------------------------------------------------------------------- CPU
 
 
 class CpuSampler:
@@ -415,9 +423,6 @@ class CpuSampler:
         }
 
 
-# --------------------------------------------------------------------------- Power
-
-
 class RaplSampler:
     """Turn RAPL energy counter deltas into watts without elevated privileges."""
 
@@ -451,9 +456,6 @@ class RaplSampler:
                     watts = round(delta / 1_000_000 / elapsed, 3)
             domains.append({"id": entry, "name": name, "watts": watts})
         return {"domains": domains, "restricted": restricted}
-
-
-# ----------------------------------------------------------------------------- GPU
 
 
 class GpuSampler:
@@ -678,9 +680,6 @@ class GpuSampler:
             self.latest = None
 
 
-# -------------------------------------------------------------------------- Memory
-
-
 def sample_memory() -> dict:
     info: dict[str, int] = {}
     for line in read_text("/proc/meminfo").splitlines():
@@ -731,9 +730,6 @@ def sample_memory() -> dict:
     }
 
 
-# --------------------------------------------------------------------------- Disks
-
-
 class DiskSampler:
     def __init__(self) -> None:
         self.prev: dict[str, tuple[int, int]] = {}
@@ -782,7 +778,7 @@ class DiskSampler:
         """Map /dev/nvme0n1p2 or /dev/mapper/root to its whole-disk name."""
         real = os.path.realpath(device)
         name = os.path.basename(real)
-        for _ in range(4):
+        for _ in range(MAX_DEVICE_STACK_DEPTH):
             slaves = f"/sys/block/{name}/slaves"
             if os.path.isdir(slaves):
                 entries = list_dir(slaves)
@@ -807,9 +803,9 @@ class DiskSampler:
             parts = line.split()
             if len(parts) < 3:
                 continue
-            device = bounded_text(parts[0], 4096)
-            mount = bounded_text(parts[1].replace("\\040", " "), 4096)
-            fstype = bounded_text(parts[2], 64)
+            device = bounded_text(parts[0], PATH_TEXT_LIMIT)
+            mount = bounded_text(parts[1].replace("\\040", " "), PATH_TEXT_LIMIT)
+            fstype = bounded_text(parts[2], FIELD_TEXT_LIMIT)
             if fstype not in REAL_FS or not device.startswith("/"):
                 continue
             if mount.startswith(("/proc", "/sys", "/dev", "/run/user", "/var/lib/docker", "/snap")):
@@ -819,7 +815,7 @@ class DiskSampler:
             except OSError:
                 continue
             size = stat.f_blocks * stat.f_frsize
-            if size < 64 * 1024 * 1024:
+            if size < MIN_VOLUME_BYTES:
                 continue
             avail = stat.f_bavail * stat.f_frsize
             used = size - stat.f_bfree * stat.f_frsize
@@ -827,7 +823,7 @@ class DiskSampler:
             existing = volumes.get(key)
             if existing and len(existing["mount"]) <= len(mount):
                 continue
-            if existing is None and len(volumes) >= 256:
+            if existing is None and len(volumes) >= VOLUME_LIMIT:
                 continue
             disk = self._parent_disk(device)
             model = bounded_text(
@@ -896,9 +892,6 @@ class DiskSampler:
         }
 
 
-# ------------------------------------------------------------------------- Network
-
-
 class NetworkSampler:
     def __init__(self) -> None:
         self.prev: dict[str, tuple[int, int]] = {}
@@ -940,9 +933,9 @@ class NetworkSampler:
                 if addr.get("scope") != "global":
                     continue
                 if addr.get("family") == "inet":
-                    v4.append(bounded_text(str(addr.get("local", "")), 64))
+                    v4.append(bounded_text(str(addr.get("local", "")), FIELD_TEXT_LIMIT))
                 elif addr.get("family") == "inet6" and not addr.get("temporary"):
-                    v6.append(bounded_text(str(addr.get("local", "")), 64))
+                    v6.append(bounded_text(str(addr.get("local", "")), FIELD_TEXT_LIMIT))
             self.addr_cache[name] = {"ipv4": v4, "ipv6": v6}
 
     def _refresh_wifi(self, ifaces: list[str]) -> None:
@@ -954,7 +947,7 @@ class NetworkSampler:
             for line in run(["iw", "dev", name, "link"]).splitlines():
                 line = line.strip()
                 if line.startswith("SSID:"):
-                    info["ssid"] = bounded_text(line[5:].strip(), 128)
+                    info["ssid"] = bounded_text(line[5:].strip(), SSID_TEXT_LIMIT)
                 elif line.startswith("signal:"):
                     match = re.search(r"(-?\d+) dBm", line)
                     if match:
@@ -980,9 +973,9 @@ class NetworkSampler:
             for url in ("https://api.ipify.org", "https://icanhazip.com", "https://ifconfig.me/ip"):
                 try:
                     with urllib.request.urlopen(url, timeout=5) as response:
-                        raw = response.read(65)
+                        raw = response.read(FIELD_TEXT_LIMIT + 1)
                         candidate = raw.decode("utf-8", "replace").strip()
-                    if len(raw) <= 64 and re.fullmatch(r"[0-9a-fA-F.:]+", candidate):
+                    if len(raw) <= FIELD_TEXT_LIMIT and re.fullmatch(r"[0-9a-fA-F.:]+", candidate):
                         result = candidate
                         break
                 except Exception:
@@ -1003,11 +996,12 @@ class NetworkSampler:
             if name == "lo" or len(parts) < 16:
                 continue
             current[name] = (int(parts[0]), int(parts[8]))
-        if now - self.addr_stamp > (10 if detail else 30):
+        refresh_seconds = DETAIL_REFRESH_SECONDS if detail else IDLE_REFRESH_SECONDS
+        if now - self.addr_stamp > refresh_seconds:
             self._refresh_addresses()
             self.addr_stamp = now
         wireless = [n for n in current if os.path.isdir(f"/sys/class/net/{n}/wireless")]
-        if wireless and now - self.wifi_stamp > (10 if detail else 30):
+        if wireless and now - self.wifi_stamp > refresh_seconds:
             self._refresh_wifi(wireless)
             self.wifi_stamp = now
         default = self._default_iface()
@@ -1058,9 +1052,6 @@ class NetworkSampler:
             "online": online or any(i["up"] for i in ifaces),
             "publicIp": public_ip,
         }
-
-
-# ------------------------------------------------------------------------- Sensors
 
 
 class SensorSampler:
@@ -1170,7 +1161,7 @@ class SensorSampler:
         return bounded_text(name)
 
     def sample(self, now: float) -> dict:
-        if now - self.stamp > 30:
+        if now - self.stamp > SENSOR_RESCAN_SECONDS:
             self._scan()
             self.stamp = now
         temps, fans = [], []
@@ -1185,7 +1176,7 @@ class SensorSampler:
                 chip_label = f"{chip_label} {name_seen[chip['name']]}"
             for temp in chip["temps"]:
                 raw = read_int(temp["path"])
-                if raw is None or raw <= 0 or raw >= 200_000:
+                if raw is None or raw <= 0 or raw >= MAX_PLAUSIBLE_MILLIDEGREES:
                     continue
                 label = temp["label"] or (chip_label if len(chip["temps"]) == 1 else f"{chip_label} {temp['key'][4:]}")
                 temps.append({
@@ -1213,9 +1204,6 @@ class SensorSampler:
             if raw:
                 gpu_temp = round(raw / 1000, 1)
         return {"temps": temps, "fans": fans, "gpuTemp": gpu_temp}
-
-
-# ------------------------------------------------------------------------- Battery
 
 
 def sample_battery() -> dict | None:
@@ -1250,7 +1238,7 @@ def sample_battery() -> dict | None:
         status = bounded_text(read_text(f"{path}/status") or "Unknown")
         model = bounded_text(read_text(f"{path}/model_name"))
         if scope == "Device" or entry.startswith(("hid", "wacom")) or (not entry.startswith("BAT") and read_int(f"{path}/present", 1) == 1 and read_int(f"{path}/energy_full") is None and read_int(f"{path}/charge_full") is None):
-            if capacity is not None and len(peripherals) < 256:
+            if capacity is not None and len(peripherals) < PERIPHERAL_LIMIT:
                 peripherals.append({"name": model or bounded_text(entry), "percent": capacity, "status": status})
             continue
         if system is not None:
@@ -1310,12 +1298,9 @@ def sample_battery() -> dict | None:
     return system
 
 
-# ----------------------------------------------------------------------- Processes
-
-
 def display_name(pid: int, comm: str) -> str:
     """A readable name: the kernel's 15-char comm, or the executable's basename."""
-    if len(comm) < 15:
+    if len(comm) < KERNEL_COMM_LENGTH:
         return bounded_text(comm)
     cmdline = read_text(f"/proc/{pid}/cmdline").split("\0")[0]
     if cmdline:
@@ -1490,7 +1475,7 @@ class ProcessSampler:
 
         now = time.monotonic()
         elapsed = now - self.sockets_time if self.sockets_time is not None else 0.0
-        usable = 0.0 < elapsed < 5.0
+        usable = 0.0 < elapsed < MAX_RATE_GAP_SECONDS
         groups: dict[str, dict] = {}
         for ino, sock in sockets.items():
             pid, name = owner.get(ino, (0, cgroup_label(sock["cgroup"])))
@@ -1533,9 +1518,6 @@ def cgroup_label(cgroup: str) -> str:
     return bounded_text(stem) or "other"
 
 
-# ---------------------------------------------------------------------------- main
-
-
 class Controller:
     def __init__(self, interval: float) -> None:
         self.interval = interval
@@ -1558,7 +1540,7 @@ class Controller:
                     self.focus = parts[1]
                 elif parts[0] == "interval" and len(parts) > 1:
                     try:
-                        self.interval = max(0.1, min(30.0, float(parts[1])))
+                        self.interval = max(MIN_INTERVAL_SECONDS, min(MAX_INTERVAL_SECONDS, float(parts[1])))
                     except ValueError:
                         pass
                 elif parts[0] == "pubip":
@@ -1638,7 +1620,7 @@ def main() -> int:
             net.fetch_public_ip()
 
         payload: dict = {"seq": seq, "t": now, "elapsed": round(elapsed, 3), "interval": current_interval, "errors": []}
-        slow_due = last_slow is None or now_mono - last_slow >= 0.95
+        slow_due = last_slow is None or now_mono - last_slow >= SLOW_SAMPLE_SECONDS
         if slow_due:
             try:
                 sensors_cache = sensors.sample(now)

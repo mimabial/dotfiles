@@ -18,7 +18,6 @@ def _get_noop_logger():
 
 
 def get_logger():
-    """Return a stdlib logger configured from LOG_LEVEL."""
     log_level = os.getenv("LOG_LEVEL")
     if not log_level:
         return _get_noop_logger()

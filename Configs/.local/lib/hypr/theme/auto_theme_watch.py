@@ -9,7 +9,6 @@ from pathlib import Path
 
 
 class InotifyPathWatcher:
-    """Lightweight inotify file watcher using ctypes."""
 
     IN_ATTRIB = 0x00000004
     IN_CLOSE_WRITE = 0x00000008

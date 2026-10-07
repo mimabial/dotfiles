@@ -3,7 +3,7 @@ set -euo pipefail
 
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
-DAEMON_SCRIPT="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/theme/auto_theme.py"
+DAEMON_SCRIPT="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/theme/auto_theme.py"
 AUTO_THEME_SERVICE="auto-theme"
 
 resolve_auto_theme_python() {
@@ -52,7 +52,7 @@ run_daemon() {
 load_service_api() {
   declare -F hypr_svc_user >/dev/null 2>&1 && return
   # shellcheck source=/dev/null
-  source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/runtime/init.bash"
+  source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 }
 
 service_call() {

@@ -7,6 +7,9 @@ import sys
 from dataclasses import dataclass
 
 
+PROGRESS_BAR_CELLS = 20
+
+
 @dataclass(frozen=True)
 class MediaPlayerUiConfig:
     max_length_module: int
@@ -58,72 +61,58 @@ def emit_json_output(output: dict) -> None:
         os._exit(0)
 
 
-def validate_ui_config() -> MediaPlayerUiConfig:
+DEFAULT_MAX_LENGTH = 70
+MAX_LENGTH_BOUNDS = (10, 200)
+MAX_PREFIX_LENGTH = 20
+MAX_STANDBY_TEXT_LENGTH = 50
+MAX_SEPARATOR_LENGTH = 10
+FALLBACK_COLOR = "#FFFFFF"
+FALLBACK_EMPTY_COLOR = "#666666"
+HEX_COLOR_LENGTHS = {len("#RGB"), len("#RRGGBB"), len("#RRGGBBAA")}
+
+
+def configured_max_length() -> int:
     try:
-        max_length_module = int(os.getenv("MEDIAPLAYER_MAX_LENGTH", "70"))
-        max_length_module = max(10, min(200, max_length_module))
+        max_length = int(os.getenv("MEDIAPLAYER_MAX_LENGTH", str(DEFAULT_MAX_LENGTH)))
+        return max(MAX_LENGTH_BOUNDS[0], min(MAX_LENGTH_BOUNDS[1], max_length))
     except (ValueError, TypeError):
         print(
-            "WARNING: Invalid MEDIAPLAYER_MAX_LENGTH, using default 70", file=sys.stderr
+            f"WARNING: Invalid MEDIAPLAYER_MAX_LENGTH, using default {DEFAULT_MAX_LENGTH}", file=sys.stderr
         )
-        max_length_module = 70
+        return DEFAULT_MAX_LENGTH
 
-    prefix_playing = str(os.getenv("MEDIAPLAYER_PREFIX_PLAYING", ""))[:20]
-    prefix_paused = str(os.getenv("MEDIAPLAYER_PREFIX_PAUSED", ""))[:20]
-    standby_text = str(os.getenv("MEDIAPLAYER_STANDBY_TEXT", " MPlayer"))[:50]
-    artist_track_separator = str(os.getenv("MEDIAPLAYER_ARTIST_TRACK_SEPARATOR", "  "))[
-        :10
-    ]
 
+def tooltip_colors() -> dict[str, str]:
     xdg_cache = os.path.expanduser(os.getenv("XDG_CACHE_HOME", "~/.cache"))
     wal_colors = load_pywal_colors(xdg_cache)
-    default_artist = wal_colors.get("color4", "#FFFFFF")
-    default_track = wal_colors.get("foreground", "#FFFFFF")
-    default_progress = wal_colors.get("color2", default_artist)
-    default_empty = wal_colors.get("color8", wal_colors.get("color0", "#666666"))
-    default_time = wal_colors.get("foreground", "#FFFFFF")
-
-    color_values = {
-        "artist_color": normalize_color(
-            os.getenv("MEDIAPLAYER_TOOLTIP_ARTIST_COLOR", ""),
-            wal_colors,
-            default_artist,
-        ),
-        "track_color": normalize_color(
-            os.getenv("MEDIAPLAYER_TOOLTIP_TRACK_COLOR", ""), wal_colors, default_track
-        ),
-        "progress_color": normalize_color(
-            os.getenv("MEDIAPLAYER_TOOLTIP_PROGRESS_COLOR", ""),
-            wal_colors,
-            default_progress,
-        ),
-        "empty_color": normalize_color(
-            os.getenv("MEDIAPLAYER_TOOLTIP_EMPTY_COLOR", ""), wal_colors, default_empty
-        ),
-        "time_color": normalize_color(
-            os.getenv("MEDIAPLAYER_TOOLTIP_TIME_COLOR", ""), wal_colors, default_time
-        ),
+    artist_default = wal_colors.get("color4", FALLBACK_COLOR)
+    defaults = {
+        "artist": artist_default,
+        "track": wal_colors.get("foreground", FALLBACK_COLOR),
+        "progress": wal_colors.get("color2", artist_default),
+        "empty": wal_colors.get("color8", wal_colors.get("color0", FALLBACK_EMPTY_COLOR)),
+        "time": wal_colors.get("foreground", FALLBACK_COLOR),
     }
 
-    for var_name, color_value in color_values.items():
-        if not color_value.startswith("#") or len(color_value) not in [4, 7, 9]:
-            print(
-                f"WARNING: Invalid color format for {var_name}: {color_value}",
-                file=sys.stderr,
-            )
-            color_values[var_name] = "#FFFFFF"
+    colors = {}
+    for role, default in defaults.items():
+        name = f"{role}_color"
+        color = normalize_color(os.getenv(f"MEDIAPLAYER_TOOLTIP_{role.upper()}_COLOR", ""), wal_colors, default)
+        if not color.startswith("#") or len(color) not in HEX_COLOR_LENGTHS:
+            print(f"WARNING: Invalid color format for {name}: {color}", file=sys.stderr)
+            color = FALLBACK_COLOR
+        colors[name] = color
+    return colors
 
+
+def validate_ui_config() -> MediaPlayerUiConfig:
     return MediaPlayerUiConfig(
-        max_length_module=max_length_module,
-        prefix_playing=prefix_playing,
-        prefix_paused=prefix_paused,
-        standby_text=standby_text,
-        artist_track_separator=artist_track_separator,
-        artist_color=color_values["artist_color"],
-        track_color=color_values["track_color"],
-        progress_color=color_values["progress_color"],
-        empty_color=color_values["empty_color"],
-        time_color=color_values["time_color"],
+        max_length_module=configured_max_length(),
+        prefix_playing=str(os.getenv("MEDIAPLAYER_PREFIX_PLAYING", ""))[:MAX_PREFIX_LENGTH],
+        prefix_paused=str(os.getenv("MEDIAPLAYER_PREFIX_PAUSED", ""))[:MAX_PREFIX_LENGTH],
+        standby_text=str(os.getenv("MEDIAPLAYER_STANDBY_TEXT", " MPlayer"))[:MAX_STANDBY_TEXT_LENGTH],
+        artist_track_separator=str(os.getenv("MEDIAPLAYER_ARTIST_TRACK_SEPARATOR", "  "))[:MAX_SEPARATOR_LENGTH],
+        **tooltip_colors(),
     )
 
 
@@ -216,11 +205,11 @@ def create_tooltip_text(
             )
         elif duration_seconds > 0:
             progress = max(
-                0, min(20, int((current_position_seconds / duration_seconds) * 20))
+                0, min(PROGRESS_BAR_CELLS, int((current_position_seconds / duration_seconds) * PROGRESS_BAR_CELLS))
             )
             bar = (
                 f'<span foreground="{ui_config.progress_color}">{"─" * progress}</span>'
-                f'<span foreground="{ui_config.empty_color}">{"─" * (20 - progress)}</span>'
+                f'<span foreground="{ui_config.empty_color}">{"─" * (PROGRESS_BAR_CELLS - progress)}</span>'
             )
             tooltip += (
                 f'<span foreground="{ui_config.time_color}">{format_time(current_position_seconds)}</span> '

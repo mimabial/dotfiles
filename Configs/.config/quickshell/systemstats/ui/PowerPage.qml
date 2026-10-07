@@ -70,7 +70,7 @@ Column {
       width: parent.width
       text: "CPU energy counters are restricted by the kernel; CPU package draw is unavailable."
       color: root.foreground
-      opacity: 0.6
+      opacity: Style.mutedTextAlpha
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       wrapMode: Text.WordWrap
@@ -104,7 +104,7 @@ Column {
       width: parent.width
       text: "No power sensors are available on this machine."
       color: root.foreground
-      opacity: 0.6
+      opacity: Style.mutedTextAlpha
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
     }
@@ -149,7 +149,7 @@ Column {
       width: parent.width
       text: "Energy since the shell started, integrated from measured draw. Sources can overlap and are not summed."
       color: root.foreground
-      opacity: 0.6
+      opacity: Style.mutedTextAlpha
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       wrapMode: Text.WordWrap

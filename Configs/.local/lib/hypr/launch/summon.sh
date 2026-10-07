@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR}/launch/window.common.bash" || exit 1
 
@@ -237,50 +236,70 @@ launch_apply_window_geometry() {
     "${usable_x}" "${usable_y}" "${usable_width}" "${usable_height}" || return 1
 }
 
-main() {
-  [[ "${1:-}" == -h || "${1:-}" == --help ]] && { usage; return; }
-
-  local use_empty_workspace=0
-  local float_if_occupied=0
-  local force_tiled=0
-  local width_spec=""
-  local height_spec=""
-  local geometry_profile=""
-  local align=""
-  local window_pattern=""
-  local target_workspace=""
-  local window_address=""
-  local hypr_snapshot_json=""
-  local clients_json=""
-  local workspace_has_other_window="false"
-  local launch_cmd=()
+parse_args() {
+  local -n options_ref="$1"
+  local -n command_ref="$2"
+  shift 2
 
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
-      --empty-workspace-if-occupied) use_empty_workspace=1; shift ;;
-      --float-if-workspace-occupied) float_if_occupied=1; shift ;;
-      --tile) force_tiled=1; shift ;;
-      --width)  width_spec="$2";  shift 2 ;;
-      --height) height_spec="$2"; shift 2 ;;
-      --profile) geometry_profile="$2"; shift 2 ;;
-      --align)  align="$2";       shift 2 ;;
+      --empty-workspace-if-occupied) options_ref[empty_workspace]=1; shift ;;
+      --float-if-workspace-occupied) options_ref[float_if_occupied]=1; shift ;;
+      --tile) options_ref[tile]=1; shift ;;
+      --width)   options_ref[width]="$2";   shift 2 ;;
+      --height)  options_ref[height]="$2";  shift 2 ;;
+      --profile) options_ref[profile]="$2"; shift 2 ;;
+      --align)   options_ref[align]="$2";   shift 2 ;;
       --)
         shift
-        launch_cmd=("$@")
+        command_ref=("$@")
         break
         ;;
-      -*)
-        usage >&2
-        return 2
-        ;;
+      -*) return 2 ;;
       *)
-        window_pattern="$1"
+        options_ref[pattern]="$1"
         shift
         ;;
     esac
   done
 
-  [[ -n "${window_pattern}" && "${#launch_cmd[@]}" -gt 0 ]] || {
+  [[ -n "${options_ref[pattern]}" && "${#command_ref[@]}" -gt 0 ]]
+}
+
+summon_resolve_geometry() {
+  local -n geometry_ref="$1"
+
+  if [[ -n "${geometry_ref[profile]}" ]]; then
+    if [[ -n "${geometry_ref[width]}${geometry_ref[height]}" ]]; then
+      print_log -sec "summon" -err "geometry" "--profile cannot be combined with --width or --height"
+      return 2
+    fi
+    IFS=$'\t' read -r "geometry_ref[width]" "geometry_ref[height]" \
+      <<<"$(launch_resolve_geometry_profile "${geometry_ref[profile]}")" || return 1
+  fi
+
+  if ((geometry_ref[tile] == 1)) \
+    && launch_geometry_requested "${geometry_ref[width]}" "${geometry_ref[height]}" "${geometry_ref[align]}"; then
+    print_log -sec "summon" -err "geometry" "--tile cannot be combined with floating-window geometry"
+    return 2
+  fi
+}
+
+main() {
+  [[ "${1:-}" == -h || "${1:-}" == --help ]] && { usage; return; }
+
+  local -A options=(
+    [empty_workspace]=0 [float_if_occupied]=0 [tile]=0
+    [width]="" [height]="" [profile]="" [align]="" [pattern]=""
+  )
+  local -a launch_cmd=()
+  local target_workspace=""
+  local window_address=""
+  local hypr_snapshot_json=""
+  local clients_json=""
+  local workspace_has_other_window="false"
+
+  parse_args options launch_cmd "$@" || {
     usage >&2
     return 2
   }
@@ -290,40 +309,28 @@ main() {
   HYPR_MONITORS_JSON_CACHE="$(jq -c '.[2] // []' <<<"${hypr_snapshot_json}")"
   HYPR_MONITORS_JSON_CACHE_READY=1
 
-  if [[ -n "${geometry_profile}" ]]; then
-    if [[ -n "${width_spec}" || -n "${height_spec}" ]]; then
-      print_log -sec "summon" -err "geometry" "--profile cannot be combined with --width or --height"
-      return 2
-    fi
-    IFS=$'\t' read -r width_spec height_spec \
-      <<<"$(launch_resolve_geometry_profile "${geometry_profile}")" || return 1
-  fi
+  summon_resolve_geometry options || return $?
 
-  if ((force_tiled == 1)) && launch_geometry_requested "${width_spec}" "${height_spec}" "${align}"; then
-    print_log -sec "summon" -err "geometry" "--tile cannot be combined with floating-window geometry"
-    return 2
-  fi
-
-  window_address="$(launch_resolve_window_address "${window_pattern}" "${clients_json}")"
-  if ((float_if_occupied == 1)); then
+  window_address="$(launch_resolve_window_address "${options[pattern]}" "${clients_json}")"
+  if ((options[float_if_occupied] == 1)); then
     IFS=$'\t' read -r _ workspace_has_other_window \
       < <(launch_active_workspace_occupancy "${window_address}" "${hypr_snapshot_json}") || return 1
     export HYPR_SUMMON_EXPECTED_FLOAT="${workspace_has_other_window}"
   fi
-  target_workspace="$(launch_prepare_target_workspace "${use_empty_workspace}" "${window_address}" "${hypr_snapshot_json}")"
+  target_workspace="$(launch_prepare_target_workspace "${options[empty_workspace]}" "${window_address}" "${hypr_snapshot_json}")"
   [[ -n "${target_workspace}" ]] || return 1
 
   if [[ -z "${window_address}" ]]; then
     setsid hyprshell app -- "${launch_cmd[@]}" >/dev/null 2>&1 &
-    window_address="$(launch_wait_for_window_address "${window_pattern}")"
+    window_address="$(launch_wait_for_window_address "${options[pattern]}")"
     [[ -n "${window_address}" ]] || return 1
   fi
 
   launch_summon_to_workspace "${window_address}" "${target_workspace}" || return 1
-  launch_apply_window_geometry "${window_address}" "${width_spec}" "${height_spec}" "${align}" || return 1
-  if ((float_if_occupied == 1)) && [[ "${workspace_has_other_window}" == "true" ]]; then
+  launch_apply_window_geometry "${window_address}" "${options[width]}" "${options[height]}" "${options[align]}" || return 1
+  if ((options[float_if_occupied] == 1)) && [[ "${workspace_has_other_window}" == "true" ]]; then
     launch_ensure_window_floating "${window_address}" false || return 1
-  elif ((float_if_occupied == 1 || force_tiled == 1)); then
+  elif ((options[float_if_occupied] == 1 || options[tile] == 1)); then
     launch_ensure_window_tiled "${window_address}" || return 1
   fi
 }

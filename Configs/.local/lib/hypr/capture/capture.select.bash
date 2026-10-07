@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
-declare -F hypr_wait_for >/dev/null || source "${BASH_SOURCE[0]%/*}/../core/common.sh"
+declare -F hypr_wait_for >/dev/null || source "${BASH_SOURCE[0]%/*}/../core/common.bash"
+declare -F notify_send_safe >/dev/null || source "${BASH_SOURCE[0]%/*}/../core/notify.bash"
 
 capture_start_freeze() {
   local freeze_pid=""
@@ -120,8 +120,6 @@ capture_expand_tiny_selection() {
   printf '%s\n' "${selection}"
 }
 
-# One smart pick: window rectangles, frozen screen, and a click that lands on
-# a window rather than a 1px drag. Prints "X,Y WxH"; returns 1 if cancelled.
 capture_smart_select() {
   local rectangles="" selection=""
 

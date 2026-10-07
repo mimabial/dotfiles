@@ -1,8 +1,3 @@
-/**
- * Menu tree theme for rofi/menutree.sh
- **/
-
-/*****----- Global Properties -----*****/
 @import "~/.config/rofi/colors.rasi"
 
 * {
@@ -15,7 +10,6 @@
     menu-list-margin:            10px 0px 0px 0px;
 }
 
-/*****----- Main Window -----*****/
 window {
     transparency:                "real";
     location:                    center;
@@ -34,7 +28,6 @@ window {
     cursor:                      "default";
 }
 
-/*****----- Main Box -----*****/
 mainbox {
     enabled:                     true;
     /* The gap to the listview lives on the listview (see below), not here: a
@@ -51,7 +44,6 @@ mainbox {
     children:                    [ "inputbar", "listview", "message" ];
 }
 
-/*****----- Inputbar -----*****/
 inputbar {
     enabled:                     true;
     spacing:                     @menu-spacing;
@@ -113,7 +105,6 @@ textbox-prompt-label {
     text-color:                  @selected-foreground;
 }
 
-/*****----- Listview -----*****/
 listview {
     enabled:                     true;
     columns:                     1;
@@ -145,7 +136,6 @@ scrollbar {
     border-color:                @border;
 }
 
-/*****----- Elements -----*****/
 element {
     enabled:                     true;
     spacing:                     10px;
@@ -184,7 +174,6 @@ element-icon {
     background-color:            transparent;
 }
 
-/*****----- Message -----*****/
 message {
     enabled:                     true;
     margin:                      12px 0px 0px 0px;

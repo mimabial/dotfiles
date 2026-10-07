@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 SEEK_SECONDS=10
 mpris_icon() {
   local player=${1:-default}
@@ -84,103 +83,69 @@ mpris_art_url() {
   printf '%s\n' "${art_url}"
 }
 
-mpris_cleanup_temps() {
-  local path=""
-  for path in "$@"; do
-    [[ -n "${path}" ]] && rm -f -- "${path}"
-  done
-}
-
 os_pretty_name() {
   awk -F'=' '/^PRETTY_NAME=/ {gsub(/"/,"",$2); print $2; exit}' /etc/os-release
+}
+
+MPRIS_ART_MIN_WIDTH_PX=200
+
+# YouTube serves a tiny placeholder when a video has no maxres thumbnail.
+mpris_download_art() {
+  local url="$1" out="$2" width=""
+
+  curl --fail --location --silent --show-error --output "${out}" -- "${url}" 2>/dev/null || return 1
+  width="$(identify -format "%w" "${out}" 2>/dev/null || true)"
+  if [[ "${width}" =~ ^[0-9]+$ ]] && ((width < MPRIS_ART_MIN_WIDTH_PX)) && [[ "${url}" == *youtube* ]]; then
+    curl --fail --location --silent --show-error --output "${out}" -- "${url/maxresdefault/hqdefault}" 2>/dev/null
+  fi
+}
+
+mpris_render_art() {
+  local art="$1" square="$2" blurred="$3" width="" height=""
+
+  # Layouts frame the art in a square; thumbnails arrive letterboxed, so drop the
+  # bars and centre-crop to fill it.
+  magick "${MAGICK_LIMITS[@]}" "${art}" -fuzz 8% -trim +repage \
+    -gravity center -extent '%[fx:min(w,h)]x%[fx:min(w,h)]' \
+    -quality 50 "png:${square}" 2>/dev/null || return 1
+
+  IFS=x read -r width height <<<"$(hyprctl monitors -j 2>/dev/null | jq -r '.[0] | "\(.width)x\(.height)"' 2>/dev/null || true)"
+  [[ "${width}" =~ ^[0-9]+$ && "${height}" =~ ^[0-9]+$ ]] || return 0
+  magick "${MAGICK_LIMITS[@]}" "${art}" -blur 20x3 -resize "${width}x^" -gravity center -extent "${width}x${height}!" "png:${blurred}" 2>/dev/null
+}
+
+# The song may change while its cover is downloading. Never publish a
+# completed image unless it still belongs to the selected player and track.
+mpris_art_still_current() {
+  [[ "$(mpris_default_player)" == "$1" && "$(mpris_art_url "$1")" == "$2" ]]
 }
 
 refresh_mpris_artwork() {
   local player=${1:-""}
   local thumb="${HYPR_CACHE_HOME}/landing/mpris"
-  local art_url=""
-  local fetch_url=""
-  local cache_key=""
-  local size=""
-  local monitor_info=""
-  local width=""
-  local height=""
-  local art_tmp=""
-  local png_tmp=""
-  local blurred_tmp=""
-  local link_tmp=""
+  local art_url="" cache_key="" work=""
 
   art_url="$(mpris_art_url "${player}")"
   [[ -n "${art_url}" ]] || return 1
-  fetch_url="${art_url}"
   cache_key="v2:${art_url}"
-
   [[ "${cache_key}" == "$(cat "${thumb}.lnk" 2>/dev/null)" && -s "${thumb}.png" ]] && return 0
 
   mkdir -p "$(dirname "${thumb}")"
-  art_tmp="$(mktemp "${thumb}.art.XXXXXX")" || return 1
-  png_tmp="$(mktemp "${thumb}.png.XXXXXX")" || {
-    mpris_cleanup_temps "${art_tmp}"
-    return 1
-  }
-  blurred_tmp="$(mktemp "${thumb}.blurred.png.XXXXXX")" || {
-    mpris_cleanup_temps "${art_tmp}" "${png_tmp}"
-    return 1
-  }
-  link_tmp="$(mktemp "${thumb}.lnk.XXXXXX")" || {
-    mpris_cleanup_temps "${art_tmp}" "${png_tmp}" "${blurred_tmp}"
-    return 1
-  }
-
-  if ! curl --fail --location --silent --show-error --output "${art_tmp}" -- "${fetch_url}" 2>/dev/null; then
-    mpris_cleanup_temps "${art_tmp}" "${png_tmp}" "${blurred_tmp}" "${link_tmp}"
+  work="$(mktemp -d "${thumb}.XXXXXX")" || return 1
+  if ! mpris_download_art "${art_url}" "${work}/art" ||
+    ! mpris_render_art "${work}/art" "${work}/png" "${work}/blurred.png" ||
+    ! mpris_art_still_current "${player}" "${art_url}"; then
+    rm -rf -- "${work}"
     return 1
   fi
 
-  size="$(identify -format "%w" "${art_tmp}" 2>/dev/null || true)"
-  if [[ "${size}" =~ ^[0-9]+$ ]] && ((size < 200)) && [[ "${fetch_url}" == *youtube* ]]; then
-    fetch_url="${fetch_url/maxresdefault/hqdefault}"
-    if ! curl --fail --location --silent --show-error --output "${art_tmp}" -- "${fetch_url}" 2>/dev/null; then
-      mpris_cleanup_temps "${art_tmp}" "${png_tmp}" "${blurred_tmp}" "${link_tmp}"
-      return 1
-    fi
-  fi
-
-  # Layouts frame the art in a square; thumbnails arrive letterboxed, so drop the
-  # bars and centre-crop to fill it.
-  if ! magick "${MAGICK_LIMITS[@]}" "${art_tmp}" -fuzz 8% -trim +repage \
-    -gravity center -extent '%[fx:min(w,h)]x%[fx:min(w,h)]' \
-    -quality 50 "png:${png_tmp}" 2>/dev/null; then
-    mpris_cleanup_temps "${art_tmp}" "${png_tmp}" "${blurred_tmp}" "${link_tmp}"
-    return 1
-  fi
-
-  monitor_info="$(hyprctl monitors -j 2>/dev/null | jq -r '.[0] | "\(.width)x\(.height)"' 2>/dev/null || true)"
-  IFS=x read -r width height <<<"${monitor_info}"
-  if [[ "${width}" =~ ^[0-9]+$ && "${height}" =~ ^[0-9]+$ ]]; then
-    if ! magick "${MAGICK_LIMITS[@]}" "${art_tmp}" -blur 20x3 -resize "${width}x^" -gravity center -extent "${width}x${height}!" "png:${blurred_tmp}" 2>/dev/null; then
-      mpris_cleanup_temps "${art_tmp}" "${png_tmp}" "${blurred_tmp}" "${link_tmp}"
-      return 1
-    fi
-  else
-    rm -f -- "${blurred_tmp}"
-    blurred_tmp=""
-  fi
-
-  # The song may change while its cover is downloading. Never publish a
-  # completed image unless it still belongs to the selected player and track.
-  if [[ "$(mpris_default_player)" != "${player}" || "$(mpris_art_url "${player}")" != "${art_url}" ]]; then
-    mpris_cleanup_temps "${art_tmp}" "${png_tmp}" "${blurred_tmp}" "${link_tmp}"
-    return 1
-  fi
-
-  printf '%s\n' "${cache_key}" >"${link_tmp}"
-  mv -f -- "${art_tmp}" "${thumb}.art"
-  mv -f -- "${png_tmp}" "${thumb}.png"
-  [[ -z "${blurred_tmp}" ]] || mv -f -- "${blurred_tmp}" "${thumb}.blurred.png"
-  mv -f -- "${link_tmp}" "${thumb}.lnk"
+  printf '%s\n' "${cache_key}" >"${work}/lnk"
+  mv -f -- "${work}/art" "${thumb}.art"
+  mv -f -- "${work}/png" "${thumb}.png"
+  [[ ! -e "${work}/blurred.png" ]] || mv -f -- "${work}/blurred.png" "${thumb}.blurred.png"
+  mv -f -- "${work}/lnk" "${thumb}.lnk"
+  rm -rf -- "${work}"
   reload_hyprlock
-  return 0
 }
 
 format_mpris_length() {

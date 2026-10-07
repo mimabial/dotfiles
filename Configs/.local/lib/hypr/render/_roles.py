@@ -1,9 +1,6 @@
-"""Shared Qt palette role resolution for render/*.py.
-
-Theme mode is source-first: Qt/KDE roles come from the pack's
+"""Theme mode is source-first: Qt/KDE roles come from the pack's
 kvconfig.theme [GeneralColors] and colors.map. Wallpaper mode keeps generated
-fallbacks because there is no fixed theme source palette.
-"""
+fallbacks because there is no fixed theme source palette."""
 
 import os
 import re
@@ -81,7 +78,6 @@ def _load_colors_map(colors_map_path, palette_full):
 
 
 class _RoleSource:
-    """Resolve a shell's literal kvconfig colors through its colors.map."""
 
     def __init__(self, general, substitutions):
         self._general = general
@@ -135,7 +131,6 @@ def _resolve_roles(bg, fg, colors, is_dark):
 
 
 def palette_to_pywal(palette):
-    """active-palette.json -> the pywal shape QtRoles consumes."""
     return {
         "special": {"background": palette["bg"], "foreground": palette["fg"]},
         "colors": {
@@ -145,11 +140,8 @@ def palette_to_pywal(palette):
 
 
 class QtRoles:
-    """Resolved Qt palette roles from the active palette + the shell's kvconfig.
-
-    The palette is the only colour authority. The shell's colours.map says which
-    of its kvconfig literals stands for which palette role.
-    """
+    """The palette is the only colour authority. The shell's colours.map says which
+    of its kvconfig literals stands for which palette role."""
 
     def __init__(self, *, pywal, kvconfig_path=None, colors_map_path=None):
         bg = pywal["special"]["background"]

@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
-# Border metrics, window/container radius overrides, standard menu builders,
-# width-multiplier override, theme window height, the rofi wrapper's shared background.
-# External deps: hypr_border_metrics_into, rofi_window_position_theme (core/rofi.sh); rofi_resolve_theme (core/rofi.sh).
-
 rofi_default_border_metrics() {
   local fallback_border="${1:-0}"
   local fallback_width="${2:-0}"
@@ -309,10 +304,21 @@ rofi_with_background_theme() {
   command rofi -theme-str "$(rofi_background_theme)" "$@"
 }
 
-# Cheatsheet geometry: a wide list sized to the monitor and the entry count, in
-# em so it tracks the font scale. Shared so every cheatsheet renders alike.
+ROFI_CHEATSHEET_PX_PER_WIDTH_EM_PER_SCALE=3.26
+ROFI_CHEATSHEET_WIDTH_MIN_EM=35
+ROFI_CHEATSHEET_WIDTH_MAX_EM=72
+ROFI_CHEATSHEET_PX_PER_LINE_PER_SCALE=5
+ROFI_CHEATSHEET_LINES_MIN=10
+ROFI_CHEATSHEET_LINES_MAX=26
+ROFI_CHEATSHEET_EM_PER_LINE=1.9
+ROFI_CHEATSHEET_CHROME_EM=7
+ROFI_CHEATSHEET_HEIGHT_MIN_EM=24
+ROFI_CHEATSHEET_HEIGHT_MAX_EM=48
+ROFI_CHEATSHEET_FALLBACK_WIDTH_PX=800
+ROFI_CHEATSHEET_FALLBACK_HEIGHT_PX=420
+
 rofi_cheatsheet_layout_override() {
-  local entry_count="${1:-13}"
+  local entry_count="$1"
   local font_name="$2"
   local font_scale="$3"
   local logical_width="" logical_height="" width="" lines="" height="" width_px="" height_px=""
@@ -321,26 +327,29 @@ rofi_cheatsheet_layout_override() {
 
   width="${ROFI_KEYBIND_HINT_WIDTH:-}"
   if [[ ! "${width}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-    width="$(awk -v w="${logical_width:-1280}" -v fs="${font_scale}" 'BEGIN { v = w / (fs * 3.26); if (v < 35) v = 35; if (v > 72) v = 72; printf "%.1f", v }')"
+    width="$(awk -v w="${logical_width}" -v fs="${font_scale}" -v px="${ROFI_CHEATSHEET_PX_PER_WIDTH_EM_PER_SCALE}" \
+      -v min="${ROFI_CHEATSHEET_WIDTH_MIN_EM}" -v max="${ROFI_CHEATSHEET_WIDTH_MAX_EM}" \
+      'BEGIN { v = w / (fs * px); if (v < min) v = min; if (v > max) v = max; printf "%.1f", v }')"
   fi
 
   lines="${ROFI_KEYBIND_HINT_LINE:-}"
   if [[ ! "${lines}" =~ ^[0-9]+$ ]]; then
-    lines=$(((${logical_height:-720}) / (font_scale * 5)))
-    ((lines < 10)) && lines=10
-    ((lines > 26)) && lines=26
+    lines="$(hypr_clamp $((logical_height / (font_scale * ROFI_CHEATSHEET_PX_PER_LINE_PER_SCALE))) \
+      "${ROFI_CHEATSHEET_LINES_MIN}" "${ROFI_CHEATSHEET_LINES_MAX}")"
     ((entry_count > 0 && lines > entry_count)) && lines=${entry_count}
   fi
 
   height="${ROFI_KEYBIND_HINT_HEIGHT:-}"
   if [[ ! "${height}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-    height="$(awk -v lines="${lines}" 'BEGIN { v = (lines * 1.9) + 7; if (v < 24) v = 24; if (v > 48) v = 48; printf "%.1f", v }')"
+    height="$(awk -v lines="${lines}" -v per="${ROFI_CHEATSHEET_EM_PER_LINE}" -v chrome="${ROFI_CHEATSHEET_CHROME_EM}" \
+      -v min="${ROFI_CHEATSHEET_HEIGHT_MIN_EM}" -v max="${ROFI_CHEATSHEET_HEIGHT_MAX_EM}" \
+      'BEGIN { v = (lines * per) + chrome; if (v < min) v = min; if (v > max) v = max; printf "%.1f", v }')"
   fi
 
   width_px="$(rofi_length_em_to_px "${width}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
   height_px="$(rofi_length_em_to_px "${height}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
-  [[ "${width_px}" =~ ^[0-9]+$ ]] || width_px=800
-  [[ "${height_px}" =~ ^[0-9]+$ ]] || height_px=420
+  [[ "${width_px}" =~ ^[0-9]+$ ]] || width_px="${ROFI_CHEATSHEET_FALLBACK_WIDTH_PX}"
+  [[ "${height_px}" =~ ^[0-9]+$ ]] || height_px="${ROFI_CHEATSHEET_FALLBACK_HEIGHT_PX}"
 
   printf 'window { width: %sem; height: %sem; } listview { lines: %s; } %s\n' \
     "${width}" "${height}" "${lines}" "$(rofi_window_position_theme "${width_px}" "${height_px}")"

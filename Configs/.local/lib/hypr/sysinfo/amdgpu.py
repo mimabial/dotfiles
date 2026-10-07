@@ -16,38 +16,18 @@ except ImportError:
 
 
 def format_frequency(frequency_hz: int) -> str:
-    """
-    Takes a frequency (in Hz) and normalizes it: `Hz`, `MHz`, or `GHz`
+    return format_size(frequency_hz, binary=False).replace("B", "Hz")
 
-    Returns:
-        str: frequency string with the appropriate suffix applied
-    """
-    return (
-        format_size(frequency_hz, binary=False)
-        .replace("B", "Hz")
-        .replace("bytes", "Hz")
-    )
-
-def format_size(size: int, binary=True) -> str:
-    """
-    Format size in bytes to a human-readable format.
-
-    Args:
-        size (int): Size in bytes.
-        binary (bool): If True, use binary (base 1024) units.
-
-    Returns:
-        str: Formatted size string.
-    """
+def format_size(size_bytes: int, binary=True) -> str:
     suffixes = ["B", "KiB", "MiB", "GiB", "TiB"] if binary else ["B", "KB", "MB", "GB", "TB"]
     base = 1024 if binary else 1000
     index = 0
 
-    while size >= base and index < len(suffixes) - 1:
-        size /= base
+    while size_bytes >= base and index < len(suffixes) - 1:
+        size_bytes /= base
         index += 1
 
-    return f"{size:.0f} {suffixes[index]}"
+    return f"{size_bytes:.0f} {suffixes[index]}"
 
 def main():
     if pyamdgpuinfo is None:
@@ -64,15 +44,15 @@ def main():
     
     try:
         temperature = first_gpu.query_temperature()
-        temperature = f"{temperature:.0f}°C"  # Format temperature to 2 digits with "°C"
+        temperature = f"{temperature:.0f}°C"
         
-        core_clock_hz = first_gpu.query_sclk()  # In Hz
+        core_clock_hz = first_gpu.query_sclk()
         formatted_core_clock = format_frequency(core_clock_hz)
         
         power_usage = first_gpu.query_power()
 
         gpu_load = first_gpu.query_load()
-        formatted_gpu_load = f"{gpu_load:.1f}%"  # Format GPU load to 1 decimal place
+        formatted_gpu_load = f"{gpu_load:.1f}%"
 
         gpu_info = {
             "GPU Temperature": temperature,
@@ -85,18 +65,8 @@ def main():
 
         print(json_output)
     
-    except json.JSONDecodeError as e:  # Handle JSON decoding errors (e.g., invalid JSON)
-        print(f"JSON Error: {str(e)}")
-    except AttributeError as e:  # Handle attribute errors (e.g., method not found)
-        print(f"Attribute Error: {str(e)}")
-    except ValueError as e:  # Handle value errors (e.g., invalid value for formatting)
-        print(f"Value Error: {str(e)}")
-    except RuntimeError as e:  # Handle runtime errors (e.g., issues with querying the GPU)
-        print(f"Runtime Error: {str(e)}")
-    except OSError as e:  # Handle OS-related errors (e.g., hardware issues)
-        print(f"OS Error: {str(e)}")
-    except Exception as e:  # Handle any other unexpected errors
-        print(f"Unexpected Error: {str(e)}")
+    except Exception as error:
+        print(f"{type(error).__name__}: {error}")
 
 if __name__ == "__main__":
     main()

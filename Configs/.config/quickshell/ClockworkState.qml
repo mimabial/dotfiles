@@ -3,6 +3,7 @@ import Quickshell
 
 Item {
     id: root
+    readonly property int maxFieldValue: 999
     required property var shell
 
     readonly property string stopwatchMode: "stopwatch"
@@ -131,16 +132,16 @@ Item {
         }
     }
 
-    function setCountdownMinutes(value) { countdownMinutes = Math.max(0, Math.min(999, Number(value) || 0)); reset() }
+    function setCountdownMinutes(value) { countdownMinutes = Math.max(0, Math.min(maxFieldValue, Number(value) || 0)); reset() }
     function setCountdownSeconds(value) { countdownSeconds = Math.max(0, Math.min(59, Number(value) || 0)); reset() }
     function lap() {
         if (mode !== stopwatchMode || !running) return
         nowMs = Date.now()
         stopwatchLaps = stopwatchLaps.concat([elapsedMs])
     }
-    function setIntervalRounds(value) { intervalRounds = Math.max(1, Math.min(999, Number(value) || 1)); reset() }
+    function setIntervalRounds(value) { intervalRounds = Math.max(1, Math.min(maxFieldValue, Number(value) || 1)); reset() }
     function setIntervalMinutes(value) {
-        intervalMinutes = Math.max(0, Math.min(999, Number(value) || 0))
+        intervalMinutes = Math.max(0, Math.min(maxFieldValue, Number(value) || 0))
         if (intervalMinutes === 0 && intervalSeconds === 0) intervalSeconds = 1
         reset()
     }
@@ -157,10 +158,10 @@ Item {
         shell.store.clockworkSound = pomodoroSoundEnabled
         shell.store.clockworkBreakColor = String(pomodoroBreakColor)
     }
-    function setPomodoroWorkMinutes(value) { pomodoroWorkMinutes = Math.max(1, Math.min(999, Number(value) || 1)); reset(); savePomodoro() }
-    function setPomodoroShortBreakMinutes(value) { pomodoroShortBreakMinutes = Math.max(1, Math.min(999, Number(value) || 1)); reset(); savePomodoro() }
+    function setPomodoroWorkMinutes(value) { pomodoroWorkMinutes = Math.max(1, Math.min(maxFieldValue, Number(value) || 1)); reset(); savePomodoro() }
+    function setPomodoroShortBreakMinutes(value) { pomodoroShortBreakMinutes = Math.max(1, Math.min(maxFieldValue, Number(value) || 1)); reset(); savePomodoro() }
     function setPomodoroCycles(value) { pomodoroCycles = Math.max(1, Math.min(99, Number(value) || 1)); reset(); savePomodoro() }
-    function setPomodoroLongBreakMinutes(value) { pomodoroLongBreakMinutes = Math.max(1, Math.min(999, Number(value) || 1)); reset(); savePomodoro() }
+    function setPomodoroLongBreakMinutes(value) { pomodoroLongBreakMinutes = Math.max(1, Math.min(maxFieldValue, Number(value) || 1)); reset(); savePomodoro() }
     function setPomodoroSoundEnabled(value) { pomodoroSoundEnabled = Boolean(value); savePomodoro() }
 
     function beginPomodoroPhase(kind, cycle, autoRun) {

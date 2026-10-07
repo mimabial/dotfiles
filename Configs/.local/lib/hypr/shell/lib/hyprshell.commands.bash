@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 hyprshell_builtin_commands() {
   printf '%s\n' \
@@ -12,7 +11,7 @@ hyprshell_builtin_commands() {
     "pyinit" "init" "--init" "lock-session" "logout" "pip" "app" "resolve"
 }
 
-initialized() {
+print_init_env() {
   printf 'HYPR_SHELL_INIT=1\n'
   printf 'BIN_DIR=%q\n' "${BIN_DIR}"
   printf 'LIB_DIR=%q\n' "${LIB_DIR}"
@@ -71,7 +70,7 @@ get_release_notes() {
 
 hyprreload() {
   print_log -sec "Hyprland" "Reloading Hyprland Environment"
-  python_initialized
+  python_env_rebuild
   run_lib_script "wallpaper/wallpaper.cache.sh" -t ""
   run_lib_script "theme/theme.switch.sh"
 }

@@ -10,6 +10,7 @@ import "dock/DockModel.js" as DockModel
 
 Item {
     id: root
+    readonly property int maxIndicatorWindows: 5
     required property var shell
     required property real availableWidth
     property bool popupEnabled: true
@@ -311,7 +312,7 @@ Item {
                 Row {
                     id: indicators
                     visible: slot.running && !root.dash
-                    readonly property int count: slot.matched.length > 5 ? 2 : slot.matched.length
+                    readonly property int count: slot.matched.length > root.maxIndicatorWindows ? 2 : slot.matched.length
                     readonly property int dotSize: Style.px(3)
                     spacing: Style.px(1)
                     x: (slot.width - width) / 2
@@ -322,7 +323,7 @@ Item {
                         model: indicators.count
                         delegate: Rectangle {
                             required property int index
-                            readonly property var window: slot.matched.length > 5 && slot.active
+                            readonly property var window: slot.matched.length > root.maxIndicatorWindows && slot.active
                                 ? (index === 0 ? slot.matched.find(entry => entry.address === root.activeAddress)
                                     : slot.matched.find(entry => entry.address !== root.activeAddress)) : slot.matched[index]
                             readonly property bool parked: root.windowParked(window)
@@ -340,7 +341,7 @@ Item {
                         }
                     }
                     Item {
-                        visible: slot.matched.length > 5
+                        visible: slot.matched.length > root.maxIndicatorWindows
                         width: overflow.width
                         height: overflow.height
                         Rectangle {

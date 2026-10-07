@@ -124,8 +124,7 @@ Validate with `jq empty layouts/<name>.json`, then run
 `"icon"` (a playback-state glyph), `"mpris"` (cover art, metadata, and optional
 transport controls), and `"cava"` (an audio spectrum with an optional playback glyph).
 Cava uses the default audio input monitor and shares one process per bars/FPS/smoothing configuration across displays;
-it runs while its appearance is visible and media is playing, or no player exists
-(`showWhenIdle`), and sleeps after a second of silence. `noIcon: true`
+it runs only while its appearance is visible and media is playing. `noIcon: true`
 hides its playback glyph. Its `props` include `cavaBars` (positive integer, default `16`),
 `cavaBarWidth` (default `2`), `cavaGap` (default `1`), and `cavaPosition` (`"center"`,
 `"top"`, or `"bottom"`). Width and gap scale with the bar's UI size. The default
@@ -142,7 +141,7 @@ last until the module reloads; set `cavaMode` in layout props for its initial mo
 It takes `showWhenIdle: true` to keep a placeholder when no player is
 running. The `countdown` and idle `mpris` views show a music-box glyph (`idleIcon`)
 and a short quote that advances on each hover (`idleQuotes`); `icon` shows only the glyph,
-and `cava` the glyph beside a live spectrum of system audio.
+and `cava` the glyph beside its stopped spectrum at 10% opacity.
 With `showArtist: true`, the
 text reads `author — quote`; otherwise it shows just the quote. Idle text elides
 at `maxLabelWidth` or the available bar width. Otherwise the module collapses
@@ -377,7 +376,7 @@ sudo install -D -o root -g root -m 0644 ~/.local/lib/hypr/system/power-manager-b
   `$XDG_RUNTIME_DIR/bitwarden-unlock`, so neither outlives the login. The terminal
   login writes the session file itself, then calls `quickshell ipc call bitwarden
   reload`. `session/lock-screen.sh` and `session/lid-close.sh` call
-  `hypr_lock_password_managers` (`core/common.sh`), whose `bitwarden screenLocked`
+  `hypr_lock_password_managers` (`core/common.bash`), whose `bitwarden screenLocked`
   is the only way the vault learns the screen locked.
 - Alarm/timer and stopwatch state lives under `~/.local/state/quickshell/` and is
   restored by `calendar/alarm-timer.sh`; do not move scheduling into QML timers

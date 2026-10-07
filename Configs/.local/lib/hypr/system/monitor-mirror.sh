@@ -3,7 +3,7 @@ set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/monitor.common.bash"
+source "${HYPR_LIB_DIR}/system/monitor.common.bash"
 
 hypr_help_guard "Usage: hyprshell system/monitor-mirror {on|off|toggle|recover|status}
 Mirror the internal display onto a connected external one (default: toggle)." "$@"

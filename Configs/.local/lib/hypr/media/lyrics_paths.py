@@ -1,5 +1,3 @@
-"""Canonical paths for external lyrics stored below the music library."""
-
 from __future__ import annotations
 
 import os
@@ -60,7 +58,6 @@ def is_in_hidden_lyrics(path: str | Path) -> bool:
 
 
 def lrc_path_for(file_path: str | Path) -> Path:
-    """Return the external LRC path corresponding to an audio file."""
     path = absolute_path(file_path)
     hidden = hidden_lyrics_root()
     if is_in_hidden_lyrics(path):
@@ -73,7 +70,6 @@ def lrc_path_for(file_path: str | Path) -> Path:
 
 
 def lyrics_directory_for(directory: str | Path) -> Path | None:
-    """Return the mirrored lyrics directory for a music-library directory."""
     path = absolute_path(directory)
     try:
         relative = path.relative_to(music_library_dir())

@@ -10,8 +10,8 @@ export XDG_CACHE_HOME="${tmp_dir}/cache" HYPR_CONFIG_HOME="${XDG_CONFIG_HOME}/hy
 export HYPR_CACHE_HOME="${XDG_CACHE_HOME}/hypr" HYPR_DATA_HOME="${XDG_DATA_HOME}/hypr" HYPR_STATE_HOME="${XDG_STATE_HOME}/hypr"
 mkdir -p "${HYPR_CONFIG_HOME}/themes" "${XDG_DATA_HOME}/hypr"
 
-source "${LIB_DIR}/hypr/core/state.sh"
-source "${LIB_DIR}/hypr/core/system.sh"
+source "${LIB_DIR}/hypr/core/state.bash"
+source "${LIB_DIR}/hypr/core/system.bash"
 hypr_hash_cache_runtime_file() { :; }
 source "${THEME_DIR}/lib/desktop.sync.bash"
 check() { [[ "$1" == "$2" ]] || { printf 'failed: %s\n' "$3" >&2; exit 1; }; }
@@ -19,13 +19,16 @@ check() { [[ "$1" == "$2" ]] || { printf 'failed: %s\n' "$3" >&2; exit 1; }; }
 printf '%s\n' "FONT='Env Font'" "ICON_THEME='Env Icons'" >"${HYPR_CONFIG_HOME}/env-theme"
 printf '%s\n' 'vars.set("FONT", "User Font")' 'vars.set("MONOSPACE_FONT", "User Mono")' >"${HYPR_CONFIG_HOME}/userfonts.lua"
 printf '%s\n' '$FONT=Theme Font' '$ICON_THEME=Theme Icons' '$CURSOR_THEME=Theme Cursor' '$CURSOR_SIZE=28' >"${HYPR_CONFIG_HOME}/themes/theme.meta"
-printf '%s\n' '$FONT=Default Font' '$FONT_SIZE=11' '$DOCUMENT_FONT=Default Doc' '$MONOSPACE_FONT=Default Mono' >"${XDG_DATA_HOME}/hypr/variables.meta"
+printf '%s\n' 'local values = {' '    FONT = "Default Font",' '    FONT_SIZE = "11",' '    DOCUMENT_FONT = "Default Doc",' \
+  '    MONOSPACE_FONT = "Default Mono",' '    TERMINAL = "default-term",' '}' >"${HYPR_DATA_HOME}/vars.lua"
+printf '%s\n' 'local vars = require("vars")' 'vars.set("TERMINAL", "prefs-term")' >"${HYPR_CONFIG_HOME}/userprefs.lua"
 
 selected_color_source=theme
 theme_desktop_resolve_base_values
 check "${FONT}" 'Env Font' env-precedence
 check "${MONOSPACE_FONT}" 'User Mono' user-precedence
 check "${DOCUMENT_FONT}" 'Default Doc' default-layer
+check "${TERMINAL}" 'prefs-term' prefs-precedence
 check "${ICON_THEME}:${CURSOR_THEME}:${CURSOR_SIZE}" 'Theme Icons:Theme Cursor:28' theme-assets
 selected_color_source=wallpaper
 theme_desktop_resolve_base_values

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # shellcheck source=/dev/null
-source "${HOME}/.local/lib/hypr/rofi/picker.common.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/rofi/picker.common.bash"
 rofi_picker_bootstrap || exit 1
 
 emoji_dir=""
@@ -155,7 +155,7 @@ emoji_write_selection_source() {
       local fav_count
       fav_count=$(wc -l <"${favorites_data}" 2>/dev/null || echo 0)
       if [ "$fav_count" -gt 0 ]; then
-        printf '%s\n' "⭐ Favorites (${fav_count} emojis)	:cat:favorites:"
+        rofi_picker_category_entry "⭐ Favorites (${fav_count} emojis)" favorites
       fi
     fi
 
@@ -169,9 +169,9 @@ emoji_write_display_rows() {
   local source_file="$1"
   local target_file="$2"
 
-  awk -F'\t' '{
+  awk -F'\t' -v category_tag="${PICKER_CATEGORY_TAG}" '{
     e=$1; l=$2;
-    if (l != "" && l !~ /^:cat:/) {
+    if (l != "" && index(l, category_tag) != 1) {
       print e " " l;
     } else {
       print e;
@@ -224,20 +224,20 @@ emoji_category_source_file() {
   case "${category}" in
     recent)
       if [[ ! -f "${recent_data}" ]] || [[ ! -s "${recent_data}" ]]; then
-        dunstify -t 3000 -i "face-smile" "No recently used emojis"
+        dunstify -t "${NOTIFY_MS}" -i "face-smile" "No recently used emojis"
         return 1
       fi
       ;;
     favorites)
       if [[ ! -f "${favorites_data}" ]] || [[ ! -s "${favorites_data}" ]]; then
-        dunstify -t 3000 -i "face-smile" "No favorite emojis yet"
+        dunstify -t "${NOTIFY_MS}" -i "face-smile" "No favorite emojis yet"
         return 1
       fi
       category_file="${favorites_data}"
       ;;
     *)
       if [[ ! -f "${category_file}" ]]; then
-        dunstify -t 3000 -i "dialog-error" "Category file not found: ${category}"
+        dunstify -t "${NOTIFY_MS}" -i "dialog-error" "Category file not found: ${category}"
         return 1
       fi
       ;;
@@ -273,7 +273,7 @@ emoji_prepare_category_menu() {
   printf -v "${work_dir_name}" '%s' "${work_dir}"
   printf -v "${menu_file_name}" '%s' "${menu_file}"
   {
-    printf '%s\n' "◀ Back	:b:a:c:k:"
+    printf '%s\n' "${PICKER_BACK_ENTRY}"
     cat "${category_file}"
   } >"${menu_file}"
 }
@@ -322,7 +322,7 @@ HELP
 show_multi_person_skin_tone_selector() {
   local base_emoji="$1"
   if [[ ! "${EMOJI_MULTI_PERSON}" =~ ${base_emoji} ]]; then
-    return 1 # Not multi-person
+    return 1
   fi
 
   # Person 1 menu: preview as <base><modifier> so each row shows the colored
@@ -357,7 +357,7 @@ show_multi_person_skin_tone_selector() {
 show_gender_variant_selector() {
   local base_emoji="$1"
   if [[ ! "${EMOJI_GENDER_VARIANTS}" =~ ${base_emoji} ]]; then
-    return 1 # No gender variants
+    return 1
   fi
 
   local gender_choice
@@ -471,11 +471,6 @@ ensure_emoji_runtime_files() {
   rofi_picker_prepare_data_file "${favorites_data}" clean_emoji_file
 }
 
-emoji_selection_category() {
-  [[ "$1" =~ :cat:([a-z]+):$ ]] || return 1
-  printf '%s\n' "${BASH_REMATCH[1]}"
-}
-
 emoji_normalize_selection_record() {
   if [[ "$1" == *$'\t'* ]]; then
     printf '%s\n' "$1"
@@ -495,12 +490,12 @@ emoji_pick_record() {
 
   selection="$(get_emoji_selection)"
   while [[ -n "${selection}" ]]; do
-    category="$(emoji_selection_category "${selection}" 2>/dev/null || true)"
+    category="$(rofi_picker_selected_category "${selection}" || true)"
     [[ -n "${category}" ]] || break
 
     selection="$(show_category_menu "${category}")"
     [[ -n "${selection}" ]] || return 1
-    [[ "${selection}" =~ :b:a:c:k:$ ]] && selection="$(get_emoji_selection)"
+    rofi_picker_is_back "${selection}" && selection="$(get_emoji_selection)"
   done
 
   [[ -n "${selection}" ]] || return 1

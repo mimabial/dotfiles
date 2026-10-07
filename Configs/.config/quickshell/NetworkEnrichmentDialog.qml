@@ -120,7 +120,7 @@ Item {
             : "This is off by default. If enabled, pasting a new URL contacts that website and up to three public redirect destinations, reveals your IP address and each requested URL, and downloads page and favicon data for local processing. Requests are restricted to public HTTP(S) destinations, but fetching untrusted content is never risk-free."
           textFormat: Text.PlainText
           color: root.foreground
-          opacity: 0.76
+          opacity: Commons.Style.secondaryTextAlpha
           font.family: root.fontFamily
           font.pixelSize: Commons.Style.font.bodySmall
           wrapMode: Text.WordWrap

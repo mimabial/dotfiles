@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Persistent notification store. Every command emits JSON for panel callers.
+# Every command emits JSON for panel callers.
 set -euo pipefail
 
 # shellcheck source=/dev/null
@@ -73,12 +73,14 @@ is_themed_icon() {
   return 1
 }
 
+ARCHIVE_IMAGE_MAX_BYTES=$((12 * 1024 * 1024))
+
 copy_image() {
   local src="$1" size="" mime="" ext="" hash="" dest=""
 
   [[ -f "${src}" && -r "${src}" ]] || return 1
   size="$(stat -c %s -- "${src}" 2>/dev/null)" || return 1
-  ((size <= 12582912)) || return 1
+  ((size <= ARCHIVE_IMAGE_MAX_BYTES)) || return 1
   mime="$(file --brief --mime-type -- "${src}" 2>/dev/null || true)"
   [[ "${mime}" == image/* ]] || return 1
 

@@ -9,6 +9,8 @@ import tempfile
 import tomllib
 from pathlib import Path
 
+from _common import ANSI_COLOR_COUNT
+
 DEFAULT_OUT = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "hypr" / "active-palette.json"
 WAL_CACHE   = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "wal" / "colors.json"
 THEME_ROOT  = Path(os.environ.get("HYPR_CONFIG_HOME", str(Path.home() / ".config" / "hypr"))) / "themes"
@@ -35,10 +37,8 @@ def pywal_setting(name: str, variant: str) -> str:
             or PYWAL_DEFAULTS[variant].get(name, ""))
 
 def parse_kitty_theme(path: Path) -> dict:
-    """Parse a kitty.theme into {bg, fg, cursor?, cursor_text?, selection_fg?,
-    selection_bg?, colors[0..15]}."""
     data = {"bg": None, "fg": None, "cursor": None, "cursor_text": None,
-            "selection_fg": None, "selection_bg": None, "colors": [None] * 16}
+            "selection_fg": None, "selection_bg": None, "colors": [None] * ANSI_COLOR_COUNT}
     for raw in path.read_text().splitlines():
         line = raw.split("#", 1)[0].strip() if raw.lstrip().startswith("#") else raw
         m = KEY_VALUE.match(line)
@@ -64,13 +64,11 @@ def parse_kitty_theme(path: Path) -> dict:
                 idx = int(k[5:])
             except ValueError:
                 continue
-            if 0 <= idx < 16:
+            if 0 <= idx < ANSI_COLOR_COUNT:
                 data["colors"][idx] = v
     return data
 
 def parse_palette_toml(path: Path) -> dict:
-    """Parse palette.toml: {background, foreground, cursor-color?, cursor-text?,
-    selection-foreground?, selection-background?, colors[0..15]}."""
     with path.open("rb") as f:
         raw = tomllib.load(f)
     return {
@@ -80,7 +78,7 @@ def parse_palette_toml(path: Path) -> dict:
         "cursor_text":  raw.get("cursor-text"),
         "selection_fg": raw.get("selection-foreground"),
         "selection_bg": raw.get("selection-background"),
-        "colors": (raw.get("colors") or [None] * 16) + [None] * 16,  # pad short lists
+        "colors": (raw.get("colors") or []) + [None] * ANSI_COLOR_COUNT,
     }
 
 def resolve_theme(pack_name: str) -> dict:
@@ -97,7 +95,7 @@ def resolve_theme(pack_name: str) -> dict:
     else:
         sys.exit(f"_palette: no palette.toml or kitty.theme in {pack_dir}")
 
-    parsed["colors"] = parsed["colors"][:16]
+    parsed["colors"] = parsed["colors"][:ANSI_COLOR_COUNT]
     missing = []
     if not parsed["bg"]: missing.append("background")
     if not parsed["fg"]: missing.append("foreground")
@@ -149,19 +147,7 @@ def resolve_wallpaper(image_path: str, variant: str) -> dict:
         sys.exit(f"_palette: pywal failed: {e}")
     if not WAL_CACHE.is_file():
         sys.exit(f"_palette: pywal did not produce {WAL_CACHE}")
-    d = json.loads(WAL_CACHE.read_text())
-    colors = d.get("colors", {})
-    out = {
-        "source": f"wallpaper:{img}",
-        "mode":   "wallpaper",
-        "background": variant,
-        "bg":     d["special"]["background"],
-        "fg":     d["special"]["foreground"],
-        "colors": [colors[f"color{i}"] for i in range(16)],
-    }
-    if d["special"].get("cursor"):
-        out["cursor"] = d["special"]["cursor"]
-    return out
+    return palette_from_wal(json.loads(WAL_CACHE.read_text()), f"wallpaper:{img}", variant)
 
 def atomic_write_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -176,36 +162,40 @@ def atomic_write_json(path: Path, payload: dict) -> None:
         except FileNotFoundError: pass
         raise
 
+def palette_from_wal(wal_cache: dict, source: str, variant: str) -> dict:
+    colors = wal_cache.get("colors", {})
+    special = wal_cache["special"]
+    palette = {
+        "source": source,
+        "mode":   "wallpaper",
+        "background": variant,
+        "bg":     special["background"],
+        "fg":     special["foreground"],
+        "colors": [colors[f"color{i}"] for i in range(ANSI_COLOR_COUNT)],
+    }
+    if special.get("cursor"):
+        palette["cursor"] = special["cursor"]
+    return palette
+
 def resolve_from_wal_cache(variant: str) -> dict:
     if not WAL_CACHE.is_file():
         sys.exit(f"_palette: no wal cache at {WAL_CACHE}")
-    d = json.loads(WAL_CACHE.read_text())
-    colors = d.get("colors", {})
-    img = d.get("wallpaper") or ""
+    wal_cache = json.loads(WAL_CACHE.read_text())
+    img = wal_cache.get("wallpaper") or ""
     if img == "None":
         img = ""
-    out = {
-        "source": f"wallpaper:{img}" if img else "wallpaper:",
-        "mode":   "wallpaper",
-        "background": variant,
-        "bg":     d["special"]["background"],
-        "fg":     d["special"]["foreground"],
-        "colors": [colors[f"color{i}"] for i in range(16)],
-    }
-    if d["special"].get("cursor"):
-        out["cursor"] = d["special"]["cursor"]
-    return out
+    return palette_from_wal(wal_cache, f"wallpaper:{img}", variant)
 
 def main():
-    ap = argparse.ArgumentParser()
-    g = ap.add_mutually_exclusive_group(required=True)
-    g.add_argument("--theme", metavar="PACK")
-    g.add_argument("--wallpaper", metavar="PATH")
-    g.add_argument("--from-wal-cache", action="store_true",
+    parser = argparse.ArgumentParser()
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--theme", metavar="PACK")
+    source.add_argument("--wallpaper", metavar="PATH")
+    source.add_argument("--from-wal-cache", action="store_true",
                    help="reshape existing ~/.cache/wal/colors.json instead of re-running pywal")
-    ap.add_argument("--variant", choices=("dark", "light"), default=os.environ.get("HYPR_COLOR_VARIANT", "dark"))
-    ap.add_argument("--out", default=str(DEFAULT_OUT))
-    args = ap.parse_args()
+    parser.add_argument("--variant", choices=("dark", "light"), default=os.environ.get("HYPR_COLOR_VARIANT", "dark"))
+    parser.add_argument("--out", default=str(DEFAULT_OUT))
+    args = parser.parse_args()
 
     if args.theme:
         payload = resolve_theme(args.theme)

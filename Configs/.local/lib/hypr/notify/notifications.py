@@ -21,6 +21,8 @@ ARCHIVE_DIR = (
 )
 
 DUNST_DEST = "org.freedesktop.Notifications"
+DUNST_CALL_TIMEOUT_MS = 2000
+EMIT_COALESCE_MS = 120
 DUNST_PATH = "/org/freedesktop/Notifications"
 DUNST_IFACE = "org.dunstproject.cmd0"
 PROPS_IFACE = "org.freedesktop.DBus.Properties"
@@ -49,7 +51,7 @@ def _status_error():
 def _call_dunst_dbus(iface, method, params=None):
     return BUS.call_sync(
         DUNST_DEST, DUNST_PATH, iface, method, params, None,
-        Gio.DBusCallFlags.NONE, 2000, None,
+        Gio.DBusCallFlags.NONE, DUNST_CALL_TIMEOUT_MS, None,
     ).unpack()[0]
 
 
@@ -139,7 +141,7 @@ def watch():
     def schedule(*_):
         nonlocal pending
         if not pending:
-            pending = GLib.timeout_add(120, emit)
+            pending = GLib.timeout_add(EMIT_COALESCE_MS, emit)
 
     if BUS is not None:
         BUS.signal_subscribe(

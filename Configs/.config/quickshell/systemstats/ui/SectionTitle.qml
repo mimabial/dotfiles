@@ -3,8 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons
 
-// Small-caps section label in the accent colour, iStat-style ("PROCESSES",
-// "TEMPERATURE", "PUBLIC IP ADDRESSES").
 Text {
   id: root
 

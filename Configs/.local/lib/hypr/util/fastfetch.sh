@@ -12,8 +12,8 @@ fi
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 lib_root="$(cd -- "${script_dir}/.." && pwd -P)"
-xdg_lib="${lib_root}/core/xdg.sh"
-state_lib="${lib_root}/core/state.sh"
+xdg_lib="${lib_root}/core/xdg.bash"
+state_lib="${lib_root}/core/state.bash"
 
 if [[ -r "${xdg_lib}" ]]; then
   # shellcheck source=/dev/null

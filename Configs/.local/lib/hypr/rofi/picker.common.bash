@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
+
+PICKER_CATEGORY_TAG=":cat:"
+PICKER_BACK_TAG=":b:a:c:k:"
+PICKER_BACK_ENTRY="◀ Back	${PICKER_BACK_TAG}"
+
+rofi_picker_category_entry() {
+  local label="$1"
+  local category="$2"
+  printf '%s\t%s%s:\n' "${label}" "${PICKER_CATEGORY_TAG}" "${category}"
+}
+
+rofi_picker_selected_category() {
+  [[ "$1" =~ ${PICKER_CATEGORY_TAG}([a-z]+):$ ]] || return 1
+  printf '%s\n' "${BASH_REMATCH[1]}"
+}
+
+rofi_picker_is_back() {
+  [[ "$1" == *"${PICKER_BACK_TAG}" ]]
+}
 
 rofi_picker_bootstrap() {
   pkill -u "$USER" rofi && exit 0
@@ -10,7 +28,7 @@ rofi_picker_bootstrap() {
   # shellcheck source=/dev/null
   source "${hyprshell_path}" || return 1
   # shellcheck source=/dev/null
-  source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash" || return 1
+  source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/rofi/rofi.lib.bash" || return 1
 }
 
 rofi_picker_hypr_dir_vars() {
@@ -45,7 +63,7 @@ rofi_picker_recent_category_entry() {
   [[ "${recent_count}" =~ ^[0-9]+$ ]] || recent_count=0
   ((recent_count > 0)) || return 1
 
-  printf '%s\n' "${icon} ${label} (${recent_count} ${unit_label})	:cat:recent:"
+  rofi_picker_category_entry "${icon} ${label} (${recent_count} ${unit_label})" recent
 }
 
 rofi_picker_build_recent_first_file() {

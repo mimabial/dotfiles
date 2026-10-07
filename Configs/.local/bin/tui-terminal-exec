@@ -2,7 +2,7 @@
 set -euo pipefail
 
 TERMINAL_TUI="${TERMINAL_TUI:-alacritty}"
-HYPR_LIB_ROOT="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}"
+WINDOW_OPEN_TIMEOUT_SECONDS=8
 
 usage() {
   printf 'Usage: %s [--hypr-profile NAME] [--hypr-size WIDTH HEIGHT] [--hypr-cells COLUMNS ROWS] [--app-id ID] [--title TITLE] [--] [command [args...]]\n' "${0##*/}"
@@ -92,7 +92,7 @@ validate_geometry() {
 load_window_lib() {
   declare -F "$1" >/dev/null 2>&1 && return
   # shellcheck source=/dev/null
-  source "${HYPR_LIB_ROOT}/launch/window.common.bash"
+  source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/launch/window.common.bash"
 }
 
 apply_geometry_profile() {
@@ -141,6 +141,10 @@ resolve_percentages() {
   if [[ "${geometry_options[height]}" == *% ]]; then
     geometry_options[height]=$((${geometry_options[height]%\%} * padded_height / 100))
   fi
+}
+
+app_shows_images() {
+  [[ "$1" == org.tui.Rmpc ]]
 }
 
 validate_exec_command() {
@@ -209,7 +213,7 @@ resize_alacritty_window() {
   [[ -n "${width}" && -n "${height}" && "${width}" != *c && "${height}" != *c ]] || return 0
   load_window_lib launch_source_core_common || return 0
   launch_source_core_common || return 0
-  address="$(hypr_wait_for 8 'openwindow>>*' alacritty_window_address "${pid}")" || return 0
+  address="$(hypr_wait_for "${WINDOW_OPEN_TIMEOUT_SECONDS}" 'openwindow>>*' alacritty_window_address "${pid}")" || return 0
   window_lua="$(hypr_lua_quote "address:${address}")"
   hypr_lua_batch \
     "hl.dsp.window.resize({x=${width}, y=${height}, exact=true, window=${window_lua}})" \
@@ -227,7 +231,9 @@ main() {
   local terminal_pid exit_code=0
 
   parse_args options terminal_args command "$@"
-  [[ "${options[app_id]}" != org.tui.Rmpc ]] || TERMINAL_TUI=kitty
+  if app_shows_images "${options[app_id]}"; then
+    TERMINAL_TUI=kitty
+  fi
   validate_geometry options || return 2
   apply_geometry_profile options || return 2
   resolve_percentages options || return 2

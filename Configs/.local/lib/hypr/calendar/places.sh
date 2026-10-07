@@ -6,6 +6,7 @@
 set -euo pipefail
 
 query="${1:-}"
+MIN_QUERY_LENGTH=3
 
 emit_empty_places_and_exit() {
   printf '[]\n'
@@ -13,7 +14,7 @@ emit_empty_places_and_exit() {
 }
 
 [[ "${CALENDAR_PLACES:-1}" != "0" ]] || emit_empty_places_and_exit
-[[ "${#query}" -ge 3 ]] || emit_empty_places_and_exit
+[[ "${#query}" -ge "${MIN_QUERY_LENGTH}" ]] || emit_empty_places_and_exit
 command -v curl >/dev/null 2>&1 || emit_empty_places_and_exit
 command -v jq >/dev/null 2>&1 || emit_empty_places_and_exit
 

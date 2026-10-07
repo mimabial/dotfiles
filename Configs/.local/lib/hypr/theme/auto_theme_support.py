@@ -6,7 +6,7 @@ import shutil
 import sys
 import tempfile
 from contextlib import contextmanager
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Optional
 from zoneinfo import ZoneInfo
@@ -41,10 +41,10 @@ DEFAULT_CONFIG = {
     "longitude": "auto",
     "timezone": "auto",
     "allow_auto_geolocation": False,
-    "check_interval_seconds": 60,
-    "sun_offset_minutes": 30,
+    "watchdog_interval_seconds": 60,
+    "daylight_inset_minutes": 30,
     "control_hyprland": True,
-    "manual_override_duration": 120,
+    "manual_override_minutes": 120,
 }
 
 
@@ -73,7 +73,7 @@ def wallpaper_state_file() -> Path:
 
 
 def runtime_lock_dir() -> Path:
-    # Mirrors core/common.sh:hypr_runtime_root_dir so this shares a lock
+    # Mirrors core/common.bash:hypr_runtime_root_dir so this shares a lock
     # directory, not just a lock name, with bash state_set.
     root = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}")
     try:
@@ -118,7 +118,8 @@ def positive_seconds(raw_value, default: float) -> float:
 
 
 def watchdog_interval_seconds(config: dict) -> float:
-    return positive_seconds(config.get("check_interval_seconds", 60), 60)
+    default = DEFAULT_CONFIG["watchdog_interval_seconds"]
+    return positive_seconds(config.get("watchdog_interval_seconds", default), default)
 
 
 def load_config(config_file: Path = CONFIG_FILE) -> dict:
@@ -369,16 +370,12 @@ def resolve_auto_location(config: dict) -> None:
             config["timezone"] = "UTC"
 
 
-def get_sun_times(config: dict, target_date: Optional[date] = None) -> tuple[datetime, datetime]:
-    if target_date is None:
-        target_date = datetime.now().date()
+# The day assumed when astral is missing or cannot place the sun.
+FALLBACK_SUNRISE = time(6, 0)
+FALLBACK_SUNSET = time(18, 0)
 
-    if not ASTRAL_AVAILABLE:
-        base = datetime.combine(target_date, datetime.min.time())
-        sunrise = base.replace(hour=6, minute=0, second=0, microsecond=0)
-        sunset = base.replace(hour=18, minute=0, second=0, microsecond=0)
-        return sunrise, sunset
 
+def astral_sun_times(config: dict, target_date: date) -> Optional[tuple[datetime, datetime]]:
     try:
         location = LocationInfo(
             latitude=config["latitude"],
@@ -391,16 +388,19 @@ def get_sun_times(config: dict, target_date: Optional[date] = None) -> tuple[dat
         except Exception:
             tz = ZoneInfo("UTC")
         sun_times = sun(location.observer, date=target_date, tzinfo=tz)
-        sunrise = sun_times["sunrise"].replace(tzinfo=None)
-        sunset = sun_times["sunset"].replace(tzinfo=None)
-        offset = timedelta(minutes=config["sun_offset_minutes"])
-        sunrise += offset
-        sunset -= offset
-        return sunrise, sunset
+        return sun_times["sunrise"].replace(tzinfo=None), sun_times["sunset"].replace(tzinfo=None)
     except Exception as exc:
         print(f"Warning: Failed to calculate sun times: {exc}")
-        now = datetime.combine(target_date, datetime.min.time())
-        return now.replace(hour=6, minute=30), now.replace(hour=17, minute=30)
+        return None
+
+
+def get_sun_times(config: dict, target_date: Optional[date] = None) -> tuple[datetime, datetime]:
+    if target_date is None:
+        target_date = datetime.now().date()
+    sun_times = astral_sun_times(config, target_date) if ASTRAL_AVAILABLE else None
+    sunrise, sunset = sun_times or (datetime.combine(target_date, FALLBACK_SUNRISE), datetime.combine(target_date, FALLBACK_SUNSET))
+    inset = timedelta(minutes=config["daylight_inset_minutes"])
+    return sunrise + inset, sunset - inset
 
 
 def next_sun_boundary(config: dict, now: datetime) -> datetime:

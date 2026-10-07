@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 remove_gaming_package() {
   local name="$1"
@@ -91,7 +90,7 @@ menu_run_action_system() {
     update_process_hypridle) hyprshell service/restart.sh hypridle ;;
     update_process_hyprsunset) hyprshell service/restart.sh hyprsunset ;;
     update_process_quickshell) quickshell ipc call bar reload ;;
-    update_managed_refresh) present_terminal hyprshell service/managed.sh --mode refresh hypr-config hypr-state hyprlock hypridle rofi ;;
+    update_managed_refresh) present_terminal hyprshell service/managed.sh --mode refresh hypr-config hyprlock hypridle rofi ;;
     update_picker_db) present_terminal hyprshell rofi/picker-db-generate.py --boxdraw --glyph ;;
     update_wallpaper_cache) present_terminal hyprshell wallpaper/wallpaper.cache.sh -f ;;
     update_fonts_unused) present_terminal hyprshell fonts/find-unused.sh ;;

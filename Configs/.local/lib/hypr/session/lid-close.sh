@@ -2,13 +2,14 @@
 
 set -euo pipefail
 
-LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell session/lid-close [--no-suspend]
 Lock the screen, wait for it to map, then run the configured lid action. Bound to the lid switch, so it
 must not depend on hypridle: caffeine stops that daemon and would skip the lock." "$@"
+
+LOCK_CONFIRM_TIMEOUT_S=5
 
 suspend=1
 [[ "${1:-}" == "--no-suspend" ]] && suspend=0
@@ -28,7 +29,7 @@ hypr_lock_password_managers {close_fd}>&-
 hyprlock --immediate-render --no-fade-in {close_fd}>&- >"${log}" 2>&1 &
 exec {lock_output}< <(exec tail -n +1 -f --pid="$!" "${log}")
 lock_output_reader=$!
-timeout 5 grep -qEm1 "${locked_marker}" <&"${lock_output}" && locked=1 || locked=0
+timeout "${LOCK_CONFIRM_TIMEOUT_S}" grep -qEm1 "${locked_marker}" <&"${lock_output}" && locked=1 || locked=0
 kill "${lock_output_reader}" 2>/dev/null || true
 rm -f -- "${log}"
 ((locked)) || { notify_send_safe -u critical 'Suspend cancelled' 'Hyprland did not confirm the screen lock'; exit 1; }

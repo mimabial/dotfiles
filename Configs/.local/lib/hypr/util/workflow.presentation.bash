@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 presentation_require_idle_state() {
   declare -F idle_set_manual >/dev/null 2>&1 && return 0
   # shellcheck source=/dev/null
-  source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/session/idle.state.sh"
+  source "${HYPR_LIB_DIR}/session/idle.state.bash"
 }
 
 presentation_enable_keep_awake() {
@@ -56,7 +55,7 @@ presentation_restore_notifications() {
 }
 
 presentation_disable_night_light() {
-  local sunset_script="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/hyprsunset.sh"
+  local sunset_script="${HYPR_LIB_DIR}/system/hyprsunset.sh"
 
   [[ "$(state_get HYPRSUNSET_ENABLED 1)" == 1 ]] || return 0
   state_set WORKFLOW_PRESENTATION_SUNSET_OWNED 1 staterc || return 1
@@ -64,7 +63,7 @@ presentation_disable_night_light() {
 }
 
 presentation_restore_night_light() {
-  local sunset_script="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/hyprsunset.sh"
+  local sunset_script="${HYPR_LIB_DIR}/system/hyprsunset.sh"
 
   [[ "$(state_get WORKFLOW_PRESENTATION_SUNSET_OWNED 0)" == 1 ]] || return 0
   if [[ "$(state_get HYPRSUNSET_ENABLED 1)" == 0 ]]; then
@@ -85,26 +84,27 @@ restore_presentation_side_effects() {
   presentation_restore_notifications || true
 }
 
-reconcile_workflow_side_effects() {
-  local attempt=0
+PRESENTATION_RETRY_ATTEMPTS=20
+PRESENTATION_RETRY_DELAY_S=0.25
 
+presentation_retry() {
+  local attempt=0
+  until "$@"; do
+    ((++attempt < PRESENTATION_RETRY_ATTEMPTS)) || return 0
+    sleep "${PRESENTATION_RETRY_DELAY_S}"
+  done
+}
+
+reconcile_workflow_side_effects() {
   get_info
   if [[ "${current_workflow}" == presentation ]]; then
     presentation_enable_keep_awake || true
     presentation_disable_night_light || true
-    until presentation_pause_notifications; do
-      ((attempt += 1))
-      ((attempt < 20)) || return 0
-      sleep 0.25
-    done
+    presentation_retry presentation_pause_notifications
     return 0
   fi
 
   presentation_restore_keep_awake || true
   presentation_restore_night_light || true
-  until presentation_restore_notifications; do
-    ((attempt += 1))
-    ((attempt < 20)) || return 0
-    sleep 0.25
-  done
+  presentation_retry presentation_restore_notifications
 }

@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons
 
-// Headline figure with a caption under it: "47.1 MB/s" over "Read".
 Column {
   id: root
 
@@ -40,7 +39,7 @@ Column {
     horizontalAlignment: root.align
     text: root.label
     color: root.foreground
-    opacity: 0.55
+    opacity: Style.mutedTextAlpha
     font.family: root.fontFamily
     font.pixelSize: Style.font.caption
     elide: Text.ElideRight

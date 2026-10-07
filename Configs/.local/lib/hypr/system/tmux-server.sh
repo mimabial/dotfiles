@@ -1,5 +1,4 @@
 #!/bin/sh
-# Foreground tmux server for a supervisor (systemd unit or runit run script).
 # `tmux -D` keeps the server in the foreground so the supervisor signals it
 # directly and no kill-server is needed on stop, but it forbids a command, so
 # the default session comes from the startup config instead.

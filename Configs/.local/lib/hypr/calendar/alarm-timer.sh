@@ -3,8 +3,12 @@ set -u
 
 usage() { printf 'Usage: %s {list|add KIND EPOCH [LABEL]|cancel ID|restore}\n' "${0##*/}"; }
 [[ "${1:-}" == -h || "${1:-}" == --help ]] && { usage; exit; }
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/notify.bash"
 
-timer_state_dir="${XDG_STATE_HOME:-$HOME/.local/timer_state_file}/quickshell"
+# sleep's clock stops during suspend, so a wait re-reads the wall clock at least this often.
+WALL_CLOCK_RECHECK_S=30
+timer_state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell"
 timer_state_file="${timer_state_dir}/timers.json"
 timer_script_path="$(readlink -f "${BASH_SOURCE[0]}")"
 mkdir -p "${timer_state_dir}"
@@ -49,7 +53,7 @@ case "${1:-list}" in
     ;;
   wait)
     id="${2:-}"; epoch="${3:-0}"
-    while remaining=$((epoch - $(date +%s))) && ((remaining > 0)); do ((remaining > 30)) && remaining=30; sleep "${remaining}"; done
+    while remaining=$((epoch - $(date +%s))) && ((remaining > 0)); do ((remaining > WALL_CLOCK_RECHECK_S)) && remaining=${WALL_CLOCK_RECHECK_S}; sleep "${remaining}"; done
     exec "${timer_script_path}" fire "${id}"
     ;;
   fire)
@@ -58,7 +62,7 @@ case "${1:-list}" in
     update_timer_state_under_lock 'map(select(.id != $id))' --arg id "${id}"
     kind="$(jq -r .kind <<<"${item}")"; label="$(jq -r .label <<<"${item}")"
     [[ -n "${label}" ]] || label="$([[ "${kind}" == alarm ]] && printf 'Alarm time' || printf 'Time is up')"
-    dunstify -a "Alarm" -u critical -t 0 -h "string:x-dunst-stack-tag:alarm-${id}" \
+    dunstify -a "Alarm" -u critical -t "${NOTIFY_STICKY_MS}" -h "string:x-dunst-stack-tag:alarm-${id}" \
       "$([[ "${kind}" == alarm ]] && printf 'Alarm' || printf 'Timer finished')" "${label}" 2>/dev/null || true
     canberra-gtk-play -i alarm-clock-elapsed 2>/dev/null || pw-play /usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga 2>/dev/null || true
     ;;

@@ -1,4 +1,3 @@
-// Nebula — drifting elliptical blobs painted behind the active visualizer.
 // Not a mode: Player.qml paints this into its own Canvas below the visualizer and applies
 // a single opacity to the flattened result. Scaling each blob instead (globalAlpha) still
 // scales them one draw at a time, so the overlaps would keep stacking.
@@ -39,8 +38,7 @@ var ACCENT_PULL = 0.15
 var ALPHA = 0.50
 var MID_ALPHA = 0.175
 
-// Shortest signed rotation from one hue to another, in degrees.
-function arcDelta(from, to) {
+function shortestHueRotation(from, to) {
   return ((to - from + 540) % 360) - 180
 }
 
@@ -59,8 +57,8 @@ function accentTint(accent, palette, surfaceL, weight) {
   var left = palette[6], right = palette[4]
   if (src.s === 0 || !left || !right) return tint(accent, surfaceL, weight)
   var lh = H.hsl(left).h
-  var mid = lh + arcDelta(lh, H.hsl(right).h) / 2
-  return tint(H.hueShift(accent, arcDelta(src.h, mid) * ACCENT_PULL), surfaceL, weight)
+  var mid = lh + shortestHueRotation(lh, H.hsl(right).h) / 2
+  return tint(H.hueShift(accent, shortestHueRotation(src.h, mid) * ACCENT_PULL), surfaceL, weight)
 }
 
 function render(ctx, d) {

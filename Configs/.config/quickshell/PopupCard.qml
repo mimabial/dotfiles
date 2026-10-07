@@ -17,10 +17,10 @@ PopupWindow {
     property int padding: Style.popupPadding
     property string keyboardHint: "↑↓/Tab move · ←→ adjust · Enter · Esc"
     readonly property int keyboardHintHeight: keyboardHint ? hintText.implicitHeight + Style.sm : 0
-    property color background: shell.role("bg", "#0c1021")
-    property color borderColor: shell.role("alt_br", shell.foreground)
-    property real surfaceOpacity: Style.popupSurfaceOpacity
-    property real borderOpacity: Style.popupBorderOpacity
+    property alias background: cardSurface.background
+    property alias borderColor: cardSurface.borderColor
+    property alias surfaceOpacity: cardSurface.surfaceOpacity
+    property alias borderOpacity: cardSurface.borderOpacity
     // windows that belong to this panel and must not dismiss it (submenu flyouts)
     property var extraGrabWindows: []
     readonly property bool open: popupEnabled && shell.popupName === popupName
@@ -228,17 +228,14 @@ PopupWindow {
     Item {
         id: card
         y: root.cardY; width: parent.width; height: root.cardHeight
-        Rectangle {
+        PopupSurface {
             id: cardSurface
+            shell: root.shell
             anchors.fill: parent
             anchors.topMargin: root.position === "top" ? 0 : root.headerHeight
             anchors.bottomMargin: root.position === "top" ? root.headerHeight : 0
             opacity: root.open ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Style.duration(140); easing.type: Easing.OutCubic } }
-            color: root.shell.alpha(root.background, root.surfaceOpacity)
-            border.color: root.shell.alpha(root.borderColor, root.borderOpacity)
-            border.width: root.shell.borderWidth
-            radius: root.shell.rounding
             FocusScope {
                 id: keyboardFocusScope
                 anchors.fill: parent; anchors.margins: root.padding
@@ -261,16 +258,14 @@ PopupWindow {
                     }
                 }
             }
-            Text {
+            PopupHint {
                 id: hintText
-                visible: root.keyboardHint !== ""
+                shell: root.shell
                 width: parent.width - root.padding * 2
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom; anchors.bottomMargin: Math.max(root.padding / 2, Style.sm)
-                text: root.keyboardHint; wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter
+                text: root.keyboardHint
                 fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Style.caption - 2)
-                color: root.shell.mutedText
-                font.family: root.shell.fontFamily; font.pixelSize: Style.caption
             }
         }
         Item {

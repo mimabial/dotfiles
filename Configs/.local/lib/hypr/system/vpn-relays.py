@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""Mullvad relay locations as JSON, for the bar's VPN panel.
-
-`mullvad relay list` is ~740 lines of country / city / relay indented by tabs.
+"""`mullvad relay list` is ~740 lines of country / city / relay indented by tabs.
 The panel only needs somewhere to point the tunnel, so this collapses it to
 countries and their cities with relay counts, plus whatever location is
 currently pinned.

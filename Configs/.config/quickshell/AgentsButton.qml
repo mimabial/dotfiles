@@ -14,7 +14,7 @@ BarButton {
                 highest = Math.max(highest, Number(limit.percent) || 0)
         return highest
     }
-    readonly property bool alarming: highestUsage >= 0.9
+    readonly property bool alarming: highestUsage >= panel.alarmUsage
     readonly property bool exhausted: highestUsage >= 1
 
     css: "agents"

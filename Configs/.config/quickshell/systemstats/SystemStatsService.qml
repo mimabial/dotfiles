@@ -4,9 +4,7 @@ import Quickshell.Io
 import qs
 import "Model.js" as Model
 
-// One sampler process per shell, shared by every bar instance on every
-// monitor. Holds the latest snapshot, the rolling histories the graphs draw
-// from, and the theme-derived two-hue palette.
+// One sampler process per shell, shared by every bar instance on every monitor.
 Item {
   id: root
 
@@ -65,9 +63,13 @@ Item {
   readonly property bool hasBattery: !!(snapshot && snapshot.battery && snapshot.battery.present)
   readonly property string samplerPath: Qt.resolvedUrl("systemstats_sampler.py").toString().replace(/^file:\/\//, "")
 
+  readonly property int maxLineLength: 512 * 1024
+  readonly property int publicIpMinIntervalMs: 10 * 60 * 1000
+  readonly property int maxRestartDelayMs: 30000
+
   function ingest(line) {
     var text = String(line || "")
-    if (!text || text.length > 524288) return
+    if (!text || text.length > root.maxLineLength) return
     var data
     try { data = JSON.parse(text) } catch (error) { return }
     if (!data || typeof data !== "object") return
@@ -83,9 +85,9 @@ Item {
     var power = data.power || {}
     var domains = Array.isArray(power.domains) ? power.domains : []
     var cpuPower = null
-    for (var d = 0; d < domains.length; d++) {
-      if (/^package/.test(String(domains[d].name)) && domains[d].watts !== null && isFinite(Number(domains[d].watts)))
-        cpuPower = (cpuPower || 0) + Number(domains[d].watts)
+    for (const domain of domains) {
+      if (/^package/.test(String(domain.name)) && domain.watts !== null && isFinite(Number(domain.watts)))
+        cpuPower = (cpuPower || 0) + Number(domain.watts)
     }
     var gpuPower = gpu && gpu.power !== null && gpu.power !== undefined && isFinite(Number(gpu.power)) ? Number(gpu.power) : null
     var elapsed = Number(data.elapsed)
@@ -247,7 +249,7 @@ Item {
 
   function sensorThreshold(id) {
     var value = alertConfig.sensorThresholds[String(id)]
-    return value === undefined || value === null || !isFinite(Number(value)) ? -1 : Model.clamp(value, 40, 120)
+    return value === undefined || value === null || !isFinite(Number(value)) ? -1 : Model.clamp(value, Model.SENSOR_ALERT_MIN, Model.SENSOR_ALERT_MAX)
   }
 
   function setSensorThreshold(id, value) {
@@ -438,7 +440,7 @@ Item {
   // A request made before the sampler is up is held until it starts.
   function requestPublicIp(force) {
     var now = Date.now()
-    if (!force && now - publicIpStamp < 600000) return
+    if (!force && now - publicIpStamp < root.publicIpMinIntervalMs) return
     publicIpStamp = now
     if (sampler.running) send("pubip")
     else publicIpPending = true
@@ -451,7 +453,7 @@ Item {
   }
 
   function configure(refreshSeconds, requestedHistorySeconds) {
-    var interval = Model.clamp(refreshSeconds, 0.1, 30)
+    var interval = Model.clamp(refreshSeconds, Model.MIN_REFRESH_SECONDS, Model.MAX_REFRESH_SECONDS)
     var seconds = Model.clamp(requestedHistorySeconds, 30, 3600)
     historySeconds = seconds
     var samples = Math.round(Model.clamp(seconds / interval, 60, 3600))
@@ -502,10 +504,10 @@ Item {
   }
 
   function summary() {
-    var s = snapshot || {}
-    var cpu = s.cpu || {}
-    var mem = s.mem || {}
-    var net = s.net || {}
+    var current = snapshot || {}
+    var cpu = current.cpu || {}
+    var mem = current.mem || {}
+    var net = current.net || {}
     return {
       ready: ready,
       seq: seq,
@@ -514,8 +516,8 @@ Item {
       memoryPercent: mem.total > 0 ? Math.round(mem.used / mem.total * 1000) / 10 : 0,
       download: net.rx,
       upload: net.tx,
-      gpu: s.gpu ? s.gpu.util : null,
-      battery: s.battery && s.battery.present ? s.battery.percent : null,
+      gpu: current.gpu ? current.gpu.util : null,
+      battery: current.battery && current.battery.present ? current.battery.percent : null,
       error: samplerError
     }
   }
@@ -581,7 +583,7 @@ Item {
       root.ready = false
       if (root.destroying) return
       root.restartCount += 1
-      restartTimer.interval = Math.min(30000, 1000 * Math.pow(2, Math.min(5, root.restartCount)))
+      restartTimer.interval = Math.min(root.maxRestartDelayMs, 1000 * Math.pow(2, root.restartCount))
       restartTimer.restart()
     }
   }
@@ -594,7 +596,8 @@ Item {
 
   // A healthy sampler that has streamed for a while resets the backoff.
   Timer {
-    interval: 60000
+    id: backoffResetTimer
+    interval: 60 * 1000
     repeat: true
     running: root.ready
     onTriggered: root.restartCount = 0

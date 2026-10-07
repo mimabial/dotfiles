@@ -6,6 +6,7 @@ import "CalendarMath.js" as CalendarMath
 
 Item {
     id: pane
+    readonly property int maxChips: 3
     required property var popup
     required property real calendarHeight
     width: pane.popup.agendaVisible ? pane.popup.agendaWidth : 0
@@ -344,7 +345,7 @@ Column {
                     anchors.verticalCenter: parent.verticalCenter
 
                     Repeater {
-                        model: dayCard.events.slice(0, 3)
+                        model: dayCard.events.slice(0, pane.maxChips)
                         Rectangle {
                             id: chip
                             required property var modelData
@@ -388,9 +389,9 @@ Column {
                         }
                     }
                     Text {
-                        visible: dayCard.events.length > 3
+                        visible: dayCard.events.length > pane.maxChips
                         width: chipColumn.width
-                        text: "+" + (dayCard.events.length - 3) + " more"
+                        text: "+" + (dayCard.events.length - pane.maxChips) + " more"
                         color: pane.popup.shell.alpha(pane.popup.shell.foreground, .4)
                         font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption
                         font.italic: true

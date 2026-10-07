@@ -15,8 +15,10 @@ fi
 
 [[ $address =~ ^0x[0-9a-fA-F]+$ ]] || exit 2
 
-# Let the layer-shell surface unmap before taking final compositor focus.
-sleep 0.2
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/events.bash"
+overview_unmapped() { ! hypr_layer_mapped expose-window-overview; }
+# Focus taken while the overlay is still mapped lands on the layer, not the window.
+hypr_wait_for 2 'closelayer>>expose-window-overview' overview_unmapped || true
 
 if [[ $move_cursor != "true" ]]; then
   cursor_position=$(hyprctl cursorpos 2>/dev/null || true)

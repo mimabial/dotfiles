@@ -4,6 +4,7 @@ import Quickshell.Io
 
 PopupCard {
     id: root
+    readonly property real alarmUsage: 0.9
     popupName: "agents"
     keyboardHint: "↑↓/Tab move · Enter details · R refresh · Esc close"
     contentWidth: Style.px(380)
@@ -210,7 +211,7 @@ PopupCard {
                         Rectangle {
                             width: parent.width * Math.max(0, Math.min(1, Number(limitRow.modelData.percent)))
                             height: parent.height; radius: parent.radius
-                            color: Number(limitRow.modelData.percent) >= 0.9
+                            color: Number(limitRow.modelData.percent) >= root.alarmUsage
                                 ? root.shell.role("error", root.shell.accent)
                                 : root.shell.role("act_br", root.shell.accent)
                         }

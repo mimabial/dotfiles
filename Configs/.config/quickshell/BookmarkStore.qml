@@ -1,9 +1,13 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "CalendarMath.js" as CalendarMath
 
 Item {
   id: root
+  readonly property int maxHelperResponseLength: 64 * 1024
+  readonly property int maxFaviconLength: 140000
+  readonly property int dataVersion: 3
 
   readonly property string dataHome: {
     var configured = String(Quickshell.env("XDG_DATA_HOME") || "")
@@ -254,7 +258,7 @@ Item {
 
   function normalizeFavicon(value) {
     var favicon = String(value || "")
-    if (favicon.length > 140000 || !/^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(favicon))
+    if (favicon.length > maxFaviconLength || !/^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(favicon))
       return ""
     return favicon
   }
@@ -275,7 +279,7 @@ Item {
     var now = root.normalizeLastOpenedAt(timestamp) || Date.now()
     if (!score || !lastOpenedAt || now <= lastOpenedAt)
       return score
-    var elapsedDays = (now - lastOpenedAt) / 86400000
+    var elapsedDays = (now - lastOpenedAt) / CalendarMath.MS_PER_DAY
     return score * Math.pow(0.5, elapsedDays / root.usageHalfLifeDays)
   }
 
@@ -348,7 +352,7 @@ Item {
       source = data
     } else if (data && typeof data === "object" && Array.isArray(data.bookmarks)) {
       source = data.bookmarks
-      if (Number(data.version || 0) > 3)
+      if (Number(data.version || 0) > dataVersion)
         throw new Error("bookmarks.json uses a newer data format")
     } else {
       throw new Error("bookmarks.json must contain a bookmarks array")
@@ -433,7 +437,7 @@ Item {
 
   function parseSmallHelperResponse(data) {
     var output = String(data || "")
-    if (output.length > 64 * 1024)
+    if (output.length > maxHelperResponseLength)
       throw new Error("Helper returned too much data")
     return JSON.parse(output)
   }
@@ -480,7 +484,7 @@ Item {
     root.pendingUsageOpens = 0
     if (!Array.isArray(next) || next.length > root.maxBookmarks)
       return false
-    var contents = JSON.stringify({version: 3, bookmarks: next}, null, 2) + "\n"
+    var contents = JSON.stringify({version: dataVersion, bookmarks: next}, null, 2) + "\n"
     if (root.utf8ByteLength(contents, root.maxStoreBytes) > root.maxStoreBytes) {
       root.error = "Bookmark data is too large to save"
       return false
@@ -834,7 +838,7 @@ Item {
 
   Timer {
     id: usageSaveTimer
-    interval: 300000
+    interval: 5 * 60 * 1000
     repeat: false
     onTriggered: root.flushUsage()
   }

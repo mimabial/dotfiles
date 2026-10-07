@@ -307,75 +307,9 @@ update_carry_state_and_emit_todos() {
   mkdir -p "${todo_carry_state_file%/*}"
   (
     flock -x 9
-    python3 - "${XDG_CACHE_HOME:-$HOME/.cache}/todoman/cache.sqlite3" \
-      "${todo_carry_state_file}" "$((1 - todos_all))" 3< <(todo "${args[@]}" 2>/dev/null) <<'TODOPY'
-import datetime, json, os, sqlite3, sys, tempfile
-
-cache, state_path, mutate = sys.argv[1], sys.argv[2], sys.argv[3] == "1"
-try:
-    todos = json.load(os.fdopen(3))
-except (OSError, ValueError):
-    print('{"todos":[]}')
-    raise SystemExit
-
-uids = {}
-try:
-    with sqlite3.connect(f"file:{cache}?mode=ro", uri=True) as con:
-        uids = dict(con.execute("SELECT id, uid FROM todos"))
-except sqlite3.Error:
-    pass
-for item in todos:
-    item["uid"] = str(uids.get(item.get("id"), "id:" + str(item.get("id", ""))))
-
-try:
-    with open(state_path, encoding="utf-8") as handle:
-        state = json.load(handle)
-except (OSError, ValueError):
-    state = {}
-try:
-    with open(os.path.join(os.path.dirname(state_path), "task-order.json"), encoding="utf-8") as handle:
-        order_state = json.load(handle)
-    later = set(order_state.get("later", [])) if isinstance(order_state, dict) else set()
-except (OSError, ValueError):
-    later = set()
-today = datetime.date.today().isoformat()
-old_items = state.get("items", {}) if isinstance(state.get("items"), dict) else {}
-notice = 0
-
-if mutate:
-    rolled = bool(state.get("day")) and state["day"] < today
-    next_items = {}
-    for item in todos:
-        if item.get("completed") or item.get("due") is not None or item["uid"] in later:
-            continue
-        uid = item["uid"]
-        saved = old_items.get(uid, {})
-        carries = max(0, int(saved.get("carries", 0) or 0))
-        if rolled and saved:
-            carries += 1
-            notice += 1
-        next_items[uid] = {"firstSeen": saved.get("firstSeen", today), "carries": carries}
-    next_state = {"day": today, "items": next_items}
-    if next_state != state:
-        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(state_path))
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                json.dump(next_state, handle, separators=(",", ":"))
-                handle.write("\n")
-            os.replace(tmp, state_path)
-        finally:
-            if os.path.exists(tmp):
-                os.unlink(tmp)
-    state = next_state
-
-items = state.get("items", {})
-for item in todos:
-    item["carries"] = 0 if item["uid"] in later else int(items.get(item["uid"], {}).get("carries", 0) or 0)
-todos.sort(key=lambda item: (
-    bool(item.get("completed")), item.get("due") if item.get("due") is not None else 99999999999,
-    item.get("priority") or 10, str(item.get("summary", "")).lower()))
-print(json.dumps({"todos": todos, "carryNotice": notice}, separators=(",", ":")))
-TODOPY
+    python3 "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/calendar/lib/todo_carry.py" \
+      "${XDG_CACHE_HOME:-$HOME/.cache}/todoman/cache.sqlite3" "${todo_carry_state_file}" "$((1 - todos_all))" \
+      < <(todo "${args[@]}" 2>/dev/null)
   ) 9>"${todo_carry_state_file}.lock" || printf '{"todos":[]}\n'
 }
 

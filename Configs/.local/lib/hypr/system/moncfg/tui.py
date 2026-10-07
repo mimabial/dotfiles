@@ -35,8 +35,18 @@ GRAY = (
     else {"grid": "#3b3b3b", "frame": "#5b5b5b", "label": "#6b6b6b"}
 )
 PREVIEW_SECONDS = 10
+SDR_MAX = 3
+SDR_STEPS_PER_UNIT = 20
+HELP_KEY_WIDTH = 20
+DETAIL_LABEL_WIDTH = 11
+OPTION_LABEL_WIDTH = 15
+MIN_MONITOR_BOX_COLUMNS = 12
+MIN_MONITOR_BOX_ROWS = 7
+
+
 CELL_ASPECT = 2
 GRID_STEP = (8, 4)
+MIN_CANVAS_SIZE = (10, 5)
 TABS = {"layout": "Layout", "profiles": "Profiles", "workspaces": "Workspaces"}
 PAGES = {
     "display": ("enabled", "mode", "scale", "vrr", "transform", "x", "y", "mirror_of"),
@@ -99,7 +109,7 @@ def cycle(options, current, delta: int):
 
 
 def sdr_step(value: float, delta: int) -> float:
-    return round(min(3, max(0, value + delta / 20)), 2)
+    return round(min(SDR_MAX, max(0, value + delta / SDR_STEPS_PER_UNIT)), 2)
 
 
 def model_of(output: dict) -> str:
@@ -113,7 +123,7 @@ def table(pairs, width: int) -> Text:
 
 
 def option(label: str, value, option_id: str) -> Option:
-    return Option(Text.assemble((f"{label:<15}", GRAY["label"]), str(value)), id=option_id)
+    return Option(Text.assemble((f"{label:<{OPTION_LABEL_WIDTH}}", GRAY["label"]), str(value)), id=option_id)
 
 
 def hint_line(spec: str) -> Text:
@@ -193,7 +203,7 @@ class Help(ModalScreen):
 
     def compose(self) -> ComposeResult:
         yield Static(Text("\n\n").join(
-            Text.assemble((group, "bold"), "\n", table([(keys, action) for keys, action in rows], 20))
+            Text.assemble((group, "bold"), "\n", table([(keys, action) for keys, action in rows], HELP_KEY_WIDTH))
             for group, rows in HELP.items()
         ), classes="dialog")
 
@@ -254,7 +264,7 @@ class Canvas(Widget, can_focus=True):
 
     def compose(self) -> ComposeResult:
         width, height = self.content_size
-        if width < 10 or height < 5:
+        if width < MIN_CANVAS_SIZE[0] or height < MIN_CANVAS_SIZE[1]:
             return
         yield Static(grid(width, height), classes="grid")
         outputs = daemon.placed(self.profile)
@@ -269,7 +279,7 @@ class Canvas(Widget, can_focus=True):
         pad_x, pad_y = (width - span_x / cell) / 2, (height - span_y / row_height) / 2
         for output, x, y, w, h in rects:
             column, line = round(pad_x + (x - left) / cell), round(pad_y + (y - top) / row_height)
-            region = Region(column, line, max(12, round(w / cell)), max(7, round(h / row_height)))
+            region = Region(column, line, max(MIN_MONITOR_BOX_COLUMNS, round(w / cell)), max(MIN_MONITOR_BOX_ROWS, round(h / row_height)))
             yield Card(self.body(output), output["key"], cell, region, output["key"] == self.selected)
 
 
@@ -533,7 +543,7 @@ class MonitorEditor(App):
             ("Workspace", display.get("workspace", "")),
             ("DPMS", "on" if display.get("dpms") else "off"),
             ("Panel mm", panel),
-        ], 11)
+        ], DETAIL_LABEL_WIDTH)
 
     def profile_details(self, summary: dict, profile: dict) -> Text:
         standing = ("Active", "bold green") if summary["active"] else ("Saved", "bold")
@@ -548,7 +558,7 @@ class MonitorEditor(App):
             ("Displays", f"{summary['output_count']} saved · {summary['connected_outputs']} connected"),
             ("Exec", profile.get("exec") or "(not set)"),
             *(("Workspaces" if index == 0 else "", line) for index, line in enumerate(plan)),
-        ], 11)
+        ], DETAIL_LABEL_WIDTH)
 
     def workspace_card(self, output: dict) -> Text:
         rows = workspaces.plan(planned(self.draft))
@@ -587,10 +597,10 @@ class MonitorEditor(App):
         rows = [
             option("Enabled", "on" if settings.get("enabled") else "off", "enabled"),
             option("Strategy", strategy, "strategy"),
-            option("Max workspaces", len(rules) if manual else settings.get("max_workspaces", 9), "count"),
+            option("Max workspaces", len(rules) if manual else settings.get("max_workspaces", profiles.DEFAULT_MAX_WORKSPACES), "count"),
         ]
         if strategy == "sequential":
-            rows.append(option("Group size", settings.get("group_size", 3), "group_size"))
+            rows.append(option("Group size", settings.get("group_size", profiles.DEFAULT_GROUP_SIZE), "group_size"))
         heading = Text("Assignments    ←/→ reassigns" if manual else "Monitor order  ←/→ reorders", GRAY["label"])
         rows += [Option(" ", disabled=True), Option(heading, disabled=True)]
         if manual:
@@ -621,7 +631,7 @@ class MonitorEditor(App):
                 rules.pop()
             settings["rules"] = rules
         elif kind in ("count", "group_size"):
-            field, default = ("max_workspaces", 9) if kind == "count" else ("group_size", 3)
+            field, default = ("max_workspaces", profiles.DEFAULT_MAX_WORKSPACES) if kind == "count" else ("group_size", profiles.DEFAULT_GROUP_SIZE)
             settings[field] = max(1, settings.get(field, default) + delta)
         elif kind == "rule":
             rules[int(index)]["output_key"] = cycle(keys, rules[int(index)]["output_key"], delta)

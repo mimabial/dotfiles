@@ -26,11 +26,11 @@ class SettingsTest(unittest.TestCase):
         rows = {row["id"]: row for page in self.app.pages for row in page["rows"]}
         self.app.values.update(color_source="theme", color_mode="dark")
         self.assertEqual(self.app.command(rows["theme"], "Tokyo Night", 1),
-                         settings_tui.helper("theme/theme.switch.sh", "-s", "Tokyo Night"))
+                         settings_tui.lib_command("theme/theme.switch.sh", "-s", "Tokyo Night"))
         self.assertEqual(self.app.command(rows["bar_layout"], "top", 1),
-                         settings_tui.helper("quickshell/layout.sh", "set", "top"))
+                         settings_tui.lib_command("quickshell/layout.sh", "set", "top"))
         self.assertEqual(self.app.command(rows["color_mode"], "light", 1),
-                         settings_tui.helper("theme/color-mode.sh", "-q", "--set", "theme", "light"))
+                         settings_tui.lib_command("theme/color-mode.sh", "-q", "--set", "theme", "light"))
 
     def test_compose_edit_keeps_other_sequences_and_system_include(self):
         with tempfile.TemporaryDirectory() as directory:

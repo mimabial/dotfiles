@@ -1,10 +1,9 @@
-// Mosaic — exact cliamp vis_mosaic.go: static heatmap of shade-block tiles that
-// ignite in place when their assigned band crosses a per-cell threshold
+// Port of cliamp vis_mosaic.go.
 .pragma library
 .import "helpers.js" as H
 
-var CELL_W = 2    // characters per tile
-var CELL_GAP = 1  // characters between tiles
+var CELL_CHARS = 2
+var CELL_GAP_CHARS = 1
 var DECAY = 0.88
 
 // Discrete brightness tiers. tier -1 renders as spaces so unlit tiles vanish.
@@ -29,8 +28,8 @@ function levelFor(intensity) {
 }
 
 function tileCount(panelWidth) {
-  if (panelWidth < CELL_W) return 0
-  return Math.floor((panelWidth + CELL_GAP) / (CELL_W + CELL_GAP))
+  if (panelWidth < CELL_CHARS) return 0
+  return Math.floor((panelWidth + CELL_GAP_CHARS) / (CELL_CHARS + CELL_GAP_CHARS))
 }
 
 // Each cell is wired to a band biased by its row (top treble, bottom bass) with a
@@ -81,7 +80,6 @@ function render(ctx, d) {
   ensureGrid(s, numRows, tiles, bands.length || 24)
   var cells = s.mosaicCells
 
-  // Ignite above threshold, then decay in place. Silence just decays.
   for (var i = 0; i < cells.length; i++) {
     var cell = cells[i]
     var level = bands.length ? (bands[cell.bandIdx] || 0) : 0
@@ -106,8 +104,8 @@ function render(ctx, d) {
       var lvl = levelFor(cells[r * tiles + t].value)
       if (lvl.tier < 0) continue
       ctx.fillStyle = tone[lvl.tier]
-      for (var k = 0; k < CELL_W; k++) {
-        ctx.fillText(lvl.glyph, (t * (CELL_W + CELL_GAP) + k) * charW + charW / 2, cy)
+      for (var k = 0; k < CELL_CHARS; k++) {
+        ctx.fillText(lvl.glyph, (t * (CELL_CHARS + CELL_GAP_CHARS) + k) * charW + charW / 2, cy)
       }
     }
   }

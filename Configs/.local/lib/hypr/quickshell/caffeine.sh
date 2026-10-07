@@ -4,7 +4,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
-source "${script_dir}/../session/idle.state.sh"
+source "${script_dir}/../session/idle.state.bash"
 
 manual_on=0
 audio_enabled=1

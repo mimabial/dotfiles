@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
-# Theme file resolution, @import walking, fullscreen detection, icon theme, launcher style.
-# External deps: rofi_resolve_asset, rofi_resolve_theme (core/rofi.sh); get_hypr_conf (core/common).
-
 rofi_normalize_launcher_style() {
   local style_ref="${1:-style_1}"
   [[ -z "${style_ref}" ]] && style_ref="style_1"

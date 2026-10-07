@@ -3,8 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons
 
-// Card title line: name in the accent on the left, a quiet detail on the
-// right ("CPU" ......... "4.85 GHz, 49°").
 Item {
   id: root
 
@@ -38,7 +36,7 @@ Item {
     anchors.verticalCenter: parent.verticalCenter
     text: root.detail
     color: root.foreground
-    opacity: 0.6
+    opacity: Style.mutedTextAlpha
     font.family: root.fontFamily
     font.pixelSize: Style.font.bodySmall
   }

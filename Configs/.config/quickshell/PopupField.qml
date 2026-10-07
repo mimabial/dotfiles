@@ -1,8 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 
-// The text input every popup form uses. An inputMask field is the reason this
-// is shared: an untouched mask still carries its separators, so the cursor has
+// An inputMask field is the reason this is shared: an untouched mask still carries its separators, so the cursor has
 // to be pinned to the start or the first keystroke lands mid-pattern.
 TextField {
     id: root

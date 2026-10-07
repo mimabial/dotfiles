@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import atomic_write, cache_hit, cache_store
+from _common import ANSI_COLOR_COUNT, atomic_write, cache_hit, cache_store, short_digest
 
 STATE_HOME = Path(
     os.environ.get(
@@ -40,13 +40,13 @@ def palette_mapping(palette):
     colors = palette.get("colors")
     if not isinstance(bg, str) or not isinstance(fg, str):
         raise ValueError("palette must contain string bg and fg values")
-    if not isinstance(colors, list) or len(colors) < 16 or not all(
-        isinstance(color, str) for color in colors[:16]
+    if not isinstance(colors, list) or len(colors) < ANSI_COLOR_COUNT or not all(
+        isinstance(color, str) for color in colors[:ANSI_COLOR_COUNT]
     ):
-        raise ValueError("palette must contain at least 16 color strings")
+        raise ValueError(f"palette must contain at least {ANSI_COLOR_COUNT} color strings")
 
     mapping = {"background": bg, "foreground": fg}
-    mapping.update({f"color{i}": color for i, color in enumerate(colors[:16])})
+    mapping.update({f"color{i}": color for i, color in enumerate(colors[:ANSI_COLOR_COUNT])})
     return mapping
 
 
@@ -64,7 +64,7 @@ def main():
     for name, path in sorted(TEMPLATES.items()):
         hasher.update(name.encode())
         hasher.update(path.read_bytes())
-    digest = hasher.hexdigest()[:16]
+    digest = short_digest(hasher)
 
     if cache_hit(APP, digest) and all((OUT_DIR / name).is_file() for name in TEMPLATES):
         return

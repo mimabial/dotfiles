@@ -1,7 +1,3 @@
-/**
- * Game launcher: Steam Deck style.
- */
-
 configuration {
     modi:                        "drun";
     show-icons:                  true;

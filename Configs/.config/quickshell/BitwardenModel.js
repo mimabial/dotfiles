@@ -1,4 +1,5 @@
 .pragma library
+.import "CalendarMath.js" as CalendarMath
 
 var TYPES = {
     1: { label: "Login", icon: "\u{f0306}", part: "login" },
@@ -8,6 +9,7 @@ var TYPES = {
     5: { label: "SSH key", icon: "\u{f08c0}", part: "sshKey" }
 }
 var LOGIN_TYPE = 1
+var SSH_KEY_TYPE = 5
 var CUSTOM_FIELD_TYPE = { text: 0, hidden: 1 }
 
 // One schema drives both the detail view and the edit form, so a field added
@@ -29,7 +31,7 @@ const FIELDS = {
 }
 
 function type(item) { return TYPES[item.type] || TYPES[2] }
-function editable(item) { return item.type !== 5 }
+function editable(item) { return item.type !== SSH_KEY_TYPE }
 
 function read(item, path) {
     const value = path.split(".").reduce((node, key) => node ? node[key] : undefined, item)
@@ -99,7 +101,7 @@ function send(name, text, days, maxViews, password) {
     return {
         object: "send", type: 0, name: name || "Untitled Send", notes: null, file: null,
         text: { text: text, hidden: false }, maxAccessCount: maxViews > 0 ? maxViews : null,
-        deletionDate: new Date(Date.now() + Math.max(1, days) * 86400000).toISOString(), expirationDate: null,
+        deletionDate: new Date(Date.now() + Math.max(1, days) * CalendarMath.MS_PER_DAY).toISOString(), expirationDate: null,
         password: password || null, emails: null, disabled: false, hideEmail: false
     }
 }

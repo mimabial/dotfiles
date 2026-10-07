@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require rofi || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash"

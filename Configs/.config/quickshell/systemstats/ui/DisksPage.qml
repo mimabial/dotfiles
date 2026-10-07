@@ -94,7 +94,7 @@ Column {
       visible: root.volumes.length === 0
       text: "No mounted volumes"
       color: root.foreground
-      opacity: 0.5
+      opacity: Style.mutedTextAlpha
       font.family: root.fontFamily
       font.pixelSize: Style.font.bodySmall
     }
@@ -120,7 +120,7 @@ Column {
           size: Style.space(24)
           thickness: Style.spaceReal(3)
           value: row.fraction
-          color: row.fraction >= 0.92 ? root.danger : (row.fraction >= 0.8 ? root.warn : root.s1)
+          color: row.fraction >= Model.DISK_DANGER ? root.danger : (row.fraction >= Model.DISK_WARN ? root.warn : root.s1)
           foreground: root.foreground
         }
 
@@ -129,7 +129,7 @@ Column {
           anchors.centerIn: ring
           text: Math.round(row.fraction * 100)
           color: root.foreground
-          opacity: 0.85
+          opacity: Style.secondaryTextAlpha
           font.family: root.fontFamily
           font.pixelSize: Math.max(7, Style.font.caption - 2)
           font.bold: true
@@ -159,7 +159,7 @@ Column {
             width: parent.width
             text: Model.bytesText(row.modelData.avail) + " available"
             color: root.foreground
-            opacity: 0.55
+            opacity: Style.mutedTextAlpha
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
             elide: Text.ElideRight
@@ -187,7 +187,7 @@ Column {
             anchors.right: parent.right
             text: [row.modelData.fstype, row.tempText].filter(function(v) { return !!v }).join(" · ")
             color: root.foreground
-            opacity: 0.45
+            opacity: Style.faintTextAlpha
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
           }
@@ -257,7 +257,7 @@ Column {
       down: root.writeHistory
       upColor: root.s2
       downColor: root.s1
-      floor: 262144
+      minimumCeiling: Model.DISK_SCALE_FLOOR
       midlineColor: Util.alpha(root.foreground, 0.18)
     }
 

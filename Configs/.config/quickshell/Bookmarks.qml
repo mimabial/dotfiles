@@ -100,13 +100,6 @@ Item {
         ? "Keywords"
         : "Bookmarks"
 
-  function parseSmallHelperResponse(data) {
-    var output = String(data || "")
-    if (output.length > 64 * 1024)
-      throw new Error("Helper returned too much data")
-    return JSON.parse(output)
-  }
-
   function syncFirefox() {
     if (!root.opened)
       return
@@ -856,7 +849,7 @@ Item {
               + root.activeTotal
 
             color: Commons.Color.menu.text
-            opacity: 0.48
+            opacity: Commons.Style.mutedTextAlpha
 
             font.family: Commons.Style.font.menuFamily
             font.pixelSize: Commons.Style.font.caption
@@ -1051,7 +1044,7 @@ Item {
                   textFormat: Text.PlainText
 
                   color: Commons.Color.menu.text
-                  opacity: 0.52
+                  opacity: Commons.Style.mutedTextAlpha
 
                   font.family: Commons.Style.font.menuFamily
                   font.pixelSize: Commons.Style.font.bodySmall
@@ -1118,7 +1111,7 @@ Item {
               textFormat: Text.PlainText
 
               color: Commons.Color.menu.text
-              opacity: 0.7
+              opacity: Commons.Style.secondaryTextAlpha
 
               font.family: Commons.Style.font.menuFamily
               font.pixelSize: Commons.Style.font.title

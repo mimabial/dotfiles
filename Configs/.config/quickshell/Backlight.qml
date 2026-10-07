@@ -3,8 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Single source for screen brightness. The device is resolved once via
-// brightnessctl, then the value is read straight from sysfs so routine updates
+// The device is resolved once via brightnessctl, then the value is read straight from sysfs so routine updates
 // cost a file read rather than a subprocess.
 Singleton {
     id: root

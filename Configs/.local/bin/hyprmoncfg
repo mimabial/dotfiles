@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Monitor profile manager for Hyprland."""
 import sys
 from pathlib import Path
 

@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import atomic_write, cache_hit, cache_store
+from _common import atomic_write, cache_hit, cache_store, short_digest
 from _roles import hex_to_rgb, luminance
 
 PALETTE = Path(sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else
@@ -52,7 +52,7 @@ def main():
     hasher = hashlib.sha256()
     hasher.update(PALETTE.read_bytes())
     hasher.update(Path(__file__).read_bytes())
-    digest = hasher.hexdigest()[:16]
+    digest = short_digest(hasher)
 
     if cache_hit(APP, digest) and OUT_FILE.exists():
         return

@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/notify/github-notifications.lib.sh"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/notify/github-notifications.lib.bash"
 
 usage() {
   cat <<'USAGE'

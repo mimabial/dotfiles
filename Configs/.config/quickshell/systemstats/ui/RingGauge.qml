@@ -103,7 +103,7 @@ Item {
       horizontalAlignment: Text.AlignHCenter
       text: root.topText
       color: root.foreground
-      opacity: 0.6
+      opacity: Style.mutedTextAlpha
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       font.bold: true
@@ -135,7 +135,7 @@ Item {
       horizontalAlignment: Text.AlignHCenter
       text: root.labelText
       color: root.foreground
-      opacity: 0.6
+      opacity: Style.mutedTextAlpha
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       font.bold: true
@@ -151,7 +151,7 @@ Item {
       horizontalAlignment: Text.AlignHCenter
       text: root.subText
       color: root.foreground
-      opacity: 0.55
+      opacity: Style.mutedTextAlpha
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       elide: Text.ElideRight

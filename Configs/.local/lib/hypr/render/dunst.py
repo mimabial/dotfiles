@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import atomic_write, cache_hit, cache_store
+from _common import atomic_write, cache_hit, cache_store, short_digest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pyutils.bar_position import bar_position
@@ -41,6 +41,39 @@ OUT_DIR = (
 )
 OUT_FILE = OUT_DIR / "dunstrc"
 ROLES_FILE = OUT_DIR / "colors.conf"
+BACKGROUND_ALPHA = "80"
+TEXT_ALPHA = "E6"
+CATEGORY_ALPHA = "55"
+FRAME_ALPHA = {"low": "33", "normal": "55", "critical": "CC"}
+WINDOWS_WORKFLOW_ALPHA = "E6"
+OPAQUE_ALPHA = "FF"
+FALLBACK_CORNER_RADIUS = 7
+URGENCY_TIMEOUT_SECONDS = {"low": 2, "normal": 2, "critical": 0}
+CATEGORY_ROLES = {
+    "email": "accent-blue",
+    "chat": "accent-aqua",
+    "warning": "accent-yellow",
+    "error": "accent-red",
+    "network": "accent-blue",
+    "battery": "accent-orange",
+    "update": "accent-green",
+    "music": "accent-purple",
+    "volume": "gray",
+}
+FALLBACK_COLORS = {
+    "bg-primary": "#1e1e2e",
+    "fg-primary": "#f8f8f2",
+    "border-primary": "#6272a4",
+    "border-secondary": "#44475a",
+    "accent-red": "#ff5555",
+    "accent-green": "#50fa7b",
+    "accent-yellow": "#f1fa8c",
+    "accent-blue": "#8be9fd",
+    "accent-purple": "#bd93f9",
+    "accent-aqua": "#8be9fd",
+    "accent-orange": "#ffb86c",
+    "gray": "#6272a4",
+}
 WAL_TEMPLATES_DIR = (
     Path(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")))
     / "wal"
@@ -57,6 +90,11 @@ BASE_PX = 12
 # can name a different face.
 GLYPH_COMPANIONS = {"Miracode": "Monocraft"}
 STATE_FILE = Path(os.environ.get("HYPR_STATE_HOME", Path.home() / ".local/state/hypr")) / "staterc"
+
+
+DEFAULT_WIDTH = 300
+DEFAULT_HEIGHT = (0, 600)
+FALLBACK_EDGE_PADDING = 14
 
 
 @dataclass(frozen=True)
@@ -98,13 +136,13 @@ def first_nonempty(*values):
 
 
 def with_alpha(color, alpha_hex):
-    c = color.lstrip("#")
-    a = alpha_hex.lstrip("#").upper()
-    if len(c) == 8:
-        return "#" + c[:6].upper() + a
-    if len(c) == 6:
-        return "#" + c.upper() + a
-    return "#" + c
+    rgb = color.lstrip("#")
+    alpha = alpha_hex.lstrip("#").upper()
+    if len(rgb) == 8:
+        return "#" + rgb[:6].upper() + alpha
+    if len(rgb) == 6:
+        return "#" + rgb.upper() + alpha
+    return "#" + rgb
 
 
 _VAR_RX = re.compile(r"^\s*\$(\S+?)\s*=\s*(.*?)(?:\s*#.*)?$")
@@ -134,10 +172,9 @@ def read_theme_var(key):
     return _theme_cache_get()[0].get(key, "")
 
 
-# Mirrors hypr_config_layer_files() / hypr_config_layer_cache_load() in
-# core/common.sh: userfonts.lua, then theme.meta, then variables.meta defaults.
-# First layer to define a key wins.
-_LUA_VAR_RX = re.compile(r'^\s*vars\.set\("([^"]+)",\s*"([^"]*)"\)')
+# Mirrors hypr_config_layer_files() / hypr_config_parse_layer_file() in core/config-layers.bash.
+_VARS_SET_RX = re.compile(r'^\s*vars\.set\("([^"]+)",\s*"([^"]*)"\)')
+_VARS_TABLE_FIELD_RX = re.compile(r'^\s*(?:\["([^"]+)"\]|([A-Za-z_]\w*))\s*=\s*"([^"]*)",?\s*$')
 _layer_cache = None
 
 
@@ -148,10 +185,10 @@ def _layer_files():
     data_home = Path(
         os.environ.get("HYPR_DATA_HOME", os.path.expanduser("~/.local/share/hypr"))
     )
-    variables = data_home / "variables.meta"
-    if not variables.is_file():
-        variables = config_home / "variables.meta"
-    return (config_home / "userfonts.lua", THEME_CONF, variables)
+    vars_file = config_home / "vars.lua"
+    if not vars_file.is_file():
+        vars_file = data_home / "vars.lua"
+    return (config_home / "userprefs.lua", config_home / "userfonts.lua", THEME_CONF, vars_file)
 
 
 def _layer_cache_get():
@@ -162,12 +199,16 @@ def _layer_cache_get():
     for path in _layer_files():
         if not path.is_file():
             continue
+        is_vars_table = path.name == "vars.lua"
         for line in path.read_text().splitlines():
             if not line.strip() or line.lstrip().startswith("#"):
                 continue
-            m = _LUA_VAR_RX.match(line)
+            m = _VARS_SET_RX.match(line)
+            field = is_vars_table and _VARS_TABLE_FIELD_RX.match(line)
             if m:
                 key, value = m.group(1), m.group(2)
+            elif field:
+                key, value = field.group(1) or field.group(2), field.group(3)
             else:
                 m = _VAR_RX.match(line)
                 if not m:
@@ -212,28 +253,26 @@ def _parse_define_colors(text):
 
 
 def load_pack_overrides(pack_name):
-    """Return dict of name → #hex from pack's dunst.theme (@define-color lines)."""
     if not pack_name:
         return {}
-    f = THEMES_DIR / pack_name / "dunst.theme"
-    if not f.is_file():
+    theme_path = THEMES_DIR / pack_name / "dunst.theme"
+    if not theme_path.is_file():
         return {}
-    return _parse_define_colors(f.read_text())
+    return _parse_define_colors(theme_path.read_text())
 
 
 def dunst_template_layers(variant):
     layers = []
     for name in ("colors-dunst.theme", f"colors-dunst.{variant}.theme"):
-        f = WAL_TEMPLATES_DIR / name
-        if f.is_file():
-            layers.append(f)
+        template_path = WAL_TEMPLATES_DIR / name
+        if template_path.is_file():
+            layers.append(template_path)
     return layers
 
 
 def load_dunst_template(variant, bg, fg, colors):
-    """Return dict of role → #hex from colors-dunst.theme (shared, optional) then
-    colors-dunst.<variant>.theme (per-variant, wins), substituting the live pywal
-    palette. Files are sparse: list only the roles you want to override."""
+    """colors-dunst.<variant>.theme wins over the shared colors-dunst.theme; both files
+    are sparse and list only the roles they override."""
     subs = {"background": bg, "foreground": fg}
     for i, col in enumerate(colors):
         subs[f"color{i}"] = col
@@ -310,6 +349,42 @@ def refresh_submap_hint():
         pass
 
 
+def palette_roles(role, bg, fg, colors):
+    bg_primary = role("bg-primary", bg, colors[0])
+    fg_primary = role("fg-primary", fg, colors[15])
+    border_primary = role("border-primary", colors[4], colors[12])
+    border_secondary = role("border-secondary", colors[8], border_primary)
+    accent_red = role("accent-red", colors[1], colors[9])
+    accent_blue = role("accent-blue", colors[4], colors[12], border_primary)
+    return {
+        "fg-primary": fg_primary,
+        "fg-secondary": role("fg-secondary", fg_primary),
+        "bg-primary": bg_primary,
+        "bg-secondary": role("bg-secondary", bg_primary),
+        "bg-tertiary": role("bg-tertiary", bg_primary),
+        "accent-red": accent_red,
+        "accent-green": role("accent-green", colors[2], colors[10], border_primary),
+        "accent-yellow": role("accent-yellow", colors[3], colors[11], border_primary),
+        "accent-blue": accent_blue,
+        "accent-purple": role("accent-purple", colors[5], colors[13], accent_blue),
+        "accent-aqua": role("accent-aqua", colors[6], colors[14], accent_blue),
+        "accent-orange": role("accent-orange", colors[11], colors[3], accent_red),
+        "border-primary": border_primary,
+        "border-secondary": border_secondary,
+        "gray": role("gray", colors[8], border_secondary),
+    }
+
+
+def urgency_style(level, background, foreground, frame=None):
+    styled = {
+        "background": with_alpha(background, BACKGROUND_ALPHA),
+        "foreground": with_alpha(foreground, TEXT_ALPHA),
+    }
+    if frame:
+        styled["frame"] = with_alpha(frame, FRAME_ALPHA[level])
+    return styled
+
+
 def resolve_colors(palette):
     bg = palette["bg"]
     fg = palette["fg"]
@@ -325,106 +400,37 @@ def resolve_colors(palette):
         variant = "dark"
     template = {} if pack else load_dunst_template(variant, bg, fg, colors)
 
-    def role(name, fallback):
-        return overrides.get(name) or template.get(name) or fallback
+    def role(name, *candidates):
+        return (
+            overrides.get(name)
+            or template.get(name)
+            or first_nonempty(*candidates, FALLBACK_COLORS.get(name))
+        )
 
-    bg_primary = role("bg-primary", first_nonempty(bg, colors[0], "#1e1e2e"))
-    bg_secondary = role("bg-secondary", bg_primary)
-    bg_tertiary = role("bg-tertiary", bg_primary)
-    fg_primary = role("fg-primary", first_nonempty(fg, colors[15], "#f8f8f2"))
-    fg_secondary = role("fg-secondary", fg_primary)
-    border_primary = role("border-primary", first_nonempty(colors[4], colors[12], "#6272a4"))
-    border_secondary = role(
-        "border-secondary", first_nonempty(colors[8], border_primary, "#44475a")
-    )
-    accent_red = role("accent-red", first_nonempty(colors[1], colors[9], "#ff5555"))
-    accent_green = role(
-        "accent-green",
-        first_nonempty(colors[2], colors[10], border_primary, "#50fa7b"),
-    )
-    accent_yellow = role(
-        "accent-yellow",
-        first_nonempty(colors[3], colors[11], border_primary, "#f1fa8c"),
-    )
-    accent_blue = role(
-        "accent-blue",
-        first_nonempty(colors[4], colors[12], border_primary, "#8be9fd"),
-    )
-    accent_purple = role(
-        "accent-purple",
-        first_nonempty(colors[5], colors[13], accent_blue, "#bd93f9"),
-    )
-    accent_aqua = role(
-        "accent-aqua",
-        first_nonempty(colors[6], colors[14], accent_blue, "#8be9fd"),
-    )
-    accent_orange = role(
-        "accent-orange",
-        first_nonempty(colors[11], colors[3], accent_red, "#ffb86c"),
-    )
-    gray = role("gray", first_nonempty(colors[8], border_secondary, "#6272a4"))
-
-    bg_critical = role("bg-critical", bg_primary)
-    fg_critical = role("fg-critical", fg_primary)
-    frame_critical = role("frame-critical", accent_red)
+    roles = palette_roles(role, bg, fg, colors)
+    bg_critical = role("bg-critical", roles["bg-primary"])
+    fg_critical = role("fg-critical", roles["fg-primary"])
+    frame_critical = role("frame-critical", roles["accent-red"])
 
     resolved = DunstColors(
-        roles={
-            "fg-primary": fg_primary,
-            "fg-secondary": fg_secondary,
-            "bg-primary": bg_primary,
-            "bg-secondary": bg_secondary,
-            "bg-tertiary": bg_tertiary,
-            "accent-red": accent_red,
-            "accent-green": accent_green,
-            "accent-yellow": accent_yellow,
-            "accent-blue": accent_blue,
-            "accent-purple": accent_purple,
-            "accent-aqua": accent_aqua,
-            "accent-orange": accent_orange,
-            "border-primary": border_primary,
-            "border-secondary": border_secondary,
-            "gray": gray,
-        },
+        roles=roles,
         urgency={
-            "low": {
-                "background": with_alpha(bg_secondary, "80"),
-                "foreground": with_alpha(fg_secondary, "E6"),
-                "frame": with_alpha(border_secondary, "33"),
-            },
-            "normal": {
-                "background": with_alpha(bg_primary, "80"),
-                "foreground": with_alpha(fg_primary, "E6"),
-                "frame": with_alpha(border_primary, "55"),
-            },
-            "critical": {
-                "background": with_alpha(bg_critical, "80"),
-                "foreground": with_alpha(fg_critical, "E6"),
-                "frame": with_alpha(frame_critical, "CC"),
-            },
-            "category": {
-                "background": with_alpha(bg_tertiary, "80"),
-                "foreground": with_alpha(fg_primary, "E6"),
-            },
+            "low": urgency_style("low", roles["bg-secondary"], roles["fg-secondary"], roles["border-secondary"]),
+            "normal": urgency_style("normal", roles["bg-primary"], roles["fg-primary"], roles["border-primary"]),
+            "critical": urgency_style("critical", bg_critical, fg_critical, frame_critical),
+            "category": urgency_style("category", roles["bg-tertiary"], roles["fg-primary"]),
         },
         categories={
-            "email": with_alpha(accent_blue, "55"),
-            "chat": with_alpha(accent_aqua, "55"),
-            "warning": with_alpha(accent_yellow, "55"),
-            "error": with_alpha(accent_red, "55"),
-            "network": with_alpha(accent_blue, "55"),
-            "battery": with_alpha(accent_orange, "55"),
-            "update": with_alpha(accent_green, "55"),
-            "music": with_alpha(accent_purple, "55"),
-            "volume": with_alpha(gray, "55"),
+            category: with_alpha(roles[role_name], CATEGORY_ALPHA)
+            for category, role_name in CATEGORY_ROLES.items()
         },
-        progress_fg=accent_blue,
+        progress_fg=roles["accent-blue"],
     )
     return pack, variant, resolved
 
 
 def text_size_px():
-    """The desktop text-size knob in px; system/text-size.sh owns it."""
+    """system/text-size.sh owns it."""
     try:
         return int(load_shell_assignments(STATE_FILE).get("TEXT_SIZE", str(BASE_PX)))
     except (OSError, ValueError):
@@ -432,12 +438,11 @@ def text_size_px():
 
 
 def text_scale():
-    """The same knob as a multiplier, for pixel geometry; 12px is the 1.0 anchor."""
+    """For pixel geometry; 12px is the 1.0 anchor."""
     return text_size_px() / BASE_PX
 
 
 def base_metric(name, default):
-    """A `name = N` value from the user's base dunst.conf."""
     if BASE_CONF.is_file():
         for line in BASE_CONF.read_text().splitlines():
             match = re.match(rf"^\s*{name}\s*=\s*(\d+)", line)
@@ -447,8 +452,7 @@ def base_metric(name, default):
 
 
 def base_height():
-    """`height = (min, max)` from the base config, scaled. dunst also accepts a
-    bare number there, which it reads as the maximum."""
+    """dunst also accepts a bare number there, which it reads as the maximum."""
     raw = ""
     if BASE_CONF.is_file():
         for line in BASE_CONF.read_text().splitlines():
@@ -456,7 +460,7 @@ def base_height():
             if match:
                 raw = match.group(1)
                 break
-    numbers = [int(value) for value in re.findall(r"\d+", raw)] or [0, 600]
+    numbers = [int(value) for value in re.findall(r"\d+", raw)] or list(DEFAULT_HEIGHT)
     scaled = [max(0, round(value * text_scale())) for value in numbers]
     return f"({scaled[0]},{scaled[1]})" if len(scaled) > 1 else str(scaled[0])
 
@@ -481,9 +485,9 @@ def resolve_layout():
     try:
         edge_padding = int(gaps_out) * 2 + int(border_size)
     except ValueError:
-        edge_padding = 14
+        edge_padding = FALLBACK_EDGE_PADDING
 
-    width = max(1, round(base_metric("width", 300) * text_scale()))
+    width = max(1, round(base_metric("width", DEFAULT_WIDTH) * text_scale()))
     origin = {
         "bottom": "bottom-right",
         "top": "top-right",
@@ -582,7 +586,7 @@ def renderer_hash(pack, variant, colors, layout, font):
     hasher.update(variant.encode())
     for f in dunst_template_layers(variant):
         hasher.update(f.read_bytes())
-    return hasher.hexdigest()[:16]
+    return short_digest(hasher)
 
 
 def category_rule(section, category, color, colors):
@@ -607,12 +611,32 @@ def category_rules(colors):
     )
 
 
-def render_config(base, colors, layout, font):
+def corner_radius(rounding):
     try:
-        corner_radius = int(layout.rounding) * 3 // 2
+        return int(rounding) * 3 // 2
     except ValueError:
-        corner_radius = 7
+        return FALLBACK_CORNER_RADIUS
 
+
+def urgency_section(level, style, highlight):
+    return f"""[urgency_{level}]
+    background = "{style["background"]}"
+    foreground = "{style["foreground"]}"
+    frame_color = "{style["frame"]}"
+    highlight = "{highlight}"
+    timeout = {URGENCY_TIMEOUT_SECONDS[level]}
+"""
+
+
+def workflow_background_rule(name, colors, alpha):
+    return f"""[{name}]
+    enabled = no
+    background = "{with_alpha(colors.roles["bg-primary"], alpha)}"
+"""
+
+
+def render_config(base, colors, layout, font):
+    critical_frame = colors.urgency["critical"]["frame"]
     return f"""# WARNING: This file is auto-generated by render/dunst.
 # DO NOT edit manually.
 # Edit '{BASE_CONF}' to change the base configuration.
@@ -630,31 +654,13 @@ def render_config(base, colors, layout, font):
     frame_width = {layout.border_size}
     progress_bar_corner_radius = {layout.rounding}
     icon_theme = "{font.icon_theme}"
-    corner_radius = {corner_radius}
+    corner_radius = {corner_radius(layout.rounding)}
     icon_corner_radius = {layout.rounding}
 {font.config_line}
 
-[urgency_low]
-    background = "{colors.urgency["low"]["background"]}"
-    foreground = "{colors.urgency["low"]["foreground"]}"
-    frame_color = "{colors.urgency["low"]["frame"]}"
-    highlight = "{colors.progress_fg}"
-    timeout = 2
-
-[urgency_normal]
-    background = "{colors.urgency["normal"]["background"]}"
-    foreground = "{colors.urgency["normal"]["foreground"]}"
-    frame_color = "{colors.urgency["normal"]["frame"]}"
-    highlight = "{colors.progress_fg}"
-    timeout = 2
-
-[urgency_critical]
-    background = "{colors.urgency["critical"]["background"]}"
-    foreground = "{colors.urgency["critical"]["foreground"]}"
-    frame_color = "{colors.urgency["critical"]["frame"]}"
-    highlight = "{colors.urgency["critical"]["frame"]}"
-    timeout = 0
-{category_rules(colors)}
+{urgency_section("low", colors.urgency["low"], colors.progress_fg)}
+{urgency_section("normal", colors.urgency["normal"], colors.progress_fg)}
+{urgency_section("critical", colors.urgency["critical"], critical_frame)}{category_rules(colors)}
 
 [submap_hint]
     stack_tag = "submap-hint"
@@ -662,18 +668,9 @@ def render_config(base, colors, layout, font):
     format = "<span foreground='{colors.roles["accent-red"]}'>%s</span>\\n%b"
     foreground = "{colors.urgency["low"]["foreground"]}"
 
-[windows_90]
-    enabled = no
-    background = "{with_alpha(colors.roles["bg-primary"], "E6")}"
-
-[gaming_opaque]
-    enabled = no
-    background = "{with_alpha(colors.roles["bg-primary"], "FF")}"
-
-[powersaver_opaque]
-    enabled = no
-    background = "{with_alpha(colors.roles["bg-primary"], "FF")}"
-"""
+{workflow_background_rule("windows_90", colors, WINDOWS_WORKFLOW_ALPHA)}
+{workflow_background_rule("gaming_opaque", colors, OPAQUE_ALPHA)}
+{workflow_background_rule("powersaver_opaque", colors, OPAQUE_ALPHA)}"""
 
 
 def render_roles(colors):

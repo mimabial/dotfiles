@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourceable Hypr environment and command dispatcher.
 
 resolve_executable_path() {
   local candidate="${EXECUTABLE:-hyprshell}"
@@ -65,10 +64,6 @@ hyprshell_load_completion_helpers() {
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" && "${1:-}" == "app" ]]; then
   export PATH="${HYPR_SCRIPTS_PATH}:${PATH}"
-  if [[ "${HYPRPY:-0}" =~ ^[0-9]+$ && "${HYPRPY:-0}" -eq 1 ]]; then
-    hyprshell_load_python_helpers || exit 1
-    python_activate
-  fi
   shift
   exec "${HYPR_LIB_DIR}/system/app2unit.sh" "$@"
 fi
@@ -96,7 +91,7 @@ fi
 
 case "${1:-}" in
   init | --init)
-    initialized
+    print_init_env
     exit 0
     ;;
   lock-session)
@@ -145,7 +140,7 @@ case "${1:-}" in
     ;;
   pyinit)
     hyprshell_load_python_helpers || exit 1
-    python_initialized
+    python_env_rebuild
     ;;
   resolve)
     shift

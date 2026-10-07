@@ -1,47 +1,10 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 resolve_magick_limits() {
-  local cores mem_avail_kb mem_avail_mb
-  local magick_mem_mb magick_map_mb magick_threads
+  local cores=0 mem_avail_mb=0
 
-  hypr_read_host_capacity
-
-  magick_mem_mb="${WALLPAPER_MAGICK_MEM_MB:-}"
-  [[ "${magick_mem_mb}" =~ ^[0-9]+$ ]] || magick_mem_mb=""
-  if [[ -z "${magick_mem_mb}" ]]; then
-    if ((mem_avail_mb > 0)); then
-      magick_mem_mb=$((mem_avail_mb / 8))
-      ((magick_mem_mb < 256)) && magick_mem_mb=256
-      ((magick_mem_mb > 1024)) && magick_mem_mb=1024
-    else
-      magick_mem_mb=512
-    fi
-  fi
-
-  magick_map_mb="${WALLPAPER_MAGICK_MAP_MB:-}"
-  [[ "${magick_map_mb}" =~ ^[0-9]+$ ]] || magick_map_mb=""
-  if [[ -z "${magick_map_mb}" ]]; then
-    magick_map_mb=$((magick_mem_mb * 2))
-    ((magick_map_mb < 512)) && magick_map_mb=512
-    ((magick_map_mb > 4096)) && magick_map_mb=4096
-  fi
-
-  magick_threads="${WALLPAPER_MAGICK_THREADS:-}"
-  [[ "${magick_threads}" =~ ^[0-9]+$ ]] || magick_threads=""
-  if [[ -z "${magick_threads}" ]]; then
-    if ((cores > 4)); then
-      magick_threads=4
-    elif ((cores > 0)); then
-      magick_threads="${cores}"
-    else
-      magick_threads=1
-    fi
-  fi
-
-  MAGICK_LIMITS=()
-  [[ -n "${magick_mem_mb}" ]] && MAGICK_LIMITS+=(-limit memory "${magick_mem_mb}MiB")
-  [[ -n "${magick_map_mb}" ]] && MAGICK_LIMITS+=(-limit map "${magick_map_mb}MiB")
-  [[ -n "${magick_threads}" ]] && MAGICK_LIMITS+=(-limit thread "${magick_threads}")
+  hypr_read_host_capacity cores mem_avail_mb
+  hypr_export_magick_limits "${cores}" "${mem_avail_mb}"
+  hypr_magick_limit_args_into MAGICK_LIMITS
 }
 
 fn_background() {

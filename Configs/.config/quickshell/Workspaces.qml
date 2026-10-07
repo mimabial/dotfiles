@@ -5,6 +5,8 @@ import Quickshell.Hyprland
 
 Item {
     id: root
+    readonly property int persistentSlots: 5
+    readonly property int compactSlots: 10
     required property var shell
     readonly property var box: shell.style.box("workspaces")
     readonly property color inactiveColor: shell.alpha(shell.foreground, .5)
@@ -68,8 +70,8 @@ Item {
                 readonly property bool focused: ws !== null && ws.focused
                 readonly property bool occupied: ws !== null && ws.toplevels.values.length > 0
                 property bool shown: root.compactStyle && root.fixedCompactSlots
-                    ? index < 5 || index < 10 && ws !== null
-                    : root.showAll && index < 5 || ws !== null && (!root.activeOnly || ws.focused) && (!root.hideActive || !ws.focused)
+                    ? index < root.persistentSlots || index < root.compactSlots && ws !== null
+                    : root.showAll && index < root.persistentSlots || ws !== null && (!root.activeOnly || ws.focused) && (!root.hideActive || !ws.focused)
                 shell: root.shell
                 opensPopup: true
                 css: focused ? "#workspaces button.active" : "#workspaces button"

@@ -20,8 +20,68 @@ def item(name, label, kind, **fields):
     return {"id": name, "label": label, "type": kind, "external": True, **fields}
 
 
-def helper(path, *args):
+def lib_command(path, *args):
     return [str(visual.LIB_DIR / path), *args]
+
+
+VOLUME_RANGE = {"min": 0, "max": 150, "step": 5}
+BRIGHTNESS_RANGE = {"min": 0, "max": 100, "step": 5}
+
+
+def default_pages():
+    return [
+        {"title": "Theme", "rows": [
+            item("theme", "Theme", "enum"),
+            item("font", "Theme font", "reading"),
+            item("text_size", "Text size", "reading"),
+            item("color_source", "Palette source", "enum", options=["theme", "pywal"]),
+            item("color_mode", "Color mode", "enum", options=["dark", "light", "auto"]),
+            item("wallpaper", "Next wallpaper", "action", value="apply"),
+        ]},
+        {"title": "Bar", "rows": [
+            item("bar_layout", "Layout", "enum"),
+            item("bar_visibility", "Show or hide", "action", value="toggle"),
+        ]},
+        {"title": "Keyboard", "rows": [
+            item("keyboard_layout", "Active layout", "enum"),
+            item("keyboard_add", "Add layout", "action", value="enter name"),
+            item("keyboard_remove", "Remove active", "action", value="remove"),
+        ]},
+        {"title": "Displays", "rows": [
+            item("display_editor", "Display editor", "action", value="open"),
+        ]},
+        {"title": "Workspaces", "rows": [
+            item("workspace_editor", "Workspace profiles", "action", value="open"),
+        ]},
+        {"title": "Audio", "rows": [
+            item("output_volume", "Output volume", "int", **VOLUME_RANGE),
+            item("output_mute", "Output mute", "bool"),
+            item("output_device", "Output device", "enum"),
+            item("input_volume", "Input volume", "int", **VOLUME_RANGE),
+            item("input_mute", "Input mute", "bool"),
+            item("input_device", "Input device", "enum"),
+        ]},
+        {"title": "Network", "rows": [
+            item("wifi", "Wi-Fi", "bool"),
+            item("network_name", "Connected", "reading"),
+            item("network_editor", "Network editor", "action", value="open"),
+        ]},
+        {"title": "Bluetooth", "rows": [
+            item("bluetooth_power", "Bluetooth", "bool"),
+            item("bluetooth_pair", "Pair address", "action", value="enter address"),
+        ]},
+        {"title": "Power", "rows": [
+            item("power_profile", "Profile", "enum"),
+            item("brightness", "Brightness", "int", **BRIGHTNESS_RANGE),
+            item("night_light", "Night light", "bool"),
+            item("keep_awake", "Keep awake", "bool"),
+            item("dnd", "Do not disturb", "bool"),
+        ]},
+        {"title": "Compose", "rows": [
+            item("compose_add", "Add sequence", "action", value="enter keys and text"),
+        ]},
+        {"title": "Keybindings", "rows": []},
+    ]
 
 
 class Settings(visual.Looknfeel):
@@ -37,59 +97,7 @@ class Settings(visual.Looknfeel):
         self.audio_ids = {}
         self.window = None
         self.visual_theme_key = self.theme_key
-        self.pages = [
-            {"title": "Theme", "rows": [
-                item("theme", "Theme", "enum"),
-                item("font", "Theme font", "reading"),
-                item("text_size", "Text size", "reading"),
-                item("color_source", "Palette source", "enum", options=["theme", "pywal"]),
-                item("color_mode", "Color mode", "enum", options=["dark", "light", "auto"]),
-                item("wallpaper", "Next wallpaper", "action", value="apply"),
-            ]},
-            {"title": "Bar", "rows": [
-                item("bar_layout", "Layout", "enum"),
-                item("bar_visibility", "Show or hide", "action", value="toggle"),
-            ]},
-            {"title": "Keyboard", "rows": [
-                item("keyboard_layout", "Active layout", "enum"),
-                item("keyboard_add", "Add layout", "action", value="enter name"),
-                item("keyboard_remove", "Remove active", "action", value="remove"),
-            ]},
-            {"title": "Displays", "rows": [
-                item("display_editor", "Display editor", "action", value="open"),
-            ]},
-            {"title": "Workspaces", "rows": [
-                item("workspace_editor", "Workspace profiles", "action", value="open"),
-            ]},
-            {"title": "Audio", "rows": [
-                item("output_volume", "Output volume", "int", min=0, max=150, step=5),
-                item("output_mute", "Output mute", "bool"),
-                item("output_device", "Output device", "enum"),
-                item("input_volume", "Input volume", "int", min=0, max=150, step=5),
-                item("input_mute", "Input mute", "bool"),
-                item("input_device", "Input device", "enum"),
-            ]},
-            {"title": "Network", "rows": [
-                item("wifi", "Wi-Fi", "bool"),
-                item("network_name", "Connected", "reading"),
-                item("network_editor", "Network editor", "action", value="open"),
-            ]},
-            {"title": "Bluetooth", "rows": [
-                item("bluetooth_power", "Bluetooth", "bool"),
-                item("bluetooth_pair", "Pair address", "action", value="enter address"),
-            ]},
-            {"title": "Power", "rows": [
-                item("power_profile", "Profile", "enum"),
-                item("brightness", "Brightness", "int", min=0, max=100, step=5),
-                item("night_light", "Night light", "bool"),
-                item("keep_awake", "Keep awake", "bool"),
-                item("dnd", "Do not disturb", "bool"),
-            ]},
-            {"title": "Compose", "rows": [
-                item("compose_add", "Add sequence", "action", value="enter keys and text"),
-            ]},
-            {"title": "Keybindings", "rows": []},
-        ]
+        self.pages = default_pages()
 
     @property
     def all_sections(self):
@@ -136,108 +144,136 @@ class Settings(visual.Looknfeel):
 
     def load_page(self, title):
         self.error_text = ""
-        if title == "Theme":
-            self.read_state_files()
-            self.options["theme"] = sorted(
-                path.parent.name for path in (CONFIG / "hypr/themes").glob("*/palette.toml")
-            )
-        elif title == "Bar":
-            self.read_state_files()
-            self.options["bar_layout"] = sorted(
-                path.stem for path in (CONFIG / "quickshell/layouts").glob("*.json")
-            )
-        elif title == "Keyboard":
-            state = self.document(helper("util/keyboard-layout.sh"), {})
-            if not state:
-                self.error_text = "Keyboard layout unavailable"
-                return
-            layouts = state.get("configured", [])
-            self.options["keyboard_layout"] = [
-                entry["layout"] + (":" + entry["variant"] if entry.get("variant") else "")
-                for entry in layouts
+        loader = self.PAGE_LOADERS.get(title)
+        if loader:
+            loader(self)
+
+    def load_theme_page(self):
+        self.read_state_files()
+        self.options["theme"] = sorted(
+            path.parent.name for path in (CONFIG / "hypr/themes").glob("*/palette.toml")
+        )
+
+    def load_bar_page(self):
+        self.read_state_files()
+        self.options["bar_layout"] = sorted(
+            path.stem for path in (CONFIG / "quickshell/layouts").glob("*.json")
+        )
+
+    def load_keyboard_page(self):
+        state = self.document(lib_command("util/keyboard-layout.sh"), {})
+        if not state:
+            self.error_text = "Keyboard layout unavailable"
+            return
+        layouts = state.get("configured", [])
+        self.options["keyboard_layout"] = [
+            entry["layout"] + (":" + entry["variant"] if entry.get("variant") else "")
+            for entry in layouts
+        ]
+        index = state.get("activeIndex", 0)
+        self.values["keyboard_layout"] = self.options["keyboard_layout"][index] if layouts else None
+
+    def load_displays_page(self):
+        monitors = self.document(["hyprctl", "monitors", "-j"], [])
+        self.page("Displays")["rows"] = [
+            item("display_editor", "Display editor", "action", value="open"),
+            *(item("display_" + monitor["name"], monitor["name"], "reading",
+                    value=f'{monitor.get("width", 0)}×{monitor.get("height", 0)}  scale {monitor.get("scale", 1)}')
+              for monitor in monitors),
+        ]
+
+    def load_workspaces_page(self):
+        workspaces = self.document(["hyprctl", "workspaces", "-j"], [])
+        self.page("Workspaces")["rows"] = [
+            item("workspace_editor", "Workspace profiles", "action", value="open"),
+            *(item("workspace_" + str(space["id"]), "Workspace " + str(space["id"]),
+                    "reading", value=f'{space.get("windows", 0)} windows · {space.get("monitor", "")}')
+              for space in sorted(workspaces, key=lambda space: space["id"])),
+        ]
+
+    def load_audio_page(self):
+        for name, target in (("output", "@DEFAULT_AUDIO_SINK@"),
+                             ("input", "@DEFAULT_AUDIO_SOURCE@")):
+            result = visual.run(["wpctl", "get-volume", target])
+            match = re.search(r"([0-9]+(?:\.[0-9]+)?)", result.stdout)
+            self.values[name + "_volume"] = round(float(match.group(1)) * 100) if match else None
+            self.values[name + "_mute"] = "MUTED" in result.stdout
+            noun = "sinks" if name == "output" else "sources"
+            devices = self.document(["pactl", "--format=json", "list", noun], [])
+            self.options[name + "_device"] = [
+                device["name"] for device in devices
+                if name == "output" or not device["name"].endswith(".monitor")
             ]
-            index = state.get("activeIndex", 0)
-            self.values["keyboard_layout"] = self.options["keyboard_layout"][index] if layouts else None
-        elif title == "Displays":
-            monitors = self.document(["hyprctl", "monitors", "-j"], [])
-            self.page("Displays")["rows"] = [
-                item("display_editor", "Display editor", "action", value="open"),
-                *(item("display_" + monitor["name"], monitor["name"], "reading",
-                        value=f'{monitor.get("width", 0)}×{monitor.get("height", 0)}  scale {monitor.get("scale", 1)}')
-                  for monitor in monitors),
-            ]
-        elif title == "Workspaces":
-            workspaces = self.document(["hyprctl", "workspaces", "-j"], [])
-            self.page("Workspaces")["rows"] = [
-                item("workspace_editor", "Workspace profiles", "action", value="open"),
-                *(item("workspace_" + str(space["id"]), "Workspace " + str(space["id"]),
-                        "reading", value=f'{space.get("windows", 0)} windows · {space.get("monitor", "")}')
-                  for space in sorted(workspaces, key=lambda space: space["id"])),
-            ]
-        elif title == "Audio":
-            for name, target in (("output", "@DEFAULT_AUDIO_SINK@"),
-                                 ("input", "@DEFAULT_AUDIO_SOURCE@")):
-                result = visual.run(["wpctl", "get-volume", target])
-                match = re.search(r"([0-9]+(?:\.[0-9]+)?)", result.stdout)
-                self.values[name + "_volume"] = round(float(match.group(1)) * 100) if match else None
-                self.values[name + "_mute"] = "MUTED" in result.stdout
-                noun = "sinks" if name == "output" else "sources"
-                devices = self.document(["pactl", "--format=json", "list", noun], [])
-                self.options[name + "_device"] = [
-                    device["name"] for device in devices
-                    if name == "output" or not device["name"].endswith(".monitor")
-                ]
-                self.audio_ids.update({device["name"]: device.get("properties", {}).get("object.id")
-                                       for device in devices})
-                current = visual.run(["pactl", "get-default-" + ("sink" if name == "output" else "source")])
-                self.values[name + "_device"] = current.stdout.strip()
-        elif title == "Network":
-            self.values["wifi"] = visual.run(["nmcli", "-g", "WIFI", "general"]).stdout.strip() == "enabled"
-            devices = visual.run(["nmcli", "-t", "-f", "DEVICE,TYPE,STATE", "device", "status"])
-            wifi = next((line.split(":", 1)[0] for line in devices.stdout.splitlines()
-                         if ":wifi:" in line), "")
-            self.values["network_name"] = (
-                visual.run(["nmcli", "-g", "GENERAL.CONNECTION", "device", "show", wifi]).stdout.strip()
-                if wifi else "—"
-            )
-        elif title == "Bluetooth":
-            self.values["bluetooth_power"] = visual.run(helper("bluetooth/power.sh", "is-on")).returncode == 0
-            paired = visual.run(["bluetoothctl", "devices", "Paired"]).stdout.splitlines()
-            connected = visual.run(["bluetoothctl", "devices", "Connected"]).stdout
-            rows = self.page("Bluetooth")["rows"][:2]
-            for line in paired:
-                match = re.match(r"Device ((?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}) (.+)", line)
-                if match:
-                    address, name = match.groups()
-                    row_id = "bluetooth_" + address
-                    self.values[row_id] = "connected" if address in connected else "disconnected"
-                    rows.append(item(row_id, name, "action", address=address))
-            self.page("Bluetooth")["rows"] = rows
-        elif title == "Power":
-            self.values["power_profile"] = visual.run(["powerprofilesctl", "get"]).stdout.strip()
-            self.options["power_profile"] = visual.run(helper("system/powerprofiles.sh")).stdout.splitlines()
-            result = visual.run(["brightnessctl", "-m"]).stdout.strip().split(",")
-            self.values["brightness"] = int(result[3].rstrip("%")) if len(result) > 3 else None
-            self.values["dnd"] = visual.run(["dunstctl", "is-paused"]).stdout.strip() == "true"
-            self.read_state_files()
-        elif title == "Compose":
-            rows = self.page("Compose")["rows"][:1]
-            for line in visual.read_text(COMPOSE).splitlines():
-                match = re.match(r'^\s*((?:<[^>]+>\s*)+)\s*:\s*"((?:[^"\\]|\\.)*)"', line)
-                if match:
-                    keys = match.group(1).strip()
-                    rows.append(item("compose_" + keys, "Remove " + keys, "action",
-                                     value=match.group(2), keys=keys))
-            self.page("Compose")["rows"] = rows
-        elif title == "Keybindings":
-            path = visual.LIB_DIR / "keybinds/lib/keybinds_hint.py"
-            bindings = self.document(["python3", str(path), "--format", "json"], [])
-            self.page("Keybindings")["rows"] = [
-                item("binding_" + str(index), binding.get("displayed_keys", ""), "reading",
-                     value=binding.get("description", ""))
-                for index, binding in enumerate(bindings)
-                if binding.get("description")
-            ]
+            self.audio_ids.update({device["name"]: device.get("properties", {}).get("object.id")
+                                   for device in devices})
+            current = visual.run(["pactl", "get-default-" + ("sink" if name == "output" else "source")])
+            self.values[name + "_device"] = current.stdout.strip()
+
+    def load_network_page(self):
+        self.values["wifi"] = visual.run(["nmcli", "-g", "WIFI", "general"]).stdout.strip() == "enabled"
+        devices = visual.run(["nmcli", "-t", "-f", "DEVICE,TYPE,STATE", "device", "status"])
+        wifi = next((line.split(":", 1)[0] for line in devices.stdout.splitlines()
+                     if ":wifi:" in line), "")
+        self.values["network_name"] = (
+            visual.run(["nmcli", "-g", "GENERAL.CONNECTION", "device", "show", wifi]).stdout.strip()
+            if wifi else "—"
+        )
+
+    def load_bluetooth_page(self):
+        self.values["bluetooth_power"] = visual.run(lib_command("bluetooth/power.sh", "is-on")).returncode == 0
+        paired = visual.run(["bluetoothctl", "devices", "Paired"]).stdout.splitlines()
+        connected = visual.run(["bluetoothctl", "devices", "Connected"]).stdout
+        rows = self.page("Bluetooth")["rows"][:2]
+        for line in paired:
+            match = re.match(r"Device ((?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}) (.+)", line)
+            if match:
+                address, name = match.groups()
+                row_id = "bluetooth_" + address
+                self.values[row_id] = "connected" if address in connected else "disconnected"
+                rows.append(item(row_id, name, "action", address=address))
+        self.page("Bluetooth")["rows"] = rows
+
+    def load_power_page(self):
+        self.values["power_profile"] = visual.run(["powerprofilesctl", "get"]).stdout.strip()
+        self.options["power_profile"] = visual.run(lib_command("system/powerprofiles.sh")).stdout.splitlines()
+        result = visual.run(["brightnessctl", "-m"]).stdout.strip().split(",")
+        self.values["brightness"] = int(result[3].rstrip("%")) if len(result) > 3 else None
+        self.values["dnd"] = visual.run(["dunstctl", "is-paused"]).stdout.strip() == "true"
+        self.read_state_files()
+
+    def load_compose_page(self):
+        rows = self.page("Compose")["rows"][:1]
+        for line in visual.read_text(COMPOSE).splitlines():
+            match = re.match(r'^\s*((?:<[^>]+>\s*)+)\s*:\s*"((?:[^"\\]|\\.)*)"', line)
+            if match:
+                keys = match.group(1).strip()
+                rows.append(item("compose_" + keys, "Remove " + keys, "action",
+                                 value=match.group(2), keys=keys))
+        self.page("Compose")["rows"] = rows
+
+    def load_keybindings_page(self):
+        path = visual.LIB_DIR / "keybinds/lib/keybinds_hint.py"
+        bindings = self.document(["python3", str(path), "--format", "json"], [])
+        self.page("Keybindings")["rows"] = [
+            item("binding_" + str(index), binding.get("displayed_keys", ""), "reading",
+                 value=binding.get("description", ""))
+            for index, binding in enumerate(bindings)
+            if binding.get("description")
+        ]
+
+    PAGE_LOADERS = {
+        "Theme": load_theme_page,
+        "Bar": load_bar_page,
+        "Keyboard": load_keyboard_page,
+        "Displays": load_displays_page,
+        "Workspaces": load_workspaces_page,
+        "Audio": load_audio_page,
+        "Network": load_network_page,
+        "Bluetooth": load_bluetooth_page,
+        "Power": load_power_page,
+        "Compose": load_compose_page,
+        "Keybindings": load_keybindings_page,
+    }
 
     def document(self, command, fallback):
         result = visual.run(command)
@@ -294,40 +330,40 @@ class Settings(visual.Looknfeel):
     def command(self, row, value, direction):
         name = row["id"]
         if name == "theme":
-            return helper("theme/theme.switch.sh", "-s", value)
+            return lib_command("theme/theme.switch.sh", "-s", value)
         if name in ("color_source", "color_mode"):
             source = value if name == "color_source" else self.values["color_source"]
             mode = value if name == "color_mode" else self.values["color_mode"]
-            return helper("theme/color-mode.sh", "-q", "--set", source, mode)
+            return lib_command("theme/color-mode.sh", "-q", "--set", source, mode)
         if name == "bar_layout":
-            return helper("quickshell/layout.sh", "set", value)
+            return lib_command("quickshell/layout.sh", "set", value)
         if name == "keyboard_layout":
-            return helper("util/keyboard-layout.sh", "--use", str(self.options[name].index(value)))
+            return lib_command("util/keyboard-layout.sh", "--use", str(self.options[name].index(value)))
         if name in ("output_volume", "input_volume"):
-            return helper("controls/volume-control.sh", "-q",
+            return lib_command("controls/volume-control.sh", "-q",
                           "-o" if name.startswith("output") else "-i",
                           "i" if direction > 0 else "d", str(row["step"]))
         if name in ("output_mute", "input_mute"):
-            return helper("controls/volume-control.sh", "-q",
+            return lib_command("controls/volume-control.sh", "-q",
                           "-o" if name.startswith("output") else "-i", "m")
         if name in ("output_device", "input_device"):
             if name == "output_device" and self.audio_ids.get(value):
-                return helper("controls/volume-control.sh", "--set-default",
+                return lib_command("controls/volume-control.sh", "--set-default",
                               str(self.audio_ids[value]), value)
             return ["pactl", "set-default-" + ("sink" if name.startswith("output") else "source"), value]
         if name == "wifi":
             return ["nmcli", "radio", "wifi", "on" if value else "off"]
         if name == "bluetooth_power":
-            return helper("bluetooth/power.sh", "on" if value else "off")
+            return lib_command("bluetooth/power.sh", "on" if value else "off")
         if name == "power_profile":
-            return helper("system/powerprofiles.sh", "--set", value)
+            return lib_command("system/powerprofiles.sh", "--set", value)
         if name == "brightness":
-            return helper("controls/brightness-control.sh", "i" if direction > 0 else "d",
+            return lib_command("controls/brightness-control.sh", "i" if direction > 0 else "d",
                           str(row["step"]))
         if name == "night_light":
-            return ["bash", *helper("system/hyprsunset.sh", "-t", "-q")]
+            return ["bash", *lib_command("system/hyprsunset.sh", "-t", "-q")]
         if name == "keep_awake":
-            return helper("session/toggle-keep-awake.sh")
+            return lib_command("session/toggle-keep-awake.sh")
         if name == "dnd":
             return ["dunstctl", "set-paused", "true" if value else "false"]
         return None
@@ -357,7 +393,7 @@ class Settings(visual.Looknfeel):
         if name == "wallpaper":
             self.start([HYPRSHELL, "wallpaper", "next", "--global"], name)
         elif name == "bar_visibility":
-            self.start(helper("quickshell/visibility.sh", "toggle"), name)
+            self.start(lib_command("quickshell/visibility.sh", "toggle"), name)
         elif name == "display_editor":
             self.open_tui(["hyprmoncfg"], "Displays")
         elif name == "workspace_editor":
@@ -367,23 +403,23 @@ class Settings(visual.Looknfeel):
         elif name == "keyboard_add":
             answer = self.prompt("Layout [variant]: ").split()
             if 1 <= len(answer) <= 2:
-                self.start(helper("util/keyboard-layout.sh", "--add", *answer), name)
+                self.start(lib_command("util/keyboard-layout.sh", "--add", *answer), name)
             elif answer:
                 self.error_text = "Enter a layout and optional variant"
         elif name == "keyboard_remove":
             options = self.options.get("keyboard_layout", [])
             current = self.values.get("keyboard_layout")
             if current in options:
-                self.start(helper("util/keyboard-layout.sh", "--remove", str(options.index(current))), name)
+                self.start(lib_command("util/keyboard-layout.sh", "--remove", str(options.index(current))), name)
         elif name == "bluetooth_pair":
             address = self.prompt("Device address: ").strip()
             if re.fullmatch(r"(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}", address):
-                self.start(helper("bluetooth/device-action.sh", "pair", address), name)
+                self.start(lib_command("bluetooth/device-action.sh", "pair", address), name)
             elif address:
                 self.error_text = "Enter a Bluetooth address"
         elif name.startswith("bluetooth_") and row.get("address"):
             verb = "disconnect" if self.values.get(name) == "connected" else "connect"
-            self.start(helper("bluetooth/device-action.sh", verb, row["address"]), name)
+            self.start(lib_command("bluetooth/device-action.sh", verb, row["address"]), name)
         elif name == "compose_add":
             keys = self.prompt("Keys: ").strip()
             result = self.prompt("Text: ")

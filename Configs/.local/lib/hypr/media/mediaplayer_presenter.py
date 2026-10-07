@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Focus the selected MPRIS player's window or create its frontend."""
-
 from __future__ import annotations
 
 import json

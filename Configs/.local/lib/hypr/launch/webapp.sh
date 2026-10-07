@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/desktop-entry.exec.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/desktop-entry.exec.bash"
 
 usage() {
   cat <<EOF

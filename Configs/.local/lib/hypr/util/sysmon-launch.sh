@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state system || exit 1
 hypr_runtime_load_state || exit 1
 
@@ -62,7 +62,7 @@ launch_monitor() {
   local terminal_command="${SYSMONITOR_TERMINAL:-${TERMINAL_TUI:-${TERMINAL:-alacritty}}}"
 
   TERMINAL_TUI="${terminal_command}" \
-    exec "${LIB_DIR:-$HOME/.local/lib}/hypr/launch/tui.sh" \
+    exec "${HYPR_LIB_DIR}/launch/tui.sh" \
       --app-id org.tui.Sysmonitor \
       --title "System Monitor" \
       -- "${monitor_argv[@]}"

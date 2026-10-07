@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'

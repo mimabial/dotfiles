@@ -10,7 +10,9 @@ from urllib.parse import parse_qs, urlparse
 from ytdlp_config import ytdlp_auth_args
 
 _media_info_probes_inflight = {}
-_ytdlp_timeout_seconds = 20.0
+DEFAULT_YTDLP_TIMEOUT_SECONDS = 20.0
+POSITION_JUMP_SECONDS = 15.0
+_ytdlp_timeout_seconds = DEFAULT_YTDLP_TIMEOUT_SECONDS
 _youtube_page_timeout_seconds = 2.5
 _current_track_media_info = {"media_url": "", "info": None}
 
@@ -34,7 +36,7 @@ def get_ytdlp_timeout_seconds() -> float:
                 return value
         except ValueError:
             pass
-    return 20.0
+    return DEFAULT_YTDLP_TIMEOUT_SECONDS
 
 
 def is_youtube_url(url: str) -> bool:
@@ -391,14 +393,14 @@ def youtube_position_is_untrusted(
     )
     browser_duration_mismatch = (
         browser_duration_seconds > 0
-        and duration_seconds > (browser_duration_seconds + 15.0)
+        and duration_seconds > (browser_duration_seconds + POSITION_JUMP_SECONDS)
         and terminal_against_browser_duration
     )
     same_track_terminal_jump = (
         previous_track_key == current_track_key
-        and previous_raw_position < max(0.0, duration_seconds - 15.0)
+        and previous_raw_position < max(0.0, duration_seconds - POSITION_JUMP_SECONDS)
         and terminal_against_duration
-        and reported_position_seconds > (previous_raw_position + 15.0)
+        and reported_position_seconds > (previous_raw_position + POSITION_JUMP_SECONDS)
     )
     fresh_track_terminal_snapshot = (
         previous_track_key != current_track_key and terminal_against_duration

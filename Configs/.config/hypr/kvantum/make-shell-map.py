@@ -39,6 +39,8 @@ def lstar(h):
     return 116 * (y ** (1 / 3)) - 16 if y > 0.008856 else 903.3 * y
 
 
+NEUTRAL_CHROMA = 12
+FAR_MISMATCH = 120
 NEUTRAL_ROLES = ("background", "color0", "color8", "color7", "color15", "foreground")
 
 
@@ -55,7 +57,7 @@ def match(hex_, palette):
     """A near-neutral carries lightness only, so match it on L* against the
     structural roles. Nord-like palettes hold no true mid grey, which no colour
     distance can work around - its desaturated purple always wins on proximity."""
-    if chroma(hex_) < 12:
+    if chroma(hex_) < NEUTRAL_CHROMA:
         pool = [r for r in NEUTRAL_ROLES if r in palette]
         if pool:
             target = lstar(hex_)
@@ -94,19 +96,19 @@ def main():
     report = []
     for hex_, n in counts.most_common():
         role = match(hex_, palette)
-        d = score(hex_, palette[role])
+        mismatch = score(hex_, palette[role])
         lines.append(f"{hex_}={role}")
-        report.append((n, hex_, role, palette[role], d))
+        report.append((n, hex_, role, palette[role], mismatch))
 
     (shell_dir / "shell.map").write_text("\n".join(lines) + "\n")
 
     print(f"{shell_dir.name}: {len(report)} entries from {pack.name}")
     print(f"{'uses':>5}  {'literal':<9} {'role':<12} {'role hex':<9} dist")
-    for n, hex_, role, rolehex, d in report[:18]:
-        flag = "  <-- far" if d > 120 else ""
-        print(f"{n:>5}  {hex_:<9} {role:<12} {rolehex:<9} {d:6.1f}{flag}")
-    far = [r for r in report if r[4] > 120]
-    print(f"far matches (>120): {len(far)} of {len(report)}")
+    for n, hex_, role, rolehex, mismatch in report[:18]:
+        flag = "  <-- far" if mismatch > FAR_MISMATCH else ""
+        print(f"{n:>5}  {hex_:<9} {role:<12} {rolehex:<9} {mismatch:6.1f}{flag}")
+    far = [r for r in report if r[4] > FAR_MISMATCH]
+    print(f"far matches (>{FAR_MISMATCH}): {len(far)} of {len(report)}")
 
 
 if __name__ == "__main__":

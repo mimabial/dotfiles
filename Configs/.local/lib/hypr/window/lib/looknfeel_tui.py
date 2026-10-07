@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
-"""Terminal UI for the visual half of the Hyprland config: read current values,
-preview live while adjusting, and persist per theme.
-
-Colours come from the terminal palette, which the theme pipeline already writes
+"""Colours come from the terminal palette, which the theme pipeline already writes
 through render/kitty.sh, so no palette is plumbed in here.
 
 Read paths and the storage contract are documented in
-../LOOKNFEEL.md.
-"""
+../LOOKNFEEL.md."""
 
 import curses
+import curses.ascii
 import math
 import os
 import re
@@ -37,6 +34,9 @@ CURSOR_SYNC_DELAY = 0.70
 WATCH_INTERVAL = 0.25
 
 HINT = "↑↓ row   ←→ adjust   Space toggle   Tab section   Backspace reset   q close"
+
+
+MIN_ANIMATION_SPEED = 0.1
 
 
 def js_round(value):
@@ -332,7 +332,7 @@ class Looknfeel:
                 animations.append({
                     "leaf": leaf["leaf"],
                     "enabled": leaf["enabled"],
-                    "speed": max(0.1, round_to(leaf["speed"] * self.speed_multiplier, 2)),
+                    "speed": max(MIN_ANIMATION_SPEED, round_to(leaf["speed"] * self.speed_multiplier, 2)),
                     "bezier": leaf["bezier"],
                     "style": leaf["style"],
                 })
@@ -507,19 +507,26 @@ PAIR_ACCENT = 1
 PAIR_DIM = 2
 PAIR_ERROR = 3
 PAIR_BAR = 4
+BRIGHT_BLACK = 8
 
 SECTION_WIDTH = 18
 # Right-aligned in a fixed field so the gauge keeps one width per section:
 # a value crossing 9 to 10 must not shorten the bar it sits beside.
 VALUE_WIDTH = 5
 ROW_PITCH = 2
+MIN_HEIGHT = 6
+MIN_WIDTH = 40
+STATUS_MIN_X = 14
+MIN_LABEL_WIDTH = 12
+LABEL_WIDTH_SHARE = 0.42
+MIN_CONTROL_WIDTH = 4
 
 
 def init_colors():
     curses.start_color()
     curses.use_default_colors()
     accent = curses.COLOR_BLUE
-    dim = 8 if curses.COLORS >= 16 else curses.COLOR_WHITE
+    dim = BRIGHT_BLACK if curses.COLORS > BRIGHT_BLACK else curses.COLOR_WHITE
     curses.init_pair(PAIR_ACCENT, accent, -1)
     curses.init_pair(PAIR_DIM, dim, -1)
     curses.init_pair(PAIR_ERROR, curses.COLOR_RED, -1)
@@ -563,94 +570,92 @@ def add(win, y, x, text, attr=0, limit=None):
         pass
 
 
+def scrolled_offset(offset, index, visible):
+    if index < offset:
+        return index
+    if index >= offset + visible:
+        return index - visible + 1
+    return offset
+
+
+def draw_header(win, app, width, accent, dim):
+    add(win, 0, 1, getattr(app, "title", "Look & Feel"), accent | curses.A_BOLD)
+    status = app.theme_key
+    add(win, 0, max(STATUS_MIN_X, width - len(status) - 2), status, dim)
+    add(win, 1, 1, "─" * (width - 2), dim)
+
+
+def draw_sections(win, app, top, bottom, accent, dim):
+    sections = app.sections
+    visible = bottom - top
+    first = scrolled_offset(getattr(app, "section_offset", 0), app.section_index, visible)
+    app.section_offset = first
+    for index in range(first, min(len(sections), first + visible)):
+        selected = index == app.section_index
+        attr = (accent | curses.A_BOLD) if selected else dim
+        marker = "▌" if selected else " "
+        add(win, top + index - first, 1, marker + " " + sections[index]["title"], attr, limit=SECTION_WIDTH)
+    for y in range(top, bottom):
+        add(win, y, SECTION_WIDTH + 1, "│", dim)
+
+
+def draw_control(win, app, row, value, y, x, room, selected, accent, dim):
+    text = value_text(row, value)
+    if row["type"] in ("int", "float"):
+        bar_width = max(MIN_CONTROL_WIDTH, room - VALUE_WIDTH - 1)
+        add(win, y, x, gauge(row, value, bar_width), accent if selected else dim)
+        add(win, y, x + bar_width + 1, text.rjust(VALUE_WIDTH), 0 if selected else dim)
+    elif row["type"] == "bool":
+        add(win, y, x, "[x]" if value is True else "[ ]", accent if selected else 0)
+    else:
+        pending = row["type"] == "pipeline" and row["id"] == app.pipeline_pending_id
+        shown = "‹ %s ›" % text if selected else "  %s" % text
+        add(win, y, x, shown + (" …" if pending else ""), accent if selected else 0, limit=room)
+
+
+def draw_rows(win, app, top, bottom, width, accent, dim):
+    rows = app.active_rows
+    rows_x = SECTION_WIDTH + 2
+    visible = max(1, (bottom - top + ROW_PITCH - 1) // ROW_PITCH)
+    app.row_offset = scrolled_offset(app.row_offset, app.row_index, visible)
+    label_width = max(MIN_LABEL_WIDTH, int((width - rows_x) * LABEL_WIDTH_SHARE))
+    control_x = rows_x + 1 + label_width
+    room = width - control_x - 2
+    for index in range(app.row_offset, min(len(rows), app.row_offset + visible)):
+        row = rows[index]
+        y = top + (index - app.row_offset) * ROW_PITCH
+        selected = index == app.row_index
+        value = app.value_for(row)
+        if app.is_overridden(row):
+            add(win, y, rows_x - 1, "▌", curses.color_pair(PAIR_BAR))
+        add(win, y, rows_x + 1, row["label"], (accent | curses.A_BOLD) if selected else 0, limit=label_width)
+        if room > MIN_CONTROL_WIDTH:
+            draw_control(win, app, row, value, y, control_x, room, selected, accent, dim)
+
+
+def draw_footer(win, app, height, dim):
+    footer = height - 1
+    if app.error_text:
+        add(win, footer, 1, app.error_text.replace("\n", " "), curses.color_pair(PAIR_ERROR))
+    else:
+        add(win, footer, 1, getattr(app, "hint", HINT), dim)
+
+
 def draw(win, app):
     win.erase()
     height, width = win.getmaxyx()
-    if height < 6 or width < 40:
+    if height < MIN_HEIGHT or width < MIN_WIDTH:
         add(win, 0, 0, "terminal too small")
         win.noutrefresh()
         return
 
     accent = curses.color_pair(PAIR_ACCENT)
     dim = curses.color_pair(PAIR_DIM)
-
-    add(win, 0, 1, getattr(app, "title", "Look & Feel"), accent | curses.A_BOLD)
-    status = app.theme_key
-    add(win, 0, max(14, width - len(status) - 2), status, dim)
-    add(win, 1, 1, "─" * (width - 2), dim)
-
-    top = 2
-    bottom = height - 2
-    rows_x = SECTION_WIDTH + 2
-
-    sections = app.sections
-    section_visible = bottom - top
-    first = getattr(app, "section_offset", 0)
-    if app.section_index < first:
-        first = app.section_index
-    elif app.section_index >= first + section_visible:
-        first = app.section_index - section_visible + 1
-    app.section_offset = first
-    for index in range(first, min(len(sections), first + section_visible)):
-        section = sections[index]
-        y = top + index - first
-        selected = index == app.section_index
-        attr = (accent | curses.A_BOLD) if selected else dim
-        marker = "▌" if selected else " "
-        add(win, y, 1, marker + " " + section["title"], attr, limit=SECTION_WIDTH)
-
-    for y in range(top, bottom):
-        add(win, y, SECTION_WIDTH + 1, "│", dim)
-
-    rows = app.active_rows
-    visible = max(1, (bottom - top + ROW_PITCH - 1) // ROW_PITCH)
-    if app.row_index < app.row_offset:
-        app.row_offset = app.row_index
-    elif app.row_index >= app.row_offset + visible:
-        app.row_offset = app.row_index - visible + 1
-
-    label_width = max(12, int((width - rows_x) * 0.42))
-    for slot in range(visible):
-        index = app.row_offset + slot
-        if index >= len(rows):
-            break
-        row = rows[index]
-        y = top + slot * ROW_PITCH
-        selected = index == app.row_index
-        value = app.value_for(row)
-
-        if app.is_overridden(row):
-            add(win, y, rows_x - 1, "▌", curses.color_pair(PAIR_BAR))
-        label_attr = (accent | curses.A_BOLD) if selected else 0
-        add(win, y, rows_x + 1, row["label"], label_attr, limit=label_width)
-
-        control_x = rows_x + 1 + label_width
-        room = width - control_x - 2
-        if room <= 4:
-            continue
-        text = value_text(row, value)
-        if row["type"] in ("int", "float"):
-            bar_width = max(4, room - VALUE_WIDTH - 1)
-            add(win, y, control_x, gauge(row, value, bar_width),
-                accent if selected else dim)
-            add(win, y, control_x + bar_width + 1, text.rjust(VALUE_WIDTH),
-                0 if selected else dim)
-        elif row["type"] == "bool":
-            add(win, y, control_x, "[x]" if value is True else "[ ]",
-                accent if selected else 0)
-        else:
-            pending = (row["type"] == "pipeline"
-                       and row["id"] == app.pipeline_pending_id)
-            shown = "‹ %s ›" % text if selected else "  %s" % text
-            add(win, y, control_x, shown + (" …" if pending else ""),
-                accent if selected else 0, limit=room)
-
-    footer = height - 1
-    if app.error_text:
-        add(win, footer, 1, app.error_text.replace("\n", " "),
-            curses.color_pair(PAIR_ERROR))
-    else:
-        add(win, footer, 1, getattr(app, "hint", HINT), dim)
+    top, bottom = 2, height - 2
+    draw_header(win, app, width, accent, dim)
+    draw_sections(win, app, top, bottom, accent, dim)
+    draw_rows(win, app, top, bottom, width, accent, dim)
+    draw_footer(win, app, height, dim)
     win.noutrefresh()
 
 
@@ -698,12 +703,12 @@ def main(win, app_type=Looknfeel):
             app.move_section(1)
         elif key == curses.KEY_BTAB:
             app.move_section(-1)
-        elif key in (ord(" "), curses.KEY_ENTER, 10, 13):
+        elif key in (ord(" "), curses.KEY_ENTER, curses.ascii.NL, curses.ascii.CR):
             if row and row["type"] == "bool":
                 app.toggle_row(row)
             elif row:
                 app.adjust(row, 1)
-        elif key in (curses.KEY_BACKSPACE, 127, 8):
+        elif key in (curses.KEY_BACKSPACE, curses.ascii.DEL, curses.ascii.BS):
             if row:
                 app.reset_row(row)
         elif key == curses.KEY_RESIZE:

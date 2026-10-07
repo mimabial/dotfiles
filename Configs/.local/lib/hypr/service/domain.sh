@@ -14,7 +14,7 @@ Actions:
   restore   overwrite managed files from stock defaults (backs up first)
 
 Domains:
-  hypr-config   hypr-state   hyprlock   hypridle   rofi
+  hypr-config   hyprlock   hypridle   rofi
 
 Options:
   -n, --dry-run          preview without changing files
@@ -43,7 +43,7 @@ case "${action}" in
 esac
 
 case "${domain}" in
-  hypr-config|hypr-state|hyprlock|hypridle|rofi) ;;
+  hypr-config|hyprlock|hypridle|rofi) ;;
   -h|--help|help) usage; exit 0 ;;
   *) hypr_service_die "Unknown domain: ${domain}" ;;
 esac
@@ -64,7 +64,7 @@ hypr_service_apply_cli_env "${cli_options[dry_run]}" "${cli_options[backup_label
 hypr_service_apply_manifest_domains "${action}" "${cli_options[show_diff]}" "${cli_options[quiet]}" "${domain}"
 
 case "${domain}" in
-  hypr-config|hypr-state)
+  hypr-config)
     [[ "${cli_options[dry_run]}" -ne 0 ]] || hyprctl reload >/dev/null 2>&1 || true
     ;;
   hypridle)

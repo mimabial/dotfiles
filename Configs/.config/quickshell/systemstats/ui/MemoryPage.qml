@@ -32,7 +32,7 @@ Column {
   readonly property real total: Math.max(1, Model.num(mem.total, 1))
   readonly property real usedPercent: Model.num(mem.used) / total * 100
   readonly property real pressure: Math.max(Model.num(mem.pressureSome), Model.num(mem.pressureFull))
-  readonly property bool hasCompression: Model.num(mem.compressed) >= 1048576
+  readonly property bool hasCompression: Model.num(mem.compressed) >= 1024 * 1024
   readonly property bool hasSwap: Model.num(mem.swapTotal) > 0
   readonly property real swapTotal: Model.num(mem.swapTotal)
   readonly property real swapUsed: Model.num(mem.swapUsed)
@@ -49,7 +49,7 @@ Column {
     var sub = Model.bytesText(swapUsed > 0 ? swapUsed : swapTotal)
     return {
       value: frac,
-      color: frac >= 0.85 ? danger : (frac >= 0.5 ? warn : s1),
+      color: frac >= Model.SWAP_DANGER ? danger : (frac >= Model.SWAP_WARN ? warn : s1),
       text: String(Math.round(frac * 100)), unit: "%", label: "Swap", sub: sub
     }
   }

@@ -1,7 +1,6 @@
 import QtQuick
 
-// Section label inside a popup ("AUDIO", "OUTPUT DEVICE"). The top pad keeps
-// nerd-font ascenders from being clipped by a surrounding ListView.
+// The top pad keeps nerd-font ascenders from being clipped by a surrounding ListView.
 Text {
     id: root
     required property var shell

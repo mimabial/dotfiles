@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
-# Font resolution, override emission, em->px and text->px conversion via Pango.
-# External deps: hypr_config_value_from_layers (core/common).
-
 ROFI_PANGO_MEASURE="$(dirname -- "${BASH_SOURCE[0]}")/pango_measure.py"
 
 rofi_effective_font_scale() {
@@ -117,9 +113,8 @@ rofi_font_text_height_px() {
   printf '%s\n' "${font_px}"
 }
 
-# "<widest row px> <line height px>" for the rows on stdin. Measured rather than
-# counted so nerd-font glyphs and proportional faces are not mistaken for one
-# digit advance each; both extents come from one Pango pass.
+# Measured rather than counted so nerd-font glyphs and proportional faces are not
+# mistaken for one digit advance each; both extents come from one Pango pass.
 rofi_font_text_extents_px() {
   local font_name="$1"
   local font_scale="$2"
@@ -154,7 +149,7 @@ rofi_font_text_extents_px() {
   printf '%s %s\n' "${width_px}" "${height_px}"
 }
 
-# Aligns flagged row suffixes using the same Pango metrics Rofi renders with.
+# Measured with the Pango metrics Rofi renders with, so suffixes line up on screen.
 rofi_font_align_trailing() {
   local font_name="$1" font_scale="$2" glyph="$3" target_px="${4:-0}"
   local rows="" digest="" cache_dir="" cache_file="" aligned=""

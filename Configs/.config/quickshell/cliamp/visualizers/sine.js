@@ -1,4 +1,3 @@
-// Sine — Physical Acoustic Standing Wave (Vibrating String / Harmonic Resonance)
 .pragma library
 .import "helpers.js" as H
 

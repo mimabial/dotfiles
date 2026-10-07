@@ -6,7 +6,7 @@ scales=(1 1.25 1.5 1.67 2 3 4)
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/monitor.common.bash"
+source "${HYPR_LIB_DIR}/system/monitor.common.bash"
 
 hypr_help_guard "Usage: hyprshell system/monitor-scale [-m NAME] [--reverse|SCALE]
 Set or cycle a monitor's scale.

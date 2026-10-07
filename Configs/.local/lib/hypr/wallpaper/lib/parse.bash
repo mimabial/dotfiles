@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 set_wallpaper_filetypes_override() {
   IFS=':' read -r -a WALLPAPER_OVERRIDE_FILETYPES <<<"$1"

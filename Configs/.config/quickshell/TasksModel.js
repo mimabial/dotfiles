@@ -1,5 +1,11 @@
 var activityWeeks = 26
 var topCount = 3
+// iCalendar runs 1 (highest) to 9; 5 is the middle and 0 means unset.
+var PRIORITY_BANDS = ["none", "low", "medium", "high"]
+function priorityBand(priority) {
+    const value = Number(priority || 0)
+    return value >= 1 && value <= 4 ? 3 : value === 5 ? 2 : value >= 6 ? 1 : 0
+}
 var scopes = ["open", "all", "done", "due", "rec", "today", "later", "overdue"]
 
 function key(item) { return String(item.uid || (item.list + ":" + item.id)) }
@@ -28,10 +34,8 @@ function withScope(query, selected) {
 }
 
 function matches(item, query) {
-    const priority = Number(item.priority || 0)
     const fields = [item.summary, item.description, item.location, item.list,
-        item.priority, priority > 0 && priority <= 4 ? "high" : priority === 5 ? "medium"
-            : priority > 5 ? "low" : "none",
+        item.priority, PRIORITY_BANDS[priorityBand(item.priority)],
         item.due === null || item.due === undefined ? "" : dateKey(new Date(Number(item.due) * 1000))]
         .concat(item.categories || [])
     return String(query).trim().split(/\s+/).filter(Boolean).every(word => {

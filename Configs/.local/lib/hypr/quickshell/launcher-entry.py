@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""Stream the unread counts apps publish over the Unity LauncherEntry D-Bus API.
-
-Prints one JSON line per update, {"app": desktop id, "count": shown count}, and
-exits with the process that started it.
-"""
 import ctypes
 import json
 import signal

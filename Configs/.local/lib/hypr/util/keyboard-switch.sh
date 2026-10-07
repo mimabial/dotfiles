@@ -4,9 +4,9 @@ set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 lib_root="$(cd -- "${script_dir}/../.." && pwd -P)"
-xdg_lib="${lib_root}/hypr/core/xdg.sh"
-notify_lib="${lib_root}/hypr/core/notify.sh"
-state_lib="${lib_root}/hypr/core/state.sh"
+xdg_lib="${lib_root}/hypr/core/xdg.bash"
+notify_lib="${lib_root}/hypr/core/notify.bash"
+state_lib="${lib_root}/hypr/core/state.bash"
 
 [[ -r "${xdg_lib}" ]] || {
   printf 'missing xdg bootstrap: %s\n' "${xdg_lib}" >&2
@@ -30,6 +30,8 @@ export ICONS_DIR="${ICONS_DIR:-${XDG_DATA_HOME}/icons}"
 source "${notify_lib}" || exit 1
 # shellcheck source=/dev/null
 source "${state_lib}" || exit 1
+
+MAX_LAYOUT_CYCLE_STEPS=8
 
 require_commands() {
   local cmd_name=""
@@ -90,17 +92,10 @@ reference_keyboard_name() {
   printf '%s\n' "${name}"
 }
 
-current_reference_keymap() {
-  local keyboards_json="$1"
-  local reference_name="$2"
-
-  keyboard_active_keymap_from_json "${keyboards_json}" "${reference_name}"
-}
-
 sync_keyboard_to_keymap() {
   local keyboard_name="$1"
   local target_keymap="$2"
-  local attempts=8
+  local attempts="${MAX_LAYOUT_CYCLE_STEPS}"
   local current_keymap=""
   local keyboards_json=""
 
@@ -117,6 +112,30 @@ sync_keyboard_to_keymap() {
   keyboards_json="$(keyboard_devices_json)"
   current_keymap="$(keyboard_active_keymap_from_json "${keyboards_json}" "${keyboard_name}")"
   [[ "${current_keymap}" == "${target_keymap}" ]]
+}
+
+reference_target_keymap() {
+  local keyboards_json="$1"
+  local reference_name="$2"
+  local sync_current_only="$3"
+
+  if ((sync_current_only == 0)); then
+    hyprctl switchxkblayout "${reference_name}" next >/dev/null 2>&1 || return 1
+    keyboards_json="$(keyboard_devices_json)"
+  fi
+  keyboard_active_keymap_from_json "${keyboards_json}" "${reference_name}"
+}
+
+sync_other_keyboards() {
+  local keyboards_json="$1"
+  local reference_name="$2"
+  local target_keymap="$3"
+  local keyboard_name=""
+
+  while IFS= read -r keyboard_name; do
+    [[ -n "${keyboard_name}" && "${keyboard_name}" != "${reference_name}" ]] || continue
+    sync_keyboard_to_keymap "${keyboard_name}" "${target_keymap}" || return 1
+  done < <(keyboard_name_list <<<"${keyboards_json}")
 }
 
 regenerate_keybind_hint_cache() {
@@ -146,7 +165,6 @@ main() {
   local keyboards_json=""
   local reference_name=""
   local target_keymap=""
-  local keyboard_name=""
 
   while (($#)); do
     case "$1" in
@@ -182,27 +200,15 @@ main() {
   }
 
   reference_name="$(reference_keyboard_name "${keyboards_json}")" || return 1
-
-  if [[ "${sync_current_only}" -eq 1 ]]; then
-    target_keymap="$(current_reference_keymap "${keyboards_json}" "${reference_name}")"
-  else
-    hyprctl switchxkblayout "${reference_name}" next >/dev/null 2>&1 || return 1
-    keyboards_json="$(keyboard_devices_json)"
-    target_keymap="$(keyboard_active_keymap_from_json "${keyboards_json}" "${reference_name}")"
-  fi
+  target_keymap="$(reference_target_keymap "${keyboards_json}" "${reference_name}" "${sync_current_only}")" || return 1
   [[ -n "${target_keymap}" ]] || return 1
-
-  while IFS= read -r keyboard_name; do
-    [[ -n "${keyboard_name}" ]] || continue
-    [[ "${keyboard_name}" == "${reference_name}" ]] && continue
-    sync_keyboard_to_keymap "${keyboard_name}" "${target_keymap}" || return 1
-  done < <(keyboard_name_list <<<"${keyboards_json}")
+  sync_other_keyboards "${keyboards_json}" "${reference_name}" "${target_keymap}" || return 1
 
   if [[ "${notify_enabled}" -eq 1 ]]; then
     notify_send_safe \
       -a "Keyboard switch" \
-      -r 91190 \
-      -t 800 \
+      -r "${NOTIFY_ID_KEYBOARD_LAYOUT}" \
+      -t "${NOTIFY_OSD_MS}" \
       -i "${ICONS_DIR}/Pywal16-Icon/keyboard.svg" \
       "${target_keymap}" || true
   fi

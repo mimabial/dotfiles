@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 hypr_stateful_choice_resolve_path() {
   local name="$1"
@@ -53,8 +52,6 @@ hypr_stateful_choice_list_names() {
   done
 }
 
-# hypr_stateful_choice_write_lua <out-file> [--load <path>] [--config <key> <value>] <NAME=VALUE>...
-# Writes the generated Lua fragment Hyprland picks up through runtime.load.
 hypr_stateful_choice_write_lua() {
   local out_file="$1"
   shift
@@ -86,13 +83,13 @@ hypr_stateful_choice_write_lua() {
     printf '%s\n' 'local runtime = require("runtime")'
     printf '%s\n\n' 'local vars = require("vars")'
     for entry in "${assignments[@]}"; do
-      printf 'vars.set("%s", %s)\n' "${entry%%=*}" "$(hypr_lua_string "${entry#*=}")"
+      printf 'vars.set("%s", %s)\n' "${entry%%=*}" "$(hypr_lua_quote "${entry#*=}")"
     done
     if [[ -n "${load_path}" ]]; then
-      printf 'runtime.load(%s)\n' "$(hypr_lua_string "${load_path}")"
+      printf 'runtime.load(%s)\n' "$(hypr_lua_quote "${load_path}")"
     fi
     if [[ -n "${config_key}" ]]; then
-      printf 'runtime.config("%s", %s)\n' "${config_key}" "$(hypr_lua_string "${config_value}")"
+      printf 'runtime.config("%s", %s)\n' "${config_key}" "$(hypr_lua_quote "${config_value}")"
     fi
   } >"${out_file}"
 }
@@ -108,5 +105,5 @@ hypr_stateful_choice_apply() {
   "${update_fn}" "${value}"
 
   [[ "${HYPR_STATEFUL_CHOICE_QUIET:-0}" == 1 ]] && return 0
-  send_ephemeral_notif "${notify_tag}" -t 2000 -i "preferences-desktop-display" "${notify_title}" "${value}"
+  send_ephemeral_notif "${notify_tag}" -t "${NOTIFY_BRIEF_MS}" -i "preferences-desktop-display" "${notify_title}" "${value}"
 }

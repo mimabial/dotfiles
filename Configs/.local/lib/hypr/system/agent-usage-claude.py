@@ -1,12 +1,9 @@
 #!/usr/bin/python3
-"""Collect local Claude usage and account limits as JSON."""
-
 from __future__ import annotations
 
 import argparse
 import datetime as dt
 import fcntl
-import hashlib
 import json
 import math
 import os
@@ -19,6 +16,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
+
+from agent_usage_common import MILLISECOND_EPOCH_THRESHOLD, RECENT_DAYS, cache_key, epoch_seconds
 
 AGENT_ID = "claude"
 AGENT_NAME = "Claude Code"
@@ -51,7 +50,7 @@ def date_string(value: dt.date) -> str:
 
 def recent_date_strings() -> list[str]:
   today = dt.datetime.now().date()
-  return [date_string(today - dt.timedelta(days=offset)) for offset in range(6, -1, -1)]
+  return [date_string(today - dt.timedelta(days=offset)) for offset in range(RECENT_DAYS - 1, -1, -1)]
 
 
 def local_date_string() -> str:
@@ -64,7 +63,7 @@ def local_date_from_timestamp(value: Any) -> str:
 
   if isinstance(value, (int, float)):
     try:
-      seconds = float(value) / 1000.0 if float(value) > 10_000_000_000 else float(value)
+      seconds = epoch_seconds(float(value))
       return date_string(dt.datetime.fromtimestamp(seconds).date())
     except Exception:
       return local_date_string()
@@ -92,8 +91,8 @@ def usage_token(usage: dict[str, Any], snake_key: str, camel_key: str) -> int:
 
 def number(value: Any) -> int:
   try:
-    n = float(value or 0)
-    return round(n) if math.isfinite(n) else 0
+    parsed = float(value or 0)
+    return round(parsed) if math.isfinite(parsed) else 0
   except Exception:
     return 0
 
@@ -164,12 +163,9 @@ def intern(table: dict[str, int], values: list[str], value: str) -> int:
 
 
 def parse_project_file(path: Path) -> dict[str, Any]:
-  """Reduce one transcript to the rows scan_projects folds in.
-
-  Rows stay unaggregated on purpose: the scan dedups message ids across files
+  """Rows stay unaggregated on purpose: the scan dedups message ids across files
   and unions session ids, and neither survives per-file summing. Strings are
-  interned because day, model and session repeat on nearly every row.
-  """
+  interned because day, model and session repeat on nearly every row."""
   models: list[str] = []
   days: list[str] = []
   sessions: list[str] = []
@@ -217,7 +213,7 @@ def parse_project_file(path: Path) -> dict[str, Any]:
 
 
 def project_cache_file(projects_path: Path) -> Path:
-  digest = hashlib.sha1(str(projects_path).encode("utf-8")).hexdigest()[:16]
+  digest = cache_key(str(projects_path))
   return cache_root() / f"claude-files-v{PROJECT_CACHE_VERSION}-{digest}.json"
 
 
@@ -231,9 +227,7 @@ def valid_cache_entry(entry: Any, info: os.stat_result) -> bool:
 
 
 def cached_project_files(projects_path: Path) -> list[dict[str, Any]]:
-  """One parsed entry per transcript, reusing anything the file itself has not changed.
-
-  A closed transcript never changes again, so re-parsing every one of them on
+  """A closed transcript never changes again, so re-parsing every one of them on
   every refresh is the whole cost of this scan. mtime+size is the cheapest key
   that still catches a session being appended to right now. Like every cache
   here it must never take the collector down, so an unusable cache root
@@ -242,8 +236,7 @@ def cached_project_files(projects_path: Path) -> list[dict[str, Any]]:
   --force does not skip this. The key is derived from the file itself, so the
   cache cannot serve stale data the way the time-based reuse windows can, and
   bypassing it would buy a person nothing but a full rescan. Bump
-  PROJECT_CACHE_VERSION to invalidate it after a parse change.
-  """
+  PROJECT_CACHE_VERSION to invalidate it after a parse change."""
   try:
     cache_file = project_cache_file(projects_path)
   except Exception:
@@ -312,7 +305,7 @@ def scan_projects(projects_path: Path) -> dict[str, Any]:
 
 
 def scan_cache_paths(projects_path: Path) -> tuple[Path, Path]:
-  digest = hashlib.sha1(str(projects_path).encode("utf-8")).hexdigest()[:16]
+  digest = cache_key(str(projects_path))
   root = cache_root()
   return root / f"claude-scan-{digest}.json", root / f"claude-scan-{digest}.lock"
 
@@ -486,7 +479,7 @@ def scan_opencode_usage(max_age_seconds: float) -> dict[str, Any] | None:
   if not db.is_file():
     return None
 
-  cache_file = cache_root() / f"claude-opencode-{hashlib.sha1(str(db).encode('utf-8')).hexdigest()[:16]}.json"
+  cache_file = cache_root() / f"claude-opencode-{cache_key(str(db))}.json"
   cached = read_fresh_json(cache_file, max_age_seconds)
   if cached is not None:
     return cached.get("stats")
@@ -600,13 +593,13 @@ def parse_utilization(value: Any) -> float:
 
 
 def normalize_utilization(value: Any, percent_scale: bool) -> float:
-  n = parse_utilization(value)
-  if not (n >= 0):
+  utilization = parse_utilization(value)
+  if not (utilization >= 0):
     return -1.0
   # New payloads use percentages; old ones used fractions.
-  if percent_scale or n > 1:
-    return min(1.0, n / 100.0)
-  return min(1.0, n)
+  if percent_scale or utilization > 1:
+    return min(1.0, utilization / 100.0)
+  return min(1.0, utilization)
 
 
 def normalize_reset_at(value: Any) -> str:
@@ -617,7 +610,7 @@ def normalize_reset_at(value: Any) -> str:
     return ""
   if raw.isdigit():
     ts = int(raw)
-    if ts < 1e12:
+    if ts < MILLISECOND_EPOCH_THRESHOLD:
       ts *= 1000
     try:
       return dt.datetime.fromtimestamp(ts / 1000, dt.timezone.utc).isoformat()

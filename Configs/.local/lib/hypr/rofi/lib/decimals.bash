@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
-# Fixed-point milli arithmetic used by font, geometry, and wallpaper helpers.
 ROFI_MILLI=1000
 
 rofi_decimal_milli() {

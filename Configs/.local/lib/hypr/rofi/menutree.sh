@@ -3,29 +3,29 @@
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_bootstrap || exit 1
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
+source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash"
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.engine.bash"
+source "${HYPR_LIB_DIR}/rofi/menu.engine.bash"
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.dynamic.bash"
+source "${HYPR_LIB_DIR}/rofi/menu.dynamic.bash"
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.d/menu.domain.core.bash"
+source "${HYPR_LIB_DIR}/rofi/menu.d/menu.domain.core.bash"
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.d/menu.domain.gaming.bash"
+source "${HYPR_LIB_DIR}/rofi/menu.d/menu.domain.gaming.bash"
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.d/menu.domain.trigger.bash"
+source "${HYPR_LIB_DIR}/rofi/menu.d/menu.domain.trigger.bash"
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.d/menu.domain.media.bash"
+source "${HYPR_LIB_DIR}/rofi/menu.d/menu.domain.media.bash"
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.d/menu.domain.style.bash"
+source "${HYPR_LIB_DIR}/rofi/menu.d/menu.domain.style.bash"
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.d/menu.domain.setup.bash"
+source "${HYPR_LIB_DIR}/rofi/menu.d/menu.domain.setup.bash"
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.d/menu.domain.install.bash"
+source "${HYPR_LIB_DIR}/rofi/menu.d/menu.domain.install.bash"
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.d/menu.domain.system.bash"
+source "${HYPR_LIB_DIR}/rofi/menu.d/menu.domain.system.bash"
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/menu.registry.bash"
+source "${HYPR_LIB_DIR}/rofi/menu.registry.bash"
 
 hypr_help_guard "Usage: hyprshell rofi/menutree [--menu-id <id>|--search-all|--dump-json|--action <id>|<id>]
 Open the rofi menu tree (default: main menu).

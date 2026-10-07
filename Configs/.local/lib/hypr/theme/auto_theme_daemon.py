@@ -47,6 +47,8 @@ from auto_theme_support import (
 from auto_theme_watch import InotifyPathWatcher
 from pyutils.lock_paths import runtime_lock_path
 
+ERROR_BACKOFF_SECONDS = 5
+
 AUTO_COLOR_MODE = 1
 LEGACY_THEME_COLOR_MODE = "0"
 
@@ -342,8 +344,8 @@ class AutoThemeDaemon:
 
     def _apply_toggle(self):
         new_mode = "dark" if self.state["current_mode"] == "light" else "light"
-        if self.config["manual_override_duration"] > 0:
-            override_until = datetime.now() + timedelta(minutes=self.config["manual_override_duration"])
+        if self.config["manual_override_minutes"] > 0:
+            override_until = datetime.now() + timedelta(minutes=self.config["manual_override_minutes"])
             self.state["manual_override_until"] = override_until.isoformat()
             print(f"Manual override until {override_until.strftime('%H:%M')}")
         self._apply_mode(new_mode, "manual_toggle")
@@ -354,6 +356,56 @@ class AutoThemeDaemon:
         should_be_light, reason = self._should_be_light()
         self._apply_mode("light" if should_be_light else "dark", reason)
 
+    def _rearm_watchdog(self, now):
+        self._watchdog_due_at = now + timedelta(seconds=self._watchdog_interval_seconds())
+
+    def _apply_computed_mode(self, trigger=""):
+        should_be_light, reason = self._should_be_light()
+        self._apply_mode("light" if should_be_light else "dark", f"{reason}; trigger={trigger}" if trigger else reason)
+
+    def _wake_timeout(self, now, sun_due_at, override_due_at):
+        deadlines = [due for due in (self._watchdog_due_at, sun_due_at, override_due_at) if due is not None]
+        if not deadlines:
+            return None
+        return max(0.0, min((deadline - now).total_seconds() for deadline in deadlines))
+
+    def _trigger_reasons(self, events, now, sun_due_at, override_due_at):
+        reasons = []
+        if events["config_reload"]:
+            reasons.append("config_change")
+        if events["state_refresh"]:
+            reasons.append("state_change")
+        if self._watchdog_due_at is not None and now >= self._watchdog_due_at:
+            reasons.append("watchdog")
+            self._rearm_watchdog(now)
+        if sun_due_at is not None and now >= sun_due_at:
+            reasons.append("sun_boundary")
+        if override_due_at is not None and now >= override_due_at:
+            reasons.append("override_expiry")
+        return reasons
+
+    def _handle_wake(self, sun_due_at, override_due_at):
+        now = datetime.now()
+        events = self._consume_pending_events()
+
+        if events["config_reload"]:
+            print("Auto-theme config changed, reloading")
+            self._reload_config()
+            self._rearm_watchdog(now)
+
+        if events["signals"]:
+            for event in events["signals"]:
+                if event == "toggle":
+                    self._apply_toggle()
+                else:
+                    self._apply_refresh()
+            self._rearm_watchdog(datetime.now())
+            return
+
+        trigger_reasons = self._trigger_reasons(events, now, sun_due_at, override_due_at)
+        if trigger_reasons:
+            self._apply_computed_mode(",".join(dict.fromkeys(trigger_reasons)))
+
     def run(self):
         print(f"Auto-theme daemon started (PID: {os.getpid()})")
         print(f"  Location: {self.config['latitude']}, {self.config['longitude']}")
@@ -363,10 +415,8 @@ class AutoThemeDaemon:
         if self._signal_events:
             self.wake_event.set()
         self._start_file_watcher()
-        should_be_light, reason = self._should_be_light()
-        self._apply_mode("light" if should_be_light else "dark", reason)
-        now = datetime.now()
-        self._watchdog_due_at = now + timedelta(seconds=self._watchdog_interval_seconds())
+        self._apply_computed_mode()
+        self._rearm_watchdog(datetime.now())
 
         try:
             while self.running:
@@ -374,63 +424,14 @@ class AutoThemeDaemon:
                     now = datetime.now()
                     sun_due_at = next_sun_boundary(self.config, now)
                     override_due_at = manual_override_deadline(self.state)
-
-                    deadlines = []
-                    if self._watchdog_due_at is not None:
-                        deadlines.append(self._watchdog_due_at)
-                    if sun_due_at is not None:
-                        deadlines.append(sun_due_at)
-                    if override_due_at is not None:
-                        deadlines.append(override_due_at)
-
-                    timeout = None
-                    if deadlines:
-                        timeout = max(0.0, min((deadline - now).total_seconds() for deadline in deadlines))
-
-                    self.wake_event.wait(timeout)
+                    self.wake_event.wait(self._wake_timeout(now, sun_due_at, override_due_at))
                     self.wake_event.clear()
                     if not self.running:
                         break
-
-                    now = datetime.now()
-                    events = self._consume_pending_events()
-
-                    if events["config_reload"]:
-                        print("Auto-theme config changed, reloading")
-                        self._reload_config()
-                        self._watchdog_due_at = now + timedelta(seconds=self._watchdog_interval_seconds())
-
-                    if events["signals"]:
-                        for event in events["signals"]:
-                            if event == "toggle":
-                                self._apply_toggle()
-                            else:
-                                self._apply_refresh()
-                        now = datetime.now()
-                        self._watchdog_due_at = now + timedelta(seconds=self._watchdog_interval_seconds())
-                        continue
-
-                    trigger_reasons = []
-                    if events["config_reload"]:
-                        trigger_reasons.append("config_change")
-                    if events["state_refresh"]:
-                        trigger_reasons.append("state_change")
-                    if self._watchdog_due_at is not None and now >= self._watchdog_due_at:
-                        trigger_reasons.append("watchdog")
-                        self._watchdog_due_at = now + timedelta(seconds=self._watchdog_interval_seconds())
-                    if sun_due_at is not None and now >= sun_due_at:
-                        trigger_reasons.append("sun_boundary")
-                    if override_due_at is not None and now >= override_due_at:
-                        trigger_reasons.append("override_expiry")
-
-                    if trigger_reasons:
-                        should_be_light, reason = self._should_be_light()
-                        unique_reasons = ",".join(dict.fromkeys(trigger_reasons))
-                        mode = "light" if should_be_light else "dark"
-                        self._apply_mode(mode, f"{reason}; trigger={unique_reasons}")
+                    self._handle_wake(sun_due_at, override_due_at)
                 except Exception as exc:
                     print(f"Error in main loop: {exc}")
-                    time.sleep(5)
+                    time.sleep(ERROR_BACKOFF_SECONDS)
         finally:
             self._stop_file_watcher()
             signal.set_wakeup_fd(-1)

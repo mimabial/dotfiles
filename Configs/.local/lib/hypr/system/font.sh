@@ -2,7 +2,8 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/notify.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell system/font resolve <layout-file>
 Download and install fonts referenced by a Hyprland layout file." "$@"
@@ -42,7 +43,7 @@ download_and_install_font() {
   fi
   rm -rf "${staging_dir}"
   ((result == 0)) || return 1
-  dunstify -t 3000 -i preferences-desktop-font Font "${name} Installed successfully"
+  dunstify -t "${NOTIFY_MS}" -i preferences-desktop-font Font "${name} Installed successfully"
 }
 
 resolve() {

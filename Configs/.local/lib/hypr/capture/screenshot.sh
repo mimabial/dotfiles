@@ -322,22 +322,22 @@ ocr_notify_success() {
 trap 'cleanup_temp_screenshot "$?"' EXIT
 
 case "${mode}" in
-  p) # print all outputs
+  p)
     capture_mode_then_annotate "screen"
     ;;
-  smart) # smart selection with wayfreeze and auto window detection
+  smart)
     smart_screenshot "${smart_destination}"
     ;;
-  area) # manual area selection
+  area)
     manual_area_screenshot 0
     ;;
-  area-freeze) # manual area selection with frozen screen
+  area-freeze)
     manual_area_screenshot 1
     ;;
-  w) # window selection with frozen screen
+  w)
     window_screenshot
     ;;
-  m) # print focused monitor
+  m)
     capture_mode_then_annotate "output"
     ;;
   ocr | text)
@@ -358,7 +358,7 @@ case "${mode}" in
   ocr-screen | text-screen)
     ocr_screenshot "screen" "${2:-clipboard}"
     ;;
-  *) # invalid option or default to smart
+  *)
     if [[ -z "${mode}" ]]; then
       smart_screenshot "${smart_destination}"
     else

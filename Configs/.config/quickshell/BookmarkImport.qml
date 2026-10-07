@@ -162,7 +162,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         text: "Esc Cancel"
         color: Commons.Color.menu.text
-        opacity: 0.48
+        opacity: Commons.Style.mutedTextAlpha
         font.family: Commons.Style.font.menuFamily
         font.pixelSize: Commons.Style.font.caption
       }
@@ -198,7 +198,7 @@ Item {
             + root.result.stats.duplicatesInFile + " duplicate entries"
           : ""
         color: Commons.Color.menu.text
-        opacity: 0.68
+        opacity: Commons.Style.secondaryTextAlpha
         font.family: Commons.Style.font.menuFamily
         font.pixelSize: Commons.Style.font.bodySmall
         wrapMode: Text.WordWrap
@@ -213,7 +213,7 @@ Item {
             + root.result.stats.rejected + " rejected non-URL entries"
           : ""
         color: Commons.Color.menu.text
-        opacity: 0.52
+        opacity: Commons.Style.mutedTextAlpha
         font.family: Commons.Style.font.menuFamily
         font.pixelSize: Commons.Style.font.bodySmall
         wrapMode: Text.WordWrap
@@ -255,7 +255,7 @@ Item {
             text: previewBookmark.modelData.url
             textFormat: Text.PlainText
             color: Commons.Color.menu.selectedText
-            opacity: 0.56
+            opacity: Commons.Style.mutedTextAlpha
             font.family: Commons.Style.font.menuFamily
             font.pixelSize: Commons.Style.font.caption
             elide: Text.ElideRight
@@ -268,7 +268,7 @@ Item {
         visible: !root.result
         text: root.loading ? "" : ""
         color: Commons.Color.menu.text
-        opacity: 0.5
+        opacity: Commons.Style.mutedTextAlpha
         font.family: Commons.Style.font.menuFamily
         font.pixelSize: Commons.Style.font.displayLarge
       }
@@ -283,7 +283,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         text: root.result ? "A timestamped backup will be created" : "HTML and plugin JSON files"
         color: Commons.Color.menu.text
-        opacity: 0.48
+        opacity: Commons.Style.mutedTextAlpha
         font.family: Commons.Style.font.menuFamily
         font.pixelSize: Commons.Style.font.caption
       }

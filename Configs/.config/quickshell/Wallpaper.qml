@@ -285,7 +285,6 @@ Singleton {
         command: ["hyprshell", "wallpaper", "get", "--global"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.current = String(text).trim().split("\n").pop() }
     }
-    // fills any gap in the thumbnail cache for the active theme, then relists
     property Process cacheProc: Process {
         command: ["hyprshell", "wallpaper/wallpaper.cache"]
         onExited: root.refresh()
@@ -299,7 +298,7 @@ Singleton {
     // in-memory check; reconcile spawns a process only when a change is really
     // due, so an idle schedule costs a comparison a minute
     property Timer scheduleTimer: Timer {
-        interval: 60000
+        interval: 60 * 1000
         running: root.loaded
         repeat: true
         onTriggered: root.reconcile()

@@ -5,7 +5,7 @@ set -euo pipefail
 export LC_ALL=C
 
 # shellcheck source=/dev/null
-source "${BASH_SOURCE[0]%/*}/pm.updates.lib.sh"
+source "${BASH_SOURCE[0]%/*}/pm.updates.lib.bash"
 
 NO_CONFIRM=0
 FORCE_PM=""
@@ -122,6 +122,7 @@ confirm_flags() {
   local -n out_ref="${out_name}"
   out_ref=()
   ((NO_CONFIRM == 1)) && out_ref+=(--noconfirm)
+  return 0
 }
 
 pacman_privileged() {

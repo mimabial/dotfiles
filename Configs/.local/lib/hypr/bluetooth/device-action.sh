@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 
 set -uo pipefail
 export LC_ALL=C
@@ -39,25 +39,23 @@ strip_terminal_codes() {
   sed $'s/\033\[[0-9;?]*[ -\/]*[@-~]//g'
 }
 
-failure_message() {
+# timeout(1) exits 124 when it stops the command and 137 when --kill-after had to kill it.
+TIMEOUT_EXIT_STATUS=124
+TIMEOUT_KILLED_EXIT_STATUS=137
+
+timeout_message() {
   local phase=$1
-  local status=$2
-  local output=$3
-  local lower=${output,,}
-  local detail
+  case "$phase" in
+    pair) echo "Pairing timed out. Put the device in pairing mode and try again." ;;
+    connect) echo "Connection timed out. Make sure the device is nearby and awake." ;;
+    disconnect) echo "Disconnecting the device timed out." ;;
+    remove) echo "Forgetting the device timed out." ;;
+    *) echo "The Bluetooth operation timed out." ;;
+  esac
+}
 
-  if (( status == 124 || status == 137 )); then
-    case "$phase" in
-      pair) echo "Pairing timed out. Put the device in pairing mode and try again." ;;
-      connect) echo "Connection timed out. Make sure the device is nearby and awake." ;;
-      disconnect) echo "Disconnecting the device timed out." ;;
-      remove) echo "Forgetting the device timed out." ;;
-      *) echo "The Bluetooth operation timed out." ;;
-    esac
-    return
-  fi
-
-  case "$lower" in
+known_error_message() {
+  case "${1,,}" in
     *authenticationrejected*|*authentication\ rejected*)
       echo "Pairing was rejected by the device. Confirm the code and try again."
       ;;
@@ -88,17 +86,35 @@ failure_message() {
     *notavailable*|*not\ available*)
       echo "The device is unavailable. Make sure it is nearby and in pairing mode."
       ;;
-    *)
-      detail=$(printf '%s\n' "$output" | awk 'NF { line=$0 } END { print line }')
-      case "$phase" in
-        pair) printf 'Could not pair with the device%s\n' "${detail:+: $detail}" ;;
-        connect) printf 'Could not connect to the device%s\n' "${detail:+: $detail}" ;;
-        disconnect) printf 'Could not disconnect the device%s\n' "${detail:+: $detail}" ;;
-        remove) printf 'Could not forget the device%s\n' "${detail:+: $detail}" ;;
-        *) printf 'The Bluetooth operation failed%s\n' "${detail:+: $detail}" ;;
-      esac
-      ;;
+    *) return 1 ;;
   esac
+}
+
+generic_failure_message() {
+  local phase=$1
+  local detail=$2
+  case "$phase" in
+    pair) printf 'Could not pair with the device%s\n' "${detail:+: $detail}" ;;
+    connect) printf 'Could not connect to the device%s\n' "${detail:+: $detail}" ;;
+    disconnect) printf 'Could not disconnect the device%s\n' "${detail:+: $detail}" ;;
+    remove) printf 'Could not forget the device%s\n' "${detail:+: $detail}" ;;
+    *) printf 'The Bluetooth operation failed%s\n' "${detail:+: $detail}" ;;
+  esac
+}
+
+failure_message() {
+  local phase=$1
+  local status=$2
+  local output=$3
+  local detail
+
+  if (( status == TIMEOUT_EXIT_STATUS || status == TIMEOUT_KILLED_EXIT_STATUS )); then
+    timeout_message "$phase"
+    return
+  fi
+  known_error_message "$output" && return
+  detail=$(printf '%s\n' "$output" | awk 'NF { line=$0 } END { print line }')
+  generic_failure_message "$phase" "$detail"
 }
 
 run_bluetoothctl_action() {
@@ -150,7 +166,7 @@ run_bluetoothctl_action() {
 
 ensure_powered() {
   local state
-  state=$(timeout --kill-after=1s 2s bluetoothctl show 2>/dev/null | strip_terminal_codes) || state=
+  state=$(hypr_daemon_call bluetoothctl show 2>/dev/null | strip_terminal_codes) || state=
   [[ $state == *"Powered: yes"* ]] && return 0
 
   if ! hyprshell bluetooth/power on >/dev/null 2>&1; then
@@ -165,7 +181,7 @@ ensure_powered() {
 
 ensure_not_blocked() {
   local info
-  info=$(timeout --kill-after=1s 2s bluetoothctl info "$address" 2>/dev/null | strip_terminal_codes) || return 0
+  info=$(hypr_daemon_call bluetoothctl info "$address" 2>/dev/null | strip_terminal_codes) || return 0
   if [[ $info == *"Blocked: yes"* ]]; then
     echo "This device is blocked. Unblock it before trying again." >&2
     return 1

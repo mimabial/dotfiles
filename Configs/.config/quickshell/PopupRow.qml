@@ -12,6 +12,7 @@ Rectangle {
     property real iconSize: Style.px(18)
     property string title: ""
     property string detail: ""
+    property int detailAlignment: Text.AlignLeft
     property string value: ""
     property real valueWidth: 0
     property bool valueClickable: false
@@ -104,7 +105,7 @@ Rectangle {
                     }
                 }
             }
-            Text { visible: text !== ""; width: parent.width; text: root.detail; color: root.detailColor; font.family: root.shell.fontFamily; font.pixelSize: Style.caption; elide: Text.ElideRight }
+            Text { visible: text !== ""; width: parent.width; text: root.detail; color: root.detailColor; horizontalAlignment: root.detailAlignment; font.family: root.shell.fontFamily; font.pixelSize: Style.caption; elide: Text.ElideRight }
         }
         Text { id: valueText; visible: text !== ""; width: root.valueWidth > 0 ? root.valueWidth : implicitWidth; anchors.verticalCenter: parent.verticalCenter; text: root.value; color: root.valueHovered ? root.valueHoverColor : root.valueColor; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
     }

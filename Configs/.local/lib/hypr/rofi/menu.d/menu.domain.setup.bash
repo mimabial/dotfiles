@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 setup_add_default_item() {
   local menu_id="$1"
@@ -14,13 +13,37 @@ setup_add_default_item() {
   menu_add_item "${menu_id}" "${label}" action "${action_id}"
 }
 
-menu_register_domain_setup() {
+setup_register_power_profiles() {
+  local profile="" profile_label=""
+  local -A profile_icons=([power-saver]="󰌪" [balanced]="󰗑" [performance]="󱐋")
+
+  menu_define setup_power_profile "Power Profile" choice
+  for profile in $("${HYPR_LIB_DIR}/system/powerprofiles.sh"); do
+    profile_label="${profile//-/ }"
+    menu_add_item setup_power_profile "${profile_icons[${profile}]:-}  ${profile_label^}" action "setup_power_profile_${profile}"
+  done
+}
+
+setup_register_monitors() {
+  local scale=""
+
+  menu_define setup_monitors "Monitors"
+  menu_add_item setup_monitors "󱇧  Edit Config" action setup_monitors_config
+  menu_add_item setup_monitors "󰩨  Set Scale" submenu setup_monitor_scale
+  menu_add_item setup_monitors "󰌢  Toggle Laptop Display" action setup_monitor_laptop_toggle
+  menu_add_item setup_monitors "󰍺  Toggle Mirroring" action setup_monitor_mirror_toggle
+
+  menu_define setup_monitor_scale "Scale" choice
+  for scale in $(bash "${HYPR_LIB_DIR}/system/monitor-scale.sh" --list); do
+    menu_add_item setup_monitor_scale "󰍹  ${scale}x" action "setup_monitor_scale_${scale}"
+  done
+}
+
+setup_register_defaults() {
   local default_agent="${HYPR_DEFAULT_AGENT:-}"
   local default_browser="${BROWSER:-}"
   local default_editor="${EDITOR:-}"
   local default_terminal="${TERMINAL:-}"
-  local profile="" profile_label="" scale=""
-  local -A profile_icons=([power-saver]="󰌪" [balanced]="󰗑" [performance]="󱐋")
 
   default_browser="${default_browser##*/}"
   default_editor="${default_editor##*/}"
@@ -31,41 +54,6 @@ menu_register_domain_setup() {
     microsoft-edge-stable) default_browser="edge" ;;
     zen-browser) default_browser="zen" ;;
   esac
-
-  menu_define setup "Setup"
-  menu_add_item setup "  Defaults" submenu setup_default
-  menu_add_item setup "󰗊  Language" submenu setup_language
-  menu_add_item setup "  Audio" action setup_audio
-  menu_add_item setup "  Wifi" action setup_wifi
-  menu_add_item setup "  Bluetooth" action setup_bluetooth
-  menu_add_item setup "󱫋  Network" action setup_network
-  menu_add_item setup "󰇖  DNS" action setup_dns
-  menu_add_item setup "󰐲  Wi-Fi QR Code" action setup_wifi_qr
-  menu_add_item setup "  Power Profile" submenu setup_power_profile
-  menu_add_item setup "󰍹  Monitors" submenu setup_monitors
-  menu_add_item setup "  Security" submenu setup_security
-
-  menu_define setup_power_profile "Power Profile" choice
-  for profile in $("${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/powerprofiles.sh"); do
-    profile_label="${profile//-/ }"
-    menu_add_item setup_power_profile "${profile_icons[${profile}]:-}  ${profile_label^}" action "setup_power_profile_${profile}"
-  done
-
-  menu_define setup_monitors "Monitors"
-  menu_add_item setup_monitors "󱇧  Edit Config" action setup_monitors_config
-  menu_add_item setup_monitors "󰩨  Set Scale" submenu setup_monitor_scale
-  menu_add_item setup_monitors "󰌢  Toggle Laptop Display" action setup_monitor_laptop_toggle
-  menu_add_item setup_monitors "󰍺  Toggle Mirroring" action setup_monitor_mirror_toggle
-
-  menu_define setup_monitor_scale "Scale" choice
-  for scale in $(bash "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/monitor-scale.sh" --list); do
-    menu_add_item setup_monitor_scale "󰍹  ${scale}x" action "setup_monitor_scale_${scale}"
-  done
-
-  menu_define setup_language "Language"
-  menu_add_item setup_language "󰇧  System" action setup_language_system
-  menu_add_item setup_language "󰀄  Display" action setup_language_display
-  menu_add_item setup_language "󰌌  Input" action setup_language_input
 
   menu_define setup_default "Defaults"
   menu_add_item setup_default "󰚩  Agent" submenu setup_default_agent
@@ -100,6 +88,31 @@ menu_register_domain_setup() {
   setup_add_default_item setup_default_editor "${default_editor}" hx "󰚄  Helix" setup_default_editor_hx hx
   setup_add_default_item setup_default_editor "${default_editor}" vim "  Vim" setup_default_editor_vim vim
   setup_add_default_item setup_default_editor "${default_editor}" emacs "  Emacs" setup_default_editor_emacs emacs
+}
+
+menu_register_domain_setup() {
+  menu_define setup "Setup"
+  menu_add_item setup "  Defaults" submenu setup_default
+  menu_add_item setup "󰗊  Language" submenu setup_language
+  menu_add_item setup "  Audio" action setup_audio
+  menu_add_item setup "  Wifi" action setup_wifi
+  menu_add_item setup "  Bluetooth" action setup_bluetooth
+  menu_add_item setup "󱫋  Network" action setup_network
+  menu_add_item setup "󰇖  DNS" action setup_dns
+  menu_add_item setup "󰐲  Wi-Fi QR Code" action setup_wifi_qr
+  menu_add_item setup "  Power Profile" submenu setup_power_profile
+  menu_add_item setup "󰍹  Monitors" submenu setup_monitors
+  menu_add_item setup "  Security" submenu setup_security
+
+  setup_register_power_profiles
+  setup_register_monitors
+
+  menu_define setup_language "Language"
+  menu_add_item setup_language "󰇧  System" action setup_language_system
+  menu_add_item setup_language "󰀄  Display" action setup_language_display
+  menu_add_item setup_language "󰌌  Input" action setup_language_input
+
+  setup_register_defaults
 
   menu_define setup_security "Security"
   menu_add_item setup_security "󰈷  Fingerprint" action setup_security_fingerprint

@@ -79,5 +79,5 @@ EOF
 } > "${tmp}"
 
 render_commit "${tmp}" "${hash}"
-"${HOME}/.local/lib/hypr/util/hypr-to-lua.py" --input "${OUT_FILE}" --output "${lua_output}"
+"${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/util/hypr-to-lua.py" --input "${OUT_FILE}" --output "${lua_output}"
 trap - EXIT

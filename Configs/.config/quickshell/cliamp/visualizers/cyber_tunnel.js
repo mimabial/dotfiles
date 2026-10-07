@@ -1,4 +1,3 @@
-// 3D Cyberpunk Audio Warp Tunnel — Infinite perspective wireframe with calibrated audio velocity
 .pragma library
 .import "helpers.js" as H
 
@@ -63,7 +62,6 @@ function render(ctx, d) {
 
     var alpha = Math.min(1.0, scale * 1.4) * (0.35 + bVal * 0.45 + beatDrop * 0.20)
 
-    // Nearer rings and brighter highs pull the accent toward the foreground
     ctx.strokeStyle = H.mixColor(d.accent, d.foreground, (1.0 - z) * 0.25 + highs * 0.20, alpha.toFixed(2))
     ctx.lineWidth = Math.max(1.0, scale * 2.0)
 

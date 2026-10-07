@@ -12,6 +12,7 @@ FILE_ICONS = {
     "application-pdf": {".pdf"},
     "text-x-generic": {".txt", ".md", ".json", ".qml", ".py", ".cpp", ".js", ".lua", ".rs", ".go", ".html", ".css"},
 }
+MAX_FOLDER_ITEMS = 16
 EXTENSION_ICONS = {extension: icon for icon, extensions in FILE_ICONS.items() for extension in extensions}
 
 
@@ -57,7 +58,7 @@ def scan_folder(folder):
     except OSError:
         pass
     entries.sort(key=lambda entry: entry["mtime"], reverse=True)
-    return {"count": len(entries), "items": entries[:16], "folder": folder}
+    return {"count": len(entries), "items": entries[:MAX_FOLDER_ITEMS], "folder": folder}
 
 
 def pick_folder():

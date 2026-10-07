@@ -3,8 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons
 
-// One "label ....... value unit" line, optionally keyed by a colour dot on
-// the left and finished by a trailing control (a mini ring) on the right.
 Item {
   id: root
 
@@ -66,7 +64,7 @@ Item {
     anchors.verticalCenter: parent.verticalCenter
     text: root.detail
     color: root.foreground
-    opacity: 0.45
+    opacity: Style.faintTextAlpha
     font.family: root.fontFamily
     font.pixelSize: Style.font.caption
   }

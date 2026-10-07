@@ -3,7 +3,7 @@ set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/fonts/font-nerd.common.bash"
+source "${HYPR_LIB_DIR}/fonts/font-nerd.common.bash"
 
 used_fonts=()
 

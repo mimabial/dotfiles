@@ -6,6 +6,7 @@ import "CalendarMath.js" as CalendarMath
 
 PopupCard {
     id: root
+    readonly property int minLocationQuery: 3
     popupName: "clock"
     keyboardHint: "Arrows day · PgUp/PgDn month · Home today · W week · Esc"
     readonly property int calendarWidth: Style.px(440) - padding * 2
@@ -130,7 +131,7 @@ PopupCard {
     property Timer locationSearchDebounce: Timer {
         interval: 350
         onTriggered: {
-            if (root.locationQuery.length < 3) {
+            if (root.locationQuery.length < root.minLocationQuery) {
                 root.locationSearchResults = []
                 return
             }

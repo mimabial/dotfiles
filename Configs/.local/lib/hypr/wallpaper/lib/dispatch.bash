@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 declare -gA WALLPAPER_ACTIONS=(
   [n]="wallpaper_action_next 1 1 1 1 async"
@@ -68,53 +67,16 @@ wallpaper_set_paths() {
   fi
 }
 
-# Backend adapter contract.
-#
-# An adapter is a script named wallpaper.<backend>.sh located at
-# ${LIB_DIR}/hypr/wallpaper/ (or anywhere on PATH). When the user passes
-# --backend <backend>, this function picks the script up and invokes it.
-#
-# Inputs:
-#   $1                          - Path to the active wallpaper link
-#                                 (active_wallpaper_link). Adapters resolve it
-#                                 with `readlink -f` / wallpaper_resolve_path.
-#
-# Environment the adapter MAY read:
-#   WALLPAPER_WAIT_FOR_LOCK     - 0|1; if 1, the adapter must apply the
-#                                 wallpaper synchronously before returning.
-#                                 Set by interactive actions to keep submits
-#                                 ordered.
-#   WALLPAPER_SET_FLAG          - n|p|r|s|select|resume|start|... — the action
-#                                 that triggered this apply. Useful for
-#                                 backend-specific transitions (awww uses it
-#                                 to pick `next` vs `previous` transition).
-#   WALLPAPER_SYNC_APPLY        - 0|1; alternate sync request used by the
-#                                 theme.apply phase-D envelope so the
-#                                 wallpaper child finishes before the cgroup
-#                                 is torn down.
-#   WALLPAPER_CURRENT_DIR       - Directory holding wall.set / wall.<backend>
-#                                 link family.
-#   HYPR_THEME_DIR              - Active theme directory; backends may use
-#                                 this for theme-relative assets.
-#   WALLPAPER_VIDEO_DIR         - Where to extract still frames when the
-#                                 input is a video the backend can't display.
-#
-# Output / side effects:
-#   The adapter is responsible for displaying the wallpaper via its native
-#   IPC (e.g. awww img). It MUST
-#   exit 0 on success. Errors should print via print_log -err and exit
-#   non-zero so the caller can warn.
-#
-# Synchrony: when WALLPAPER_WAIT_FOR_LOCK=1 or WALLPAPER_SYNC_APPLY=1, the
-# adapter must NOT background its display call. Otherwise it MAY background
-# (awww does this for snappier interactive feel).
+# An adapter is wallpaper.<backend>.sh, beside this library or on PATH, called with the
+# active wallpaper link. It must display synchronously when WALLPAPER_WAIT_FOR_LOCK or
+# WALLPAPER_SYNC_APPLY is 1, and exit non-zero on failure so the caller can warn.
 wallpaper_apply_backend() {
   [[ "${WALLPAPER_SKIP_BACKEND_APPLY:-0}" -eq 1 ]] && return 0
   [[ -n "${wallpaper_backend}" ]] || return 0
-  if [[ -f "${LIB_DIR}/hypr/wallpaper/wallpaper.${wallpaper_backend}.sh" ]]; then
+  if [[ -f "${HYPR_LIB_DIR}/wallpaper/wallpaper.${wallpaper_backend}.sh" ]]; then
     print_log -sec "wallpaper" "Using backend: ${wallpaper_backend}"
     WALLPAPER_WAIT_FOR_LOCK="${wallpaper_wait_for_lock}" \
-      "${LIB_DIR}/hypr/wallpaper/wallpaper.${wallpaper_backend}.sh" "${active_wallpaper_link}"
+      "${HYPR_LIB_DIR}/wallpaper/wallpaper.${wallpaper_backend}.sh" "${active_wallpaper_link}"
     return
   fi
 
@@ -168,7 +130,7 @@ wallpaper_notify_emit() {
 
   # `notify` only re-displays the current wallpaper, so it applied nothing to time.
   if [[ -z "${notify_body}" && "${wallpaper_setter_flag}" != "notify" ]]; then
-    if elapsed_label="$(wallpaper_elapsed_label 2>/dev/null)"; then
+    if elapsed_label="$(hypr_elapsed_label "${wallpaper_started_ms:-}" 2>/dev/null)"; then
       notify_body="Time: ${elapsed_label}"
     fi
   fi

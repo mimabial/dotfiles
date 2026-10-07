@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
-"""Pango text measurements for the rofi geometry helpers.
-
-One entry point for the measurements rofi/lib/fonts.bash needs, so the
+"""One entry point for the measurements rofi/lib/fonts.bash needs, so the
 gi/Pango import is paid once per measurement instead of once per heredoc.
 Every mode reads the font from FONT_DESC and exits 1 when it cannot measure,
-which is what the bash callers treat as "fall back to the estimate".
-"""
+which is what the bash callers treat as "fall back to the estimate"."""
 
 import os
 import sys

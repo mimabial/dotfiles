@@ -9,7 +9,6 @@ if [[ "${1:-}" == "--help" ]]; then
   exit 0
 fi
 
-# Per-host opt-out: export FFTAB_ENSURE_DISABLE=1 in env-overrides.
 env_overrides="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/env-overrides"
 if [[ -n "${FFTAB_ENSURE_DISABLE:-}" ]] ||
   grep -qsE '^\s*export\s+FFTAB_ENSURE_DISABLE=' "${env_overrides}"; then

@@ -5,7 +5,7 @@ set -euo pipefail
 IDLE_UNIT="hyprland-hypridle.service"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
-source "${script_dir}/idle.state.sh"
+source "${script_dir}/idle.state.bash"
 WINDOW_STATE_FILE="$(idle_window_state_file)"
 WATCHDOG_INTERVAL="${HYPR_IDLE_MANAGER_WATCHDOG:-60}"
 PLAYER_FOLLOW_RETRY="${HYPR_IDLE_MANAGER_PLAYER_RETRY:-2}"
@@ -122,6 +122,8 @@ reconcile_mode() {
   fi
 }
 
+STATE_WATCH_RESPAWN_DELAY_S=1
+
 watch_state_files() {
   command -v inotifywait >/dev/null 2>&1 || return 0
   local state_dir_path=""
@@ -141,7 +143,7 @@ watch_state_files() {
             ;;
         esac
       done || true
-      sleep 1
+      sleep "${STATE_WATCH_RESPAWN_DELAY_S}"
     done
   ) &
   WATCHER_PIDS+=("$!")

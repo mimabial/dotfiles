@@ -55,11 +55,11 @@ local SUBMAP_MARKER = "[Submap] "
 -- already has enough rows. submap_hint.py filters on this same string.
 local HIDDEN_MARKER = "[Hidden] "
 
--- Number row, left to right: workspace 1 sits on keycode 10 and workspace 10 on
--- keycode 19, the "0" key. Digits share the punctuation problem above -- AZERTY
--- reaches them at level 2 -- so these bind by keycode, which no layout remaps.
+-- Digits share the punctuation problem above -- AZERTY reaches them at level 2 --
+-- so the number row binds by keycode, which no layout remaps.
+local KEYCODE_DIGIT_1 = 10
 local function workspace_code(workspace)
-	return "code:" .. tostring(workspace + 9)
+	return "code:" .. tostring(KEYCODE_DIGIT_1 + workspace - 1)
 end
 
 -- The leader is tagged with SUBMAP_MARKER because the Lua plugin reports every
@@ -137,7 +137,6 @@ local function resize_column(direction)
 	end)
 end
 
--- Window management
 local function usable_area(monitor)
 	local scale = monitor.scale
 	if not scale or scale <= 0 then
@@ -258,18 +257,28 @@ end
 bind("ALT", "TAB", "[Window Management|Focus] cycle next and reveal", cycle_window())
 bind("ALT SHIFT", "TAB", "[Window Management|Focus] cycle previous and reveal", cycle_window({ next = false }))
 
-local function move_window(direction, x, y)
+local WINDOW_STEP_PX = 30
+local WINDOW_STEPS = {
+	left = { x = -WINDOW_STEP_PX, y = 0 },
+	right = { x = WINDOW_STEP_PX, y = 0 },
+	up = { x = 0, y = -WINDOW_STEP_PX },
+	down = { x = 0, y = WINDOW_STEP_PX },
+}
+
+local function move_window(direction)
+	local step = WINDOW_STEPS[direction]
 	return function()
 		local window = hl.get_active_window()
 		if window and window.floating then
-			hl.dispatch(hl.dsp.window.move({ x = x, y = y, relative = true }))
+			hl.dispatch(hl.dsp.window.move({ x = step.x, y = step.y, relative = true }))
 		else
 			hl.dispatch(hl.dsp.window.move({ direction = direction }))
 		end
 	end
 end
 
-local function resize_window(x, y)
+local function resize_window(direction)
+	local step = WINDOW_STEPS[direction]
 	return function()
 		local window = hl.get_active_window()
 		if not window then
@@ -278,30 +287,30 @@ local function resize_window(x, y)
 
 		if window.floating then
 			local max_width, max_height = usable_area(window.monitor)
-			local width = math.min(window.size.x + x, max_width)
-			local height = math.min(window.size.y + y, max_height)
+			local width = math.min(window.size.x + step.x, max_width)
+			local height = math.min(window.size.y + step.y, max_height)
 			hl.dispatch(hl.dsp.window.resize({ x = width, y = height, relative = false }))
 			return
 		end
 
-		hl.dispatch(hl.dsp.window.resize({ x = x, y = y, relative = true }))
-		if x ~= 0 then
+		hl.dispatch(hl.dsp.window.resize({ x = step.x, y = step.y, relative = true }))
+		if step.x ~= 0 then
 			refill_scrolling_pair()
 		end
 	end
 end
 
-bind(mod .. " SHIFT", "LEFT", "[Window Management|Move] move left", move_window("left", -30, 0), { repeating = true })
-bind(mod .. " SHIFT", "RIGHT", "[Window Management|Move] move right", move_window("right", 30, 0), { repeating = true })
-bind(mod .. " SHIFT", "UP", "[Window Management|Move] move up", move_window("up", 0, -30), { repeating = true })
-bind(mod .. " SHIFT", "DOWN", "[Window Management|Move] move down", move_window("down", 0, 30), { repeating = true })
+bind(mod .. " SHIFT", "LEFT", "[Window Management|Move] move left", move_window("left"), { repeating = true })
+bind(mod .. " SHIFT", "RIGHT", "[Window Management|Move] move right", move_window("right"), { repeating = true })
+bind(mod .. " SHIFT", "UP", "[Window Management|Move] move up", move_window("up"), { repeating = true })
+bind(mod .. " SHIFT", "DOWN", "[Window Management|Move] move down", move_window("down"), { repeating = true })
 
 -- ALT here is not the convention's "without following": SUPER+CTRL+arrows is
 -- relative workspace navigation, so this is the only free arrow modifier.
-bind(mod .. " ALT", "LEFT", "[Window Management|Resize] shrink width", resize_window(-30, 0), { repeating = true })
-bind(mod .. " ALT", "RIGHT", "[Window Management|Resize] grow width", resize_window(30, 0), { repeating = true })
-bind(mod .. " ALT", "UP", "[Window Management|Resize] shrink height", resize_window(0, -30), { repeating = true })
-bind(mod .. " ALT", "DOWN", "[Window Management|Resize] grow height", resize_window(0, 30), { repeating = true })
+bind(mod .. " ALT", "LEFT", "[Window Management|Resize] shrink width", resize_window("left"), { repeating = true })
+bind(mod .. " ALT", "RIGHT", "[Window Management|Resize] grow width", resize_window("right"), { repeating = true })
+bind(mod .. " ALT", "UP", "[Window Management|Resize] shrink height", resize_window("up"), { repeating = true })
+bind(mod .. " ALT", "DOWN", "[Window Management|Resize] grow height", resize_window("down"), { repeating = true })
 
 bind(mod, "mouse:272", "[Window Management|Mouse] move window", hl.dsp.window.drag(), { mouse = true })
 bind(mod, "mouse:273", "[Window Management|Mouse] resize window", hl.dsp.window.resize(), { mouse = true })
@@ -313,7 +322,6 @@ hl.bind(chord(mod, "X"), refill_scrolling_pair, { drag = true })
 exec("CTRL ALT", "DELETE", "[Window Management] logout menu", "hyprshell logout-launch.sh")
 exec(mod, "ESCAPE", "[Window Management] logout menu", "hyprshell logout-launch.sh")
 
--- Applications and launchers
 exec(
 	mod,
 	"RETURN",
@@ -422,7 +430,6 @@ exec("CTRL", "F2", "[Launcher|Menus] focus menu bar", "quickshell ipc call bar m
 exec(mod, "V", "[Launcher|Menus] clipboard", "quickshell ipc call bar popup cliphist")
 exec(mod, "S", "[Launcher|Menus] spotlight", "quickshell ipc call bar popup spotlight")
 
--- Hardware controls
 exec(mod, "F10", "[Hardware|Audio] mute output", "hyprshell volume-control.sh -o m", { locked = true })
 exec(mod .. " CTRL", "F10", "[Hardware|Audio] mute focused window", "hyprshell window-mute.py", { locked = true })
 exec("", "XF86AudioMute", "[Hardware|Audio] mute output", "hyprshell volume-control.sh -o m", { locked = true })
@@ -489,15 +496,15 @@ submap_leader("window", mod, "W", function()
 	submap_action("UP", "[Window Mode|Focus] focus up", hl.dsp.focus({ direction = "up" }))
 	submap_action("DOWN", "[Window Mode|Focus] focus down", hl.dsp.focus({ direction = "down" }))
 
-	submap_action("SHIFT + LEFT", "[Window Mode|Move] move left", move_window("left", -30, 0))
-	submap_action("SHIFT + RIGHT", "[Window Mode|Move] move right", move_window("right", 30, 0))
-	submap_action("SHIFT + UP", "[Window Mode|Move] move up", move_window("up", 0, -30))
-	submap_action("SHIFT + DOWN", "[Window Mode|Move] move down", move_window("down", 0, 30))
+	submap_action("SHIFT + LEFT", "[Window Mode|Move] move left", move_window("left"))
+	submap_action("SHIFT + RIGHT", "[Window Mode|Move] move right", move_window("right"))
+	submap_action("SHIFT + UP", "[Window Mode|Move] move up", move_window("up"))
+	submap_action("SHIFT + DOWN", "[Window Mode|Move] move down", move_window("down"))
 
-	submap_action("CTRL + LEFT", "[Window Mode|Resize] shrink width", resize_window(-30, 0))
-	submap_action("CTRL + RIGHT", "[Window Mode|Resize] grow width", resize_window(30, 0))
-	submap_action("CTRL + UP", "[Window Mode|Resize] shrink height", resize_window(0, -30))
-	submap_action("CTRL + DOWN", "[Window Mode|Resize] grow height", resize_window(0, 30))
+	submap_action("CTRL + LEFT", "[Window Mode|Resize] shrink width", resize_window("left"))
+	submap_action("CTRL + RIGHT", "[Window Mode|Resize] grow width", resize_window("right"))
+	submap_action("CTRL + UP", "[Window Mode|Resize] shrink height", resize_window("up"))
+	submap_action("CTRL + DOWN", "[Window Mode|Resize] grow height", resize_window("down"))
 
 	submap_action("F", "[Window Mode|State] toggle floating", toggle_floating)
 	submap_action(
@@ -798,7 +805,6 @@ submap_leader("utilities", mod, "U", function()
 	submap_exec("M", "[System] toggle mirroring", "hyprshell system/monitor-mirror.sh toggle")
 end)
 
--- Workspaces
 for workspace = 1, 10 do
 	local code = workspace_code(workspace)
 	local special = numbered_special_workspaces[workspace]

@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 # Firefox reads this to find the native host; the extension id must match the
 # one the installed extension was signed with or Firefox refuses the connection.

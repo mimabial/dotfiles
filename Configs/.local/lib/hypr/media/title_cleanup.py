@@ -1,5 +1,3 @@
-"""Shared cleanup for display and tag titles sourced from video sites."""
-
 import re
 
 
@@ -52,5 +50,4 @@ def clean_title(title: str) -> str:
 
 
 def clean_web_title(title: str) -> str:
-    """Clean upload annotations plus a browser site's document-title branding."""
     return WEB_BRAND_SUFFIX.sub("", clean_title(title)).strip(" -–—")

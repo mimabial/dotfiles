@@ -1,6 +1,4 @@
 #!/usr/bin/python3
-"""Make Hyprland the sole lid-switch owner for this session."""
-
 import fcntl
 import os
 import signal

@@ -1,4 +1,3 @@
-// Wave — triggered, amplitude-linear stereo oscilloscope.
 .pragma library
 .import "helpers.js" as H
 

@@ -1,6 +1,5 @@
 import QtQuick
 
-// Semantic key dispatcher for panels with their own cursor state.
 // `blocked` forwards every key to an active inline editor.
 Item {
   id: root

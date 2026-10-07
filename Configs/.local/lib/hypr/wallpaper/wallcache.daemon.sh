@@ -2,14 +2,13 @@
 
 set -euo pipefail
 
-LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state wallpaper_catalog || exit 1
 hypr_runtime_load_state || exit 1
 
-CACHE_SCRIPT="${LIB_DIR}/hypr/wallpaper/wallpaper.cache.sh"
+CACHE_SCRIPT="${HYPR_LIB_DIR}/wallpaper/wallpaper.cache.sh"
 
 QUEUE_ROOT="${XDG_RUNTIME_DIR:-/tmp}/hypr/wallcache"
 QUEUE_PENDING_DIR="${QUEUE_ROOT}/pending"
@@ -17,13 +16,13 @@ QUEUE_RUNNING_DIR="${QUEUE_ROOT}/running"
 QUEUE_PID_FILE="${QUEUE_ROOT}/daemon.pid"
 QUEUE_LOCK_FILE="${QUEUE_ROOT}/daemon.lock"
 
-WALLCACHE_BATCH_MAX="${WALLCACHE_BATCH_MAX:-128}"
-WALLCACHE_IDLE_TIMEOUT="${WALLCACHE_IDLE_TIMEOUT:-120}"
+WALLCACHE_DEFAULT_BATCH_MAX=128
+WALLCACHE_DEFAULT_IDLE_TIMEOUT=120
 
-[[ "${WALLCACHE_BATCH_MAX}" =~ ^[0-9]+$ ]] || WALLCACHE_BATCH_MAX=128
-[[ "${WALLCACHE_IDLE_TIMEOUT}" =~ ^[0-9]+$ ]] || WALLCACHE_IDLE_TIMEOUT=120
+[[ "${WALLCACHE_BATCH_MAX:-}" =~ ^[0-9]+$ ]] || WALLCACHE_BATCH_MAX="${WALLCACHE_DEFAULT_BATCH_MAX}"
+[[ "${WALLCACHE_IDLE_TIMEOUT:-}" =~ ^[0-9]+$ ]] || WALLCACHE_IDLE_TIMEOUT="${WALLCACHE_DEFAULT_IDLE_TIMEOUT}"
 (( WALLCACHE_BATCH_MAX < 1 )) && WALLCACHE_BATCH_MAX=1
-(( WALLCACHE_IDLE_TIMEOUT < 1 )) && WALLCACHE_IDLE_TIMEOUT=120
+(( WALLCACHE_IDLE_TIMEOUT < 1 )) && WALLCACHE_IDLE_TIMEOUT="${WALLCACHE_DEFAULT_IDLE_TIMEOUT}"
 
 DAEMON_SLEEP_PID=""
 DAEMON_WOKE=0
@@ -197,7 +196,62 @@ notify_daemon() {
   kill -USR1 "${pid}" 2>/dev/null
 }
 
+wallcache_claim_batch() {
+  local -n claim_args_ref="$1" claim_files_ref="$2"
+  local job_file job_name running_file wall_path wall_hash
+
+  claim_args_ref=()
+  claim_files_ref=()
+  while IFS= read -r -d '' job_file; do
+    (( ${#claim_files_ref[@]} >= WALLCACHE_BATCH_MAX )) && break
+
+    job_name="$(basename "${job_file}")"
+    running_file="${QUEUE_RUNNING_DIR}/${job_name}"
+    mv -f "${job_file}" "${running_file}" 2>/dev/null || continue
+
+    wall_path="$(head -n1 "${running_file}" 2>/dev/null)"
+    wall_hash="${job_name%.job}"
+    if [[ -z "${wall_path}" || ! -f "${wall_path}" || -z "${wall_hash}" ]] || thumb_is_ready "${wall_hash}"; then
+      rm -f "${running_file}"
+      continue
+    fi
+    claim_args_ref+=(-w "${wall_path}")
+    claim_files_ref+=("${running_file}")
+  done < <(find -H "${QUEUE_PENDING_DIR}" -maxdepth 1 -type f -name "*.job" -print0 2>/dev/null | sort -z)
+}
+
+wallcache_run_batch() {
+  local -n batch_args_ref="$1" batch_files_ref="$2"
+
+  if "${CACHE_SCRIPT}" "${batch_args_ref[@]}" &>/dev/null; then
+    rm -f -- "${batch_files_ref[@]}" 2>/dev/null || true
+    return 0
+  fi
+  # A failed batch stays in running/, which this run never claims from, so an image
+  # that always fails is retried once per daemon run (exit recovery requeues it),
+  # not in a tight loop.
+  print_log -sec "wallcache" -warn "batch" "cache generation failed; ${#batch_files_ref[@]} jobs retry on the next daemon run"
+}
+
+wallcache_wait_for_jobs() {
+  local idle_since="$1" idle_for=0
+
+  idle_for=$(( $(date +%s) - idle_since ))
+  (( idle_for < WALLCACHE_IDLE_TIMEOUT )) || return 1
+  DAEMON_WOKE=0
+  sleep $((WALLCACHE_IDLE_TIMEOUT - idle_for)) &
+  DAEMON_SLEEP_PID="$!"
+  if (( DAEMON_WOKE == 1 )); then
+    kill "${DAEMON_SLEEP_PID}" 2>/dev/null || true
+  fi
+  wait "${DAEMON_SLEEP_PID}" 2>/dev/null || true
+  DAEMON_SLEEP_PID=""
+}
+
 run_daemon() {
+  local idle_since=0
+  local -a cache_args=() running_files=()
+
   ensure_queue_dirs
   [[ -x "${CACHE_SCRIPT}" ]] || exit 1
 
@@ -210,68 +264,15 @@ run_daemon() {
   trap 'wallcache_daemon_cleanup "$?"' EXIT
   wallcache_recover_running_jobs
 
-  local idle_since now remaining
   idle_since="$(date +%s)"
-
   while :; do
-    local -a cache_args=()
-    local -a running_files=()
-    local job_file job_name running_file wall_path wall_hash
-    local picked=0
-
-    while IFS= read -r -d '' job_file; do
-      (( picked >= WALLCACHE_BATCH_MAX )) && break
-
-      job_name="$(basename "${job_file}")"
-      running_file="${QUEUE_RUNNING_DIR}/${job_name}"
-
-      mv -f "${job_file}" "${running_file}" 2>/dev/null || continue
-
-      wall_path="$(head -n1 "${running_file}" 2>/dev/null)"
-      wall_hash="${job_name%.job}"
-      if [[ -z "${wall_path}" ]] || [[ ! -f "${wall_path}" ]] || [[ -z "${wall_hash}" ]]; then
-        rm -f "${running_file}"
-        continue
-      fi
-      if thumb_is_ready "${wall_hash}"; then
-        rm -f "${running_file}"
-        continue
-      fi
-
-      cache_args+=(-w "${wall_path}")
-      running_files+=("${running_file}")
-      picked=$((picked + 1))
-    done < <(find -H "${QUEUE_PENDING_DIR}" -maxdepth 1 -type f -name "*.job" -print0 2>/dev/null | sort -z)
-
-    if (( ${#cache_args[@]} > 0 )); then
+    wallcache_claim_batch cache_args running_files
+    if (( ${#running_files[@]} > 0 )); then
       idle_since="$(date +%s)"
-      if "${CACHE_SCRIPT}" "${cache_args[@]}" &>/dev/null; then
-        rm -f -- "${running_files[@]}" 2>/dev/null || true
-      else
-        print_log -sec "wallcache" -warn "batch" "cache generation failed; requeueing ${#running_files[@]} jobs"
-        for running_file in "${running_files[@]}"; do
-          wallcache_requeue_job_file "${running_file}" || true
-        done
-      fi
-      continue
+      wallcache_run_batch cache_args running_files
+    else
+      wallcache_wait_for_jobs "${idle_since}" || break
     fi
-
-    now="$(date +%s)"
-    if (( now - idle_since >= WALLCACHE_IDLE_TIMEOUT )); then
-      break
-    fi
-
-    remaining=$((WALLCACHE_IDLE_TIMEOUT - (now - idle_since)))
-    DAEMON_WOKE=0
-    sleep "${remaining}" &
-    DAEMON_SLEEP_PID="$!"
-    if (( DAEMON_WOKE == 1 )); then
-      kill "${DAEMON_SLEEP_PID}" 2>/dev/null || true
-    fi
-    wait "${DAEMON_SLEEP_PID}" 2>/dev/null || true
-    DAEMON_SLEEP_PID=""
-
-    (( DAEMON_WOKE == 1 )) && continue
   done
 }
 
@@ -300,69 +301,69 @@ Options for --enqueue:
   -t <theme>              Queue all wallpapers from theme dir
 
 Environment:
-  WALLCACHE_BATCH_MAX     Max jobs per daemon batch (default: 128)
-  WALLCACHE_IDLE_TIMEOUT  Daemon idle exit timeout seconds (default: 120)
+  WALLCACHE_BATCH_MAX     Max jobs per daemon batch (default: ${WALLCACHE_DEFAULT_BATCH_MAX})
+  WALLCACHE_IDLE_TIMEOUT  Daemon idle exit timeout seconds (default: ${WALLCACHE_DEFAULT_IDLE_TIMEOUT})
 EOF
 }
 
 wallcache_main() {
-local mode="enqueue" wall="" theme="" theme_dir=""
-local -a enqueue_walls=() enqueue_themes=()
+  local mode="enqueue" wall="" theme=""
+  local -a enqueue_walls=() enqueue_themes=()
 
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --enqueue) mode="enqueue"; shift ;;
-    --start) mode="start"; shift ;;
-    --run) mode="run"; shift ;;
-    --stop) mode="stop"; shift ;;
-    --status) mode="status"; shift ;;
-    -w)
-      [[ -n "${2:-}" ]] || { echo "Missing value for -w" >&2; exit 1; }
-      enqueue_walls+=("${2}")
-      shift 2
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --enqueue) mode="enqueue"; shift ;;
+      --start) mode="start"; shift ;;
+      --run) mode="run"; shift ;;
+      --stop) mode="stop"; shift ;;
+      --status) mode="status"; shift ;;
+      -w)
+        [[ -n "${2:-}" ]] || { echo "Missing value for -w" >&2; exit 1; }
+        enqueue_walls+=("${2}")
+        shift 2
+        ;;
+      -t)
+        [[ -n "${2:-}" ]] || { echo "Missing value for -t" >&2; exit 1; }
+        enqueue_themes+=("${2}")
+        shift 2
+        ;;
+      -h | --help)
+        show_help
+        exit 0
+        ;;
+      *)
+        echo "Unknown argument: $1" >&2
+        show_help >&2
+        exit 1
+        ;;
+    esac
+  done
+
+  case "${mode}" in
+    run)
+      run_daemon
       ;;
-    -t)
-      [[ -n "${2:-}" ]] || { echo "Missing value for -t" >&2; exit 1; }
-      enqueue_themes+=("${2}")
-      shift 2
+    start)
+      start_daemon
       ;;
-    -h | --help)
-      show_help
-      exit 0
+    stop)
+      stop_daemon
       ;;
-    *)
-      echo "Unknown argument: $1" >&2
-      show_help >&2
-      exit 1
+    status)
+      ensure_queue_dirs
+      status_daemon
+      ;;
+    enqueue)
+      ensure_queue_dirs
+      for theme in "${enqueue_themes[@]}"; do
+        queue_theme "${theme}" || true
+      done
+      for wall in "${enqueue_walls[@]}"; do
+        queue_wallpaper "${wall}" || true
+      done
+      notify_daemon >/dev/null 2>&1 || start_daemon >/dev/null 2>&1
       ;;
   esac
-done
-
-case "${mode}" in
-  run)
-    run_daemon
-    ;;
-  start)
-    start_daemon
-    ;;
-  stop)
-    stop_daemon
-    ;;
-  status)
-    ensure_queue_dirs
-    status_daemon
-    ;;
-  enqueue)
-    ensure_queue_dirs
-    for theme in "${enqueue_themes[@]}"; do
-      queue_theme "${theme}" || true
-    done
-    for wall in "${enqueue_walls[@]}"; do
-      queue_wallpaper "${wall}" || true
-    done
-    notify_daemon >/dev/null 2>&1 || start_daemon >/dev/null 2>&1
-    ;;
-esac
 }
 
 [[ "${BASH_SOURCE[0]}" != "$0" ]] || wallcache_main "$@"

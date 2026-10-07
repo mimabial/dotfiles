@@ -76,10 +76,15 @@ Item {
         else if (status === "locked") scan()
         else probe()
     }
+    readonly property int exitNotArmed: 3
+    readonly property int exitArmFailed: 4
+    readonly property int exitWrongPin: 5
+    readonly property int exitCommandMissing: 127
+    readonly property int maxPinFailures: 3
     function release() { if (pam.active) pam.abort(); notice = ""; touch() }
     function probe() {
         runBitwardenCommand(["status"], (code, out) => {
-            if (code === 127) { status = "missing"; return }
+            if (code === exitCommandMissing) { status = "missing"; return }
             const state = JSON.parse(out)
             email = state.userEmail || ""
             if (state.status !== "unlocked" && session) forget()
@@ -120,11 +125,11 @@ Item {
         error = ""
         const decode = settings.quickUnlock === "pin" ? pinCipher + " -d" : "cat"
         const script = stored
-            ? '[ -s "$1" ] || exit 3; BW_PASSWORD="$(' + decode + ' < "$1")" || exit 5; export BW_PASSWORD; bw unlock --passwordenv BW_PASSWORD --raw'
+            ? '[ -s "$1" ] || exit ' + exitNotArmed + '; BW_PASSWORD="$(' + decode + ' < "$1")" || exit ' + exitWrongPin + '; export BW_PASSWORD; bw unlock --passwordenv BW_PASSWORD --raw'
             : 'bw unlock --passwordenv BW_PASSWORD --raw || exit 1'
-                + (arm ? '; (umask 077; printf %s "$BW_PASSWORD" | ' + (arm === "pin" ? pinCipher : "cat") + ' > "$1") || exit 4' : "")
+                + (arm ? '; (umask 077; printf %s "$BW_PASSWORD" | ' + (arm === "pin" ? pinCipher : "cat") + ' > "$1") || exit ' + exitArmFailed : "")
         runShellScript(script, [unlockFile], (code, out, err) => {
-            if (code === 0 || code === 4) {
+            if (code === 0 || code === exitArmFailed) {
                 sessionFile.setText(out.trim())
                 adopt(out.trim())
                 pinFailures = 0
@@ -132,9 +137,9 @@ Item {
                 if (code) error = "Unlocked, but quick unlock could not be armed"
                 return
             }
-            error = code === 3 ? "Unlock with your master password once to arm quick unlock"
-                : code === 5 ? "Wrong PIN" : Model.lastLine(err) || "Unlock failed"
-            if (stored && code !== 3 && (settings.quickUnlock !== "pin" || ++pinFailures >= 3)) {
+            error = code === exitNotArmed ? "Unlock with your master password once to arm quick unlock"
+                : code === exitWrongPin ? "Wrong PIN" : Model.lastLine(err) || "Unlock failed"
+            if (stored && code !== exitNotArmed && (settings.quickUnlock !== "pin" || ++pinFailures >= maxPinFailures)) {
                 runShellScript('rm -f "$1"', [unlockFile])
                 pinFailures = 0
                 error += " — quick unlock disarmed, use your master password"

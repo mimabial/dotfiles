@@ -110,7 +110,7 @@ Column {
       down: root.hist.netRx || []
       upColor: root.s2
       downColor: root.s1
-      floor: 10240
+      minimumCeiling: Model.NETWORK_SCALE_FLOOR
       midlineColor: Util.alpha(root.foreground, 0.18)
     }
 
@@ -134,7 +134,7 @@ Column {
       visible: root.flag("showInterfaces") && root.shownIfaces.length === 0
       text: "No network interfaces"
       color: root.foreground
-      opacity: 0.5
+      opacity: Style.mutedTextAlpha
       font.family: root.fontFamily
       font.pixelSize: Style.font.bodySmall
     }
@@ -190,7 +190,7 @@ Column {
           anchors.verticalCenter: parent.verticalCenter
           text: row.status + (row.modelData.wireless && isFinite(Number(row.modelData.dbm)) ? " · " + row.modelData.dbm + " dBm" : "")
           color: root.foreground
-          opacity: 0.6
+          opacity: Style.mutedTextAlpha
           font.family: root.fontFamily
           font.pixelSize: Style.font.bodySmall
         }
@@ -253,7 +253,7 @@ Column {
       visible: root.addresses.length === 0
       text: "No address assigned"
       color: root.foreground
-      opacity: 0.5
+      opacity: Style.mutedTextAlpha
       font.family: root.fontFamily
       font.pixelSize: Style.font.bodySmall
     }
@@ -290,7 +290,6 @@ Column {
     }
   }
 
-  // Click-to-copy line for an address.
   component AddressRow: Item {
     id: addr
 

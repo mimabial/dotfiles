@@ -1,4 +1,3 @@
-// LED Scrubber — Retro Digital Hardware Segmented LED Matrix Visualizer with full vibrant color
 .pragma library
 .import "helpers.js" as H
 
@@ -25,7 +24,6 @@ function render(ctx, d) {
   var totalMatrixH = numSegs * segH + (numSegs - 1) * segGap
   var matrixStartY = midY - (totalMatrixH / 2.0)
 
-  // Segment colors ramp symmetrically from a cool centre core out to hot peak edges
   var centerIdx = Math.floor(numSegs / 2)
   var segColors = []
   for (var si = 0; si < numSegs; si++) {

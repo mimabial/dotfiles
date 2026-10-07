@@ -1,5 +1,9 @@
 .pragma library
 
+var SECTOR_BYTES = 512
+var MAX_LISTED_BLOCKERS = 3
+var MAX_ERROR_LENGTH = 180
+
 function codepoint(code) {
     if (String.fromCodePoint) return String.fromCodePoint(code)
     const offset = code - 0x10000
@@ -55,9 +59,9 @@ function formatBytes(bytes) {
 }
 
 function formatFsType(value) {
-    const fs = clean(value)
+    const fsType = clean(value)
     const names = ({vfat: "FAT32", exfat: "exFAT", ntfs: "NTFS", ntfs3: "NTFS", crypto_LUKS: "LUKS", hfsplus: "HFS+", apfs: "APFS"})
-    return names[fs] || fs.toUpperCase()
+    return names[fsType] || fsType.toUpperCase()
 }
 
 function isVirtual(node) { return node.fstype !== "swap" && node.mountpoint !== "[SWAP]" && /^(zram|loop|ram|dm-|md|sr|fd)/.test(exact(node.name)) }
@@ -195,9 +199,9 @@ function parseNetworkMounts(raw) {
 
 function mountedVolumes(devices) {
     const result = []
-    for (let d = 0; d < (devices || []).length; ++d)
-        for (let v = 0; v < devices[d].volumes.length; ++v)
-            if (devices[d].volumes[v].mounted) result.push(devices[d].volumes[v])
+    for (const device of devices || [])
+        for (const volume of device.volumes)
+            if (volume.mounted) result.push(volume)
     return result
 }
 
@@ -237,7 +241,7 @@ function parseBlockStats(raw) {
 function rateBetween(previous, current, elapsedMs) {
     if (previous === null || previous === undefined || !(elapsedMs > 0)) return 0
     const delta = Number(current) - Number(previous)
-    return isFinite(delta) && delta > 0 ? delta * 512 / (elapsedMs / 1000) : 0
+    return isFinite(delta) && delta > 0 ? delta * SECTOR_BYTES / (elapsedMs / 1000) : 0
 }
 
 function buildActivity(previousSamples, stats, now) {
@@ -280,14 +284,14 @@ function describeBlockers(blockers) {
     const names = []
     for (let i = 0; i < (blockers || []).length; ++i)
         if (!names.includes(blockers[i].name)) names.push(blockers[i].name)
-    return names.length <= 3 ? names.join(", ") : names.slice(0, 3).join(", ") + " and " + (names.length - 3) + " more"
+    return names.length <= MAX_LISTED_BLOCKERS ? names.join(", ") : names.slice(0, MAX_LISTED_BLOCKERS).join(", ") + " and " + (names.length - MAX_LISTED_BLOCKERS) + " more"
 }
 
 function formatError(value) {
     let text = clean(value).replace(/^Call failed:\s*/, "")
     const match = text.match(/Error\.[A-Za-z]+:\s*(.*)$/)
     if (match) text = clean(match[1])
-    return text.length > 180 ? text.slice(0, 177) + "…" : text
+    return text.length > MAX_ERROR_LENGTH ? text.slice(0, MAX_ERROR_LENGTH - 1) + "…" : text
 }
 
 function deviceDiff(previous, current) {

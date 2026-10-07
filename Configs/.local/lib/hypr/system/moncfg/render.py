@@ -1,4 +1,3 @@
-"""Render a display profile into Hyprland config."""
 from __future__ import annotations
 
 import os
@@ -106,7 +105,6 @@ def write(text: str, path: str = TARGET) -> None:
 
 
 def apply(profile: dict, reload: bool = True) -> None:
-    """Write the generated config and make Hyprland pick it up."""
     write(to_lua(profile))
     if reload:
         hypr.reload()

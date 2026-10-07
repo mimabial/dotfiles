@@ -1,13 +1,5 @@
-/**
- * ROFI Layout 
- *
- * Style 1: Background image with a sidebar list.
- * Attribute: rofilaunch,launcher
- */
+/* Attribute: rofilaunch,launcher */
 
-
-
-// Config //
 configuration {
     modes:                        "drun,filebrowser,window,run";
     show-icons:                  true;
@@ -22,8 +14,6 @@ configuration {
 
 @import "~/.config/rofi/colors.rasi"
 
-
-// Main //
 window {
     height:                      30em;
     transparency:                "real";
@@ -53,8 +43,6 @@ inputbox {
     background-color:            transparent;
 }
 
-
-// Modes //
 mode-switcher{
     orientation:                 vertical;
     enabled:                     true;
@@ -75,8 +63,6 @@ button selected {
     text-color:                  @background;
 }
 
-
-// Inputs //
 inputbar {
     enabled:                     true;
     children:                    [ "entry" ];
@@ -86,8 +72,6 @@ entry {
     enabled:                     false;
 }
 
-
-// Lists //
 listbox {
     spacing:                     0em;
     padding:                     0%;
@@ -118,8 +102,6 @@ dummy {
     background-color:            transparent;
 }
 
-
-// Elements //
 element {
     enabled:                     true;
     spacing:                     0.8em;
@@ -147,7 +129,6 @@ element-text {
     text-color:                  inherit;
 }
 
-// Error message //
 error-message {
     text-color:                  @foreground;
     background-color:            @background;

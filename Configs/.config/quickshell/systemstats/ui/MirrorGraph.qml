@@ -13,7 +13,7 @@ Canvas {
   property var down: []
   property color upColor: Color.accent
   property color downColor: Color.accent
-  property real floor: 10240      // 10 KB/s keeps an idle link from looking busy
+  property real minimumCeiling: 10 * 1024  // keeps an idle link from looking busy
   property real headroom: 1.08
   property int barWidth: 2
   property int gap: 1
@@ -62,7 +62,7 @@ Canvas {
     var len = Math.max(upList.length, downList.length)
     var mid = snap(height / 2)
     var half = Math.max(1, mid - 1)
-    var max = Math.max(Number(root.floor) || 1, root.peakUp, root.peakDown) * root.headroom
+    var max = Math.max(Number(root.minimumCeiling) || 1, root.peakUp, root.peakDown) * root.headroom
 
     var paint = function(list, color, direction) {
       ctx.fillStyle = color

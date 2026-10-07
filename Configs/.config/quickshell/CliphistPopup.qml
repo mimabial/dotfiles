@@ -14,9 +14,9 @@ PopupCard {
     property var entries: []
     property var favorites: []
     property string filter: ""
-    // "history" | "images" | "favourites"
     property string view: "history"
-    // Ctrl+E swaps the five-line preview for a full-height, scrollable one
+    readonly property int previewLines: 5
+    readonly property int expandedPreviewLines: 16
     property bool previewExpanded: false
 
     // the preview pane shows the whole entry, so anything token-shaped is masked
@@ -290,9 +290,9 @@ PopupCard {
             id: previewBlock
             visible: root.rows.length > 0
             width: parent.width; spacing: Style.sm
-            // fixed at five lines: a pane that grew with each entry would resize
+            // fixed height: a pane that grew with each entry would resize
             // the list under the cursor as you move down it
-            property real paneHeight: lineProbe.implicitHeight * (root.previewExpanded ? 16 : 5)
+            property real paneHeight: lineProbe.implicitHeight * (root.previewExpanded ? root.expandedPreviewLines : root.previewLines)
             Behavior on paneHeight { NumberAnimation { duration: Style.duration(120); easing.type: Easing.OutCubic } }
             PopupSeparator { shell: root.shell }
             Image {
@@ -315,7 +315,7 @@ PopupCard {
                 width: parent.width
                 text: root.previewText
                 wrapMode: Text.Wrap
-                maximumLineCount: root.previewExpanded ? 0 : 5
+                maximumLineCount: root.previewExpanded ? 0 : root.previewLines
                 elide: root.previewExpanded ? Text.ElideNone : Text.ElideRight
                 color: root.shell.alpha(root.shell.foreground, .75)
                 font.family: root.shell.fontFamily; font.pixelSize: Style.caption

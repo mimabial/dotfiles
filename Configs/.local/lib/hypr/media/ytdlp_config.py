@@ -1,5 +1,3 @@
-"""Small, safe subset of yt-dlp configuration shared by metadata probes."""
-
 from __future__ import annotations
 
 import os

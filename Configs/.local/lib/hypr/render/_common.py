@@ -1,13 +1,18 @@
-"""Shared helpers for render/*.py renderers."""
-
 import os
 import tempfile
 from pathlib import Path
+
+DIGEST_LENGTH = 16
+ANSI_COLOR_COUNT = 16
 
 HASH_DIR = (
     Path(os.environ.get("HYPR_CACHE_HOME") or Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "hypr")
     / "render-hashes"
 )
+
+
+def short_digest(hasher) -> str:
+    return hasher.hexdigest()[:DIGEST_LENGTH]
 
 
 def cache_hit(app: str, digest: str) -> bool:

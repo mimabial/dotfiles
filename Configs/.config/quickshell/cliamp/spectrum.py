@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Per-player calibrated spectrum capture for the media popup."""
 import json
 import os
 import re
+import select
 import signal
 import subprocess
 import sys
@@ -19,6 +19,7 @@ NUM_BANDS, WAVE_SAMPLES, METER_SIZE, TRUE_PEAK_FACTOR = 24, 512, 2048, 4
 TRIGGER_SEARCH, TRIGGER_TAPS = 2048, 96
 DB_FLOOR, MIN_FREQ, MAX_FREQ, LOW_MAX_FREQ = -72.0, 20.0, 20000.0, 300.0
 EDGES = np.geomspace(MIN_FREQ, MAX_FREQ, NUM_BANDS + 1)
+RECORDER_START_SECONDS = 1.0
 os.makedirs(RUN_DIR, mode=0o700, exist_ok=True)
 
 def fft_plan(size):
@@ -177,11 +178,11 @@ def recorder(index):
     for command in commands:
         try:
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-            time.sleep(0.03)
-            if process.poll() is None:
-                return process
         except OSError:
             continue
+        if select.select([process.stdout], [], [], RECORDER_START_SECONDS)[0] and process.stdout.peek(1):
+            return process
+        stop_process(process)
     return None
 
 def read_frames(process, frames):
@@ -223,50 +224,63 @@ def stop_process(process):
 def run():
     process = history = None
     target_revision = None
-    stream_index, stream_name, last_resolve = None, "", 0.0
+    stream_index, stream_name = None, ""
     selectors = ["cliamp", "mpv"]
-    def cleanup(_signal, _frame):
+    events = subprocess.Popen(["pactl", "subscribe"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    wake_read, wake_write = os.pipe()
+    os.set_blocking(wake_write, False)
+    signal.set_wakeup_fd(wake_write)
+    def cleanup(_signal=None, _frame=None):
         stop_process(process)
+        events.terminate()
         write_frame(empty_frame(selectors))
         sys.exit(0)
     signal.signal(signal.SIGINT, cleanup); signal.signal(signal.SIGTERM, cleanup)
+    signal.signal(signal.SIGUSR1, lambda _signal, _frame: None)
+    # cliamp_ctl holds its start lock until this file exists, so no caller signals a daemon still starting up.
+    write_frame(empty_frame(selectors))
+    def retarget():
+        nonlocal process, history, stream_index, stream_name, selectors, target_revision
+        revision, wanted = read_target()
+        index, name = select_sink_input(wanted)
+        if revision != target_revision or index != stream_index:
+            stop_process(process)
+            process = history = None
+            stream_index, stream_name, selectors = index, name, wanted
+            target_revision = revision
+            if index is None:
+                write_frame(empty_frame(selectors))
+        if stream_index is not None and (process is None or process.poll() is not None):
+            process, history = recorder(stream_index), None
+    retarget()
     while True:
-        try:
-            revision, wanted = read_target()
-            now = time.monotonic()
-            if revision != target_revision or now - last_resolve >= 1.0:
-                index, name = select_sink_input(wanted)
-                last_resolve = now
-                if revision != target_revision or index != stream_index:
-                    stop_process(process)
+        ready = select.select([events.stdout, wake_read] + ([process.stdout] if process else []), [], [])[0]
+        if wake_read in ready:
+            os.read(wake_read, 512)
+            retarget()
+        if events.stdout in ready:
+            change = os.read(events.stdout.fileno(), 65536)
+            if not change:
+                cleanup()
+            if b"sink-input" in change:
+                retarget()
+        if process and process.stdout in ready:
+            try:
+                block = read_frames(process, FFT_SIZE if history is None else HOP)
+                if block is None:
                     process = history = None
-                    stream_index, stream_name, selectors = index, name, wanted
-                    target_revision = revision
-                    if index is None:
-                        write_frame(empty_frame(selectors))
-            if stream_index is None:
-                time.sleep(0.2)
-                continue
-            if process is None or process.poll() is not None:
-                process, history = recorder(stream_index), None
-                if process is None:
-                    time.sleep(0.5)
+                    retarget()
                     continue
-            frames = FFT_SIZE if history is None else HOP
-            block = read_frames(process, frames)
-            if block is None:
+                if history is None:
+                    history = block.copy()
+                else:
+                    history[:-HOP], history[-HOP:] = history[HOP:], block
+                frame = analyze(history)
+                frame["source"] = {"found": True, "index": stream_index, "name": stream_name, "selectors": selectors}
+                write_frame(frame)
+            except (OSError, ValueError):
                 stop_process(process)
                 process = history = None
-                continue
-            if history is None:
-                history = block.copy()
-            else:
-                history[:-HOP], history[-HOP:] = history[HOP:], block
-            frame = analyze(history)
-            frame["source"] = {"found": True, "index": stream_index, "name": stream_name, "selectors": selectors}
-            write_frame(frame)
-        except (OSError, ValueError, json.JSONDecodeError, subprocess.SubprocessError):
-            time.sleep(0.05)
 
 if __name__ == "__main__":
     run()

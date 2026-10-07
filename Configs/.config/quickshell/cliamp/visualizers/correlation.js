@@ -1,4 +1,3 @@
-// Correlation — broadcast phase correlation meter: +1 mono, 0 uncorrelated, -1 inverted.
 .pragma library
 .import "helpers.js" as H
 

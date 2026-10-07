@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 # Callers own notifications; recoverable details use HYPR_OCR_ERROR.
 
 HYPR_OCR_ERROR=""
@@ -70,8 +69,7 @@ hypr_ocr_language_summary() {
   printf '%s' "${body}"
 }
 
-# Returns the image path by name so temporary-file state stays in the caller.
-# Screen captures use lighter preprocessing than arbitrary clipboard images.
+# The path goes back by name so temporary-file state stays in the caller.
 hypr_ocr_preprocess_into() {
   local -n image_ref="$1"
   local input="$2"

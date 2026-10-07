@@ -56,18 +56,18 @@ Column {
   function sortedTemps(list) {
     var copy = list.slice()
     copy.sort(function(a, b) {
-      var ra = chipRank(a.chip), rb = chipRank(b.chip)
-      if (ra !== rb) return ra - rb
+      var rankA = chipRank(a.chip), rankB = chipRank(b.chip)
+      if (rankA !== rankB) return rankA - rankB
       return String(a.label).localeCompare(String(b.label))
     })
     return copy
   }
 
   function tempColor(celsius, max) {
-    var limit = max > 0 ? max : 95
+    var limit = max > 0 ? max : Model.SENSOR_FALLBACK_CRITICAL
     var frac = Model.num(celsius) / limit
-    if (frac >= 0.92) return danger
-    if (frac >= 0.78) return warn
+    if (frac >= Model.SENSOR_DANGER) return danger
+    if (frac >= Model.SENSOR_WARN) return warn
     return s1
   }
 
@@ -130,7 +130,7 @@ Column {
 
         RingGauge {
           visible: root.fans.length > 0
-          value: root.fanSummary.active > 0 ? Math.min(1, root.fanSummary.average / 2400) : 0
+          value: root.fanSummary.active > 0 ? Math.min(1, root.fanSummary.average / Model.FAN_FULL_SCALE_RPM) : 0
           color: root.s2
           foreground: root.foreground
           fontFamily: root.fontFamily
@@ -151,7 +151,7 @@ Column {
       horizontalAlignment: Text.AlignHCenter
       text: "No hardware sensors found"
       color: root.foreground
-      opacity: 0.5
+      opacity: Style.mutedTextAlpha
       font.family: root.fontFamily
       font.pixelSize: Style.font.bodySmall
     }
@@ -171,7 +171,7 @@ Column {
       showGaps: root.historyRange > 0
       series: [root.hist.cpuTemp || []]
       colors: [root.s1]
-      floor: 30
+      minimumCeiling: Model.TEMPERATURE_SCALE_FLOOR
       baselineColor: Util.alpha(root.foreground, 0.14)
     }
     SectionTitle { visible: Model.hasReading(root.hist.gpuTemp); text: "GPU"; fontFamily: root.fontFamily }
@@ -183,7 +183,7 @@ Column {
       showGaps: root.historyRange > 0
       series: [root.hist.gpuTemp || []]
       colors: [root.s2]
-      floor: 30
+      minimumCeiling: Model.TEMPERATURE_SCALE_FLOOR
       baselineColor: Util.alpha(root.foreground, 0.14)
     }
   }
@@ -234,17 +234,17 @@ Column {
             fontFamily: root.fontFamily
             size: Style.space(20)
             onClicked: root.service.setSensorThreshold(sensorRow.sensorId, sensorRow.threshold < 0
-              ? Math.max(40, Math.min(120, Math.ceil((Number(sensorRow.modelData.value) + 10) / 5) * 5)) : null)
+              ? Math.max(Model.SENSOR_ALERT_MIN, Math.min(Model.SENSOR_ALERT_MAX, Math.ceil((Number(sensorRow.modelData.value) + 2 * Model.SENSOR_ALERT_STEP) / Model.SENSOR_ALERT_STEP) * Model.SENSOR_ALERT_STEP)) : null)
           }
 
           PanelActionButton {
             visible: sensorRow.threshold >= 0
             iconText: "−"
-            enabled: sensorRow.threshold > 40
+            enabled: sensorRow.threshold > Model.SENSOR_ALERT_MIN
             foreground: root.foreground
             fontFamily: root.fontFamily
             size: Style.space(20)
-            onClicked: root.service.setSensorThreshold(sensorRow.sensorId, sensorRow.threshold - 5)
+            onClicked: root.service.setSensorThreshold(sensorRow.sensorId, sensorRow.threshold - Model.SENSOR_ALERT_STEP)
           }
 
           Text {
@@ -261,11 +261,11 @@ Column {
           PanelActionButton {
             visible: sensorRow.threshold >= 0
             iconText: "+"
-            enabled: sensorRow.threshold < 120
+            enabled: sensorRow.threshold < Model.SENSOR_ALERT_MAX
             foreground: root.foreground
             fontFamily: root.fontFamily
             size: Style.space(20)
-            onClicked: root.service.setSensorThreshold(sensorRow.sensorId, sensorRow.threshold + 5)
+            onClicked: root.service.setSensorThreshold(sensorRow.sensorId, sensorRow.threshold + Model.SENSOR_ALERT_STEP)
           }
         }
       }
@@ -294,7 +294,7 @@ Column {
         labelOpacity: rpm > 0 ? 0.85 : 0.5
         foreground: root.foreground
         fontFamily: root.fontFamily
-        ringValue: Math.min(1, fanRow.rpm / 2400)
+        ringValue: Math.min(1, fanRow.rpm / Model.FAN_FULL_SCALE_RPM)
         ringColor: root.s2
       }
     }

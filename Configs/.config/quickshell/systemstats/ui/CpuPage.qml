@@ -87,7 +87,7 @@ Column {
       showGaps: root.historyRange > 0
       series: [root.hist.cpuTemp || []]
       colors: [root.s2]
-      floor: 30
+      minimumCeiling: Model.TEMPERATURE_SCALE_FLOOR
       baselineColor: Util.alpha(root.foreground, 0.14)
     }
   }
@@ -135,7 +135,7 @@ Column {
       width: parent.width
       text: String(root.cpu.model || "")
       color: root.foreground
-      opacity: 0.45
+      opacity: Style.faintTextAlpha
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       elide: Text.ElideRight

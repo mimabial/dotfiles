@@ -1586,7 +1586,7 @@ KeyboardPanel {
                   to: panel.controller.workspaceValueMaximum
                   value: String(((panel.controller.draftProfile || {}).workspaces || {}).strategy || "") === "manual"
                     ? Model.manualWorkspaceCount((panel.controller.draftProfile || {}).workspaces || {})
-                    : Number(((panel.controller.draftProfile || {}).workspaces || {}).max_workspaces || 9)
+                    : Number(((panel.controller.draftProfile || {}).workspaces || {}).max_workspaces || Model.DEFAULT_MAX_WORKSPACES)
                   enabled: !panel.controller.editPending
                   hasCursor: panel.controller.expanded && panel.controller.activePage === "workspaces"
                     && panel.controller.workspaceKeyboardIndex === 2

@@ -1,5 +1,3 @@
-"""Persistent cache for lyrics misses and temporary provider cooldowns."""
-
 from __future__ import annotations
 
 import atexit

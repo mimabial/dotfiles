@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 menu_add_presets() {
   local menu_id="$1" default_icon="$2" kind="$3" extension="$4" icon_key="$5" path="" name="" icon="" line=""
@@ -47,15 +46,72 @@ menu_add_opacity() {
   done <"${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/Opacity.js"
 }
 
-menu_register_domain_style() {
+style_register_bar_and_dock() {
+  menu_define style_bar "Bar"
+  menu_add_item style_bar "󰍜  Layout" submenu style_bar_layout
+  menu_add_item style_bar "󰃟  Opacity" submenu style_bar_opacity
+  menu_add_item style_bar "󰐷  Blur" action style_bar_blur
+  menu_add_item style_bar "󰹞  Floating" action style_bar_floating
+
+  menu_define style_dock "Dock"
+  menu_add_item style_dock "󰃟  Opacity" submenu style_dock_opacity
+  menu_add_item style_dock "󰐷  Blur" action style_dock_blur
+
+  menu_add_opacity style_bar_opacity "Auto (Workflow)"
+  menu_add_opacity style_dock_opacity "Auto (Theme)"
+}
+
+style_register_bar_layouts() {
   local layout_dir="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/layouts"
-  local layout_file=""
-  local layout_label=""
-  local size=""
-  local layout_name=""
+  local layout_file="" layout_label="" layout_name=""
   local -a workflow_layouts=()
   local -A layout_icons=([top]="󱔓" [bottom]="󱂩" [macos]="󰀵" [winbar]="󰖳")
 
+  menu_define style_bar_layout "Layout" choice
+  read -ra workflow_layouts <<<"$(state_get WORKFLOW_QUICKSHELL_LAYOUT "")"
+  for layout_file in "${layout_dir}"/*.json; do
+    [[ -f "${layout_file}" ]] || continue
+    layout_name="${layout_file##*/}"
+    layout_name="${layout_name%.json}"
+    ((${#workflow_layouts[@]} == 0)) || [[ " ${workflow_layouts[*]} " == *" ${layout_name} "* ]] || continue
+    layout_label="${layout_name//-/ }"
+    layout_label="${layout_label^}"
+    menu_add_item style_bar_layout "${layout_icons[${layout_name}]:-󰍜}  ${layout_label}" action "style_bar_layout_${layout_name}"
+  done
+}
+
+style_register_presets() {
+  menu_define style_animations "Animations" choice
+  menu_add_presets style_animations "󰹑" animations lua ""
+
+  menu_define style_shaders "Shaders" choice
+  menu_add_presets style_shaders "󰆗" shaders frag ""
+
+  menu_define style_workflow "Workflow" choice
+  menu_add_presets style_workflow "" workflows lua WORKFLOW_ICON gaming powersaver
+}
+
+style_register_text_sizes() {
+  local size=""
+
+  menu_define style_text_size "Text Size" choice
+  for size in $("${HYPR_LIB_DIR}/system/text-size.sh" --list); do
+    menu_add_item style_text_size "  ${size} px" action "style_text_size_${size}"
+  done
+}
+
+style_register_expose() {
+  menu_define style_expose "Exposé"
+  menu_add_item style_expose "󰍉  Hot Corner" submenu style_expose_hot_corner
+
+  menu_define style_expose_hot_corner "Hot Corner" choice
+  menu_add_item style_expose_hot_corner "↖  Top Left" action style_expose_hot_corner_top-left
+  menu_add_item style_expose_hot_corner "↗  Top Right" action style_expose_hot_corner_top-right
+  menu_add_item style_expose_hot_corner "↙  Bottom Left" action style_expose_hot_corner_bottom-left
+  menu_add_item style_expose_hot_corner "↘  Bottom Right" action style_expose_hot_corner_bottom-right
+}
+
+menu_register_domain_style() {
   menu_define style "Style"
   menu_add_item style "󰸌  Theme" action style_theme
   menu_add_item style "  Wallpaper" action style_wallpaper
@@ -72,30 +128,8 @@ menu_register_domain_style() {
   menu_add_item style "  Font" action style_font
   menu_add_item style "  Text Size" submenu style_text_size
 
-  menu_define style_bar "Bar"
-  menu_add_item style_bar "󰍜  Layout" submenu style_bar_layout
-  menu_add_item style_bar "󰃟  Opacity" submenu style_bar_opacity
-  menu_add_item style_bar "󰐷  Blur" action style_bar_blur
-  menu_add_item style_bar "󰹞  Floating" action style_bar_floating
-
-  menu_define style_dock "Dock"
-  menu_add_item style_dock "󰃟  Opacity" submenu style_dock_opacity
-  menu_add_item style_dock "󰐷  Blur" action style_dock_blur
-
-  menu_add_opacity style_bar_opacity "Auto (Workflow)"
-  menu_add_opacity style_dock_opacity "Auto (Theme)"
-
-  menu_define style_bar_layout "Layout" choice
-  read -ra workflow_layouts <<<"$(state_get WORKFLOW_QUICKSHELL_LAYOUT "")"
-  for layout_file in "${layout_dir}"/*.json; do
-    [[ -f "${layout_file}" ]] || continue
-    layout_name="${layout_file##*/}"
-    layout_name="${layout_name%.json}"
-    ((${#workflow_layouts[@]} == 0)) || [[ " ${workflow_layouts[*]} " == *" ${layout_name} "* ]] || continue
-    layout_label="${layout_name//-/ }"
-    layout_label="${layout_label^}"
-    menu_add_item style_bar_layout "${layout_icons[${layout_name}]:-󰍜}  ${layout_label}" action "style_bar_layout_${layout_name}"
-  done
+  style_register_bar_and_dock
+  style_register_bar_layouts
 
   menu_define style_color_mode "Color Mode" choice
   menu_add_item style_color_mode "󰸌  Theme Colors" action style_color_mode_source_theme
@@ -104,28 +138,9 @@ menu_register_domain_style() {
   menu_add_item style_color_mode "󰖨  Light" action style_color_mode_light
   menu_add_item style_color_mode "󰔎  Auto" action style_color_mode_auto
 
-  menu_define style_animations "Animations" choice
-  menu_add_presets style_animations "󰹑" animations lua ""
-
-  menu_define style_shaders "Shaders" choice
-  menu_add_presets style_shaders "󰆗" shaders frag ""
-
-  menu_define style_workflow "Workflow" choice
-  menu_add_presets style_workflow "" workflows lua WORKFLOW_ICON gaming powersaver
-
-  menu_define style_text_size "Text Size" choice
-  for size in $("${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/text-size.sh" --list); do
-    menu_add_item style_text_size "  ${size} px" action "style_text_size_${size}"
-  done
-
-  menu_define style_expose "Exposé"
-  menu_add_item style_expose "󰍉  Hot Corner" submenu style_expose_hot_corner
-
-  menu_define style_expose_hot_corner "Hot Corner" choice
-  menu_add_item style_expose_hot_corner "↖  Top Left" action style_expose_hot_corner_top-left
-  menu_add_item style_expose_hot_corner "↗  Top Right" action style_expose_hot_corner_top-right
-  menu_add_item style_expose_hot_corner "↙  Bottom Left" action style_expose_hot_corner_bottom-left
-  menu_add_item style_expose_hot_corner "↘  Bottom Right" action style_expose_hot_corner_bottom-right
+  style_register_presets
+  style_register_text_sizes
+  style_register_expose
 }
 
 menu_run_action_style() {

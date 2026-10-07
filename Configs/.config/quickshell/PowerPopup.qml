@@ -45,6 +45,9 @@ PopupCard {
     readonly property string thresholdText: sysfsStart > 0 && sysfsStart < thresholdEnd
         ? sysfsStart + "–" + thresholdEnd + "%" : thresholdEnd > 0 ? thresholdEnd + "%" : "Unavailable"
     readonly property bool discharging: UPower.onBattery
+    readonly property int minChargeLimit: 50
+    readonly property int maxChargeLimit: 100
+    readonly property int presetChargeLimit: 80
     readonly property bool thresholdActive: hasBattery && !discharging && thresholdEnd > 0 && thresholdEnd < 99
         && Math.round(battery.percentage * 100) >= thresholdEnd && Math.abs(battery.changeRate) <= 0.2
     readonly property bool full: hasBattery && battery.state === UPowerDeviceState.FullyCharged && !thresholdActive
@@ -99,7 +102,7 @@ PopupCard {
     }
     function applyLimit(limit) {
         const requested = limit === undefined ? draftLimit : limit
-        if (!limitBackendReady || !hasBattery || requested < 50 || requested > 100
+        if (!limitBackendReady || !hasBattery || requested < root.minChargeLimit || requested > root.maxChargeLimit
                 || requested === sysfsEnd || limitApply.running) return
         limitMessage = ""
         draftLimit = requested
@@ -313,13 +316,13 @@ PopupCard {
                 PopupInfoPair { shell: root.shell; label: "Charge limit"; value: root.thresholdText }
                 PopupRow {
                     visible: root.sysfsEnd > 0
-                    width: parent.width; shell: root.shell; icon: "󰂄"; title: "Stop charging at 80%"
-                    detail: root.sysfsEnd === 80 ? "Active · restart level set by hardware"
+                    width: parent.width; shell: root.shell; icon: "󰂄"; title: "Stop charging at " + root.presetChargeLimit + "%"
+                    detail: root.sysfsEnd === root.presetChargeLimit ? "Active · restart level set by hardware"
                         : !root.limitBackendReady ? "Privileged helper not installed"
                         : limitApply.running ? "Applying…" : "Restart level set by hardware · authentication required"
-                    active: root.sysfsEnd === 80
-                    interactive: root.limitBackendReady && root.hasBattery && root.sysfsEnd !== 80 && !limitApply.running
-                    onClicked: root.applyLimit(80)
+                    active: root.sysfsEnd === root.presetChargeLimit
+                    interactive: root.limitBackendReady && root.hasBattery && root.sysfsEnd !== root.presetChargeLimit && !limitApply.running
+                    onClicked: root.applyLimit(root.presetChargeLimit)
                 }
                 Row {
                     visible: root.sysfsEnd > 0
@@ -329,7 +332,7 @@ PopupCard {
                         id: limitField
                         width: Style.px(110); shell: root.shell
                         value: root.draftLimit >= 0 ? root.draftLimit : root.sysfsEnd
-                        minimum: 50; maximum: 100
+                        minimum: root.minChargeLimit; maximum: root.maxChargeLimit
                         onCommitted: value => root.draftLimit = value
                     }
                 }
@@ -337,7 +340,7 @@ PopupCard {
                     visible: root.sysfsEnd > 0
                     width: parent.width; shell: root.shell; icon: "󰆓"; title: "Apply charge limit"
                     detail: root.limitBackendReady ? (root.draftLimit < 0 || root.draftLimit === root.sysfsEnd ? "Up to date" : "Authentication required") : "Privileged helper not installed"
-                    interactive: root.limitBackendReady && root.draftLimit >= 50 && root.draftLimit !== root.sysfsEnd && !limitApply.running
+                    interactive: root.limitBackendReady && root.draftLimit >= root.minChargeLimit && root.draftLimit !== root.sysfsEnd && !limitApply.running
                     onClicked: root.applyLimit()
                 }
                 Text { visible: root.limitMessage !== ""; width: parent.width; text: root.limitMessage; color: root.shell.role("error", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }

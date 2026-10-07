@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source "${HOME}/.local/lib/hypr/runtime/init.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 hypr_help_guard "Usage: style-map-watch.sh [--once]
 
 Watches the quickshell config and regenerates ~/.cache/hypr/quickshell/style-map/.
@@ -8,7 +8,7 @@ Watches the quickshell config and regenerates ~/.cache/hypr/quickshell/style-map
 
 CONFIG="${XDG_CONFIG_HOME:-${HOME}/.config}/quickshell"
 
-generate() { python3 "${HOME}/.local/lib/hypr/quickshell/style-map.py"; }
+generate() { python3 "${HYPR_LIB_DIR}/quickshell/style-map.py"; }
 
 generate
 [[ "${1:-}" == --once ]] && exit 0

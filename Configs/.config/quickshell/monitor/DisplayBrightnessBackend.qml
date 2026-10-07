@@ -25,6 +25,7 @@ Item {
   }
   
   Timer {
+    id: brightnessPollTimer
     interval: 5000
     repeat: true
     running: runtime.controller.opened && runtime.controller.brightnessConnector !== ""

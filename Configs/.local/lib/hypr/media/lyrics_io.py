@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""
-Shared helpers for normalizing and writing LRC files.
-"""
-
 from __future__ import annotations
 
 import os
@@ -14,10 +10,6 @@ HEADER_TAG_RE = re.compile(r"^\[(ar|al|ti):.*\]\s*$", re.IGNORECASE)
 
 
 def normalize_lrc(lyrics: str, artist: str, title: str, album: str) -> str:
-    """
-    Normalize LRC content to a single canonical header set while preserving body.
-    Existing [ar:], [al:], [ti:] tags are removed from the body.
-    """
     body_lines = []
     for raw_line in lyrics.splitlines():
         if HEADER_TAG_RE.match(raw_line.strip()):
@@ -34,9 +26,6 @@ def normalize_lrc(lyrics: str, artist: str, title: str, album: str) -> str:
 
 
 def write_lrc_atomic(path: str | Path, content: str) -> None:
-    """
-    Atomically write LRC content by writing to a temp file and replacing target.
-    """
     target = Path(path).expanduser()
     target.parent.mkdir(parents=True, exist_ok=True)
 
@@ -53,8 +42,5 @@ def write_lrc_atomic(path: str | Path, content: str) -> None:
 
 
 def save_lrc(path: str | Path, lyrics: str, artist: str, title: str, album: str) -> None:
-    """
-    Normalize LRC content and write it atomically.
-    """
     normalized = normalize_lrc(lyrics, artist, title, album)
     write_lrc_atomic(path, normalized)

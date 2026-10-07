@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# Shared helpers for render/<app>.sh
-# Source as: . "$(dirname "$0")/_lib.sh" ; render_init <app> <output-basename> [<pack-override-basename>]
-
 # The role names every renderer resolves a palette to, as two jq fragments so a
 # caller can splice its own aliases between them and still emit the same key
 # order in one jq invocation.
@@ -18,7 +15,6 @@ RENDER_PALETTE_NUMBERED_JQ='
   + ([range(0; 16)] | map({key: ("c" + tostring), value: $c[.]}) | from_entries)'
 RENDER_HASH_DIR="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render-hashes"
 
-# bg, fg and the sixteen numbered colours as c[0..15].
 render_read_palette() {
   local -a raw=()
   mapfile -t raw < <(jq -r '.bg, .fg, (.colors[])' "${PALETTE}")
@@ -30,7 +26,6 @@ render_palette_file() {
   printf '%s\n' "${1:-${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json}"
 }
 
-# Sets globals: APP, OUT_DIR, OUT_FILE, PACK_OVERRIDE, PALETTE, RENDERER_SOURCE
 render_init() {
   APP="$1"
   local out_basename="$2"
@@ -75,14 +70,12 @@ render_input_hash() {
   printf '%s\n' "${digest%% *}"
 }
 
-# Returns 0 (skip) when cache hits and output exists; 1 otherwise.
 render_should_skip() {
   local hash="$1" stored="${RENDER_HASH_DIR}/${APP}"
   [[ "${HYPR_FORCE_REGEN:-0}" != 1 && -n "${hash}" && -f "${stored}" && -f "${OUT_FILE}" ]] &&
     [[ "$(<"${stored}")" == "${hash}" ]]
 }
 
-# Marks the run as changed for hypr-theme, then records the hash unless --no-cache.
 render_cache_store() {
   local app="$1" hash="$2" tmp
   [[ -z "${HYPR_THEME_CHANGED_FILE:-}" ]] || : >"${HYPR_THEME_CHANGED_FILE}"
@@ -93,7 +86,6 @@ render_cache_store() {
   mv -f "${tmp}" "${RENDER_HASH_DIR}/${app}"
 }
 
-# Echoes a temp file path inside OUT_DIR. Caller writes to it, then calls render_commit.
 render_temp() {
   mktemp "${OUT_DIR}/.$(basename "${OUT_FILE}").XXXXXX"
 }
@@ -104,8 +96,8 @@ render_commit() {
   render_cache_store "${APP}" "${hash}"
 }
 
-# Copies a pack-override file verbatim, skipping the first line if it's the conventional
-# "$HOME/..." target-path header used in the dotfiles' .theme format.
+# A .theme file may open with the dotfiles' "$HOME/..." target-path header, which
+# is not part of the theme.
 render_emit_pack_override() {
   local tmp="$1"
   local first

@@ -68,9 +68,9 @@ test_endpoints_restored() {
   endpoints_restored 2 3 || fail "2 expected / 3 present is restored"
 }
 
-# `timeout` wraps the real pactl in the function under test; stub it to run the
-# stubbed pactl instead of the binary.
-timeout() { while [[ "$1" == -* || "$1" == [0-9]* ]]; do shift; done; "$@"; }
+# hypr_daemon_call wraps the real pactl in the function under test; stub it to run
+# the stubbed pactl instead of the binary.
+hypr_daemon_call() { "$@"; }
 
 test_unmuted_endpoint_gets_muted
 test_already_muted_is_recorded_not_muted_again

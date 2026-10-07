@@ -1,4 +1,3 @@
-// DAW Meter — calibrated RMS body with sample-peak and 4× true-peak markers.
 .pragma library
 .import "helpers.js" as H
 

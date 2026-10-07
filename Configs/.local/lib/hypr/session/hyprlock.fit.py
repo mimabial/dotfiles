@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""Pango side of hyprlock.fit.sh: hyprlock.fit.py SHAPE_CACHE TEXT_CACHE WIDTH HEIGHT SIZE FONT... < text
-
-Shrinks the text with a Pango size span until it fits, and below MIN_SCALE
+"""Shrinks the text with a Pango size span until it fits, and below MIN_SCALE
 truncates it with an ellipsis instead. A keep/shrink decision holds for any text
 of the same shape, so it goes to SHAPE_CACHE; a truncation is text-specific and
 goes to TEXT_CACHE.
@@ -12,6 +10,7 @@ import sys
 from pathlib import Path
 
 MIN_SCALE = 0.75
+SCALE_STEP = 0.01
 NBSP = "\u00a0"
 
 
@@ -66,7 +65,6 @@ def fits(markup, width, height, size, font):
 
 
 def plan(text, width, height, size, font):
-    """("keep",), ("pad", n, 0), ("size", pango_size, escape) or ("text", markup)."""
     GLib, Pango, _ = pango()
     if fits(text, width, height, size, font):
         pad = padding(text, size, font)
@@ -79,7 +77,7 @@ def plan(text, width, height, size, font):
         span = int(size * scale * 1024)
         if fits(f'<span size="{span}">{body}</span>', width, height, size, font):
             return ("size", span, escape)
-        scale -= 0.01
+        scale -= SCALE_STEP
     minimum = round(size * MIN_SCALE * 1024)
     plain = Pango.parse_markup(body, -1, "\0")[2]
     span = f'<span size="{minimum}">'

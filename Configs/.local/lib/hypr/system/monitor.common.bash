@@ -27,23 +27,7 @@ monitor_lock_file() {
 monitor_notify() {
   local summary="$1"
   local body="${2:-}"
-
-  if declare -F send_ephemeral_notif >/dev/null 2>&1; then
-    if [[ -n "${body}" ]]; then
-      send_ephemeral_notif "hypr-monitor" -t 3000 -i "video-display" "${summary}" "${body}" >/dev/null 2>&1 || true
-    else
-      send_ephemeral_notif "hypr-monitor" -t 3000 -i "video-display" "${summary}" >/dev/null 2>&1 || true
-    fi
-    return 0
-  fi
-
-  if command -v notify-send >/dev/null 2>&1; then
-    if [[ -n "${body}" ]]; then
-      notify-send -t 3000 -i "video-display" "${summary}" "${body}" >/dev/null 2>&1 || true
-    else
-      notify-send -t 3000 -i "video-display" "${summary}" >/dev/null 2>&1 || true
-    fi
-  fi
+  send_ephemeral_notif "hypr-monitor" -t "${NOTIFY_MS}" -i "video-display" "${summary}" ${body:+"${body}"} >/dev/null 2>&1 || true
 }
 
 monitor_with_lock() {

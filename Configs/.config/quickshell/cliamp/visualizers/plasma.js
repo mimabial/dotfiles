@@ -1,4 +1,3 @@
-// Liquid Silk Plasma — Calibrated harmonic fluid field with edge attenuation and audio-reactive pacing
 .pragma library
 .import "helpers.js" as H
 

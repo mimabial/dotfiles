@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell util/debug.hypr
 Collect a redacted Hyprland/system debug log and view, save, or upload it." "$@"
@@ -11,8 +11,6 @@ Collect a redacted Hyprland/system debug log and view, save, or upload it." "$@"
 LOG_FILE="${TMPDIR:-/tmp}/hypr-debug.log"
 redacted_log=""
 
-# Recent error log lines. Uses the journal on systemd; falls back to common
-# syslog files on runit/non-systemd hosts.
 collect_recent_errors() {
   if command -v journalctl >/dev/null 2>&1; then
     journalctl -b -p 4..1

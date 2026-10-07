@@ -1,4 +1,4 @@
-// Butterfly — vis_butterfly.go: mirrored Rorschach, vertical band mapping
+// Port of cliamp vis_butterfly.go.
 .pragma library
 .import "helpers.js" as H
 

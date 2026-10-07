@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""Audio equaliser for a hyprlock label: hyprlock.cava.py HYPRLOCK_PID HEX [WIDTH PT FONT...].
-
-Started once by the lock screen; writes each cava frame as Pango markup to
+"""Started once by the lock screen; writes each cava frame as Pango markup to
 $XDG_RUNTIME_DIR/hypr/hyprlock-cava.txt, which a label cats, until hyprlock exits.
 """
 import itertools
@@ -16,6 +14,9 @@ BARS = 48
 BLOCKS = "▁▂▃▄▅▆▇█"  # eight steps per row, so bars rise smoothly at ~17 repaints/sec
 GRID = "█"
 NOISE_REDUCTION = 88  # cava's filter, 0-100, default 77; higher is smoother, lazier
+
+
+MIN_BARS = 8
 
 
 def measure(text, points, font):
@@ -33,9 +34,8 @@ def measure(text, points, font):
 
 
 def bars_for(width, points, font):
-    """As many bars as fit the label's container, each bar followed by a space."""
     bar, space = measure("█", points, font), measure(" ", points, font)
-    return max(8, int((width + space) // (bar + space)))
+    return max(MIN_BARS, int((width + space) // (bar + space)))
 
 
 def config(bars):

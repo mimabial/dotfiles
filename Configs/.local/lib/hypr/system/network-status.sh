@@ -6,11 +6,15 @@ set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 
+DEFAULT_PROBE_HOST="1.1.1.1"
+WIFI_6GHZ_MIN_MHZ=5925
+WIFI_5GHZ_MIN_MHZ=4900
+
 hypr_help_guard "Usage: hyprshell system/network-status [--probe <host>]
 Emit gateway, DNS, band and ping latency as JSON.
-  --probe <host>   host used for the internet latency sample (default 1.1.1.1)" "$@"
+  --probe <host>   host used for the internet latency sample (default ${DEFAULT_PROBE_HOST})" "$@"
 
-probe="1.1.1.1"
+probe="${DEFAULT_PROBE_HOST}"
 [[ "${1:-}" == "--probe" && -n "${2:-}" ]] && probe="$2"
 
 # The interface that actually carries the default route, not the first one up.
@@ -48,7 +52,7 @@ if command -v nmcli >/dev/null 2>&1 && [[ -n "${profile_iface}" ]]; then
   freq="${freq%% *}"
   [[ "${signal}" =~ ^[0-9]+$ ]] || signal=""
   if [[ "${freq}" =~ ^[0-9]+$ ]]; then
-    if ((freq >= 5925)); then band="6 GHz"; elif ((freq >= 4900)); then band="5 GHz"; else band="2.4 GHz"; fi
+    if ((freq >= WIFI_6GHZ_MIN_MHZ)); then band="6 GHz"; elif ((freq >= WIFI_5GHZ_MIN_MHZ)); then band="5 GHz"; else band="2.4 GHz"; fi
   fi
 fi
 

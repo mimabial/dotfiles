@@ -227,7 +227,7 @@ Item {
       Text {
         text: "Title (optional)"
         color: Commons.Color.menu.text
-        opacity: 0.72
+        opacity: Commons.Style.secondaryTextAlpha
         font.family: Commons.Style.font.menuFamily
         font.pixelSize: Commons.Style.font.caption
       }
@@ -252,7 +252,7 @@ Item {
       Text {
         text: "URL"
         color: Commons.Color.menu.text
-        opacity: 0.72
+        opacity: Commons.Style.secondaryTextAlpha
         font.family: Commons.Style.font.menuFamily
         font.pixelSize: Commons.Style.font.caption
       }
@@ -277,7 +277,7 @@ Item {
       Text {
         text: "Tags"
         color: Commons.Color.menu.text
-        opacity: 0.72
+        opacity: Commons.Style.secondaryTextAlpha
         font.family: Commons.Style.font.menuFamily
         font.pixelSize: Commons.Style.font.caption
       }
@@ -302,7 +302,7 @@ Item {
       Text {
         text: "Keyword (optional)"
         color: Commons.Color.menu.text
-        opacity: 0.72
+        opacity: Commons.Style.secondaryTextAlpha
         font.family: Commons.Style.font.menuFamily
         font.pixelSize: Commons.Style.font.caption
       }
@@ -351,7 +351,7 @@ Item {
           ? "Web details off · add anything you want"
           : "Enter Next field    Ctrl+Enter Save"
         color: Commons.Color.menu.text
-        opacity: 0.48
+        opacity: Commons.Style.mutedTextAlpha
         font.family: Commons.Style.font.menuFamily
         font.pixelSize: Commons.Style.font.caption
       }

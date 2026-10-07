@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 
 ROFI_SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+LAUNCHER_STYLE_NOTIFY_MS=2200
 # shellcheck source=/dev/null
 source "${ROFI_SCRIPT_DIR}/close.bash" || exit 1
+
+GRID_MIN_CELLS=2
+GRID_MAX_COLUMNS=5
+GRID_MAX_ROWS=4
 
 ensure_rofi_runtime() {
   local lib_root="${LIB_DIR:-}"
@@ -22,7 +27,7 @@ ensure_rofi_runtime() {
 ensure_rofi_runtime || exit 1
 rofi_close_running
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/rofi/rofi.lib.bash"
 
 resolve_rofi_launcher_theme() {
   local style_ref="${1:-${ROFI_LAUNCH_STYLE:-style_1}}"
@@ -49,7 +54,7 @@ launcher_style_notification() {
 
   command -v dunstify >/dev/null 2>&1 || return 0
 
-  local -a notify_args=(-a "Launcher style" -t 2200 -r 94)
+  local -a notify_args=(-a "Launcher style" -t "${LAUNCHER_STYLE_NOTIFY_MS}" -r "${NOTIFY_ID_LAUNCHER_STYLE}")
   [[ -n "${preview_asset}" && -f "${preview_asset}" ]] && notify_args+=(-i "${preview_asset}")
   dunstify "${notify_args[@]}" "Launcher style applied" "${selected_style}"
 }
@@ -90,12 +95,8 @@ launcher_style_menu_override() {
   elm_height_px=$((preview_image_size * hidpi_scale))
   max_avail_x_px=$((mon_x_res_px - (8 * font_scale)))
   max_avail_y_px=$((mon_y_res_px - (16 * font_scale)))
-  col_count=$((max_avail_x_px / elm_width_px))
-  row_count=$((max_avail_y_px / elm_height_px))
-  [[ "${col_count}" -lt 2 ]] && col_count=2
-  [[ "${col_count}" -gt 5 ]] && col_count=5
-  [[ "${row_count}" -lt 2 ]] && row_count=2
-  [[ "${row_count}" -gt 4 ]] && row_count=4
+  col_count="$(hypr_clamp $((max_avail_x_px / elm_width_px)) "${GRID_MIN_CELLS}" "${GRID_MAX_COLUMNS}")"
+  row_count="$(hypr_clamp $((max_avail_y_px / elm_height_px)) "${GRID_MIN_CELLS}" "${GRID_MAX_ROWS}")"
 
   cat <<EOF
 window{width:100%;height:100%;fullscreen:true;}

@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 trigger_rofi_gone() {
   ! hypr_layer_mapped rofi
@@ -63,7 +62,7 @@ menu_register_domain_trigger() {
   menu_define trigger_toggle_workspace_layout "Workspace Layout" choice
   while IFS=$'\t' read -r name icon label; do
     menu_add_item trigger_toggle_workspace_layout "${icon}  ${label}" action "trigger_toggle_workspace_layout_${name}"
-  done < <("${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/util/window-layout.sh" --list)
+  done < <("${HYPR_LIB_DIR}/util/window-layout.sh" --list)
 }
 
 menu_run_action_trigger() {

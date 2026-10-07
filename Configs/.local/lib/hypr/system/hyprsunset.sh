@@ -85,16 +85,6 @@ write_sunset_state() {
   state_set "HYPRSUNSET_ENABLED" "${state_ref[enabled]}" "staterc"
 }
 
-clamp_range() {
-  local value="$1"
-  local min_value="$2"
-  local max_value="$3"
-
-  [ "$value" -lt "$min_value" ] && value=$min_value
-  [ "$value" -gt "$max_value" ] && value=$max_value
-  echo "$value"
-}
-
 validate_int_range() {
   local value="$1"
   local min_value="$2"
@@ -149,53 +139,17 @@ parse_args() {
 
   while true; do
     case "$1" in
-      --cm)
-        options_ref[color_mode]="$2"
-        shift 2
-        ;;
-      -i|--increase)
-        options_ref[action]="increase"
-        options_ref[custom_step]="$2"
-        shift 2
-        ;;
-      -d|--decrease)
-        options_ref[action]="decrease"
-        options_ref[custom_step]="$2"
-        shift 2
-        ;;
-      -s|--set)
-        options_ref[action]="set"
-        options_ref[custom_step]="$2"
-        shift 2
-        ;;
-      -r|--read)
-        options_ref[action]="read"
-        shift
-        ;;
-      -t|--toggle)
-        options_ref[action]="toggle"
-        shift
-        ;;
-      -q|--quiet)
-        options_ref[notify]=false
-        shift
-        ;;
-      -P|--sigproc)
-        options_ref[signal_proc]="$2"
-        shift 2
-        ;;
-      -h|--help)
-        options_ref[help]=true
-        shift
-        ;;
-      --)
-        shift
-        return 0
-        ;;
-      *)
-        echo "Invalid option: $1" >&2
-        return 1
-        ;;
+      --cm) options_ref[color_mode]="$2"; shift 2 ;;
+      -i|--increase) options_ref[action]="increase"; options_ref[custom_step]="$2"; shift 2 ;;
+      -d|--decrease) options_ref[action]="decrease"; options_ref[custom_step]="$2"; shift 2 ;;
+      -s|--set) options_ref[action]="set"; options_ref[custom_step]="$2"; shift 2 ;;
+      -r|--read) options_ref[action]="read"; shift ;;
+      -t|--toggle) options_ref[action]="toggle"; shift ;;
+      -q|--quiet) options_ref[notify]=false; shift ;;
+      -P|--sigproc) options_ref[signal_proc]="$2"; shift 2 ;;
+      -h|--help) options_ref[help]=true; shift ;;
+      --) shift; return 0 ;;
+      *) echo "Invalid option: $1" >&2; return 1 ;;
     esac
   done
 }
@@ -206,12 +160,12 @@ apply_signed_step() {
   local direction="$3"
 
   if [ "${options_ref[color_mode]}" = "gamma" ]; then
-    state_ref[new_gamma]="$(clamp_range "$((state_ref[gamma] + (direction * options_ref[gamma_step])))" "${MIN_GAMMA}" "${MAX_GAMMA}")"
+    state_ref[new_gamma]="$(hypr_clamp "$((state_ref[gamma] + (direction * options_ref[gamma_step])))" "${MIN_GAMMA}" "${MAX_GAMMA}")"
     state_ref[gamma]="${state_ref[new_gamma]}"
     return 0
   fi
 
-  state_ref[new_temp]="$(clamp_range "$((state_ref[temp] + (direction * options_ref[temp_step])))" "${MIN_TEMP}" "${MAX_TEMP}")"
+  state_ref[new_temp]="$(hypr_clamp "$((state_ref[temp] + (direction * options_ref[temp_step])))" "${MIN_TEMP}" "${MAX_TEMP}")"
   state_ref[temp]="${state_ref[new_temp]}"
 }
 
@@ -232,13 +186,13 @@ resolve_set_action() {
   if [ "${options_ref[color_mode]}" = "gamma" ]; then
     validate_int_range "${options_ref[custom_step]}" "${MIN_GAMMA}" "${MAX_GAMMA}" \
       "Error: Gamma value must be an integer between ${MIN_GAMMA} and ${MAX_GAMMA}" || return 1
-    state_ref[new_gamma]="$(clamp_range "${options_ref[custom_step]}" "${MIN_GAMMA}" "${MAX_GAMMA}")"
+    state_ref[new_gamma]="$(hypr_clamp "${options_ref[custom_step]}" "${MIN_GAMMA}" "${MAX_GAMMA}")"
     return 0
   fi
 
   validate_int_range "${options_ref[custom_step]}" "${MIN_TEMP}" "${MAX_TEMP}" \
     "Error: Temperature must be an integer between ${MIN_TEMP} and ${MAX_TEMP}" || return 1
-  state_ref[new_temp]="$(clamp_range "${options_ref[custom_step]}" "${MIN_TEMP}" "${MAX_TEMP}")"
+  state_ref[new_temp]="$(hypr_clamp "${options_ref[custom_step]}" "${MIN_TEMP}" "${MAX_TEMP}")"
 }
 
 resolve_step_action() {
@@ -337,7 +291,7 @@ send_notification() {
     icon_name="redshift-status-off"
   fi
 
-  notify_args=(-a "hyprsunset" -r 19 -t 800 -i "${icon_name}" "${title}")
+  notify_args=(-a "hyprsunset" -r "${NOTIFY_ID_HYPRSUNSET}" -t "${NOTIFY_OSD_MS}" -i "${icon_name}" "${title}")
   [ -n "${message}" ] && notify_args+=("${message}")
 
   notify_send_safe "${notify_args[@]}"

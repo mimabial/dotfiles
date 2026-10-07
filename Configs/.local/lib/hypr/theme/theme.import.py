@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""Build a Hypr theme pack from a compatible theme source tree.
-
-Emits only palette.toml, hypr.theme and wallpapers/. Per-app files from the
+"""Emits only palette.toml, hypr.theme and wallpapers/. Per-app files from the
 source (btop.theme, chromium.theme, vscode.json, ...) are dropped: with
 no <app>.theme override in the pack, every renderer under render/ derives that
 app's colours from the pack palette, which fits a foreign theme better than its
@@ -31,7 +29,7 @@ ICON_ROOTS = (
     Path("/usr/share/icons"),
 )
 
-# Mirrors the extensions core/wallpaper.catalog.sh treats as wallpapers.
+# Mirrors the extensions core/wallpaper.catalog.bash treats as wallpapers.
 WALL_SUFFIXES = (".gif", ".jpg", ".jpeg", ".png", ".webp")
 ANSI_ORDER = ("black", "red", "green", "yellow", "blue", "magenta", "cyan", "white")
 SOURCE_ANSI = (
@@ -232,7 +230,6 @@ def build_palette(data, kvantum):
 
 
 def parse_hyprland_conf(text):
-    """Return ({var: value}, [block lines]) for the general/group/decoration blocks."""
     variables = {}
     blocks = []
     lines = text.splitlines()
@@ -424,6 +421,56 @@ def parse_args():
     return parser.parse_args()
 
 
+def source_hyprland_conf(src):
+    hypr_conf = src / "hyprland.conf"
+    if hypr_conf.is_file():
+        return parse_hyprland_conf(hypr_conf.read_text())
+    warn("source ships no hyprland.conf; hypr.theme will carry metadata only")
+    return {}, []
+
+
+def theme_header_vars(src, args, mode):
+    cursor_theme, cursor_size = resolve_cursor(args.cursor, args.size)
+    nvim_scheme, nvim_variant = resolve_nvim_scheme(src, args.nvim, mode)
+    return {
+        "ICON_THEME": resolve_icon_theme(src, args.icons),
+        "COLOR_SCHEME": f"prefer-{mode}",
+        "NVIM_SCHEME": nvim_scheme,
+        "NVIM_VARIANT": nvim_variant,
+        "NVIM_BACKGROUND": mode,
+        "NVIM_TRANSPARENCY": "false",
+        "CURSOR_THEME": cursor_theme,
+        "CURSOR_SIZE": cursor_size,
+    }
+
+
+def print_dry_run(pack_dir, palette, hypr_theme, images, skipped):
+    print(f"==> {pack_dir}/palette.toml\n{palette}")
+    print(f"==> {pack_dir}/hypr.theme\n{hypr_theme}")
+    print(f"==> {pack_dir}/wallpapers/ ({len(images)} images, {len(skipped)} skipped)")
+    for image in images:
+        print(f"    {image.name}")
+    print(f"==> {WALL_LINK} -> wallpapers/{images[0].name}")
+
+
+def write_pack(pack_dir, name, palette, hypr_theme, images, skipped):
+    pack_dir.mkdir(parents=True, exist_ok=True)
+    (pack_dir / "palette.toml").write_text(palette)
+    (pack_dir / "hypr.theme").write_text(hypr_theme)
+    wall = install_wallpapers(images, pack_dir)
+
+    ok = validate(pack_dir, name)
+    print(f"theme.import: wrote {pack_dir}")
+    print(f"theme.import: {len(images)} wallpapers, default {wall.name}", end="")
+    print(f", skipped {len(skipped)} non-image files" if skipped else "")
+    if warnings:
+        print(f"theme.import: {len(warnings)} warning(s) above", file=sys.stderr)
+    if not ok:
+        return 1
+    print(f'theme.import: apply with `hyprshell theme.switch.sh -s "{name}"`')
+    return 0
+
+
 def main():
     args = parse_args()
     cleanup = []
@@ -438,55 +485,15 @@ def main():
 
         data = load_source_data(src)
         palette, background = build_palette(data, args.kvantum)
-
-        hypr_conf = src / "hyprland.conf"
-        if hypr_conf.is_file():
-            variables, blocks = parse_hyprland_conf(hypr_conf.read_text())
-        else:
-            warn("source ships no hyprland.conf; hypr.theme will carry metadata only")
-            variables, blocks = {}, []
-
+        variables, blocks = source_hyprland_conf(src)
         mode = resolve_mode(src, data, background)
-
-        cursor_theme, cursor_size = resolve_cursor(args.cursor, args.size)
-        nvim_scheme, nvim_variant = resolve_nvim_scheme(src, args.nvim, mode)
-        header_vars = {
-            "ICON_THEME": resolve_icon_theme(src, args.icons),
-            "COLOR_SCHEME": f"prefer-{mode}",
-            "NVIM_SCHEME": nvim_scheme,
-            "NVIM_VARIANT": nvim_variant,
-            "NVIM_BACKGROUND": mode,
-            "NVIM_TRANSPARENCY": "false",
-            "CURSOR_THEME": cursor_theme,
-            "CURSOR_SIZE": cursor_size,
-        }
-        hypr_theme = build_hypr_theme(header_vars, blocks, variables)
+        hypr_theme = build_hypr_theme(theme_header_vars(src, args, mode), blocks, variables)
         images, skipped = collect_wallpapers(src)
 
         if args.dry_run:
-            print(f"==> {pack_dir}/palette.toml\n{palette}")
-            print(f"==> {pack_dir}/hypr.theme\n{hypr_theme}")
-            print(f"==> {pack_dir}/wallpapers/ ({len(images)} images, {len(skipped)} skipped)")
-            for image in images:
-                print(f"    {image.name}")
-            print(f"==> {WALL_LINK} -> wallpapers/{images[0].name}")
+            print_dry_run(pack_dir, palette, hypr_theme, images, skipped)
             return 0
-
-        pack_dir.mkdir(parents=True, exist_ok=True)
-        (pack_dir / "palette.toml").write_text(palette)
-        (pack_dir / "hypr.theme").write_text(hypr_theme)
-        wall = install_wallpapers(images, pack_dir)
-
-        ok = validate(pack_dir, name)
-        print(f"theme.import: wrote {pack_dir}")
-        print(f"theme.import: {len(images)} wallpapers, default {wall.name}", end="")
-        print(f", skipped {len(skipped)} non-image files" if skipped else "")
-        if warnings:
-            print(f"theme.import: {len(warnings)} warning(s) above", file=sys.stderr)
-        if not ok:
-            return 1
-        print(f'theme.import: apply with `hyprshell theme.switch.sh -s "{name}"`')
-        return 0
+        return write_pack(pack_dir, name, palette, hypr_theme, images, skipped)
     finally:
         for path in cleanup:
             shutil.rmtree(path, ignore_errors=True)

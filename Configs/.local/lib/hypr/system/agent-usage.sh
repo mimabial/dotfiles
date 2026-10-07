@@ -14,7 +14,7 @@ hypr_help_guard "Usage: hyprshell system/agent-usage [--write] [--force] [agent.
 Cache: \${HYPR_CACHE_HOME:-~/.cache/hypr}/agents/usage.json" "$@"
 
 readonly AGENTS=(claude codex opencode)
-readonly COLLECTOR_DIR="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system"
+readonly COLLECTOR_DIR="${HYPR_LIB_DIR}/system"
 readonly CACHE_DIR="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/agents"
 readonly CACHE_FILE="${CACHE_DIR}/usage.json"
 

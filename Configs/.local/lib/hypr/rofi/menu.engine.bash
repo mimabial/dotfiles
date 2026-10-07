@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 BACK_TO_EXIT="${BACK_TO_EXIT:-false}"
 MENU_BORDER_RADIUS="${MENU_BORDER_RADIUS:-}"
@@ -223,12 +222,9 @@ menu_run_rofi() {
   return "${exit_code}"
 }
 
-# menu <prompt> <options> [--select ROW] [--nav tree|copy|multi] [--rows detail]
-menu() {
-  local prompt="$1"
-  local options="$2"
-  shift 2
-  local preselect="" nav_keys="" row_mode=""
+menu_parse_options() {
+  local -n preselect_ref="$1" nav_keys_ref="$2" row_mode_ref="$3"
+  shift 3
 
   while (($#)); do
     (($# > 1)) || {
@@ -236,9 +232,9 @@ menu() {
       return 2
     }
     case "$1" in
-      --select) preselect="${2:-}" ;;
-      --nav) nav_keys="${2:-}" ;;
-      --rows) row_mode="${2:-}" ;;
+      --select) preselect_ref="${2:-}" ;;
+      --nav) nav_keys_ref="${2:-}" ;;
+      --rows) row_mode_ref="${2:-}" ;;
       *)
         printf 'menu: unknown option: %s\n' "$1" >&2
         return 2
@@ -246,17 +242,41 @@ menu() {
     esac
     shift 2
   done
-  case "${nav_keys}" in "" | tree | search | copy | multi) ;; *) printf 'menu: invalid navigation mode: %s\n' "${nav_keys}" >&2; return 2 ;; esac
-  case "${row_mode}" in "" | detail) ;; *) printf 'menu: invalid row mode: %s\n' "${row_mode}" >&2; return 2 ;; esac
+  case "${nav_keys_ref}" in "" | tree | search | copy | multi) ;; *) printf 'menu: invalid navigation mode: %s\n' "${nav_keys_ref}" >&2; return 2 ;; esac
+  case "${row_mode_ref}" in "" | detail) ;; *) printf 'menu: invalid row mode: %s\n' "${row_mode_ref}" >&2; return 2 ;; esac
+}
 
-  local options_rendered="" measured_rows="" width_override="" selected_row=""
-  local user_name="${USER:-user}" lines_per_row=1 glyph_font=""
+menu_theme_args() {
+  local -n theme_args_ref="$1"
+  local prompt="$2"
+  local width_override="$3"
+  # Propo reports each icon's real width, so the glyph box fits the glyph and centring lands on it
+  local glyph_font="${MENU_FONT_NAME_CACHE%% Nerd Font*} Nerd Font Propo ${MENU_FONT_SCALE_CACHE}"
+  local user_name="${USER:-user}"
+
+  theme_args_ref+=("-theme-str" "$(rofi_font_override "${MENU_FONT_NAME_CACHE}" "${MENU_FONT_SCALE_CACHE}")")
+  theme_args_ref+=("-theme-str" "${MENU_WINDOW_THEME_CACHE}")
+  theme_args_ref+=("-theme-str" "* {element-border-radius: ${MENU_BORDER_RADIUS}px;}")
+  # rofi's lexer runs a quoted value to the last quote on its line, so each one gets its own -theme-str
+  theme_args_ref+=("-theme-str" "textbox-prompt-colon {str: \"${MENU_PROMPT_GLYPH}\";}")
+  theme_args_ref+=("-theme-str" "textbox-prompt-label {str: \"${prompt}\";}")
+  theme_args_ref+=("-theme-str" "textbox-prompt-label {font: \"${MENU_FONT_NAME_CACHE} Bold ${MENU_FONT_SCALE_CACHE}\";}")
+  theme_args_ref+=("-theme-str" "textbox-prompt-colon {font: \"${glyph_font}\";}")
+  theme_args_ref+=("-theme-str" "entry {placeholder: \"Hello ${user_name^}!\";}")
+  [[ -n "${width_override}" ]] && theme_args_ref+=("-theme-str" "${width_override}")
+  return 0
+}
+
+menu() {
+  local prompt="$1"
+  local options="$2"
+  shift 2
+  local preselect="" nav_keys="" row_mode=""
+  local options_rendered="" measured_rows="" width_override="" selected_row="" lines_per_row=1
   local -a rofi_args=()
 
+  menu_parse_options preselect nav_keys row_mode "$@" || return 2
   menu_metrics_cache_init
-  # Propo reports each icon's real width, so the glyph box fits the glyph and centring lands on it
-  glyph_font="${MENU_FONT_NAME_CACHE%% Nerd Font*} Nerd Font Propo ${MENU_FONT_SCALE_CACHE}"
-
   printf -v options_rendered '%b' "${options}"
   menu_measured_rows measured_rows "${options_rendered}" "${nav_keys}" "${row_mode}"
   [[ "${row_mode}" == "detail" ]] && lines_per_row=2
@@ -264,19 +284,8 @@ menu() {
   width_override="$(menu_content_theme_override "${measured_rows}" "${lines_per_row}" "${nav_keys}" || true)"
   [[ -n "${width_override}" ]] || width_override="${MENU_WIDTH_OVERRIDE_CACHE}"
 
-  rofi_args+=("-theme-str" "$(rofi_font_override "${MENU_FONT_NAME_CACHE}" "${MENU_FONT_SCALE_CACHE}")")
-  rofi_args+=("-theme-str" "${MENU_WINDOW_THEME_CACHE}")
-  rofi_args+=("-theme-str" "* {element-border-radius: ${MENU_BORDER_RADIUS}px;}")
-  # rofi's lexer runs a quoted value to the last quote on its line, so each one gets its own -theme-str
-  rofi_args+=("-theme-str" "textbox-prompt-colon {str: \"${MENU_PROMPT_GLYPH}\";}")
-  rofi_args+=("-theme-str" "textbox-prompt-label {str: \"${prompt}\";}")
-  rofi_args+=("-theme-str" "textbox-prompt-label {font: \"${MENU_FONT_NAME_CACHE} Bold ${MENU_FONT_SCALE_CACHE}\";}")
-  rofi_args+=("-theme-str" "textbox-prompt-colon {font: \"${glyph_font}\";}")
-  rofi_args+=("-theme-str" "entry {placeholder: \"Hello ${user_name^}!\";}")
-  [[ -n "${width_override}" ]] && rofi_args+=("-theme-str" "${width_override}")
-
+  menu_theme_args rofi_args "${prompt}" "${width_override}"
   menu_append_nav_args rofi_args "${nav_keys}"
-
   if [[ "${row_mode}" == "detail" ]]; then
     rofi_args+=(-sep "${MENU_ROW_SEP}" -eh 2 -markup-rows -no-custom -format i)
     rofi_args+=("-theme-str" "listview {require-input: true;}")
@@ -325,7 +334,7 @@ present_terminal() {
 }
 
 open_in_editor() {
-  dunstify -t 3000 -i "text-editor" "Editing config file" "$1"
+  dunstify -t "${NOTIFY_MS}" -i "text-editor" "Editing config file" "$1"
   hyprshell launch/editor.sh "$1"
 }
 

@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import atomic_write, cache_hit, cache_store
+from _common import atomic_write, cache_hit, cache_store, short_digest
 
 PALETTE = Path(sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else
                os.environ.get("HYPR_STATE_HOME",
@@ -22,11 +22,11 @@ MARKER_END = "/* END HYPR WAL FIREFOX USERCHROME */"
 PREF = "toolkit.legacyUserProfileCustomizations.stylesheets"
 APP = "firefox"
 
-def parse_hex(v):
-    v = v.lstrip("#")
-    if len(v) != 6: return None
+def parse_hex(hex_color):
+    hex_color = hex_color.lstrip("#")
+    if len(hex_color) != 6: return None
     try:
-        return tuple(int(v[i:i+2], 16) / 255 for i in (0, 2, 4))
+        return tuple(int(hex_color[i:i+2], 16) / 255 for i in (0, 2, 4))
     except ValueError:
         return None
 
@@ -115,25 +115,25 @@ def render_template(template: str, palette: dict) -> str:
 def list_profiles():
     profiles_ini = FIREFOX_ROOT / "profiles.ini"
     if profiles_ini.is_file():
-        cfg = configparser.ConfigParser()
-        cfg.read(profiles_ini)
+        profiles = configparser.ConfigParser()
+        profiles.read(profiles_ini)
         seen = set()
-        for s in cfg.sections():
-            if not s.startswith("Profile"): continue
-            raw = cfg[s].get("Path", "").strip()
+        for section in profiles.sections():
+            if not section.startswith("Profile"): continue
+            raw = profiles[section].get("Path", "").strip()
             if not raw: continue
-            p = Path(raw)
-            if cfg[s].get("IsRelative", "1").strip() != "0":
-                p = FIREFOX_ROOT / p
-            p = p.expanduser()
-            if p.is_dir():
-                rp = str(p.resolve())
-                if rp not in seen:
-                    seen.add(rp)
-                    yield Path(rp)
+            profile_dir = Path(raw)
+            if profiles[section].get("IsRelative", "1").strip() != "0":
+                profile_dir = FIREFOX_ROOT / profile_dir
+            profile_dir = profile_dir.expanduser()
+            if profile_dir.is_dir():
+                resolved = str(profile_dir.resolve())
+                if resolved not in seen:
+                    seen.add(resolved)
+                    yield Path(resolved)
     else:
-        for p in FIREFOX_ROOT.glob("*.default*"):
-            if p.is_dir(): yield p
+        for profile_dir in FIREFOX_ROOT.glob("*.default*"):
+            if profile_dir.is_dir(): yield profile_dir
 
 def inject_marker(profile: Path, snippet: str):
     chrome_dir = profile / "chrome"
@@ -189,7 +189,7 @@ def main():
     hasher.update(TEMPLATE.read_bytes())
     hasher.update(Path(__file__).read_bytes())
     for p in profiles: hasher.update(str(p).encode())
-    digest = hasher.hexdigest()[:16]
+    digest = short_digest(hasher)
 
     if cache_hit(APP, digest) and OUT_FILE.exists() and all(
             (p / "chrome" / "userChrome.css").exists() for p in profiles):

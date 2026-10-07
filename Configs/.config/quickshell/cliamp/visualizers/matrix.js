@@ -1,4 +1,3 @@
-// Matrix — authentic cascading Matrix digital code rain driven by audio energy
 .pragma library
 .import "helpers.js" as H
 

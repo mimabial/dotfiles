@@ -1,6 +1,5 @@
 .pragma library
 
-// freedesktop status icon names for the modules that draw SymbolicIcons
 
 function level(fraction, names) {
     return names[Math.max(0, Math.min(names.length - 1, Math.floor(fraction * names.length)))]

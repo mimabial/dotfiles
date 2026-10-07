@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source "${HOME}/.local/lib/hypr/runtime/init.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 set -euo pipefail
 hypr_runtime_require state
 
@@ -18,6 +18,8 @@ Options:
 
 config_file=${HYPR_KEYBOARD_CONFIG_FILE:-${HYPR_CONFIG_HOME}/keyboard.lua}
 config_lock_fd=""
+# The autoreload value to put back once the config is committed; empty while unpaused.
+autoreload_restore_value=""
 
 die() {
   printf '%s\n' "$1" >&2
@@ -207,6 +209,21 @@ set_disable_autoreload() {
   hypr_lua_apply "hl.config({ misc = { disable_autoreload = $1 } })" >/dev/null 2>&1
 }
 
+pause_autoreload() {
+  local was_disabled=""
+  was_disabled=$(disable_autoreload_value) \
+    || die 'Hyprland autoreload state could not be read; nothing was changed.'
+  set_disable_autoreload true \
+    || die 'Hyprland autoreload could not be paused safely; nothing was changed.'
+  autoreload_restore_value="${was_disabled}"
+}
+
+resume_autoreload() {
+  [[ -n "${autoreload_restore_value}" ]] || return 0
+  set_disable_autoreload "${autoreload_restore_value}" || true
+  autoreload_restore_value=""
+}
+
 apply_live_config() {
   local payload="$1" layouts="" variants="" options=""
   layouts=$(hypr_lua_quote "$(layout_csv "${payload}")")
@@ -233,7 +250,6 @@ restore_config() {
 commit_candidate() {
   local payload="$1" requested_index="${2:-0}" pre_apply_index="${3:-}" rollback_index="${4:-0}"
   local config_dir="" temp_config="" old_config="" old_payload="" had_config=false
-  local reload_was_disabled="" reload_guarded=false
 
   validate_candidate "${payload}"
   config_dir=$(dirname -- "${config_file}")
@@ -254,26 +270,11 @@ commit_candidate() {
     had_config=true
   fi
 
-  restore_reload_guard() {
-    if [[ "${reload_guarded}" == true ]]; then
-      set_disable_autoreload "${reload_was_disabled}" || true
-      reload_guarded=false
-    fi
-  }
-  cleanup_keyboard_config() {
-    restore_reload_guard
-    rm -f -- "${temp_config}" "${old_config}"
-  }
-  trap cleanup_keyboard_config EXIT
+  trap 'resume_autoreload; rm -f -- "${temp_config}" "${old_config}"' EXIT
   trap 'exit 129' HUP
   trap 'exit 130' INT
   trap 'exit 143' TERM
-
-  reload_was_disabled=$(disable_autoreload_value) \
-    || die 'Hyprland autoreload state could not be read; nothing was changed.'
-  set_disable_autoreload true \
-    || die 'Hyprland autoreload could not be paused safely; nothing was changed.'
-  reload_guarded=true
+  pause_autoreload
 
   if [[ -n "${pre_apply_index}" ]] && ! switch_all_checked "${pre_apply_index}"; then
     die 'The keyboards could not be moved to a safe layout; nothing was changed.'
@@ -288,7 +289,7 @@ commit_candidate() {
   fi
 
   switch_typed "${requested_index}"
-  restore_reload_guard
+  resume_autoreload
   trap - EXIT HUP INT TERM
   rm -f -- "${temp_config}" "${old_config}"
   status_json "${payload}"

@@ -23,9 +23,9 @@ qr_notify() {
   local body="${3:-}"
 
   if [[ -n "${body}" ]]; then
-    dunstify -a "QR" -u "${urgency}" -t 5000 -i "view-barcode-qr" "${summary}" "${body}"
+    dunstify -a "QR" -u "${urgency}" -t "${NOTIFY_LONG_MS}" -i "view-barcode-qr" "${summary}" "${body}"
   else
-    dunstify -a "QR" -u "${urgency}" -t 3000 -i "view-barcode-qr" "${summary}"
+    dunstify -a "QR" -u "${urgency}" -t "${NOTIFY_MS}" -i "view-barcode-qr" "${summary}"
   fi
 }
 

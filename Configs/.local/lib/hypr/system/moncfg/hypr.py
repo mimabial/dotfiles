@@ -1,4 +1,3 @@
-"""Hyprland IPC: monitor state, live config application, and the event stream."""
 from __future__ import annotations
 
 import json
@@ -24,7 +23,7 @@ def hyprctl(*args: str, timeout: float = 4.0) -> str:
 
 
 def monitors() -> list[dict]:
-    """Every monitor Hyprland knows about, disabled ones included."""
+    """Disabled ones included."""
     return json.loads(hyprctl("monitors", "all", "-j"))
 
 
@@ -75,7 +74,6 @@ def is_internal(monitor: dict) -> bool:
 
 
 def events():
-    """Yield (event, payload) from Hyprland's socket2 for as long as it stays up."""
     path = os.path.join(_ipc_dir(), ".socket2.sock")
     conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     conn.connect(path)

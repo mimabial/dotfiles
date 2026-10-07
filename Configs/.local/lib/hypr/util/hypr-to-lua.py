@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Convert the supported Hyprlang fragment subset to native Hyprland Lua."""
-
 from __future__ import annotations
 
 import argparse
@@ -21,6 +19,9 @@ BOOL_WINDOW_EFFECTS = {
     "confine_pointer",
 }
 BOOL_LAYER_EFFECTS = {"blur", "blur_popups", "dim_around", "no_anim", "no_screen_share", "xray"}
+
+
+MAX_EXPANSION_PASSES = 12
 
 
 def strip_comment(line: str) -> str:
@@ -70,7 +71,7 @@ class Converter:
         self.rule_index = 0
 
     def expand(self, value: str) -> str:
-        for _ in range(12):
+        for _ in range(MAX_EXPANSION_PASSES):
             changed = False
 
             def replace(match: re.Match[str]) -> str:

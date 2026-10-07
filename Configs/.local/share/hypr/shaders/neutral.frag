@@ -1,9 +1,3 @@
-/* 
-  ┌─────────────────────────────────────────────────────────────────────────┐
-  │ This is a neutral pass-through shader that leaves the frame unchanged.  │
-  └─────────────────────────────────────────────────────────────────────────┘
- */
-
 #version 300 es
 precision mediump float;
 

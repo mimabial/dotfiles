@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Fit a hyprlock label into its container: COMMAND | hyprlock.fit.sh WIDTH HEIGHT SIZE FONT...
 # Labels re-run every update, so decisions are served from cache here and
 # Python/Pango (hyprlock.fit.py) only start when the text's shape changes. Digits
 # share one advance width in practically every font, so a keep/shrink decision

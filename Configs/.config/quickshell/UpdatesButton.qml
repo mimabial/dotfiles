@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell.Io
+import "CalendarMath.js" as CalendarMath
 
 ScriptButton {
     id: root
@@ -7,7 +8,7 @@ ScriptButton {
     tooltip: ""
     command: ["hyprshell", "system/system.update.sh"]
     indicator: "updates"
-    interval: 86400000
+    interval: CalendarMath.MS_PER_DAY
     fallback: ""
     property bool popupEnabled: true
     property bool hideWhenCurrent: true

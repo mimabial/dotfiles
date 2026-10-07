@@ -153,12 +153,9 @@ ShellRoot {
     readonly property color urgent: role("error", "#f38ba8")
     readonly property color mutedText: alpha(foreground, Style.mutedTextAlpha)
     readonly property color faintText: alpha(foreground, Style.faintTextAlpha)
-    property string baseFont: "JetBrainsMono Nerd Font"
-    property string userFont: ""
-    property string themeFont: ""
-    // same precedence hyprland.lua loads them in: userfonts beats the theme pack,
-    // the theme pack beats the vars default
-    readonly property string fontFamily: userFont || themeFont || baseFont
+    property var hyprVarLayers: ({})
+    readonly property var hyprVarLoadOrder: ["vars", "userVars", "theme", "userfonts", "userprefs"]
+    readonly property string fontFamily: hyprVar("BAR_FONT", "JetBrainsMono Nerd Font")
     // a theme font carrying no Nerd Font glyphs needs a companion face for icons,
     // or they resolve through fontconfig to whatever proportional face it picks.
     // The companion must match the theme font's cell width (Monoid and Miracode
@@ -166,13 +163,11 @@ ShellRoot {
     readonly property var iconFonts: ({
         "Miracode": "Monoid Nerd Font"
     })
-    property string iconFontOverride: ""
     // a patched theme font already has the glyphs, and its own Mono twin matches
     // the text's drawing style; the pinned face is only for fonts that ship neither
-    readonly property string iconFont: iconFontOverride || iconFonts[fontFamily]
+    readonly property string iconFont: hyprVar("BAR_ICON_FONT", "") || iconFonts[fontFamily]
         || (Qt.fontFamilies().includes(fontFamily + " Mono") ? fontFamily : "CaskaydiaCove Nerd Font")
-    // hypr's vars.lua owns the terminal choice; this is only the pre-load default
-    property string terminal: "alacritty"
+    readonly property string terminal: hyprVar("TERMINAL", "alacritty")
     // Nerd Font ships double-width icon glyphs with a single-cell advance, and Qt
     // centres on the advance, so the ink hangs off to the right. The Mono faces
     // squeeze them into one cell, making ink and advance agree.
@@ -459,21 +454,26 @@ ShellRoot {
     function hoverEdge(strength) { return alpha(role("hvr_br", foreground), Style.hoverBorderAlpha * (strength === undefined ? 1 : strength)) }
     function selectedFill() { return alpha(role("act_bg", accent), Style.selectedFillAlpha) }
     function selectedEdge() { return alpha(role("act_br", accent), Style.selectedBorderAlpha) }
-    function loadFont(raw, key) {
-        const icon = String(raw).match(/vars\.set\("BAR_ICON_FONT",\s*"([^"]+)"\)|BAR_ICON_FONT\s*=\s*"([^"]+)"/)
-        if (icon) iconFontOverride = icon[1] || icon[2]
-        const term = String(raw).match(/vars\.set\("TERMINAL",\s*"([^"]+)"\)|TERMINAL\s*=\s*"([^"]+)"/)
-        if (term) terminal = term[1] || term[2]
-        const match = String(raw).match(/vars\.set\("BAR_FONT",\s*"([^"]+)"\)|BAR_FONT\s*=\s*"([^"]+)"/)
-        if (key === "baseFont") { if (match) baseFont = match[1] || match[2] }
-        else shellRoot[key] = match ? (match[1] || match[2]) : ""
+    function hyprVar(name, fallback) {
+        let value = fallback
+        for (const layer of hyprVarLoadOrder) value = hyprVarLayers[layer]?.[name] || value
+        return value
+    }
+    function loadHyprVars(layer, raw) {
+        const assignment = /vars\.set\("([\w.]+)",\s*"([^"]*)"\)|^\s*(?:\["([\w.]+)"\]|(\w+))\s*=\s*"([^"]*)",?\s*$/gm
+        const values = {}
+        for (let match = assignment.exec(raw); match; match = assignment.exec(raw))
+            values[match[1] || match[3] || match[4]] = match[2] ?? match[5]
+        hyprVarLayers = Object.assign({}, hyprVarLayers, { [layer]: values })
     }
     function refresh() {
         stateFile.reload()
         layoutFile.reload()
-        baseFontFile.reload()
-        themeFontFile.reload()
-        userFontFile.reload()
+        varsFile.reload()
+        userVarsFile.reload()
+        themeVarsFile.reload()
+        userFontsFile.reload()
+        userPrefsFile.reload()
     }
 
     FileView {
@@ -487,22 +487,11 @@ ShellRoot {
     FileView { path: shellRoot.home + "/.local/state/hypr/window-layout.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.windowLayout = String(text()).match(/layout\s*=\s*["']([^"']+)/)?.[1] ?? ""; onFileChanged: reload() }
     FileView { id: layoutFile; path: shellRoot.home + "/.config/quickshell/layouts/" + shellRoot.layoutName + ".json"; watchChanges: true; atomicWrites: true; printErrors: false; onPathChanged: reload(); onLoaded: shellRoot.loadBarLayout(text()); onFileChanged: reload() }
     FileView { id: sharedLayoutFile; path: shellRoot.layoutData.extends ? shellRoot.home + "/.config/quickshell/layouts/shared/" + shellRoot.layoutData.extends + ".json" : ""; watchChanges: true; atomicWrites: true; printErrors: false; onLoaded: shellRoot.loadSharedLayout(text()); onFileChanged: reload() }
-    FileView {
-        id: baseFontFile
-        path: shellRoot.home + "/.config/hypr/vars.lua"
-        watchChanges: true
-        onLoaded: shellRoot.loadFont(text(), "baseFont")
-        onFileChanged: reload()
-    }
-    FileView { id: themeFontFile; path: shellRoot.home + "/.config/hypr/themes/theme.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadFont(text(), "themeFont"); onFileChanged: reload() }
-    FileView {
-        id: userFontFile
-        path: shellRoot.home + "/.config/hypr/userfonts.lua"
-        watchChanges: true
-        printErrors: false
-        onLoaded: shellRoot.loadFont(text(), "userFont")
-        onFileChanged: reload()
-    }
+    FileView { id: varsFile; path: shellRoot.home + "/.local/share/hypr/vars.lua"; watchChanges: true; onLoaded: shellRoot.loadHyprVars("vars", text()); onFileChanged: reload() }
+    FileView { id: userVarsFile; path: shellRoot.home + "/.config/hypr/vars.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadHyprVars("userVars", text()); onFileChanged: reload() }
+    FileView { id: themeVarsFile; path: shellRoot.home + "/.config/hypr/themes/theme.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadHyprVars("theme", text()); onFileChanged: reload() }
+    FileView { id: userFontsFile; path: shellRoot.home + "/.config/hypr/userfonts.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadHyprVars("userfonts", text()); onFileChanged: reload() }
+    FileView { id: userPrefsFile; path: shellRoot.home + "/.config/hypr/userprefs.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadHyprVars("userprefs", text()); onFileChanged: reload() }
     FileView { id: volumeLimitFile; path: shellRoot.home + "/.local/state/quickshell/volume-limit"; printErrors: false; onLoaded: { const value = Number(text()); if (value > 0) shellRoot.setVolumeLimit(value, false) } }
     FileView { id: timerStateFile; path: shellRoot.home + "/.local/state/quickshell/timers.json"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadTimers(text()); onFileChanged: reload() }
     FileView { id: exposeSettingsFile; path: shellRoot.home + "/.config/quickshell/expose/settings.json"; watchChanges: true; onLoaded: shellRoot.loadExposeConfig(text()); onFileChanged: reload() }
@@ -523,6 +512,7 @@ ShellRoot {
     }
     Process { command: [shellRoot.home + "/.local/lib/hypr/calendar/alarm-timer.sh", "restore"]; running: true }
     ReloadToast { shell: shellRoot }
+    AltGrHints { shell: shellRoot }
     // The three heaviest subtrees in the config and none of them is on screen at
     // startup. Loading by url keeps their compile off the path to the first bar,
     // and setSource passes shell as an initial property because each wires the

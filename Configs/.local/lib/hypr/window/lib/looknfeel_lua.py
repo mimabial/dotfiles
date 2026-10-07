@@ -1,7 +1,4 @@
-"""Renders the managed block the TUI writes, then parses the reader records,
-theme variables, and `hyprctl -j --batch getoption` output it reads back.
-
-The rendered string is the same one handed to `hyprctl eval` for the live
+"""The rendered string is the same one handed to `hyprctl eval` for the live
 preview, so preview and saved state cannot drift. Keep it that way: a second
 renderer anywhere is a second grammar.
 """
@@ -108,27 +105,27 @@ def parse_records(text):
     for line in str(text or "").split("\n"):
         if not line:
             continue
-        f = line.split("\t")
-        kind = f[0]
+        fields = line.split("\t")
+        kind = fields[0]
         if kind == "k":
-            raw = _field(f, 3)
-            kind_name = _field(f, 2)
+            raw = _field(fields, 3)
+            kind_name = _field(fields, 2)
             if kind_name == "number":
-                keys[f[1]] = _as_number(raw)
+                keys[fields[1]] = _as_number(raw)
             elif kind_name == "boolean":
-                keys[f[1]] = raw == "true"
+                keys[fields[1]] = raw == "true"
             else:
-                keys[f[1]] = raw
+                keys[fields[1]] = raw
         elif kind == "v":
-            variables[f[1]] = _field(f, 3)
+            variables[fields[1]] = _field(fields, 3)
         elif kind == "a":
-            speed = _field(f, 3)
+            speed = _field(fields, 3)
             animations.append({
-                "leaf": _field(f, 1),
-                "enabled": _field(f, 2) == "true",
+                "leaf": _field(fields, 1),
+                "enabled": _field(fields, 2) == "true",
                 "speed": 0 if speed == "" else _as_number(speed),
-                "bezier": _field(f, 4),
-                "style": _field(f, 5),
+                "bezier": _field(fields, 4),
+                "style": _field(fields, 5),
             })
     return {"keys": keys, "variables": variables, "animations": animations}
 

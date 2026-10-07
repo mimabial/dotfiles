@@ -1,3 +1,8 @@
+local home = os.getenv("HOME")
+local user_modules = (os.getenv("XDG_CONFIG_HOME") or home .. "/.config") .. "/hypr/?.lua"
+local shared_modules = (os.getenv("XDG_DATA_HOME") or home .. "/.local/share") .. "/hypr/?.lua"
+package.path = user_modules .. ";" .. shared_modules .. ";" .. package.path
+
 local core = require("core")
 local vars = core.vars
 local runtime = core.runtime
@@ -8,20 +13,55 @@ local state_home = vars.get("XDG_STATE_HOME")
 runtime.load(config_home .. "/hypr/themes/theme.lua")
 runtime.load(config_home .. "/hypr/userfonts.lua", true)
 require("gpu")
-runtime.load(state_home .. "/hypr/animations.lua")
-runtime.load(state_home .. "/hypr/shaders.lua")
+runtime.load(state_home .. "/hypr/animations.lua", true)
+runtime.load(state_home .. "/hypr/shaders.lua", true)
 
 hl.config({misc = {font_family = vars.get("FONT", "Cantarell")}})
-hl.env("XCURSOR_THEME", vars.get("CURSOR_THEME", "Bibata-Modern-Ice"), true)
-hl.env("XCURSOR_SIZE", vars.get("CURSOR_SIZE", "24"), true)
-hl.env("HYPRCURSOR_THEME", vars.get("CURSOR_THEME", "Bibata-Modern-Ice"), true)
-hl.env("HYPRCURSOR_SIZE", vars.get("CURSOR_SIZE", "24"), true)
+
+-- Manifest-less themes must stay on the xcursor path: their hyprcursor
+-- fallback ignores the requested size.
+local function has_hyprcursor_manifest(theme)
+    local dirs = {
+        vars.get("XDG_DATA_HOME", os.getenv("HOME") .. "/.local/share") .. "/icons/",
+        os.getenv("HOME") .. "/.icons/",
+        "/usr/share/icons/",
+    }
+    for _, dir in ipairs(dirs) do
+        local f = io.open(dir .. theme .. "/manifest.hl", "r")
+        if f then
+            f:close()
+            return true
+        end
+    end
+    return false
+end
 
 require("windowrules")
 require("userprefs")
+runtime.load(config_home .. "/hypr/keyboard.lua", true)
+-- Last of the visual layers, so panel edits win over the theme pack and over
+-- hand-written prefs. Resolves the active theme's file itself.
+runtime.load(state_home .. "/hypr/looknfeel.lua", true)
+
+-- Resolve the cursor after Look & Feel so its per-theme CURSOR_* variables feed
+-- the same compositor path as the theme pack's defaults.
+local cursor_theme = vars.get("CURSOR_THEME", "Bibata-Modern-Ice")
+local cursor_size = vars.get("CURSOR_SIZE", "30")
+hl.env("XCURSOR_THEME", cursor_theme, true)
+hl.env("XCURSOR_SIZE", cursor_size, true)
+hl.env("HYPRCURSOR_THEME", cursor_theme, true)
+hl.env("HYPRCURSOR_SIZE", cursor_size, true)
+hl.config({cursor = {
+    enable_hyprcursor = has_hyprcursor_manifest(cursor_theme),
+    sync_gsettings_theme = false,
+}})
+
 require("keybindings")
 runtime.load(config_home .. "/hypr/monitors.lua")
 runtime.load(state_home .. "/hypr/monitor-toggles.lua", true)
 runtime.load(state_home .. "/hypr/window-layout.lua", true)
-runtime.load(state_home .. "/hypr/workflows.lua")
+runtime.load(state_home .. "/hypr/workflows.lua", true)
 require("workspaces")
+
+-- Generated monitor rules must load last.
+do local path = config_home .. "/hypr/hyprmoncfg-monitors.lua"; local file = io.open(path, "r"); if file then file:close(); dofile(path) end end

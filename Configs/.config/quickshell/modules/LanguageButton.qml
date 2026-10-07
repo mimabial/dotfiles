@@ -26,6 +26,7 @@ ScriptButton {
         }
     }
     Timer {
+        id: layoutRetryTimer
         interval: 10000
         running: root.raw === ""
         repeat: true

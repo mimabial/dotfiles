@@ -24,5 +24,5 @@ BarSlider {
         }
     }
     // ... or if the write never took effect
-    Timer { running: root.pending >= 0; interval: 2000; onTriggered: root.pending = -1 }
+    Timer { id: writeTimeout; running: root.pending >= 0; interval: 2000; onTriggered: root.pending = -1 }
 }

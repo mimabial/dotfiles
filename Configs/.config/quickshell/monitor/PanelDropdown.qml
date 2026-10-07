@@ -4,8 +4,7 @@ import QtQuick.Controls
 import qs.Commons
 import "Ui"
 
-// Dropdown for a KeyboardPanel. The menu is positioned in panel coordinates
-// instead of relying on Popup's implicit parent, which keeps it attached to
+// The menu is positioned in panel coordinates instead of relying on Popup's implicit parent, which keeps it attached to
 // the trigger when the panel itself is anchored away from the screen origin.
 // It also never assigns `value` internally: callers keep their bindings while
 // an asynchronous editor request is being normalized by the display backend.

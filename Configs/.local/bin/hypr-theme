@@ -2,9 +2,6 @@
 
 set -euo pipefail
 
-RENDER_DIR="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/render"
-PALETTE="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
-
 usage() {
   cat <<'USAGE'
 Usage:
@@ -52,15 +49,24 @@ done
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state || exit 1
 
+RENDER_DIR="${HYPR_LIB_DIR}/render"
+PALETTE="${HYPR_STATE_HOME}/active-palette.json"
+
 COLOR_GEN_LOCK="$(hypr_lock_path color_gen)"
 exec {COLOR_GEN_LOCK_FD}>"${COLOR_GEN_LOCK}"
 flock "${COLOR_GEN_LOCK_FD}"
 
-if [[ "${subcommand}" == "wallpaper" && "${HYPR_THEME_REQUIRE_CURRENT_WALLPAPER:-0}" == 1 ]]; then
-  current_wall="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current/wall.set"
-  target_wall="${positional[0]:-}"
-  [[ -e "${current_wall}" && -e "${target_wall}" ]] || exit 0
-  [[ "$(readlink -f -- "${current_wall}")" == "$(readlink -f -- "${target_wall}")" ]] || exit 0
+wallpaper_superseded() {
+  local current_wall="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current/wall.set"
+  local target_wall="$1"
+
+  [[ -e "${current_wall}" && -e "${target_wall}" ]] || return 0
+  [[ "$(readlink -f -- "${current_wall}")" != "$(readlink -f -- "${target_wall}")" ]]
+}
+
+if [[ "${subcommand}" == "wallpaper" && "${HYPR_THEME_REQUIRE_CURRENT_WALLPAPER:-0}" == 1 ]] \
+  && wallpaper_superseded "${positional[0]:-}"; then
+  exit 0
 fi
 
 prepare_palette() {
@@ -110,12 +116,16 @@ run_renderers() {
   return "${failed}"
 }
 
+refresh_rendered_nothing() {
+  [[ "${subcommand}" == refresh && ! -e "${HYPR_THEME_CHANGED_FILE}" ]]
+}
+
 reload_clients() {
   if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl >/dev/null 2>&1; then
     hyprctl reload config-only >/dev/null 2>&1 || true
   fi
   [[ "${HYPR_THEME_DEFER_CLIENTS:-0}" == 1 ]] && return
-  source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/theme/color.apply.sh"
+  source "${HYPR_LIB_DIR}/theme/color.apply.bash"
 
   local background=""
   background="$(jq -r '.background // empty' "${PALETTE}" 2>/dev/null || true)"
@@ -135,8 +145,8 @@ reload_clients() {
     quickshell ipc --any-display call bar refresh >/dev/null 2>&1 || true
   fi
 
-  if [[ -x "$HOME/.local/lib/hypr/util/nvim-theme-sync.sh" ]]; then
-    "$HOME/.local/lib/hypr/util/nvim-theme-sync.sh" >/dev/null 2>&1 || true
+  if [[ -x "${HYPR_LIB_DIR}/util/nvim-theme-sync.sh" ]]; then
+    "${HYPR_LIB_DIR}/util/nvim-theme-sync.sh" >/dev/null 2>&1 || true
   fi
 }
 
@@ -153,7 +163,7 @@ case "${subcommand}" in
     fi
     render_failed=0
     run_renderers || render_failed=1
-    if [[ "${subcommand}" != refresh || -e "${HYPR_THEME_CHANGED_FILE:-}" || "${render_failed}" -ne 0 ]]; then
+    if ((render_failed)) || ! refresh_rendered_nothing; then
       reload_clients
     fi
     exit "${render_failed}"

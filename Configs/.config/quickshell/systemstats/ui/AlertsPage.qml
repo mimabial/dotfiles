@@ -33,7 +33,7 @@ Column {
       textFormat: Text.PlainText
       wrapMode: Text.WordWrap
       color: root.foreground
-      opacity: 0.65
+      opacity: Style.secondaryTextAlpha
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
     }
@@ -88,7 +88,7 @@ Column {
               ? Math.round(alertRow.reading) + alertRow.def.unit : "—"
             textFormat: Text.PlainText
             color: root.foreground
-            opacity: 0.6
+            opacity: Style.mutedTextAlpha
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
           }
@@ -103,7 +103,7 @@ Column {
             text: "Limit"
             textFormat: Text.PlainText
             color: root.foreground
-            opacity: 0.55
+            opacity: Style.mutedTextAlpha
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
             height: Style.space(22)
@@ -148,7 +148,7 @@ Column {
           textFormat: Text.PlainText
           wrapMode: Text.WordWrap
           color: root.foreground
-          opacity: 0.55
+          opacity: Style.mutedTextAlpha
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption
         }
@@ -167,7 +167,7 @@ Column {
       textFormat: Text.PlainText
       wrapMode: Text.WordWrap
       color: root.foreground
-      opacity: 0.55
+      opacity: Style.mutedTextAlpha
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
     }
@@ -206,7 +206,7 @@ Column {
       text: "No alerts recorded. The latest 20 events are kept across shell restarts."
       textFormat: Text.PlainText
       color: root.foreground
-      opacity: 0.55
+      opacity: Style.mutedTextAlpha
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
     }
@@ -248,7 +248,7 @@ Column {
             text: eventRow.event.at ? new Date(eventRow.event.at).toLocaleString() : ""
             textFormat: Text.PlainText
             color: root.foreground
-            opacity: 0.55
+            opacity: Style.mutedTextAlpha
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
           }
@@ -266,7 +266,7 @@ Column {
           textFormat: Text.PlainText
           wrapMode: Text.WordWrap
           color: root.foreground
-          opacity: 0.7
+          opacity: Style.secondaryTextAlpha
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption
         }
@@ -278,7 +278,7 @@ Column {
           textFormat: Text.PlainText
           wrapMode: Text.WordWrap
           color: root.foreground
-          opacity: 0.6
+          opacity: Style.mutedTextAlpha
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption
         }

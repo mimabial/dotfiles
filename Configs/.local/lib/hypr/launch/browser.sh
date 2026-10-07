@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell launch/browser [--private] [browser-args...]
 Launch the default web browser; --private maps to its private/incognito flag." "$@"
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/system/desktop-entry.exec.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/desktop-entry.exec.bash"
 
 default_browser="$(xdg-settings get default-web-browser)"
 desktop_entry_exec_resolve "${default_browser}" || exit 1

@@ -6,6 +6,8 @@ source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 usage='Usage: hyprshell system/monitor-profile {start|manage|unmanage|restart|service-enabled|service-active}'
 hypr_help_guard "${usage}" "$@"
 
+HYPRMONCFGD_EXIT_WAIT_S=1
+
 service_enabled() {
   hyprmoncfg doctor >/dev/null 2>&1
 }
@@ -32,7 +34,7 @@ case "${1:-}" in
     hyprmoncfg unmanage
     ;;
   restart)
-    pkill -TERM -x hyprmoncfgd && timeout 1 pidwait -x hyprmoncfgd || true
+    pkill -TERM -x hyprmoncfgd && timeout "${HYPRMONCFGD_EXIT_WAIT_S}" pidwait -x hyprmoncfgd || true
     start_daemon
     ;;
   service-enabled) service_enabled ;;

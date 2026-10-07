@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Temperature -> colour ramp for sysinfo/gpuinfo. Colour comes from the reading
+# Colour comes from the reading
 # NORMALISED to the sensor's critical point (temp*100/crit), so one ramp fits
 # any chip: a value at its crit is always the hottest colour, whatever the
 # chip's absolute limit.

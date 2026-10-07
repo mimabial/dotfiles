@@ -13,7 +13,7 @@ BorderSurface {
 
   visible: bubble.shown && bubble.text !== "" && bubble.dock.showTooltips
     && !bubble.blocked && bubble.dock.contextAppId === ""
-  z: 300
+  z: bubble.dock.tooltipZ
   color: Util.alpha(Color.tooltip.background, Style.popupSurfaceOpacity)
   borderSpec: Border.surfaceSpec("tooltip", "border", Color.tooltip.border, 1)
   radius: Style.cornerRadius

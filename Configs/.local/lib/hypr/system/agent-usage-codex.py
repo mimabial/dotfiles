@@ -1,9 +1,6 @@
 #!/usr/bin/python3
-"""Collect local Codex usage and account limits as JSON."""
-
 import argparse
 import fcntl
-import hashlib
 import json
 import os
 import select
@@ -16,6 +13,8 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from agent_usage_common import RECENT_DAYS, ROLLING_MONTH_DAYS, cache_key, epoch_seconds
+
 AGENT_ID = "codex"
 AGENT_NAME = "Codex"
 AUTH_HELP = "Run `codex login` to authenticate."
@@ -26,14 +25,15 @@ SCAN_REUSE_SECONDS = 20
 NATIVE_CACHE_VERSION = 1
 
 
+WEEK_MINUTES = 7 * 24 * 60
+
+
 def local_day(value):
   if value is None:
     return datetime.now().strftime("%Y-%m-%d")
   if isinstance(value, (int, float)):
     # pi message timestamps are milliseconds; Codex timestamps are usually seconds.
-    if value > 10_000_000_000:
-      value = value / 1000
-    return datetime.fromtimestamp(value).strftime("%Y-%m-%d")
+    return datetime.fromtimestamp(epoch_seconds(value)).strftime("%Y-%m-%d")
   text = str(value)
   try:
     if text.endswith("Z"):
@@ -81,7 +81,7 @@ def find_command(name):
 
 now = datetime.now()
 today = now.strftime("%Y-%m-%d")
-recent_dates = [(now - timedelta(days=offset)).strftime("%Y-%m-%d") for offset in range(6, -1, -1)]
+recent_dates = [(now - timedelta(days=offset)).strftime("%Y-%m-%d") for offset in range(RECENT_DAYS - 1, -1, -1)]
 recent = {day: {"date": day, "messageCount": 0} for day in recent_dates}
 today_tokens_by_model = {}
 model_usage = {}
@@ -123,78 +123,92 @@ def add_usage(day, session_key, model, input_tokens, output_tokens, cache_read, 
     today_tokens_by_model[model] = today_tokens_by_model.get(model, 0) + total
 
 
+PI_SESSION_ROOTS = (
+  Path.home() / ".pi" / "agent" / "sessions",
+  Path.home() / ".omp" / "agent" / "sessions",
+)
+
+
+def start_pi_search(rg, root):
+  return subprocess.Popen(
+    [rg, "--json", "-e", r'"provider"\s*:\s*"openai-codex"', "-e", r'"api"\s*:\s*"openai-codex', str(root)],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.DEVNULL,
+    text=True,
+    errors="replace",
+    env=ENV,
+  )
+
+
+def pi_session_entries(proc):
+  assert proc.stdout is not None
+  for raw in proc.stdout:
+    try:
+      event = json.loads(raw)
+      if event.get("type") != "match":
+        continue
+      line = event.get("data", {}).get("lines", {}).get("text", "")
+      path = event.get("data", {}).get("path", {}).get("text", "pi-session")
+      yield path, json.loads(line)
+    except Exception:
+      continue
+  try:
+    proc.wait(timeout=1)
+  except Exception:
+    proc.kill()
+
+
+def codex_message_tokens(message):
+  usage = message.get("usage") or {}
+  if not usage:
+    return None
+  total = number(usage.get("totalTokens"))
+  input_tokens = number(usage.get("input"))
+  output_tokens = number(usage.get("output"))
+  cache_read = number(usage.get("cacheRead"))
+  cache_write = number(usage.get("cacheWrite"))
+  if total and not (input_tokens or output_tokens or cache_read or cache_write):
+    input_tokens = total
+  if not (input_tokens or output_tokens or cache_read or cache_write):
+    return None
+  return input_tokens, output_tokens, cache_read, cache_write
+
+
+def record_pi_message(path, entry):
+  if entry.get("type") != "message":
+    return
+  message_key = path + ":" + str(entry.get("id") or "")
+  if message_key in seen_pi_messages:
+    return
+  seen_pi_messages.add(message_key)
+  message = entry.get("message") or {}
+  if message.get("role") != "assistant":
+    return
+  provider = str(message.get("provider") or "")
+  api = str(message.get("api") or "")
+  if provider != "openai-codex" and not api.startswith("openai-codex"):
+    return
+  tokens = codex_message_tokens(message)
+  if tokens is None:
+    return
+  day = local_day(entry.get("timestamp") or message.get("timestamp"))
+  add_usage(day, path, model_name(message.get("model")), *tokens)
+
+
 def scan_pi_sessions():
-  roots = [
-    Path.home() / ".pi" / "agent" / "sessions",
-    Path.home() / ".omp" / "agent" / "sessions",
-  ]
   rg = find_command("rg") or "rg"
-  for root in roots:
+  for root in PI_SESSION_ROOTS:
     if not root.exists():
       continue
     try:
-      proc = subprocess.Popen(
-        [rg, "--json", "-e", r'"provider"\s*:\s*"openai-codex"', "-e", r'"api"\s*:\s*"openai-codex', str(root)],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        text=True,
-        errors="replace",
-        env=ENV,
-      )
+      proc = start_pi_search(rg, root)
     except FileNotFoundError:
       return
-
-    assert proc.stdout is not None
-    for raw in proc.stdout:
-      try:
-        event = json.loads(raw)
-        if event.get("type") != "match":
-          continue
-        line = event.get("data", {}).get("lines", {}).get("text", "")
-        path = event.get("data", {}).get("path", {}).get("text", "pi-session")
-        entry = json.loads(line)
-      except Exception:
-        continue
-
-      if entry.get("type") != "message":
-        continue
-      message_key = path + ":" + str(entry.get("id") or "")
-      if message_key in seen_pi_messages:
-        continue
-      seen_pi_messages.add(message_key)
-      message = entry.get("message") or {}
-      if message.get("role") != "assistant":
-        continue
-      provider = str(message.get("provider") or "")
-      api = str(message.get("api") or "")
-      if provider != "openai-codex" and not api.startswith("openai-codex"):
-        continue
-
-      usage = message.get("usage") or {}
-      if not usage:
-        continue
-      total = number(usage.get("totalTokens"))
-      input_tokens = number(usage.get("input"))
-      output_tokens = number(usage.get("output"))
-      cache_read = number(usage.get("cacheRead"))
-      cache_write = number(usage.get("cacheWrite"))
-      if total and not (input_tokens or output_tokens or cache_read or cache_write):
-        input_tokens = total
-      if not (input_tokens or output_tokens or cache_read or cache_write):
-        continue
-
-      day = local_day(entry.get("timestamp") or message.get("timestamp"))
-      session_key = path
-      add_usage(day, session_key, model_name(message.get("model")), input_tokens, output_tokens, cache_read, cache_write)
-
-    try:
-      proc.wait(timeout=1)
-    except Exception:
-      proc.kill()
+    for path, entry in pi_session_entries(proc):
+      record_pi_message(path, entry)
 
 
 def scan_opencode_sessions():
-  """Merge OpenCode usage and report whether its read completed."""
   db = Path(os.environ.get("XDG_DATA_HOME") or (Path.home() / ".local" / "share")) / "opencode" / "opencode.db"
   if not db.is_file():
     return True
@@ -239,11 +253,8 @@ def scan_opencode_sessions():
 
 
 def parse_native_codex_file(path, mtime):
-  """Aggregate one session file into {day: {model: [in, out, cacheRead, cacheWrite, prompts]}}.
-
-  Carries no today/recent logic, so the result stays valid across midnight and
-  can be reused until the file itself changes.
-  """
+  """Carries no today/recent logic, so the result stays valid across midnight and
+  can be reused until the file itself changes."""
   days = {}
   current_model = "codex"
   with path.open(errors="replace") as handle:
@@ -284,7 +295,7 @@ def parse_native_codex_file(path, mtime):
 
 
 def merge_native_days(session_key, days):
-  """Fold one file's aggregate in, exactly as per-message add_usage calls would."""
+  """Equivalent to the per-message add_usage calls."""
   for day, models in (days or {}).items():
     if not isinstance(models, dict):
       continue
@@ -295,7 +306,7 @@ def merge_native_days(session_key, days):
 
 
 def native_cache_file(codex_home):
-  digest = hashlib.sha1(str(codex_home).encode("utf-8")).hexdigest()[:16]
+  digest = cache_key(str(codex_home))
   return cache_root() / f"codex-files-v{NATIVE_CACHE_VERSION}-{digest}.json"
 
 
@@ -303,7 +314,7 @@ def scan_native_codex_sessions():
   codex_home = Path(os.environ.get("CODEX_HOME") or (Path.home() / ".codex"))
   roots = [codex_home / "sessions", codex_home / "archived_sessions"]
   files = []
-  cutoff = time.time() - 30 * 24 * 60 * 60
+  cutoff = time.time() - ROLLING_MONTH_DAYS * 24 * 60 * 60
   for root in roots:
     if not root.exists():
       continue
@@ -357,7 +368,7 @@ def cache_root():
 def scan_cache_paths():
   codex_home = Path(os.environ.get("CODEX_HOME") or (Path.home() / ".codex"))
   db = Path(os.environ.get("XDG_DATA_HOME") or (Path.home() / ".local" / "share")) / "opencode" / "opencode.db"
-  digest = hashlib.sha1((str(Path.home()) + "\n" + str(codex_home) + "\n" + str(db)).encode("utf-8")).hexdigest()[:16]
+  digest = cache_key(str(Path.home()) + "\n" + str(codex_home) + "\n" + str(db))
   root = cache_root()
   return root / f"codex-scan-{digest}.json", root / f"codex-scan-{digest}.lock"
 
@@ -416,7 +427,6 @@ def write_cached_stats(cache_file, stats):
 
 
 def local_stats():
-  """Snapshot the aggregated local usage into the record's stats dict."""
   return {
     "todayPrompts": today_prompts,
     "todaySessions": len(today_sessions),
@@ -439,12 +449,9 @@ def run_local_scans():
 
 
 def cached_local_stats(max_age):
-  """Local stats, with the cache as a pure optimization.
-
-  The cache must never take the collector down: any cache-layer failure
+  """The cache must never take the collector down: any cache-layer failure
   (unwritable cache root, lock errors, disk full) degrades to a direct scan
-  and a warning on stderr. The JSON record is the contract; the cache is not.
-  """
+  and a warning on stderr. The JSON record is the contract; the cache is not."""
   try:
     return _cached_local_stats(max_age)
   except Exception as exc:
@@ -505,7 +512,7 @@ def limit_window(window):
   if used is None:
     return None
   mins = number(window.get("windowDurationMins"))
-  if mins == 10080:
+  if mins == WEEK_MINUTES:
     label = "Weekly (7-day)"
   elif mins and mins % 60 == 0:
     label = f"{mins // 60}h window"

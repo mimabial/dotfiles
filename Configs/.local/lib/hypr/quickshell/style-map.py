@@ -34,7 +34,6 @@ def box_keys(text):
 
 
 def every_css_literal(index):
-    """Every key any component asks for, however deeply nested."""
     keys = set()
     for path in index.values():
         text = read_qml_cached(path)
@@ -55,7 +54,6 @@ def read_qml_cached(path):
 
 
 def brace_block(text, open_index):
-    """The {...} span starting at open_index, honouring nesting."""
     depth = 0
     for i in range(open_index, len(text)):
         if text[i] == "{":
@@ -68,7 +66,7 @@ def brace_block(text, open_index):
 
 
 def components(text):
-    """(names, body) per Component block; reachable by its id and by the role it fills."""
+    """Each block is reachable by its id and by the role it fills."""
     for match in re.finditer(r'(?:(\w+):\s*)?\bComponent\s*{', text):
         body = brace_block(text, match.end() - 1)
         ident = re.search(r'\bid:\s*(\w+)', body)
@@ -95,7 +93,7 @@ def css_expr(text):
 
 
 def css_keys(expr, text):
-    """(base key, variant keys) for a css expression, resolving `"prefix." + ident`."""
+    """Resolves `"prefix." + ident` expressions too."""
     if not expr:
         return None, []
     literals = re.findall(r'"([^"]*)"', expr)
@@ -185,10 +183,12 @@ def collect_nested_style_slots(body, source, blocks, index):
     return inner
 
 
+MAX_STYLE_DEPTH = 4
+
+
 def collect_component_style_hierarchy(type_name, index, depth=0, seen=()):
-    """(group css, group variants, [slot dicts]) for a component type."""
     path = index.get(type_name)
-    if path is None or depth > 4 or type_name in seen:
+    if path is None or depth > MAX_STYLE_DEPTH or type_name in seen:
         return None, [], []
     text = read_qml_cached(path)
     blocks = block_map(text)
@@ -268,95 +268,106 @@ def modules_of(layout):
             for e in entries]
 
 
+def resolve_module_style(inline_component, bar, bar_blocks, index):
+    child = inline_component.child
+    group_css = inline_component.css
+    variants = inline_component.variants
+    marks = [(prop, "BarModules.qml") for prop in inline_component.pins]
+    # a group declared inline in the bar file keeps its slots there too
+    slots = collect_nested_style_slots(inline_component.body, "BarModules.qml", bar_blocks, index)
+    if child in index:
+        group_css, child_variants, walked = collect_component_style_hierarchy(child, index, seen=(bar,))
+        slots = walked or slots
+        if group_css is None and not slots:
+            # a module whose css sits on a delegate rather than at the root
+            child_text = read_qml_cached(index[child])
+            group_css, child_variants = css_keys(css_expr(child_text), child_text)
+        group_css = group_css or inline_component.css
+        variants = variants or child_variants
+        # a leaf module owns its pins; a group's belong to the slots below it
+        if not slots and child not in BASE_TYPES:
+            already = [prop for prop, _ in marks]
+            marks += [(prop, index[child].name)
+                      for prop in assigned_style_properties(read_qml_cached(index[child])) if prop not in already]
+    return group_css, variants, slots, marks
+
+
+def claim(used, *keys):
+    used.update(key for key in keys if key)
+
+
+def pinned_lines(pins, indent):
+    return [f"{indent}⚠ {prop} pinned in QML — {source}" for prop, source in pins]
+
+
+def slot_lines(slot, props, used):
+    note = ""
+    if slot["gate"]:
+        on = props.get(slot["gate"], slot["default"])
+        note = f"   [{slot['gate']}]" if on else f"   [{slot['gate']} — off]"
+    lines = [f"    {slot['css']}{note}"]
+    claim(used, slot["css"], *slot["variants"])
+    if slot["variants"]:
+        lines.append("        → " + " ".join(slot["variants"]))
+    lines += pinned_lines(slot["pinned"], "        ")
+    for child_slot in slot["children"]:
+        lines.append(f"        {child_slot['css']}")
+        claim(used, child_slot["css"])
+        lines += pinned_lines(child_slot["pinned"], "            ")
+    return lines
+
+
+def module_lines(module_id, props, registry, bar, index, used):
+    table, inline, bar_blocks = registry
+    inline_component = inline.get(table.get(module_id), EMPTY_INLINE_COMPONENT)
+    child = inline_component.child
+    group_css, variants, slots, marks = resolve_module_style(inline_component, bar, bar_blocks, index)
+
+    head = f"{module_id}  →  {group_css}" if group_css and group_css != module_id else module_id
+    if child in index and child not in BASE_TYPES:
+        head += f"   ({index[child].relative_to(CONFIG)})"
+    lines = [head]
+    claim(used, group_css, *variants)
+    lines += pinned_lines(marks, "        ")
+    if variants:
+        lines.append("        → " + " ".join(variants))
+    for slot in slots:
+        lines += slot_lines(slot, props, used)
+    return lines + [""]
+
+
+def unused_style_lines(layout, index, used):
+    style = CONFIG / "styles" / f"{layout}.json"
+    if not style.exists():
+        return []
+    ids = {module_id for module_id, _ in modules_of(layout)}
+    known = every_css_literal(index)
+    keys = (key.strip() for group in json.loads(style.read_text()) for key in group.split(","))
+    orphans = []
+    for key in dict.fromkeys(keys):
+        if not key or key in used:
+            continue
+        parent = key.rsplit(".", 1)[0] if "." in key else None
+        if key in known:
+            orphans.append(f"    {key:<28} used elsewhere, but not by this layout's modules")
+        elif key in ids:
+            orphans.append(f"    {key:<28} module id, not a css key")
+        elif parent in used or parent in known:
+            orphans.append(f"    {key:<28} '{parent}' never switches to this variant")
+        else:
+            orphans.append(f"    {key:<28} no component anywhere asks for it")
+    return [f"unused in styles/{layout}.json"] + orphans + [""] if orphans else []
+
+
 def render_layout_style_map(layout, index):
-    data = layout_data(layout)
-    bar = BARS[data["panel"]]
-    table, inline, bar_blocks = bar_component_registry(index)
+    bar = BARS[layout_data(layout)["panel"]]
+    registry = bar_component_registry(index)
     lines = [f"{bar}", ""]
     used = set()
-
-    def claim(key):
-        if key:
-            used.add(key)
-
     for module_id, props in modules_of(layout):
-        if module_id == "spacer":
-            continue
-        component = table.get(module_id)
-        inline_component = inline.get(component, EMPTY_INLINE_COMPONENT)
-        child = inline_component.child
-        base = inline_component.css
-        variants = inline_component.variants
-        body = inline_component.body
-        group_css = base
-        marks = [(prop, "BarModules.qml") for prop in inline_component.pins]
-        # a group declared inline in the bar file keeps its slots there too
-        slots = collect_nested_style_slots(body, "BarModules.qml", bar_blocks, index)
-        if child in index:
-            group_css, child_variants, walked = collect_component_style_hierarchy(child, index, seen=(bar,))
-            slots = walked or slots
-            if group_css is None and not slots:
-                # a module whose css sits on a delegate rather than at the root
-                child_text = read_qml_cached(index[child])
-                group_css, child_variants = css_keys(css_expr(child_text), child_text)
-            group_css = group_css or base
-            variants = variants or child_variants
-            # a leaf module owns its pins; a group's belong to the slots below it
-            if not slots and child not in BASE_TYPES:
-                already = [prop for prop, _ in marks]
-                marks += [(prop, index[child].name)
-                          for prop in assigned_style_properties(read_qml_cached(index[child])) if prop not in already]
-        head = f"{module_id}  →  {group_css}" if group_css and group_css != module_id else module_id
-        if child in index and child not in BASE_TYPES:
-            head += f"   ({index[child].relative_to(CONFIG)})"
-        lines.append(head)
-        claim(group_css)
-        for prop, source in marks:
-            lines.append(f"        ⚠ {prop} pinned in QML — {source}")
-        for variant in variants:
-            claim(variant)
-        if variants:
-            lines.append("        → " + " ".join(variants))
-        for slot in slots:
-            note = ""
-            if slot["gate"]:
-                on = props.get(slot["gate"], slot["default"])
-                note = f"   [{slot['gate']}]" if on else f"   [{slot['gate']} — off]"
-            lines.append(f"    {slot['css']}{note}")
-            claim(slot["css"])
-            for variant in slot["variants"]:
-                claim(variant)
-            if slot["variants"]:
-                lines.append("        → " + " ".join(slot["variants"]))
-            for prop, source in slot["pinned"]:
-                lines.append(f"        ⚠ {prop} pinned in QML — {source}")
-            for child_slot in slot["children"]:
-                lines.append(f"        {child_slot['css']}")
-                claim(child_slot["css"])
-                for prop, source in child_slot["pinned"]:
-                    lines.append(f"            ⚠ {prop} pinned in QML — {source}")
-        lines.append("")
-
-    ids = {module_id for module_id, _ in modules_of(layout)}
-    style = CONFIG / "styles" / f"{layout}.json"
-    orphans = []
-    if style.exists():
-        known = every_css_literal(index)
-        keys = (key.strip() for group in json.loads(style.read_text()) for key in group.split(","))
-        for key in dict.fromkeys(keys):
-            if not key or key in used:
-                continue
-            parent = key.rsplit(".", 1)[0] if "." in key else None
-            if key in known:
-                orphans.append(f"    {key:<28} used elsewhere, but not by this layout's modules")
-            elif key in ids:
-                orphans.append(f"    {key:<28} module id, not a css key")
-            elif parent in used or parent in known:
-                orphans.append(f"    {key:<28} '{parent}' never switches to this variant")
-            else:
-                orphans.append(f"    {key:<28} no component anywhere asks for it")
-    if orphans:
-        lines += [f"unused in styles/{layout}.json"] + orphans + [""]
+        if module_id != "spacer":
+            lines += module_lines(module_id, props, registry, bar, index, used)
+    lines += unused_style_lines(layout, index, used)
     return "\n".join(lines).rstrip() + "\n"
 
 

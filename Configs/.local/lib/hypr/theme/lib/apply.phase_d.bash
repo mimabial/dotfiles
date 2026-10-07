@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by theme.apply.sh.
 # Architecture: ../PHASES.md
 
 theme_apply_phase_d_log_dir=""
@@ -102,7 +101,7 @@ theme_apply_start_envelope() {
 
   envelope_cmd=(
     bash
-    "${LIB_DIR}/hypr/theme/theme.apply.sh"
+    "${HYPR_LIB_DIR}/theme/theme.apply.sh"
     --theme-envelope
     --generation "${theme_apply_generation}"
     --log-dir "${theme_apply_phase_d_log_dir}"
@@ -165,25 +164,11 @@ theme_apply_run_envelope_cli() {
 
   while (($#)); do
     case "$1" in
-      --generation)
-        shift
-        theme_apply_generation="${1:-}"
-        export HYPR_THEME_APPLY_GENERATION="${theme_apply_generation}"
-        ;;
-      --log-dir)
-        shift
-        log_dir="${1:-}"
-        ;;
-      --unit-file)
-        shift
-        unit_file="${1:-}"
-        ;;
-      --quiet)
-        quiet=true
-        ;;
-      --detached)
-        detached=1
-        ;;
+      --generation) shift; theme_apply_generation="${1:-}"; export HYPR_THEME_APPLY_GENERATION="${theme_apply_generation}" ;;
+      --log-dir) shift; log_dir="${1:-}" ;;
+      --unit-file) shift; unit_file="${1:-}" ;;
+      --quiet) quiet=true ;;
+      --detached) detached=1 ;;
       *)
         print_log -sec "theme.apply" -warn "envelope" "unknown arg: $1"
         return 1
@@ -235,10 +220,10 @@ theme_apply_envelope_launch_wallpaper() {
   # Resume refreshes hyprlock; skip only the already-submitted visible transition.
 
   if [[ -n "${wallpaper_log}" ]]; then
-    env "${wallpaper_env[@]}" "${LIB_DIR}/hypr/wallpaper.sh" "${wallpaper_args[@]}" \
+    env "${wallpaper_env[@]}" "${HYPR_LIB_DIR}/wallpaper.sh" "${wallpaper_args[@]}" \
       </dev/null >>"${wallpaper_log}" 2>&1
   else
-    env "${wallpaper_env[@]}" "${LIB_DIR}/hypr/wallpaper.sh" "${wallpaper_args[@]}" \
+    env "${wallpaper_env[@]}" "${HYPR_LIB_DIR}/wallpaper.sh" "${wallpaper_args[@]}" \
       </dev/null >/dev/null 2>&1
   fi
 }
@@ -247,7 +232,7 @@ theme_apply_phase_d_bootstrap() {
   local module=""
   local module_path=""
   local -a modules=(
-    color.finalize.sh
+    color.finalize.bash
   )
 
   WAL_XDG_CACHE_HOME="${WAL_XDG_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}}"
@@ -255,7 +240,7 @@ theme_apply_phase_d_bootstrap() {
   export WAL_XDG_CACHE_HOME WAL_CACHE
 
   for module in "${modules[@]}"; do
-    module_path="${LIB_DIR}/hypr/theme/${module}"
+    module_path="${HYPR_LIB_DIR}/theme/${module}"
     if [[ ! -r "${module_path}" ]]; then
       print_log -sec "theme.apply" -err "phase-d" "missing ${module_path}"
       return 1
@@ -355,8 +340,8 @@ theme_apply_enqueue_wallpaper_thumbs() {
     cache_args+=(-w "${wall}")
   done
 
-  queue_script="${LIB_DIR}/hypr/wallpaper/wallcache.daemon.sh"
-  cache_script="${LIB_DIR}/hypr/wallpaper/wallpaper.cache.sh"
+  queue_script="${HYPR_LIB_DIR}/wallpaper/wallcache.daemon.sh"
+  cache_script="${HYPR_LIB_DIR}/wallpaper/wallpaper.cache.sh"
   [[ -x "${queue_script}" || -x "${cache_script}" ]] || return 0
   [[ ${#cache_args[@]} -eq 0 ]] && return 0
 
@@ -376,7 +361,7 @@ theme_apply_sync_backend_wallpaper_links() {
   while IFS= read -r -d '' file; do
     base="$(basename "${file}" .png)"
     pkg_installed "${base}" || continue
-    "${LIB_DIR}/hypr/wallpaper.sh" link --backend "${base}" >/dev/null 2>&1 || true
+    "${HYPR_LIB_DIR}/wallpaper.sh" link --backend "${base}" >/dev/null 2>&1 || true
   done < <(find -H "${WALLPAPER_CURRENT_DIR}" -maxdepth 1 -type l -name "*.png" -print0)
 }
 

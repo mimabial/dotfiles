@@ -1,11 +1,12 @@
 .pragma library
+.import "CalendarMath.js" as CalendarMath
 
 function historyGroups(items, locale) {
   function day(date) { return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() }
   var today = day(new Date()), groups = []
   for (var i = 0; i < items.length; i++) {
     var item = items[i], when = new Date(item.played_at || 0)
-    var days = Math.round((today - day(when)) / 86400000)
+    var days = Math.round((today - day(when)) / CalendarMath.MS_PER_DAY)
     var label = days <= 0 ? "Today" : days === 1 ? "Yesterday"
       : days < 7 ? when.toLocaleDateString(locale, "dddd")
       : when.toLocaleDateString(locale, "d MMMM")

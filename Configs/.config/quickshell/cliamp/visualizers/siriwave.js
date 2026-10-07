@@ -1,4 +1,3 @@
-// Siri Wave — Silky smooth, uncropped Apple fluid wave with acoustic energy modulation
 .pragma library
 .import "helpers.js" as H
 

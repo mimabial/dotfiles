@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Polarity comes from each theme's $COLOR_SCHEME (prefer-light => light, else
-# dark). Pairs and defaults come from themes/theme-pairs.conf.
 # No top-level `set` on purpose: this file is sourced into scripts that own
 # their own shell options.
 
@@ -19,7 +17,6 @@ theme_polarity() {
   echo "${polarity[$1]}"
 }
 
-# theme_polarities_into <assoc> <theme...>
 # One grep over every theme's first $COLOR_SCHEME line.
 theme_polarities_into() {
   local -n polarity_ref="$1"
@@ -71,10 +68,6 @@ _pairs_load() {
   done <"${_PAIRS_FILE}"
 }
 
-# theme_pair_for <theme> <dark|light>
-# Echoes the theme to use so the active theme matches the requested polarity:
-# the theme itself if it already matches, else its explicit pair, else the
-# configured default for that polarity.
 theme_pair_for() {
   local theme="${1:-}"
   local target="${2:-}"

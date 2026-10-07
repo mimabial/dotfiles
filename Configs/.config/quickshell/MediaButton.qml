@@ -137,9 +137,8 @@ Item {
             }
             Loader {
                 id: spectrum
-                readonly property bool live: !root.player || root.player.isPlaying
                 active: root.cavaAppearance
-                opacity: spectrum.live ? 1 : 0.1
+                opacity: root.player?.isPlaying ? 1 : 0.1
                 anchors.right: parent.right
                 anchors.rightMargin: readout.box.margin[1] + readout.paintedBorderWidth + readout.box.padding[1]
                 anchors.verticalCenter: parent.verticalCenter
@@ -148,7 +147,7 @@ Item {
                 sourceComponent: Component {
                     CavaView {
                         shell: root.shell
-                        playing: spectrum.live
+                        playing: !!root.player?.isPlaying
                         barCount: root.cavaBars
                         barWidth: Style.px(root.cavaBarWidth)
                         gap: Style.px(root.cavaGap)

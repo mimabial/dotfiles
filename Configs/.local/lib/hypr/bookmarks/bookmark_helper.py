@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Small, dependency-free helper for bookmark import and clipboard metadata."""
-
 from __future__ import annotations
 
 import base64
@@ -24,7 +22,7 @@ from datetime import datetime
 from html.parser import HTMLParser
 from http.client import HTTPConnection, HTTPException, HTTPSConnection
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 from urllib.parse import quote, unquote, urljoin, urlsplit, urlunsplit
 
 from bounded_io import (
@@ -42,6 +40,22 @@ MAX_ICON_OUTPUT = 96_000
 MAX_ICON_DIMENSION = 4096
 MAX_ICON_PIXELS = 4096 * 4096
 MAX_ICON_FRAMES = 16
+ICO_HEADER_BYTES = 6
+ICO_ENTRY_BYTES = 16
+ICO_ZERO_MEANS_PIXELS = 256
+WEBP_HEADER_BYTES = 30
+SVG_SNIFF_BYTES = 4096
+DATA_URL_PREFIX_ALLOWANCE = 256
+HTML_SNIFF_CHARS = 1000
+NETSCAPE_DOCTYPE = "<!DOCTYPE NETSCAPE-Bookmark-file"
+STORE_VERSION = 3
+MAX_HOSTNAME_LENGTH = 253
+MAX_HOSTNAME_LABEL_LENGTH = 63
+MAX_STORED_ICON_URL_LENGTH = 140_000
+MAX_FIREFOX_PROFILES = 32
+REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+FETCHED_HTML_SNIFF_BYTES = 2048
+CHARSET_SNIFF_BYTES = 8192
 MAX_STORE_BYTES = 64 * 1024 * 1024
 MAX_IMPORT_BYTES = 50_000_000
 MAX_BOOKMARKS = 50_000
@@ -73,7 +87,7 @@ LEGACY_FIREFOX_UUID_HEX = re.compile(r"[0-9a-f]{32}\Z")
 
 
 def read_settings(settings_path: str) -> dict[str, Any]:
-    """Read plugin-owned settings with network access defaulting to disabled."""
+    """Network access defaults to disabled."""
     path = Path(settings_path).expanduser()
     try:
         raw = read_limited_text(
@@ -97,7 +111,7 @@ def read_settings(settings_path: str) -> dict[str, Any]:
 
 
 def write_settings(settings_path: str, settings: dict[str, Any]) -> None:
-    """Atomically persist validated settings without touching shared config."""
+    """Atomic, and never touches the shared config."""
     network_enrichment = settings.get("networkEnrichment", False)
     if not isinstance(network_enrichment, bool):
         raise ValueError("Invalid network choice")
@@ -117,7 +131,6 @@ def write_settings(settings_path: str, settings: dict[str, Any]) -> None:
 
 
 def network_enrichment_operation(operation: str, settings_path: str) -> dict[str, Any]:
-    """Inspect or explicitly update the opt-in network enrichment setting."""
     settings = read_settings(settings_path)
     if operation == "status":
         return {"ok": True, "enabled": settings["networkEnrichment"]}
@@ -282,7 +295,7 @@ def valid_hostname(value: str) -> bool:
             return False
 
     comparable = value[:-1] if value.endswith(".") else value
-    if not comparable or len(comparable) > 253 or ".." in comparable:
+    if not comparable or len(comparable) > MAX_HOSTNAME_LENGTH or ".." in comparable:
         return False
     if re.search(r"[\[\]<>\\^`{|}]", comparable):
         return False
@@ -293,7 +306,7 @@ def valid_hostname(value: str) -> bool:
         except ValueError:
             return False
     return all(
-        label and len(label) <= 63 and not label.startswith("-") and not label.endswith("-")
+        label and len(label) <= MAX_HOSTNAME_LABEL_LENGTH and not label.startswith("-") and not label.endswith("-")
         for label in comparable.split(".")
     )
 
@@ -368,7 +381,7 @@ def normalize_keyword(value: Any) -> str:
 
 def stored_png_data_url(value: Any) -> str:
     value = str(value or "").strip()
-    if len(value) > 140_000:
+    if len(value) > MAX_STORED_ICON_URL_LENGTH:
         return ""
     match = re.fullmatch(r"data:image/png;base64,([A-Za-z0-9+/]+=*)", value)
     if not match:
@@ -388,7 +401,7 @@ def stored_png_data_url(value: Any) -> str:
 
 
 def jpeg_dimensions(raw: bytes) -> tuple[int, int] | None:
-    """Read JPEG SOF dimensions without invoking an image decoder."""
+    """Parsed from the SOF header, so no image decoder touches the file."""
     if not raw.startswith(b"\xff\xd8"):
         return None
     index = 2
@@ -424,7 +437,7 @@ def jpeg_dimensions(raw: bytes) -> tuple[int, int] | None:
 
 
 def webp_dimensions(raw: bytes) -> tuple[int, int] | None:
-    if len(raw) < 30 or raw[:4] != b"RIFF" or raw[8:12] != b"WEBP":
+    if len(raw) < WEBP_HEADER_BYTES or raw[:4] != b"RIFF" or raw[8:12] != b"WEBP":
         return None
     chunk = raw[12:16]
     if chunk == b"VP8X":
@@ -442,7 +455,6 @@ def webp_dimensions(raw: bytes) -> tuple[int, int] | None:
 
 
 def validated_image_format_and_dimensions(raw: bytes) -> tuple[str, int, int] | None:
-    """Return an allowlisted ImageMagick coder and header dimensions."""
     result: tuple[str, int, int] | None = None
     if (
         len(raw) >= 24
@@ -464,13 +476,14 @@ def validated_image_format_and_dimensions(raw: bytes) -> tuple[str, int, int] | 
         dimensions = jpeg_dimensions(raw)
         if dimensions:
             result = ("JPEG", dimensions[0], dimensions[1])
-    elif len(raw) >= 6 and raw[:4] == b"\x00\x00\x01\x00":
-        count = int.from_bytes(raw[4:6], "little")
-        if 0 < count <= MAX_ICON_FRAMES and len(raw) >= 6 + count * 16:
-            widths = [raw[6 + index * 16] or 256 for index in range(count)]
-            heights = [raw[7 + index * 16] or 256 for index in range(count)]
+    elif len(raw) >= ICO_HEADER_BYTES and raw[:4] == b"\x00\x00\x01\x00":
+        count = int.from_bytes(raw[4:ICO_HEADER_BYTES], "little")
+        if 0 < count <= MAX_ICON_FRAMES and len(raw) >= ICO_HEADER_BYTES + count * ICO_ENTRY_BYTES:
+            entries = [ICO_HEADER_BYTES + index * ICO_ENTRY_BYTES for index in range(count)]
+            widths = [raw[entry] or ICO_ZERO_MEANS_PIXELS for entry in entries]
+            heights = [raw[entry + 1] or ICO_ZERO_MEANS_PIXELS for entry in entries]
             result = ("ICO", max(widths), max(heights))
-    elif len(raw) >= 30 and raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+    elif raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
         dimensions = webp_dimensions(raw)
         if dimensions:
             result = ("WEBP", dimensions[0], dimensions[1])
@@ -533,7 +546,7 @@ def image_to_png_data_url(raw: bytes) -> str:
 def embedded_icon_to_png_data_url(value: Any) -> str:
     value = str(value or "").strip()
     encoded_limit = ((MAX_ICON_INPUT + 2) // 3) * 4 + 4
-    if len(value) > encoded_limit + 256:
+    if len(value) > encoded_limit + DATA_URL_PREFIX_ALLOWANCE:
         return ""
     match = re.fullmatch(r"data:image/[^;,]+(?:;[^,]*)?;base64,(.+)", value, re.I | re.S)
     if not match:
@@ -545,7 +558,7 @@ def embedded_icon_to_png_data_url(value: Any) -> str:
     except (ValueError, TypeError):
         return ""
     # Reject active/external SVG content before handing it to the rasterizer.
-    if b"<svg" in raw[:4096].lower():
+    if b"<svg" in raw[:SVG_SNIFF_BYTES].lower():
         lowered = raw.lower()
         if (b"<!doctype" in lowered or b"<!entity" in lowered
                 or b"@import" in lowered
@@ -613,7 +626,7 @@ def read_store_items(path: str) -> list[dict[str, Any]]:
     if isinstance(data, list):
         source = data
     elif isinstance(data, dict) and isinstance(data.get("bookmarks"), list):
-        if int(data.get("version") or 0) > 3:
+        if int(data.get("version") or 0) > STORE_VERSION:
             raise ValueError("bookmarks.json uses a newer data format")
         source = data["bookmarks"]
     else:
@@ -624,7 +637,6 @@ def read_store_items(path: str) -> list[dict[str, Any]]:
 
 
 def load_store_document(path: str) -> dict[str, Any]:
-    """Return a byte- and count-bounded store document for the QML process."""
     source = read_store_items(path)
     bookmarks: list[dict[str, Any]] = []
     invalid = 0
@@ -642,13 +654,12 @@ def load_store_document(path: str) -> dict[str, Any]:
         bookmarks.append(item)
     return {
         "ok": True,
-        "data": {"version": 3, "bookmarks": bookmarks},
+        "data": {"version": STORE_VERSION, "bookmarks": bookmarks},
         "invalid": invalid,
     }
 
 
 def save_store_from_stdin(path: str) -> dict[str, Any]:
-    """Atomically save one bounded store document received over stdin."""
     raw = sys.stdin.buffer.read(MAX_STORE_BYTES + 1)
     if len(raw) > MAX_STORE_BYTES:
         raise ValueError("Bookmarks store is too large")
@@ -710,36 +721,52 @@ def normalize_item(
     }
 
 
-def prepare_bookmark_import(source_arg: str, store_path: str) -> dict[str, Any]:
+class ImportSource(NamedTuple):
+    items: list[Any]
+    format: str
+    icon_field: str
+    preserve_usage: bool
+
+
+def read_import_source(source_arg: str) -> ImportSource:
     if source_arg.startswith("file:"):
-        parsed = urlsplit(source_arg)
-        source_arg = unquote(parsed.path)
+        source_arg = unquote(urlsplit(source_arg).path)
     source_path = Path(source_arg)
-    suffix = source_path.suffix.lower()
     raw = read_limited_text(source_path, MAX_IMPORT_BYTES, "Bookmark file")
 
-    if suffix in (".html", ".htm") or "<!DOCTYPE NETSCAPE-Bookmark-file" in raw[:1000]:
+    if source_path.suffix.lower() in (".html", ".htm") or NETSCAPE_DOCTYPE in raw[:HTML_SNIFF_CHARS]:
         parser = BookmarkHTMLParser()
         parser.feed(raw)
-        source_items = parser.items
-        source_format = "HTML"
-        external_icon_field = "iconSource"
-        preserve_usage = False
-    else:
-        data = json.loads(raw)
-        if isinstance(data, list):
-            source_items = data
-        elif isinstance(data, dict):
-            source_items = data.get("bookmarks", [])
-        else:
-            raise ValueError("JSON must be an array or object containing bookmarks")
-        if not isinstance(source_items, list):
-            raise ValueError("JSON must contain a bookmarks array")
-        source_format = "JSON"
-        external_icon_field = "favicon"
-        preserve_usage = True
+        return ImportSource(parser.items, "HTML", "iconSource", False)
 
-    if len(source_items) > MAX_BOOKMARKS:
+    data = json.loads(raw)
+    if isinstance(data, list):
+        items = data
+    elif isinstance(data, dict):
+        items = data.get("bookmarks", [])
+    else:
+        raise ValueError("JSON must be an array or object containing bookmarks")
+    if not isinstance(items, list):
+        raise ValueError("JSON must contain a bookmarks array")
+    return ImportSource(items, "JSON", "favicon", True)
+
+
+def merge_duplicate_import(current: dict[str, Any], item: dict[str, Any]) -> None:
+    if not current["title"] and item["title"]:
+        current["title"] = item["title"]
+    current["tags"] = normalize_tags(current["tags"] + item["tags"])
+    if not current["keyword"] and item["keyword"]:
+        current["keyword"] = item["keyword"]
+    if not current["favicon"] and item["favicon"]:
+        current["favicon"] = item["favicon"]
+    if item["usageScore"] > current["usageScore"]:
+        current["usageScore"] = item["usageScore"]
+        current["lastOpenedAt"] = item["lastOpenedAt"]
+
+
+def prepare_bookmark_import(source_arg: str, store_path: str) -> dict[str, Any]:
+    source = read_import_source(source_arg)
+    if len(source.items) > MAX_BOOKMARKS:
         raise ValueError(f"Bookmark file contains more than {MAX_BOOKMARKS} entries")
 
     existing = {canonical_url(item.get("url")): item for item in read_store_items(store_path)}
@@ -748,21 +775,20 @@ def prepare_bookmark_import(source_arg: str, store_path: str) -> dict[str, Any]:
     rejected = 0
     duplicates_in_file = 0
     duplicates_existing = 0
-    icons = 0
     processed_icons = 0
 
-    for raw_item in source_items:
+    for raw_item in source.items:
         should_process_icon = (
             processed_icons < MAX_IMPORT_ICONS
             and isinstance(raw_item, dict)
-            and bool(raw_item.get(external_icon_field))
+            and bool(raw_item.get(source.icon_field))
         )
         if should_process_icon:
             processed_icons += 1
         item = normalize_item(
             raw_item,
             icon_policy="external" if should_process_icon else "none",
-            preserve_usage=preserve_usage,
+            preserve_usage=source.preserve_usage,
         )
         if item is None:
             rejected += 1
@@ -770,44 +796,32 @@ def prepare_bookmark_import(source_arg: str, store_path: str) -> dict[str, Any]:
         key = canonical_url(item["url"])
         if key in positions:
             duplicates_in_file += 1
-            current = result[positions[key]]
-            if not current["title"] and item["title"]:
-                current["title"] = item["title"]
-            current["tags"] = normalize_tags(current["tags"] + item["tags"])
-            if not current["keyword"] and item["keyword"]:
-                current["keyword"] = item["keyword"]
-            if not current["favicon"] and item["favicon"]:
-                current["favicon"] = item["favicon"]
-            if item["usageScore"] > current["usageScore"]:
-                current["usageScore"] = item["usageScore"]
-                current["lastOpenedAt"] = item["lastOpenedAt"]
+            merge_duplicate_import(result[positions[key]], item)
             continue
         positions[key] = len(result)
         result.append(item)
         if key in existing:
             duplicates_existing += 1
 
-    icons = sum(1 for item in result if item["favicon"])
-    untitled = sum(1 for item in result if not item["title"])
     return {
         "ok": True,
         "items": result,
         "stats": {
-            "format": source_format,
-            "found": len(source_items),
+            "format": source.format,
+            "found": len(source.items),
             "ready": len(result),
             "rejected": rejected,
             "duplicatesInFile": duplicates_in_file,
             "duplicatesExisting": duplicates_existing,
             "new": len(result) - duplicates_existing,
-            "favicons": icons,
-            "untitled": untitled,
+            "favicons": sum(1 for item in result if item["favicon"]),
+            "untitled": sum(1 for item in result if not item["title"]),
         },
     }
 
 
 def read_firefox_bookmarks(source: Path) -> list[dict[str, str]]:
-    """Read one active Firefox places database through a WAL-aware snapshot."""
+    """Reads through a WAL-aware snapshot rather than the live database."""
     if not source.is_file():
         raise ValueError("Firefox places database is not a regular file")
 
@@ -832,11 +846,11 @@ def read_firefox_bookmarks(source: Path) -> list[dict[str, str]]:
 
 
 def firefox_databases() -> list[Path]:
-    """Discover bounded Firefox profiles without relying on a selected profile."""
+    """Not limited to the selected profile."""
     profile_root = Path.home() / ".mozilla/firefox"
     return sorted(
         path for path in profile_root.glob("*/places.sqlite") if path.is_file()
-    )[:32]
+    )[:MAX_FIREFOX_PROFILES]
 
 
 def is_untagged_legacy_firefox_entry(identifier: str, has_tagged_firefox: bool) -> bool:
@@ -844,21 +858,9 @@ def is_untagged_legacy_firefox_entry(identifier: str, has_tagged_firefox: bool) 
     return not has_tagged_firefox and LEGACY_FIREFOX_UUID_HEX.fullmatch(identifier) is not None
 
 
-def sync_firefox(
-    store_path: str,
-    sources: list[Path],
-) -> dict[str, Any]:
-    """Make Firefox-derived entries match Firefox while preserving local ones."""
-    if not sources:
-        raise ValueError("No Firefox bookmark database was found")
-
-    source_items: list[dict[str, str]] = []
-    for source in sources:
-        source_items.extend(read_firefox_bookmarks(source))
-
+def firefox_items_by_url(source_items: list[dict[str, str]]) -> tuple[dict[str, dict[str, Any]], int, int]:
     firefox_items: dict[str, dict[str, Any]] = {}
-    rejected = 0
-    duplicates = 0
+    rejected = duplicates = 0
     for raw_item in source_items:
         item = normalize_item(raw_item, icon_policy="none", preserve_usage=False)
         if item is None:
@@ -872,18 +874,20 @@ def sync_firefox(
             continue
         item["source"] = "firefox"
         firefox_items[key] = item
+    return firefox_items, rejected, duplicates
 
-    existing_items = read_store_items(store_path)
+
+def merge_firefox_items(
+    existing_items: list[dict[str, Any]],
+    firefox_items: dict[str, dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
     has_tagged_firefox = any(
         isinstance(item, dict) and item.get("source") == "firefox"
         for item in existing_items
     )
     merged: list[dict[str, Any]] = []
     known: set[str] = set()
-    added = 0
-    updated = 0
-    removed = 0
-    tagged = 0
+    counts = {"new": 0, "updated": 0, "removed": 0, "tagged": 0}
 
     for raw_item in existing_items:
         item = normalize_item(raw_item, icon_policy="stored")
@@ -904,13 +908,13 @@ def sync_firefox(
         )
         incoming = firefox_items.get(key)
         if firefox_owned and incoming is None:
-            removed += 1
+            counts["removed"] += 1
             continue
         if firefox_owned:
             if item["title"] != incoming["title"] or item["url"] != incoming["url"]:
-                updated += 1
+                counts["updated"] += 1
             if item["source"] != "firefox":
-                tagged += 1
+                counts["tagged"] += 1
             item["title"] = incoming["title"]
             item["url"] = incoming["url"]
             item["source"] = "firefox"
@@ -924,31 +928,46 @@ def sync_firefox(
         incoming["id"] = uuid.uuid4().hex
         merged.append(incoming)
         known.add(key)
-        added += 1
+        counts["new"] += 1
+    return merged, counts
 
-    changed = added + updated + removed + tagged
-    backup_path = ""
-    if changed:
-        backup = create_and_prune_store_backups(store_path)
-        backup_path = str(backup.get("backup", ""))
-        destination = Path(store_path)
-        mode = existing_regular_mode(destination, "Bookmarks store", 0o600)
-        document = json.dumps(
-            {"version": 3, "bookmarks": merged},
-            ensure_ascii=False,
-            indent=2,
-        ) + "\n"
-        atomic_write(destination, document, mode)
+
+def write_bookmark_store(store_path: str, bookmarks: list[dict[str, Any]]) -> str:
+    backup = create_and_prune_store_backups(store_path)
+    destination = Path(store_path)
+    mode = existing_regular_mode(destination, "Bookmarks store", 0o600)
+    document = json.dumps(
+        {"version": STORE_VERSION, "bookmarks": bookmarks},
+        ensure_ascii=False,
+        indent=2,
+    ) + "\n"
+    atomic_write(destination, document, mode)
+    return str(backup.get("backup", ""))
+
+
+def sync_firefox(
+    store_path: str,
+    sources: list[Path],
+) -> dict[str, Any]:
+    """Local entries are preserved."""
+    if not sources:
+        raise ValueError("No Firefox bookmark database was found")
+
+    source_items: list[dict[str, str]] = []
+    for source in sources:
+        source_items.extend(read_firefox_bookmarks(source))
+
+    firefox_items, rejected, duplicates = firefox_items_by_url(source_items)
+    merged, counts = merge_firefox_items(read_store_items(store_path), firefox_items)
+    changed = sum(counts.values())
+    backup_path = write_bookmark_store(store_path, merged) if changed else ""
 
     return {
         "ok": True,
         "stats": {
             "found": len(source_items),
             "current": len(firefox_items),
-            "new": added,
-            "updated": updated,
-            "removed": removed,
-            "tagged": tagged,
+            **counts,
             "duplicates": duplicates,
             "rejected": rejected,
             "changed": changed,
@@ -1007,11 +1026,11 @@ def create_and_prune_store_backups(store_path: str, keep: int = BACKUP_LIMIT) ->
 
 
 class UnsafeNetworkTarget(ValueError):
-    """A URL must not be fetched because its network destination is unsafe."""
+    pass
 
 
 def _ascii_hostname(hostname: str) -> str:
-    """Return the unambiguous ASCII hostname used for DNS, TLS, and Host."""
+    """The one form used for DNS, TLS and Host alike."""
     hostname = hostname.rstrip(".")
     if not hostname:
         raise UnsafeNetworkTarget("URL has no hostname")
@@ -1171,7 +1190,7 @@ def _request_from_address(
             "Connection": "close",
         })
         response = connection.getresponse()
-        if response.status in (301, 302, 303, 307, 308):
+        if response.status in REDIRECT_STATUSES:
             return response.status, response.reason, response.headers, b""
         encoding = response.headers.get("Content-Encoding", "identity").strip().lower()
         if encoding not in ("", "identity"):
@@ -1201,7 +1220,7 @@ def fetch_public_http_bytes(
     timeout: int = 7,
     redirect_origin: str = "",
 ) -> tuple[bytes, str, str]:
-    """Fetch bounded public HTTP(S) content without DNS rebinding or auto-redirects."""
+    """No DNS rebinding and no automatic redirects."""
     current_url = url
     for redirect_count in range(MAX_FETCH_REDIRECTS + 1):
         scheme, hostname, port, path = _network_url_parts(current_url)
@@ -1220,7 +1239,7 @@ def fetch_public_http_bytes(
             raise OSError("Could not connect to the public URL") from last_error
 
         status, reason, headers, raw = response
-        if status in (301, 302, 303, 307, 308):
+        if status in REDIRECT_STATUSES:
             if redirect_count >= MAX_FETCH_REDIRECTS:
                 raise ValueError("response redirected too many times")
             location = headers.get("Location", "")
@@ -1293,7 +1312,7 @@ class MetadataParser(HTMLParser):
 
 
 def enrich_url_from_web(url: str) -> dict[str, Any]:
-    """Fetch optional web details inside the time-bounded worker process."""
+    """Runs inside the time-bounded worker process."""
     url = valid_url(url)
     if not url:
         raise ValueError("Web enrichment requires one valid HTTP(S) URL")
@@ -1307,10 +1326,10 @@ def enrich_url_from_web(url: str) -> dict[str, Any]:
         )
         if (
             content_type in ("text/html", "application/xhtml+xml")
-            or b"<html" in raw[:2048].lower()
+            or b"<html" in raw[:FETCHED_HTML_SNIFF_BYTES].lower()
         ):
             charset_match = re.search(
-                br"charset\s*=\s*['\"]?([A-Za-z0-9._-]+)", raw[:8192], re.I
+                br"charset\s*=\s*['\"]?([A-Za-z0-9._-]+)", raw[:CHARSET_SNIFF_BYTES], re.I
             )
             charset = (
                 charset_match.group(1).decode("ascii", errors="ignore")
@@ -1355,7 +1374,7 @@ def enrich_url_from_web(url: str) -> dict[str, Any]:
 
 
 def _run_web_enrichment(url: str, settings_path: str) -> tuple[str, str]:
-    """Run all optional network and decoder work behind a hard wall-clock limit."""
+    """All network and decoder work sits behind a hard wall-clock limit."""
     try:
         process = run_bounded_process(
             [
@@ -1427,7 +1446,7 @@ def prepare_bookmark_from_clipboard(
 
 
 def copy_url_to_clipboard(value: str) -> dict[str, Any]:
-    """Copy one validated bookmark URL without invoking a shell."""
+    """No shell is involved."""
     url = valid_url(value)
     if not url:
         return {"ok": False, "error": "Could not copy an invalid bookmark URL"}

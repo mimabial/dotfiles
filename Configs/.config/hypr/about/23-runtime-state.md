@@ -38,7 +38,7 @@ Theme, wallpaper and mode operations each take a dedicated lock FD before
 touching anything, so two concurrent switches cannot interleave and leave you
 with half of one theme. Writing `staterc` directly walks straight past that.
 
-The lock paths are defined in `runtime/lock_paths.sh` and `pyutils/lock_paths.py`
+The lock paths are defined in `runtime/lock_paths.bash` and `pyutils/lock_paths.py`
 — one definition, two languages, so bash and Python helpers contend on the same
 locks rather than politely ignoring each other.
 

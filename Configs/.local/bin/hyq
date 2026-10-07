@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Query values from Hyprland configuration files."""
-
 import argparse
 import json
 import os
@@ -82,12 +80,15 @@ def filter_value(value: Any, predicate) -> Any | None:
 
 
 def parse_query_input(query_str: str) -> tuple[str, str | None, str | None]:
-    """Split query[expectedType][expectedRegex]."""
-    match = re.fullmatch(r"([^\[]+)(?:\[([^\]]*)\])?(?:\[([^\]]*)\])?", query_str)
+    match = re.fullmatch(r"(?P<key>[^\[]+)(?:\[(?P<type>[^\]]*)\])?(?:\[(?P<regex>[^\]]*)\])?", query_str)
     if not match:
         return query_str, None, None
 
-    return match.group(1), match.group(2) or None, match.group(3) or None
+    return match["key"], match["type"] or None, match["regex"] or None
+
+
+def missing_result(query: str) -> dict[str, Any]:
+    return {"key": query, "value": "", "type": "NULL", "flags": []}
 
 
 def process_query(parser: HyprlangParser, query_str: str) -> dict[str, Any]:
@@ -96,7 +97,7 @@ def process_query(parser: HyprlangParser, query_str: str) -> dict[str, Any]:
     value = parser.query(query)
 
     if value is None:
-        return {"key": query, "value": "", "type": "NULL", "flags": []}
+        return missing_result(query)
 
     if expected_type:
         expected_type_norm = normalize_type(expected_type)
@@ -105,14 +106,14 @@ def process_query(parser: HyprlangParser, query_str: str) -> dict[str, Any]:
             lambda item: normalize_type(infer_type(item)) == expected_type_norm,
         )
         if value is None:
-            return {"key": query, "value": "", "type": "NULL", "flags": []}
+            return missing_result(query)
 
     if expected_regex:
         value = filter_value(
             value, lambda item: regex_matches_start(stringify_value(item), expected_regex)
         )
         if value is None:
-            return {"key": query, "value": "", "type": "NULL", "flags": []}
+            return missing_result(query)
 
     return {"key": query, "value": value, "type": infer_type(value), "flags": []}
 
@@ -138,8 +139,8 @@ def export_env(results: list[dict[str, Any]], queries: list[str]):
 
         env_key = query.replace(":", "_").replace("-", "_")
 
-        is_dynamic = raw_query.startswith("$")
-        prefix = "__" if is_dynamic else "_"
+        is_variable = raw_query.startswith("$")
+        prefix = "__" if is_variable else "_"
 
         env_value = escape_env_value(stringify_value(result["value"]))
         print(f'{prefix}{env_key}="{env_value}"')
@@ -152,7 +153,7 @@ def export_plain(results: list[dict[str, Any]], delimiter: str):
     print(delimiter.join(values))
 
 
-def main():
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Query hyprlang .conf/.meta files. "
         "Does not parse the Lua compositor config.",
@@ -200,8 +201,11 @@ examples:
         default="\n",
         help="Delimiter for plain output (default: newline)",
     )
+    return parser
 
-    args = parser.parse_args()
+
+def main():
+    args = build_parser().parse_args()
 
     config_file = args.config_file
     if not os.path.exists(config_file):

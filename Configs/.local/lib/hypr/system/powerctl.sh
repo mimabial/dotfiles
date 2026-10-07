@@ -16,7 +16,7 @@ esac
 
 hyprshell util/state.sh clear 're*-required'
 
-source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.sh"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash"
 
 no_clients_left() {
   local count=""

@@ -1,4 +1,3 @@
-// CRT Linear Radar Scope — stereo-positioned audio transients scanned across a range grid.
 .pragma library
 .import "helpers.js" as H
 
@@ -265,7 +264,6 @@ function render(ctx, d) {
       0, Math.PI * 2); ctx.fill()
   }
 
-  // A vertical phosphor beam and short afterglow scan the full stereo field.
   var beamPulse = d.playing ? 1 + H.bandAvg(d.bands || [], 0, 5) * 0.6 + beat * 0.4 : 1
   var beamHighlight = (beamPulse - 1) / rangeSteps
   var tailCount = 10, tailStep = unit * 1.1 / scopeWidth

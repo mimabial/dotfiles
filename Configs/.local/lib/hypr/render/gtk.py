@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import atomic_write, cache_hit, cache_store
+from _common import atomic_write, cache_hit, cache_store, short_digest
 
 PALETTE = Path(sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else
                os.environ.get("HYPR_STATE_HOME",
@@ -28,6 +28,19 @@ APP = "gtk"
 SWEET = THEMES / "sweet"
 STYLESHEETS = {"dark": "gtk-{gtk}/gtk-dark.scss", "light": "gtk-{gtk}/gtk.scss"}
 SHEETS = ("src/gtk3/gtk3-assets.svg", "src/gtk3/gtk3-assets-dark.svg")
+INDEX_THEME = """[Desktop Entry]
+Type=X-GNOME-Metatheme
+Name=Pywal16-Gtk
+Comment=Dynamic GTK theme generated from active palette
+Encoding=UTF-8
+
+[X-GNOME-Metatheme]
+GtkTheme=Pywal16-Gtk
+MetacityTheme=Pywal16-Gtk
+IconTheme=Adwaita
+CursorTheme=Adwaita
+ButtonLayout=close,minimize,maximize:menu
+"""
 # Named gradient or stop in Sweet's SVGs -> the theme value it takes.
 GRADIENTS = {"color-accent": "$selected_bg_color", "color-cyan": "$hypr-cyan", "color-on-accent": "$selected_fg_color",
              "color-box": "hypr-surface(#40424C, $hypr-window)", "color-switch-from": "$orange", "color-switch-to": "$yellow"}
@@ -110,30 +123,27 @@ def render_sheet(svg: Path, colors: dict, names: set, destination: Path) -> None
             surface.write_to_png(str(destination / f"{name}{suffix}.png"))
 
 
+FALLBACK_BORDER_RADIUS = 8
+
+
 def hypr_border_radius() -> int:
     try:
         out = subprocess.run(["hyprctl", "-j", "getoption", "decoration:rounding"],
                              capture_output=True, text=True, check=True).stdout
-        return int(json.loads(out).get("int", 8))
+        return int(json.loads(out).get("int", FALLBACK_BORDER_RADIUS))
     except Exception:
-        return 8
+        return FALLBACK_BORDER_RADIUS
 
-def main():
-    if not PALETTE.is_file():
-        sys.exit(f"render/gtk: missing {PALETTE}")
-    palette = json.loads(PALETTE.read_text())
-    radius = hypr_border_radius()
-
+def renderer_digest(radius):
     hasher = hashlib.sha256()
     hasher.update(PALETTE.read_bytes())
     hasher.update(str(radius).encode())
     hasher.update(Path(__file__).read_bytes())
     hasher.update(str(max(f.stat().st_mtime_ns for f in THEMES.rglob("*"))).encode())
-    digest = hasher.hexdigest()[:16]
+    return short_digest(hasher)
 
-    if cache_hit(APP, digest) and all((OUT_DIR / f"gtk-{gtk}" / "gtk.css").exists() for gtk in GTK_VERSIONS):
-        return
 
+def build_theme(palette, radius):
     with tempfile.TemporaryDirectory() as build:
         source = Path(build) / "sweet"
         shutil.copytree(SWEET, source)
@@ -151,7 +161,10 @@ def main():
         asset_names = set(re.findall(r'url\("\.\./assets/([\w-]+?)(?:@2)?\.png"\)', "".join(stylesheets.values())))
         for sheet in SHEETS:
             render_sheet(source / sheet, gradient_colors, asset_names, OUT_DIR / "assets")
+    return stylesheets
 
+
+def install_stylesheets(stylesheets):
     for gtk, content in stylesheets.items():
         out_path = OUT_DIR / f"gtk-{gtk}" / "gtk.css"
         atomic_write(out_path, content)
@@ -160,6 +173,8 @@ def main():
             dark_link.unlink()
         dark_link.symlink_to("gtk.css")
 
+
+def switch_theme_name():
     # Each build switches desktop sync to this folder's other name, the only change that makes GTK 3 reload it.
     alias = OUT_DIR.with_name(f"{OUT_DIR.name}-Alt")
     if not alias.is_symlink():
@@ -168,22 +183,25 @@ def main():
     previous = name_file.read_text().strip() if name_file.is_file() else OUT_DIR.name
     atomic_write(name_file, f"{OUT_DIR.name if previous == alias.name else alias.name}\n")
 
+
+def ensure_index_theme():
     index = OUT_DIR / "index.theme"
     if not index.is_file():
-        atomic_write(index, """[Desktop Entry]
-Type=X-GNOME-Metatheme
-Name=Pywal16-Gtk
-Comment=Dynamic GTK theme generated from active palette
-Encoding=UTF-8
+        atomic_write(index, INDEX_THEME)
 
-[X-GNOME-Metatheme]
-GtkTheme=Pywal16-Gtk
-MetacityTheme=Pywal16-Gtk
-IconTheme=Adwaita
-CursorTheme=Adwaita
-ButtonLayout=close,minimize,maximize:menu
-""")
 
+def main():
+    if not PALETTE.is_file():
+        sys.exit(f"render/gtk: missing {PALETTE}")
+    palette = json.loads(PALETTE.read_text())
+    radius = hypr_border_radius()
+    digest = renderer_digest(radius)
+    if cache_hit(APP, digest) and all((OUT_DIR / f"gtk-{gtk}" / "gtk.css").exists() for gtk in GTK_VERSIONS):
+        return
+
+    install_stylesheets(build_theme(palette, radius))
+    switch_theme_name()
+    ensure_index_theme()
     cache_store(APP, digest)
 
 if __name__ == "__main__":

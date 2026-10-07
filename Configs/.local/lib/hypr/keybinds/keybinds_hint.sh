@@ -3,7 +3,7 @@
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require rofi || exit 1
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash"
+source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash"
 
 hypr_help_guard "Usage: hyprshell keybinds/keybinds_hint
 Show the keybindings cheatsheet in rofi (toggles off if already open)." "$@"
@@ -16,7 +16,7 @@ fi
 hypr_config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
 cache_dependencies=("$hypr_config_dir/keybindings.lua")
 cache_dependencies+=("${ROFI_KEYBIND_HINT_CONFIG[@]}")
-cache_dependencies+=("${BASH_SOURCE[0]}" "${LIB_DIR}/hypr/keybinds/lib/keybinds_hint.py")
+cache_dependencies+=("${BASH_SOURCE[0]}" "${HYPR_LIB_DIR}/keybinds/lib/keybinds_hint.py")
 
 hint_cache_dir="$(hypr_runtime_subdir hypr)" || exit 1
 hint_cache_file="${hint_cache_dir}/keybinds_hint.rofi"
@@ -39,14 +39,14 @@ fi
 
 hint_rows="$({
   if [[ "${needs_regeneration}" == true ]]; then
-    python3 "${LIB_DIR}/hypr/keybinds/lib/keybinds_hint.py" --format rofi | tee "${hint_cache_file}"
+    python3 "${HYPR_LIB_DIR}/keybinds/lib/keybinds_hint.py" --format rofi | tee "${hint_cache_file}"
   else
     cat "${hint_cache_file}"
   fi
 })"
 
 if [[ -z "${hint_rows}" ]]; then
-  dunstify -t 5000 -i "dialog-error" "Keybind Hint" "Initialization failed."
+  dunstify -t "${NOTIFY_LONG_MS}" -i "dialog-error" "Keybind Hint" "Initialization failed."
   exit 0
 fi
 
@@ -98,7 +98,7 @@ run_selected_dispatch() {
   fi
   case "${dispatch_output}" in
     *"Not enough arguments"* | *"Unsupported dispatcher"*)
-      dunstify -t 4000 -i "dialog-error" "Keybind Hint" "${dispatch_output}"
+      dunstify -t "${NOTIFY_ERROR_MS}" -i "dialog-error" "Keybind Hint" "${dispatch_output}"
       ;;
   esac
 }

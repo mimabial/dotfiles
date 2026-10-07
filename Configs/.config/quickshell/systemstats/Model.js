@@ -37,8 +37,9 @@ function alertDef(id) {
 }
 
 function alertReading(snapshot, id) {
-  var s = snapshot || {}, cpu = s.cpu || {}, gpu = s.gpu || {}, mem = s.mem || {}
-  var disks = s.disks || {}, battery = s.battery || {}
+  snapshot = snapshot || {}
+  var cpu = snapshot.cpu || {}, gpu = snapshot.gpu || {}, mem = snapshot.mem || {}
+  var disks = snapshot.disks || {}, battery = snapshot.battery || {}
   if (id === "cpuUsage") return { value: cpu.total, subject: "" }
   if (id === "cpuTemp") return { value: cpu.temp, subject: "" }
   if (id === "gpuUsage") return { value: gpu.util, subject: String(gpu.name || "") }
@@ -73,13 +74,12 @@ function nextAlertState(previous, above, now) {
   if (!above) return { count: 0, active: false, last: old.last || 0, fire: false }
   if (old.active) return { count: old.count, active: true, last: old.last || 0, fire: false }
   var count = old.count + 1
-  if (count < 3) return { count: count, active: false, last: old.last || 0, fire: false }
-  var fire = now - (old.last || 0) >= 300000
+  if (count < ALERT_CONFIRMATIONS) return { count: count, active: false, last: old.last || 0, fire: false }
+  var fire = now - (old.last || 0) >= ALERT_REPEAT_MS
   return { count: count, active: true, last: fire ? now : old.last || 0, fire: fire }
 }
 
-// Every user-tunable key with its default. Per-module bar styles live in
-// "<module>Style" and fall back to "style" when empty.
+// Per-module bar styles live in "<module>Style" and fall back to "style" when empty.
 var SETTINGS = {
   modules: "cpu,memory,network",
   style: "both",
@@ -104,7 +104,6 @@ var SETTINGS = {
   showHistory: true, showDetails: true, showDevices: true
 }
 
-// Sections each page can hide, as shown on the Settings page.
 var PANEL_SECTIONS = {
   cpu: [
     { key: "showCores", label: "Per-core rings" },
@@ -134,27 +133,45 @@ var PANEL_SECTIONS = {
   ]
 }
 
-// Multiple-choice options per page, shown after that page's toggles.
 var PANEL_CHOICES = {}
 
-// Sampling intervals offered by the Settings page, in seconds.
-var REFRESH_STOPS = [0.1, 0.2, 0.5, 1, 2, 5, 10]
+var REFRESH_STOPS_SECONDS = [0.1, 0.2, 0.5, 1, 2, 5, 10]
+var MIN_REFRESH_SECONDS = 0.1
+var MAX_REFRESH_SECONDS = 30
+var TEMPERATURE_SCALE_FLOOR = 30
+var NETWORK_SCALE_FLOOR = 10 * 1024
+var DISK_SCALE_FLOOR = 256 * 1024
+var DISK_WARN = 0.8
+var DISK_DANGER = 0.92
+var SENSOR_WARN = 0.78
+var SENSOR_DANGER = 0.92
+var SENSOR_FALLBACK_CRITICAL = 95
+var SWAP_WARN = 0.5
+var SWAP_DANGER = 0.85
+var BATTERY_LOW_PERCENT = 20
+var BATTERY_CRITICAL_PERCENT = 10
+var FAN_FULL_SCALE_RPM = 2400
+var SENSOR_ALERT_MIN = 40
+var SENSOR_ALERT_MAX = 120
+var SENSOR_ALERT_STEP = 5
+var ALERT_CONFIRMATIONS = 3
+var ALERT_REPEAT_MS = 5 * 60 * 1000
 
 function nearestStopIndex(value) {
-  var v = Number(value)
+  var requested = Number(value)
   var best = 3
   var bestDistance = Infinity
-  for (var i = 0; i < REFRESH_STOPS.length; i++) {
-    var d = Math.abs(Math.log(REFRESH_STOPS[i]) - Math.log(isFinite(v) && v > 0 ? v : 1))
-    if (d < bestDistance) { bestDistance = d; best = i }
+  for (var i = 0; i < REFRESH_STOPS_SECONDS.length; i++) {
+    var distance = Math.abs(Math.log(REFRESH_STOPS_SECONDS[i]) - Math.log(isFinite(requested) && requested > 0 ? requested : 1))
+    if (distance < bestDistance) { bestDistance = distance; best = i }
   }
   return best
 }
 
 function intervalText(seconds) {
-  var v = Number(seconds)
-  if (!isFinite(v) || v <= 0) return "1"
-  return v < 1 ? v.toFixed(1) : String(Math.round(v))
+  var amount = Number(seconds)
+  if (!isFinite(amount) || amount <= 0) return "1"
+  return amount < 1 ? amount.toFixed(1) : String(Math.round(amount))
 }
 
 function parseList(raw) {
@@ -165,9 +182,6 @@ function parseList(raw) {
   return out
 }
 
-// ---------------------------------------------------------------- sensors
-
-// Friendly row label for a hwmon temperature entry.
 function sensorLabel(temp) {
   var chip = String(temp.chip || "")
   var label = String(temp.label || "")
@@ -177,12 +191,11 @@ function sensorLabel(temp) {
   return chip + " " + label
 }
 
-// Everything the bar's sensor readout can show, as {value, label, kind}.
 function sensorOptions(snapshot) {
-  var s = snapshot || {}
-  var cpu = s.cpu || {}
-  var gpu = s.gpu || null
-  var sensors = s.sensors || {}
+  snapshot = snapshot || {}
+  var cpu = snapshot.cpu || {}
+  var gpu = snapshot.gpu || null
+  var sensors = snapshot.sensors || {}
   var out = []
   if (isFinite(Number(cpu.temp)) && cpu.temp !== null) out.push({ value: "cpu", label: "CPU temperature", kind: "temp" })
   var gpuTemp = gpu && gpu.temp !== null && isFinite(Number(gpu.temp)) ? gpu.temp : sensors.gpuTemp
@@ -196,26 +209,26 @@ function sensorOptions(snapshot) {
 
 // One reading for the bar: {icon, label, text, unit, kind} or null.
 function sensorReading(snapshot, id, unit) {
-  var s = snapshot || {}
-  var cpu = s.cpu || {}
-  var gpu = s.gpu || null
-  var sensors = s.sensors || {}
+  snapshot = snapshot || {}
+  var cpu = snapshot.cpu || {}
+  var gpu = snapshot.gpu || null
+  var sensors = snapshot.sensors || {}
   if (id === "cpu") {
     if (!(isFinite(Number(cpu.temp)) && cpu.temp !== null)) return null
-    var c = tempParts(cpu.temp, unit)
-    return { icon: "󰻠", short: "CPU", label: "CPU", text: c.value, unit: c.unit, kind: "temp", celsius: cpu.temp }
+    var cpuParts = tempParts(cpu.temp, unit)
+    return { icon: "󰻠", short: "CPU", label: "CPU", text: cpuParts.value, unit: cpuParts.unit, kind: "temp", celsius: cpu.temp }
   }
   if (id === "gpu") {
     var gpuTemp = gpu && gpu.temp !== null && isFinite(Number(gpu.temp)) ? gpu.temp : sensors.gpuTemp
     if (gpuTemp === null || gpuTemp === undefined || !isFinite(Number(gpuTemp))) return null
-    var g = tempParts(gpuTemp, unit)
-    return { icon: "󰢮", short: "GPU", label: "GPU", text: g.value, unit: g.unit, kind: "temp", celsius: gpuTemp }
+    var gpuParts = tempParts(gpuTemp, unit)
+    return { icon: "󰢮", short: "GPU", label: "GPU", text: gpuParts.value, unit: gpuParts.unit, kind: "temp", celsius: gpuTemp }
   }
   var temps = Array.isArray(sensors.temps) ? sensors.temps : []
   for (var i = 0; i < temps.length; i++) {
     if (String(temps[i].id) === id) {
-      var t = tempParts(temps[i].value, unit)
-      return { icon: "󰔏", short: "TMP", label: sensorLabel(temps[i]), text: t.value, unit: t.unit, kind: "temp", celsius: temps[i].value, critical: temps[i].critical }
+      var parts = tempParts(temps[i].value, unit)
+      return { icon: "󰔏", short: "TMP", label: sensorLabel(temps[i]), text: parts.value, unit: parts.unit, kind: "temp", celsius: temps[i].value, critical: temps[i].critical }
     }
   }
   var fans = Array.isArray(sensors.fans) ? sensors.fans : []
@@ -228,11 +241,9 @@ function sensorReading(snapshot, id, unit) {
   return null
 }
 
-// ------------------------------------------------------------------ disks
-
 function diskOptions(snapshot) {
-  var s = snapshot || {}
-  var disks = s.disks || {}
+  snapshot = snapshot || {}
+  var disks = snapshot.disks || {}
   var perDisk = disks.perDisk || {}
   var volumes = Array.isArray(disks.volumes) ? disks.volumes : []
   var models = {}
@@ -246,8 +257,6 @@ function diskOptions(snapshot) {
   return out
 }
 
-// ------------------------------------------------------------- processes
-
 function processSortValue(item, key) {
   if (!item) return 0
   if (key === "io") return num(item.read) + num(item.write)
@@ -257,11 +266,11 @@ function processSortValue(item, key) {
 
 function filterProcesses(list, query, key) {
   var items = Array.isArray(list) ? list.slice() : []
-  var q = String(query || "").trim().toLowerCase()
-  if (q) items = items.filter(function(item) { return String(item.name || "").toLowerCase().indexOf(q) !== -1 })
+  var needle = String(query || "").trim().toLowerCase()
+  if (needle) items = items.filter(function(item) { return String(item.name || "").toLowerCase().indexOf(needle) !== -1 })
   items.sort(function(a, b) {
-    var d = processSortValue(b, key) - processSortValue(a, key)
-    return d !== 0 ? d : String(a.name || "").localeCompare(String(b.name || ""))
+    var difference = processSortValue(b, key) - processSortValue(a, key)
+    return difference !== 0 ? difference : String(a.name || "").localeCompare(String(b.name || ""))
   })
   return items
 }
@@ -279,9 +288,9 @@ function truthy(value, fallback) {
   if (typeof value === "boolean") return value
   if (typeof value === "number") return value !== 0
   if (typeof value === "string") {
-    var s = value.trim().toLowerCase()
-    if (s === "true" || s === "on" || s === "yes" || s === "1") return true
-    if (s === "false" || s === "off" || s === "no" || s === "0") return false
+    var word = value.trim().toLowerCase()
+    if (word === "true" || word === "on" || word === "yes" || word === "1") return true
+    if (word === "false" || word === "off" || word === "no" || word === "0") return false
   }
   return value === undefined || value === null ? fallback : !!value
 }
@@ -313,7 +322,6 @@ function styleOptions(module) {
   return out
 }
 
-// Effective bar style for one module: its own override, else the global one.
 function moduleStyle(settings, module) {
   var own = normalizeStyle(settingValue(settings, module + "Style"))
   if (own) return own
@@ -380,8 +388,6 @@ function gpuIcon(vendor) {
   return kind === "intel" ? "󰢮" : kind === "nvidia" || kind === "amd" ? "󰾲" : "󰍺"
 }
 
-// ------------------------------------------------------------------ numbers
-
 function clamp(v, lo, hi) {
   var n = Number(v)
   if (!isFinite(n)) return lo
@@ -395,103 +401,103 @@ function num(v, fallback) {
 
 var BYTE_UNITS = ["B", "KB", "MB", "GB", "TB", "PB"]
 
-function bytesParts(n) {
-  var v = Number(n)
-  if (!isFinite(v) || v < 0) v = 0
-  var i = 0
-  while (v >= 1024 && i < BYTE_UNITS.length - 1) { v /= 1024; i++ }
+function bytesParts(bytes) {
+  var scaled = Number(bytes)
+  if (!isFinite(scaled) || scaled < 0) scaled = 0
+  var unitIndex = 0
+  while (scaled >= 1024 && unitIndex < BYTE_UNITS.length - 1) { scaled /= 1024; unitIndex++ }
   var text
-  if (i <= 1 || v >= 100) text = String(Math.round(v))
-  else text = v.toFixed(1)
-  return { value: text, unit: BYTE_UNITS[i] }
+  if (unitIndex <= 1 || scaled >= 100) text = String(Math.round(scaled))
+  else text = scaled.toFixed(1)
+  return { value: text, unit: BYTE_UNITS[unitIndex] }
 }
 
-function bytesText(n) {
-  var p = bytesParts(n)
-  return p.value + " " + p.unit
+function bytesText(bytes) {
+  var parts = bytesParts(bytes)
+  return parts.value + " " + parts.unit
 }
 
-function rateParts(n) {
-  var p = bytesParts(n)
-  return { value: p.value, unit: p.unit + "/s" }
+function rateParts(bytesPerSecond) {
+  var parts = bytesParts(bytesPerSecond)
+  return { value: parts.value, unit: parts.unit + "/s" }
 }
 
 // Ultra-compact rate for the bar: "0", "34K", "1.2M".
-function compactRate(n) {
-  var v = Number(n)
-  if (!isFinite(v) || v < 512) return "0"
-  var p = bytesParts(v)
-  return p.value + p.unit.charAt(0)
+function compactRate(bytesPerSecond) {
+  var rate = Number(bytesPerSecond)
+  if (!isFinite(rate) || rate < 1024 / 2) return "0"
+  var parts = bytesParts(rate)
+  return parts.value + parts.unit.charAt(0)
 }
 
 // "1.2 / 24 GB" — drop the unit from the first number when both share it.
-function pairText(a, b) {
-  var pa = bytesParts(a), pb = bytesParts(b)
-  if (pa.unit === pb.unit) return pa.value + " / " + pb.value + " " + pb.unit
-  return pa.value + " " + pa.unit + " / " + pb.value + " " + pb.unit
+function pairText(first, second) {
+  var firstParts = bytesParts(first), secondParts = bytesParts(second)
+  if (firstParts.unit === secondParts.unit) return firstParts.value + " / " + secondParts.value + " " + secondParts.unit
+  return firstParts.value + " " + firstParts.unit + " / " + secondParts.value + " " + secondParts.unit
 }
 
-function percentParts(v) {
-  return { value: String(Math.round(clamp(v, 0, 100))), unit: "%" }
+function percentParts(percent) {
+  return { value: String(Math.round(clamp(percent, 0, 100))), unit: "%" }
 }
 
-function percentText(v) {
-  return Math.round(clamp(v, 0, 100)) + "%"
+function percentText(percent) {
+  return Math.round(clamp(percent, 0, 100)) + "%"
 }
 
 function tempValue(celsius, unit) {
-  var c = Number(celsius)
-  if (!isFinite(c)) return NaN
-  return unit === "Fahrenheit" ? c * 9 / 5 + 32 : c
+  var degrees = Number(celsius)
+  if (!isFinite(degrees)) return NaN
+  return unit === "Fahrenheit" ? degrees * 9 / 5 + 32 : degrees
 }
 
 function tempParts(celsius, unit) {
-  var v = tempValue(celsius, unit)
-  if (!isFinite(v)) return { value: "—", unit: "" }
-  return { value: String(Math.round(v)), unit: "°" }
+  var converted = tempValue(celsius, unit)
+  if (!isFinite(converted)) return { value: "—", unit: "" }
+  return { value: String(Math.round(converted)), unit: "°" }
 }
 
 function tempText(celsius, unit) {
-  var p = tempParts(celsius, unit)
-  return p.value + p.unit
+  var parts = tempParts(celsius, unit)
+  return parts.value + parts.unit
 }
 
 function freqText(mhz) {
-  var m = Number(mhz)
-  if (!isFinite(m) || m <= 0) return ""
-  return m >= 1000 ? (m / 1000).toFixed(2) + " GHz" : Math.round(m) + " MHz"
+  var megahertz = Number(mhz)
+  if (!isFinite(megahertz) || megahertz <= 0) return ""
+  return megahertz >= 1000 ? (megahertz / 1000).toFixed(2) + " GHz" : Math.round(megahertz) + " MHz"
 }
 
 function uptimeText(seconds) {
-  var s = Math.max(0, Math.floor(Number(seconds) || 0))
-  var d = Math.floor(s / 86400)
-  var h = Math.floor((s % 86400) / 3600)
-  var m = Math.floor((s % 3600) / 60)
-  if (d > 0) return d + "d " + h + "h"
-  if (h > 0) return h + "h " + m + "m"
-  if (m > 0) return m + "m"
+  var total = Math.max(0, Math.floor(Number(seconds) || 0))
+  var days = Math.floor(total / 86400)
+  var hours = Math.floor((total % 86400) / 3600)
+  var minutes = Math.floor((total % 3600) / 60)
+  if (days > 0) return days + "d " + hours + "h"
+  if (hours > 0) return hours + "h " + minutes + "m"
+  if (minutes > 0) return minutes + "m"
   return "<1m"
 }
 
 function clockText(minutes) {
-  var m = Math.max(0, Math.round(Number(minutes) || 0))
-  var h = Math.floor(m / 60)
-  var r = m % 60
-  return h + ":" + (r < 10 ? "0" : "") + r
+  var total = Math.max(0, Math.round(Number(minutes) || 0))
+  var hours = Math.floor(total / 60)
+  var remainder = total % 60
+  return hours + ":" + (remainder < 10 ? "0" : "") + remainder
 }
 
 function loadText(load) {
   if (!Array.isArray(load) || load.length < 3) return "—"
-  return load.map(function(v) { return Number(v).toFixed(2) }).join("  ")
+  return load.map(function(average) { return Number(average).toFixed(2) }).join("  ")
 }
 
 function volumeName(mount) {
-  var m = String(mount || "")
-  if (m === "/") return "Root"
-  if (m === "/home") return "Home"
-  if (m === "/boot" || m === "/boot/efi" || m === "/efi") return "Boot"
-  var parts = m.split("/")
-  return parts[parts.length - 1] || m
+  var path = String(mount || "")
+  if (path === "/") return "Root"
+  if (path === "/home") return "Home"
+  if (path === "/boot" || path === "/boot/efi" || path === "/efi") return "Boot"
+  var parts = path.split("/")
+  return parts[parts.length - 1] || path
 }
 
 function shortGpuName(name) {
@@ -510,13 +516,12 @@ function batteryIcon(percent, charging) {
   return icons[Math.round(clamp(percent, 0, 100) / 10)]
 }
 
+var WIFI_SIGNAL_ICONS = [[-55, "󰤨"], [-65, "󰤥"], [-75, "󰤢"], [-85, "󰤟"]]
+
 function wifiIcon(dbm) {
-  var d = Number(dbm)
-  if (!isFinite(d)) return "󰤨"
-  if (d >= -55) return "󰤨"
-  if (d >= -65) return "󰤥"
-  if (d >= -75) return "󰤢"
-  if (d >= -85) return "󰤟"
+  var signal = Number(dbm)
+  if (!isFinite(signal)) return WIFI_SIGNAL_ICONS[0][1]
+  for (var i = 0; i < WIFI_SIGNAL_ICONS.length; i++) if (signal >= WIFI_SIGNAL_ICONS[i][0]) return WIFI_SIGNAL_ICONS[i][1]
   return "󰤯"
 }
 
@@ -534,8 +539,6 @@ function linkSpeedText(iface) {
   if (!isFinite(mbps) || mbps <= 0) return ""
   return mbps >= 1000 ? (mbps / 1000) + " Gb/s" : mbps + " Mb/s"
 }
-
-// ------------------------------------------------------------------ history
 
 function emptyHistory() {
   return {
@@ -700,17 +703,15 @@ function powerBucket(previous, slot, cpu, gpu, limit) {
 function maxOf(arr, count) {
   if (!Array.isArray(arr) || arr.length === 0) return 0
   var start = count > 0 ? Math.max(0, arr.length - count) : 0
-  var m = 0
-  for (var i = start; i < arr.length; i++) if (arr[i] > m) m = arr[i]
-  return m
+  var largest = 0
+  for (var i = start; i < arr.length; i++) if (arr[i] > largest) largest = arr[i]
+  return largest
 }
 
 function last(arr, fallback) {
   if (!Array.isArray(arr) || arr.length === 0) return fallback
   return arr[arr.length - 1]
 }
-
-// ------------------------------------------------------------------ palette
 
 var FALLBACK_TEMPERATURE_RAMP = [
   { threshold: 90, color: "#8b0000" }, { threshold: 85, color: "#ad1f2f" },
@@ -742,21 +743,21 @@ function temperatureColor(ramp, celsius, critical, fallback) {
   return fallback
 }
 
-function hueOf(c) {
-  var q = Qt.color(c)
-  return q.hslHue < 0 ? -1 : q.hslHue * 360
+function hueOf(color) {
+  var parsed = Qt.color(color)
+  return parsed.hslHue < 0 ? -1 : parsed.hslHue * 360
 }
 
 function hueDistance(a, b) {
   if (a < 0 || b < 0) return 0
-  var d = Math.abs(a - b) % 360
-  return d > 180 ? 360 - d : d
+  var gap = Math.abs(a - b) % 360
+  return gap > 180 ? 360 - gap : gap
 }
 
-function shiftHue(c, degrees, minSaturation) {
-  var q = Qt.color(c)
-  var h = q.hslHue < 0 ? 0.6 : (q.hslHue + degrees / 360 + 1) % 1
-  return Qt.hsla(h, Math.max(minSaturation || 0.45, q.hslSaturation), clamp(q.hslLightness, 0.45, 0.72), 1)
+function shiftHue(color, degrees, minSaturation) {
+  var parsed = Qt.color(color)
+  var hue = parsed.hslHue < 0 ? 0.6 : (parsed.hslHue + degrees / 360 + 1) % 1
+  return Qt.hsla(hue, Math.max(minSaturation || 0.45, parsed.hslSaturation), clamp(parsed.hslLightness, 0.45, 0.72), 1)
 }
 
 // Derive the two-hue iStat scheme from the active theme: series1 is the
@@ -764,17 +765,17 @@ function shiftHue(c, degrees, minSaturation) {
 // (magenta/cyan/blue preferred), and a tertiary colour covers a third
 // category where one is needed. Warn/danger are the theme's yellow/red.
 function pickPalette(theme, accent, foreground, background, urgent) {
-  var t = theme || {}
+  theme = theme || {}
   var accentHue = hueOf(accent)
   var bgLight = Qt.color(background).hslLightness
   var names = ["blue", "magenta", "cyan", "green", "yellow", "orange", "red"]
   var candidates = []
   for (var i = 0; i < names.length; i++) {
-    var c = t[names[i]]
-    if (!c) continue
-    var q = Qt.color(c)
-    if (q.hslSaturation < 0.2 || Math.abs(q.hslLightness - bgLight) < 0.25) continue
-    candidates.push({ name: names[i], color: c, hue: hueOf(c), dist: hueDistance(accentHue, hueOf(c)) })
+    var color = theme[names[i]]
+    if (!color) continue
+    var parsed = Qt.color(color)
+    if (parsed.hslSaturation < 0.2 || Math.abs(parsed.hslLightness - bgLight) < 0.25) continue
+    candidates.push({ name: names[i], color: color, hue: hueOf(color), dist: hueDistance(accentHue, hueOf(color)) })
   }
   candidates.sort(function(a, b) { return b.dist - a.dist })
 
@@ -793,14 +794,14 @@ function pickPalette(theme, accent, foreground, background, urgent) {
     if (alt === second) continue
     if (alt.dist >= 35 && hueDistance(alt.hue, series2Hue) >= 35) { tertiary = alt.color; break }
   }
-  if (!tertiary) tertiary = t.yellow || shiftHue(accent, 120)
+  if (!tertiary) tertiary = theme.yellow || shiftHue(accent, 120)
 
   return {
     series1: accent,
     series2: series2,
     tertiary: tertiary,
-    warn: t.yellow || t.orange || tertiary,
-    danger: t.red || urgent,
-    good: t.green || accent
+    warn: theme.yellow || theme.orange || tertiary,
+    danger: theme.red || urgent,
+    good: theme.green || accent
   }
 }

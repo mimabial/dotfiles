@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import Quickshell.Io
+import "CalendarMath.js" as CalendarMath
 
 // The notification centre: dunst's live state on top, and under it the archive
 // that notify/archive keeps, which outlives dunst's 20-entry ring.
@@ -9,7 +10,6 @@ PopupCard {
     id: root
     popupName: "notifications"
     keyboardHint: searching ? "Type search · ↑↓ move · Enter select · Esc" : "↑↓ move · Enter select · / search · Del · Esc"
-    // Typed characters reach the search field through handleKey.
     contentWidth: Style.px(380)
     contentHeight: Style.px(520)
 
@@ -59,8 +59,8 @@ PopupCard {
         const today = new Date()
         const midnight = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
         if (timestamp >= midnight) return "Today"
-        if (timestamp >= midnight - 86400000) return "Yesterday"
-        if (timestamp >= midnight - 6 * 86400000) return Qt.formatDateTime(when, "dddd")
+        if (timestamp >= midnight - CalendarMath.MS_PER_DAY) return "Yesterday"
+        if (timestamp >= midnight - 6 * CalendarMath.MS_PER_DAY) return Qt.formatDateTime(when, "dddd")
         if (when.getFullYear() === today.getFullYear()) return Qt.formatDateTime(when, "d MMMM")
         return Qt.formatDateTime(when, "d MMMM yyyy")
     }

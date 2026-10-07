@@ -3,11 +3,16 @@ set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 
-hypr_help_guard "Usage: hyprshell system/agent-limit-alert <id> <name> <limit> <permille> <resets-at> <observed-at-ms>
-Notify once when a fresh agent limit reaches 90%, if enabled." "$@"
+readonly USAGE="Usage: hyprshell system/agent-limit-alert <id> <name> <limit> <permille> <resets-at> <observed-at-ms>"
+readonly ALERT_PERCENT=90
+readonly OBSERVATION_MAX_AGE_MS=$((40 * 60 * 1000))
+readonly OBSERVATION_MAX_LEAD_MS=$((5 * 60 * 1000))
+
+hypr_help_guard "${USAGE}
+Notify once when a fresh agent limit reaches ${ALERT_PERCENT}%, if enabled." "$@"
 
 [[ $# -eq 6 && -n "$1" && "$4" =~ ^[0-9]+$ && "$6" =~ ^[0-9]+$ ]] || {
-  printf 'Usage: hyprshell system/agent-limit-alert <id> <name> <limit> <permille> <resets-at> <observed-at-ms>\n' >&2
+  printf '%s\n' "${USAGE}" >&2
   exit 2
 }
 
@@ -20,7 +25,7 @@ readonly observed_at="$6"
 now_ms="$(date +%s%3N)"
 readonly now_ms
 
-((observed_at > 0 && now_ms - observed_at <= 2400000 && observed_at - now_ms <= 300000)) || exit 0
+((observed_at > 0 && now_ms - observed_at <= OBSERVATION_MAX_AGE_MS && observed_at - now_ms <= OBSERVATION_MAX_LEAD_MS)) || exit 0
 jq -e '.notifyLimit == true' "${XDG_CONFIG_HOME}/quickshell/agents.json" >/dev/null 2>&1 || exit 0
 
 readonly state_dir="${HYPR_STATE_HOME}/agents"
@@ -40,7 +45,7 @@ write_status() {
   mv -f "${tmp}" "${state_file}"
 }
 
-if ((used_permille < 900)); then
+if ((used_permille < ALERT_PERCENT * 10)); then
   [[ "${previous}" == fired:* ]] && write_status "ready:${resets_at}"
   exit 0
 fi
@@ -48,6 +53,6 @@ fi
 
 percent=$(((used_permille + 5) / 10))
 if send_ephemeral_notif "agent-limit-${key%% *}" -a "AI agents" -i applications-development \
-  "Agent usage reached 90%" "${agent_name}: ${percent}% of ${limit_label}"; then
+  "Agent usage reached ${ALERT_PERCENT}%" "${agent_name}: ${percent}% of ${limit_label}"; then
   write_status "fired:${resets_at}"
 fi

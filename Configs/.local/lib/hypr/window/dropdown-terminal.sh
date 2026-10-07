@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-HYPR_LIB_ROOT="${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}"
+HYPR_LIB_ROOT="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}"
 # shellcheck source=/dev/null
 source "${HYPR_LIB_ROOT}/launch/window.common.bash" || exit 1
 launch_source_core_common || exit 1

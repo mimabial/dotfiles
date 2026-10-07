@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell.Io
 import "TasksModel.js" as TasksModel
+import "CalendarMath.js" as CalendarMath
 
 PopupCard {
     id: root
@@ -101,7 +102,7 @@ PopupCard {
     }
     function isToday(item) {
         const due = dueMillis(item)
-        return due >= startOfToday() && due < startOfToday() + 86400000
+        return due >= startOfToday() && due < startOfToday() + CalendarMath.MS_PER_DAY
     }
     readonly property var open_: orderedTodos.filter(item => item.completed !== true)
     readonly property var visibleTasks: {
@@ -148,24 +149,17 @@ PopupCard {
     }
     readonly property int dueCount: open_.filter(item => isOverdue(item) || isToday(item)).length
 
-    function priorityIndex(item) {
-        const priority = Number(item.priority || 0)
-        return priority >= 1 && priority <= 4 ? 3 : priority === 5 ? 2 : priority >= 6 ? 1 : 0
-    }
-    function priorityName(item) { return ["none", "low", "medium", "high"][priorityIndex(item)] }
+    readonly property int highestPriority: TasksModel.PRIORITY_BANDS.length - 1
+    function priorityIndex(item) { return TasksModel.priorityBand(item.priority) }
+    function priorityName(item) { return TasksModel.PRIORITY_BANDS[priorityIndex(item)] }
     function shiftPriority(item, delta) {
-        const next = Math.max(0, Math.min(3, priorityIndex(item) + delta))
+        const next = Math.max(0, Math.min(highestPriority, priorityIndex(item) + delta))
         if (next !== priorityIndex(item))
-            run(["--todo-edit", String(item.id), "--priority", ["none", "low", "medium", "high"][next]])
+            run(["--todo-edit", String(item.id), "--priority", TasksModel.PRIORITY_BANDS[next]])
     }
-
-    // iCalendar runs 1 (highest) to 9; 5 is the middle and 0 means unset
     function priorityColor(item) {
-        const priority = Number(item.priority || 0)
-        if (priority >= 1 && priority <= 4) return shell.role("error", shell.foreground)
-        if (priority === 5) return shell.role("warning", shell.foreground)
-        if (priority >= 6) return shell.role("info", shell.foreground)
-        return shell.alpha(shell.foreground, .45)
+        return [shell.alpha(shell.foreground, .45), shell.role("info", shell.foreground), shell.role("warning", shell.foreground),
+            shell.role("error", shell.foreground)][priorityIndex(item)]
     }
     // todoman writes a date-only DUE as local midnight and a timed one at its
     // actual time, so midnight is what separates the two.
@@ -205,7 +199,7 @@ PopupCard {
     function dayKey(date) { return Qt.formatDate(date, "yyyy-MM-dd") }
     readonly property string todayKey: dayKey(now)
     readonly property var stats: {
-        const start = startOfToday(), end = start + 86400000
+        const start = startOfToday(), end = start + CalendarMath.MS_PER_DAY
         let done = 0, total = 0
         for (const item of orderedTodos) {
             if (isLater(item)) continue
@@ -220,9 +214,12 @@ PopupCard {
         }
         return { done: done, total: total, ratio: total > 0 ? done / total : 0 }
     }
+    readonly property int dayStartHour: 8
+    readonly property int dayEndHour: 22
+    readonly property int staleCarries: 3
     readonly property real dayFraction: {
         const hour = now.getHours() + now.getMinutes() / 60
-        return Math.max(0, Math.min(1, (hour - 8) / 14))
+        return Math.max(0, Math.min(1, (hour - dayStartHour) / (dayEndHour - dayStartHour)))
     }
     readonly property var mood: {
         const moods = {
@@ -273,8 +270,6 @@ PopupCard {
         now.setDate(now.getDate() + (ahead === 0 ? 7 : ahead))
         return now
     }
-    // Recognises a date phrase and a priority token anywhere in the text and
-    // hands back the words that are left as the summary.
     function parseQuickAdd(raw) {
         let words = String(raw).trim().split(/\s+/).filter(word => word !== "")
         let due = null
@@ -293,10 +288,9 @@ PopupCard {
                     priority = bang[1][0] === "h" ? "high" : bang[1][0] === "m" ? "medium" : "low"
                     continue
                 }
-                const pn = word.match(/^p([1-4])$/)
-                if (pn) {
-                    priority = pn[1] === "1" ? "high" : pn[1] === "2" ? "medium"
-                        : pn[1] === "3" ? "low" : "none"
+                const priorityToken = word.match(/^p([1-4])$/)
+                if (priorityToken) {
+                    priority = TasksModel.PRIORITY_BANDS[TasksModel.PRIORITY_BANDS.length - Number(priorityToken[1])]
                     continue
                 }
             }
@@ -411,7 +405,7 @@ PopupCard {
         if (item.completed_at === null || item.completed_at === undefined) return ""
         const when = new Date(Number(item.completed_at) * 1000)
         const days = Math.round((startOfToday() - new Date(when.getFullYear(),
-            when.getMonth(), when.getDate()).getTime()) / 86400000)
+            when.getMonth(), when.getDate()).getTime()) / CalendarMath.MS_PER_DAY)
         if (days <= 0) return "done today"
         if (days === 1) return "done yesterday"
         if (days < 7) return "done " + days + " days ago"
@@ -1163,7 +1157,7 @@ PopupCard {
                                 visible: !root.compact && text !== ""
                                 text: root.taskMeta(taskRow.modelData)
                                 color: (root.isOverdue(taskRow.modelData) && !taskRow.done)
-                                        || Number(taskRow.modelData.carries || 0) >= 3
+                                        || Number(taskRow.modelData.carries || 0) >= root.staleCarries
                                     ? root.shell.role("error", root.shell.foreground)
                                     : root.shell.faintText
                                 font.family: root.shell.fontFamily; font.pixelSize: Style.caption
@@ -1234,7 +1228,7 @@ PopupCard {
                                 onTriggered: root.reorder(taskRow.modelData, 1)
                             }
                             TaskAction {
-                                visible: !taskRow.confirming && !taskRow.done && root.priorityIndex(taskRow.modelData) < 3
+                                visible: !taskRow.confirming && !taskRow.done && root.priorityIndex(taskRow.modelData) < root.highestPriority
                                 glyph: "▴"; hint: "Raise priority (H)"
                                 tone: root.priorityColor(taskRow.modelData)
                                 onTriggered: root.shiftPriority(taskRow.modelData, 1)

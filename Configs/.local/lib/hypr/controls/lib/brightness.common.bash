@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/controls/lib/control.common.bash"
+source "${HYPR_LIB_DIR}/controls/lib/control.common.bash"
 
 normalize_brightness_mode() {
   case "${1:-auto}" in

@@ -2,8 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 
-// Wallpaper panel: preview the active theme's wallpapers, set one, and shape
-// the rotation. The state and the rotation live in the Wallpaper singleton.
+// The state and the rotation live in the Wallpaper singleton.
 PopupCard {
     id: root
     popupName: "wallpaper"
@@ -107,8 +106,8 @@ PopupCard {
                                 smooth: true
                                 onStatusChanged: if (status === Image.Error && !cell.thumbFailed) cell.thumbFailed = true
                             }
-                            // hold back everything that is not the current pick
                             Rectangle {
+                                id: nonCurrentShade
                                 anchors.fill: parent; radius: parent.radius
                                 color: root.shell.alpha(root.shell.background,
                                     cell.isCurrent ? 0 : cellMouse.containsMouse ? .1 : .35)

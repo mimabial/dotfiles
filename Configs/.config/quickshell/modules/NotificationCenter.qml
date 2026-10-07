@@ -9,7 +9,7 @@ ClockButton {
     property var notifications: []
     readonly property date today: shell.clock.date
     readonly property date firstShown: CalendarMath.startOfWeek(new Date(today.getFullYear(), today.getMonth(), 1), Qt.locale().firstDayOfWeek)
-    readonly property int weeks: Math.ceil((Math.round((new Date(today.getFullYear(), today.getMonth() + 1, 0) - firstShown) / 86400000) + 1) / 7)
+    readonly property int weeks: Math.ceil((Math.round((new Date(today.getFullYear(), today.getMonth() + 1, 0) - firstShown) / CalendarMath.MS_PER_DAY) + 1) / 7)
     readonly property color dim: shell.alpha(shell.foreground, .45)
     popupName: "notification-center"
     function archive(args) { shell.run(["hyprshell", "notify/archive"].concat(args), () => history.running = true) }

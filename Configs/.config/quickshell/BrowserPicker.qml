@@ -236,7 +236,7 @@ Item {
           text: root.bookmarkTitle
           textFormat: Text.PlainText
           color: Commons.Color.menu.text
-          opacity: 0.52
+          opacity: Commons.Style.mutedTextAlpha
           font.family: Commons.Style.font.menuFamily
           font.pixelSize: Commons.Style.font.caption
           elide: Text.ElideRight
@@ -249,7 +249,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         text: root.loading ? "…" : String(root.browsers.length)
         color: Commons.Color.menu.text
-        opacity: 0.48
+        opacity: Commons.Style.mutedTextAlpha
         font.family: Commons.Style.font.menuFamily
         font.pixelSize: Commons.Style.font.caption
       }
@@ -342,7 +342,7 @@ Item {
               text: browserRow.modelData.id
               textFormat: Text.PlainText
               color: Commons.Color.menu.text
-              opacity: 0.52
+              opacity: Commons.Style.mutedTextAlpha
               font.family: Commons.Style.font.menuFamily
               font.pixelSize: Commons.Style.font.bodySmall
               elide: Text.ElideRight
@@ -379,7 +379,7 @@ Item {
       height: Commons.Style.space(34)
       text: "Enter Open  ↑↓ Select  Ctrl+Tab / Esc Back"
       color: Commons.Color.menu.text
-      opacity: 0.48
+      opacity: Commons.Style.mutedTextAlpha
       font.family: Commons.Style.font.menuFamily
       font.pixelSize: Commons.Style.font.caption
       horizontalAlignment: Text.AlignHCenter

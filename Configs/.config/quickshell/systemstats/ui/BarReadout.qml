@@ -69,14 +69,12 @@ Item {
   readonly property bool charging: !!(battery && (battery.status === "Charging" || battery.status === "Full"))
   readonly property bool batteryPercentKnown: !!(battery && battery.percent !== null && battery.percent !== undefined && isFinite(Number(battery.percent)))
 
-  // Disk activity: the selected device when present, otherwise every disk.
   readonly property bool singleDisk: disksSource !== "all" && !!(disks.perDisk && disks.perDisk[disksSource])
   readonly property real diskRead: singleDisk ? Model.num(disks.perDisk[disksSource].read) : Model.num(disks.read)
   readonly property real diskWrite: singleDisk ? Model.num(disks.perDisk[disksSource].write) : Model.num(disks.write)
   readonly property var diskReadHistory: singleDisk && hist.disks && hist.disks[disksSource] ? hist.disks[disksSource].read : (hist.diskRead || [])
   readonly property var diskWriteHistory: singleDisk && hist.disks && hist.disks[disksSource] ? hist.disks[disksSource].write : (hist.diskWrite || [])
 
-  // Fullness for the ring: usage now, or capacity for disks and charge for battery.
   readonly property real ringValue: {
     switch (module) {
       case "cpu": return Model.num(cpu.total) / 100
@@ -87,8 +85,8 @@ Item {
         var volumes = Array.isArray(disks.volumes) ? disks.volumes : []
         var chosen = null
         for (var i = 0; i < volumes.length; i++) {
-          var v = volumes[i]
-          if (singleDisk ? v.disk === disksSource : v.mount === "/") { chosen = v; break }
+          var volume = volumes[i]
+          if (singleDisk ? volume.disk === disksSource : volume.mount === "/") { chosen = volume; break }
         }
         if (!chosen && volumes.length > 0) chosen = volumes[0]
         return chosen && chosen.size > 0 ? Model.num(chosen.used) / Model.num(chosen.size) : 0
@@ -98,8 +96,8 @@ Item {
   }
   readonly property color ringColor: {
     if (hovered) return contentColor
-    if (module === "battery") return battery && charging ? (service ? service.good : s1) : (ringValue <= 0.15 ? (service ? service.danger : s1) : s1)
-    if (module === "disks") return ringValue >= 0.92 ? (service ? service.danger : s1) : (ringValue >= 0.8 ? (service ? service.warn : s1) : s1)
+    if (module === "battery") return battery && charging ? (service ? service.good : s1) : (ringValue <= Model.BATTERY_CRITICAL_PERCENT / 100 ? (service ? service.danger : s1) : s1)
+    if (module === "disks") return ringValue >= Model.DISK_DANGER ? (service ? service.danger : s1) : (ringValue >= Model.DISK_WARN ? (service ? service.warn : s1) : s1)
     return s1
   }
 
@@ -110,7 +108,6 @@ Item {
 
   function rateLabel(prefix, value) { return prefix + " " + Model.compactRate(value) }
 
-  // Sensors: one glyph + figure per selected sensor that exists right now.
   readonly property var sensorReadings: {
     var ids = Model.parseList(barSensors)
     var out = []
@@ -188,7 +185,6 @@ Item {
     horizontalItemAlignment: Grid.AlignHCenter
     verticalItemAlignment: Grid.AlignVCenter
 
-    // Every module but sensors: one label, then graph and/or figure.
     Text {
       visible: root.module !== "sensors" && root.labelMode === "icon"
       textFormat: Text.PlainText
@@ -226,7 +222,6 @@ Item {
       sourceComponent: root.twoLine ? twoLineText : singleText
     }
 
-    // Sensors: a glyph + figure pair per selected sensor.
     Repeater {
       model: root.module === "sensors" ? root.sensorReadings.length : 0
 
@@ -324,7 +319,7 @@ Item {
       down: root.module === "network" ? (root.hist.netRx || []) : root.diskWriteHistory
       upColor: root.s2
       downColor: root.s1
-      floor: root.module === "network" ? 10240 : 262144
+      minimumCeiling: root.module === "network" ? Model.NETWORK_SCALE_FLOOR : Model.DISK_SCALE_FLOOR
       midlineColor: Util.alpha(root.contentColor, 0.32)
     }
   }

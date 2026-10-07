@@ -1,5 +1,6 @@
 import argparse
 import importlib
+import json
 import os
 import shutil
 import subprocess
@@ -14,11 +15,6 @@ import xdg_base_dirs  # noqa: E402
 
 
 def is_venv_valid(venv_path):
-    """Returns whether the venv is valid or not
-
-    Args:
-        venv_path: Path to the virtual environment to validate
-    """
     python_exe = os.path.join(venv_path, "bin", "python")
     pyvenv_cfg = os.path.join(venv_path, "pyvenv.cfg")
 
@@ -54,12 +50,10 @@ def is_venv_valid(venv_path):
 
 
 def hypr_venv_path():
-    """Return the managed Hypr virtual environment path."""
     return os.path.join(xdg_base_dirs.xdg_state_home(), "hypr", "pip_env")
 
 
 def activate_managed_venv_path():
-    """Add the managed environment to sys.path and return its path."""
     venv_path = hypr_venv_path()
     site_packages_path = os.path.join(
         venv_path,
@@ -80,7 +74,6 @@ def activate_managed_venv_path():
 
 
 def managed_python_executable():
-    """Return the managed venv Python interpreter if it exists."""
     venv_path = hypr_venv_path()
     python_executable = os.path.join(venv_path, "bin", "python")
     if os.path.isfile(python_executable) and os.access(python_executable, os.X_OK):
@@ -89,7 +82,7 @@ def managed_python_executable():
 
 
 def ensure_managed_interpreter(argv=None):
-    """Re-exec the current script under the managed Hypr venv interpreter."""
+    """Re-execs the current script when it runs outside the managed venv."""
     managed_python = managed_python_executable()
     if managed_python is None:
         return False
@@ -109,7 +102,6 @@ def ensure_managed_interpreter(argv=None):
 
 
 def create_venv(venv_path, requirements_file=None):
-    """Create a virtual environment and optionally install dependencies."""
     if not os.path.exists(os.path.join(venv_path, "bin", "pip")):
         subprocess.run([sys.executable, "-m", "venv", venv_path], check=True)
         pip_executable = os.path.join(venv_path, "bin", "pip")
@@ -137,7 +129,6 @@ def create_venv(venv_path, requirements_file=None):
 
 
 def destroy_venv(venv_path):
-    """Destroy the virtual environment while retaining the requirements.txt file."""
     if os.path.exists(venv_path):
         shutil.rmtree(venv_path)
 
@@ -152,13 +143,17 @@ def install_dependencies(venv_path, requirements_file):
         result.check_returncode()
 
 
-def install_package(venv_path, package):
+def destroy_if_broken(venv_path):
     if os.path.exists(venv_path) and not is_venv_valid(venv_path):
         notify.send(
             "PIP",
             "⚠️ Python version changed or virtualenv is broken, rebuilding…",
         )
         destroy_venv(venv_path)
+
+
+def install_package(venv_path, package):
+    destroy_if_broken(venv_path)
     if not os.path.exists(venv_path):
         create_venv(venv_path)
     pip_executable = os.path.join(venv_path, "bin", "pip")
@@ -180,111 +175,76 @@ def uninstall_package(venv_path, package):
     result.check_returncode()
 
 
+def pip_summary(result):
+    for error_line in result.stderr.splitlines():
+        if error_line.strip():
+            return error_line.strip()
+    stdout_lines = result.stdout.splitlines()
+    satisfied = [line for line in stdout_lines if line.startswith("Requirement already satisfied")]
+    if satisfied:
+        return f"{len(satisfied)} requirements already satisfied"
+    for output_line in stdout_lines:
+        if output_line.startswith("Successfully installed"):
+            return output_line.strip()
+    return ""
+
+
+def run_pip_step(pip_executable, arguments, failure):
+    result = subprocess.run([pip_executable, *arguments], capture_output=True, text=True)
+    if result.returncode != 0:
+        notify.send("PIP", f"{failure}:\n{result.stderr or result.stdout}", urgency="critical")
+        return None
+    return result
+
+
+def notify_summary(result):
+    summary = pip_summary(result)
+    if summary:
+        notify.send("PIP", summary)
+
+
+def outdated_packages(pip_executable):
+    result = run_pip_step(pip_executable, ["list", "--outdated", "--format=json"], "Failed to list outdated packages")
+    if result is None:
+        return None
+    try:
+        outdated = json.loads(result.stdout) if result.stdout.strip() else []
+        # Keep the venv's bootstrap pip paired with the system Python.
+        # Self-upgrading pip while it is running can leave a partial install.
+        return [pkg["name"] for pkg in outdated if pkg["name"].lower() != "pip"]
+    except (json.JSONDecodeError, KeyError) as error:
+        notify.send("PIP", f"Failed to parse outdated packages: {error}", urgency="critical")
+        return None
+
+
 def rebuild_venv(venv_path=None, requirements_file=None):
-    """Rebuild the virtual environment: reinstall if missing, install/upgrade requirements, and update all packages."""
     if venv_path is None:
         venv_path = hypr_venv_path()
-
-    if os.path.exists(venv_path) and not is_venv_valid(venv_path):
-        notify.send(
-            "PIP",
-            "⚠️ Python version changed or virtualenv is broken, rebuilding…",
-        )
-        destroy_venv(venv_path)
-
+    destroy_if_broken(venv_path)
     pip_executable = os.path.join(venv_path, "bin", "pip")
     if not os.path.exists(pip_executable):
         create_venv(venv_path, requirements_file)
 
-    def _short_summary(stdout: str, stderr: str) -> str:
-        if stderr:
-            for error_line in stderr.splitlines():
-                if error_line.strip():
-                    return error_line.strip()
-        req_lines = [
-            line
-            for line in stdout.splitlines()
-            if line.startswith("Requirement already satisfied")
-        ]
-        if req_lines:
-            return f"{len(req_lines)} requirements already satisfied"
-        for output_line in stdout.splitlines():
-            if output_line.startswith("Successfully installed"):
-                return output_line.strip()
-        return ""
-
     if requirements_file and os.path.exists(requirements_file):
-        result = subprocess.run(
-            [pip_executable, "install", "--upgrade", "-r", requirements_file],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            notify.send(
-                "PIP",
-                f"Failed to install requirements:\n{result.stderr or result.stdout}",
-                urgency="critical",
-            )
+        result = run_pip_step(pip_executable, ["install", "--upgrade", "-r", requirements_file], "Failed to install requirements")
+        if result is None:
             return
-        else:
-            summary = _short_summary(result.stdout, result.stderr)
-            if summary:
-                notify.send("PIP", summary)
+        notify_summary(result)
 
-    result = subprocess.run(
-        [pip_executable, "list", "--outdated", "--format=json"],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        notify.send(
-            "PIP",
-            f"Failed to list outdated packages:\n{result.stderr or result.stdout}",
-            urgency="critical",
-        )
+    packages = outdated_packages(pip_executable)
+    if packages is None:
         return
-
-    import json
-
-    try:
-        outdated_packages = json.loads(result.stdout) if result.stdout.strip() else []
-        # Keep the venv's bootstrap pip paired with the system Python.
-        # Self-upgrading pip while it is running can leave a partial install.
-        packages_to_upgrade = [
-            pkg["name"]
-            for pkg in outdated_packages
-            if pkg["name"].lower() != "pip"
-        ]
-    except (json.JSONDecodeError, KeyError) as error:
-        notify.send(
-            "PIP",
-            f"Failed to parse outdated packages: {error}",
-            urgency="critical",
-        )
-        return
-    if packages_to_upgrade:
-        upgrade_result = subprocess.run(
-            [pip_executable, "install", "--upgrade", "-q"] + packages_to_upgrade,
-            capture_output=True,
-            text=True,
-        )
-        if upgrade_result.returncode != 0:
-            notify.send(
-                "PIP",
-                f"Failed to upgrade packages:\n{upgrade_result.stderr or upgrade_result.stdout}",
-                urgency="critical",
-            )
+    if packages:
+        result = run_pip_step(pip_executable, ["install", "--upgrade", "-q", *packages], "Failed to upgrade packages")
+        if result is None:
             return
-        else:
-            summary = _short_summary(upgrade_result.stdout, upgrade_result.stderr)
-            if summary:
-                notify.send("PIP", summary)
+        notify_summary(result)
 
     notify.send("PIP", "✅ Virtual environment rebuilt and packages updated.")
 
 
 def v_import(module_name):
-    """Import a module from the managed venv without installing it."""
+    """Never installs; a missing module raises ImportError."""
     venv_path = activate_managed_venv_path()
     sys.path.insert(0, venv_path)
     try:
@@ -298,80 +258,44 @@ def v_import(module_name):
         ) from exc
 
 
-def main(args):
-    parser = argparse.ArgumentParser(
-        description="Python environment manager for Hyprland"
-    )
+def build_parser():
+    parser = argparse.ArgumentParser(description="Python environment manager for Hyprland")
     subparsers = parser.add_subparsers(dest="command")
-
-    create_parser = subparsers.add_parser(
-        "create", help="Create the virtual environment"
-    )
-    create_parser.set_defaults(func=create_venv)
-
-    install_parser = subparsers.add_parser(
-        "install", help="Install dependencies or a single package"
-    )
+    subparsers.add_parser("create", help="Create the virtual environment")
+    install_parser = subparsers.add_parser("install", help="Install dependencies or a single package")
     install_parser.add_argument("packages", nargs="*", help="Packages to install")
-    install_parser.add_argument(
-        "-f",
-        "--requirements",
-        type=str,
-        help="The requirements file to use for installation",
-    )
-    install_parser.set_defaults(func=install_dependencies)
-
-    uninstall_parser = subparsers.add_parser(
-        "uninstall", help="Uninstall a single package"
-    )
+    install_parser.add_argument("-f", "--requirements", type=str, help="The requirements file to use for installation")
+    uninstall_parser = subparsers.add_parser("uninstall", help="Uninstall a single package")
     uninstall_parser.add_argument("package", help="Package to uninstall")
-    uninstall_parser.set_defaults(func=uninstall_package)
+    subparsers.add_parser("destroy", help="Destroy the virtual environment")
+    subparsers.add_parser("rebuild", help="Rebuild the virtual environment and update packages")
+    return parser
 
-    destroy_parser = subparsers.add_parser(
-        "destroy", help="Destroy the virtual environment"
-    )
-    destroy_parser.set_defaults(func=destroy_venv)
 
-    rebuild_parser = subparsers.add_parser(
-        "rebuild", help="Rebuild the virtual environment and update packages"
-    )
-    rebuild_parser.set_defaults(func=rebuild_venv)
-
+def main(args):
+    parser = build_parser()
     args = parser.parse_args(args)
-
     venv_path = activate_managed_venv_path()
-    requirements_file = os.path.join(
-        xdg_base_dirs.user_lib_dir(), "hypr", "pyutils", "requirements.txt"
-    )
+    requirements_file = os.path.join(xdg_base_dirs.user_lib_dir(), "hypr", "pyutils", "requirements.txt")
 
     if args.command == "create":
-        args.func(venv_path, requirements_file)
+        create_venv(venv_path, requirements_file)
+    elif args.command == "install" and args.packages:
+        for package in args.packages:
+            install_package(venv_path, package)
     elif args.command == "install":
-        if args.packages:
-            for package in args.packages:
-                install_package(venv_path, package)
-        else:
-            args.func(venv_path, args.requirements or requirements_file)
+        install_dependencies(venv_path, args.requirements or requirements_file)
     elif args.command == "uninstall":
-        args.func(venv_path, args.package)
+        uninstall_package(venv_path, args.package)
     elif args.command == "destroy":
-        args.func(venv_path)
+        destroy_venv(venv_path)
     elif args.command == "rebuild":
-        args.func(venv_path, requirements_file)
+        rebuild_venv(venv_path, requirements_file)
     else:
         parser.print_help()
 
 
-def hypr(args):
-    """Python environment manager for Hyprland.
-
-    Args:
-        args (string): options
-    """
-    main(args)
-
-
 if __name__ == "__main__":
-    hypr(sys.argv[1:])
+    main(sys.argv[1:])
 
 sys.path.insert(0, activate_managed_venv_path())

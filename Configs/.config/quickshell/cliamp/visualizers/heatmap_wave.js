@@ -1,4 +1,3 @@
-// Heatmap Wave — Dynamic Thermal Intensity Energy-Color Mapped Visualizer with full color fill
 .pragma library
 .import "helpers.js" as H
 

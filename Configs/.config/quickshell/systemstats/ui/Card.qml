@@ -3,8 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons
 
-// Grouped surface, the iStat "card": a faint fill with a hairline border
-// that groups one topic (a graph and its legend, a list, a set of rings).
 Rectangle {
   id: root
 

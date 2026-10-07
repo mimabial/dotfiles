@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Read or change the shared XDG music-library directory."""
-
 from __future__ import annotations
 
 import argparse
@@ -60,12 +58,9 @@ def update_rmpc_config(library: Path) -> None:
 
 
 def export_to_activation_environment(assignment: str) -> None:
-    """Publish KEY=VALUE to the DBus activation environment.
-
-    --systemd also updates the systemd user manager where there is one, so this
+    """--systemd also updates the systemd user manager where there is one, so this
     covers both inits. Best-effort: the library is already configured on disk by
-    the time this runs, and a missing dbus tool must not fail the whole call.
-    """
+    the time this runs, and a missing dbus tool must not fail the whole call."""
     if not shutil.which("dbus-update-activation-environment"):
         return
     command = ["dbus-update-activation-environment"]

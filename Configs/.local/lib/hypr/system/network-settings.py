@@ -13,6 +13,9 @@ BANDS = {"auto": "", "2.4": "bg", "5": "a", "6": "6GHz"}
 DNS_FIELDS = ["ipv4.ignore-auto-dns", "ipv4.dns", "ipv6.ignore-auto-dns", "ipv6.dns"]
 
 
+WIFI_BANDS_MHZ = {"2.4": (2400, 2500), "5": (4900, 5925), "6": (5925, 7125)}
+
+
 def nm(*args):
     return subprocess.run(["nmcli", "--escape", "no", *args], check=True, text=True, capture_output=True).stdout
 
@@ -22,7 +25,7 @@ def read(uuid, fields):
 
 
 def band_for(frequency):
-    return "2.4" if 2400 <= frequency < 2500 else "5" if 4900 <= frequency < 5925 else "6" if 5925 <= frequency < 7125 else ""
+    return next((band for band, (low, high) in WIFI_BANDS_MHZ.items() if low <= frequency < high), "")
 
 
 def status(uuid, iface):

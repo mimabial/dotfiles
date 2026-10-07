@@ -1,4 +1,3 @@
-// SoundCloud Wave — Ultra-thin high-density asymmetrical waveform with full vibrant color fill
 .pragma library
 .import "helpers.js" as H
 
@@ -36,7 +35,8 @@ function render(ctx, d) {
     var botH = Math.max(1.5, topH * 0.28)
 
     var topY = baselineY - topH
-    var botY = baselineY + 1.2 // 1.2px horizon slit
+    var horizonSlit = 1.2
+    var botY = baselineY + horizonSlit
     var r = Math.min(barW / 2.0, 0.8)
 
     var topGrad = ctx.createLinearGradient(0, topY, 0, baselineY)

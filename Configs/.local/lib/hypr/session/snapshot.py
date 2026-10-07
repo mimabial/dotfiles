@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import configparser
 import json
+import math
 import os
 import re
 import shlex
@@ -368,6 +369,11 @@ def live_window_matches_snapshot(saved: dict, live: dict) -> bool:
     return True
 
 
+def focus_recency(client: dict) -> float:
+    rank = client.get("focusHistoryID")
+    return rank if isinstance(rank, int) and rank >= 0 else math.inf
+
+
 def save_session(name: str, verbose: bool) -> None:
     clients, workspaces, monitors = batch_json("clients", "workspaces", "monitors")
     desktops = desktop_launch_commands()
@@ -376,10 +382,10 @@ def save_session(name: str, verbose: bool) -> None:
     swallowed = {c.get("swallowing") for c in clients if c.get("swallowing") not in (None, "", "0x0")}
     seen_pids: set[int] = set()
     seen_multi: set[tuple[int, int, str]] = set()
-    saved: list[dict] = []
+    by_recency: list[dict] = []
     skipped: list[str] = []
 
-    for client in sorted(clients, key=lambda c: (bool(c.get("hidden")), int(c.get("focusHistoryID") or 9999))):
+    for client in sorted(clients, key=lambda c: (bool(c.get("hidden")), focus_recency(c))):
         addr = client.get("address")
         pid = int(client.get("pid") or 0)
         initial_class = str(client.get("initialClass") or "")
@@ -410,21 +416,22 @@ def save_session(name: str, verbose: bool) -> None:
         item = dict(client)
         item.update(resolve_command(item, exe, desktops))
         enrich_client(item, folders)
-        saved.append(item)
+        by_recency.append(item)
 
+    launch_order = by_recency[::-1]
     snapshot = {
         "version": 1,
         "saved_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "monitors": monitors,
         "workspaces": workspaces,
-        "clients": saved,
+        "clients": launch_order,
     }
     path = session_path(name)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(snapshot, indent=2) + "\n")
     tmp.replace(path)
-    print(f"saved {len(saved)} windows to {path}")
+    print(f"saved {len(by_recency)} windows to {path}")
     if verbose:
         for message in skipped:
             print(f"skip: {message}", file=sys.stderr)

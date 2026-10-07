@@ -49,9 +49,10 @@ PopupCard {
         else clearCursor()
     }
 
+    readonly property int maxDurationSeconds: 99 * 3600 + 59 * 60 + 59
     function duration() { return timerHours * 3600 + timerMinutes * 60 + timerSeconds }
     function setDuration(seconds) {
-        seconds = Math.max(0, Math.min(359999, Math.floor(seconds)))
+        seconds = Math.max(0, Math.min(maxDurationSeconds, Math.floor(seconds)))
         timerHours = Math.floor(seconds / 3600)
         timerMinutes = Math.floor(seconds / 60) % 60
         timerSeconds = seconds % 60

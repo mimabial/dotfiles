@@ -140,7 +140,7 @@ Item {
                 CardText {
                     anchors.centerIn: parent
                     text: "Live preview unavailable"
-                    opacity: 0.45
+                    opacity: Style.faintTextAlpha
                 }
 
                 Item {
@@ -280,7 +280,7 @@ Item {
         CardText {
             Layout.alignment: Qt.AlignRight
             text: "Workspace"
-            opacity: 0.55
+            opacity: Style.mutedTextAlpha
             font.pixelSize: Style.font.caption
         }
     }
@@ -328,7 +328,7 @@ Item {
                     CardText {
                         Layout.fillWidth: true
                         text: card.applicationName
-                        opacity: 0.68
+                        opacity: Style.secondaryTextAlpha
                         font.pixelSize: Style.font.caption
                         elide: Text.ElideRight
                     }
@@ -356,7 +356,7 @@ Item {
                 CardText {
                     Layout.fillWidth: true
                     text: card.applicationName
-                    opacity: 0.62
+                    opacity: Style.mutedTextAlpha
                     font.pixelSize: Style.font.caption
                     elide: Text.ElideRight
                 }

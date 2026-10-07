@@ -25,13 +25,13 @@ NOTIFICATION_ID = "9042"
 LOG = logging.getLogger("submap-hint")
 STATE_FILE = Path(os.environ.get("HYPR_STATE_HOME", Path.home() / ".local/state/hypr")) / "staterc"
 
-# keybindings.lua gates these binds on the workspace layout at press time, inside
-# a Lua closure that hyprctl cannot see: every bind reports dispatcher "__lua".
-# The sub-category header is the only signal that a bind is layout-specific.
 # keybindings.lua tags binds a submap re-exposes from the global set with this
 # prefix: they work inside the submap but stay out of its hint. Change both.
 HIDDEN_MARKER = "[Hidden] "
 
+# keybindings.lua gates these binds on the workspace layout at press time, inside
+# a Lua closure that hyprctl cannot see: every bind reports dispatcher "__lua".
+# The sub-category header is the only signal that a bind is layout-specific.
 LAYOUT_HEADERS = {
     "Dwindle": "dwindle",
     "Master": "master",

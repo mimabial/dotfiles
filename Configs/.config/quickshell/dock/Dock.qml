@@ -60,9 +60,11 @@ Item {
   function panelY(height) {
     return root.edge === "top" ? dockCard.y + dockCard.height + root.panelGap : dockCard.y - height - root.panelGap
   }
+  function parkedSince(address) { return root.parkedAt[address] !== undefined ? root.parkedAt[address] : 0 }
+  readonly property int maxGroupTooltipLines: 6
   function tipY(hostHeight, tipHeight, gap) {
-    var g = gap || Style.space(8)
-    return root.edge === "top" ? hostHeight + g : -tipHeight - g
+    gap = gap || Style.space(8)
+    return root.edge === "top" ? hostHeight + gap : -tipHeight - gap
   }
 
   property string screenName: ""
@@ -179,16 +181,11 @@ Item {
   readonly property bool hasFolderSeparator: root.folderSlots > 0
     && (root.pinnedSection.length > 0 || root.groupSlots > 0 || root.hasTiles || root.visibleRunningCount > 0)
 
-  // Minimized-window preview tiles (macOS-style section on the dock's right).
-  // In minimizeMode "all", a parked app's windows compress into ONE stacked
-  // group tile; in "active" mode every window keeps its own tile.
   readonly property var tileModel: {
     if (!root.showMinimizedTiles) return []
     var list = root.minimizedWindows
     if (root.minimizeMode !== "all") {
-      var singles = []
-      for (var s = 0; s < list.length; s++) singles.push({ type: "single", win: list[s] })
-      return singles
+      return list.map(function (win) { return { type: "single", win: win } })
     }
     var groups = {}
     var order = []
@@ -202,14 +199,8 @@ Item {
       groups[key].windows.push(w)
     }
     // Oldest member parks the group's slot in line.
-    order.sort(function (a, b) {
-      var ta = root.parkedAt[groups[a].windows[0].address] !== undefined ? root.parkedAt[groups[a].windows[0].address] : 0
-      var tb = root.parkedAt[groups[b].windows[0].address] !== undefined ? root.parkedAt[groups[b].windows[0].address] : 0
-      return ta - tb
-    })
-    var out = []
-    for (var g = 0; g < order.length; g++) out.push(groups[order[g]])
-    return out
+    order.sort(function (a, b) { return root.parkedSince(groups[a].windows[0].address) - root.parkedSince(groups[b].windows[0].address) })
+    return order.map(function (key) { return groups[key] })
   }
   readonly property int tileCount: root.tileModel.length
   readonly property real tileCrossSize: Math.round(root.iconSlot * 0.95)
@@ -217,7 +208,6 @@ Item {
 
   readonly property real tileRadius: Math.min(Style.cornerRadius, root.tileCrossSize / 2)
   readonly property bool hasTiles: root.tileCount > 0
-  // Left tile divider (pinned|tiles) renders only when pins precede the tiles.
   readonly property bool hasLeftTileSeparator: root.hasTiles && (root.pinnedSection.length > 0 || root.groupSlots > 0)
 
   // Width arithmetic total: hidden (fully-tiled) entries occupy zero width,
@@ -255,8 +245,6 @@ Item {
       + root.iconSlot / 2
   }
 
-  // Width the tile section consumes ahead of elements that follow it,
-  // including its left divider.
   readonly property real tilesFixedWidth: root.hasTiles
     ? (root.hasLeftTileSeparator ? root.separatorWidth : 0) + root.tileCount * root.tileMainSize
     : 0
@@ -386,16 +374,11 @@ Item {
       mins.push({ address: addr, title: title, appId: appId, waylandToplevel: top })
     }
     // Oldest parked first, so the tiles read chronologically left to right.
-    mins.sort(function (a, b) {
-      var ta = root.parkedAt[a.address] !== undefined ? root.parkedAt[a.address] : 0
-      var tb = root.parkedAt[b.address] !== undefined ? root.parkedAt[b.address] : 0
-      return ta - tb
-    })
+    mins.sort(function (a, b) { return root.parkedSince(a.address) - root.parkedSince(b.address) })
     // Assign only on real change: a fresh array per rebuild would recreate
     // every tile delegate on unrelated events, eating clicks and forcing
     // pointless capture re-negotiations.
-    var sig = ""
-    for (var s = 0; s < mins.length; s++) sig += mins[s].address + ","
+    var sig = mins.map(function (win) { return win.address }).join(",")
     if (sig !== root._minimizedSig) {
       root._minimizedSig = sig
       root.minimizedWindows = mins
@@ -480,7 +463,6 @@ Item {
   // moment focus moves.
   property var appRecentWindow: ({})
 
-  // Apps whose launch has been asked for but whose window has not shown up yet.
   property var launchPending: ({})
   readonly property int launchTimeout: 12000
 
@@ -582,7 +564,6 @@ Item {
     menuFocusTimer.restart()
   }
 
-  // Keyboard focus walks the dock's slots: every row child that can be triggered.
   // The cursor is a slot index, so it survives the row rebuilding its items.
   property int dockCursor: -1
   readonly property Item dockCursorItem: dockCursor < 0 ? null : dockSlots()[dockCursor] || null
@@ -602,7 +583,6 @@ Item {
     moveDockCursor(1)
     menuKeyCatcher.forceActiveFocus()
   }
-  // Escape or any typed character hands the keyboard back.
   function handleDockKey(event) {
     if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) moveDockCursor(event.key === Qt.Key_Right ? 1 : -1)
     else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
@@ -628,6 +608,8 @@ Item {
   // falloff: neighbours respond and the row carries the extra width. "off" is
   // no hover growth at all.
   property string hoverEffect: "zoom"
+  readonly property int popoverZ: 100
+  readonly property int tooltipZ: 300
   readonly property bool waveHover: root.hoverEffect === "wave"
   property bool launchBounce: true
   property bool advancedTooltips: true
@@ -670,12 +652,12 @@ Item {
 
   Timer {
     id: appGroupFocusTimer
-    interval: 150
+    interval: Style.focusPrimeDelay
     onTriggered: root.appGroupFocusPriming = false
   }
   Timer {
     id: menuFocusTimer
-    interval: 150
+    interval: Style.focusPrimeDelay
     onTriggered: root.menuFocusPriming = false
   }
 
@@ -709,7 +691,6 @@ Item {
     onTriggered: root.pruneLaunching()
   }
 
-  // Reactive, debounced overlap check — zero CPU polling loops
   Timer {
     id: debounceOverlapTimer
     interval: 60
@@ -742,12 +723,11 @@ Item {
     Hyprland.refreshToplevels()
     var clients = []
     var tops = Hyprland.toplevels ? (Hyprland.toplevels.values || []) : []
-    for (var t = 0; t < tops.length; t++) {
-      var ipc = tops[t] ? tops[t].lastIpcObject : null
+    for (const toplevel of tops) {
+      var ipc = toplevel ? toplevel.lastIpcObject : null
       if (ipc) clients.push(ipc)
     }
 
-    // Logical monitor dimensions accounting for fractional scaling.
     // Resolve the monitor this dock actually lives on — the globally
     // focused monitor is the wrong coordinate frame on multi-monitor
     // setups whenever focus sits on another output.
@@ -763,25 +743,17 @@ Item {
       }
     }
     if (!mon) mon = Hyprland.focusedMonitor
-    var scale = (mon && mon.scale > 0)
-      ? mon.scale
-      : (dockScreen && dockScreen.devicePixelRatio ? dockScreen.devicePixelRatio : 1.0)
-    var screenLogicalW = (mon && mon.width > 0)
-      ? (mon.width / scale)
-      : (dockScreen ? dockScreen.width : 1920)
-    var screenLogicalH = (mon && mon.height > 0)
-      ? (mon.height / scale)
-      : (dockScreen ? dockScreen.height : 1080)
+    if (!mon || !(mon.width > 0 && mon.scale > 0) || dockCard.width <= 0) return
 
-    var cardW = dockCard.width > 0 ? (dockCard.width + Style.gapsOut * 2) : 320
-    var cardH = dockCard.height > 0 ? (dockCard.height + Style.gapsOut * 2) : 60
-    var monX = (mon && typeof mon.x === "number") ? mon.x : 0
-    var monY = (mon && typeof mon.y === "number") ? mon.y : 0
-    // The card's footprint on the dock's own edge, in monitor coordinates.
-    var dockLeft = monX + (screenLogicalW - cardW) / 2
-    var dockRight = monX + (screenLogicalW + cardW) / 2
-    var dockTop = root.edge === "top" ? monY : monY + screenLogicalH - cardH - 12
-    var dockBottom = root.edge === "top" ? monY + cardH + 12 : monY + screenLogicalH
+    var overlapMargin = 12
+    var screenLogicalW = mon.width / mon.scale
+    var screenLogicalH = mon.height / mon.scale
+    var footprintWidth = dockCard.width + Style.gapsOut * 2
+    var footprintDepth = dockCard.height + Style.gapsOut * 2 + overlapMargin
+    var footprintLeft = mon.x + (screenLogicalW - footprintWidth) / 2
+    var footprintRight = mon.x + (screenLogicalW + footprintWidth) / 2
+    var footprintTop = root.edge === "top" ? mon.y : mon.y + screenLogicalH - footprintDepth
+    var footprintBottom = root.edge === "top" ? mon.y + footprintDepth : mon.y + screenLogicalH
 
     var overlap = false
     // Compare against the dock monitor's own active workspace, not the
@@ -800,23 +772,23 @@ Item {
     var dockSpecialWs = root.dockSpecialWorkspace
 
     for (var i = 0; i < clients.length; i++) {
-      var c = clients[i]
-      if (!c.mapped || c.hidden) continue
-      if (!c.workspace) continue
-      if (c.workspace.id !== dockWsId
-        && !(dockSpecialWs !== "" && String(c.workspace.name || "") === dockSpecialWs)) continue
+      var client = clients[i]
+      if (!client.mapped || client.hidden) continue
+      if (!client.workspace) continue
+      if (client.workspace.id !== dockWsId
+        && !(dockSpecialWs !== "" && String(client.workspace.name || "") === dockSpecialWs)) continue
 
-      var at = c.at
-      var sz = c.size
-      if (!at || !sz || at.length < 2 || sz.length < 2) continue
+      var at = client.at
+      var size = client.size
+      if (!at || !size || at.length < 2 || size.length < 2) continue
 
       var winLeft = at[0]
       var winTop = at[1]
-      var winRight = at[0] + sz[0]
-      var winBottom = at[1] + sz[1]
+      var winRight = at[0] + size[0]
+      var winBottom = at[1] + size[1]
 
-      var intersectsX = (winRight >= dockLeft) && (winLeft <= dockRight)
-      var intersectsY = (winBottom >= dockTop) && (winTop <= dockBottom)
+      var intersectsX = (winRight >= footprintLeft) && (winLeft <= footprintRight)
+      var intersectsY = (winBottom >= footprintTop) && (winTop <= footprintBottom)
 
       if (intersectsX && intersectsY) {
         overlap = true
@@ -1164,12 +1136,7 @@ Item {
           if (!entry) continue
           if (root.launchPending && root.launchPending[entry.id]) {
             var wins = entry.windowList || []
-            for (var w = 0; w < wins.length; w++) {
-              var wa = wins[w] ? wins[w].address : ""
-              if (wa && wa === fullAddr) {
-                return
-              }
-            }
+            if (wins.some(function (win) { return win && win.address === fullAddr })) return
           }
         }
 
@@ -1206,9 +1173,9 @@ Item {
           root.urgentMap = map
         }
         if (root.minimizedOrigins && root.minimizedOrigins[fullAddr]) {
-          var mo = DockModel.copyMap(root.minimizedOrigins)
-          delete mo[fullAddr]
-          root.minimizedOrigins = mo
+          var origins = DockModel.copyMap(root.minimizedOrigins)
+          delete origins[fullAddr]
+          root.minimizedOrigins = origins
         }
         root.refreshDock()
       }
@@ -1375,8 +1342,8 @@ Item {
     root.saveConfig()
   }
 
-  function setIconSize(sz) {
-    root.configuredIconSize = sz
+  function setIconSize(size) {
+    root.configuredIconSize = size
     root.saveConfig()
   }
 
@@ -1428,8 +1395,7 @@ Item {
     Hyprland.dispatch(Hyprland.usingLua ? lua : legacy)
   }
 
-  // Wheel over the apps button walks workspaces in order. "e+1"/"e-1" are
-  // standard Hyprland workspace selectors (nearest existing, relative).
+  // "e+1"/"e-1" are Hyprland workspace selectors: the nearest existing one, relative.
   function cycleWorkspace(dir) {
     var sel = dir > 0 ? "e+1" : "e-1"
     root.hyprDispatch('hl.dsp.focus({ workspace = "' + sel + '" })',
@@ -1494,9 +1460,8 @@ Item {
     }
   }
 
-  // Brings a window forward cleanly. Native Wayland activation hands over focus
-  // and brings the window forward without warping the mouse pointer away from the dock
-  // or desynchronizing layer-shell input state. Switches workspace when target is on another workspace.
+  // Native Wayland activation hands over focus without warping the pointer away from
+  // the dock or desynchronizing layer-shell input state.
   function focusToplevel(toplevel, appId) {
     if (!toplevel) return
     var handle = root.hyprToplevelFor(toplevel)
@@ -1562,8 +1527,6 @@ Item {
     if (!address) return false
 
 
-    // Default restore target is the workspace the user is on right now;
-    // useOrigin=true sends the window back to where it was parked from.
     var origin = root.minimizedOrigins[address] || ""
     var here = root.workspaceTarget(Hyprland.focusedWorkspace)
     var target = (useOrigin || root.isScratchpadWorkspace(origin)) && origin ? origin : here
@@ -1597,18 +1560,10 @@ Item {
     return true
   }
 
-  // Restores a group of windows in one compositor transaction:
-  // all moves are dispatched silently first, then workspace focus and window
-  // activation happen exactly once. This prevents the "one-by-one fullscreen"
-  // flash that occurs when restoreWindow() is called in a loop (each call
-  // previously triggered its own focus switch and Wayland activation).
-  //
-  // primaryAddress: the window to focus after all moves. When null/undefined,
-  // the most-recently-parked window (highest parkedAt timestamp) is chosen.
-  //
-  // useOrigin: when true, each window returns to the workspace it was parked
-  // from (minimizedOrigins). Default restores everything onto the user's
-  // currently active workspace.
+  // One compositor transaction: every move goes out silently first, then the
+  // workspace focus and window activation happen once. Calling restoreWindow() in a
+  // loop flashed each window fullscreen in turn, since every call switched focus and
+  // activated on its own.
   function restoreWindowBatch(wins, primaryAddress, useOrigin) {
     if (!wins || wins.length === 0) return
 
@@ -1630,33 +1585,29 @@ Item {
       var target = (useOrigin || root.isScratchpadWorkspace(origin)) && origin ? origin : here
       if (!target) continue
 
-      var t = parkedTimes[address] !== undefined ? parkedTimes[address] : 0
+      var parkedTime = parkedTimes[address] !== undefined ? parkedTimes[address] : 0
       delete origins[address]
       delete parkedTimes[address]
 
-      // Silent move only — no workspace switch or window focus per iteration.
       root.hyprDispatch(
         'hl.dsp.window.move({ window = "address:' + address + '", workspace = "'
           + root.luaString(target) + '", follow = false })',
         "movetoworkspacesilent " + target + ",address:" + address)
 
-      // Track which window to focus: explicit override first, then most-recently-parked.
       if (primaryAddress && address === primaryAddress) {
         focusAddr = address
         focusTarget = target
         bestTime = Infinity
-      } else if (bestTime !== Infinity && t >= bestTime) {
-        bestTime = t
+      } else if (bestTime !== Infinity && parkedTime >= bestTime) {
+        bestTime = parkedTime
         focusAddr = address
         focusTarget = target
       }
     }
 
-    // Commit map mutations once.
     root.minimizedOrigins = origins
     root.parkedAt = parkedTimes
 
-    // Single workspace switch + single window activation after all moves.
     if (focusTarget) {
       if (focusTarget !== here) root.hyprDispatch('hl.dsp.focus({ workspace = "' + root.luaString(focusTarget) + '" })',
                                                   "workspace " + focusTarget)
@@ -1682,43 +1633,35 @@ Item {
     return root.isMinimizedWorkspace(root.liveWsNameOf(win))
   }
 
-  // The window an app should act on: the one it was last focused in, as long as
-  // it is still around and not parked.
   function windowByAddress(windows, address) {
     return DockModel.windowByAddress(windows, address, root.isWinParkedLive)
   }
 
-  // The app's windows that are still on screen, in window order.
   function visibleWindows(windows) {
     return DockModel.windowsByParkedState(windows, root.isWinParkedLive, false)
   }
 
-  // Which of these windows holds the focus, if any.
   function focusedIndex(windows) {
     return DockModel.focusedIndex(windows, root.activeWindowAddress)
   }
 
-  // A window of this app on the workspace you are looking at.
   function windowHere(windows) {
     return DockModel.windowOnWorkspace(windows, root.liveWsNameOf,
       root.focusedWorkspaceId, root.focusedWorkspaceName)
   }
 
-  // One step around the app's windows from wherever the focus is.
   function stepWindow(windows, direction) {
     return DockModel.stepWindow(windows, direction, root.activeWindowAddress)
   }
 
-  // Handles of this app's parked windows, in window order. Nothing is
-  // remembered for this: the workspace a window sits on is the answer, so a
-  // shell restart cannot lose track of one.
+  // Nothing is remembered for this: the workspace a window sits on is the answer,
+  // so a shell restart cannot lose track of one.
   function parkedWindows(windows) {
     return DockModel.windowsByParkedState(windows, root.isWinParkedLive, true)
   }
 
-  // The app's parked window that has been waiting the longest — the head of
-  // the chronological FIFO. Windows parked before this shell session have no
-  // timestamp and sort first, matching the "recover the oldest" expectation.
+  // Windows parked before this shell session have no timestamp and sort first,
+  // matching the "recover the oldest" expectation.
   function oldestParked(parked) {
     return DockModel.oldestWindow(parked, root.parkedAt)
   }
@@ -1739,8 +1682,6 @@ Item {
     return parked
   }
 
-  // The one window this app should put away: the focused one, else the one it
-  // was last focused in, else the first that is still on screen.
   function minimizeOneWindow(entry) {
     var windows = entry ? (entry.windowList || []) : []
     var target = null
@@ -1779,7 +1720,6 @@ Item {
     root.appRecentWindow = root.keepLive(root.appRecentWindow, live, true)
     root.urgentMap = root.keepUrgentLive(root.urgentMap, live)
 
-    // recentOpenedWindowAddrs entries carry their own expiry; drop the stale ones.
     var now = Date.now()
     var roa = root.recentOpenedWindowAddrs || {}
     var nextRoa = {}
@@ -1808,8 +1748,6 @@ Item {
     return dropped ? next : map
   }
 
-  // Clears urgency entries from urgentMap for an application and its windows.
-  // Called whenever an app/window receives focus or is activated/clicked by user.
   function clearUrgentApp(appId, address) {
     if (!root.urgentMap) return
     var hasKeys = false
@@ -1869,17 +1807,14 @@ Item {
       if (normId && map[normId]) { delete map[normId]; changed = true }
     }
 
-    for (var t = 0; t < targetEntries.length; t++) {
-      var tEntry = targetEntries[t]
-      var tId = tEntry.appId || tEntry.id
-      if (tId && map[tId]) { delete map[tId]; changed = true }
-      if (tEntry.id && map[tEntry.id]) { delete map[tEntry.id]; changed = true }
-      if (tEntry.appId && map[tEntry.appId]) { delete map[tEntry.appId]; changed = true }
-      var tWins = tEntry.windowList || []
-      for (var tw = 0; tw < tWins.length; tw++) {
-        var twAddr = tWins[tw] ? tWins[tw].address : ""
-        if (twAddr && map[twAddr]) {
-          delete map[twAddr]
+    for (const target of targetEntries) {
+      var targetId = target.appId || target.id
+      if (targetId && map[targetId]) { delete map[targetId]; changed = true }
+      if (target.id && map[target.id]) { delete map[target.id]; changed = true }
+      if (target.appId && map[target.appId]) { delete map[target.appId]; changed = true }
+      for (const win of target.windowList || []) {
+        if (win && win.address && map[win.address]) {
+          delete map[win.address]
           changed = true
         }
       }
@@ -1900,8 +1835,7 @@ Item {
     }
   }
 
-  // byValue: the map holds addresses as values (app -> window) rather than keys.
-  function keepLive(map, live, byValue) {
+  function keepLive(map, live, addressesAreValues) {
     var keys = Object.keys(map)
     if (keys.length === 0) return map
 
@@ -1909,15 +1843,12 @@ Item {
     var dropped = false
     for (var i = 0; i < keys.length; i++) {
       var key = keys[i]
-      if (live[byValue ? map[key] : key]) next[key] = map[key]
+      if (live[addressesAreValues ? map[key] : key]) next[key] = map[key]
       else dropped = true
     }
     return dropped ? next : map
   }
 
-  // Bindable from keybindings.lua, e.g.
-  //   exec(mod, "M", "[Window Management] minimize to dock",
-  //        "quickshell ipc call dock minimizeActive")
   IpcHandler {
     target: "dock"
 
@@ -1964,8 +1895,6 @@ Item {
     launchPruneTimer.start()
   }
 
-  // A pending launch ends when the app gained a window, or when waiting stops
-  // being informative.
   function pruneLaunching() {
     var now = Date.now()
     var next = {}
@@ -2028,26 +1957,17 @@ Item {
     configFile.setText(JSON.stringify(conf, null, 2))
   }
 
-  // A left click says "give me this app". Everything below is decided from live
-  // state only — which windows exist, which are parked, whether the focus is
-  // already inside the app — so there is nothing to remember and nothing to go
-  // stale:
+  // A left click says "give me this app". It is decided from live state only —
+  // which windows exist, which are parked, whether the focus is already inside the
+  // app — so there is nothing to remember and nothing to go stale.
   //
-  //   no windows                      launch it
-  //   focus elsewhere, something parked   bring the parked one back
-  //   focus elsewhere                  focus it, preferring this workspace
-  //   focus inside, mode "all"         park the whole app
-  //   focus inside, several open       step to the app's next window
-  //   focus inside, one open           park it, when parking is on
-  //
-  // Two of those rules carry the weight. Preferring a window on the current
-  // workspace keeps a click from teleporting you while the app is already in
-  // front of you. Stepping through windows is what makes every click on a
-  // multi-window app do something visible: parking one of several hands focus
-  // straight to a sibling, so the app never stops being active, and both a
-  // park-first and a restore-first rule end up stuck — one parks forever, the
-  // other toggles one window forever. Stepping has no such corner, and a
-  // specific window can still be parked from the context menu.
+  // Preferring a window on the current workspace keeps a click from teleporting you
+  // while the app is already in front of you. Stepping through a multi-window app's
+  // windows is what makes every click do something visible: parking one of several
+  // hands focus straight to a sibling, so the app never stops being active, and both
+  // a park-first and a restore-first rule end up stuck — one parks forever, the other
+  // toggles one window forever. A specific window can still be parked from the
+  // context menu.
   function activate(appId) {
     var entry = root.entryForId(appId)
     var windows = entry ? (entry.windowList || []) : []
@@ -2061,26 +1981,10 @@ Item {
     var focusedIdx = root.focusedIndex(visible)
 
 
-    var hadUrgency = false
-    var urgentWin = null
-    for (var u = 0; u < visible.length; u++) {
-      var ua = visible[u] ? visible[u].address : ""
-      if (ua && root.urgentMap[ua]) {
-        urgentWin = visible[u]
-        hadUrgency = true
-        break
-      }
-    }
-
-    var urgentParked = null
-    for (var p = 0; p < parked.length; p++) {
-      var pa = parked[p] ? parked[p].address : ""
-      if (pa && root.urgentMap[pa]) {
-        urgentParked = parked[p]
-        hadUrgency = true
-        break
-      }
-    }
+    function isUrgent(win) { return !!win && !!win.address && !!root.urgentMap[win.address] }
+    var urgentWin = visible.find(isUrgent) || null
+    var urgentParked = parked.find(isUrgent) || null
+    var hadUrgency = !!urgentWin || !!urgentParked
 
     if (root.urgentMap[appId]) hadUrgency = true
     root.clearUrgentApp(appId, "")
@@ -2130,8 +2034,6 @@ Item {
       return
     }
 
-    // Focus a visible window (preferring current workspace, then recent, then
-    // first); with every window minimized, bring one back, as on macOS.
     if (visible.length > 0) {
       var target = root.windowHere(visible) || root.recentWindow(appId, visible) || visible[0]
       if (target && target.address) root.focusWindowByAddress(target.address, appId)
@@ -2140,8 +2042,6 @@ Item {
     }
   }
 
-  // Menu rows name the workspace a window sits on, including the parked ones.
-  // Which window the menu is pointed at, if the wheel or a hover put it there.
   readonly property bool selectedContextWindowParked: {
     var wins = root.contextWindowList || []
     var idx = -1
@@ -2409,8 +2309,7 @@ Item {
     var norm = (path || "").replace(/^~/, Quickshell.env("HOME"))
     var list = root.pinnedFolders || []
     for (var i = 0; i < list.length; i++) {
-      var p = (list[i].path || "").replace(/^~/, Quickshell.env("HOME"))
-      if (p === norm) return true
+      if ((list[i].path || "").replace(/^~/, Quickshell.env("HOME")) === norm) return true
     }
     return false
   }
@@ -2421,12 +2320,11 @@ Item {
     var norm = (path || "").replace(/^~/, Quickshell.env("HOME"))
     var list = root.pinnedFolders || []
     for (var i = 0; i < list.length; i++) {
-      var f = list[i]
-      var p = (f.path || "").replace(/^~/, Quickshell.env("HOME"))
-      if (p === norm) {
+      var folder = list[i]
+      if ((folder.path || "").replace(/^~/, Quickshell.env("HOME")) === norm) {
         found = true
       } else {
-        next.push(f)
+        next.push(folder)
       }
     }
     if (!found) {
@@ -2560,12 +2458,12 @@ Item {
     root.dragRemove = !!away && (DockModel.isPinned(root.pinnedIds, appId) || root.recentIds.indexOf(appId) >= 0)
     if (root.dragRemove) return
 
-    for (var g = 0; g < appGroupsRepeater.count; g++) {
-      var groupItem = appGroupsRepeater.itemAt(g)
+    for (var groupIndex = 0; groupIndex < appGroupsRepeater.count; groupIndex++) {
+      var groupItem = appGroupsRepeater.itemAt(groupIndex)
       if (!groupItem || !groupItem.visible) continue
       var groupBounds = root.itemMainBounds(groupItem)
       if (Math.abs(main - groupBounds.start - groupBounds.size / 2) < groupBounds.size * 0.45) {
-        root.dropTargetGroupId = root.appGroups[g].id
+        root.dropTargetGroupId = root.appGroups[groupIndex].id
         return
       }
     }
@@ -2588,11 +2486,11 @@ Item {
     root.dropIntoPins = main >= first.start - root.gapWidth && main <= last.start + last.size + root.gapWidth
     if (!root.dropIntoPins && root.pinnedIds.indexOf(appId) < 0 && root.dragSourceGroupId === "") return
 
-    for (var p = 0; p < count; p++) {
-      var pin = pinnedRepeater.itemAt(p)
+    for (var pinIndex = 0; pinIndex < count; pinIndex++) {
+      var pin = pinnedRepeater.itemAt(pinIndex)
       var pinBounds = root.itemMainBounds(pin)
       if (main < pinBounds.start + pinBounds.size / 2) {
-        root.dropBeforeId = root.pinnedSection[p].appId
+        root.dropBeforeId = root.pinnedSection[pinIndex].appId
         root.dropIndicatorMain = pinBounds.start - Style.space(1)
         return
       }
@@ -2710,7 +2608,6 @@ Item {
       ]
     }
 
-    // Screen-edge reveal strip — thin edge trigger with zero click-swallowing
     Item {
       id: revealStrip
       // Spelled out rather than anchored per edge: assigning undefined to the
@@ -2726,7 +2623,6 @@ Item {
         onHoveredChanged: root.syncVisibility()
       }
 
-      // The grab handle sits on the screen edge and grows along the dock's axis.
       Rectangle {
         x: (parent.width - width) / 2
         y: root.edge === "top" ? 0 : parent.height - height
@@ -2915,8 +2811,6 @@ Item {
 
         DockSeparator { dock: root; visible: root.hasLeftTileSeparator }
 
-        // macOS-style section: every parked window shows up as a small live
-        // preview tile. Click a tile to bring that exact window back.
         Repeater {
           id: minimizedTilesRepeater
           model: root.tileModel
@@ -3059,7 +2953,8 @@ Item {
                   id: captureRetry
                   interval: 140
                   property int attempts: 0
-                  repeat: attempts < 6
+                  readonly property int maxAttempts: 6
+                  repeat: attempts < maxAttempts
                   onTriggered: {
                     attempts++
                     if (!tilePreview.hasContent && tilePreview.captureSource) tilePreview.captureFrame()
@@ -3082,9 +2977,6 @@ Item {
                 }
               }
 
-              // App-icon badge: only shown when there's no preview yet (letter)
-              // or when the group has 2+ windows (count). Single-window tiles
-              // never show a "1" badge once the preview has loaded.
               Rectangle {
                 visible: (!tilePreview.hasContent || tile.groupCount > 1) && tile.win && tile.win.appId !== ""
                 anchors.right: parent.right
@@ -3110,11 +3002,10 @@ Item {
               }
             }
 
-            // Title bubble above the hovered tile (hidden while the menu is open).
             BorderSurface {
               id: tileTooltip
               visible: tile.tileHovered && !tile.tileMenuOpen && tile.tileTitle !== ""
-              z: 300
+              z: root.tooltipZ
               color: Util.alpha(Color.tooltip.background, Style.popupSurfaceOpacity)
               borderSpec: Border.surfaceSpec("tooltip", "border", Color.tooltip.border, 1)
               radius: Style.cornerRadius
@@ -3135,9 +3026,9 @@ Item {
                 text: {
                   if (!tile.isGroup) return tile.tileTitle
                   var lines = []
-                  var max = Math.min(tile.groupWins.length, 6)
+                  var max = Math.min(tile.groupWins.length, root.maxGroupTooltipLines)
                   for (var i = 0; i < max; i++) lines.push("• " + (tile.groupWins[i] ? tile.groupWins[i].title : ""))
-                  if (tile.groupWins.length > 6) lines.push("+" + (tile.groupWins.length - 6) + " more")
+                  if (tile.groupWins.length > root.maxGroupTooltipLines) lines.push("+" + (tile.groupWins.length - root.maxGroupTooltipLines) + " more")
                   return lines.join("\n")
                 }
                 textFormat: Text.PlainText
@@ -3271,7 +3162,7 @@ Item {
       opacity: (root.activeStackFolder !== "" && root.dockVisible) ? 1 : 0
       Behavior on opacity { NumberAnimation { duration: 120 } }
 
-      z: 100
+      z: root.popoverZ
       color: Util.alpha(Color.menu.background, Style.popupSurfaceOpacity)
       borderSpec: Border.surfaceSpec("menu", "border",
         Util.alpha(Color.menu.border, Style.popupBorderOpacity), 1)

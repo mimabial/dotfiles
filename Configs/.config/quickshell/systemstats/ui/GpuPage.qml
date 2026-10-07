@@ -109,7 +109,7 @@ Column {
         showGaps: root.historyRange > 0
         series: [root.hist.gpuTemps && root.hist.gpuTemps[gpuCard.device.vendor] || []]
         colors: [gpuCard.seriesColor]
-        floor: 30
+        minimumCeiling: Model.TEMPERATURE_SCALE_FLOOR
         baselineColor: Util.alpha(root.foreground, 0.14)
       }
 

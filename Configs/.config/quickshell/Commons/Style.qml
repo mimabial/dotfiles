@@ -18,6 +18,10 @@ QtObject {
     readonly property real popupSurfaceOpacity: Active.Style.popupSurfaceOpacity
     readonly property real popupBorderOpacity: Active.Style.popupBorderOpacity
     readonly property int hoverDuration: Active.Style.hoverDuration
+    readonly property int focusPrimeDelay: Active.Style.focusPrimeDelay
+    readonly property real secondaryTextAlpha: Active.Style.secondaryTextAlpha
+    readonly property real mutedTextAlpha: Active.Style.mutedTextAlpha
+    readonly property real faintTextAlpha: Active.Style.faintTextAlpha
 
     readonly property int normalBorderWidth: Math.max(1, Active.Style.px(1))
     readonly property int selectedBorderWidth: 0

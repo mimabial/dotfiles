@@ -4,6 +4,7 @@ source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_help_guard "Usage: hyprshell clipboard/cliphist --panel-json | --wipe | --panel-{copy,delete,image,fav-add} ID | --panel-fav-{copy,remove} N | --scan-{image,qr} ID" "$@"
 
 favorites_file="${XDG_CACHE_HOME:-$HOME/.cache}/landing/cliphist_favorites"
+OCR_ERROR_NOTIFY_MS=7000
 
 panel_json() {
   local favorites=""
@@ -46,7 +47,7 @@ decoded_image() {
   image="$(mktemp "$(hypr_runtime_subdir hypr)/cliphist.XXXXXX")" &&
     printf '%s\t' "$1" | cliphist decode >"${image}" && printf '%s\n' "${image}" && return
   rm -f "${image}"
-  dunstify -t 3000 -i dialog-error "$2 Error" "Failed to decode the clipboard image."
+  dunstify -t "${NOTIFY_MS}" -i dialog-error "$2 Error" "Failed to decode the clipboard image."
   return 1
 }
 
@@ -54,9 +55,9 @@ ocr_entry() {
   local image="" ocr_image="" text=""
   local -a languages=()
   # shellcheck source=/dev/null
-  source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/capture/ocr.common.bash" || return 1
+  source "${HYPR_LIB_DIR}/capture/ocr.common.bash" || return 1
   hypr_ocr_prepare_languages languages || {
-    dunstify -t 7000 -i dialog-error "OCR Error" "${HYPR_OCR_ERROR}"
+    dunstify -t "${OCR_ERROR_NOTIFY_MS}" -i dialog-error "OCR Error" "${HYPR_OCR_ERROR}"
     return 1
   }
   # Clipboard images arrive at an arbitrary rotation, so this path also asks for
@@ -66,9 +67,9 @@ ocr_entry() {
   hypr_ocr_preprocess_into ocr_image "${image}" image
   if text="$(hypr_ocr_recognize "${ocr_image}" "$(hypr_ocr_language_argument languages)")"; then
     printf '%s' "${text}" | wl-copy
-    dunstify -t 5000 -i "${image}" "OCR" "${#text} symbols recognized\n$(hypr_ocr_language_summary languages)"
+    dunstify -t "${NOTIFY_LONG_MS}" -i "${image}" "OCR" "${#text} symbols recognized\n$(hypr_ocr_language_summary languages)"
   else
-    dunstify -t 5000 -i dialog-error "OCR Error" "Text recognition failed."
+    dunstify -t "${NOTIFY_LONG_MS}" -i dialog-error "OCR Error" "Text recognition failed."
   fi
   rm -f "${image}" "${HYPR_OCR_TEMP_IMAGE}"
 }
@@ -76,7 +77,7 @@ ocr_entry() {
 qr_entry() {
   local image="" text=""
   command -v zbarimg >/dev/null || {
-    dunstify -t 5000 -i dialog-error "QR Error" "zbarimg is not installed."
+    dunstify -t "${NOTIFY_LONG_MS}" -i dialog-error "QR Error" "zbarimg is not installed."
     return 1
   }
   image="$(decoded_image "$1" QR)" || return 1
@@ -84,9 +85,9 @@ qr_entry() {
     # QR codes routinely carry secrets such as otpauth:// URIs, so the decoded
     # value is copied as sensitive and never lands in clipboard history
     printf '%s' "${text}" | wl-copy --sensitive
-    dunstify -t 5000 -i "${image}" "QR" "Successfully recognized and copied to clipboard."
+    dunstify -t "${NOTIFY_LONG_MS}" -i "${image}" "QR" "Successfully recognized and copied to clipboard."
   else
-    dunstify -t 3000 -i dialog-error "QR Error" "No QR code recognized."
+    dunstify -t "${NOTIFY_MS}" -i dialog-error "QR Error" "No QR code recognized."
   fi
   rm -f "${image}"
 }
@@ -103,7 +104,7 @@ case "${action}" in
   --panel-fav-remove) sed -i "${id}d" "${favorites_file}" ;;
   --scan-image) ocr_entry "${id}" ;;
   --scan-qr) qr_entry "${id}" ;;
-  --wipe) cliphist wipe && dunstify -t 3000 -i edit-clear "Clipboard history cleared." ;;
+  --wipe) cliphist wipe && dunstify -t "${NOTIFY_MS}" -i edit-clear "Clipboard history cleared." ;;
   *)
     printf 'cliphist: invalid call: %s\n' "$*" >&2
     exit 2

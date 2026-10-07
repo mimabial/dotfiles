@@ -5,11 +5,11 @@ set -euo pipefail
 [[ -f /etc/arch-release ]] || exit 0
 
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 hypr_runtime_require system || exit 1
 
 # shellcheck source=/dev/null
-source "${BASH_SOURCE[0]%/*}/pm.updates.lib.sh"
+source "${BASH_SOURCE[0]%/*}/pm.updates.lib.bash"
 
 cache_ttl="${HYPR_UPDATE_CACHE_TTL:-21600}"
 
@@ -317,7 +317,7 @@ aur_helper="$(get_aur_helper 2>/dev/null || true)"
 if [[ "${1:-}" == "--run-upgrade" ]]; then
   hypr_runtime_require state || exit 1
   # shellcheck source=/dev/null
-  source "${BASH_SOURCE[0]%/*}/../session/idle.state.sh"
+  source "${BASH_SOURCE[0]%/*}/../session/idle.state.bash"
   acquire_upgrade_lock || exit 1
   run_updates "${2:-all}"
   exit $?

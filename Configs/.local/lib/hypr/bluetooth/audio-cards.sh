@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 
 set -o pipefail
 
-timeout --kill-after=1s 2 pactl -f json list cards 2>/dev/null | jq -c '
+hypr_daemon_call pactl -f json list cards 2>/dev/null | jq -c '
   # UCM cards name their ports "[Out] Speaker"/"[In] Mic", whereas
   # classic ACP cards use analog-output/analog-input style names.
   def port_supports($card; $profile; $direction):

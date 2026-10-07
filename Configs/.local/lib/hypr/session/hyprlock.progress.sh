@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-# Music progress for a hyprlock label: hyprlock.progress.sh PLAYED_HEX REST_HEX
 set -uo pipefail
 
 played_color="${1:-ffffff}" remaining_color="${2:-ffffff}" progress_cells=10
 progress_cache="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr/hyprlock-progress"
 
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/session/hyprlock.media.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/session/hyprlock.media.bash"
 player="$(mpris_default_player)"
 [[ -n "${player}" ]] || { rm -f "${progress_cache}"; exit 0; }
 IFS=';' read -r status position length track < <(playerctl -p "${player}" metadata \

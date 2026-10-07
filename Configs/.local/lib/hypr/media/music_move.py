@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""User-facing command for moving a music file or directory with its lyrics."""
-
 from __future__ import annotations
 
 import argparse

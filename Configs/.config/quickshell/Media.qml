@@ -146,6 +146,6 @@ Singleton {
         onLoaded: { try { root.selectedPlayer = String(JSON.parse(selection.text()).player || "") } catch (error) { root.selectedPlayer = "" } }
         onFileChanged: selection.reload()
     }
-    Timer { interval: 1000; repeat: true; running: root.player && root.player.isPlaying; onTriggered: ++root.tick }
+    Timer { id: positionTick; interval: 1000; repeat: true; running: root.player && root.player.isPlaying; onTriggered: ++root.tick }
 
 }

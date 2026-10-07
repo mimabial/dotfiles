@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
-# The catalog entry the pipeline is acting on. This is the one place that reads
-# the catalog; every step below takes the resolved path instead.
+# The one place that reads the catalog; every step below takes the resolved path
+# instead.
 wallpaper_selected_path() {
   printf '%s\n' "${wallpaper_paths[selected_wallpaper_index]:-}"
 }
@@ -95,7 +94,7 @@ wallpaper_refresh_hyprlock_background() {
   # `hyprlock.sh` would silently fail there. The symlink (wall.set) has
   # already been updated by wallpaper_link_selected above, so backgrounding
   # the refresh is safe — the subprocess resolves the correct path.
-  local hyprlock_script="${LIB_DIR}/hypr/session/hyprlock.sh"
+  local hyprlock_script="${HYPR_LIB_DIR}/session/hyprlock.sh"
   [[ -x "${hyprlock_script}" ]] || return 0
   run_detached run_low_prio "${hyprlock_script}" --background
 }
@@ -136,7 +135,6 @@ wallpaper_post_apply() {
   [[ "$1" -eq 1 ]] && wallpaper_run_color_refresh "$2"
 }
 
-# Fills in the hash for path if the map does not already hold one.
 wallpaper_ensure_hash() {
   local hashmap_name="$1"
   local path="$2"

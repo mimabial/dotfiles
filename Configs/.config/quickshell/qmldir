@@ -1,6 +1,7 @@
 AgentsButton 1.0 AgentsButton.qml
 AgentsPopup 1.0 AgentsPopup.qml
 AlarmTimerPopup 1.0 AlarmTimerPopup.qml
+AltGrHints 1.0 AltGrHints.qml
 AudioButton 1.0 AudioButton.qml
 AudioPopup 1.0 AudioPopup.qml
 BarButton 1.0 BarButton.qml
@@ -58,6 +59,7 @@ NotificationPopup 1.0 NotificationPopup.qml
 PopupCard 1.0 PopupCard.qml
 PopupField 1.0 PopupField.qml
 PopupHero 1.0 PopupHero.qml
+PopupHint 1.0 PopupHint.qml
 PopupHost 1.0 PopupHost.qml
 PopupIconButton 1.0 PopupIconButton.qml
 PopupInfoPair 1.0 PopupInfoPair.qml
@@ -69,6 +71,7 @@ PopupSection 1.0 PopupSection.qml
 PopupSelect 1.0 PopupSelect.qml
 PopupSeparator 1.0 PopupSeparator.qml
 PopupSlider 1.0 PopupSlider.qml
+PopupSurface 1.0 PopupSurface.qml
 PopupTab 1.0 PopupTab.qml
 PopupToggleRow 1.0 PopupToggleRow.qml
 PowerMenuPopup 1.0 PowerMenuPopup.qml

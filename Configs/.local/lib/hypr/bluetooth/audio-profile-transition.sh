@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 
 card=${1:-}
 profile=${2:-}
@@ -12,6 +12,11 @@ if (( $# != 2 )) || [[ -z $card || -z $profile ]]; then
 fi
 
 set -o pipefail
+
+SETTLE_TIMEOUT_MS=2500
+SETTLE_MAX_POLLS=40
+SETTLE_POLL_SECONDS=0.05
+SETTLE_STABLE_READS=2
 
 profile_lock=${XDG_RUNTIME_DIR:-/tmp}/hypr-audio-mutation-${UID}.lock
 exec 8>>"$profile_lock" || {
@@ -36,7 +41,7 @@ expected_sinks=$(jq -r '.sinks // 0' <<<"$profile_state")
 expected_sources=$(jq -r '.sources // 0' <<<"$profile_state")
 [[ $expected_sinks =~ ^[0-9]+$ && $expected_sources =~ ^[0-9]+$ ]] || exit 1
 
-card_info=$(timeout --kill-after=1s 2 pactl -f json list cards 2>/dev/null |
+card_info=$(hypr_daemon_call pactl -f json list cards 2>/dev/null |
   jq -ec --arg card "$card" 'first(.[] | select(.name == $card))') || {
   echo "Audio card is not available" >&2
   exit 1
@@ -59,7 +64,7 @@ read_audio_endpoints_json() {
   local kind=$1
   local payload
 
-  payload=$(timeout --kill-after=1s 2 pactl -f json list "$kind" 2>/dev/null) || return 1
+  payload=$(hypr_daemon_call pactl -f json list "$kind" 2>/dev/null) || return 1
   jq -e 'type == "array"' <<<"$payload" >/dev/null || return 1
   printf '%s\n' "$payload"
 }
@@ -67,7 +72,7 @@ read_audio_endpoints_json() {
 read_card_active_profile() {
   local payload
 
-  payload=$(timeout --kill-after=1s 2 pactl -f json list cards 2>/dev/null) || return 1
+  payload=$(hypr_daemon_call pactl -f json list cards 2>/dev/null) || return 1
   jq -er --arg card "$card" '
     first(.[] | select(.name == $card) | .active_profile) // empty
   ' <<<"$payload"
@@ -178,7 +183,7 @@ restore_endpoint_mutes() {
   while IFS=$'\t' read -r endpoint_index endpoint_muted; do
     # Only unmuted endpoints were changed during preparation.
     [[ $endpoint_muted == false ]] || continue
-    timeout --kill-after=1s 2 pactl "set-${kind}-mute" "$endpoint_index" false \
+    hypr_daemon_call pactl "set-${kind}-mute" "$endpoint_index" false \
       >/dev/null 2>&1 || failed=true
   done < <(jq -r '.[] | [.index, .mute] | @tsv' <<<"$states")
   [[ $failed == false ]]
@@ -209,7 +214,7 @@ restore_old_state() {
               | .index) // empty
           ' <<<"$current_sink_inputs") || current_input_index=
       if [[ -n $current_input_index ]]; then
-        timeout --kill-after=1s 2 pactl set-sink-input-mute \
+        hypr_daemon_call pactl set-sink-input-mute \
           "$current_input_index" "${old_sink_input_mutes[$input]}" \
           >/dev/null 2>&1 || failed=true
       fi
@@ -238,47 +243,68 @@ merge_first_seen_endpoint_states() {
   '
 }
 
+saved_endpoint_state() {
+  jq -cn --argjson old "$1" --argjson current "$2" --argjson position "$3" '
+    ([$old[]
+      | select($current.serial != "" and .serial == $current.serial)][0]
+      // [$old[]
+        | select($current.name != "" and .name == $current.name)][0]
+      // $old[$position]
+      // empty)
+  '
+}
+
+restore_saved_endpoint() {
+  local kind=$1
+  local endpoint_index=$2
+  local saved_state=$3
+  local new_state=$4
+  local saved_count new_channel_count endpoint_muted
+  local -a saved_volumes volume_arguments
+
+  mapfile -t saved_volumes < <(jq -r '.volumes[]' <<<"$saved_state")
+  saved_count=${#saved_volumes[@]}
+  new_channel_count=$(jq '.volumes | length' <<<"$new_state") || return 1
+  (( saved_count > 0 && new_channel_count > 0 )) || return 1
+  if (( saved_count == new_channel_count )); then
+    volume_arguments=("${saved_volumes[@]}")
+  else
+    volume_arguments=("${saved_volumes[0]}")
+  fi
+  hypr_daemon_call pactl "set-${kind}-volume" "$endpoint_index" \
+    "${volume_arguments[@]}" >/dev/null 2>&1 || return 1
+  endpoint_muted=$(jq -r '.mute' <<<"$saved_state") || return 1
+  hypr_daemon_call pactl "set-${kind}-mute" "$endpoint_index" "$endpoint_muted" \
+    >/dev/null 2>&1
+}
+
+first_seen_mute() {
+  jq -r --argjson current "$2" --argjson position "$3" '
+    ([.[] | select($current.serial != "" and .serial == $current.serial)][0]
+      // [.[] | select($current.name != "" and .name == $current.name)][0]
+      // .[$position]
+      // null) as $initial
+    | if ($initial | type) == "object" and ($initial.mute | type) == "boolean"
+      then $initial.mute else empty end
+  ' <<<"$1"
+}
+
 restore_new_endpoint_states() {
   local kind=$1
   local old_states=$2
   local first_states=$3
   local current_states=$4
-  local count position new_state saved_state endpoint_index endpoint_muted
-  local initial_mute saved_count new_channel_count
-  local -a saved_volumes volume_arguments
+  local count position new_state saved_state endpoint_index initial_mute
 
   count=$(jq 'length' <<<"$current_states") || return 1
   for (( position = 0; position < count; position++ )); do
     new_state=$(jq -c --argjson position "$position" \
       '.[$position]' <<<"$current_states") || return 1
     endpoint_index=$(jq -r '.index' <<<"$new_state") || return 1
-    saved_state=$(jq -cn \
-      --argjson old "$old_states" \
-      --argjson current "$new_state" \
-      --argjson position "$position" '
-        ([$old[]
-          | select($current.serial != "" and .serial == $current.serial)][0]
-          // [$old[]
-            | select($current.name != "" and .name == $current.name)][0]
-          // $old[$position]
-          // empty)
-      ') || return 1
+    saved_state=$(saved_endpoint_state "$old_states" "$new_state" "$position") || return 1
 
     if [[ -n $saved_state ]]; then
-      mapfile -t saved_volumes < <(jq -r '.volumes[]' <<<"$saved_state")
-      saved_count=${#saved_volumes[@]}
-      new_channel_count=$(jq '.volumes | length' <<<"$new_state") || return 1
-      (( saved_count > 0 && new_channel_count > 0 )) || return 1
-      if (( saved_count == new_channel_count )); then
-        volume_arguments=("${saved_volumes[@]}")
-      else
-        volume_arguments=("${saved_volumes[0]}")
-      fi
-      timeout --kill-after=1s 2 pactl "set-${kind}-volume" "$endpoint_index" \
-        "${volume_arguments[@]}" >/dev/null 2>&1 || return 1
-      endpoint_muted=$(jq -r '.mute' <<<"$saved_state") || return 1
-      timeout --kill-after=1s 2 pactl "set-${kind}-mute" "$endpoint_index" "$endpoint_muted" \
-        >/dev/null 2>&1 || return 1
+      restore_saved_endpoint "$kind" "$endpoint_index" "$saved_state" "$new_state" || return 1
       continue
     fi
 
@@ -286,23 +312,16 @@ restore_new_endpoint_states() {
     # headset microphone, or off -> output). We changed only its mute bit, so
     # restore the value captured on first appearance and leave its own stored
     # volume untouched.
-    initial_mute=$(jq -r --argjson current "$new_state" --argjson position "$position" '
-      ([.[] | select($current.serial != "" and .serial == $current.serial)][0]
-        // [.[] | select($current.name != "" and .name == $current.name)][0]
-        // .[$position]
-        // null) as $initial
-      | if ($initial | type) == "object" and ($initial.mute | type) == "boolean"
-        then $initial.mute else empty end
-    ' <<<"$first_states") || return 1
+    initial_mute=$(first_seen_mute "$first_states" "$new_state" "$position") || return 1
     if [[ $initial_mute == false ]]; then
-      timeout --kill-after=1s 2 pactl "set-${kind}-mute" "$endpoint_index" false \
+      hypr_daemon_call pactl "set-${kind}-mute" "$endpoint_index" false \
         >/dev/null 2>&1 || return 1
     fi
   done
 }
 
-# Identity of the current endpoint set, order-independent, so two reads can be
-# compared to decide whether the topology has settled.
+# Order-independent, so two reads can be compared to decide whether the topology
+# has settled.
 endpoint_signature() {
   jq -cn --argjson sinks "$1" --argjson sources "$2" '
     {sinks: ($sinks | map({index, name, serial}) | sort_by(.index, .name, .serial)),
@@ -320,7 +339,7 @@ mute_new_endpoints() {
     key="${index}:${identity}"
     [[ ${seen_ref[$key]+present} ]] && continue
     if [[ $muted == false ]]; then
-      timeout --kill-after=1s 2 pactl "set-${kind}-mute" "$index" true >/dev/null 2>&1 || return 1
+      hypr_daemon_call pactl "set-${kind}-mute" "$index" true >/dev/null 2>&1 || return 1
     fi
     seen_ref[$key]=true
   done < <(jq -r '.[] | [
@@ -330,8 +349,6 @@ mute_new_endpoints() {
     ] | @tsv' <<<"$states")
 }
 
-# An endpoint set that was empty before must come back empty; otherwise every
-# endpoint that was there must be back.
 endpoints_restored() {
   local expected="$1"
   local actual="$2"
@@ -340,79 +357,77 @@ endpoints_restored() {
   (( actual >= expected ))
 }
 
+current_endpoint_states() {
+  local kind=$1
+  local filter=$2
+  local payload states
+
+  payload=$(read_audio_endpoints_json "$kind") || payload='[]'
+  states=$(project_endpoint_states "$payload" "$filter") || states='[]'
+  printf '%s\n' "$states"
+}
+
+# A timed-out client can still have delivered the request. If the card is
+# already back on the old profile, continue with endpoint restoration;
+# otherwise this rollback genuinely failed.
+revert_card_profile() {
+  local reported_profile
+
+  hypr_daemon_call pactl set-card-profile "$card" "$active_profile" >/dev/null 2>&1 && return 0
+  reported_profile=$(read_card_active_profile) || reported_profile=
+  [[ $reported_profile == "$active_profile" ]]
+}
+
+wait_for_rollback_topology() {
+  local -n sink_states_ref=$1 source_states_ref=$2 first_sinks_ref=$3 first_sources_ref=$4
+  local expected_sinks_old expected_sources_old deadline reported_profile attempt
+  local signature='' last_signature='' stable_reads=0 sink_count source_count
+  local -A muted_sinks=() muted_sources=()
+
+  expected_sinks_old=$(jq 'length' <<<"$old_sink_states") || return 1
+  expected_sources_old=$(jq 'length' <<<"$old_source_states") || return 1
+  deadline=$(( $(date +%s%3N) + SETTLE_TIMEOUT_MS ))
+  for (( attempt = 0; attempt < SETTLE_MAX_POLLS; attempt++ )); do
+    sink_states_ref=$(current_endpoint_states sinks "$endpoint_filter")
+    source_states_ref=$(current_endpoint_states sources "$source_filter")
+    reported_profile=$(read_card_active_profile) || reported_profile=
+    first_sinks_ref=$(merge_first_seen_endpoint_states "$first_sinks_ref" "$sink_states_ref") || return 1
+    first_sources_ref=$(merge_first_seen_endpoint_states "$first_sources_ref" "$source_states_ref") || return 1
+
+    mute_new_endpoints sink "$sink_states_ref" muted_sinks || return 1
+    mute_new_endpoints source "$source_states_ref" muted_sources || return 1
+
+    sink_count=$(jq 'length' <<<"$sink_states_ref") || return 1
+    source_count=$(jq 'length' <<<"$source_states_ref") || return 1
+    if [[ $reported_profile == "$active_profile" ]] \
+        && endpoints_restored "$expected_sinks_old" "$sink_count" \
+        && endpoints_restored "$expected_sources_old" "$source_count"; then
+      signature=$(endpoint_signature "$sink_states_ref" "$source_states_ref") || return 1
+      if [[ $signature == "$last_signature" ]]; then
+        (( stable_reads++ ))
+      else
+        last_signature=$signature
+        stable_reads=1
+      fi
+      (( stable_reads >= SETTLE_STABLE_READS )) && return 0
+    else
+      last_signature=
+      stable_reads=0
+    fi
+    (( $(date +%s%3N) >= deadline )) && break
+    sleep "$SETTLE_POLL_SECONDS"
+  done
+  return 1
+}
+
 rollback_profile() {
-  local rollback_deadline rollback_sink_payload rollback_source_payload
-  local rollback_sink_states='[]' rollback_source_states='[]'
-  local first_rollback_sink_states='[]' first_rollback_source_states='[]'
-  local expected_old_sinks expected_old_sources
-  local rollback_active_profile=
-  local rollback_signature='' last_rollback_signature=''
-  local rollback_stable_ticks=0 rollback_sink_count rollback_source_count
-  local rollback_sinks_ready rollback_sources_ready
-  local -A muted_rollback_sinks=() muted_rollback_sources=()
+  local sink_states='[]' source_states='[]' first_sink_states='[]' first_source_states='[]'
 
   [[ -n $active_profile && $active_profile != "$profile" ]] || return 1
-  if ! timeout --kill-after=1s 2 pactl set-card-profile \
-      "$card" "$active_profile" >/dev/null 2>&1; then
-    # A timed-out client can still have delivered the request. If the card is
-    # already back on the old profile, continue with endpoint restoration;
-    # otherwise this rollback genuinely failed.
-    rollback_active_profile=$(read_card_active_profile) || rollback_active_profile=
-    [[ $rollback_active_profile == "$active_profile" ]] || return 1
-  fi
-
-  expected_old_sinks=$(jq 'length' <<<"$old_sink_states") || return 1
-  expected_old_sources=$(jq 'length' <<<"$old_source_states") || return 1
-  rollback_deadline=$(( $(date +%s%3N) + 2500 ))
-  for (( rollback_attempt = 0; rollback_attempt < 40; rollback_attempt++ )); do
-    rollback_sink_payload=$(read_audio_endpoints_json sinks) || rollback_sink_payload='[]'
-    rollback_source_payload=$(read_audio_endpoints_json sources) || rollback_source_payload='[]'
-    rollback_sink_states=$(project_endpoint_states \
-      "$rollback_sink_payload" "$endpoint_filter") || rollback_sink_states='[]'
-    rollback_source_states=$(project_endpoint_states \
-      "$rollback_source_payload" "$source_filter") || rollback_source_states='[]'
-    rollback_active_profile=$(read_card_active_profile) || rollback_active_profile=
-    first_rollback_sink_states=$(merge_first_seen_endpoint_states \
-      "$first_rollback_sink_states" "$rollback_sink_states") || return 1
-    first_rollback_source_states=$(merge_first_seen_endpoint_states \
-      "$first_rollback_source_states" "$rollback_source_states") || return 1
-
-    mute_new_endpoints sink "$rollback_sink_states" muted_rollback_sinks || return 1
-    mute_new_endpoints source "$rollback_source_states" muted_rollback_sources || return 1
-
-    rollback_sink_count=$(jq 'length' <<<"$rollback_sink_states") || return 1
-    rollback_source_count=$(jq 'length' <<<"$rollback_source_states") || return 1
-    rollback_sinks_ready=false
-    rollback_sources_ready=false
-    endpoints_restored "$expected_old_sinks" "$rollback_sink_count" && rollback_sinks_ready=true
-    endpoints_restored "$expected_old_sources" "$rollback_source_count" && rollback_sources_ready=true
-    if [[ $rollback_active_profile == "$active_profile"
-        && $rollback_sinks_ready == true && $rollback_sources_ready == true ]]; then
-      rollback_signature=$(endpoint_signature \
-        "$rollback_sink_states" "$rollback_source_states") || return 1
-      if [[ $rollback_signature == "$last_rollback_signature" ]]; then
-        (( rollback_stable_ticks++ ))
-      else
-        last_rollback_signature=$rollback_signature
-        rollback_stable_ticks=1
-      fi
-      (( rollback_stable_ticks >= 2 )) && break
-    else
-      last_rollback_signature=
-      rollback_stable_ticks=0
-    fi
-    (( $(date +%s%3N) >= rollback_deadline )) && break
-    sleep 0.05
-  done
-
-  [[ $rollback_active_profile == "$active_profile"
-      && $rollback_sinks_ready == true && $rollback_sources_ready == true
-      && $rollback_stable_ticks -ge 2 ]] \
-    || return 1
-  restore_new_endpoint_states sink "$old_sink_states" \
-    "$first_rollback_sink_states" "$rollback_sink_states" || return 1
-  restore_new_endpoint_states source "$old_source_states" \
-    "$first_rollback_source_states" "$rollback_source_states" || return 1
+  revert_card_profile || return 1
+  wait_for_rollback_topology sink_states source_states first_sink_states first_source_states || return 1
+  restore_new_endpoint_states sink "$old_sink_states" "$first_sink_states" "$sink_states" || return 1
+  restore_new_endpoint_states source "$old_source_states" "$first_source_states" "$source_states" || return 1
 }
 
 cleanup_transition() {
@@ -434,7 +449,7 @@ trap cleanup_transition EXIT
 
 while IFS=$'\t' read -r sink_index sink_muted; do
   [[ $sink_muted == false ]] || continue
-  timeout --kill-after=1s 2 pactl set-sink-mute "$sink_index" true >/dev/null 2>&1 || {
+  hypr_daemon_call pactl set-sink-mute "$sink_index" true >/dev/null 2>&1 || {
     echo "Could not mute the current audio output" >&2
     exit 1
   }
@@ -442,7 +457,7 @@ done < <(jq -r '.[] | [.index, .mute] | @tsv' <<<"$old_sink_states")
 
 while IFS=$'\t' read -r source_index source_muted; do
   [[ $source_muted == false ]] || continue
-  timeout --kill-after=1s 2 pactl set-source-mute "$source_index" true >/dev/null 2>&1 || {
+  hypr_daemon_call pactl set-source-mute "$source_index" true >/dev/null 2>&1 || {
     echo "Could not mute the current audio input" >&2
     exit 1
   }
@@ -451,7 +466,7 @@ done < <(jq -r '.[] | [.index, .mute] | @tsv' <<<"$old_source_states")
 for (( input = 0; input < ${#old_sink_inputs[@]}; input++ )); do
   input_index=${old_sink_inputs[$input]}
   [[ ${old_sink_input_mutes[$input]} == false ]] || continue
-  timeout --kill-after=1s 2 pactl set-sink-input-mute "$input_index" true >/dev/null 2>&1 || {
+  hypr_daemon_call pactl set-sink-input-mute "$input_index" true >/dev/null 2>&1 || {
     echo "Could not mute the current audio streams" >&2
     exit 1
   }
@@ -462,7 +477,7 @@ done
 # including a signal between this command and the next shell statement, enters
 # the rollback path.
 profile_changed=true
-timeout --kill-after=1s 2 pactl set-card-profile "$card" "$profile" || exit 1
+hypr_daemon_call pactl set-card-profile "$card" "$profile" || exit 1
 
 new_sinks=()
 new_sources=()
@@ -476,14 +491,10 @@ ready_signature=
 last_ready_signature=
 stable_ready_ticks=0
 
-wait_deadline=$(( $(date +%s%3N) + 2500 ))
-for (( attempt = 0; attempt < 40; attempt++ )); do
-  new_sinks_payload=$(read_audio_endpoints_json sinks) || new_sinks_payload='[]'
-  new_sources_payload=$(read_audio_endpoints_json sources) || new_sources_payload='[]'
-  new_sink_states=$(project_endpoint_states "$new_sinks_payload" "$endpoint_filter") \
-    || new_sink_states='[]'
-  new_source_states=$(project_endpoint_states "$new_sources_payload" "$source_filter") \
-    || new_source_states='[]'
+wait_deadline=$(( $(date +%s%3N) + SETTLE_TIMEOUT_MS ))
+for (( attempt = 0; attempt < SETTLE_MAX_POLLS; attempt++ )); do
+  new_sink_states=$(current_endpoint_states sinks "$endpoint_filter")
+  new_source_states=$(current_endpoint_states sources "$source_filter")
   reported_profile=$(read_card_active_profile) || reported_profile=
   if ! first_new_sink_states=$(merge_first_seen_endpoint_states \
       "$first_new_sink_states" "$new_sink_states"); then
@@ -530,13 +541,13 @@ for (( attempt = 0; attempt < 40; attempt++ )); do
       last_ready_signature=$ready_signature
       stable_ready_ticks=1
     fi
-    (( stable_ready_ticks >= 2 )) && break
+    (( stable_ready_ticks >= SETTLE_STABLE_READS )) && break
   else
     last_ready_signature=
     stable_ready_ticks=0
   fi
   (( $(date +%s%3N) >= wait_deadline )) && break
-  sleep 0.05
+  sleep "$SETTLE_POLL_SECONDS"
 done
 
 if [[ -z $transition_error && $reported_profile != "$profile" ]]; then
@@ -553,7 +564,7 @@ elif [[ -z $transition_error && $expected_sources == 0
 elif [[ -z $transition_error ]] \
     && (( expected_sources > 0 && ${#new_sources[@]} < expected_sources )); then
   transition_error="The new audio input did not become available"
-elif [[ -z $transition_error && $stable_ready_ticks -lt 2 ]]; then
+elif [[ -z $transition_error && $stable_ready_ticks -lt SETTLE_STABLE_READS ]]; then
   transition_error="The new audio endpoints did not settle"
 fi
 

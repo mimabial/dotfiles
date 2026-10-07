@@ -5,7 +5,7 @@ set -euo pipefail
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state system || exit 1
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/theme/pairs.sh"
+source "${HYPR_LIB_DIR}/theme/pairs.sh"
 export_hypr_config
 
 hypr_help_guard "Usage: hyprshell theme/color-mode [-q] [n|p|--set <theme|pywal> [dark|light|auto]]
@@ -154,7 +154,7 @@ apply_color_policy() {
   if [[ -n "${target_polarity}" && "$(theme_polarity "${HYPR_THEME}")" != "${target_polarity}" ]]; then
     target_theme="$(theme_pair_for "${HYPR_THEME}" "${target_polarity}")" || true
     if [[ -n "${target_theme}" && "${target_theme}" != "${HYPR_THEME}" ]]; then
-      theme_switch_cmd=("${LIB_DIR}/hypr/theme/theme.switch.sh" -s "${target_theme}")
+      theme_switch_cmd=("${HYPR_LIB_DIR}/theme/theme.switch.sh" -s "${target_theme}")
       [[ "${color_mode_notify}" -eq 0 ]] && theme_switch_cmd+=(--quiet)
       "${theme_switch_cmd[@]}"
       return $?
@@ -214,7 +214,7 @@ persist_color_policy() {
 notify_color_mode_changed() {
   local -A mode_labels=(["${STATE_COLOR_MODE_AUTO}"]=Auto ["${STATE_COLOR_MODE_DARK}"]=Dark ["${STATE_COLOR_MODE_LIGHT}"]=Light)
   [[ "${color_mode_notify}" -eq 1 ]] || return 0
-  send_ephemeral_notif color-mode -a "Color mode" -t 2000 -i preferences-desktop-theme \
+  send_ephemeral_notif color-mode -a "Color mode" -t "${NOTIFY_BRIEF_MS}" -i preferences-desktop-theme \
     "Color mode" "${target_color_source^} · ${mode_labels[${target_color_mode}]}" || true
 }
 

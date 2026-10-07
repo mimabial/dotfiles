@@ -1,15 +1,6 @@
 #!/usr/bin/env python3
-"""
-Rename audio files after their own tags.
-
-Previews by default; pass --apply to actually rename. Title cleaning and format
-support are reused from autotag so the two agree on what a title is.
-
-Exit codes:
-  0 = every file renamed or already correct
-  1 = at least one file was skipped
-  2 = internal/runtime error
-"""
+"""Title cleaning and format support are reused from autotag so the two agree on
+what a title is."""
 
 from __future__ import annotations
 
@@ -98,7 +89,6 @@ def default_pattern_for(path: Path, tags) -> str:
 
 
 def credit_loss_for_rename(path: Path, values: dict) -> list[str]:
-    """Return credits present in the current filename but absent from its target."""
     file_artist, file_title = parse_filename(path)
     if not file_artist or not file_title:
         return []
@@ -126,7 +116,11 @@ def collect(paths: list[str], wanted: set[str]) -> list[Path]:
     return found
 
 
-def main() -> int:
+class Skip(Exception):
+    """A file left alone; the message is the line reported for it."""
+
+
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Rename audio files after their tags (previews unless --apply)"
     )
@@ -160,17 +154,51 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.ext:
-        wanted = {"." + e.strip().lstrip(".").lower() for e in args.ext.split(",") if e.strip()}
-        unknown = wanted - SUPPORTED
+        args.wanted = {"." + e.strip().lstrip(".").lower() for e in args.ext.split(",") if e.strip()}
+        unknown = args.wanted - SUPPORTED
         if unknown:
             parser.error(f"unsupported extension(s): {', '.join(sorted(unknown))}")
     else:
-        wanted = set(SUPPORTED)
+        args.wanted = set(SUPPORTED)
+    return args
 
-    paths = args.paths or [str(music_library_dir())]
-    files = collect(paths, wanted)
+
+def rename_target(path: Path, pattern_override: str, allow_credit_loss: bool) -> Path:
+    try:
+        tags = read_tags(path)
+        values = fields_for(tags)
+    except (MutagenError, OSError) as exc:
+        raise Skip(f"!! {path.name}: unreadable: {exc}") from exc
+
+    pattern = pattern_override or default_pattern_for(path, tags)
+    missing = [f for f in re.findall(r"{(\w+)}", pattern) if not values.get(f)]
+    if missing:
+        raise Skip(f"?? {path.name}: no {', '.join(missing)} tag")
+
+    lost_credits = credit_loss_for_rename(path, values)
+    if lost_credits and not allow_credit_loss:
+        raise Skip(f"!! {path.name}: would remove credit(s): {', '.join(lost_credits)}")
+
+    return path.with_name(render(pattern, values) + path.suffix.lower())
+
+
+def report_move(path: Path, target: Path, move_plan, applied: bool) -> None:
+    verb = "RENAMED" if applied else "would rename"
+    print(f"{verb}: {path.name}\n         -> {target.name}", flush=True)
+    if move_plan.has_lyrics:
+        lrc_verb = "RENAMED LRC" if applied else "would rename LRC"
+        print(
+            f"{lrc_verb}: {move_plan.lyrics_source.name}\n"
+            f"             -> {move_plan.lyrics_target.name}",
+            flush=True,
+        )
+
+
+def main() -> int:
+    args = parse_args()
+    files = collect(args.paths or [str(music_library_dir())], args.wanted)
     if not files:
-        print(f"no {'/'.join(sorted(wanted))} files found", file=sys.stderr)
+        print(f"no {'/'.join(sorted(args.wanted))} files found", file=sys.stderr)
         return 0
 
     renamed = unchanged = skipped = 0
@@ -178,69 +206,36 @@ def main() -> int:
 
     for path in files:
         try:
-            tags = read_tags(path)
-            values = fields_for(tags)
-        except (MutagenError, OSError) as exc:
-            print(f"!! {path.name}: unreadable: {exc}", file=sys.stderr)
-            skipped += 1
-            continue
+            target = rename_target(path, args.pattern, args.allow_credit_loss)
+            if target == path:
+                unchanged += 1
+                continue
+            if target in planned or (target.exists() and not target.samefile(path)):
+                raise Skip(f"!! {path.name}: target exists: {target.name}")
+            try:
+                move_plan = build_move_plan(path, target)
+            except MoveError as exc:
+                raise Skip(f"!! {path.name}: {exc}") from exc
 
-        pattern = args.pattern or default_pattern_for(path, tags)
-        missing = [f for f in re.findall(r"{(\w+)}", pattern) if not values.get(f)]
-        if missing:
-            print(f"?? {path.name}: no {', '.join(missing)} tag", file=sys.stderr)
-            skipped += 1
-            continue
-
-        lost_credits = credit_loss_for_rename(path, values)
-        if lost_credits and not args.allow_credit_loss:
-            detail = f"would remove credit(s): {', '.join(lost_credits)}"
-            print(f"!! {path.name}: {detail}", file=sys.stderr)
-            skipped += 1
-            continue
-
-        target = path.with_name(render(pattern, values) + path.suffix.lower())
-        if target == path:
-            unchanged += 1
-            continue
-        if target in planned or (target.exists() and not target.samefile(path)):
-            print(f"!! {path.name}: target exists: {target.name}", file=sys.stderr)
-            skipped += 1
-            continue
-
-        try:
-            move_plan = build_move_plan(path, target)
-        except MoveError as exc:
-            print(f"!! {path.name}: {exc}", file=sys.stderr)
+            planned.add(target)
+            if args.apply:
+                try:
+                    apply_move_plan(move_plan)
+                except (MoveError, OSError) as exc:
+                    raise Skip(f"!! {path.name}: rename failed: {exc}") from exc
+        except Skip as skip:
+            print(skip, file=sys.stderr)
             skipped += 1
             continue
 
         renamed += 1
-        planned.add(target)
-        if args.apply:
-            try:
-                apply_move_plan(move_plan)
-            except (MoveError, OSError) as exc:
-                print(f"!! {path.name}: rename failed: {exc}", file=sys.stderr)
-                skipped += 1
-                renamed -= 1
-                continue
-        verb = "RENAMED" if args.apply else "would rename"
-        print(f"{verb}: {path.name}\n         -> {target.name}", flush=True)
-        if move_plan.has_lyrics:
-            lrc_verb = "RENAMED LRC" if args.apply else "would rename LRC"
-            print(
-                f"{lrc_verb}: {move_plan.lyrics_source.name}\n"
-                f"             -> {move_plan.lyrics_target.name}",
-                flush=True,
-            )
+        report_move(path, target, move_plan, args.apply)
 
     print(f"\n{renamed} to rename, {unchanged} already correct, {skipped} skipped"
           f"{'' if args.apply else '  (preview only; pass --apply)'}")
     if args.apply and renamed and not args.no_update:
         update_mpd()
     return 1 if skipped else 0
-
 
 if __name__ == "__main__":
     try:

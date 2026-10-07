@@ -1,5 +1,4 @@
-// Ascii — exact cliamp vis_ascii.go: shade-block columns (█ ▓ ▒ ░) on the same
-// 1-wide/1-gap layout as ClassicPeak
+// Port of cliamp vis_ascii.go.
 .pragma library
 .import "helpers.js" as H
 

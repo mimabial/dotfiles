@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 __hypr_runtime_force="${HYPR_RUNTIME_FORCE_REINIT:-0}"
 __hypr_runtime_guard_pid="${HYPR_RUNTIME_GUARD_PID:-}"
@@ -21,7 +20,7 @@ LIB_DIR="${LIB_DIR:-$(cd -- "${__hypr_runtime_root}/.." && pwd)}"
 HYPR_LIB_DIR="${HYPR_LIB_DIR:-${__hypr_runtime_root}}"
 BIN_DIR="${BIN_DIR:-${HOME}/.local/bin}"
 
-_hypr_xdg_lib="${HYPR_LIB_DIR}/core/xdg.sh"
+_hypr_xdg_lib="${HYPR_LIB_DIR}/core/xdg.bash"
 [[ -r "${_hypr_xdg_lib}" ]] || {
   printf 'ERROR: missing runtime module %s\n' "${_hypr_xdg_lib}" >&2
   return 1 2>/dev/null || exit 1
@@ -54,9 +53,9 @@ declare -p wallpaper_paths >/dev/null 2>&1 || declare -ga wallpaper_paths=()
 declare -p wallpaper_source_paths >/dev/null 2>&1 || declare -ga wallpaper_source_paths=()
 
 for _hypr_runtime_core in \
-  "${HYPR_LIB_DIR}/core/notify.sh" \
-  "${HYPR_LIB_DIR}/core/common.sh" \
-  "${HYPR_LIB_DIR}/runtime/lock_paths.sh"; do
+  "${HYPR_LIB_DIR}/core/notify.bash" \
+  "${HYPR_LIB_DIR}/core/common.bash" \
+  "${HYPR_LIB_DIR}/runtime/lock_paths.bash"; do
   [[ -r "${_hypr_runtime_core}" ]] || {
     printf 'ERROR: missing runtime module %s\n' "${_hypr_runtime_core}" >&2
     return 1 2>/dev/null || exit 1
@@ -67,13 +66,13 @@ done
 unset _hypr_runtime_core
 
 declare -gA HYPR_RUNTIME_MODULE_PATHS
-HYPR_RUNTIME_MODULE_PATHS[notify]="${HYPR_LIB_DIR}/core/notify.sh"
-HYPR_RUNTIME_MODULE_PATHS[common]="${HYPR_LIB_DIR}/core/common.sh"
-HYPR_RUNTIME_MODULE_PATHS[state]="${HYPR_LIB_DIR}/core/state.sh"
-HYPR_RUNTIME_MODULE_PATHS[system]="${HYPR_LIB_DIR}/core/system.sh"
-HYPR_RUNTIME_MODULE_PATHS[rofi]="${HYPR_LIB_DIR}/core/rofi.sh"
-HYPR_RUNTIME_MODULE_PATHS[wallpaper_catalog]="${HYPR_LIB_DIR}/core/wallpaper.catalog.sh"
-HYPR_RUNTIME_MODULE_PATHS[lock_paths]="${HYPR_LIB_DIR}/runtime/lock_paths.sh"
+HYPR_RUNTIME_MODULE_PATHS[notify]="${HYPR_LIB_DIR}/core/notify.bash"
+HYPR_RUNTIME_MODULE_PATHS[common]="${HYPR_LIB_DIR}/core/common.bash"
+HYPR_RUNTIME_MODULE_PATHS[state]="${HYPR_LIB_DIR}/core/state.bash"
+HYPR_RUNTIME_MODULE_PATHS[system]="${HYPR_LIB_DIR}/core/system.bash"
+HYPR_RUNTIME_MODULE_PATHS[rofi]="${HYPR_LIB_DIR}/core/rofi.bash"
+HYPR_RUNTIME_MODULE_PATHS[wallpaper_catalog]="${HYPR_LIB_DIR}/core/wallpaper.catalog.bash"
+HYPR_RUNTIME_MODULE_PATHS[lock_paths]="${HYPR_LIB_DIR}/runtime/lock_paths.bash"
 
 declare -gA HYPR_RUNTIME_MODULES_LOADED
 HYPR_RUNTIME_MODULES_LOADED[notify]=1

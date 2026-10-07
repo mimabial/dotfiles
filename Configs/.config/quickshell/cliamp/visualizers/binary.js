@@ -1,4 +1,4 @@
-// Binary — two-timescale digit rain. A slow loudness envelope sets density and scroll
+// A slow loudness envelope sets density and scroll
 // rate, bands set per-column activity, beats nudge the stream forward a row. Glyphs are
 // written once when a row is created and never revisited, so the stream scrolls instead
 // of boiling in place.

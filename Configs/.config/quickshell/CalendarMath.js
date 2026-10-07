@@ -1,5 +1,7 @@
 .pragma library
 
+var MS_PER_DAY = 24 * 60 * 60 * 1000
+
 function isoDay(date) { return Qt.formatDate(date, "yyyy-MM-dd") }
 function fromIsoDay(value) { return new Date(String(value) + "T12:00:00") }
 function sameDay(left, right) {
@@ -16,12 +18,12 @@ function isoWeek(date) {
     day.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7) + 3)
     const firstThursday = new Date(Date.UTC(day.getUTCFullYear(), 0, 4))
     firstThursday.setUTCDate(firstThursday.getUTCDate() - ((firstThursday.getUTCDay() + 6) % 7) + 3)
-    return 1 + Math.round((day - firstThursday) / 604800000)
+    return 1 + Math.round((day - firstThursday) / (7 * MS_PER_DAY))
 }
 function relativeDayLabel(value, today) {
     const todayIso = isoDay(today)
     if (value === todayIso) return "Today"
-    const gap = Math.round((fromIsoDay(value) - fromIsoDay(todayIso)) / 86400000)
+    const gap = Math.round((fromIsoDay(value) - fromIsoDay(todayIso)) / MS_PER_DAY)
     return gap === 1 ? "Tomorrow" : gap === -1 ? "Yesterday" : ""
 }
 function isWeekend(value) {

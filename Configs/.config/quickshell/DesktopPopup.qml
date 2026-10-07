@@ -16,7 +16,7 @@ PopupCard {
         : PowerProfiles.profile === PowerProfile.PowerSaver ? "power saver"
         : PowerProfiles.profile === PowerProfile.Performance ? "performance" : ""
 
-    function rows(raw, labels) { return String(raw).trim().split("\n").filter(Boolean).map(line => { const p = line.split("\t"), name = p[0]; return {name:name, icon:p[1] || "", label:p[2] || labels(name), detail:p[3] || ""} }) }
+    function rows(raw, labels) { return String(raw).trim().split("\n").filter(Boolean).map(line => { const fields = line.split("\t"), name = fields[0]; return {name:name, icon:fields[1] || "", label:fields[2] || labels(name), detail:fields[3] || ""} }) }
     function title(name) { return name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, " ") }
     function refresh() { for (const process of [layoutRead, workflowRead]) if (!process.running) process.running = true }
     onOpenChanged: if (open) refresh()

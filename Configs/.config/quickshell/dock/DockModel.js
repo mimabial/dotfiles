@@ -52,7 +52,6 @@ function getCandidates(id) {
   if (!raw) return []
   var list = [raw]
 
-  // WebApp extraction (Chrome, Chromium, Brave, Edge, Helium, Opera, Vivaldi PWAs)
   var webAppMatch = raw.match(/^(?:chrome|chromium|brave|edge|microsoft-edge|helium|helium-browser|opera|vivaldi)-(.*?)__?-(?:default|profile.*)$/i)
                  || raw.match(/^(?:chrome|chromium|brave|edge|microsoft-edge|helium|helium-browser|opera|vivaldi)-(.*?)$/i)
   if (webAppMatch) {
@@ -65,7 +64,6 @@ function getCandidates(id) {
     }
   }
 
-  // Split by dots, underscores, dashes, slashes
   var parts = raw.split(/[\.\/_-]+/)
   for (var i = 0; i < parts.length; i++) {
     var p = parts[i]
@@ -158,7 +156,6 @@ function isPinned(pinnedIds, appId) {
   return arr.indexOf(stripDesktop(appId)) >= 0
 }
 
-// Reorder pinned apps: move appId from its current position to insertBeforeId.
 // If insertBeforeId is null/empty, move to the end. Dropping onto the dragged
 // item itself is a no-op (prevents the "teleport to end" self-drop bug).
 function reorderPinned(pinnedIds, appId, insertBeforeId) {

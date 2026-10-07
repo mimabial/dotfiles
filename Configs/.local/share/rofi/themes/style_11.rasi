@@ -1,12 +1,5 @@
-/**
- * ROFI Layout 
- *
- * Style 11: Diagonal background split with modes or a list.
- * Attribute: rofilaunch,launcher
- */
+/* Attribute: rofilaunch,launcher */
 
-
-// Config //
 configuration {
     modes:                       "drun,filebrowser,window,run";
     show-icons:                  true;
@@ -21,8 +14,6 @@ configuration {
 
 @theme "~/.config/rofi/colors.rasi"
 
-
-// Main //
 window {
     height:                      30em;
     transparency:                "real";
@@ -44,8 +35,6 @@ mainbox {
     background-color:            #0000000D;
 }
 
-
-// Inputs //
 inputbar {
     enabled:                     true;
     width:                       31.5em;
@@ -61,8 +50,6 @@ entry {
     enabled:                     false;
 }
 
-
-// Lists //
 listbox {
     spacing:                     0em;
     padding:                     0em;
@@ -92,8 +79,6 @@ dummy {
     background-color:            transparent;
 }
 
-
-// Elements //
 element {
     enabled:                     true;
     spacing:                     1em;
@@ -120,7 +105,6 @@ element-text {
     text-color:                  inherit;
 }
 
-// Error message //
 error-message {
     text-color:                  @foreground;
     background-color:            @background;

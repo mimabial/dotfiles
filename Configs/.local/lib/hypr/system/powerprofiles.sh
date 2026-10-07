@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 
 usage="Usage: hyprshell system/powerprofiles.sh [--set PROFILE|--cycle|--restore]
 List or change power profiles. AC and battery choices are remembered separately.

@@ -3,11 +3,12 @@ set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/capture/capture.select.bash"
+source "${HYPR_LIB_DIR}/capture/capture.select.bash"
 hypr_runtime_require system || exit 1
 
 [[ -f ~/.config/user-dirs.dirs ]] && source ~/.config/user-dirs.dirs
 
+SLURP_EXIT_CANCELLED=1
 OUTPUT_DIR="${HYPR_SCREENRECORD_DIR:-${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings}"
 SCREENRECORD_USER_ID="$(id -u)"
 SCREENRECORD_RUNTIME_DIR="${HYPR_RUNTIME_DIR:-}"
@@ -239,13 +240,16 @@ clear_recording_state_if_matches() {
   screenrecord_refresh_bar
 }
 
+RECORD_MAX_WIDTH=3840
+RECORD_MAX_HEIGHT=2160
+
 screenrecord_default_resolution() {
   local width height
   read -r width height < <(screenrecord_focused_monitor_value '"\(.width) \(.height)"')
   width="${width:-0}"
   height="${height:-0}"
-  if ((width > 3840 || height > 2160)); then
-    echo "3840x2160"
+  if ((width > RECORD_MAX_WIDTH || height > RECORD_MAX_HEIGHT)); then
+    echo "${RECORD_MAX_WIDTH}x${RECORD_MAX_HEIGHT}"
   else
     echo "0x0"
   fi
@@ -290,8 +294,7 @@ select_window_rectangle() {
       return 0
     fi
 
-    # exit code 1 = user cancelled (Escape/right-click)
-    [[ $exit_code -eq 1 ]] && return 1
+    [[ $exit_code -eq $SLURP_EXIT_CANCELLED ]] && return 1
   done
 }
 

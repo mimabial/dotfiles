@@ -1,8 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 
-// One archived notification. Given explicit properties rather than a modelData
-// of its own, so the popup owns the shape of an entry and this owns its look.
+// Given explicit properties rather than a modelData of its own, so the popup owns the shape of an entry and this owns its look.
 Rectangle {
     id: root
     required property var shell

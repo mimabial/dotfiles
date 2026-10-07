@@ -15,7 +15,6 @@ PopupCard {
 
     readonly property var vault: shell.bitwarden
     readonly property var settings: vault.settings
-    // "list" | "item" | "form" | "generator" | "send" | "settings" while unlocked
     property string view: "list"
     readonly property string page: vault.status === "unlocked" ? view : vault.status || "checking"
     property var current: null
@@ -23,6 +22,7 @@ PopupCard {
     property bool confirming: false
     property string query: ""
     property int typeFilter: 0
+    readonly property int minPinLength: 4
     property int selected: 0
     property var revealed: ({})
     property string totpCode: ""
@@ -94,7 +94,7 @@ PopupCard {
         switch (event.key) {
         case Qt.Key_Down: selected = Math.min(rows.length - 1, selected + 1); return true
         case Qt.Key_Up: selected = Math.max(0, selected - 1); return true
-        case Qt.Key_Tab: case Qt.Key_Backtab: typeFilter = (typeFilter + (event.key === Qt.Key_Tab ? 1 : 5)) % 6; return true
+        case Qt.Key_Tab: case Qt.Key_Backtab: const filters = Object.keys(Model.TYPES).length + 1; typeFilter = (typeFilter + (event.key === Qt.Key_Tab ? 1 : filters - 1)) % filters; return true
         case Qt.Key_Return: case Qt.Key_Enter:
             if (row) { if (event.modifiers & Qt.ShiftModifier) show(row); else activate(row) }
             return true
@@ -119,6 +119,7 @@ PopupCard {
     }
 
     Timer {
+        id: totpCountdown
         interval: 1000; repeat: true; triggeredOnStart: true
         running: root.open && root.page === "item" && Model.read(root.current, "login.totp") !== ""
         onTriggered: {
@@ -558,7 +559,7 @@ PopupCard {
                 visible: prefs.arming !== "" && prefs.arming !== root.settings.quickUnlock
                 placeholderText: "Master password to enable"
                 onAccepted: {
-                    if (prefs.arming === "pin" && armPin.text.length < 4) root.vault.error = "Use a PIN of at least four digits"
+                    if (prefs.arming === "pin" && armPin.text.length < root.minPinLength) root.vault.error = "Use a PIN of at least " + root.minPinLength + " digits"
                     else root.vault.unlock({ BW_PASSWORD: text, PIN: armPin.text }, false, prefs.arming)
                 }
             }

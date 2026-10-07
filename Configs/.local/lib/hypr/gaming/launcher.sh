@@ -4,12 +4,12 @@ set -euo pipefail
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require rofi || exit 1
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/rofi/rofi.lib.bash" || exit 1
+source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash" || exit 1
 
 backend="all"
 style="${ROFI_GAMELAUNCHER_STYLE:-steam_deck}"
 emit_json=0
-game_catalog_script="${LIB_DIR}/hypr/gaming/lib/game_catalog.py"
+game_catalog_script="${HYPR_LIB_DIR}/gaming/lib/game_catalog.py"
 
 steam_deck_theme_override() {
   local source_image="${HOME}/.local/share/rofi/assets/steamdeck_holographic.png"

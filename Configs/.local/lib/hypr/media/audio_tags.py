@@ -1,5 +1,3 @@
-"""Supported audio formats and tag readers."""
-
 from pathlib import Path
 
 from mutagen.easyid3 import EasyID3

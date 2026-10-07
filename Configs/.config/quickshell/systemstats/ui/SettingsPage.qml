@@ -6,7 +6,6 @@ import qs.Commons
 import qs.Ui
 import "../Model.js" as Model
 
-// In-panel configuration: bar readouts, page sections, and sampling controls.
 Column {
   id: root
 
@@ -33,7 +32,6 @@ Column {
     }
     return out
   }
-  // Enabled readouts first, in bar order, then the rest in canonical order.
   readonly property var orderedModules: {
     var out = []
     for (var i = 0; i < barModules.length; i++) if (availableModules.indexOf(barModules[i]) !== -1) out.push(barModules[i])
@@ -91,8 +89,6 @@ Column {
 
   width: parent ? parent.width : implicitWidth
   spacing: Style.space(10)
-
-  // ------------------------------------------------------------------ bar
   Card {
     foreground: root.foreground
     spacing: Style.space(6)
@@ -104,7 +100,7 @@ Column {
       width: parent.width
       text: "Readouts shown in the bar, in this order. Each can show a mini graph, a figure, or both."
       color: root.foreground
-      opacity: 0.55
+      opacity: Style.mutedTextAlpha
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       wrapMode: Text.WordWrap
@@ -191,7 +187,6 @@ Column {
           onChanged: function(value) { root.set(moduleRow.moduleId + "Style", value) }
         }
 
-        // Disks: which device the readout and the activity graph follow.
         ChoiceMenu {
           visible: moduleRow.moduleEnabled && moduleRow.moduleId === "disks"
           x: Style.space(12) + moduleSwitch.width + Style.space(12)
@@ -202,7 +197,6 @@ Column {
           onChanged: function(value) { root.set("disksSource", value) }
         }
 
-        // Sensors: every reading the bar readout should carry.
         Column {
           visible: moduleRow.moduleEnabled && moduleRow.moduleId === "sensors"
           x: Style.space(12) + moduleSwitch.width + Style.space(12)
@@ -224,8 +218,6 @@ Column {
       }
     }
   }
-
-  // ---------------------------------------------------------------- panel
   Card {
     foreground: root.foreground
     spacing: Style.space(6)
@@ -237,7 +229,7 @@ Column {
       width: parent.width
       text: "Tabs shown in the panel and the sections on each page."
       color: root.foreground
-      opacity: 0.55
+      opacity: Style.mutedTextAlpha
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       wrapMode: Text.WordWrap
@@ -303,8 +295,6 @@ Column {
       onToggled: root.set("showProcesses", !checked)
     }
   }
-
-  // -------------------------------------------------------------- general
   Card {
     foreground: root.foreground
     spacing: Style.space(6)
@@ -335,7 +325,7 @@ Column {
       label: "Refresh every"
       value: root.num("refreshSeconds")
       unit: "s"
-      stops: Model.REFRESH_STOPS
+      stops: Model.REFRESH_STOPS_SECONDS
       onChanged: function(value) { root.set("refreshSeconds", value) }
     }
 
@@ -362,7 +352,7 @@ Column {
       textFormat: Text.PlainText
       wrapMode: Text.WordWrap
       color: root.foreground
-      opacity: 0.55
+      opacity: Style.mutedTextAlpha
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
     }
@@ -393,8 +383,6 @@ Column {
     }
   }
 
-  // ---------------------------------------------------------- components
-
   component ChoiceMenu: Column {
     id: menu
 
@@ -418,7 +406,7 @@ Column {
     Text {
       text: menu.label
       color: root.foreground
-      opacity: 0.55
+      opacity: Style.mutedTextAlpha
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       font.bold: true
@@ -437,7 +425,6 @@ Column {
     }
   }
 
-  // Label on the left, switch on the right.
   component FlagRow: Item {
     id: flagRow
 
@@ -484,7 +471,6 @@ Column {
     }
   }
 
-  // Label on the left, a chip group on the right.
   component ChoiceRow: Item {
     id: choiceRow
 
@@ -507,7 +493,6 @@ Column {
       anchors.verticalCenter: parent.verticalCenter
       text: choiceRow.label
       color: root.foreground
-      opacity: 0.9
       font.family: root.fontFamily
       font.pixelSize: Style.font.body
       elide: Text.ElideRight
@@ -535,7 +520,6 @@ Column {
     }
   }
 
-  // Label on the left, "− value unit +" on the right.
   component StepperRow: Item {
     id: stepper
 
@@ -577,7 +561,6 @@ Column {
       anchors.verticalCenter: parent.verticalCenter
       text: stepper.label
       color: root.foreground
-      opacity: 0.9
       font.family: root.fontFamily
       font.pixelSize: Style.font.body
       elide: Text.ElideRight

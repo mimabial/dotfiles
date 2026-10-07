@@ -69,7 +69,6 @@ PopupCard {
                         modelData.transport].filter(part => part).join("  •  ")
                     value: modelData.state === "stopped" ? "Resume" : "Pause"
                     active: modelData.state === "stopped"
-                    // left toggles the queue, right makes it the default
                     onClicked: button => button === Qt.RightButton
                         ? root.act(["--default", modelData.name])
                         : root.act([modelData.state === "stopped" ? "--enable" : "--disable", modelData.name])

@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
-# Wallpaper-aware width override + post-clamp reduction for the bar/gaps/border.
-
 # The window tracks the wallpaper's aspect ratio, so a 16:9 wallpaper gives a
 # 16:9 window. Themes that show no wallpaper use a fixed 16:9 instead.
 ROFI_MILLION=1000000
 ROFI_WALLPAPER_FIXED_RATIO_MILLION=1777778
+ROFI_WALLPAPER_SPLIT_BELOW_RATIO_MILLION=1500000
 
 # Themes whose window sits against the bar and therefore has to give back the
 # bar, gap and border width once it has been clamped to the monitor.
@@ -21,8 +19,8 @@ rofi_wallpaper_theme_has_fixed_ratio() {
   [[ "$1" == "style_11" || "$1" == color_mode_* ]]
 }
 
-# Themes that move the list beside the preview once the wallpaper is portrait,
-# rather than letting a tall preview push the rows off the window.
+# Themes that move the list beside the preview once the wallpaper is narrower than
+# 3:2, rather than letting a tall preview push the rows off the window.
 rofi_wallpaper_theme_splits_listbox() {
   [[ "$1" == "style_1" ]]
 }
@@ -74,8 +72,6 @@ rofi_wallpaper_post_clamp_reduction_px() {
   ))"
 }
 
-# The focused monitor's width in logical (scaled) pixels, or nothing when it
-# cannot be read.
 rofi_wallpaper_monitor_width_logical() {
   local monitor_line="" mon_width="" mon_scale="" mon_scale_milli=0 logical_width_milli=0
 
@@ -95,7 +91,6 @@ rofi_wallpaper_monitor_width_logical() {
   rofi_milli_to_fixed2 "${logical_width_milli}"
 }
 
-# width/height as millionths, from the wallpaper thumbnail or the fixed ratio.
 rofi_wallpaper_ratio_million() {
   local theme_name="$1"
   local wall_image="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current/wall.thmb"
@@ -113,7 +108,6 @@ rofi_wallpaper_ratio_million() {
   printf '%s\n' "$((((img_w * ROFI_MILLION) + (img_h / 2)) / img_h))"
 }
 
-# The gap and corner radius on both sides, which the window may not grow into.
 rofi_wallpaper_clamp_inset_milli() {
   printf '%s\n' "$(((
     $(rofi_decimal_milli_or_zero "$(hypr_resolved_gaps_out)") +
@@ -121,16 +115,40 @@ rofi_wallpaper_clamp_inset_milli() {
   ) * 2))"
 }
 
+# Rounds half away from zero; the shell truncates toward it.
+rofi_wallpaper_width_for_height_milli() {
+  local product=$(($2 * $3))
+  if ((product >= 0)); then
+    printf -v "$1" '%s' "$(((product + ROFI_MILLION / 2) / ROFI_MILLION))"
+  else
+    printf -v "$1" '%s' "$(((product - ROFI_MILLION / 2) / ROFI_MILLION))"
+  fi
+}
+
+# Only a window that hits the monitor edge is competing with the bar, so only then
+# does it give the bar back.
+rofi_wallpaper_clamp_width_milli() {
+  local -n clamp_width_ref="$1"
+  local theme_name="$2" monitor_width_logical="" max_width_milli=0 reduction_milli=0
+
+  monitor_width_logical="$(rofi_wallpaper_monitor_width_logical)" || return 1
+  [[ -n "${monitor_width_logical}" ]] || return 0
+  max_width_milli=$(($(rofi_decimal_milli_or_zero "${monitor_width_logical}") - $(rofi_wallpaper_clamp_inset_milli)))
+  ((max_width_milli > 0 && clamp_width_ref > max_width_milli)) || return 0
+
+  reduction_milli="$(rofi_decimal_milli_or_zero "$(rofi_wallpaper_post_clamp_reduction_px "${theme_name}")")"
+  ((reduction_milli > 0)) || reduction_milli=0
+  clamp_width_ref=$((max_width_milli - reduction_milli))
+  ((clamp_width_ref >= 0)) || clamp_width_ref=0
+}
+
 rofi_wallpaper_width_override() {
   local theme_file="$1"
   local font_name="$2"
   local font_scale="$3"
   local theme_name="" theme_height_px="" theme_height_unit="" font_px=""
-  local monitor_width_logical="" ratio_million="" listbox_override=""
-  local theme_height_milli=0 width_milli=0 font_px_milli=0 width_value_milli=0
-  local monitor_width_milli=0 clamp_inset_milli=0 max_width_milli=0
-  local post_clamp_reduction_milli=0
-  local did_clamp=0
+  local ratio_million="" theme_height_milli="" font_px_milli="" width_em_milli="" listbox_override=""
+  local width_milli=0
 
   [[ -n "${theme_file}" ]] || return 0
   theme_name="$(basename "${theme_file}")"
@@ -143,41 +161,11 @@ rofi_wallpaper_width_override() {
 
   ratio_million="$(rofi_wallpaper_ratio_million "${theme_name}")" || return 0
   theme_height_milli="$(rofi_decimal_milli "${theme_height_px}" 2>/dev/null || true)"
-  [[ "${theme_height_milli}" =~ ^-?[0-9]+$ ]] || return 0
-  [[ "${ratio_million}" =~ ^-?[0-9]+$ ]] || return 0
+  [[ "${theme_height_milli}" =~ ^-?[0-9]+$ && "${ratio_million}" =~ ^-?[0-9]+$ ]] || return 0
 
-  # Round half away from zero; the shell truncates toward it.
-  if ((theme_height_milli * ratio_million >= 0)); then
-    width_milli=$((((theme_height_milli * ratio_million) + ROFI_MILLION / 2) / ROFI_MILLION))
-  else
-    width_milli=$((((theme_height_milli * ratio_million) - ROFI_MILLION / 2) / ROFI_MILLION))
-  fi
-
-  monitor_width_logical="$(rofi_wallpaper_monitor_width_logical)" || return 1
-  clamp_inset_milli="$(rofi_wallpaper_clamp_inset_milli)"
-  if [[ -n "${monitor_width_logical}" ]]; then
-    monitor_width_milli="$(rofi_decimal_milli_or_zero "${monitor_width_logical}")"
-    if ((monitor_width_milli > clamp_inset_milli)); then
-      max_width_milli=$((monitor_width_milli - clamp_inset_milli))
-      if ((width_milli > max_width_milli)); then
-        did_clamp=1
-        width_milli="${max_width_milli}"
-      fi
-    fi
-  fi
-
-  # Only a window that actually hit the monitor edge is competing with the bar.
-  if ((did_clamp)); then
-    post_clamp_reduction_milli="$(rofi_decimal_milli_or_zero \
-      "$(rofi_wallpaper_post_clamp_reduction_px "${theme_name}")")"
-    if ((post_clamp_reduction_milli > 0)); then
-      width_milli=$((width_milli - post_clamp_reduction_milli))
-      ((width_milli < 0)) && width_milli=0
-    fi
-  fi
-
-  if rofi_wallpaper_theme_splits_listbox "${theme_name}" &&
-    ((ratio_million < 1500000)); then
+  rofi_wallpaper_width_for_height_milli width_milli "${theme_height_milli}" "${ratio_million}"
+  rofi_wallpaper_clamp_width_milli width_milli "${theme_name}" || return 1
+  if rofi_wallpaper_theme_splits_listbox "${theme_name}" && ((ratio_million < ROFI_WALLPAPER_SPLIT_BELOW_RATIO_MILLION)); then
     listbox_override=' listbox { width: 50%; } mainbox { children: [ "listbox", "inputbox" ]; }'
   fi
 
@@ -188,7 +176,7 @@ rofi_wallpaper_width_override() {
 
   font_px_milli="$(rofi_decimal_milli "${font_px}" 2>/dev/null || true)"
   [[ "${font_px_milli}" =~ ^-?[0-9]+$ ]] || return 0
-  width_value_milli="$(rofi_divide_milli "${width_milli}" "${font_px_milli}" 2>/dev/null || true)"
-  [[ "${width_value_milli}" =~ ^-?[0-9]+$ ]] || return 0
-  printf 'window { width: %sem; }%s\n' "$(rofi_milli_to_fixed2 "${width_value_milli}")" "${listbox_override}"
+  width_em_milli="$(rofi_divide_milli "${width_milli}" "${font_px_milli}" 2>/dev/null || true)"
+  [[ "${width_em_milli}" =~ ^-?[0-9]+$ ]] || return 0
+  printf 'window { width: %sem; }%s\n' "$(rofi_milli_to_fixed2 "${width_em_milli}")" "${listbox_override}"
 }

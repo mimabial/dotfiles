@@ -6,9 +6,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import atomic_write, cache_hit, cache_store
+from _common import atomic_write, cache_hit, cache_store, short_digest
 from _roles import QtRoles, hex_to_rgb, palette_to_pywal, shade
+
 from _shell import shell_files
+
+ALTERNATE_SURFACE_SHADE = 0.06
 
 PALETTE = Path(
     sys.argv[1]
@@ -40,7 +43,7 @@ def renderer_hash(shell_kvconfig, shell_colors_map):
     ):
         if path and path.is_file():
             hasher.update(path.read_bytes())
-    return hasher.hexdigest()[:16]
+    return short_digest(hasher)
 
 
 def resolve_roles(palette, shell_kvconfig, shell_colors_map):
@@ -51,9 +54,18 @@ def resolve_roles(palette, shell_kvconfig, shell_colors_map):
     )
 
 
+def color_set(background, alternate, foreground, shared):
+    return {
+        "BackgroundNormal": rgb(background),
+        "BackgroundAlternate": rgb(alternate),
+        "ForegroundNormal": rgb(foreground),
+        **shared,
+    }
+
+
 def kde_sections(roles):
     direction = 1 if roles.is_dark else -1
-    alternate_surface = roles.alternate_surface or shade(roles.bg, 0.06 * direction)
+    alternate_surface = roles.alternate_surface or shade(roles.bg, ALTERNATE_SURFACE_SHADE * direction)
     shared = {
         "ForegroundActive": rgb(roles.accent),
         "ForegroundInactive": rgb(roles.disabled_text),
@@ -65,58 +77,15 @@ def kde_sections(roles):
         "DecorationFocus": rgb(roles.accent),
         "DecorationHover": rgb(roles.hover),
     }
-    selection = {
-        "BackgroundNormal": rgb(roles.accent),
-        "BackgroundAlternate": rgb(roles.accent),
-        "ForegroundNormal": rgb(roles.highlight_text),
-        "ForegroundActive": rgb(roles.highlight_text),
-        "ForegroundInactive": rgb(roles.highlight_text),
-        "ForegroundLink": rgb(roles.highlight_text),
-        "ForegroundVisited": rgb(roles.highlight_text),
-        "ForegroundNegative": rgb(roles.highlight_text),
-        "ForegroundNeutral": rgb(roles.highlight_text),
-        "ForegroundPositive": rgb(roles.highlight_text),
-        "DecorationFocus": rgb(roles.accent),
-        "DecorationHover": rgb(roles.hover),
-    }
+    on_selection = {key: rgb(roles.highlight_text) for key in shared if key.startswith("Foreground")}
     return {
-        "Colors:Window": {
-            "BackgroundNormal": rgb(roles.window_surface),
-            "BackgroundAlternate": rgb(alternate_surface),
-            "ForegroundNormal": rgb(roles.window_text),
-            **shared,
-        },
-        "Colors:View": {
-            "BackgroundNormal": rgb(roles.base_surface),
-            "BackgroundAlternate": rgb(alternate_surface),
-            "ForegroundNormal": rgb(roles.text),
-            **shared,
-        },
-        "Colors:Button": {
-            "BackgroundNormal": rgb(roles.button_surface),
-            "BackgroundAlternate": rgb(alternate_surface),
-            "ForegroundNormal": rgb(roles.button_text),
-            **shared,
-        },
-        "Colors:Selection": selection,
-        "Colors:Tooltip": {
-            "BackgroundNormal": rgb(roles.tooltip_surface),
-            "BackgroundAlternate": rgb(roles.tooltip_surface),
-            "ForegroundNormal": rgb(roles.tooltip_text),
-            **shared,
-        },
-        "Colors:Header": {
-            "BackgroundNormal": rgb(roles.window_surface),
-            "BackgroundAlternate": rgb(alternate_surface),
-            "ForegroundNormal": rgb(roles.button_text),
-            **shared,
-        },
-        "Colors:Complementary": {
-            "BackgroundNormal": rgb(roles.window_surface),
-            "BackgroundAlternate": rgb(alternate_surface),
-            "ForegroundNormal": rgb(roles.window_text),
-            **shared,
-        },
+        "Colors:Window": color_set(roles.window_surface, alternate_surface, roles.window_text, shared),
+        "Colors:View": color_set(roles.base_surface, alternate_surface, roles.text, shared),
+        "Colors:Button": color_set(roles.button_surface, alternate_surface, roles.button_text, shared),
+        "Colors:Selection": color_set(roles.accent, roles.accent, roles.highlight_text, {**shared, **on_selection}),
+        "Colors:Tooltip": color_set(roles.tooltip_surface, roles.tooltip_surface, roles.tooltip_text, shared),
+        "Colors:Header": color_set(roles.window_surface, alternate_surface, roles.button_text, shared),
+        "Colors:Complementary": color_set(roles.window_surface, alternate_surface, roles.window_text, shared),
         "WM": {
             "activeBackground": rgb(roles.accent),
             "activeBlend": rgb(roles.accent),

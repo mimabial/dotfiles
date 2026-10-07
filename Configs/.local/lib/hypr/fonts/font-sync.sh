@@ -2,9 +2,8 @@
 
 set -euo pipefail
 
-LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 
 menu_from=""
 menu_to=""
@@ -32,8 +31,6 @@ EOF
       ;;
   esac
 done
-
-# Rofi: rewrite OLD -> NEW inside quoted font strings
 
 if command -v python3 >/dev/null 2>&1; then
   if [[ -n "${menu_from}" && -n "${menu_to}" && "${menu_from}" != "${menu_to}" ]]; then

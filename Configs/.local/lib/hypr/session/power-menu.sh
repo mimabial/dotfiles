@@ -2,7 +2,9 @@
 
 set -euo pipefail
 
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
+
+SCREEN_OFF_DELAY_S=0.4
 
 can_sleep() {
   dbus-send --system --print-reply --dest=org.freedesktop.login1 /org/freedesktop/login1 \
@@ -18,7 +20,7 @@ case "${1:-}" in
       "${suspend}" "${hibernate}" "${uptime%%.*}" "${USER:-$(id -un)}" "$(hostname)"
     ;;
   screen-off)
-    sleep 0.4
+    sleep "${SCREEN_OFF_DELAY_S}"
     hypr_lua_dispatch 'hl.dsp.dpms({ action = "disable" })' >/dev/null 2>&1 || true
     ;;
   hibernate)

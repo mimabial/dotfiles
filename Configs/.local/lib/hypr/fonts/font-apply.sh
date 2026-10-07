@@ -2,10 +2,9 @@
 
 set -euo pipefail
 
-LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell fonts/font-apply [font-name]
 Apply the configured (or given) fonts across terminals, Quickshell, Rofi, and GTK." "$@"
@@ -14,9 +13,9 @@ hypr_runtime_require state system || exit 1
 hypr_runtime_load_state || exit 1
 
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/theme/color.targets.sh"
+source "${HYPR_LIB_DIR}/theme/color.targets.bash"
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/fonts/font.sync.lib.bash"
+source "${HYPR_LIB_DIR}/fonts/font.sync.lib.bash"
 
 FONT_NAME="${1:-}"
 UPDATED_CONFIGS=()
@@ -100,12 +99,12 @@ sync_ui_fonts() {
 }
 
 sync_hyprlock_font() {
-  "${LIB_DIR}/hypr/render/hyprlock.sh" >/dev/null 2>&1 || return 0
+  "${HYPR_LIB_DIR}/render/hyprlock.sh" >/dev/null 2>&1 || return 0
   append_updated 'Hyprlock font'
 }
 
 sync_desktop_ui_fonts() {
-  local desktop_sync_script="${LIB_DIR}/hypr/theme/desktop.sync.sh"
+  local desktop_sync_script="${HYPR_LIB_DIR}/theme/desktop.sync.sh"
 
   if [[ -x "${desktop_sync_script}" ]]; then
     THEME_DESKTOP_SYNC_LOG_DCONF=0 "${desktop_sync_script}" --full --quiet >/dev/null 2>&1 || true
@@ -138,7 +137,7 @@ show_summary() {
 notify_user() {
   command -v dunstify >/dev/null 2>&1 || return 0
   dunstify -a 'Font Manager' -i 'preferences-desktop-font' \
-    'Font Changed' "UI: ${GENERAL_FONT}\nMono: ${MONOSPACE_FONT}" -t 3000
+    'Font Changed' "UI: ${GENERAL_FONT}\nMono: ${MONOSPACE_FONT}" -t "${NOTIFY_MS}"
 }
 
 resolve_font_targets

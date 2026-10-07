@@ -1,5 +1,3 @@
-"""Which screen edge the active Quickshell bar occupies."""
-
 import json
 import os
 from pathlib import Path
@@ -14,7 +12,6 @@ BAR_PREFS = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
 
 
 def bar_position(layout=None):
-    """Return the top or bottom edge occupied by the bar, or by the named layout."""
     if layout is None:
         try:
             layout = load_shell_assignments(STATE_FILE).get("QUICKSHELL_LAYOUT_NAME", "")

@@ -1,4 +1,3 @@
-"""Profile store: capture live monitor state, persist it, and score profiles against it."""
 from __future__ import annotations
 
 import json
@@ -23,6 +22,10 @@ WEIGHTS = {
     "not_connected": -50,
     "connected_unknown": -50,
 }
+
+
+DEFAULT_MAX_WORKSPACES = 9
+DEFAULT_GROUP_SIZE = 3
 
 
 def _now() -> str:
@@ -81,8 +84,8 @@ def capture(name: str, monitors: list[dict] | None = None) -> dict:
         "workspaces": {
             "enabled": False,
             "strategy": "sequential",
-            "max_workspaces": 9,
-            "group_size": 3,
+            "max_workspaces": DEFAULT_MAX_WORKSPACES,
+            "group_size": DEFAULT_GROUP_SIZE,
             "monitor_order": [o["key"] for o in outputs],
         },
         "exec": "",
@@ -147,7 +150,6 @@ def delete(name: str) -> bool:
 
 
 def score(profile: dict, monitors: list[dict]) -> dict:
-    """Rank a profile against the connected set, and explain the ranking."""
     connected = {hypr.monitor_key(m) for m in monitors}
     outputs = profile.get("outputs", [])
     seen, tally = set(), {}

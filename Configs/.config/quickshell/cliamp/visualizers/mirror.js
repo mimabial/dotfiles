@@ -1,5 +1,4 @@
-// Mirror — exact cliamp vis_mirror.go: one bar per slot mirrored about a persistent
-// axis, rasterised through the 4x2 braille dot grid the terminal uses
+// Port of cliamp vis_mirror.go.
 .pragma library
 .import "helpers.js" as H
 

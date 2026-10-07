@@ -78,16 +78,14 @@ Singleton {
     function deviceByPath(path) { return devices.find(device => device.path === String(path)) || null }
     function healthKey(device) { return device.path + "|" + device.serial }
     function volumeByPath(path) {
-        for (let d = 0; d < devices.length; ++d)
-            for (let v = 0; v < devices[d].volumes.length; ++v)
-                if (devices[d].volumes[v].fsPath === String(path) || devices[d].volumes[v].path === String(path)) return devices[d].volumes[v]
+        for (const device of devices)
+            for (const volume of device.volumes)
+                if (volume.fsPath === String(path) || volume.path === String(path)) return volume
         return null
     }
     function deviceOfVolume(volume) {
         if (!volume) return null
-        for (let d = 0; d < devices.length; ++d)
-            if (devices[d].path === volume.fsPath || devices[d].volumes.some(candidate => candidate.fsPath === volume.fsPath)) return devices[d]
-        return null
+        return devices.find(device => device.path === volume.fsPath || device.volumes.some(candidate => candidate.fsPath === volume.fsPath)) || null
     }
     function filesystemTarget(path) {
         const volume = volumeByPath(path)
@@ -356,11 +354,9 @@ Singleton {
     function runEject(targets) {
         if (!targets || !targets.length || busy) return
         let script = "set -e\n", titles = [], expected = Object.assign({}, _expectedRemovals)
-        for (let d = 0; d < targets.length; ++d) {
-            const device = targets[d]
+        for (const device of targets) {
             titles.push(device.title); expected[device.path] = true
-            for (let v = 0; v < device.volumes.length; ++v) {
-                const volume = device.volumes[v]
+            for (const volume of device.volumes) {
                 if (volume.mounted && store.cleanTrashOnEject === true)
                     script += Model.shellQuote(helper) + " trash " + Model.shellQuote(volume.fsPath) + " " + Model.shellQuote(identityOf(volume)) + " || true\n"
                 if (volume.mounted) script += "udisksctl unmount --no-user-interaction -b " + Model.shellQuote(volume.fsPath) + "\n"
@@ -376,9 +372,9 @@ Singleton {
         const result = [], device = deviceByPath(path), volume = volumeByPath(path)
         const targets = path === "*" ? devices : device ? [device] : []
         if (volume && volume.mounted) { blockedFsPath = volume.fsPath; return [volume.mountpoint] }
-        for (let d = 0; d < targets.length; ++d)
-            for (let v = 0; v < targets[d].volumes.length; ++v)
-                if (targets[d].volumes[v].mounted) { if (!blockedFsPath) blockedFsPath = targets[d].volumes[v].fsPath; result.push(targets[d].volumes[v].mountpoint) }
+        for (const device of targets)
+            for (const candidate of device.volumes)
+                if (candidate.mounted) { if (!blockedFsPath) blockedFsPath = candidate.fsPath; result.push(candidate.mountpoint) }
         return result
     }
 
@@ -500,9 +496,6 @@ Singleton {
                 if (action === "eject") root.notify("Safe to remove", root._successMessage.replace(/^Safe to remove /, ""))
                 if (action === "format") root.notify("Formatted", root._successMessage)
                 if (action === "ntfsfix") Qt.callLater(() => root.mount(root.volumeByPath(path), false))
-            } else if (code === 75) {
-                root.actionStatus = root._successMessage || "Filesystem action completed"
-                root.lastError = "Volume could not be remounted"
             } else {
                 root._openAfterPath = ""
                 root.lastError = Model.formatError(root._stderr) || action + " failed"

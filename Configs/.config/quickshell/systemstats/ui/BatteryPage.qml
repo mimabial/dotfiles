@@ -62,8 +62,8 @@ Column {
   function ringColor() {
     if (!hasPercent) return s1
     if (charging || full) return good
-    if (percent <= 10) return danger
-    if (percent <= 20) return warn
+    if (percent <= Model.BATTERY_CRITICAL_PERCENT) return danger
+    if (percent <= Model.BATTERY_LOW_PERCENT) return warn
     return s1
   }
 
@@ -232,7 +232,7 @@ Column {
         foreground: root.foreground
         fontFamily: root.fontFamily
         ringValue: Model.num(modelData.percent) / 100
-        ringColor: Model.num(modelData.percent) <= 20 ? root.warn : root.s1
+        ringColor: Model.num(modelData.percent) <= Model.BATTERY_LOW_PERCENT ? root.warn : root.s1
       }
     }
   }

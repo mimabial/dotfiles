@@ -1,49 +1,10 @@
-/*
- * Grayscale
- */
+// Any #ifndef default below can be predefined in grayscale.inc, which window/shaders.sh compiles in first.
 
-
-/* 
-To override this parameters create a file named './grayscale.inc'
-We only need to match the file name and use 'inc' to incdicate that
- this is an "include" file
- Example: 
-
-  ┌────────────────────────────────────────────────────────────────────────────┐
-  │ // file: ./grayscale.inc                                                   │
-  │ // integer: 0:PAL, 1:HDTV, 2:HDR                                           │
-  │ #define GRAYSCALE_LUMINOSITY_PAL 0                                         │
-  │ // integer: 0:HDTV, 1:HDR, 2:HDR                                           │
-  │ #define GRAYSCALE_LUMINOSITY_HDR 2                                         │
-  │ // integer: 0:HDTV, 1:HDR, 2:HDR                                           │
-  │ #define GRAYSCALE_LUMINOSITY_HDT 1                                         │
-  │ // integer: 0:No effect, 1:Lightness, 2:Average                            │
-  │ #define GRAYSCALE_LIGHTNESS 1                                              │
-  │ // integer: 0:No effect, 1:Lightness, 2:Average                            │
-  │ #define GRAYSCALE_AVERAGE 2                                                │
-  │                                                                            │
-  └────────────────────────────────────────────────────────────────────────────┘
- */
-
-
-
-#ifndef GRAYSCALE_LUMINOSITY_PAL
-    #define GRAYSCALE_LUMINOSITY_PAL 0 // Default fallback value
+#ifndef GRAYSCALE_TYPE
+    #define GRAYSCALE_TYPE 0
 #endif
-#ifndef GRAYSCALE_LUMINOSITY_HDR
-    #define GRAYSCALE_LUMINOSITY_HDR 2 // Default fallback value
-#endif
-#ifndef GRAYSCALE_LUMINOSITY_HDT
-    #define GRAYSCALE_LUMINOSITY_HDT 1 // Default fallback value
-#endif
-#ifndef GRAYSCALE_LIGHTNESS
-    #define GRAYSCALE_LIGHTNESS 1 // Default fallback value
-#endif
-#ifndef GRAYSCALE_AVERAGE       
-    #define GRAYSCALE_AVERAGE 2 // Default fallback value
-#endif
-#ifndef GRAYSCALE_LUMINOSITY
-    #define GRAYSCALE_LUMINOSITY 0 // Default fallback value
+#ifndef GRAYSCALE_LUMA
+    #define GRAYSCALE_LUMA 1
 #endif
 
 #version 300 es
@@ -52,26 +13,16 @@ in vec2 v_texcoord;
 out vec4 fragColor;
 uniform sampler2D tex;
 
-// Enum for type of grayscale conversion
-const int LUMINOSITY =  GRAYSCALE_LUMINOSITY; // Default to LUMINOSITY
-const int LIGHTNESS = GRAYSCALE_LIGHTNESS; // Default to LIGHTNESS
-const int AVERAGE = GRAYSCALE_AVERAGE; // Default to AVERAGE
+const int LUMINOSITY = 0;
+const int LIGHTNESS = 1;
+const int AVERAGE = 2;
 
-/**
- * Type of grayscale conversion.
- */
-const int Type = LUMINOSITY; // Default to LUMINOSITY
+const int PAL = 0;
+const int HDTV = 1;
+const int HDR = 2;
 
-// Enum for selecting luma coefficients
-const int PAL = GRAYSCALE_LUMINOSITY_PAL; // Default to PAL standard
-const int HDTV = GRAYSCALE_LUMINOSITY_HDT; // Default to HDTV standard
-const int HDR = GRAYSCALE_LUMINOSITY_HDR; // Default to HDR standard
-
-/**
- * Formula used to calculate relative luminance.
- * (Only applies to type = "luminosity".)
- */
-const int LuminosityType = HDTV; // Default to HDTV standard
+const int Type = GRAYSCALE_TYPE;
+const int LuminosityType = GRAYSCALE_LUMA;
 
 void main() {
     vec4 pixColor = texture(tex, v_texcoord);

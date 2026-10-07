@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# Resolve which shell a theme pack uses.
 # Underscore-prefixed, so hypr-theme's renderer scan skips it.
 
 import os
@@ -47,7 +46,6 @@ def shell_dir(palette=None):
 
 
 def shell_files(palette=None):
-    """(kvconfig, map), each None when absent."""
     base = shell_dir(palette)
     paths = (base / "shell.kvconfig", base / "shell.map")
     return tuple(path if path.is_file() else None for path in paths)

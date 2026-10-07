@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Interactive terminal view of the cached AI-agent usage records."""
-
 import argparse
 import ctypes
 import curses
@@ -78,6 +76,7 @@ PAIR_ACCENT = 1
 PAIR_DIM = 2
 PAIR_ERROR = 3
 PAIR_BAR = 4
+BRIGHT_BLACK = 8
 
 VALUE_WIDTH = 5
 RESET_WIDTH = 10
@@ -87,11 +86,23 @@ USAGE_BAR_SEGMENTS = {"hourly": 5, "weekly": 7}
 USAGE_WINDOWS = ("hourly", "weekly")
 TAB_ROW = 2
 HEAD_ROW = TAB_ROW + 2
+FIRST_SECTION_ROW = HEAD_ROW + 2
+FOOTER_ROWS = 3
 MIN_ROWS = 24
 MIN_COLS = 72
 MIN_LABEL_WIDTH = 16
 MAX_LABEL_WIDTH = 24
-SECTION_GAP_MAX = 1
+SECTION_COUNT = 3
+SECTION_GAP_MIN = 1
+SECTION_GAP_MAX = 2
+MODEL_ROWS = 5
+MIN_BAR_WIDTH = 8
+APP_TITLE = "Agent Hub"
+HEADER_GAP = 4
+ALERT_FRACTION = 0.9
+REFRESH_NOTE_SECONDS = 60
+HOURS_PER_DAY = 24
+MINUTES_PER_DAY = HOURS_PER_DAY * 60
 CACHE_MAX_AGE_SECONDS = 900
 IN_CLOSE_WRITE = 0x00000008
 IN_MOVED_FROM = 0x00000040
@@ -104,7 +115,7 @@ def init_colors():
     curses.start_color()
     curses.use_default_colors()
     accent = curses.COLOR_BLUE
-    dim_color_index = 8 if curses.COLORS >= 16 else curses.COLOR_WHITE
+    dim_color_index = BRIGHT_BLACK if curses.COLORS > BRIGHT_BLACK else curses.COLOR_WHITE
     curses.init_pair(PAIR_ACCENT, accent, -1)
     curses.init_pair(PAIR_DIM, dim_color_index, -1)
     curses.init_pair(PAIR_ERROR, curses.COLOR_RED, -1)
@@ -131,7 +142,7 @@ def window_kind(limit):
     if (
         "hour" in label
         or "session" in label
-        or any(f"{n}h" in compact_label for n in range(1, 25))
+        or any(f"{n}h" in compact_label for n in range(1, HOURS_PER_DAY + 1))
     ):
         return "hourly"
     return ""
@@ -166,7 +177,7 @@ def parse_time(value):
 
 
 def limit_percent(limit):
-    """Return the last reading, retaining stale values until a collector updates them."""
+    """Stale readings stay until a collector updates them."""
     try:
         return float(limit.get("percent", -1))
     except (TypeError, ValueError):
@@ -219,10 +230,12 @@ def resets_in(value):
     if not target:
         return ""
     minutes = max(0, round((target - datetime.now().astimezone()).total_seconds() / 60))
-    if minutes >= 1440:
-        return f"{minutes // 1440}d {(minutes % 1440) // 60}h"
-    if minutes >= 60:
-        return f"{minutes // 60}h {minutes % 60}m"
+    days, minutes = divmod(minutes, MINUTES_PER_DAY)
+    hours, minutes = divmod(minutes, 60)
+    if days:
+        return f"{days}d {hours}h"
+    if hours:
+        return f"{hours}h {minutes}m"
     return f"{minutes}m"
 
 
@@ -254,16 +267,14 @@ def content_height(record, title_gap=1):
     sections = (
         len(record.get("limits") or []) or bool(go_limit_status(record)),
         len(record.get("recentDays") or []),
-        len(model_totals(record)[:5]),
+        len(model_totals(record)[:MODEL_ROWS]),
     )
-    # Header, section titles/rows/gaps, footer rule, and hint.
-    total = HEAD_ROW + 3
-    for index, count in enumerate(sections):
-        total += 1 if index else 0
-        total += 1
+    total = FIRST_SECTION_ROW
+    for count in sections:
+        total += SECTION_GAP_MIN + 1
         if count:
             total += title_gap + count
-    return total + 3  # footer rule and hint
+    return total + FOOTER_ROWS
 
 
 def footer_hint(agent_paths):
@@ -420,7 +431,7 @@ class Dashboard:
             )
             self.refresh_pidfd = os.pidfd_open(process.pid)
             self.refresh_process = process
-            self.note("Refreshing usage...", 60)
+            self.note("Refreshing usage...", REFRESH_NOTE_SECONDS)
         except OSError as error:
             self.note(f"Could not refresh: {error}", error=True)
 
@@ -528,20 +539,20 @@ class Dashboard:
 
     def section(self, y, title, title_gap=1):
         self.put(y, 1, title, curses.color_pair(PAIR_ACCENT) | curses.A_BOLD)
-        self.put(y, 2 + len(title), "\u2500" * 200, curses.color_pair(PAIR_DIM))
+        self.put(y, 2 + len(title), "\u2500" * self.screen.getmaxyx()[1], curses.color_pair(PAIR_DIM))
         return y + 1 + title_gap
 
     def hint(self):
         return footer_hint(self.agent_paths)
 
     def draw_header(self, record, width, accent, dim):
-        self.put(0, 1, "Agent Hub", accent | curses.A_BOLD)
+        self.put(0, 1, APP_TITLE, accent | curses.A_BOLD)
         updated = ""
         if record and record.get("updatedAt"):
             stamp = parse_time(record.get("updatedAt"))
             if stamp:
                 updated = "updated " + stamp.astimezone().strftime("%H:%M")
-        self.put(0, max(14, width - len(updated) - 2), updated, dim)
+        self.put(0, max(1 + len(APP_TITLE) + HEADER_GAP, width - len(updated) - 2), updated, dim)
         self.put(1, 1, "\u2500" * (width - 2), dim)
 
         x = 1
@@ -590,7 +601,7 @@ class Dashboard:
             needed = max(
                 (content_height(item, title_gap) for item in self.records), default=0
             )
-        return title_gap, 1 + min(SECTION_GAP_MAX, max(0, height - needed) // 3)
+        return title_gap, min(SECTION_GAP_MAX, SECTION_GAP_MIN + max(0, height - needed) // SECTION_COUNT)
 
     def draw_limits(self, record, y, layout):
         y = self.section(y, "GO LIMITS" if record.get("id") == "opencode" else "LIMITS", layout.title_gap)
@@ -599,12 +610,12 @@ class Dashboard:
             return y + 1
         reset_x = layout.width - RIGHT_MARGIN - RESET_WIDTH
         percent_x = reset_x - VALUE_WIDTH
-        limit_width = max(8, percent_x - layout.bar_x - 2)
+        limit_width = max(MIN_BAR_WIDTH, percent_x - layout.bar_x - 2)
         for limit in record.get("limits") or []:
             if y >= layout.bottom:
                 break
             percent = max(0.0, min(1.0, limit_percent(limit)))
-            gauge = curses.color_pair(PAIR_ERROR) if percent >= 0.9 else layout.accent
+            gauge = curses.color_pair(PAIR_ERROR) if percent >= ALERT_FRACTION else layout.accent
             self.put(
                 y,
                 layout.label_x,
@@ -658,7 +669,7 @@ class Dashboard:
                 progress(value / peak if peak else 0, layout.chart_width),
                 layout.accent,
             )
-            self.put(y, layout.value_x, f"{compact(value):>8}", value_attr)
+            self.put(y, layout.value_x, f"{compact(value):>{TOKEN_VALUE_WIDTH}}", value_attr)
             y += 1
         return y
 
@@ -666,44 +677,47 @@ class Dashboard:
         self.screen.erase()
         height, width = self.screen.getmaxyx()
         accent, dim = curses.color_pair(PAIR_ACCENT), curses.color_pair(PAIR_DIM)
-
         if height < MIN_ROWS or width < MIN_COLS:
-            self.put(
-                0,
-                1,
-                f"Agent Hub needs at least {MIN_COLS} columns x {MIN_ROWS} rows.",
-                curses.color_pair(PAIR_ERROR) | curses.A_BOLD,
-            )
-            self.put(2, 1, f"Current terminal: {width} x {height}", dim)
-            self.put(height - 1, 1, "q close", dim)
-            self.screen.refresh()
-            return
-
-        record = self.current()
-        self.draw_header(record, width, accent, dim)
-        if not record:
-            self.put(4, 1, "No AI coding subscription data found.", curses.A_BOLD)
-            self.put(
-                6,
-                1,
-                "A refresh is running\u2026"
-                if self.refresh_process
-                else "Press r to collect usage.",
-                dim,
-            )
+            self.draw_too_small(height, width, dim)
+        else:
+            record = self.current()
+            self.draw_header(record, width, accent, dim)
+            if record:
+                self.draw_sections(record, self.dashboard_layout(height, width, accent, dim))
+            else:
+                self.draw_empty(dim)
             self.draw_footer(height, width)
-            self.screen.refresh()
-            return
+        self.screen.refresh()
 
+    def draw_too_small(self, height, width, dim):
+        self.put(
+            0,
+            1,
+            f"{APP_TITLE} needs at least {MIN_COLS} columns x {MIN_ROWS} rows.",
+            curses.color_pair(PAIR_ERROR) | curses.A_BOLD,
+        )
+        self.put(2, 1, f"Current terminal: {width} x {height}", dim)
+        self.put(height - 1, 1, "q close", dim)
+
+    def draw_empty(self, dim):
+        self.put(HEAD_ROW, 1, "No AI coding subscription data found.", curses.A_BOLD)
+        self.put(
+            FIRST_SECTION_ROW,
+            1,
+            "A refresh is running\u2026" if self.refresh_process else "Press r to collect usage.",
+            dim,
+        )
+
+    def dashboard_layout(self, height, width, accent, dim):
         label_x = 3
         label_width = max(MIN_LABEL_WIDTH, min(MAX_LABEL_WIDTH, width // 4))
         bar_x = label_x + label_width + 2
         title_gap, gap = self.section_spacing(height)
         value_x = width - RIGHT_MARGIN - TOKEN_VALUE_WIDTH
-        chart_width = max(8, value_x - bar_x - 2)
-        layout = DashboardLayout(
+        chart_width = max(MIN_BAR_WIDTH, value_x - bar_x - 2)
+        return DashboardLayout(
             width=width,
-            bottom=height - 3,
+            bottom=height - FOOTER_ROWS,
             label_x=label_x,
             label_width=label_width,
             bar_x=bar_x,
@@ -714,28 +728,27 @@ class Dashboard:
             accent=accent,
             dim=dim,
         )
-        y = self.draw_limits(record, HEAD_ROW + 2 + layout.section_gap, layout)
+
+    def draw_sections(self, record, layout):
+        y = self.draw_limits(record, FIRST_SECTION_ROW + layout.section_gap, layout)
         y = self.draw_chart(
             y + layout.section_gap,
             "TOKENS BY DAY",
-            self.day_chart_rows(record, dim),
+            self.day_chart_rows(record, layout.dim),
             layout,
         )
         if y + layout.section_gap + layout.title_gap + 1 < layout.bottom:
             model_rows = [
                 (name, value, 0, curses.A_BOLD)
-                for name, value in model_totals(record)[:5]
+                for name, value in model_totals(record)[:MODEL_ROWS]
             ]
             self.draw_chart(
                 y + layout.section_gap, "TOKENS BY MODEL", model_rows, layout
             )
 
-        self.draw_footer(height, width)
-        self.screen.refresh()
-
     def draw_footer(self, height, width):
         first_hint, second_hint = self.hint()
-        self.put(height - 3, 1, "\u2500" * (width - 2), curses.color_pair(PAIR_DIM))
+        self.put(height - FOOTER_ROWS, 1, "\u2500" * (width - 2), curses.color_pair(PAIR_DIM))
         self.put(height - 2, 1, first_hint, curses.color_pair(PAIR_DIM))
         if self.message and time.monotonic() < self.message_until:
             attr = curses.color_pair(PAIR_ERROR if self.message_error else PAIR_BAR)
@@ -769,13 +782,13 @@ class Dashboard:
             return False
         if key == curses.KEY_MOUSE:
             self.click()
-        elif key in (curses.KEY_RIGHT, ord("l"), 9):
+        elif key in (curses.KEY_RIGHT, ord("l"), ord("\t")):
             self.move_selection(1)
         elif key in (curses.KEY_LEFT, ord("h"), curses.KEY_BTAB):
             self.move_selection(-1)
         elif ord("1") <= key <= ord("9") and key - ord("1") < len(self.records):
             self.selected = key - ord("1")
-        elif key in (10, 13, ord("a")):
+        elif key in (ord("\n"), ord("\r"), ord("a")):
             self.launch_current()
         elif key == ord("d"):
             self.launch(self.default_agent)

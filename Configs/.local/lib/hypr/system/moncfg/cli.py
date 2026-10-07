@@ -1,4 +1,3 @@
-"""hyprmoncfg command line: profile management and the config-include check."""
 from __future__ import annotations
 
 import argparse
@@ -27,7 +26,6 @@ def frame(method: str, params: dict | None = None) -> bytes:
 
 
 def request(method: str, params: dict | None = None, timeout: float = 4.0) -> dict | None:
-    """Ask the daemon, or return None when it is not listening."""
     try:
         conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         conn.settimeout(timeout)

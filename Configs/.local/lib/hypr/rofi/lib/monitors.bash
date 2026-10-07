@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
-# Cached hyprctl json wrappers + focused-monitor geometry.
-# External deps: rofi_focused_monitor_record, rofi_scaled_divide (core/rofi.sh).
-
 rofi_hypr_snapshot() {
   [[ -n "${ROFI_HYPR_SNAPSHOT_READY:-}" ]] && return 0
   local -a data=()
@@ -47,13 +43,15 @@ rofi_layers_json() {
   printf '%s\n' "${ROFI_LAYERS_JSON_CACHE}"
 }
 
+ROFI_FALLBACK_MONITOR_SIZE="1920 1080"
+
 rofi_focused_monitor_logical_size() {
   local monitor_line=""
   local mon_width mon_height mon_scale logical_width logical_height
 
   monitor_line="$(rofi_focused_monitor_record 2>/dev/null || true)"
   if [[ -z "${monitor_line}" ]]; then
-    printf '1920 1080\n'
+    printf '%s\n' "${ROFI_FALLBACK_MONITOR_SIZE}"
     return 0
   fi
 

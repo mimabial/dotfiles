@@ -1,5 +1,3 @@
-"""Track identity, similarity, and filesystem-derived lookup candidates."""
-
 from __future__ import annotations
 
 import re
@@ -34,6 +32,9 @@ BUCKET_ARTISTS = re.compile(r"\s*\[g\]\s*$", re.IGNORECASE)
 BUCKET_ALBUMS = re.compile(r"\s*\[c\]\s*$", re.IGNORECASE)
 
 
+TITLE_WEIGHT = 0.6
+
+
 class TrackIdentity(NamedTuple):
     title: str
     credit: str
@@ -41,7 +42,6 @@ class TrackIdentity(NamedTuple):
 
 
 def parse_filename(path: Path) -> tuple[str, str]:
-    """Best-effort '<artist> - <title>' split, with track numbers stripped."""
     stem = re.sub(r"^\s*\d{1,3}\s*[-._)]\s*", "", path.stem)
     if " - " not in stem:
         return "", stem.strip()
@@ -64,7 +64,6 @@ def normalize_identity_tokens(value: str) -> list[str]:
 
 
 def similarity(left: str, right: str) -> float:
-    """Compare normalized token overlap and sequence order."""
     left_tokens, right_tokens = normalize_identity_tokens(left), normalize_identity_tokens(right)
     if not left_tokens or not right_tokens:
         return 0.0
@@ -85,7 +84,6 @@ def same_script(left: str, right: str) -> bool:
 
 
 def split_featured_title(title: str) -> tuple[str, str]:
-    """Return a base title and credits carried by feature annotations."""
     featured = []
 
     def remove(match: re.Match) -> str:
@@ -111,7 +109,6 @@ def combine_credits(artist: str, featured: str) -> str:
 
 
 def track_identity(artist: str, title: str) -> TrackIdentity:
-    """Return lookup-only title, complete credit, and featured credit."""
     base_title, featured = split_featured_title(title)
     return TrackIdentity(base_title, combine_credits(artist, featured), featured)
 
@@ -129,7 +126,6 @@ def credit_similarity(
 
 
 def artist_agrees(candidate: str, artist: str) -> bool:
-    """Require a meaningful shared token before accepting fuzzy similarity."""
     if not artist:
         return True
     shared = {
@@ -143,7 +139,6 @@ def artist_agrees(candidate: str, artist: str) -> bool:
 def candidate_agrees(
     candidate_artist: str, candidate_title: str, artist: str, title: str
 ) -> bool:
-    """Require matching title identity and preserve explicit featured credits."""
     candidate_credit = track_identity(candidate_artist, candidate_title)[1]
     _, wanted_credit, wanted_features = track_identity(artist, title)
     return (
@@ -157,7 +152,7 @@ def match_score(
     candidate_artist: str, candidate_title: str, artist: str, title: str
 ) -> float:
     title_score = title_similarity(candidate_title, title)
-    return title_score if not artist else 0.6 * title_score + 0.4 * credit_similarity(
+    return title_score if not artist else TITLE_WEIGHT * title_score + (1 - TITLE_WEIGHT) * credit_similarity(
         candidate_artist, candidate_title, artist, title
     )
 
@@ -177,7 +172,7 @@ def album_agrees(candidate: str, album: str) -> bool:
 
 
 def primary_artist(album_artist: str, artist: str) -> str:
-    """Return the release owner rather than a collaboration-specific credit."""
+    """The release owner, not a collaboration-specific credit."""
     if album_artist:
         return album_artist
     return re.split(
@@ -186,7 +181,7 @@ def primary_artist(album_artist: str, artist: str) -> str:
 
 
 def credit_names(artist: str, title: str = "") -> list[str]:
-    """Return distinct credited names while keeping names containing 'and' whole."""
+    """Names containing 'and' stay whole."""
     names: list[str] = []
     for raw_name in CREDIT_SEPARATOR.split(track_identity(artist, title)[1]):
         name = raw_name.strip()
@@ -203,7 +198,6 @@ def missing_credit_names(
     proposed_artist: str,
     proposed_title: str,
 ) -> list[str]:
-    """Return local credits absent from the proposed artist/title pair."""
     proposed_names = credit_names(proposed_artist, proposed_title)
     return [
         name
@@ -216,7 +210,6 @@ def missing_credit_names(
 
 
 def search_variants(artist: str, title: str) -> list[tuple[str, str]]:
-    """Search both common provider layouts for a featured credit."""
     cleaned = clean_title(title)
     base_title, combined_credit, _ = track_identity(artist, cleaned)
     variants = [(artist.strip(), cleaned), (combined_credit, base_title)]
@@ -231,7 +224,6 @@ def search_variants(artist: str, title: str) -> list[tuple[str, str]]:
 
 
 def drop_redundant_feat(title: str, artist: str) -> str:
-    """Remove a title feature only when the artist credit already carries it."""
     if not artist:
         return title
 
@@ -244,7 +236,6 @@ def drop_redundant_feat(title: str, artist: str) -> str:
 
 
 def split_leading_artist(title: str, artist: str) -> str:
-    """Drop a repeated artist prefix from a YouTube-style title."""
     if " - " not in title:
         return title
     left, _, right = title.partition(" - ")
@@ -283,7 +274,6 @@ def folder_hints(path: Path, root: Path) -> tuple[str, str]:
 
 
 def album_context(path: Path, tags, root: Path) -> tuple[str, tuple]:
-    """Prefer the library directory's album, falling back to tags for loose files."""
     directory_artist, directory_album = folder_hints(path, root)
     album = directory_album or existing(tags, "album")
     if not album:
@@ -305,7 +295,7 @@ def candidate_key(artist: str, title: str) -> tuple[tuple[str, ...], tuple[str, 
 
 
 def derive_candidates(path: Path, tags, root: Path) -> list[tuple[str, str]]:
-    """Return distinct identities, preferring filenames over video-uploader tags."""
+    """Filenames win over video-uploader tags."""
     file_artist, file_title = parse_filename(path)
     tag_artist, tag_title = existing(tags, "artist"), existing(tags, "title")
     directory_artist, _ = folder_hints(path, root)
@@ -333,7 +323,6 @@ def derive_candidates(path: Path, tags, root: Path) -> list[tuple[str, str]]:
 def first_artist_fallbacks(
     candidates: list[tuple[str, str]],
 ) -> list[tuple[str, str]]:
-    """Build lean first-artist searches without displacing exact candidates."""
     seen = {candidate_key(artist, title) for artist, title in candidates}
     fallbacks = []
     for artist, title in candidates:

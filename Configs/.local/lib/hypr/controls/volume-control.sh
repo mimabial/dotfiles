@@ -33,9 +33,8 @@ print_volume_limits() {
 
 [[ "${1:-}" == "--limits" ]] && { print_volume_limits; exit; }
 
-LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR}/controls/lib/control.common.bash"
 
@@ -363,82 +362,58 @@ require_device_commands() {
   require_commands dunstify
 }
 
-main() {
-  [[ "${1:-}" == -h || "${1:-}" == --help ]] && { usage; return; }
+set_default_command() {
+  [[ -n "${1:-}" && -n "${2:-}" ]] || {
+    printf 'Usage: %s --set-default ID NAME\n' "${0##*/}" >&2
+    return 2
+  }
+  require_commands wpctl pactl dunstify || return 1
+  set_default_output "$1" "$2"
+}
 
-  if [[ "${1:-}" == "--set-default" ]]; then
-    [[ -n "${2:-}" && -n "${3:-}" ]] || {
-      printf 'Usage: %s --set-default ID NAME\n' "${0##*/}" >&2
-      return 2
-    }
-    require_commands wpctl pactl dunstify || return 1
-    set_default_output "$2" "$3"
-    return
-  fi
-
-  local notify_enabled="${VOLUME_NOTIFY:-true}"
-  local boost_enabled="${VOLUME_BOOST:-false}"
-  local default_step="${VOLUME_STEPS:-${VOLUME_DEFAULT_STEP}}"
-  local device_kind=""
-  local target=""
-  local player_name=""
-  local label=""
-  local action=""
-  local step=""
+parse_args() {
+  local -n options_ref="$1"
+  shift
   local opt=""
+  local OPTIND=1
 
   while getopts "iop:tq" opt; do
     case "${opt}" in
       i)
-        device_kind="source"
-        target="$(get_default_source_target || true)"
-        label="${target:-No microphone}"
+        options_ref[device_kind]="source"
+        options_ref[target]="$(get_default_source_target || true)"
+        options_ref[label]="${options_ref[target]:-No microphone}"
         ;;
       o)
-        device_kind="sink"
-        target="@DEFAULT_AUDIO_SINK@"
-        label="$(get_default_sink_label)"
+        options_ref[device_kind]="sink"
+        options_ref[target]="@DEFAULT_AUDIO_SINK@"
+        options_ref[label]="$(get_default_sink_label)"
         ;;
       p)
-        device_kind="player"
-        player_name="${OPTARG}"
-        label="${player_name:-all players}"
-        require_cmd playerctl || {
-          print_log -sec "volume" -err "missing" "playerctl is required for -p"
-          return 1
-        }
+        options_ref[device_kind]="player"
+        options_ref[player_name]="${OPTARG}"
+        options_ref[label]="${OPTARG:-all players}"
         ;;
-      t)
-        toggle_output_to_next_sink
-        return $?
-        ;;
-      q)
-        notify_enabled=false
-        ;;
-      *)
-        usage >&2
-        return 2
-        ;;
+      t) options_ref[toggle_output]=true; return 0 ;;
+      q) options_ref[notify]=false ;;
+      *) return 2 ;;
     esac
   done
 
   shift $((OPTIND - 1))
-  [[ -n "${device_kind}" ]] || {
-    usage >&2
-    return 2
-  }
+  options_ref[action]="${1:-}"
+  options_ref[step]="${2:-${options_ref[step]}}"
+}
 
-  require_device_commands "${device_kind}" "${notify_enabled}" || return 1
-
-  action="${1:-}"
-  step="${2:-${default_step}}"
+validate_action() {
+  local action="$1"
+  local step="$2"
 
   case "${action}" in
     i | d)
-      [[ "${step}" =~ ^[0-9]+$ ]] || {
-        print_log -sec "volume" -err "step" "Invalid step: ${step}"
-        return 2
-      }
+      [[ "${step}" =~ ^[0-9]+$ ]] && return 0
+      print_log -sec "volume" -err "step" "Invalid step: ${step}"
+      return 2
       ;;
     m) ;;
     *)
@@ -446,9 +421,33 @@ main() {
       return 2
       ;;
   esac
+}
 
-  run_action "${device_kind}" "${target}" "${player_name}" "${action}" "${step}" \
-    "${boost_enabled}" "${notify_enabled}" "${label}"
+main() {
+  [[ "${1:-}" == -h || "${1:-}" == --help ]] && { usage; return; }
+  [[ "${1:-}" == --set-default ]] && { set_default_command "${@:2}"; return; }
+
+  local -A options=(
+    [notify]="${VOLUME_NOTIFY:-true}"
+    [boost]="${VOLUME_BOOST:-false}"
+    [step]="${VOLUME_STEPS:-${VOLUME_DEFAULT_STEP}}"
+    [device_kind]="" [target]="" [player_name]="" [label]="" [action]="" [toggle_output]=false
+  )
+
+  parse_args options "$@" || {
+    usage >&2
+    return 2
+  }
+  [[ "${options[toggle_output]}" == true ]] && { toggle_output_to_next_sink; return; }
+  [[ -n "${options[device_kind]}" ]] || {
+    usage >&2
+    return 2
+  }
+  require_device_commands "${options[device_kind]}" "${options[notify]}" || return 1
+  validate_action "${options[action]}" "${options[step]}" || return 2
+
+  run_action "${options[device_kind]}" "${options[target]}" "${options[player_name]}" "${options[action]}" \
+    "${options[step]}" "${options[boost]}" "${options[notify]}" "${options[label]}"
 }
 
 main "$@"

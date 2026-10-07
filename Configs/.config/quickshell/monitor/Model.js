@@ -1,3 +1,6 @@
+var DEFAULT_MAX_WORKSPACES = 9
+var DEFAULT_GROUP_SIZE = 3
+
 function emptyDocument() {
   return { profiles: [], monitors: [], daemon: { running: false } }
 }
@@ -526,16 +529,16 @@ function profileMatchReasonRows(summary) {
 }
 
 function profileHiddenDisplayRows(profile) {
-  var p = profile || {}
-  var outputs = p.outputs instanceof Array ? p.outputs : []
+  profile = profile || {}
+  var outputs = profile.outputs instanceof Array ? profile.outputs : []
   var rows = []
   var keptOff = []
   var mirrors = []
   for (var i = 0; i < outputs.length; i++) {
     var output = outputs[i] || {}
-    if (output.enabled === false) keptOff.push(outputDisplayLabel(p, output.key))
+    if (output.enabled === false) keptOff.push(outputDisplayLabel(profile, output.key))
     else if (mirrorTarget(output) !== "") {
-      mirrors.push(outputDisplayLabel(p, output.key) + " → " + outputDisplayLabel(p, mirrorTarget(output)))
+      mirrors.push(outputDisplayLabel(profile, output.key) + " → " + outputDisplayLabel(profile, mirrorTarget(output)))
     }
   }
   for (var off = 0; off < keptOff.length; off++)
@@ -634,8 +637,8 @@ function manualWorkspaceRulesFromPlan(plan, profile) {
   // from what the user configured rather than an empty list.
   var settings = (profile || {}).workspaces || {}
   var keys = manualWorkspaceTargetKeys(profile)
-  var maximum = Math.max(1, Math.floor(Number(settings.max_workspaces || 9)))
-  var groupSize = Math.max(1, Number(settings.group_size || 3))
+  var maximum = Math.max(1, Math.floor(Number(settings.max_workspaces || DEFAULT_MAX_WORKSPACES)))
+  var groupSize = Math.max(1, Number(settings.group_size || DEFAULT_GROUP_SIZE))
   var interleave = String(settings.strategy || "") === "interleave"
   for (var workspace = 1; workspace <= maximum && keys.length > 0; workspace++) {
     var targetIndex = interleave
@@ -673,7 +676,7 @@ function manualWorkspaceCount(settings) {
   for (var i = 0; i < rules.length; i++) {
     maximum = Math.max(maximum, workspaceRuleNumber((rules[i] || {}).workspace))
   }
-  return maximum > 0 ? maximum : Math.max(1, Number(value.max_workspaces || 9))
+  return maximum > 0 ? maximum : Math.max(1, Number(value.max_workspaces || DEFAULT_MAX_WORKSPACES))
 }
 
 function resizeManualWorkspaceRules(rules, profile, maximum) {
@@ -761,8 +764,7 @@ function namedProfile(profile, name) {
   return copy
 }
 
-// releaseVersion pulls the plain version out of the backend's version output,
-// which also carries a commit and a build date.
+// The backend's version output also carries a commit and a build date.
 function releaseVersion(output) {
   var match = String(output || "").match(/(\d+\.\d+\.\d+)/)
   return match ? match[1] : ""

@@ -2,10 +2,9 @@
 
 set -euo pipefail
 
-LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell wallpaper/wallpaper.kde-service [-t THEME -w WALLPAPER]
 Install the KDE service menu that adds a wallpaper to a theme; with no options,
@@ -59,15 +58,15 @@ if [[ -n "${selected_theme}" && -n "${selected_wallpaper}" ]]; then
   incoming_wallpaper_hash="$(wallpaper_file_hash "${selected_wallpaper}")"
   wallpaper_scan_hashes_into theme_hashes theme_walls "${themes_dir}/${selected_theme}"
   if [[ " ${theme_hashes[*]} " == *" ${incoming_wallpaper_hash} "* ]]; then
-    send_ephemeral_notif "hypr-wallpaper-kde-error" -a "Wallpaper" -i "${WALLPAPER_THUMB_DIR}/${incoming_wallpaper_hash}.sqre" -t 3000 "Error" "Hash matched in ${selected_theme}"
+    send_ephemeral_notif "hypr-wallpaper-kde-error" -a "Wallpaper" -i "${WALLPAPER_THUMB_DIR}/${incoming_wallpaper_hash}.sqre" -t "${NOTIFY_MS}" "Error" "Hash matched in ${selected_theme}"
     exit 0
   fi
 
   cp "${selected_wallpaper}" "${themes_dir}/${selected_theme}/wallpapers"
   ln -fs "${themes_dir}/${selected_theme}/wallpapers/$(basename "${selected_wallpaper}")" "${themes_dir}/${selected_theme}/wall.set"
 
-  "${LIB_DIR}/hypr/theme/theme.switch.sh" -s "${selected_theme}"
-  send_ephemeral_notif "hypr-wallpaper-kde" -a "Wallpaper" -i "${WALLPAPER_THUMB_DIR}/${incoming_wallpaper_hash}.sqre" -t 2000 "Wallpaper set in ${selected_theme}"
+  "${HYPR_LIB_DIR}/theme/theme.switch.sh" -s "${selected_theme}"
+  send_ephemeral_notif "hypr-wallpaper-kde" -a "Wallpaper" -i "${WALLPAPER_THUMB_DIR}/${incoming_wallpaper_hash}.sqre" -t "${NOTIFY_BRIEF_MS}" "Wallpaper set in ${selected_theme}"
 
 else
 

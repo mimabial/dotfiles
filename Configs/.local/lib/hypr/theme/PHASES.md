@@ -90,7 +90,7 @@ the `--theme-envelope` dispatch:
 
 1. parses the envelope args, sets `theme_apply_generation`, and on
    `--detached` writes `pid:$$` to the handle file
-2. calls `theme_apply_phase_d_bootstrap` — sources `color.finalize.sh`
+2. calls `theme_apply_phase_d_bootstrap` — sources `color.finalize.bash`
    for the secondary_updates job
 3. forks wallpaper resume into the same cgroup
 4. runs the eight phase-D jobs via `theme_apply_phase_d_run_jobs`

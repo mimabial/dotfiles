@@ -17,7 +17,7 @@ BorderSurface {
   readonly property real cellHeight: Style.space(70)
 
   visible: dock.activeAppGroupId !== "" && dock.dockVisible
-  z: 100
+  z: dock.popoverZ
   color: Util.alpha(Color.menu.background, Style.popupSurfaceOpacity)
   borderSpec: Border.surfaceSpec("menu", "border", Util.alpha(Color.menu.border, Style.popupBorderOpacity), 1)
   radius: Style.cornerRadius

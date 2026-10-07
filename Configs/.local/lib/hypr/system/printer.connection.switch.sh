@@ -11,7 +11,7 @@ else
 fi
 
 # shellcheck source=/dev/null
-source "${LIB_DIR:-$HOME/.local/lib}/hypr/system/printer.common.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/printer.common.bash"
 
 action="toggle"
 printer_name=""

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # shellcheck source=/dev/null
-source "${HOME}/.local/lib/hypr/rofi/picker.common.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/rofi/picker.common.bash"
 rofi_picker_bootstrap || exit 1
 
 rofi_picker_hypr_dir_vars glyph_dir cache_dir
@@ -9,6 +9,18 @@ glyph_data="${glyph_dir}/glyph.db"
 recent_data="${cache_dir}/landing/show_glyph.recent"
 GLYPH_HINT='<span size="x-small">[←↑→↓] Navigate · [Enter] Copy Glyph · [Alt+N] Copy Name · [Esc] Close</span>'
 GLYPH_EXIT_COPY_NAME=10
+# A cell stacks glyph, prefix and the name split over two lines, across six
+# reserved rows (~6.5em) against the ~2.1em a plain row costs.
+GLYPH_ROW_EM=6.5
+GLYPH_CHROME_EM=9.4
+# 5:4 tiles, over the mainbox and listview padding the theme puts either side of the grid.
+GLYPH_TILE_ASPECT=1.25
+GLYPH_GRID_PADDING_EM=2
+GLYPH_SCREEN_FILL=0.85
+GLYPH_COLUMNS_MIN=6
+GLYPH_COLUMNS_MAX=20
+GLYPH_LINES_MIN=3
+GLYPH_LINES_MAX=8
 
 refresh_recent_entries() {
   local target_file="$1"
@@ -49,52 +61,43 @@ save_recent_entry() {
   rofi_picker_save_recent_entry "${recent_data}" "glyph_recent" "${glyph_line}" 50 refresh_recent_entries
 }
 
+glyph_grid_size() {
+  awk -v w="$1" -v h="$2" -v e="$3" -v r="${GLYPH_ROW_EM}" -v chrome="${GLYPH_CHROME_EM}" \
+    -v fill="${GLYPH_SCREEN_FILL}" -v aspect="${GLYPH_TILE_ASPECT}" -v pad="${GLYPH_GRID_PADDING_EM}" \
+    -v cmin="${GLYPH_COLUMNS_MIN}" -v cmax="${GLYPH_COLUMNS_MAX}" -v lmin="${GLYPH_LINES_MIN}" -v lmax="${GLYPH_LINES_MAX}" '
+    BEGIN {
+      c = int((w * fill - pad * e) / (r * aspect * e))
+      l = int((h * fill - chrome * e) / (r * e))
+      printf "%d %d\n", (c < cmin ? cmin : (c > cmax ? cmax : c)), (l < lmin ? lmin : (l > lmax ? lmax : l))
+    }'
+}
+
 setup_rofi_config() {
-  local font_scale
-  local font_name
-  local logical_width logical_height
+  local font_scale font_name logical_width logical_height
+  local em_px="" calc_cols="" calc_lines="" default_width="" glyph_window_height_em=""
+
   rofi_prepare_standard_context \
     font_scale font_name font_override window_override \
     "${ROFI_GLYPH_SCALE:-}" "${ROFI_GLYPH_FONT:-${ROFI_FONT:-}}" wallbox same
-
   read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
 
-  # a cell stacks glyph, prefix and the name split over two lines, across six
-  # reserved rows (~6.5em) against the ~2.1em a plain row costs
-  local glyph_row_em=6.5
-  local glyph_chrome_em=9.4
   # Tiles are budgeted in em, and em is line height -- not proportional to point
   # size across fonts (JetBrainsMono 15 is 27px where Miracode 15 is 22px), so
   # the grid has to divide the real pixel budget, not font_scale.
-  local em_px=""
   em_px="$(rofi_length_em_to_px 1 "${font_name}" "${font_scale}" 2>/dev/null || true)"
   [[ "${em_px}" =~ ^[0-9]+$ ]] && ((em_px > 0)) || em_px=$((font_scale * 3 / 2))
-
-  # fill 85% of the monitor, less the theme's input, footer and outer padding
-  local calc_cols="" calc_lines=""
-  read -r calc_cols calc_lines <<<"$(
-    awk -v w="${logical_width}" -v h="${logical_height}" -v e="${em_px}" \
-      -v r="${glyph_row_em}" -v chrome="${glyph_chrome_em}" '
-      BEGIN {
-        c = int((w * 0.85 - 2 * e) / (r * 1.25 * e))
-        l = int((h * 0.85 - chrome * e) / (r * e))
-        printf "%d %d\n", (c < 6 ? 6 : (c > 20 ? 20 : c)), (l < 3 ? 3 : (l > 8 ? 8 : l))
-      }'
-  )"
+  read -r calc_cols calc_lines <<<"$(glyph_grid_size "${logical_width}" "${logical_height}" "${em_px}")"
 
   glyph_columns="${ROFI_GLYPH_COLUMNS:-}"
   [[ "${glyph_columns}" =~ ^[0-9]+$ ]] || glyph_columns=${calc_cols}
   glyph_lines="${ROFI_GLYPH_LINES:-}"
   [[ "${glyph_lines}" =~ ^[0-9]+$ ]] || glyph_lines=${calc_lines}
 
-  # 5:4 tiles: a column is a quarter wider than a row is tall, over the 2em of
-  # mainbox and listview padding the theme puts either side of the grid
-  local default_width=""
-  default_width="$(awk -v c="${glyph_columns}" -v r="${glyph_row_em}" 'BEGIN { printf "%.1f\n", (c * r * 1.25) + 2 }')"
+  default_width="$(awk -v c="${glyph_columns}" -v r="${GLYPH_ROW_EM}" -v aspect="${GLYPH_TILE_ASPECT}" -v pad="${GLYPH_GRID_PADDING_EM}" \
+    'BEGIN { printf "%.1f\n", (c * r * aspect) + pad }')"
   glyph_window_width="${ROFI_GLYPH_WIDTH_EM:-${default_width}}"
   [[ "${glyph_window_width}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || glyph_window_width=${default_width}
-  local glyph_window_height_em=""
-  glyph_window_height_em="$(rofi_picker_listview_height_em "${glyph_lines}" "${glyph_row_em}" "${glyph_chrome_em}")"
+  glyph_window_height_em="$(rofi_picker_listview_height_em "${glyph_lines}" "${GLYPH_ROW_EM}" "${GLYPH_CHROME_EM}")"
   rofi_picker_compute_window_geometry \
     rofi_position glyph_window_theme \
     "${font_name}" "${font_scale}" \

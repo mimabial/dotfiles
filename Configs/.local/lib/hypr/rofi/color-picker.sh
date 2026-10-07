@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-${LIB_DIR:-$HOME/.local/lib}/hypr}/core/common.sh" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/notify.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell rofi/color-picker [-l|-j|-u|-d]
 Pick a screen colour with hyprpicker; -l lists saved colours, -j emits bar JSON,
@@ -13,7 +14,7 @@ command_exists() {
 
 notify_color_picker() {
   command_exists dunstify && {
-    dunstify -a "Color Picker" -t 3000 "$@"
+    dunstify -a "Color Picker" -t "${NOTIFY_MS}" "$@"
     return
   }
   echo "$@"

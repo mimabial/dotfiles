@@ -219,10 +219,11 @@ Item {
   }
 
   readonly property int totalWindowCount: (item.windowList && item.windowList.length > 0) ? item.windowList.length : (item.running ? 1 : 0)
-  readonly property int maxVisibleDots: totalWindowCount > 5 ? 4 : Math.min(totalWindowCount, 5)
-  readonly property real dynamicDotSize: totalWindowCount >= 5 ? Style.space(4) : item.dock.indicatorHeight
-  readonly property real dynamicActiveWidth: totalWindowCount >= 5 ? Style.space(9) : Style.space(12)
-  readonly property real dynamicSpacing: totalWindowCount >= 5 ? Style.space(2) : Style.space(3)
+  readonly property int denseDotThreshold: 5
+  readonly property int maxVisibleDots: totalWindowCount > denseDotThreshold ? denseDotThreshold - 1 : Math.min(totalWindowCount, denseDotThreshold)
+  readonly property real dynamicDotSize: totalWindowCount >= denseDotThreshold ? Style.space(4) : item.dock.indicatorHeight
+  readonly property real dynamicActiveWidth: totalWindowCount >= denseDotThreshold ? Style.space(9) : Style.space(12)
+  readonly property real dynamicSpacing: totalWindowCount >= denseDotThreshold ? Style.space(2) : Style.space(3)
 
   // In the card's floor padding, never scaled with the icon.
   Grid {
@@ -246,9 +247,6 @@ Item {
         height: winActive ? Style.space(4) : item.dynamicDotSize
         radius: Math.min(width, height) / 2
 
-        // 1. Active window: Solid illuminated bar
-        // 2. Open visible window: Solid circle
-        // 3. Minimized window: Hollow circle (transparent fill with solid border)
         color: winActive
           ? Color.bar.active
           : (winMinimized
@@ -274,7 +272,7 @@ Item {
     // Compact overflow pill when 6+ windows are open. Wrapped for the same
     // reason as the spine separators: indicatorRow positions its children.
     Item {
-      visible: item.totalWindowCount > 5
+      visible: item.totalWindowCount > item.denseDotThreshold
       width: overflowPill.width
       height: overflowPill.height
 
@@ -315,12 +313,12 @@ Item {
         var dir = wheel.angleDelta.y > 0 ? -1 : 1
         var wins = item.tooltipWindows || []
         if (wins.length > 1) {
-          var cur = 0
+          var focusedIndex = 0
           if (item.selectedWindowIdx < 0) {
-            for (var c = 0; c < wins.length; c++) {
-              if (item.dock.isWindowFocused(wins[c])) { cur = c; break; }
+            for (var index = 0; index < wins.length; index++) {
+              if (item.dock.isWindowFocused(wins[index])) { focusedIndex = index; break; }
             }
-            item.selectedWindowIdx = (cur + dir + wins.length) % wins.length
+            item.selectedWindowIdx = (focusedIndex + dir + wins.length) % wins.length
           } else {
             item.selectedWindowIdx = (item.selectedWindowIdx + dir + wins.length) % wins.length
           }
@@ -354,9 +352,9 @@ Item {
           item.dragStarted(item.appId)
         }
         if (item.isDragging) {
-          var pt = item.mapToItem(item.card, mouse.x, mouse.y)
-          var away = !!pt && (pt.y < -item.dock.iconSlot || pt.y > item.card.height + item.dock.iconSlot)
-          item.dragMoved(item.appId, pt ? pt.x : main, away)
+          var point = item.mapToItem(item.card, mouse.x, mouse.y)
+          var away = !!point && (point.y < -item.dock.iconSlot || point.y > item.card.height + item.dock.iconSlot)
+          item.dragMoved(item.appId, point ? point.x : main, away)
         }
       }
     }
@@ -423,7 +421,7 @@ Item {
     readonly property bool wanted: area.containsMouse && !item.isDragging
       && item.name !== "" && item.dock.showTooltips && item.dock.contextAppId === ""
     visible: itemTooltip.shown && itemTooltip.wanted
-    z: 300
+    z: item.dock.tooltipZ
     color: Util.alpha(Color.tooltip.background, Style.popupSurfaceOpacity)
     borderSpec: Border.surfaceSpec("tooltip", "border", Color.tooltip.border, 1)
     radius: Style.cornerRadius

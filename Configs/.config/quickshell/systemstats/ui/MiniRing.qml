@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons
 
-// Tiny ring for per-core load and per-sensor headroom.
 Item {
   id: root
 

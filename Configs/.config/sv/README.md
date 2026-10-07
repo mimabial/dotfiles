@@ -5,7 +5,7 @@ These shadow the systemd **user** units in `~/.config/systemd/user/`. They are
 `runsvdir` is pointed at it (which only happens on the runit session below).
 
 The script library dispatches service actions through `hypr_svc_user` /
-`hypr_svc_user_signal` (in `~/.local/lib/hypr/core/common.sh`), which detect the
+`hypr_svc_user_signal` (in `~/.local/lib/hypr/core/common.bash`), which detect the
 init system at runtime and call either `systemctl --user` or `sv`. So the same
 config drives both systemd (Arch) and runit (Artix).
 

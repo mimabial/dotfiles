@@ -1,5 +1,4 @@
-// Peaks — exact cliamp vis_classic_peak.go: exponentially smoothed bar bodies with
-// peak caps that launch on a rise, hang at the apex, then fall under gravity
+// Port of cliamp vis_classic_peak.go.
 .pragma library
 .import "helpers.js" as H
 
@@ -12,12 +11,12 @@ var MAX_HEIGHT = 1.0
 var EPSILON = 0.01
 var RISE_RATE = 34.0
 var FALL_RATE = 10.0
-var BAR_W = 1      // characters per bar
-var BAR_GAP = 1    // characters between bars
-var TICK = 1 / 60  // tickClassicPeak: the dt fallback when elapsed time is unusable
+var BAR_CHARS = 1
+var BAR_GAP_CHARS = 1
+var FALLBACK_DT = 1 / 60
 
 function colsForWidth(cols) {
-  return Math.max(1, Math.floor((cols + BAR_GAP) / (BAR_W + BAR_GAP)))
+  return Math.max(1, Math.floor((cols + BAR_GAP_CHARS) / (BAR_CHARS + BAR_GAP_CHARS)))
 }
 
 function step(current, target, dt) {
@@ -52,8 +51,8 @@ function render(ctx, d) {
   // Go integrates against wall-clock elapsed time, clamping a long gap (pause, sleep,
   // stalled frame) down to a single frame rather than one huge step.
   var now = Date.now()
-  var dt = s.peakLast > 0 ? (now - s.peakLast) / 1000.0 : TICK
-  if (dt <= 0 || dt > 10 * TICK) dt = TICK
+  var dt = s.peakLast > 0 ? (now - s.peakLast) / 1000.0 : FALLBACK_DT
+  if (dt <= 0 || dt > 10 * FALLBACK_DT) dt = FALLBACK_DT
   s.peakLast = now
 
   var i
@@ -93,8 +92,8 @@ function render(ctx, d) {
   }
 
   var tiers = H.playerTiers(d)
-  var barPx = charW * BAR_W
-  var stepPx = charW * (BAR_W + BAR_GAP)
+  var barPx = charW * BAR_CHARS
+  var stepPx = charW * (BAR_CHARS + BAR_GAP_CHARS)
 
   // Rows outer, bars inner: the tier depends only on the row, so every bar shares one
   // fillStyle assignment per row instead of one per bar.

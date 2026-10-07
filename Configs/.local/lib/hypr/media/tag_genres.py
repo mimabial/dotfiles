@@ -1,16 +1,4 @@
 #!/usr/bin/env python3
-"""
-Interactively set the genre tag on every track in an album directory.
-
-Tracks are presented in track-number order. An empty answer leaves the file
-untouched; Ctrl-C stops without writing the current track.
-
-Exit codes:
-  0 = finished
-  1 = at least one file could not be read or written
-  2 = internal/runtime error
-"""
-
 from __future__ import annotations
 
 import argparse

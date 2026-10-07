@@ -24,6 +24,7 @@ Item {
   // Hold the surface unmapped for a beat so the compositor processes the
   // unmap before the remap instead of coalescing them into a no-op.
   Timer {
+    id: unmapHoldTimer
     interval: 50
     running: root.remapping
     onTriggered: root.remapping = false

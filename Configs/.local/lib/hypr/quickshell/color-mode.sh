@@ -4,7 +4,7 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/provider-state.common.bash"
 quickshell_state_init
-declare -F state_resolve_color_mode >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/state.sh"
+declare -F state_resolve_color_mode >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/state.bash"
 
 # Read the color policy from state files without sourcing them.
 selected_color_source="$(quickshell_state_value "selected_color_source" "")"

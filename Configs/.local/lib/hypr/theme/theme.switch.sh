@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-LIB_DIR="${LIB_DIR:-$HOME/.local/lib}"
 
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state system wallpaper_catalog || exit 1
 
 # shellcheck source=/dev/null
-source "${LIB_DIR}/hypr/theme/pairs.sh" || exit 1
+source "${HYPR_LIB_DIR}/theme/pairs.sh" || exit 1
 
 THEME_SWITCH_LOCK="$(hypr_lock_path theme_switch)"
 exec {theme_switch_lock_fd}>"${THEME_SWITCH_LOCK}"
@@ -198,60 +197,28 @@ EOF
 parse_theme_switch_args() {
   while (($#)); do
     case "$1" in
-      -n | --next)
-        theme_switch_selection_requested=1
-        select_adjacent_theme n
-        ;;
-      -p | --previous | --prev)
-        theme_switch_selection_requested=1
-        select_adjacent_theme p
-        ;;
+      -n | --next) theme_switch_selection_requested=1; select_adjacent_theme n ;;
+      -p | --previous | --prev) theme_switch_selection_requested=1; select_adjacent_theme p ;;
       -s | --set)
         shift
-        if [[ -z "${1:-}" ]]; then
-          theme_switch_usage >&2
-          exit 1
-        fi
+        [[ -n "${1:-}" ]] || { theme_switch_usage >&2; exit 1; }
         theme_switch_selection_requested=1
         selected_theme="$1"
         ;;
-      -s?*)
-        theme_switch_selection_requested=1
-        selected_theme="${1#-s}"
-        ;;
-      -q | --quiet)
-        quiet=true
-        ;;
-      --regen | --force-regenerate)
-        theme_switch_cache_args+=(--force-regenerate)
-        ;;
-      --no-cache)
-        theme_switch_cache_args+=(--no-cache)
-        ;;
-      --from-auto)
-        theme_switch_from_auto=1
-        ;;
+      -s?*) theme_switch_selection_requested=1; selected_theme="${1#-s}" ;;
+      -q | --quiet) quiet=true ;;
+      --regen | --force-regenerate) theme_switch_cache_args+=(--force-regenerate) ;;
+      --no-cache) theme_switch_cache_args+=(--no-cache) ;;
+      --from-auto) theme_switch_from_auto=1 ;;
       --nvim)
         shift
         [[ -n "${1:-}" ]] || { theme_switch_usage >&2; exit 1; }
         theme_switch_nvim_mapping="$1"
         ;;
-      --nvim-background)
-        shift
-        theme_switch_nvim_background="${1:-}"
-        ;;
-      --nvim-transparency)
-        shift
-        theme_switch_nvim_transparency="${1:-}"
-        ;;
-      -h | --help)
-        theme_switch_usage
-        exit 0
-        ;;
-      *)
-        theme_switch_usage >&2
-        exit 1
-        ;;
+      --nvim-background) shift; theme_switch_nvim_background="${1:-}" ;;
+      --nvim-transparency) shift; theme_switch_nvim_transparency="${1:-}" ;;
+      -h | --help) theme_switch_usage; exit 0 ;;
+      *) theme_switch_usage >&2; exit 1 ;;
     esac
     shift
   done
@@ -339,7 +306,7 @@ theme_switch_reconcile_color_mode() {
 }
 
 main() {
-  local -a theme_apply_cmd=("${LIB_DIR}/hypr/theme/theme.apply.sh")
+  local -a theme_apply_cmd=("${HYPR_LIB_DIR}/theme/theme.apply.sh")
 
   parse_theme_switch_args "$@"
   if [[ "${theme_switch_from_auto}" -eq 1 && "${selected_color_mode:-}" != "${STATE_COLOR_MODE_AUTO}" ]]; then

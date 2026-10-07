@@ -179,7 +179,6 @@ Column {
                         minimum: sliderRow.modelData.min; maximum: sliderRow.modelData.max; step: sliderRow.modelData.step; value: Number(sliderRow.modelData.value)
                         onChanged: value => dragged = value
                         onReleased: value => root.write(sliderRow.modelData.name, Math.round(value))
-                        // double-clicking the header restores the driver default
                         MouseArea { width: parent.width; height: parent.height - Style.sliderHeight; onDoubleClicked: root.write(sliderRow.modelData.name, sliderRow.modelData.def) }
                     }
                 }

@@ -7,6 +7,14 @@ from mediaplayer_browser import (
     youtube_position_is_untrusted,
 )
 
+SEEK_SETTLE_SECONDS = 2.0
+SEEK_RECENT_SECONDS = 2.5
+SEEK_DRIFT_SECONDS = 1.0
+SEEK_TO_START_SECONDS = 3.0
+SEEK_TO_END_MARGIN_SECONDS = 5.0
+# Longer YouTube "durations" come from streams still running, not finished videos.
+MAX_YOUTUBE_DURATION_SECONDS = 4 * 3600
+
 
 @dataclass
 class MediaMetadata:
@@ -158,7 +166,7 @@ def resolve_metadata_duration(
             resolved_duration = 0.0
         elif ytdlp_duration and ytdlp_duration > 0:
             resolved_duration = ytdlp_duration
-        elif resolved_duration >= 4 * 3600:
+        elif resolved_duration >= MAX_YOUTUBE_DURATION_SECONDS:
             resolved_duration = 0.0
     elif ytdlp_duration and ytdlp_duration > 0 and resolved_duration <= 0:
         resolved_duration = ytdlp_duration
@@ -168,6 +176,34 @@ def resolve_metadata_duration(
         duration_seconds=resolved_duration,
         ytdlp_duration_seconds=ytdlp_duration,
         ytdlp_live_status=ytdlp_info.live_status,
+    )
+
+
+def recent_seek(seek_position: float | None, seek_age: float, window: float) -> bool:
+    return seek_position is not None and 0.0 <= seek_age <= window
+
+
+def remembered_metadata(
+    raw_metadata: MediaMetadata,
+    resolved: MediaMetadata,
+    last_metadata: MediaMetadata,
+    same_track_as_last: bool,
+) -> MediaMetadata:
+    if not (resolved.track or resolved.artist or resolved.duration_seconds > 0):
+        return last_metadata
+    track_id = raw_metadata.track_id
+    if not track_id and same_track_as_last:
+        track_id = last_metadata.track_id
+    live_status = raw_metadata.ytdlp_live_status
+    if not live_status and same_track_as_last:
+        live_status = last_metadata.ytdlp_live_status
+    return MediaMetadata(
+        track=resolved.track,
+        artist=resolved.artist,
+        track_id=track_id,
+        media_url=raw_metadata.media_url,
+        duration_seconds=max(0.0, resolved.duration_seconds),
+        ytdlp_live_status=live_status,
     )
 
 
@@ -181,9 +217,8 @@ def resolve_browser_metadata_fallbacks(
 ) -> tuple[MediaMetadata, MediaMetadata]:
     resolved = replace(raw_metadata)
     recent_seek_to_start = (
-        seek_position is not None
-        and 0.0 <= seek_age <= 2.5
-        and seek_position <= 3.0
+        recent_seek(seek_position, seek_age, SEEK_RECENT_SECONDS)
+        and seek_position <= SEEK_TO_START_SECONDS
     )
     same_track_as_last = raw_metadata.same_track_as(last_metadata)
     youtube_url_changed = (
@@ -216,24 +251,44 @@ def resolve_browser_metadata_fallbacks(
     ):
         resolved.duration_seconds = 0.0
 
-    updated_metadata = last_metadata
-    if resolved.track or resolved.artist or resolved.duration_seconds > 0:
-        track_id = raw_metadata.track_id
-        if not track_id and same_track_as_last:
-            track_id = last_metadata.track_id
-        live_status = raw_metadata.ytdlp_live_status
-        if not live_status and same_track_as_last:
-            live_status = last_metadata.ytdlp_live_status
-        updated_metadata = MediaMetadata(
-            track=resolved.track,
-            artist=resolved.artist,
-            track_id=track_id,
-            media_url=raw_metadata.media_url,
-            duration_seconds=max(0.0, resolved.duration_seconds),
-            ytdlp_live_status=live_status,
-        )
+    return resolved, remembered_metadata(raw_metadata, resolved, last_metadata, same_track_as_last)
 
-    return resolved, updated_metadata
+
+def seek_corrected_position(snapshot: PlaybackSnapshot, state: PlaybackState, seek_age: float) -> float:
+    reported = snapshot.reported_position_seconds
+    if (
+        recent_seek(state.seek_position, seek_age, SEEK_SETTLE_SECONDS)
+        and abs(state.seek_position - reported) > SEEK_DRIFT_SECONDS
+    ):
+        return state.seek_position
+    return reported
+
+
+def remember_title_url(state: PlaybackState, raw_metadata: MediaMetadata) -> None:
+    if raw_metadata.track != state.raw_track:
+        state.raw_track = raw_metadata.track
+        state.title_media_url = raw_metadata.media_url
+
+
+def title_is_stale(state: PlaybackState, raw_metadata: MediaMetadata) -> bool:
+    return bool(
+        raw_metadata.is_youtube
+        and state.title_media_url
+        and raw_metadata.media_url != state.title_media_url
+    )
+
+
+def seeked_to_end(state: PlaybackState, seek_age: float, duration_seconds: float) -> bool:
+    return (
+        recent_seek(state.seek_position, seek_age, SEEK_RECENT_SECONDS)
+        and duration_seconds > 0
+        and state.seek_position >= max(0.0, duration_seconds - SEEK_TO_END_MARGIN_SECONDS)
+    )
+
+
+def settled_position(position_seconds: float, duration_seconds: float) -> float:
+    position_seconds = max(0.0, round(position_seconds, 2))
+    return min(position_seconds, duration_seconds) if duration_seconds > 0 else position_seconds
 
 
 def resolve_playback(
@@ -241,29 +296,16 @@ def resolve_playback(
     state: PlaybackState,
 ) -> ResolvedPlayback:
     seek_age = snapshot.observed_at - state.seek_at
-    position_seconds = snapshot.reported_position_seconds
-    if (
-        state.seek_position is not None
-        and 0.0 <= seek_age <= 2.0
-        and abs(state.seek_position - position_seconds) > 1.0
-    ):
-        position_seconds = state.seek_position
+    position_seconds = seek_corrected_position(snapshot, state, seek_age)
 
     raw_metadata = resolve_metadata_duration(snapshot.metadata, state.metadata)
-    if raw_metadata.track != state.raw_track:
-        state.raw_track = raw_metadata.track
-        state.title_media_url = raw_metadata.media_url
-    title_is_stale = bool(
-        raw_metadata.is_youtube
-        and state.title_media_url
-        and raw_metadata.media_url != state.title_media_url
-    )
+    remember_title_url(state, raw_metadata)
     metadata, state.metadata = resolve_browser_metadata_fallbacks(
         raw_metadata,
         seek_position=state.seek_position,
         seek_age=seek_age,
         last_metadata=state.metadata,
-        title_is_stale=title_is_stale,
+        title_is_stale=title_is_stale(state, raw_metadata),
     )
     duration_seconds = max(0.0, round(metadata.duration_seconds, 2))
     metadata.duration_seconds = duration_seconds
@@ -275,12 +317,6 @@ def resolve_playback(
         metadata.track,
         metadata.artist,
     )
-    recent_seek_to_end = (
-        state.seek_position is not None
-        and 0.0 <= seek_age <= 2.5
-        and duration_seconds > 0
-        and state.seek_position >= max(0.0, duration_seconds - 5.0)
-    )
     position_seconds = max(0.0, position_seconds)
     position_untrusted = youtube_position_is_untrusted(
         resolved_metadata=metadata,
@@ -288,7 +324,7 @@ def resolve_playback(
         reported_position_seconds=position_seconds,
         duration_seconds=duration_seconds,
         is_playing=snapshot.status == "Playing",
-        recent_seek_to_end=recent_seek_to_end,
+        recent_seek_to_end=seeked_to_end(state, seek_age, duration_seconds),
         previous_track_key=state.track_key,
         current_track_key=track_key,
         previous_raw_position=state.position_seconds,
@@ -297,9 +333,7 @@ def resolve_playback(
         position_seconds = (
             state.position_seconds if state.track_key == track_key else 0.0
         )
-    position_seconds = max(0.0, round(position_seconds, 2))
-    if duration_seconds > 0:
-        position_seconds = min(position_seconds, duration_seconds)
+    position_seconds = settled_position(position_seconds, duration_seconds)
 
     state.track_key = track_key
     state.position_seconds = position_seconds

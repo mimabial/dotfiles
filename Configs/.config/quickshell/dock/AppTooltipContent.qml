@@ -4,6 +4,8 @@ import qs.Commons
 
 Column {
     id: root
+    readonly property int maxWindows: 8
+    readonly property int maxLabelLength: 32
     required property string appName
     property string suffix: ""
     required property var windows
@@ -39,7 +41,7 @@ Column {
     }
 
     Repeater {
-        model: root.advanced ? Math.min(root.windows.length, 8) : 0
+        model: root.advanced ? Math.min(root.windows.length, root.maxWindows) : 0
         delegate: Row {
             id: tooltipRow
             required property int index
@@ -77,7 +79,7 @@ Column {
             }
             Text {
                 readonly property string fullLabel: root.windowLabel(tooltipRow.window)
-                text: fullLabel.length > 32 ? fullLabel.slice(0, 30) + "…" : fullLabel
+                text: fullLabel.length > root.maxLabelLength ? fullLabel.slice(0, root.maxLabelLength - 1) + "…" : fullLabel
                 textFormat: Text.PlainText
                 color: tooltipRow.selected ? Color.accent
                     : tooltipRow.focused ? Color.tooltip.text : Util.alpha(Color.tooltip.text, 0.80)
@@ -91,7 +93,7 @@ Column {
     }
 
     Text {
-        visible: root.advanced && root.windows.length > 8
+        visible: root.advanced && root.windows.length > root.maxWindows
         anchors.horizontalCenter: parent.horizontalCenter
         text: "+" + (root.windows.length - 8) + " more"
         textFormat: Text.PlainText

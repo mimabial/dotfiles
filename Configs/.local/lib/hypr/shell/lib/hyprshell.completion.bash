@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Sourced module; strict mode is owned by the entrypoint.
 
 declare -ga HYPR_COMPLETION_BUILTINS=()
 
@@ -28,7 +27,6 @@ gen_bash_completion() {
   built_in_commands="$(completion_join_space HYPR_COMPLETION_BUILTINS)"
 
   cat <<EOF
-# Bash completion for hyprshell
 _hyprshell_completion() {
     local cur prev words cword
     _init_completion 2>/dev/null || {

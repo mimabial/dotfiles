@@ -1,5 +1,6 @@
-"""Workspace-to-monitor planning, mirroring what the panel expects back."""
 from __future__ import annotations
+
+from .profiles import DEFAULT_GROUP_SIZE, DEFAULT_MAX_WORKSPACES
 
 
 def target_keys(profile: dict) -> list[str]:
@@ -20,15 +21,14 @@ def _output_name(profile: dict, key: str) -> str:
 
 
 def plan(profile: dict) -> list[dict]:
-    """One row per enabled output. Empty workspace lists when the planner is off."""
     keys = target_keys(profile)
     rows = {key: [] for key in keys}
     settings = profile.get("workspaces", {}) or {}
 
     if settings.get("enabled") and keys:
         strategy = str(settings.get("strategy", "sequential"))
-        maximum = max(1, int(settings.get("max_workspaces", 9) or 9))
-        group = max(1, int(settings.get("group_size", 3) or 3))
+        maximum = max(1, int(settings.get("max_workspaces") or DEFAULT_MAX_WORKSPACES))
+        group = max(1, int(settings.get("group_size") or DEFAULT_GROUP_SIZE))
 
         if strategy == "manual":
             for rule in settings.get("rules", []) or []:
@@ -51,7 +51,6 @@ def plan(profile: dict) -> list[dict]:
 
 
 def rules(profile: dict) -> list[dict]:
-    """Flatten a plan into Hyprland workspace rules, one default per output."""
     seen, out = set(), []
     for row in plan(profile):
         for workspace in row["workspaces"]:
