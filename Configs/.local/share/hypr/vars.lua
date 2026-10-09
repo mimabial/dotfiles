@@ -1,13 +1,20 @@
 local M = {}
 local home = os.getenv("HOME")
 
+local function current_uid()
+    for line in io.lines("/proc/self/status") do
+        local uid = line:match("^Uid:%s*(%d+)")
+        if uid then return uid end
+    end
+end
+
 local values = {
     HOME = home,
     XDG_CONFIG_HOME = os.getenv("XDG_CONFIG_HOME") or (home .. "/.config"),
     XDG_CACHE_HOME = os.getenv("XDG_CACHE_HOME") or (home .. "/.cache"),
     XDG_DATA_HOME = os.getenv("XDG_DATA_HOME") or (home .. "/.local/share"),
     XDG_STATE_HOME = os.getenv("XDG_STATE_HOME") or (home .. "/.local/state"),
-    XDG_RUNTIME_DIR = os.getenv("XDG_RUNTIME_DIR") or ("/run/user/" .. tostring(os.getenv("UID") or "1000")),
+    XDG_RUNTIME_DIR = os.getenv("XDG_RUNTIME_DIR") or ("/run/user/" .. current_uid()),
     scrPath = home .. "/.local/lib/hypr",
     mainMod = "SUPER",
     BROWSER = "firefox",
@@ -16,13 +23,11 @@ local values = {
     TERMINAL = "alacritty",
     TERMINAL_TUI = "alacritty",
     LOCKSCREEN = "hyprlock",
-    ["list.environment"] = "WAYLAND_DISPLAY XDG_RUNTIME_DIR HYPRLAND_INSTANCE_SIGNATURE XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP XDG_CONFIG_HOME QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME QT_FONT_DPI XCURSOR_THEME XCURSOR_SIZE XCURSOR_PATH",
     ["start.USER_SUPERVISOR"] = "command -v runsvdir >/dev/null && [ ! -d /run/systemd/system ] && exec hypr-runsvdir",
     ["start.XDG_PORTAL_RESET"] = "hyprshell reset-xdg-portal.sh",
     ["start.KEYBIND_SYNC"] = "hyprshell keyboard-switch.sh --sync-current --quiet",
     ["start.SUBMAP_HINT"] = "hyprshell app -u hyprland-submap-hint.service -t service -- hyprshell keybinds/submap-hint",
     ["start.FFTAB_BRIDGE"] = "hyprshell media/fftab-bridge/ensure",
-    ["start.THEME_OUTPUT_SYNC"] = "hyprshell theme/startup-sync.sh",
     ["start.DISPLAY_PROFILES"] = "hyprshell system/monitor-profile start",
     ["start.AUTH_DIALOGUE"] = "hyprshell app -t service -- hyprshell session/polkit-kde-auth",
     ["start.LOCATION_AGENT"] = "hyprshell system/start-if-available.sh HYPR_START_LOCATION_AGENT /usr/lib/geoclue-2.0/demos/agent -- hyprshell app -t service -- /usr/lib/geoclue-2.0/demos/agent",
@@ -36,13 +41,11 @@ local values = {
     ["start.CLIPBOARD_PERSIST"] = "hyprshell app -t service wl-clip-persist --clipboard regular",
     ["start.APPTRAY_BLUETOOTH"] = "hyprshell system/start-if-available.sh HYPR_START_BLUETOOTH_APPLET blueman-applet -- hyprshell app -t service blueman-applet",
     ["start.BATTERY_NOTIFY"] = "hyprshell app -t service -- hyprshell sysinfo/battery-notify",
-    ["start.IDLE_DAEMON"] = "systemctl --user start --no-block hyprland-hypridle.service",
-    ["start.LID_INHIBITOR"] = "hyprshell app -t service -- $scrPath/session/lid-inhibitor.py",
+    ["start.LOGIND_INHIBITOR"] = "hyprshell app -t service -- $scrPath/session/logind-inhibitor.py",
     ["start.AUTO_THEME"] = "hyprshell auto-theme-startup",
-    ["start.IDLE_MANAGER"] = "systemctl --user start --no-block hyprland-idle-manager.service",
-    ["start.MONITOR_WATCH"] = "hyprshell service/control start hyprland-monitor-watch",
+    ["start.IDLE_MANAGER"] = "hyprshell service/control start hyprland-idle-manager",
     ["start.POWER_PROFILE_AUTO"] = "hyprshell service/control start power-profile-auto",
-    ["start.ZSH_ZCOMPDUMP"] = "systemctl --user start --no-block zsh-zcompdump-clean.timer",
+    ["start.ZSH_ZCOMPDUMP"] = "$HOME/.local/lib/zsh/clean-zcompdump.sh",
     ["start.CALDAV"] = "hyprshell app -u hyprland-caldav.service -t service -- radicale",
     ["start.CALDAV_SYNC"] = "hyprshell app -u hyprland-caldav-sync.service -t service -- hyprshell calendar/sync.daemon",
     ["start.GAMEMODE"] = "hyprshell gaming/gamemode-hook reconcile",
@@ -65,9 +68,6 @@ local values = {
     FONT_ANTIALIASING = "rgba",
     FONT_HINTING = "",
 }
-
-values["start.DBUS_SHARE_PICKER"] = "dbus-update-activation-environment --systemd " .. values["list.environment"]
-values["start.SYSTEMD_SHARE_PICKER"] = "systemctl --user import-environment " .. values["list.environment"]
 
 function M.set(name, value)
     values[name] = tostring(value or "")

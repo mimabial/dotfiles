@@ -38,7 +38,7 @@ decoration {
 
     shadow {
         enabled = yes
-        offset = 4 4
+        offset = 0 0
         range = 0
         render_power = 4
         ignore_window = yes

@@ -5,6 +5,7 @@ import QtQuick
 Rectangle {
     id: root
     required property var shell
+    readonly property var box: shell.style.box("notification")
     property string app: ""
     property string summary: ""
     property string body: ""
@@ -30,6 +31,7 @@ Rectangle {
     readonly property bool hasAvatar: avatarPath !== "" && avatarImage.status === Image.Ready
     readonly property string initial: app === "" ? "?" : app.charAt(0).toUpperCase()
     readonly property color sourceColor: {
+        if (box.sourceColor) return shell.styleColor(box.sourceColor, shell.foreground)
         const name = app.toLowerCase()
         if (["vesktop", "discord", "webcord", "vencord"].some(part => name.includes(part)))
             return "#e0574a"
@@ -63,7 +65,7 @@ Rectangle {
     width: ListView.view ? ListView.view.width : implicitWidth
     implicitHeight: content.implicitHeight + Style.controlPaddingX
     radius: root.shell.rounding
-    color: root.cursored || rowArea.containsMouse ? root.shell.hoverFill(2) : "transparent"
+    color: root.cursored || rowArea.containsMouse ? root.shell.hoverFill(2) : root.shell.styleColor(root.box.backgroundColor, "transparent")
     border.width: root.cursored ? 1 : 0
     border.color: root.shell.hoverEdge(1)
     Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
@@ -88,6 +90,7 @@ Rectangle {
 
         Rectangle {
             id: sourceRule
+            visible: root.box.sourceRule !== false
             anchors.left: parent.left
             anchors.top: parent.top; anchors.bottom: parent.bottom
             width: Style.xxs

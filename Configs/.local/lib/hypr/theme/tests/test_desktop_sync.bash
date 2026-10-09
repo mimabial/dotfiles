@@ -99,11 +99,11 @@ unset -f dbus-send
 
 (
   HOME="${tmp_dir}/home" STATE_DIR="${HYPR_STATE_HOME}" HYPR_THEME=''
-  mkdir -p "${XDG_DATA_HOME}/themes/Pywal16-Gtk/gtk-3.0"
-  touch "${XDG_DATA_HOME}/themes/Pywal16-Gtk/gtk-3.0/gtk.css"
-  printf '%s\n' 'Pywal16-Gtk-Alt' >"${XDG_DATA_HOME}/themes/Pywal16-Gtk/theme-name"
+  mkdir -p "${XDG_DATA_HOME}/themes/Hypr-Gtk/gtk-3.0"
+  touch "${XDG_DATA_HOME}/themes/Hypr-Gtk/gtk-3.0/gtk.css"
+  printf '%s\n' 'Hypr-Gtk-Alt' >"${XDG_DATA_HOME}/themes/Hypr-Gtk/theme-name"
   theme_desktop_resolve_values
-  check "${RESOLVED_GTK_THEME}" 'Pywal16-Gtk-Alt' generated-gtk-theme-name
+  check "${RESOLVED_GTK_THEME}" 'Hypr-Gtk-Alt' generated-gtk-theme-name
 )
 
 gtk_notifications=()

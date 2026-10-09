@@ -19,6 +19,7 @@ PanelWindow {
         return shell.prefs.barFloating && edge !== inner ? shell.barFloatGap : 0
     }
 
+    visible: active
     color: "transparent"
     surfaceFormat.opaque: false
     exclusionMode: active ? ExclusionMode.Auto : ExclusionMode.Ignore

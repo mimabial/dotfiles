@@ -1,5 +1,4 @@
 #!/bin/sh
-# runit service: automatic power-profile switching.
 # Idle (rather than crash-loop) when power-profiles-daemon is unavailable.
 exec 2>&1
 if ! command -v powerprofilesctl >/dev/null 2>&1; then

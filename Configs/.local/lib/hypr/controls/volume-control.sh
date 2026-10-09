@@ -133,7 +133,7 @@ sink_is_muted() {
 }
 
 icons_media_dir() {
-  printf '%s/Pywal16-Icon/media\n' "${ICONS_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/icons}"
+  printf '%s/Hypr-Icon/media\n' "${ICONS_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/icons}"
 }
 
 notify_volume() {

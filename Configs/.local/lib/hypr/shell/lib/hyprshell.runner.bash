@@ -14,7 +14,7 @@ run_lib_script() {
 }
 
 collect_script_dirs() {
-  local scripts_path="${1:-${HYPR_SCRIPTS_PATH:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts:${LIB_DIR}/hypr}}"
+  local scripts_path="${1:-${HYPR_SCRIPTS_PATH:-${LIB_DIR}/hypr}}"
   local -a raw_dirs=()
   IFS=':' read -ra raw_dirs <<<"${scripts_path}"
 
@@ -252,7 +252,7 @@ print_ambiguous_command_error() {
     target_path="${candidate#*$'\t'}"
     for dir in "${SCRIPT_DIRS[@]}"; do
       if [[ "${target_path}" == "${dir}/"* ]]; then
-        target_path="${target_path#${dir}/}"
+        target_path="${target_path#"${dir}"/}"
         target_path="${target_path%.sh}"
         target_path="${target_path%.py}"
         break
@@ -287,7 +287,7 @@ resolve_command_target() {
   target_path="${CANDIDATES[0]#*$'\t'}"
   for dir in "${SCRIPT_DIRS[@]}"; do
     if [[ "${target_path}" == "${dir}/"* ]]; then
-      printf '%s\n' "${target_path#${dir}/}"
+      printf '%s\n' "${target_path#"${dir}"/}"
       return 0
     fi
   done

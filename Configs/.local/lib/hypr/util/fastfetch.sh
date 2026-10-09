@@ -34,7 +34,7 @@ FASTFETCH_CONFIG_FILE="${FASTFETCH_CONFIG_HOME}/config.jsonc"
 FASTFETCH_LOGO_DIR="${FASTFETCH_CONFIG_HOME}/logo"
 HYPR_CACHE_HOME="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}"
 WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME}/wallpaper/current}"
-distro_logo=${iconDir}/Pywal16-Icon/distro/${LOGO:-}
+distro_logo=${iconDir}/Hypr-Icon/distro/${LOGO:-}
 image_dirs=()
 
 usage() {
@@ -189,7 +189,6 @@ fastfetch_select_logo() {
 logo_search_paths() {
   image_dirs=()
   image_dirs+=("${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/logo")
-  image_dirs+=("${iconDir}/Pywal16-Icon/fastfetch/")
   if [ -n "${HYPR_THEME:-}" ] && [ -d "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${HYPR_THEME}/logo" ]; then
     image_dirs+=("${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${HYPR_THEME}/logo")
   fi
@@ -222,7 +221,6 @@ options:
   --prof    Display your profile picture (~/.face.icon)
   --os      Display the distro logo
   --local   Display a logo inside the fastfetch logo directory
-  --wall    Display a logo inside the pywal16 fastfetch directory
   --theme   Display a logo inside the theme directory
   --rand    Display a random logo
   *         Display a random logo
@@ -243,7 +241,6 @@ logo_dirs_from_args() {
       --prof) [ -f "$HOME/.face.icon" ] && image_dirs+=("$HOME/.face.icon") ;;
       --os) [ -f "$distro_logo" ] && image_dirs+=("$distro_logo") ;;
       --local) image_dirs+=("${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/logo") ;;
-      --wall) image_dirs+=("${iconDir}/Pywal16-Icon/fastfetch/") ;;
       --theme)
         if [ -n "${HYPR_THEME:-}" ] && [ -d "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${HYPR_THEME}/logo" ]; then
           image_dirs+=("${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${HYPR_THEME}/logo")

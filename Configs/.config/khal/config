@@ -1,4 +1,3 @@
-# khal configuration for the quickshell clock popup agenda.
 # ~/.calendars is a vdir: one directory per calendar, one .ics file per event.
 # Point vdirsyncer at the same tree to sync CalDAV accounts into it.
 

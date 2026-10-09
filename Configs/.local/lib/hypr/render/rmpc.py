@@ -23,13 +23,13 @@ CACHE_HOME = Path(
 )
 CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
 PALETTE = Path(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1] else STATE_HOME / "active-palette.json"
-TEMPLATE_DIR = CONFIG_HOME / "wal" / "templates"
+TEMPLATE_DIR = CONFIG_HOME / "hypr" / "templates"
 OUT_DIR = CACHE_HOME / "render" / "rmpc"
 TEMPLATES = {
-    "pywal16.ron": TEMPLATE_DIR / "colors-rmpc.ron",
-    "pywal16-small.ron": TEMPLATE_DIR / "colors--small-rmpc.ron",
-    "pywal16-big.ron": TEMPLATE_DIR / "colors--big-rmpc.ron",
-    "pywal16-wide.ron": TEMPLATE_DIR / "colors--wide-rmpc.ron",
+    "hypr.ron": TEMPLATE_DIR / "rmpc.ron",
+    "hypr-small.ron": TEMPLATE_DIR / "rmpc-small.ron",
+    "hypr-big.ron": TEMPLATE_DIR / "rmpc-big.ron",
+    "hypr-wide.ron": TEMPLATE_DIR / "rmpc-wide.ron",
 }
 APP = "rmpc"
 

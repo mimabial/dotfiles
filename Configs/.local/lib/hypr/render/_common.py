@@ -5,10 +5,8 @@ from pathlib import Path
 DIGEST_LENGTH = 16
 ANSI_COLOR_COUNT = 16
 
-HASH_DIR = (
-    Path(os.environ.get("HYPR_CACHE_HOME") or Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "hypr")
-    / "render-hashes"
-)
+CACHE_HOME = Path(os.environ.get("HYPR_CACHE_HOME") or Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "hypr")
+HASH_DIR = CACHE_HOME / "render-hashes"
 
 
 def short_digest(hasher) -> str:
@@ -25,8 +23,6 @@ def cache_hit(app: str, digest: str) -> bool:
 
 
 def cache_store(app: str, digest: str) -> None:
-    if changed_file := os.environ.get("HYPR_THEME_CHANGED_FILE"):
-        Path(changed_file).touch()
     if os.environ.get("HYPR_NO_CACHE") != "1":
         atomic_write(HASH_DIR / app, digest + "\n")
 

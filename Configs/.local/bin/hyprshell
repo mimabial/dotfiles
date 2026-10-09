@@ -1,22 +1,8 @@
 #!/usr/bin/env bash
 
-resolve_executable_path() {
-  local candidate="${EXECUTABLE:-hyprshell}"
-
-  if [[ "${candidate}" == */* ]] && [[ -e "${candidate}" ]]; then
-    realpath "${candidate}" 2>/dev/null || printf '%s\n' "${candidate}"
-    return
-  fi
-
-  command -v "${candidate}" 2>/dev/null || printf '%s\n' "${candidate}"
-}
-
-EXECUTABLE="${BASH_SOURCE[0]:-$0}"
-
-executable_path="$(resolve_executable_path)"
+executable_path="$(realpath "${BASH_SOURCE[0]:-$0}")"
 BIN_DIR="${executable_path%/*}"
-[[ "$BIN_DIR" != "$executable_path" ]] || BIN_DIR=.
-LIB_DIR="$(realpath "${BIN_DIR}/../lib")"
+LIB_DIR="${BIN_DIR%/*}/lib"
 unset executable_path
 runtime_init="${LIB_DIR}/hypr/runtime/init.bash"
 
@@ -44,9 +30,9 @@ hyprshell_prepend_path() {
   PATH="${prefix:+${prefix}:}${PATH}"
 }
 
-hyprshell_prepend_path "${XDG_CONFIG_HOME}/hypr/scripts" "${BIN_DIR}" "${HYPR_LIB_DIR}"
+hyprshell_prepend_path "${BIN_DIR}" "${HYPR_LIB_DIR}"
 
-HYPR_SCRIPTS_PATH="${HYPR_SCRIPTS_PATH:-${XDG_CONFIG_HOME}/hypr/scripts:${LIB_DIR}/hypr}"
+HYPR_SCRIPTS_PATH="${HYPR_SCRIPTS_PATH:-${LIB_DIR}/hypr}"
 
 export BIN_DIR LIB_DIR PATH HYPR_SCRIPTS_PATH
 
@@ -89,21 +75,12 @@ if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
   return 0
 fi
 
+export HYPR_SHELL_INIT=1
+
 case "${1:-}" in
   init | --init)
     print_init_env
-    exit 0
     ;;
-  lock-session)
-    lock_session
-    exit 0
-    ;;
-  *)
-    export HYPR_SHELL_INIT=1
-    ;;
-esac
-
-case "${1:-}" in
   logout)
     hyprlogout
     ;;

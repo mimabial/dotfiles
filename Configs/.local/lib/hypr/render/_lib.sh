@@ -78,7 +78,6 @@ render_should_skip() {
 
 render_cache_store() {
   local app="$1" hash="$2" tmp
-  [[ -z "${HYPR_THEME_CHANGED_FILE:-}" ]] || : >"${HYPR_THEME_CHANGED_FILE}"
   [[ "${HYPR_NO_CACHE:-0}" != 1 ]] || return 0
   mkdir -p "${RENDER_HASH_DIR}"
   tmp="$(mktemp "${RENDER_HASH_DIR}/.${app}.XXXXXX")"
@@ -88,6 +87,11 @@ render_cache_store() {
 
 render_temp() {
   mktemp "${OUT_DIR}/.$(basename "${OUT_FILE}").XXXXXX"
+}
+
+render_link_output() {
+  local link="$1"
+  [[ -L "${link}" ]] || { mkdir -p "${link%/*}"; ln -sfn "${OUT_FILE}" "${link}"; }
 }
 
 render_commit() {

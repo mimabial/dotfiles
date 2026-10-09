@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import json
 import os
 import re
 import sys
@@ -46,6 +45,8 @@ def normalize_type(type_str: str) -> str:
 
 
 def stringify_value(value: Any) -> str:
+    if value is None:
+        return ""
     if isinstance(value, list):
         return "\n".join(stringify_value(item) for item in value)
     return str(value)
@@ -60,14 +61,6 @@ def escape_env_value(value: str) -> str:
     return value
 
 
-def regex_matches_start(value: str, pattern: str) -> bool:
-    try:
-        return bool(re.match(pattern, value))
-    except re.error:
-        print(f"Invalid regex pattern: {pattern}", file=sys.stderr)
-        return False
-
-
 def filter_value(value: Any, predicate) -> Any | None:
     if isinstance(value, list):
         filtered = [item for item in value if predicate(item)]
@@ -79,60 +72,26 @@ def filter_value(value: Any, predicate) -> Any | None:
     return value if predicate(value) else None
 
 
-def parse_query_input(query_str: str) -> tuple[str, str | None, str | None]:
-    match = re.fullmatch(r"(?P<key>[^\[]+)(?:\[(?P<type>[^\]]*)\])?(?:\[(?P<regex>[^\]]*)\])?", query_str)
+def parse_query_input(query_str: str) -> tuple[str, str | None]:
+    match = re.fullmatch(r"(?P<key>[^\[]+)(?:\[(?P<type>[^\]]*)\])?", query_str)
     if not match:
-        return query_str, None, None
+        return query_str, None
 
-    return match["key"], match["type"] or None, match["regex"] or None
-
-
-def missing_result(query: str) -> dict[str, Any]:
-    return {"key": query, "value": "", "type": "NULL", "flags": []}
+    return match["key"], match["type"] or None
 
 
-def process_query(parser: HyprlangParser, query_str: str) -> dict[str, Any]:
-    query, expected_type, expected_regex = parse_query_input(query_str)
-
+def process_query(parser: HyprlangParser, query_str: str) -> Any | None:
+    query, expected_type = parse_query_input(query_str)
     value = parser.query(query)
+    if value is None or not expected_type:
+        return value
 
-    if value is None:
-        return missing_result(query)
-
-    if expected_type:
-        expected_type_norm = normalize_type(expected_type)
-        value = filter_value(
-            value,
-            lambda item: normalize_type(infer_type(item)) == expected_type_norm,
-        )
-        if value is None:
-            return missing_result(query)
-
-    if expected_regex:
-        value = filter_value(
-            value, lambda item: regex_matches_start(stringify_value(item), expected_regex)
-        )
-        if value is None:
-            return missing_result(query)
-
-    return {"key": query, "value": value, "type": infer_type(value), "flags": []}
+    expected_type_norm = normalize_type(expected_type)
+    return filter_value(value, lambda item: normalize_type(infer_type(item)) == expected_type_norm)
 
 
-def export_json(results: list[dict[str, Any]]):
-    output = [
-        {
-            "key": result["key"],
-            "val": result["value"],
-            "type": result["type"],
-            "flags": result["flags"],
-        }
-        for result in results
-    ]
-    print(json.dumps(output, indent=2))
-
-
-def export_env(results: list[dict[str, Any]], queries: list[str]):
-    for result, raw_query in zip(results, queries):
+def export_env(values: list[Any], queries: list[str]):
+    for value, raw_query in zip(values, queries):
         query = raw_query.removeprefix("$")
 
         query = re.sub(r"\[.*?\]", "", query)
@@ -142,15 +101,8 @@ def export_env(results: list[dict[str, Any]], queries: list[str]):
         is_variable = raw_query.startswith("$")
         prefix = "__" if is_variable else "_"
 
-        env_value = escape_env_value(stringify_value(result["value"]))
+        env_value = escape_env_value(stringify_value(value))
         print(f'{prefix}{env_key}="{env_value}"')
-
-
-def export_plain(results: list[dict[str, Any]], delimiter: str):
-    values = [
-        stringify_value(r["value"]) if r["type"] != "NULL" else "" for r in results
-    ]
-    print(delimiter.join(values))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -158,21 +110,16 @@ def build_parser() -> argparse.ArgumentParser:
         description="Query hyprlang .conf/.meta files. "
         "Does not parse the Lua compositor config.",
         epilog="""query syntax:
-  section:key[TYPE][REGEX]   nested key, optionally filtered
-  $VARIABLE                  hyprlang variable, recursively resolved
-  TYPE  keeps list items inferred as BOOL INT FLOAT COLOR STRING CUSTOM
-  REGEX keeps list items matching it
+  section:key[TYPE]   nested key, optionally filtered
+  $VARIABLE           hyprlang variable, recursively resolved
+  TYPE keeps list items inferred as BOOL INT FLOAT COLOR STRING CUSTOM
 
-A repeated key yields a list, printed one item per line; --delimiter joins the
-results of separate -Q flags, not the items within one.
+A repeated key yields a list, printed one item per line.
 Exit status is 1 if any query resolved to nothing, unless --allow-missing.
 
 examples:
   hyq -Q '$CURSOR_THEME' ~/.config/hypr/themes/theme.meta
   hyq -Q general:lock_cmd ~/.config/hypr/hypridle.conf
-  hyq -Q 'listener:on-timeout[][loginctl]' ~/.config/hypr/hypridle.conf
-  hyq -Q '$FONT' -Q '$CURSOR_SIZE' -D' | ' ~/.config/hypr/themes/theme.meta
-  hyq -s -Q background:path ~/.config/hypr/hyprlock.conf
 """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -184,22 +131,13 @@ examples:
         action="append",
         dest="queries",
         required=True,
-        help="Query to execute (format: query[expectedType][expectedRegex])",
+        help="Query to execute (format: query[expectedType])",
     )
     parser.add_argument(
         "--allow-missing", action="store_true", help="Allow missing values"
     )
     parser.add_argument(
-        "--export", choices=["json", "env"], help="Export format: json or env"
-    )
-    parser.add_argument(
-        "--source", "-s", action="store_true", help="Follow the source command"
-    )
-    parser.add_argument(
-        "--delimiter",
-        "-D",
-        default="\n",
-        help="Delimiter for plain output (default: newline)",
+        "--export", choices=["env"], help="Print shell variable assignments"
     )
     return parser
 
@@ -214,19 +152,17 @@ def main():
         )
         return 1
 
-    hypr_parser = HyprlangParser(follow_source=args.source)
+    hypr_parser = HyprlangParser()
     hypr_parser.parse_file(config_file)
 
-    results = [process_query(hypr_parser, query) for query in args.queries]
+    values = [process_query(hypr_parser, query) for query in args.queries]
 
-    if args.export == "json":
-        export_json(results)
-    elif args.export == "env":
-        export_env(results, args.queries)
+    if args.export == "env":
+        export_env(values, args.queries)
     else:
-        export_plain(results, args.delimiter)
+        print("\n".join(stringify_value(value) for value in values))
 
-    return int(not args.allow_missing and any(r["type"] == "NULL" for r in results))
+    return int(not args.allow_missing and any(value is None for value in values))
 
 
 if __name__ == "__main__":

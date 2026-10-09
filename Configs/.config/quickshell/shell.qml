@@ -53,6 +53,7 @@ ShellRoot {
     readonly property var barModules: moduleIds(barSections)
     // the tray's modules exist only while its flyout is open
     property bool trayOpen: false
+    signal trayToggleRequested
     readonly property var liveModules: moduleIds(trayOpen ? barSections : barSections.filter(section => section !== "tray"))
     readonly property var trayHidden: parseTrayList(prefs.trayHidden)
     readonly property var trayPinned: parseTrayList(prefs.trayPinned)
@@ -101,18 +102,35 @@ ShellRoot {
         if (layoutData.extends) { loadSharedLayout(output); sharedLayoutFile.setText(output) }
         else { layoutData = layout; barLayout = layout; layoutFile.setText(output) }
     }
-    function moveBarModule(sourceKey, destinationSection, targetKey, afterTarget) {
+    function moveBarModule(sourceKey, destinationSection, targetKey, afterTarget, restorePosition) {
         if (!barModules.includes("tray") || !barSections.includes(destinationSection) || targetKey === sourceKey) return
         const source = parseTrayKey(sourceKey)
         const editableLayout = JSON.parse(layoutData.extends ? sharedLayoutFile.text() : JSON.stringify(layoutData))
         const sourceIndex = (editableLayout[source.section] || []).findIndex(entry => trayKey(source.section, entry) === sourceKey)
         if (sourceIndex < 0 && !source.entryId.startsWith("icon:")) return
-        const movingEntry = sourceIndex < 0 ? source.entryId : editableLayout[source.section].splice(sourceIndex, 1)[0]
+        let movingEntry = sourceIndex < 0 ? source.entryId : editableLayout[source.section].splice(sourceIndex, 1)[0]
+        const position = movingEntry.trayPosition
+        const hiddenPositions = (editableLayout.tray || []).map(entry => entry.trayPosition)
+            .filter(saved => saved?.section === (restorePosition && position ? position.section : source.section))
+        if (destinationSection === "tray" && source.section !== "tray") {
+            let index = sourceIndex
+            for (const saved of hiddenPositions.sort((a, b) => a.index - b.index))
+                if (saved.index <= index) index++
+            movingEntry = Object.assign(typeof movingEntry === "string" ? { id: movingEntry } : movingEntry,
+                { trayPosition: { section: source.section, index, stringEntry: typeof movingEntry === "string" } })
+        } else if (source.section === "tray" && destinationSection !== "tray" && position) {
+            movingEntry = Object.assign({}, movingEntry)
+            delete movingEntry.trayPosition
+            if (position.stringEntry && Object.keys(movingEntry).length === 1) movingEntry = movingEntry.id
+            if (restorePosition) destinationSection = position.section
+        }
         editableLayout[destinationSection] = editableLayout[destinationSection] || []
         const destinationEntries = editableLayout[destinationSection]
         let insertionIndex = destinationEntries.findIndex(entry => trayKey(destinationSection, entry) === targetKey)
         if (insertionIndex < 0) insertionIndex = destinationEntries.length
         else if (afterTarget) insertionIndex++
+        if (restorePosition && position)
+            insertionIndex = Math.max(0, Math.min(destinationEntries.length, position.index - hiddenPositions.filter(saved => saved.index < position.index).length))
         destinationEntries.splice(insertionIndex, 0, movingEntry)
         ensureUniqueTrayInstances(editableLayout)
         saveMovedBarLayout(editableLayout)
@@ -125,7 +143,7 @@ ShellRoot {
     }
     readonly property string clockKind: barLayout.clock || (mode === "winbar" ? (prefs.winbarSmall ? "winbarSmall" : "winbar") : "top")
     readonly property var selectedClockFormat: ClockFormats.selected(clockKind, prefs[clockKind + "Clock"])
-    readonly property bool clockOnBar: !userHidden && ["datetime", "notification-center"].some(id => barModules.includes(id))
+    readonly property bool clockOnBar: !userHidden && ["datetime", "notification-center", "gnome-date-menu"].some(id => barModules.includes(id))
     readonly property bool dateModuleVisible: clockOnBar && selectedClockFormat.hasDate
     readonly property bool clockModuleVisible: clockOnBar && selectedClockFormat.hasTime
     readonly property string timeVisibility: Quickshell.processId + " " + Number(dateModuleVisible) + " " + Number(clockModuleVisible) + "\n"
@@ -155,7 +173,7 @@ ShellRoot {
     readonly property color faintText: alpha(foreground, Style.faintTextAlpha)
     property var hyprVarLayers: ({})
     readonly property var hyprVarLoadOrder: ["vars", "userVars", "theme", "userfonts", "userprefs"]
-    readonly property string fontFamily: hyprVar("BAR_FONT", "JetBrainsMono Nerd Font")
+    readonly property string fontFamily: style.box("shell").fontFamily ?? hyprVar("BAR_FONT", "JetBrainsMono Nerd Font")
     // a theme font carrying no Nerd Font glyphs needs a companion face for icons,
     // or they resolve through fontconfig to whatever proportional face it picks.
     // The companion must match the theme font's cell width (Monoid and Miracode
@@ -197,16 +215,17 @@ ShellRoot {
     // measurement — the one number here meant to be tuned by eye.
     property real iconOpticalBoost: 1.20
     readonly property real iconFontScale: iconCapRatio * iconOpticalBoost
-    readonly property real rounding: style.radius
+    readonly property real rounding: style.box("shell").rounding === undefined ? style.radius : Style.px(style.box("shell").rounding)
     // unscaled: the card's frame has to read as the same weight as the frames on
     // the windows behind it, and Hyprland draws those in raw pixels
-    readonly property real borderWidth: style.border
+    readonly property real borderWidth: style.overrides.shell?.borderWidth ?? style.border
     property real windowBorderWidth: style.border
     readonly property real moduleRadius: mode === "winbar" ? 0 : rounding
     readonly property string barEdge: String((barLayout.panel === "winbar" && prefs.winbarEdge) || barLayout.edge || "top")
     property real barFloatGap: Style.popupGap
-    readonly property real barOpacity: prefs.barOpacity >= 0 ? prefs.barOpacity : workflow === "powersaver" ? 1 : workflow === "windows" ? .5 : .4
-    readonly property color barColor: alpha(background, barOpacity)
+    readonly property real barOpacity: style.box("shell").barOpacity ?? (prefs.barOpacity >= 0 ? prefs.barOpacity : workflow === "powersaver" || workflow === "gnome" ? 1 : workflow === "windows" ? .5 : .4)
+    readonly property bool barBlur: style.box("shell").barBlur ?? prefs.barBlur
+    readonly property color barColor: styleColor(style.box("bar." + barEdge).backgroundColor, alpha(background, barOpacity))
     property SystemClock clock: SystemClock { precision: SystemClock.Minutes }
     readonly property alias store: persistent
     readonly property alias prefs: prefsAdapter
@@ -221,6 +240,7 @@ ShellRoot {
             property int winbarClock: 0
             property int winbarSmallClock: 0
             property int macosClock: 0
+            property int gnomeClock: 0
             property bool barBlur: true
             property real barOpacity: -1
             property bool barFloating: false
@@ -485,8 +505,8 @@ ShellRoot {
     }
     FileView { path: Quickshell.env("XDG_RUNTIME_DIR") + "/hypr/caffeine-windows"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadCaffeineWindowState(text()); onFileChanged: reload() }
     FileView { path: shellRoot.home + "/.local/state/hypr/window-layout.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.windowLayout = String(text()).match(/layout\s*=\s*["']([^"']+)/)?.[1] ?? ""; onFileChanged: reload() }
-    FileView { id: layoutFile; path: shellRoot.home + "/.config/quickshell/layouts/" + shellRoot.layoutName + ".json"; watchChanges: true; atomicWrites: true; printErrors: false; onPathChanged: reload(); onLoaded: shellRoot.loadBarLayout(text()); onFileChanged: reload() }
-    FileView { id: sharedLayoutFile; path: shellRoot.layoutData.extends ? shellRoot.home + "/.config/quickshell/layouts/shared/" + shellRoot.layoutData.extends + ".json" : ""; watchChanges: true; atomicWrites: true; printErrors: false; onLoaded: shellRoot.loadSharedLayout(text()); onFileChanged: reload() }
+    FileView { id: layoutFile; path: shellRoot.home + "/.config/quickshell/layouts/" + shellRoot.layoutName + ".json"; watchChanges: true; atomicWrites: true; blockWrites: true; printErrors: false; onPathChanged: reload(); onLoaded: shellRoot.loadBarLayout(text()); onFileChanged: reload() }
+    FileView { id: sharedLayoutFile; path: shellRoot.layoutData.extends ? shellRoot.home + "/.config/quickshell/layouts/shared/" + shellRoot.layoutData.extends + ".json" : ""; watchChanges: true; atomicWrites: true; blockWrites: true; printErrors: false; onLoaded: shellRoot.loadSharedLayout(text()); onFileChanged: reload() }
     FileView { id: varsFile; path: shellRoot.home + "/.local/share/hypr/vars.lua"; watchChanges: true; onLoaded: shellRoot.loadHyprVars("vars", text()); onFileChanged: reload() }
     FileView { id: userVarsFile; path: shellRoot.home + "/.config/hypr/vars.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadHyprVars("userVars", text()); onFileChanged: reload() }
     FileView { id: themeVarsFile; path: shellRoot.home + "/.config/hypr/themes/theme.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadHyprVars("theme", text()); onFileChanged: reload() }
@@ -545,12 +565,13 @@ ShellRoot {
         active: shellRoot.sessionMenuScreen !== ""
         SessionMenu { shell: shellRoot }
     }
-    LayerBlur { surface: "hypr-shell-bar"; enabled: shellRoot.prefs.barBlur; ignoreAlpha: 0.1 }
-    LayerBlur { surface: "hypr-shell-reload"; enabled: shellRoot.prefs.barBlur; ignoreAlpha: 0.1 }
+    LayerBlur { surface: "hypr-shell-bar"; enabled: shellRoot.barBlur; ignoreAlpha: 0.1 }
+    LayerBlur { surface: "hypr-shell-reload"; enabled: shellRoot.barBlur; ignoreAlpha: 0.1 }
 
     onModeChanged: closePopup()
     onLayoutNameChanged: { barRevealed = false; layoutData = ({}); barLayout = ({}); layoutFile.reload() }
-    onUserHiddenChanged: if (userHidden) { barRevealed = false; closePopup() }
+    onUserHiddenChanged: if (userHidden) barRevealed = false
+    onBarShownChanged: if (!barShown) closePopup()
     onTimeVisibilityChanged: timeVisibilityWrite.restart()
     Component.onCompleted: { restorePowerProfile(); refreshWindowMetrics() }
 
@@ -575,6 +596,7 @@ ShellRoot {
         // value or a re-evaluated font.family; this is the one to verify against
         function reloadHard(): void { Quickshell.reload(true) }
         function popup(name: string): void { shellRoot.togglePopup(name, true) }
+        function tray(): void { shellRoot.trayToggleRequested() }
         function menuBar(): void { if (shellRoot.layoutName === "macos") shellRoot.togglePopup("hyprmenu") }
         function bookmarks(): void { shellRoot.togglePopup("bookmarks", true) }
         function blur(): void { shellRoot.toggleBarBlur() }

@@ -118,7 +118,7 @@ theme_apply_start_envelope() {
   local -a envelope_env=()
   # Forward cache flags into systemd-run's clean environment.
   [[ -n "${FORCE_COLOR_REGEN:-}" ]] && envelope_env+=(-E "FORCE_COLOR_REGEN=${FORCE_COLOR_REGEN}")
-  [[ -n "${HYPR_WAL_CACHE_ENABLE:-}" ]] && envelope_env+=(-E "HYPR_WAL_CACHE_ENABLE=${HYPR_WAL_CACHE_ENABLE}")
+  [[ -n "${HYPR_HASH_CACHE_ENABLE:-}" ]] && envelope_env+=(-E "HYPR_HASH_CACHE_ENABLE=${HYPR_HASH_CACHE_ENABLE}")
   if systemd-run --user --quiet --no-block --collect \
       --slice="${HYPR_THEME_PHASE_D_SLICE:-background.slice}" \
       --unit="${unit_name}" \
@@ -234,10 +234,6 @@ theme_apply_phase_d_bootstrap() {
   local -a modules=(
     color.finalize.bash
   )
-
-  WAL_XDG_CACHE_HOME="${WAL_XDG_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}}"
-  WAL_CACHE="${WAL_CACHE:-${WAL_XDG_CACHE_HOME}/wal}"
-  export WAL_XDG_CACHE_HOME WAL_CACHE
 
   for module in "${modules[@]}"; do
     module_path="${HYPR_LIB_DIR}/theme/${module}"
@@ -377,7 +373,6 @@ theme_apply_start_phase_d_job() {
 }
 
 theme_apply_secondary_updates() {
-  color_finalize_source_generated_colors || return 1
   color_finalize_export_icon_theme || return 1
   ASYNC_POST_UPDATES=1 post_updates >/dev/null 2>&1 || true
 }

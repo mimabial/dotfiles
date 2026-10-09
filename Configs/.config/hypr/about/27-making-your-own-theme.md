@@ -67,7 +67,7 @@ the render, so you can experiment without breaking the switch.
 
 Drop images in `wallpapers/`. `wall.set` records which one is current. If the
 theme is in wallpaper mode, each one produces a different palette through
-pywal16; in theme mode they all sit under the same `palette.toml` colors.
+matugen; in theme mode they all sit under the same `palette.toml` colors.
 
 ## Importing instead
 

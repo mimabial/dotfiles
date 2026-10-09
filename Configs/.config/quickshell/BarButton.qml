@@ -36,6 +36,7 @@ Item {
     readonly property bool symbolic: symbol !== ""
     readonly property bool boxedIcon: symbolic || usesIconFont && box.iconBox !== undefined
     readonly property real iconBoxPx: iconSize || Style.fontPx(box.iconBox ?? box.fontSize)
+    readonly property int symbolSize: Math.round(iconSize || iconBoxPx * 1.15)
     readonly property rect glyphInk: (glyphProbe.item as GlyphInk)?.ink ?? Qt.rect(0, 0, 0, 0)
     readonly property bool fitsIconBox: boxedIcon && glyphInk.width > 0
     readonly property real iconMaxAspect: 1.2
@@ -59,6 +60,7 @@ Item {
     property color borderColor: root.styleColor("borderColor")
     property color cornerOutline: "transparent"
     property color textColor: box.color !== undefined ? styleColor("color") : active ? shell.role("act_fg", shell.foreground) : shell.foreground
+    readonly property color contentColor: label.color
     property var hoverOverride: null
     // drawn as an exponent past the glyph's top-right; countGlyph() fills it
     property string badgeText: ""
@@ -115,8 +117,8 @@ Item {
         anchors.bottomMargin: root.box.margin[2]; anchors.leftMargin: root.box.margin[3]
         radius: root.radius
         color: root.cursored ? root.shell.hoverFill()
-            : root.popupOpen && root.box.open ? root.shell.styleColor(root.box.open.backgroundColor, root.backgroundColor)
-            : root.interactiveColor("backgroundColor", root.backgroundColor)
+            : root.interactiveColor("backgroundColor", root.popupOpen && root.box.open
+                ? root.shell.styleColor(root.box.open.backgroundColor, root.backgroundColor) : root.backgroundColor)
         border.color: root.cursored ? root.shell.hoverEdge(.85) : root.interactiveColor("borderColor", root.borderColor)
         border.width: root.cursored ? 2 : root.paintedBorderWidth
         Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
@@ -134,7 +136,7 @@ Item {
         Loader {
             id: symbolLoader
             active: root.symbolic; anchors.centerIn: label
-            sourceComponent: Component { SymbolicIcon { name: root.symbol; context: root.symbolContext; directory: root.box.symbols ?? ""; color: label.color; size: Math.round(root.iconSize || root.iconBoxPx * 1.15) } }
+            sourceComponent: Component { SymbolicIcon { name: root.symbol; context: root.symbolContext; directory: root.box.symbols ?? ""; color: label.color; size: root.symbolSize } }
         }
         Text {
             id: icon
@@ -181,7 +183,7 @@ Item {
             radius: badgeBackground.radius; color: "black"
         }
     }
-    Rectangle { id: badgeBackground; anchors.fill: badge; anchors.leftMargin: -Style.xxs; anchors.rightMargin: -Style.xxs; radius: height / 2; visible: badge.visible; color: root.styleColor("badgeBackgroundColor") }
+    Rectangle { id: badgeBackground; anchors.fill: badge; anchors.leftMargin: -Style.xxs; anchors.rightMargin: -Style.xxs; radius: root.box.badgeBorderRadius === null ? root.shell.rounding : root.box.badgeBorderRadius ?? height / 2; visible: badge.visible; color: root.styleColor("badgeBackgroundColor") }
     Text {
         id: badge
         visible: root.badgeText !== ""
@@ -204,6 +206,7 @@ Item {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
         onClicked: event => { tip.dismiss(); root.clicked(event.button) }
         onWheel: event => root.wheeled(event.angleDelta.y)
     }

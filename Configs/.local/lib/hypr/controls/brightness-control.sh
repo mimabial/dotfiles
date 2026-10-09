@@ -60,7 +60,7 @@ notify_brightness() {
   ((angle > 100)) && angle=100
 
   icon_dir="${ICONS_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/icons}"
-  icon="${icon_dir}/Pywal16-Icon/media/knob-${angle}.svg"
+  icon="${icon_dir}/Hypr-Icon/media/knob-${angle}.svg"
   printf -v bar '%*s' "$((brightness / BRIGHTNESS_BAR_DIVISOR))" ''
   bar="${bar// /.}"
 

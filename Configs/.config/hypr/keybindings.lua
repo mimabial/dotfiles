@@ -104,10 +104,13 @@ local function submap_exec(key, description, command)
 	submap_action(key, description, hl.dsp.exec_cmd(command))
 end
 
-local function submap_cycle(key, description, command)
-	local dispatcher = hl.dsp.exec_cmd(command)
+local function submap_repeat_action(key, description, dispatcher)
 	bind_actions[description] = dispatcher
 	hl.bind(key, dispatcher, { description = description, repeating = true })
+end
+
+local function submap_cycle(key, description, command)
+	submap_repeat_action(key, description, hl.dsp.exec_cmd(command))
 end
 
 local function layout_action(layout, action)
@@ -475,6 +478,8 @@ exec(
 	"hyprshell brightness-control.sh d",
 	{ locked = true, repeating = true }
 )
+exec("", "XF86PowerOff", "[Hardware|Power] logout menu", "hyprshell logout-launch.sh")
+exec("", "XF86TouchpadToggle", "[Hardware|Touchpad] toggle touchpad", "hyprshell controls/touchpad-toggle.sh", { locked = true })
 
 exec("", "Print", "[Utilities|Capture] all monitors", "hyprshell screenshot.sh p", { locked = true })
 exec("SHIFT", "Print", "[Utilities|Capture] smart screenshot", "hyprshell screenshot.sh smart", { locked = true })
@@ -707,6 +712,7 @@ end, false)
 submap_leader("open", mod, "O", function()
 	submap_exec("F", "[Open] File finder", "pkill -x rofi || hyprshell launch/file-finder.sh")
 	submap_exec("B", "[Open] Bookmarks", "quickshell ipc call bar bookmarks")
+	submap_exec("T", "[Open] Tray", "quickshell ipc call bar tray")
 	submap_exec("L", "[Open] Game launcher", "hyprshell gaming/launcher.sh")
 	submap_exec(
 		"SHIFT + L",
@@ -790,7 +796,16 @@ submap_leader("hints", mod, "H", function()
 	submap_exec("H", "[Hints] Hyprland keybindings", "pkill -x rofi || hyprshell keybinds/keybinds_hint.sh")
 	submap_exec("K", "[Hints] kitty keybindings", "pkill -x rofi || hyprshell keybinds/app-hints.sh kitty")
 	submap_exec("T", "[Hints] tmux keybindings", "pkill -x rofi || hyprshell keybinds/app-hints.sh tmux")
+	submap_exec("W", "[Hints] focused window details", "quickshell ipc call bar popup windowinfo")
 end)
+
+local unzoomed, max_zoom, magnifier_step = 1, 10, 1.25
+local function magnify_by(factor)
+	return function()
+		local zoom = hl.get_config("cursor.zoom_factor") * factor
+		hl.config({ cursor = { zoom_factor = math.min(math.max(zoom, unzoomed), max_zoom) } })
+	end
+end
 
 submap_leader("utilities", mod, "U", function()
 	submap_exec("L", "[System] lock screen", "hyprshell lock-screen.sh")
@@ -803,6 +818,8 @@ submap_leader("utilities", mod, "U", function()
 	submap_exec("SHIFT + S", "[System] cycle monitor scale backward", "hyprshell system/monitor-scale.sh --reverse")
 	submap_exec("D", "[System] toggle laptop display", "hyprshell system/monitor-internal.sh toggle")
 	submap_exec("M", "[System] toggle mirroring", "hyprshell system/monitor-mirror.sh toggle")
+	submap_repeat_action("Z", "[System] zoom in", magnify_by(magnifier_step))
+	submap_repeat_action("SHIFT + Z", "[System] zoom out", magnify_by(1 / magnifier_step))
 end)
 
 for workspace = 1, 10 do

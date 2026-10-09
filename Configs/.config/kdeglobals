@@ -19,115 +19,115 @@ IntensityAmount=0.1
 IntensityEffect=2
 
 [Colors:Button]
-BackgroundAlternate=62,73,78
-BackgroundNormal=60,71,77
-DecorationFocus=217,187,128
-DecorationHover=131,182,175
-ForegroundActive=217,187,128
-ForegroundInactive=177,166,141
-ForegroundLink=167,192,128
-ForegroundNegative=230,129,131
-ForegroundNeutral=217,187,128
-ForegroundNormal=216,202,172
-ForegroundPositive=167,192,128
-ForegroundVisited=211,155,182
+BackgroundAlternate=27,30,46
+BackgroundNormal=10,13,26
+DecorationFocus=85,186,48
+DecorationHover=151,199,233
+ForegroundActive=85,186,48
+ForegroundInactive=207,209,198
+ForegroundLink=85,186,48
+ForegroundNegative=224,74,95
+ForegroundNeutral=179,246,58
+ForegroundNormal=253,255,241
+ForegroundPositive=85,186,48
+ForegroundVisited=107,138,184
 
 [Colors:Complementary]
-BackgroundAlternate=62,73,78
-BackgroundNormal=50,61,67
-DecorationFocus=217,187,128
-DecorationHover=131,182,175
-ForegroundActive=217,187,128
-ForegroundInactive=177,166,141
-ForegroundLink=167,192,128
-ForegroundNegative=230,129,131
-ForegroundNeutral=217,187,128
-ForegroundNormal=216,202,172
-ForegroundPositive=167,192,128
-ForegroundVisited=211,155,182
+BackgroundAlternate=27,30,46
+BackgroundNormal=12,16,33
+DecorationFocus=85,186,48
+DecorationHover=151,199,233
+ForegroundActive=85,186,48
+ForegroundInactive=207,209,198
+ForegroundLink=85,186,48
+ForegroundNegative=224,74,95
+ForegroundNeutral=179,246,58
+ForegroundNormal=253,255,241
+ForegroundPositive=85,186,48
+ForegroundVisited=107,138,184
 
 [Colors:Header]
-BackgroundAlternate=62,73,78
-BackgroundNormal=50,61,67
-DecorationFocus=217,187,128
-DecorationHover=131,182,175
-ForegroundActive=217,187,128
-ForegroundInactive=177,166,141
-ForegroundLink=167,192,128
-ForegroundNegative=230,129,131
-ForegroundNeutral=217,187,128
-ForegroundNormal=216,202,172
-ForegroundPositive=167,192,128
-ForegroundVisited=211,155,182
+BackgroundAlternate=27,30,46
+BackgroundNormal=12,16,33
+DecorationFocus=85,186,48
+DecorationHover=151,199,233
+ForegroundActive=85,186,48
+ForegroundInactive=207,209,198
+ForegroundLink=85,186,48
+ForegroundNegative=224,74,95
+ForegroundNeutral=179,246,58
+ForegroundNormal=253,255,241
+ForegroundPositive=85,186,48
+ForegroundVisited=107,138,184
 
 [Colors:Selection]
-BackgroundAlternate=217,187,128
-BackgroundNormal=217,187,128
-DecorationFocus=217,187,128
-DecorationHover=131,182,175
-ForegroundActive=134,141,128
-ForegroundInactive=134,141,128
-ForegroundLink=134,141,128
-ForegroundNegative=134,141,128
-ForegroundNeutral=134,141,128
-ForegroundNormal=134,141,128
-ForegroundPositive=134,141,128
-ForegroundVisited=134,141,128
+BackgroundAlternate=85,186,48
+BackgroundNormal=85,186,48
+DecorationFocus=85,186,48
+DecorationHover=151,199,233
+ForegroundActive=10,13,26
+ForegroundInactive=10,13,26
+ForegroundLink=10,13,26
+ForegroundNegative=10,13,26
+ForegroundNeutral=10,13,26
+ForegroundNormal=10,13,26
+ForegroundPositive=10,13,26
+ForegroundVisited=10,13,26
 
 [Colors:Tooltip]
-BackgroundAlternate=60,71,77
-BackgroundNormal=60,71,77
-DecorationFocus=217,187,128
-DecorationHover=131,182,175
-ForegroundActive=217,187,128
-ForegroundInactive=177,166,141
-ForegroundLink=167,192,128
-ForegroundNegative=230,129,131
-ForegroundNeutral=217,187,128
-ForegroundNormal=216,202,172
-ForegroundPositive=167,192,128
-ForegroundVisited=211,155,182
+BackgroundAlternate=10,13,26
+BackgroundNormal=10,13,26
+DecorationFocus=85,186,48
+DecorationHover=151,199,233
+ForegroundActive=85,186,48
+ForegroundInactive=207,209,198
+ForegroundLink=85,186,48
+ForegroundNegative=224,74,95
+ForegroundNeutral=179,246,58
+ForegroundNormal=253,255,241
+ForegroundPositive=85,186,48
+ForegroundVisited=107,138,184
 
 [Colors:View]
-BackgroundAlternate=62,73,78
-BackgroundNormal=50,61,67
-DecorationFocus=217,187,128
-DecorationHover=131,182,175
-ForegroundActive=217,187,128
-ForegroundInactive=177,166,141
-ForegroundLink=167,192,128
-ForegroundNegative=230,129,131
-ForegroundNeutral=217,187,128
-ForegroundNormal=216,202,172
-ForegroundPositive=167,192,128
-ForegroundVisited=211,155,182
+BackgroundAlternate=27,30,46
+BackgroundNormal=12,16,33
+DecorationFocus=85,186,48
+DecorationHover=151,199,233
+ForegroundActive=85,186,48
+ForegroundInactive=207,209,198
+ForegroundLink=85,186,48
+ForegroundNegative=224,74,95
+ForegroundNeutral=179,246,58
+ForegroundNormal=253,255,241
+ForegroundPositive=85,186,48
+ForegroundVisited=107,138,184
 
 [Colors:Window]
-BackgroundAlternate=62,73,78
-BackgroundNormal=50,61,67
-DecorationFocus=217,187,128
-DecorationHover=131,182,175
-ForegroundActive=217,187,128
-ForegroundInactive=177,166,141
-ForegroundLink=167,192,128
-ForegroundNegative=230,129,131
-ForegroundNeutral=217,187,128
-ForegroundNormal=216,202,172
-ForegroundPositive=167,192,128
-ForegroundVisited=211,155,182
+BackgroundAlternate=27,30,46
+BackgroundNormal=12,16,33
+DecorationFocus=85,186,48
+DecorationHover=151,199,233
+ForegroundActive=85,186,48
+ForegroundInactive=207,209,198
+ForegroundLink=85,186,48
+ForegroundNegative=224,74,95
+ForegroundNeutral=179,246,58
+ForegroundNormal=253,255,241
+ForegroundPositive=85,186,48
+ForegroundVisited=107,138,184
 
 [General]
-ColorScheme=Pywal
+ColorScheme=Hypr
 TerminalApplication=kitty
 TerminalService=kitty.desktop
-fixed=FantasqueSansM Nerd Font,16.67,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
-font=FantasqueSansM Nerd Font,16.67,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
-menuFont=FantasqueSansM Nerd Font,16.67,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
-smallestReadableFont=FantasqueSansM Nerd Font,13.33,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
-toolBarFont=FantasqueSansM Nerd Font,16.67,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+fixed=Monofur Nerd Font,15.00,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+font=Monofur Nerd Font,15.00,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+menuFont=Monofur Nerd Font,15.00,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+smallestReadableFont=Monofur Nerd Font,12.00,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+toolBarFont=Monofur Nerd Font,15.00,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
 
 [Icons]
-Theme=Vimix-dark
+Theme=Fluent-green-dark
 
 [KDE]
 ShowDeleteCommand=false
@@ -156,13 +156,13 @@ EnableRemoteFolderThumbnail=false
 MaximumRemoteSize=0
 
 [WM]
-activeBackground=217,187,128
-activeBlend=217,187,128
-activeFont=FantasqueSansM Nerd Font,16.67,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
-activeForeground=134,141,128
-inactiveBackground=60,71,77
-inactiveBlend=60,71,77
-inactiveForeground=177,166,141
+activeBackground=85,186,48
+activeBlend=85,186,48
+activeFont=Monofur Nerd Font,15.00,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+activeForeground=10,13,26
+inactiveBackground=10,13,26
+inactiveBlend=10,13,26
+inactiveForeground=207,209,198
 
 [Wallet]
 Enabled=false

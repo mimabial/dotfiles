@@ -18,7 +18,7 @@ from _common import atomic_write, cache_hit, cache_store, short_digest
 PALETTE = Path(sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else
                os.environ.get("HYPR_STATE_HOME",
                               os.path.expanduser("~/.local/state/hypr")) + "/active-palette.json")
-OUT_DIR = Path(os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))) / "themes" / "Pywal16-Gtk"
+OUT_DIR = Path(os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))) / "themes" / "Hypr-Gtk"
 THEMES = Path(__file__).resolve().parent / "gtk-themes"
 GTK_VERSIONS = ("3.0", "4.0")
 
@@ -30,13 +30,13 @@ STYLESHEETS = {"dark": "gtk-{gtk}/gtk-dark.scss", "light": "gtk-{gtk}/gtk.scss"}
 SHEETS = ("src/gtk3/gtk3-assets.svg", "src/gtk3/gtk3-assets-dark.svg")
 INDEX_THEME = """[Desktop Entry]
 Type=X-GNOME-Metatheme
-Name=Pywal16-Gtk
+Name=Hypr-Gtk
 Comment=Dynamic GTK theme generated from active palette
 Encoding=UTF-8
 
 [X-GNOME-Metatheme]
-GtkTheme=Pywal16-Gtk
-MetacityTheme=Pywal16-Gtk
+GtkTheme=Hypr-Gtk
+MetacityTheme=Hypr-Gtk
 IconTheme=Adwaita
 CursorTheme=Adwaita
 ButtonLayout=close,minimize,maximize:menu

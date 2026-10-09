@@ -39,45 +39,6 @@ wallpaper_should_apply_colors_async() {
   return 0
 }
 
-wallpaper_resolve_hypr_theme_cmd() {
-  local hypr_theme_cmd=""
-
-  hypr_theme_cmd="$(command -v hypr-theme 2>/dev/null || true)"
-  if [[ -n "${hypr_theme_cmd}" ]]; then
-    printf '%s\n' "${hypr_theme_cmd}"
-    return 0
-  fi
-
-  if [[ -x "${HOME}/.local/bin/hypr-theme" ]]; then
-    printf '%s\n' "${HOME}/.local/bin/hypr-theme"
-    return 0
-  fi
-
-  return 1
-}
-
-wallpaper_resolve_color_variant() {
-  local variant=""
-
-  case "${selected_color_mode:-1}" in
-    2)
-      printf 'dark\n'
-      return 0
-      ;;
-    3)
-      printf 'light\n'
-      return 0
-      ;;
-  esac
-
-  if declare -F state_get_color_variant >/dev/null 2>&1; then
-    variant="$(state_get_color_variant 2>/dev/null || true)"
-  fi
-  [[ "${variant}" =~ ^(dark|light)$ ]] || variant="${BACKGROUND_MODE:-}"
-  [[ "${variant}" =~ ^(dark|light)$ ]] || variant="dark"
-  printf '%s\n' "${variant}"
-}
-
 wallpaper_link_selected() {
   local wallpaper_path="$1"
 
@@ -107,8 +68,8 @@ wallpaper_run_color_refresh() {
 
   [[ -n "${wallpaper_path}" ]] || return 1
 
-  hypr_theme_cmd="$(wallpaper_resolve_hypr_theme_cmd)" || return 1
-  variant="$(wallpaper_resolve_color_variant)"
+  hypr_theme_cmd="$(command -v hypr-theme)" || return 1
+  variant="$(state_resolve_color_variant "${selected_color_mode:-}")"
 
   if declare -F state_set >/dev/null 2>&1; then
     state_set "BACKGROUND_MODE" "${variant}" "staterc" || true

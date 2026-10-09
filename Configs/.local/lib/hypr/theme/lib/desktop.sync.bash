@@ -140,19 +140,19 @@ theme_desktop_resolve_values() {
 
   local resolved_gtk="Adwaita"
   local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME:-}"
-  local pywal_gtk_dir="${XDG_DATA_HOME:-$HOME/.local/share}/themes/Pywal16-Gtk"
+  local generated_gtk_dir="${XDG_DATA_HOME:-$HOME/.local/share}/themes/Hypr-Gtk"
   if [[ -n "${HYPR_THEME:-}" && (-d "${pack_dir}/gtk-3.0" || -d "${pack_dir}/gtk-4.0") ]]; then
     resolved_gtk="${HYPR_THEME// /-}"
-  elif [[ -f "${pywal_gtk_dir}/gtk-3.0/gtk.css" || -f "${pywal_gtk_dir}/gtk-4.0/gtk.css" ]]; then
-    resolved_gtk="Pywal16-Gtk"
+  elif [[ -f "${generated_gtk_dir}/gtk-3.0/gtk.css" || -f "${generated_gtk_dir}/gtk-4.0/gtk.css" ]]; then
+    resolved_gtk="Hypr-Gtk"
     # render/gtk.py alternates two names for this folder on every build; GTK 3 reloads a theme only when its name changes.
-    [[ -s "${pywal_gtk_dir}/theme-name" ]] && read -r resolved_gtk <"${pywal_gtk_dir}/theme-name" || true
+    [[ -s "${generated_gtk_dir}/theme-name" ]] && read -r resolved_gtk <"${generated_gtk_dir}/theme-name" || true
   fi
 
   RESOLVED_GTK_THEME="${resolved_gtk}"
 
-  if [[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Pywal.colors" ]]; then
-    RESOLVED_KDE_COLOR_SCHEME="Pywal"
+  if [[ -f "${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/Hypr.colors" ]]; then
+    RESOLVED_KDE_COLOR_SCHEME="Hypr"
   elif [[ "${COLOR_SCHEME}" == "prefer-light" ]]; then
     RESOLVED_KDE_COLOR_SCHEME="KvGnome"
   else
@@ -297,13 +297,13 @@ theme_desktop_install_file() {
 
 theme_desktop_install_kde_color_scheme() {
   theme_desktop_install_file \
-    "${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/Pywal.colors" \
-    "${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Pywal.colors"
+    "${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/Hypr.colors" \
+    "${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Hypr.colors"
 }
 
 theme_desktop_install_kdeglobals_color_sections() {
   local target_file="$1"
-  local source_file="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/Pywal.colors"
+  local source_file="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/Hypr.colors"
   local line=""
   local section=""
   local key=""
@@ -407,7 +407,7 @@ theme_desktop_configure_qt_kde_bridge() {
     "Icons:Theme=${ICON_THEME}" \
     "KDE:widgetStyle=${RESOLVED_QT_STYLE}" || return 1
 
-  if [[ "${RESOLVED_KDE_COLOR_SCHEME:-}" == "Pywal" ]]; then
+  if [[ "${RESOLVED_KDE_COLOR_SCHEME:-}" == "Hypr" ]]; then
     theme_desktop_install_kdeglobals_color_sections "${XDG_CONFIG_HOME}/kdeglobals" || return 1
     theme_desktop_install_kdeglobals_color_sections "${XDG_CONFIG_HOME}/kdedefaults/kdeglobals" || return 1
   fi
@@ -456,8 +456,8 @@ theme_desktop_write_gtk4_css() {
   local theme_gtk4_css=""
 
   case "${RESOLVED_GTK_THEME}" in
-    Pywal16-Gtk | Pywal16-Gtk-Alt)
-      theme_gtk4_css="${XDG_DATA_HOME:-$HOME/.local/share}/themes/Pywal16-Gtk/gtk-4.0/gtk.css"
+    Hypr-Gtk | Hypr-Gtk-Alt)
+      theme_gtk4_css="${XDG_DATA_HOME:-$HOME/.local/share}/themes/Hypr-Gtk/gtk-4.0/gtk.css"
       ;;
     Adwaita|"")
       :
@@ -677,14 +677,13 @@ theme_desktop_prepare_state() {
 theme_desktop_static_state_hash() {
   local flatpak_installed=0
   local active_palette="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
-  local pywal_colors="${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors.json"
-  local qtct_kde_colors="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/Pywal.colors"
+  local qtct_kde_colors="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/Hypr.colors"
   local source_file=""
   local source_hash=""
   local -a source_files=("${BASH_SOURCE[0]}")
 
   command -v flatpak >/dev/null 2>&1 && flatpak_installed=1
-  for source_file in "${active_palette}" "${pywal_colors}" "${qtct_kde_colors}"; do
+  for source_file in "${active_palette}" "${qtct_kde_colors}"; do
     [[ -f "${source_file}" ]] && source_files+=("${source_file}")
   done
   source_hash="$(hypr_hash_cache_digest_files "${source_files[@]}")" || return 1
@@ -726,8 +725,8 @@ theme_desktop_static_targets_ready() {
     "${HOME}/.Xresources"
   )
 
-  if [[ "${RESOLVED_KDE_COLOR_SCHEME:-}" == "Pywal" ]]; then
-    required_targets+=("${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Pywal.colors")
+  if [[ "${RESOLVED_KDE_COLOR_SCHEME:-}" == "Hypr" ]]; then
+    required_targets+=("${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Hypr.colors")
   fi
 
   for required_target in "${required_targets[@]}"; do
@@ -771,7 +770,7 @@ theme_desktop_apply_static_resolved_if_needed() {
   static_hash="$(theme_desktop_static_state_hash)" || return 1
 
   # hypr_hash_cache_is_current honors FORCE_COLOR_REGEN; store honors
-  # HYPR_WAL_CACHE_ENABLE — no per-callsite flag checks needed.
+  # HYPR_HASH_CACHE_ENABLE — no per-callsite flag checks needed.
   if theme_desktop_static_targets_ready \
     && hypr_hash_cache_is_current "${hash_file}" "${static_hash}"; then
     print_log -sec "theme" -stat "skip" "static desktop sync unchanged"

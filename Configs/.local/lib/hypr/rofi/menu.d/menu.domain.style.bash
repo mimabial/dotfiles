@@ -133,7 +133,7 @@ menu_register_domain_style() {
 
   menu_define style_color_mode "Color Mode" choice
   menu_add_item style_color_mode "󰸌  Theme Colors" action style_color_mode_source_theme
-  menu_add_item style_color_mode "  Wallpaper Colors" action style_color_mode_source_pywal
+  menu_add_item style_color_mode "  Wallpaper Colors" action style_color_mode_source_wallpaper
   menu_add_item style_color_mode "󰖔  Dark" action style_color_mode_dark
   menu_add_item style_color_mode "󰖨  Light" action style_color_mode_light
   menu_add_item style_color_mode "󰔎  Auto" action style_color_mode_auto

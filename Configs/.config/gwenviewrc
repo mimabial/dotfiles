@@ -22,26 +22,26 @@ ThumbnailSplitterSizes=512,146
 MenuBar=Disabled
 
 [Recent Files]
-File1[$e]=$HOME/Pictures/Wallpapers/wallhaven-o5ow2m.png
-File10[$e]=$HOME/Pictures/wallhaven-vp2m68.png
-File2[$e]=$HOME/.config/hypr/themes/Graphite Mono/wallpapers/wallhaven-5y3pd8.png
-File3[$e]=$HOME/.config/hypr/themes/Graphite Mono/wallpapers/a_hallway_with_lights_on_the_ceiling.png
-File4[$e]=$HOME/Pictures/wallhaven-yqk91l.jpg
-File5[$e]=$HOME/Wallpapers/space_suit.png
-File6[$e]=$HOME/Pictures/wallhaven-4o8mmp.jpg
-File7[$e]=$HOME/Pictures/wallhaven-4vljzm.jpg
-File8[$e]=$HOME/Pictures/wallhaven-5g9lq7.jpg
-File9[$e]=$HOME/Pictures/wallhaven-7j2kwv.jpg
-Name1[$e]=wallhaven-o5ow2m.png
-Name10[$e]=wallhaven-vp2m68.png
-Name2[$e]=wallhaven-5y3pd8.png
-Name3[$e]=a_hallway_with_lights_on_the_ceiling.png
-Name4[$e]=wallhaven-yqk91l.jpg
-Name5[$e]=space_suit.png
-Name6[$e]=wallhaven-4o8mmp.jpg
-Name7[$e]=wallhaven-4vljzm.jpg
-Name8[$e]=wallhaven-5g9lq7.jpg
-Name9[$e]=wallhaven-7j2kwv.jpg
+File1[$e]=$HOME/.config/hypr/themes/Graphite Mono/wallpapers/wallhaven-5y3pd8.png
+File10[$e]=$HOME/Pictures/wallhaven-y8w1zg.jpg
+File2[$e]=$HOME/.config/hypr/themes/Graphite Mono/wallpapers/a_hallway_with_lights_on_the_ceiling.png
+File3[$e]=$HOME/Pictures/wallhaven-yqk91l.jpg
+File4[$e]=$HOME/Wallpapers/space_suit.png
+File5[$e]=$HOME/Pictures/wallhaven-4o8mmp.jpg
+File6[$e]=$HOME/Pictures/wallhaven-4vljzm.jpg
+File7[$e]=$HOME/Pictures/wallhaven-5g9lq7.jpg
+File8[$e]=$HOME/Pictures/wallhaven-7j2kwv.jpg
+File9[$e]=$HOME/Pictures/wallhaven-vp2m68.png
+Name1[$e]=wallhaven-5y3pd8.png
+Name10[$e]=wallhaven-y8w1zg.jpg
+Name2[$e]=a_hallway_with_lights_on_the_ceiling.png
+Name3[$e]=wallhaven-yqk91l.jpg
+Name4[$e]=space_suit.png
+Name5[$e]=wallhaven-4o8mmp.jpg
+Name6[$e]=wallhaven-4vljzm.jpg
+Name7[$e]=wallhaven-5g9lq7.jpg
+Name8[$e]=wallhaven-7j2kwv.jpg
+Name9[$e]=wallhaven-vp2m68.png
 
 [SideBar]
 InformationSplitterSizes=231,244

@@ -21,7 +21,6 @@ the call still returns success through its `|| true`, and nothing runs.
 | -------------------------- | ------------- | ------------------------------------------- |
 | `hyprland-quickshell`      | yes           | the active bar                              |
 | `hyprland-idle-manager`    | yes           | manual/audio/fullscreen/game-aware idle control |
-| `hyprland-monitor-watch`   | no            | legacy monitor-toggle recovery              |
 | `power-profile-auto`       | yes           | idles if power-profiles-daemon is absent    |
 | `auto-theme`               | **no** (`down`) | brought up/down by `theme/color-mode` on demand |
 | `tmux`                     | yes           | `tmux -D` in the foreground; `finish` saves resurrect state |
@@ -30,10 +29,9 @@ the call still returns success through its `|| true`, and nothing runs.
 supervises it directly (it already has a non-systemd launch path), so
 `hyprland-hypridle.service` has no counterpart by design.
 
-`zsh-zcompdump-clean` has **no** counterpart here by design: it is a `.timer`
-firing a `Type=oneshot`, and runit supervises long-running processes only — an
-`sv` directory would make `runsv` restart the cleanup in a loop. Schedule it with
-`snooze`, `cronie`, or a line in the shell's startup instead.
+The zcompdump cleanup is not a service on either init system: it is a one-shot, and
+an `sv` directory would make `runsv` restart it in a loop. `start.ZSH_ZCOMPDUMP`
+runs `~/.local/lib/zsh/clean-zcompdump.sh` once per login instead.
 
 ## Starting the supervisor (inside the Hyprland session)
 
@@ -41,7 +39,7 @@ The services need the graphical-session environment (`WAYLAND_DISPLAY`,
 `HYPRLAND_INSTANCE_SIGNATURE`, `XDG_*`). Without systemd there is no
 import-environment step, so Hyprland starts the supervisor itself and the
 services inherit its environment. `start.USER_SUPERVISOR` in
-`~/.config/hypr/vars.lua` runs `~/.local/bin/hypr-runsvdir` (sets `SVDIR`, execs
+`~/.local/share/hypr/vars.lua` runs `~/.local/bin/hypr-runsvdir` (sets `SVDIR`, execs
 `runsvdir`), guarded on the host actually being init-free:
 
 ```sh

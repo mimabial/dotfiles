@@ -6,8 +6,9 @@ PopupCard {
     popupName: "tray-manage"
     contentWidth: Style.px(280)
     property var icons: []
-    property var hostedEntries: []
-    signal restore(string key)
+    property var widgets: []
+    signal restoreWidget(string key)
+    signal hideWidget(string key)
 
     Column {
         id: rows
@@ -21,15 +22,16 @@ PopupCard {
         }
         Column {
             width: parent.width; spacing: Style.sm
-            PopupSection { width: rows.width; shell: root.shell; text: "BAR WIDGETS"; visible: root.hostedEntries.length > 0 }
+            PopupSection { width: rows.width; shell: root.shell; text: "BAR WIDGETS"; visible: root.widgets.length > 0 }
             Repeater {
-                model: root.hostedEntries
-                delegate: PopupRow {
+                model: root.widgets
+                delegate: PopupToggleRow {
                     required property var modelData
                     width: rows.width; shell: root.shell
-                    title: modelData.key.split(":").pop()
-                    value: "Restore"
-                    onClicked: root.restore(modelData.key)
+                    title: modelData.id
+                    detail: modelData.onBar ? "On the bar" : "Hidden in the tray"
+                    checked: modelData.onBar
+                    onToggled: modelData.onBar ? root.hideWidget(modelData.key) : root.restoreWidget(modelData.key)
                 }
             }
         }

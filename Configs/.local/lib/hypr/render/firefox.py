@@ -13,12 +13,12 @@ from _common import atomic_write, cache_hit, cache_store, short_digest
 PALETTE = Path(sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else
                os.environ.get("HYPR_STATE_HOME",
                               os.path.expanduser("~/.local/state/hypr")) + "/active-palette.json")
-TEMPLATE = Path(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))) / "wal" / "templates" / "firefox-userChrome.css"
+TEMPLATE = Path(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))) / "hypr" / "templates" / "firefox-userChrome.css"
 FIREFOX_ROOT = Path(os.environ.get("FIREFOX_ROOT", Path.home() / ".mozilla" / "firefox"))
 OUT_DIR = Path(os.environ.get("HYPR_CACHE_HOME", os.path.expanduser("~/.cache/hypr"))) / "render" / "firefox"
 OUT_FILE = OUT_DIR / "userChrome.css"
-MARKER_START = "/* BEGIN HYPR WAL FIREFOX USERCHROME */"
-MARKER_END = "/* END HYPR WAL FIREFOX USERCHROME */"
+MARKER_START = "/* BEGIN HYPR FIREFOX USERCHROME */"
+MARKER_END = "/* END HYPR FIREFOX USERCHROME */"
 PREF = "toolkit.legacyUserProfileCustomizations.stylesheets"
 APP = "firefox"
 

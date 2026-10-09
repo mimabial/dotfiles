@@ -65,85 +65,24 @@
     "backgroundColor": ["bg", 0.1]
   },
 
-  "volume": {
-    "fontSize": 16.0
-  },
   "volume.headphone": {
     "fontSize": 12.0
   },
   "microphone": {
-    "fontWeight": 700,
-    "fontSize": 10.0
+    "fontWeight": 700
   },
   "microphone.muted": {
-    "fontWeight": 700,
-    "fontSize": 10.0
+    "fontWeight": 700
   },
-  "volume-slider": { "margin": [6.0, 0.0, 6.0, 0.0] },
-  "volume-slider trough": {
-    "minWidth": 20,
-    "minHeight": 6,
-    "borderWidth": 1,
-    "borderColor": ["c0", 0.4]
-  },
-  "microphone-slider": { "margin": [6.0, 0.0, 6.0, 0.0] },
-  "microphone-slider trough": {
-    "minWidth": 20,
-    "minHeight": 6,
-    "borderWidth": 1,
-    "borderColor": ["c0", 0.4]
-  },
-  "backlight-slider": { "margin": [6.0, 0.0, 6.0, 0.0] },
-  "backlight-slider trough": {
-    "minWidth": 20,
-    "minHeight": 6,
-    "borderWidth": 1,
-    "borderColor": ["c0", 0.4]
-  },
-  "bitwarden": {
-    "fontSize": 14.0
-  },
-  "vpn": {
-    "fontSize": 12.0
-  },
-  "wifi": {
-    "fontSize": 14.0
-  },
+
   "bluetooth, tasks, notifications, removable, microphone": {
     "badgeColor": ["accent", 0.5],
     "badgeSize": 7.0
   },
   "bluetooth.off": {
-    "fontSize": 11.0,
     "padding": [0.0, -2.0, 0.0, 2.0]
   },
-  "bluetooth.on": {
-    "fontSize": 10.0
-  },
-  "bluetooth.connected": {
-    "fontSize": 12.0
-  },
-  "notifications": {
-    "fontSize": 12.0,
-    "backgroundColor": null
-  },
-  "github": {
-    "fontSize": 14.0
-  },
 
-  "agents": {
-    "fontSize": 14.0
-  },
-  "powerprofile": {
-    "fontSize": 14.0
-  },
-  "powerbutton": {
-    "fontSize": 13.0
-  },
-
-  "removable": {
-    "fontSize": 14.0
-  },
   "tray": {
     "backgroundColor": ["alt_bg", 0.1],
     "iconSize": 13,
@@ -153,7 +92,6 @@
   "tray.chevron": {
     "fontWeight": 700,
     "color": ["fg", 0.5],
-    "hover": { "color": ["hvr_fg", 1.0] },
-    "fontSize": 12
+    "hover": { "color": ["hvr_fg", 1.0] }
   }
 }

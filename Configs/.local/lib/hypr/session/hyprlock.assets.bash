@@ -74,14 +74,13 @@ ensure_face_icon_png() {
 
 colorize_fallback_icon() {
   local output_path="$1"
-  local source_icon="$XDG_DATA_HOME/icons/Pywal16-Icon/hypr.png"
-  local color_file="${XDG_CACHE_HOME:-$HOME/.cache}/wal/colors-shell.sh"
+  local source_icon="$XDG_DATA_HOME/icons/Hypr-Icon/hypr.png"
+  local palette="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
+  local blue=""
   local -a tint=()
 
-  if [ -f "$color_file" ]; then
-    source "$color_file"
-    tint=(-modulate '100,60,100' -fill "${color4:-#458588}" -colorize 60%)
-  fi
+  blue="$(jq -r '.colors[4] // empty' "$palette" 2>/dev/null)" &&
+    [[ -n "$blue" ]] && tint=(-modulate '100,60,100' -fill "$blue" -colorize 60%)
 
   # The icon's dark disc is halved in opacity so the wallpaper shows through it, and
   # it is centred on a square as wide as the icon's diagonal, so a round frame never clips it.

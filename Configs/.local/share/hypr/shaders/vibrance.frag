@@ -20,11 +20,11 @@ uniform sampler2D tex;
 
 const float VIBRANCE = VIBRANCE_INTENSITY;
 const float SKIN_TONE_PROTECTION = SHADER_VIBRANCE_SKIN_TONE_PROTECTION;
+const vec3 REC709_LUMA = vec3(0.2126, 0.7152, 0.0722);
 
 
-// HDTV (Rec. 709) coefficients.
 float getLuminance(vec3 color) {
-    return dot(color, vec3(0.2126, 0.7152, 0.0722));
+    return dot(color, REC709_LUMA);
 }
 
 float skinToneLikelihood(vec3 color) {

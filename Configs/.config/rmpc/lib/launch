@@ -24,7 +24,7 @@ if [[ ! -x "$resize_bin" || "$resize_src" -nt "$resize_bin" ]] &&
   trap - EXIT
 fi
 
-theme_name="pywal16-big"
+theme_name="hypr-big"
 if [[ "${HYPR_SUMMON_EXPECTED_FLOAT:-}" != "false" ]]; then
   terminal_size="$(rmpc_terminal_size || true)"
   if [[ -n "${terminal_size}" ]]; then

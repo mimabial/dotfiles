@@ -42,8 +42,8 @@ call.
 | `top` | `horizontal` | top | three-section horizontal bar |
 | `bottom` | `horizontal` | bottom | three-section horizontal bar |
 | `winbar` | `winbar` | bottom | Windows 11 taskbar: Start/apps, Task View, search icon, weather widget, overflow, separate Wi-Fi/sound/battery controls, clock, launcher strip |
-| `totebar` | `horizontal` | top | workspaces on the left, utilities on the right |
 | `macos` | `horizontal` | top | macOS menu bar: hyprmenu dropdown, focused-app menus, status items, clock |
+| `gnome` | `horizontal` | top | GNOME Shell top bar: Activities pills, centered date and notification menu, screen-recording timer, keyboard layout, Quick Settings with power actions |
 
 The dock in `dock/` is not a layout: it is a separate bottom-edge panel that
 runs alongside whichever bar layout is active, the way `expose/` does.
@@ -73,20 +73,28 @@ recorded application name matches the app.
 
 The `winbar` tray is the Windows overflow, adapted from
 [omarchy-tray](https://github.com/TyRichards/omarchy-tray): left-click the chevron
-to open a grid flyout above it, which closes on an outside click or when a popup
-opened from it closes. The flyout is the layout's `tray` array, in order: module
+to open a grid flyout above it, which closes on an outside click, `Esc`, or when a
+popup opened from it closes. `mod+O T` (`quickshell ipc call bar tray`) opens it
+with a keyboard cursor, the way Win+B does: arrows and Tab move, `Enter`/`Space`
+click the cell, `Menu`/`Shift+F10` open an icon's menu. The flyout is the layout's
+`tray` array, in order: module
 entries as in any section, plus `"icon:<id>"` to place a system icon among them;
 unlisted icons follow. Dragging a module onto the chevron, within the flyout, or
-out of it rewrites that array; one dragged out lands at the end of the bar section
-under the pointer. Drag the chevron to move the tray. Right-click the chevron to hide or pin system icons or restore widgets;
-the icon choices live in `~/.local/state/quickshell/bar.json`. Pinned icons sit
-beside the chevron. The `tray` style rule frames the pinned icons and sizes the
+out of it rewrites that array; one dragged out lands where the accent line on the
+bar shows, before the first widget whose middle lies right of the pointer. A system icon dragged out onto the bar is pinned; a pinned icon
+dropped on the chevron is unpinned. Drag the chevron to move the tray. Right-click the chevron to hide or pin system icons, or to switch each bar widget
+between the bar and the tray: hiding appends it to the flyout and saves its bar
+section and position in the layout; restoring returns it there. Widgets without
+a saved position return right after the tray. The icon choices live in `~/.local/state/quickshell/bar.json`. Pinned icons sit
+beside the chevron in the order they were pinned, followed by any icon whose app
+asks for attention until it stops. Icon tooltips show the app's description under
+its title. The `tray` style rule frames the pinned icons and sizes the
 flyout cells, `tray.chevron` styles the chevron; hosted widgets keep their own rules.
 If a section contains repeated module IDs, the bar adds `trayInstance` to later
 entries in that layout so each widget keeps its own tray state when reordered.
 
 Each resolved layout has a `panel` and `edge`; names have no special behavior.
-`clock` picks the clock format set (`top`, `winbar`, `macos`); it defaults from the panel.
+`clock` picks the clock format set (`top`, `winbar`, `macos`, `gnome`); it defaults from the panel.
 `top` and `bottom` extend `layouts/shared/horizontal.json` and set only their
 edge, so edits to its modules affect both bars.
 An extending layout can prepend modules to a section with `leftPrepend`,
@@ -146,6 +154,24 @@ With `showArtist: true`, the
 text reads `author — quote`; otherwise it shows just the quote. Idle text elides
 at `maxLabelWidth` or the available bar width. Otherwise the module collapses
 when `Media.player` is null.
+
+In `gnome`, the bar mirrors GNOME Shell and carries nothing it lacks: no tray drawer,
+no submap. `gnome-activities` opens Exposé and draws GNOME's workspace dots, one per
+workspace plus the empty one after the last; the wheel steps through those dots. `gnome-date-menu`
+combines the notification archive (grouped by app, stacks expand on click), media
+controls, calendar, agenda, and weather; its clock stays centred beside the unread
+dot, days with events carry a dot, the date heading returns to today, and the menu
+ends with Clear. It takes `showWeekNumbers: true` for an ISO week column.
+`gnome-quick-settings` shows GNOME's status icons (privacy, Night Light, network,
+Do Not Disturb, Bluetooth, Airplane Mode, volume, non-Balanced Power Mode, battery)
+and opens sliders, toggles for network, VPN, Bluetooth, Power Mode, Night Light,
+Dark Style, Do Not Disturb, keyboard backlight and Airplane Mode, and a Background
+Apps list built from tray items. Arrows open GNOME-style menus under their row;
+Power Mode toggles between Balanced and the last other profile; the power button
+opens Suspend, Restart…, Power Off… and Log Out…. `gnome-screen-record` takes
+`showElapsed: true` for GNOME's elapsed-time label, and `language-menu` takes
+`macInputItems: false` to drop the macOS emoji and settings rows. Colors, fonts,
+rounding, and borders come from the active theme; opacity and blur use the shared settings.
 
 In `macos`, `menu` takes `dropdown: true`: a left click opens system actions, recent documents,
 Force Quit, and the full menutree under Hyprmenu; right and middle click keep their
@@ -212,8 +238,8 @@ metrics misreport some glyph bottoms, and `BarButton` scales and centers that in
 differ in weight, so the macOS modules set `BarButton.symbol` instead: `SymbolicIcon.qml`
 draws that freedesktop symbolic icon from MacTahoe-dark, recolored to the text color, and
 the glyph shows only when the icon is missing. A style's `symbols` key names the icon
-directory under `~/.local/share/icons`, with `{context}` standing for the context
-folder (`winbar` uses `Fluent-dark/symbolic/{context}`); the default is MacTahoe-dark. The
+directory under `~/.local/share/icons`, or an absolute one, with `{context}` standing for the context
+folder (`winbar` uses `Fluent-dark/symbolic/{context}`, `gnome` Adwaita's under `/usr/share/icons`); the default is MacTahoe-dark. The
 button height follows the box, so an enlarged small glyph never grows the bar.
 `BarButton.trailingWidth` reserves room right of the label for drawn content, such as
 the Control Center privacy dots. Individual sides use
@@ -261,14 +287,6 @@ Important geometry rules:
 
 ## Drawers and popups
 
-`DrawerGroup` lazy-loads its secondary component only while hovered or held open.
-This keeps inactive scripts out of the process tree. A script-backed button that
-initially has no output may therefore make a drawer appear in two stages.
-
-For an upward reversed drawer, the last secondary item is immediately above the
-primary item. Slider placement is explicit through module properties such as
-`sliderFirst`; do not infer it from the drawer direction.
-
 Only one popup is open globally (`shell.popupName`), and only the focused monitor
 accepts it. `PopupCard.position` defaults to the side the bar layout implies;
 a host that is not the bar (the dock's `dockstart` menu) sets it explicitly.
@@ -299,6 +317,11 @@ close; OWE sharing has no password.
 
 The standalone `date` module opens the calendar. `datetime` opens the
 alarm/timer/stopwatch popup where configured as the timer clock.
+
+`windowinfo` (`mod+H W`, IPC `bar popup windowinfo`) is hosted by `PopupHost.qml` in every
+layout. It shows the window focused when it opened: class, titles, tags, state, workspace,
+monitor, geometry, PID and address, plus a `match` table in `windowrules.lua` style. Clicking
+a value copies it.
 
 The power popup reads `power-manager.json`. Automatic profile, idle, and lid
 rules are off by default; enabling them routes decisions through
@@ -403,7 +426,7 @@ sudo install -D -o root -g root -m 0644 ~/.local/lib/hypr/system/power-manager-b
 | standalone panels | `dock/`, `expose/`, `lockview/` (hyprlock layout explorer), `SessionMenu.qml` (logout menu, IPC `sessionmenu toggle`) |
 | layer blur | `LayerBlur.qml` |
 | panels | `HorizontalBar.qml`, `BarSection.qml`, `BarModuleLoader.qml` |
-| primitives | `BarButton.qml`, `ScriptButton.qml`, `DrawerGroup.qml`, `SideBorder.qml`, `Popup*.qml`, `LazyPopup.qml` |
+| primitives | `BarButton.qml`, `ScriptButton.qml`, `SideBorder.qml`, `Popup*.qml`, `LazyPopup.qml` |
 | modules | root `*Button.qml`/service components and `modules/*Module.qml` |
 | popups | `*Popup.qml` and menu/flyout helpers |
 | live data | `layouts/*.json`, `styles/*.json`, generated theme JSON |

@@ -24,26 +24,25 @@ class MediaPlayerUiConfig:
     time_color: str
 
 
-def load_pywal_colors(cache_root: str) -> dict:
-    colors = {}
-    colors_json = os.path.join(cache_root, "wal", "colors.json")
+def load_palette_colors() -> dict:
+    state_home = os.path.expanduser(os.getenv("XDG_STATE_HOME", "~/.local/state"))
     try:
-        with open(colors_json, encoding="utf-8") as f:
-            data = json.load(f)
-        colors.update(data.get("special", {}))
-        colors.update(data.get("colors", {}))
-    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        with open(os.path.join(state_home, "hypr", "active-palette.json"), encoding="utf-8") as f:
+            palette = json.load(f)
+    except (OSError, json.JSONDecodeError):
         return {}
-    return colors
+    named = {"background": palette.get("bg"), "foreground": palette.get("fg"), "cursor": palette.get("cursor")}
+    named.update((f"color{index}", color) for index, color in enumerate(palette.get("colors", [])))
+    return {name: color for name, color in named.items() if color}
 
 
-def normalize_color(value: str, wal_colors: dict, fallback: str) -> str:
+def normalize_color(value: str, palette_colors: dict, fallback: str) -> str:
     if not value:
         return fallback
     value = value.strip()
     if not value:
         return fallback
-    lookup = wal_colors.get(value) or wal_colors.get(value.lower())
+    lookup = palette_colors.get(value) or palette_colors.get(value.lower())
     if lookup:
         return lookup
     if value.startswith("#"):
@@ -83,21 +82,20 @@ def configured_max_length() -> int:
 
 
 def tooltip_colors() -> dict[str, str]:
-    xdg_cache = os.path.expanduser(os.getenv("XDG_CACHE_HOME", "~/.cache"))
-    wal_colors = load_pywal_colors(xdg_cache)
-    artist_default = wal_colors.get("color4", FALLBACK_COLOR)
+    palette_colors = load_palette_colors()
+    artist_default = palette_colors.get("color4", FALLBACK_COLOR)
     defaults = {
         "artist": artist_default,
-        "track": wal_colors.get("foreground", FALLBACK_COLOR),
-        "progress": wal_colors.get("color2", artist_default),
-        "empty": wal_colors.get("color8", wal_colors.get("color0", FALLBACK_EMPTY_COLOR)),
-        "time": wal_colors.get("foreground", FALLBACK_COLOR),
+        "track": palette_colors.get("foreground", FALLBACK_COLOR),
+        "progress": palette_colors.get("color2", artist_default),
+        "empty": palette_colors.get("color8", palette_colors.get("color0", FALLBACK_EMPTY_COLOR)),
+        "time": palette_colors.get("foreground", FALLBACK_COLOR),
     }
 
     colors = {}
     for role, default in defaults.items():
         name = f"{role}_color"
-        color = normalize_color(os.getenv(f"MEDIAPLAYER_TOOLTIP_{role.upper()}_COLOR", ""), wal_colors, default)
+        color = normalize_color(os.getenv(f"MEDIAPLAYER_TOOLTIP_{role.upper()}_COLOR", ""), palette_colors, default)
         if not color.startswith("#") or len(color) not in HEX_COLOR_LENGTHS:
             print(f"WARNING: Invalid color format for {name}: {color}", file=sys.stderr)
             color = FALLBACK_COLOR

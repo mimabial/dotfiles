@@ -50,11 +50,20 @@
   ],
   "right": [
     "tray",
+    "wallpaper",
     "volume",
-    "microphone",
+    {
+      "id": "removable",
+      "props": {
+        "showBadge": true
+      }
+    },
+    "powerprofile",
+    "hyprsunset",
     "privacy",
     "display",
     "vpn",
+    "microphone",
     "wifi",
     {
       "id": "bluetooth",
@@ -71,19 +80,81 @@
     }
   ],
   "tray": [
+    "barlayout",
     "bitwarden",
-    "agents",
-    "powerprofile",
+    "workflows",
+    "windowlayout",
     {
-      "id": "removable",
-      "props": {
-        "showBadge": true
+      "id": "agents",
+      "trayPosition": {
+        "section": "right",
+        "index": 1,
+        "stringEntry": true
       }
     },
-    "wallpaper",
-    "colormode",
-    "barlayout",
-    "windowlayout",
-    "workflows"
+    {
+      "id": "colormode",
+      "trayPosition": {
+        "section": "right",
+        "index": 13,
+        "stringEntry": true
+      }
+    },
+    {
+      "id": "colorpicker",
+      "trayPosition": {
+        "section": "right",
+        "index": 12,
+        "stringEntry": true
+      }
+    },
+    {
+      "id": "converter",
+      "trayPosition": {
+        "section": "right",
+        "index": 11,
+        "stringEntry": true
+      }
+    },
+    {
+      "id": "github",
+      "trayPosition": {
+        "section": "right",
+        "index": 10,
+        "stringEntry": true
+      }
+    },
+    {
+      "id": "powerbutton",
+      "trayPosition": {
+        "section": "right",
+        "index": 8,
+        "stringEntry": true
+      }
+    },
+    {
+      "id": "screenshot",
+      "trayPosition": {
+        "section": "right",
+        "index": 15,
+        "stringEntry": true
+      }
+    },
+    {
+      "id": "sudoku",
+      "trayPosition": {
+        "section": "right",
+        "index": 5,
+        "stringEntry": true
+      }
+    },
+    {
+      "id": "terminal",
+      "trayPosition": {
+        "section": "right",
+        "index": 4,
+        "stringEntry": true
+      }
+    }
   ]
 }

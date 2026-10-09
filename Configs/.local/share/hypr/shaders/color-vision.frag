@@ -11,12 +11,6 @@
     #define COLOR_VISION_INTENSITY 0.0
 #endif
 
-/* 
-  ┌─────────────────────────────────────────────────────────────────────────┐
- !│ DO NOT EDIT THE FOLLOWING LINES                                         │
-  └─────────────────────────────────────────────────────────────────────────┘
- */
-
 precision highp float;
 in vec2 v_texcoord;
 out vec4 fragColor;

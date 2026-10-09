@@ -8,7 +8,7 @@ hypr_runtime_require state system || exit 1
 source "${HYPR_LIB_DIR}/theme/pairs.sh"
 export_hypr_config
 
-hypr_help_guard "Usage: hyprshell theme/color-mode [-q] [n|p|--set <theme|pywal> [dark|light|auto]]
+hypr_help_guard "Usage: hyprshell theme/color-mode [-q] [n|p|--set <theme|wallpaper> [dark|light|auto]]
 Choose a palette source and colour mode: next (n), prev (p), or explicit --set (default: next)." "$@"
 
 color_mode_values=("${STATE_COLOR_MODE_DARK}" "${STATE_COLOR_MODE_LIGHT}" "${STATE_COLOR_MODE_AUTO}")
@@ -68,12 +68,12 @@ set_policy_from_args() {
   local mode_arg="${2:-}"
 
   if [[ -z "${policy_arg}" ]]; then
-    echo "Error: --set requires theme, pywal, dark, light, or auto"
+    echo "Error: --set requires theme, wallpaper, dark, light, or auto"
     exit 1
   fi
 
   case "${policy_arg,,}" in
-    theme | pywal)
+    theme | wallpaper)
       target_color_source="${policy_arg,,}"
       if [[ -n "${mode_arg}" ]] && ! set_color_mode_from_arg "${mode_arg}"; then
         echo "Error: invalid mode: ${mode_arg}"
@@ -89,7 +89,7 @@ set_policy_from_args() {
       ;;
     *)
       echo "Error: invalid color policy: ${policy_arg}"
-      echo "Valid sources: theme, pywal; valid modes: dark, light, auto"
+      echo "Valid sources: theme, wallpaper; valid modes: dark, light, auto"
       exit 1
       ;;
   esac
@@ -134,9 +134,8 @@ resolve_wallpaper() {
 
 apply_color_policy() {
   local wallpaper=""
-  local target_mode="dark"
+  local target_mode=""
   local hypr_theme_cmd=""
-  local target_polarity=""
   local target_theme=""
   local -a theme_switch_cmd=()
 
@@ -146,32 +145,18 @@ apply_color_policy() {
     return 1
   }
 
-  case "${target_color_mode}" in
-    "${STATE_COLOR_MODE_DARK}") target_polarity="dark" ;;
-    "${STATE_COLOR_MODE_LIGHT}") target_polarity="light" ;;
-  esac
-
-  if [[ -n "${target_polarity}" && "$(theme_polarity "${HYPR_THEME}")" != "${target_polarity}" ]]; then
-    target_theme="$(theme_pair_for "${HYPR_THEME}" "${target_polarity}")" || true
-    if [[ -n "${target_theme}" && "${target_theme}" != "${HYPR_THEME}" ]]; then
-      theme_switch_cmd=("${HYPR_LIB_DIR}/theme/theme.switch.sh" -s "${target_theme}")
-      [[ "${color_mode_notify}" -eq 0 ]] && theme_switch_cmd+=(--quiet)
-      "${theme_switch_cmd[@]}"
-      return $?
-    fi
-  fi
-
-  case "${target_color_mode}" in
-    "${STATE_COLOR_MODE_DARK}") target_mode="dark" ;;
-    "${STATE_COLOR_MODE_LIGHT}") target_mode="light" ;;
-    *)
-      target_mode="$(state_get_color_variant 2>/dev/null || true)"
-      [[ "${target_mode}" =~ ^(dark|light)$ ]] || target_mode="${BACKGROUND_MODE:-}"
-      [[ "${target_mode}" =~ ^(dark|light)$ ]] || target_mode="dark"
-      ;;
-  esac
+  target_mode="$(state_resolve_color_variant "${target_color_mode}")"
 
   if [[ "${target_color_source}" == "theme" ]]; then
+    if [[ "$(theme_polarity "${HYPR_THEME}")" != "${target_mode}" ]]; then
+      target_theme="$(theme_pair_for "${HYPR_THEME}" "${target_mode}")" || true
+      if [[ -n "${target_theme}" && "${target_theme}" != "${HYPR_THEME}" ]]; then
+        theme_switch_cmd=("${HYPR_LIB_DIR}/theme/theme.switch.sh" -s "${target_theme}")
+        [[ "${color_mode_notify}" -eq 0 ]] && theme_switch_cmd+=(--quiet)
+        "${theme_switch_cmd[@]}"
+        return $?
+      fi
+    fi
     "${hypr_theme_cmd}" apply "${HYPR_THEME}"
     return $?
   fi
@@ -195,7 +180,7 @@ parse_target_policy() {
     *) cycle_color_mode n ;;
   esac
 
-  if [[ ! "${target_color_source}" =~ ^(theme|pywal)$ ]] || ! state_color_mode_is_valid "${target_color_mode}"; then
+  if [[ ! "${target_color_source}" =~ ^(theme|wallpaper)$ ]] || ! state_color_mode_is_valid "${target_color_mode}"; then
     echo "Error: invalid target color policy: ${target_color_source}/${target_color_mode}"
     exit 1
   fi

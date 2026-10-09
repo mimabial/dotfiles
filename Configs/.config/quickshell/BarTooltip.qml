@@ -7,6 +7,7 @@ PopupWindow {
     required property var shell
     property string text: ""
     property bool hovered: false
+    property int textFormat: Text.PlainText
     property bool ready: false
     readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null
     readonly property string edge: shell.barEdge
@@ -46,7 +47,7 @@ PopupWindow {
         Text {
             id: label; anchors.centerIn: parent; width: Math.min(340, implicitWidth)
             color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
-            text: root.text; textFormat: Text.PlainText; wrapMode: Text.Wrap
+            text: root.text; textFormat: root.textFormat; wrapMode: Text.Wrap
         }
     }
 }

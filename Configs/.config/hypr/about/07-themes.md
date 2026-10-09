@@ -35,7 +35,7 @@ Two sources, and you pick per theme.
 intended, and it is stable — the same colors every time.
 
 **Wallpaper mode** derives the palette from the current wallpaper with
-[pywal16](https://github.com/eylles/pywal16). Every wallpaper gives you a
+[matugen](https://github.com/InioX/matugen), as a Material You scheme. Every wallpaper gives you a
 slightly different desktop, which is either the best thing about it or the reason
 you will turn it off.
 

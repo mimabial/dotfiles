@@ -13,10 +13,11 @@ Item {
     property string directory: ""
     property string svg: ""
     readonly property bool loaded: svg !== ""
+    readonly property string contextDirectory: (directory || "MacTahoe-dark/{context}/symbolic").replace("{context}", context)
     implicitWidth: size; implicitHeight: size
     FileView {
-        path: Quickshell.env("HOME") + "/.local/share/icons/" + (root.directory || "MacTahoe-dark/{context}/symbolic").replace("{context}", root.context)
-            + "/" + root.name + "-symbolic.svg"
+        path: (root.contextDirectory.startsWith("/") ? "" : Quickshell.env("HOME") + "/.local/share/icons/")
+            + root.contextDirectory + "/" + root.name + "-symbolic.svg"
         printErrors: false
         onLoaded: root.svg = text()
         onLoadFailed: root.svg = ""

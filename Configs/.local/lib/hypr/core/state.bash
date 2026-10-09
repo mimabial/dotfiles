@@ -23,12 +23,12 @@ state_resolve_color_source() {
   local mode="${2-}"
 
   case "${source}" in
-    theme | pywal)
+    theme | wallpaper)
       printf '%s\n' "${source}"
       ;;
     *)
       if state_color_mode_is_valid "${mode}"; then
-        printf 'pywal\n'
+        printf 'wallpaper\n'
       else
         printf 'theme\n'
       fi
@@ -324,6 +324,21 @@ state_get_color_variant() {
   else
     printf 'dark\n'
   fi
+}
+
+state_resolve_color_variant() {
+  local variant=""
+
+  case "${1-}" in
+    "${STATE_COLOR_MODE_DARK}") printf 'dark\n' ;;
+    "${STATE_COLOR_MODE_LIGHT}") printf 'light\n' ;;
+    *)
+      variant="$(state_get_color_variant 2>/dev/null || true)"
+      [[ "${variant}" =~ ^(dark|light)$ ]] || variant="${BACKGROUND_MODE:-}"
+      [[ "${variant}" =~ ^(dark|light)$ ]] || variant="dark"
+      printf '%s\n' "${variant}"
+      ;;
+  esac
 }
 
 state_set_color_variant() {

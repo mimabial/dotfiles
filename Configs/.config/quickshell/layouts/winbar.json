@@ -32,7 +32,15 @@
     },
     "games",
     "agents",
-    "updates"
+    "updates",
+    "screenshot",
+    "colorpicker",
+    "converter",
+    "terminal",
+    "hyprsunset",
+    "github",
+    "sudoku",
+    "powerbutton"
   ],
   "right": [
     "tray",

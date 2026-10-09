@@ -8,17 +8,11 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property var icons: [
-        "\u{e38d}", "\u{e3d3}", "\u{e3d1}", "\u{e3cf}", "\u{e3ce}",
-        "\u{e3cd}", "\u{e3ca}", "\u{e3c8}", "\u{e39b}"
-    ]
-
     property string device: ""
     property int raw: 0
     property int maximum: 0
     readonly property int percent: maximum > 0 ? Math.round(raw * 100 / maximum) : 0
-    readonly property string icon: icons[Math.min(icons.length - 1,
-        Math.floor(percent / Math.floor(100 / icons.length)))]
+    readonly property string icon: "\u{f00df}"
 
     function refresh() { if (device !== "") value.reload() }
     property Process probe: Process {

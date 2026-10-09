@@ -4,11 +4,11 @@ PALETTE_ARG="${1:-}"
 . "$(dirname "$0")/_lib.sh"
 render_init chrome manifest.json nonexistent.theme
 
-THEME_DIR="${OUT_DIR}/Pywal16-chrome-theme"
+THEME_DIR="${OUT_DIR}/Hypr-chrome-theme"
 MANIFEST="${THEME_DIR}/manifest.json"
 OUT_FILE="${MANIFEST}"
 
-WALL="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wal.set.png"
+WALL="${WALLPAPER_CURRENT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current}/wall.set.png"
 
 hash="$(
   {
@@ -39,7 +39,7 @@ cat > "${staging}/manifest.json" <<EOF
 {
   "manifest_version": 3,
   "version": "1.0",
-  "name": "Pywal16 Theme",
+  "name": "Hypr Theme",
   "theme": {
     "images": { "theme_ntp_background": "images/theme_ntp_background_norepeat.png" },
     "colors": {

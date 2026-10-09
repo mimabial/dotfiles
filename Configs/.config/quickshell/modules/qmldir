@@ -36,3 +36,7 @@ BluetoothMenu 1.0 BluetoothMenu.qml
 VpnMenu 1.0 VpnMenu.qml
 DisplayMenu 1.0 DisplayMenu.qml
 NotificationCenter 1.0 NotificationCenter.qml
+GnomeActivities 1.0 GnomeActivities.qml
+GnomeDateMenu 1.0 GnomeDateMenu.qml
+GnomeCalendar 1.0 GnomeCalendar.qml
+GnomeQuickSettings 1.0 GnomeQuickSettings.qml

@@ -69,7 +69,7 @@ key, read that layer's Lua.
 
 Python helpers use the managed virtualenv at `~/.local/state/hypr/pip_env/`,
 set up by `hyprshell pyinit`. Shared modules live in `pyutils/` — `hyprctl.py`,
-`lock_paths.py`, `logger.py`, `shell_env.py`. Use them rather than reimplementing
+`lock_paths.py`, `shell_env.py`. Use them rather than reimplementing
 the same subprocess call.
 
 ## Before you call it done

@@ -61,7 +61,7 @@ def check_move_target(source_path: Path, target: Path, require_music_root: bool)
     target_in_music = is_in_music_library(target)
     if require_music_root and (not source_in_music or not target_in_music):
         raise MoveError(
-            f"music_move only moves paths within the music library: "
+            f"only paths within the music library can be moved: "
             f"{hidden_lyrics_root().parent}"
         )
     if source_in_music != target_in_music:

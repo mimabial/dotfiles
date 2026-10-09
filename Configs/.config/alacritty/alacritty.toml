@@ -18,12 +18,12 @@ history = 10000
 multiplier = 6
 
 [font]
-normal = { family = "FantasqueSansM Nerd Font" }
+normal = { family = "Monofur Nerd Font" }
 bold = { style = "Bold" }
 italic = { style = "Italic" }
 bold_italic = { style = "Bold Italic" }
 builtin_box_drawing = true
-size = 16.67
+size = 15.00
 offset = { x = 0, y = 2 }
 
 [cursor]

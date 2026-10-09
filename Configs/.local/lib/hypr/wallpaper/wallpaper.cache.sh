@@ -37,7 +37,6 @@ prepare_cache_dirs() {
   [[ -d "${HYPR_THEME_DIR}" ]] && cache_source_dir="${HYPR_THEME_DIR}" || exit 1
   [[ -d "${WALLPAPER_THUMB_DIR}" ]] || mkdir -p "${WALLPAPER_THUMB_DIR}"
   [[ -d "${HYPR_CACHE_HOME}/landing" ]] || mkdir -p "${HYPR_CACHE_HOME}/landing"
-  [[ -d "${HYPR_CACHE_HOME}/wal" ]] || mkdir -p "${HYPR_CACHE_HOME}/wal"
 }
 
 CACHE_RESERVE_MB=2048

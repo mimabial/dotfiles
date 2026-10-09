@@ -9,7 +9,7 @@ ROFI_WALLPAPER_SPLIT_BELOW_RATIO_MILLION=1500000
 # bar, gap and border width once it has been clamped to the monitor.
 rofi_wallpaper_theme_reserves_bar_width() {
   case "$1" in
-    style_1 | style_11 | pywal16) return 0 ;;
+    style_1 | style_11) return 0 ;;
     *) return 1 ;;
   esac
 }

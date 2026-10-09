@@ -95,18 +95,7 @@ PopupCard {
         return defaultKey(event)
     }
     // the producer reports both unit systems, so switching needs no refetch
-    readonly property bool imperial: "imperial" in Weather.prefs ? Weather.prefs.imperial === true : localeImperial
-    readonly property bool localeImperial: {
-        const country = String(value(Weather.data.nearest_area
-            ? Weather.data.nearest_area[0].country : null, "")).toLowerCase()
-        if (country) {
-            if (["us", "usa", "united states", "united states of america"].includes(country)) return true
-            if (["liberia", "myanmar", "burma"].includes(country)) return true
-            return false
-        }
-        const locale = String(Qt.locale().name).replace(".", "_")
-        return /^en[_-]US($|[_.-])/.test(locale) || /^en[_-]LR($|[_.-])/.test(locale) || /^my($|[_.-])/.test(locale)
-    }
+    readonly property bool imperial: Weather.imperial
     readonly property string degrees: imperial ? "\u00b0F" : "\u00b0C"
     readonly property string windUnit: imperial ? " mph" : " km/h"
     function temp(source, key) { return (source && source[key + (imperial ? "F" : "C")]) || "--" }

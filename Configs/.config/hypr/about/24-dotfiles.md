@@ -64,4 +64,4 @@ hyprshell service/managed.sh --mode restore hypr-config
 
 The first restores one file from `~/.local/share/hypr/default/`. The second
 restores a whole domain, backing up what was there first. The domains are
-`hypr-config`, `hypr-state`, `hyprlock`, `hypridle` and `rofi`.
+`hypr-config`, `hyprlock`, `hypridle` and `rofi`.

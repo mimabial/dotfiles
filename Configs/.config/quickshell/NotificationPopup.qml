@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
-import Quickshell.Io
 import "CalendarMath.js" as CalendarMath
 
 // The notification centre: dunst's live state on top, and under it the archive
@@ -10,10 +9,17 @@ PopupCard {
     id: root
     popupName: "notifications"
     keyboardHint: searching ? "Type search · ↑↓ move · Enter select · Esc" : "↑↓ move · Enter select · / search · Del · Esc"
-    contentWidth: Style.px(380)
-    contentHeight: Style.px(520)
+    property Component calendarPane: null
+    property bool calendarLoaded: false
+    readonly property bool groupsByApp: calendarPane !== null
+    property string expandedApp: ""
+    property var appGroupSizes: ({})
+    readonly property int calendarPaneWidth: Style.px(300)
+    readonly property int notificationPaneWidth: Style.px(380) - padding * 2
+    contentWidth: notificationPaneWidth + padding * 2 + (calendarPane ? calendarPaneWidth + Style.sectionGap * 2 + 1 : 0)
+    contentHeight: Math.max(Style.px(520), (calendarLoader.item as Item)?.implicitHeight ?? 0) + (calendarPane ? padding * 2 : 0)
 
-    property var report: ({})
+    readonly property var report: Notifications.report
     readonly property var entries: report.entries || []
     readonly property bool paused: report.paused === true
     readonly property int unread: report.unread || 0
@@ -31,7 +37,7 @@ PopupCard {
     // while it is open, rather than clearing themselves out from under the eye
     property double seenMark: -1
 
-    function refresh() { if (!historyProc.running) historyProc.running = true }
+    function refresh() { Notifications.refresh() }
     function act(command) { shell.run(command, root.refresh) }
     function store(args) { shell.run(["hyprshell", "notify/archive"].concat(args), root.refresh) }
     function markSeen() { store(["seen", String(Date.now())]) }
@@ -65,11 +71,26 @@ PopupCard {
         return Qt.formatDateTime(when, "d MMMM yyyy")
     }
 
+    function collapsedByApp(list) {
+        const groups = new Map()
+        for (const entry of list) {
+            const app = String(entry.app || "")
+            if (!groups.has(app)) groups.set(app, [])
+            groups.get(app).push(entry)
+        }
+        const sizes = {}, listed = []
+        groups.forEach((members, app) => {
+            sizes[app] = members.length
+            listed.push(...(app === expandedApp ? members : members.slice(0, 1)))
+        })
+        appGroupSizes = sizes
+        return listed
+    }
+
     function rebuild() {
         rows.clear()
-        for (let i = 0; i < entries.length; i++) {
-            const entry = entries[i]
-            if (!matches(entry)) continue
+        const shown = entries.filter(matches)
+        for (const entry of groupsByApp ? collapsedByApp(shown) : shown) {
             const stamp = Number(entry.ts || 0)
             rows.append({
                 key: String(entry.key || ""),
@@ -88,7 +109,7 @@ PopupCard {
 
     function activate(key) {
         if (clickAction === "none" || !key) return
-        store(clickAction === "focus" ? ["--focus-only", key] : [key])
+        shell.run(["hyprshell", "notify/open"].concat(clickAction === "focus" ? ["--focus-only", key] : [key]))
         shell.closePopup()
     }
     function removeRow(key) {
@@ -115,47 +136,49 @@ PopupCard {
         }
         // "/" is the only key that opens the search, so the list stays navigable
         if (event.text === "/") { startSearch(); return true }
-        if (event.key === Qt.Key_Delete && rows.count > 0 && cursorIndex >= 0) {
-            removeRow(rows.get(cursorIndex).key); return true
+        if (event.key === Qt.Key_Delete) {
+            const row = navigableRows[cursorIndex]
+            if (row instanceof NotificationEntry) row.removeRequested()
+            return true
         }
         return defaultKey(event)
     }
 
     onFilterChanged: rebuild()
     onEntriesChanged: rebuild()
+    onExpandedAppChanged: rebuild()
     onOpenChanged: {
         if (!open) {
             endSearch()
+            expandedApp = ""
             seenMark = -1
             return
         }
+        if (calendarPane) calendarLoaded = true
         refresh()
     }
 
     ListModel { id: rows }
 
-    property Process historyProc: Process {
-        command: ["hyprshell", "notify/history"]
-        stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
-            try { root.report = JSON.parse(text) || ({}) }
-            catch (error) { root.report = ({}) }
+    Connections {
+        target: Notifications
+        function onReportChanged() {
             root.now = Date.now()
-            // the watermark is read before it is moved, so this pass still knows
-            // which rows arrived while the panel was shut
             if (root.open && root.seenMark < 0) {
                 root.seenMark = Number(root.report.seen || 0)
                 root.rebuild()
                 root.markSeen()
             }
-        } }
+        }
     }
-    property Timer poll: Timer { interval: 4000; running: root.open; repeat: true; onTriggered: root.refresh() }
 
     Column {
         id: notifyColumn
-        anchors.fill: parent; spacing: Style.sectionGap
+        anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
+        width: root.notificationPaneWidth; spacing: Style.sectionGap
 
         Item {
+            visible: !root.calendarPane
             width: parent.width
             implicitHeight: Math.max(hero.implicitHeight, headerActions.implicitHeight)
 
@@ -223,12 +246,26 @@ PopupCard {
             }
         }
 
-        PopupSeparator { shell: root.shell }
+        Column {
+            width: parent.width; spacing: Style.sm
+            visible: root.calendarPane !== null && Media.hasMedia
+            PopupRow {
+                width: parent.width; shell: root.shell; iconSource: Media.artUrl; icon: Media.artUrl ? "" : "󰝚"
+                title: Media.title; detail: Media.artist; onClicked: root.shell.togglePopup("media")
+            }
+            Row {
+                anchors.horizontalCenter: parent.horizontalCenter
+                PopupIconButton { shell: root.shell; glyph: "󰒮"; hint: "Previous"; enabled: !!Media.player?.canGoPrevious; onClicked: Media.previous() }
+                PopupIconButton { shell: root.shell; glyph: Media.player?.isPlaying ? "󰏤" : "󰐊"; hint: Media.player?.isPlaying ? "Pause" : "Play"; onClicked: Media.playPause() }
+                PopupIconButton { shell: root.shell; glyph: "󰒭"; hint: "Next"; enabled: Media.canNext(); onClicked: Media.next() }
+            }
+        }
+        PopupSeparator { shell: root.shell; visible: !root.calendarPane }
 
         Text {
             visible: rows.count === 0
             width: parent.width
-            text: root.filter !== "" ? "No match" : "Nothing kept yet"
+            text: root.filter !== "" ? "No match" : root.calendarPane ? "No Notifications" : "Nothing kept yet"
             color: root.shell.mutedText
             font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
         }
@@ -236,28 +273,43 @@ PopupCard {
         ListView {
             id: entryList
             width: parent.width
-            height: Math.max(0, parent.height - y)
+            height: Math.max(0, parent.height - y - (root.calendarPane ? dateFooter.height + Style.sectionGap : 0))
             spacing: Style.sm
             clip: true
             model: rows
-            currentIndex: root.cursorIndex
             ScrollBar.vertical: PopupScrollBar { shell: root.shell }
 
-            section.property: "day"
+            section.property: root.groupsByApp ? "app" : "day"
             section.criteria: ViewSection.FullString
             section.delegate: Item {
+                id: sectionHeader
                 required property string section
+                readonly property int groupSize: root.appGroupSizes[section] || 0
+                readonly property bool stacked: root.groupsByApp && groupSize > 1
+                readonly property bool expanded: root.expandedApp === section
                 width: ListView.view ? ListView.view.width : 0
-                implicitHeight: sectionLabel.implicitHeight + Style.sm
+                implicitHeight: stacked ? groupToggle.implicitHeight + Style.sm
+                    : root.groupsByApp ? 0 : sectionLabel.implicitHeight + Style.sm
                 PopupSection {
                     id: sectionLabel
+                    visible: !root.groupsByApp
                     anchors.left: parent.left; anchors.bottom: parent.bottom
                     shell: root.shell
-                    text: parent.section.toUpperCase()
+                    text: sectionHeader.section.toUpperCase()
+                }
+                PopupRow {
+                    id: groupToggle
+                    visible: sectionHeader.stacked
+                    anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+                    shell: root.shell
+                    title: sectionHeader.section
+                    value: sectionHeader.groupSize + "  " + (sectionHeader.expanded ? "\u{f0143}" : "\u{f0140}")
+                    onClicked: root.expandedApp = sectionHeader.expanded ? "" : sectionHeader.section
                 }
             }
 
             delegate: NotificationEntry {
+                id: notificationEntry
                 required property var model
                 required property int index
                 shell: root.shell
@@ -274,10 +326,26 @@ PopupCard {
                 showPreview: root.showPreview
                 onClicked: root.activate(model.key)
                 onRemoveRequested: root.removeRow(model.key)
-                // the pointer moves the same cursor the keyboard does, so one
-                // row is ever focused
-                onHoveredChanged: if (hovered) root.cursorIndex = index
+                onHoveredChanged: if (hovered) root.selectRow(notificationEntry)
             }
         }
+        Item {
+            id: dateFooter
+            visible: root.calendarPane !== null
+            width: parent.width; implicitHeight: clearButton.implicitHeight
+            PopupTab { id: clearButton; anchors.right: parent.right; shell: root.shell; text: "Clear"; enabled: root.entries.length > 0; onClicked: root.clearAll() }
+        }
+    }
+    Rectangle {
+        visible: root.calendarPane !== null
+        x: root.notificationPaneWidth + Style.sectionGap; width: 1; height: parent.height
+        color: root.shell.alpha(root.shell.foreground, Style.hoverFillAlpha)
+    }
+    Loader {
+        id: calendarLoader
+        active: root.calendarPane !== null && root.calendarLoaded
+        anchors.right: parent.right; anchors.top: parent.top
+        width: root.calendarPaneWidth
+        sourceComponent: root.calendarPane
     }
 }

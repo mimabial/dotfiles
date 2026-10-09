@@ -12,7 +12,6 @@ for theme_apply_lib in \
   "${HYPR_LIB_DIR}/theme/lib/desktop.sync.bash" \
   "${HYPR_LIB_DIR}/theme/color.apply.bash" \
   "${HYPR_LIB_DIR}/theme/lib/apply.phase_d.bash" \
-  "${HYPR_LIB_DIR}/theme/pairs.sh" \
   "${HYPR_LIB_DIR}/fonts/font.sync.lib.bash"; do
   [[ -r "${theme_apply_lib}" ]] || {
     print_log -sec "theme.apply" -err "source" "missing ${theme_apply_lib}"
@@ -289,6 +288,8 @@ theme_apply_job_terminal() {
 
   reload_live_theme_client kitty
   reload_live_theme_client alacritty
+  reload_live_theme_client cava
+  reload_live_theme_client zathura
 }
 
 theme_apply_resolve_current_wallpaper() {
@@ -362,12 +363,10 @@ theme_apply_run_color_sync() {
   local arg=""
   local -a hypr_theme_args=()
 
-  hypr_theme_cmd="$(command -v hypr-theme 2>/dev/null || true)"
-  [[ -n "${hypr_theme_cmd}" ]] || hypr_theme_cmd="${HOME}/.local/bin/hypr-theme"
-  if [[ ! -x "${hypr_theme_cmd}" ]]; then
+  hypr_theme_cmd="$(command -v hypr-theme)" || {
     print_log -sec "theme.apply" -err "hypr-theme" "command not found"
     return 1
-  fi
+  }
 
   for arg in "${theme_apply_color_sync_args[@]}"; do
     case "${arg}" in
@@ -384,7 +383,7 @@ theme_apply_run_color_sync() {
     return
   fi
 
-  variant="$(theme_polarity "${HYPR_THEME}")"
+  variant="$(state_resolve_color_variant "${selected_color_mode}")"
 
   state_set "BACKGROUND_MODE" "${variant}" "staterc" || return 1
   state_set_color_variant "${variant}" || return 1
@@ -426,7 +425,7 @@ while (($#)); do
       ;;
     --no-cache)
       theme_apply_color_sync_args+=(--no-cache)
-      export HYPR_WAL_CACHE_ENABLE=0
+      export HYPR_HASH_CACHE_ENABLE=0
       ;;
     -h | --help)
       theme_apply_usage

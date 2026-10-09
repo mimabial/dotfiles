@@ -2,7 +2,7 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Fluent-grey
 $COLOR_SCHEME = prefer-light
-$NVIM_SCHEME = pywal
+$NVIM_SCHEME = hypr
 $NVIM_BACKGROUND = light
 $NVIM_TRANSPARENCY = false
 $CURSOR_THEME = Emo

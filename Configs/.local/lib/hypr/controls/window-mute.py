@@ -19,12 +19,13 @@ from pyutils.hyprctl import batch_json
 
 APP_NAME = "Volume control"
 NOTIFY_ID = 18
-ICON_THEME_DIR = "Pywal16-Icon"
+ICON_THEME_DIR = "Hypr-Icon"
 ICON_MUTED = "media/muted-speaker.svg"
 ICON_UNMUTED = "media/unmuted-speaker.svg"
 
 
 ALERT_NOTIFY_MS = 1200
+INIT_PID = 1
 
 
 @dataclass(slots=True)
@@ -174,7 +175,7 @@ def _is_descendant(pid: int, ancestor: int, cache: dict[int, tuple[int, str] | N
     current = pid
     seen: set[int] = set()
 
-    while current > 1 and current not in seen:
+    while current > INIT_PID and current not in seen:
         if current == ancestor:
             return True
         seen.add(current)
@@ -190,7 +191,7 @@ def _has_name_in_lineage(pid: int, name: str, cache: dict[int, tuple[int, str] |
     current = pid
     seen: set[int] = set()
 
-    while current > 1 and current not in seen:
+    while current > INIT_PID and current not in seen:
         seen.add(current)
         info = _read_proc_stat(current, cache)
         if info is None:

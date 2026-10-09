@@ -5,7 +5,7 @@ source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR}/system/monitor.common.bash"
 
-hypr_help_guard "Usage: hyprshell system/monitor-internal {on|off|toggle|recover|status} [-q|--quiet]
+hypr_help_guard "Usage: hyprshell system/monitor-internal {on|off|toggle|status} [-q|--quiet]
 Enable, disable, or query the internal laptop display (default: toggle).
   -q, --quiet  Suppress notifications." "$@"
 
@@ -60,15 +60,6 @@ internal_off() {
   internal_notify "Laptop display disabled" "${internal_monitor}"
 }
 
-internal_recover() {
-  internal_monitor_required || return 0
-  if ! monitor_has_active_external && monitor_fragment_exists "${toggle_name}"; then
-    monitor_remove_fragment "${toggle_name}"
-    monitor_reload
-    internal_notify "Laptop display recovered" "${internal_monitor}"
-  fi
-}
-
 internal_status() {
   internal_monitor_required || return 1
   if monitor_fragment_exists "${toggle_name}"; then
@@ -93,14 +84,11 @@ case "${1:-toggle}" in
       internal_off
     fi
     ;;
-  recover)
-    internal_recover
-    ;;
   status)
     internal_status
     ;;
   *)
-    echo "Usage: $(basename "$0") {on|off|toggle|recover|status}" >&2
+    echo "Usage: $(basename "$0") {on|off|toggle|status}" >&2
     exit 2
     ;;
 esac

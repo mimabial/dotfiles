@@ -3,6 +3,9 @@
     "margin": [0.0, 0.0, 0.0, 0.0],
     "padding": [0.0, 18.0, 0.0, 0.0]
   },
+  "tray.chevron, workflows, window-layout, wallpaper, volume, terminal, sudoku, removable, powerprofile, powerbutton, microphone, github, converter, colorpicker, colormode, bitwarden, barlayout-button, agents, hyprsunset, screenshot, privacy, display, vpn, wifi, bluetooth, tasks, notifications": {
+    "iconBox": 8
+  },
   "taskbar": {
     "iconSize": 21.0,
     "margin": [0.0, 0.0, 0.0, 0.0],

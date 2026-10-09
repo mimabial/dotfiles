@@ -40,6 +40,7 @@ images="${store}/images"
 seen_file="${store}/seen"
 
 ensure_store() {
+  [[ -d "${images}" && -f "${archive}" && -f "${seen_file}" ]] && return 0
   mkdir -p "${images}"
   chmod 700 "${store}" "${images}" 2>/dev/null || true
   [[ -e "${archive}" ]] || : >"${archive}"

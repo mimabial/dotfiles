@@ -1,0 +1,27 @@
+{
+  "panel": "horizontal",
+  "edge": "top",
+  "clock": "gnome",
+  "left": [
+    "gnome-activities"
+  ],
+  "centerAnchor": "gnome-date-menu",
+  "center": [
+    "gnome-date-menu"
+  ],
+  "right": [
+    {
+      "id": "gnome-screen-record",
+      "props": {
+        "showElapsed": true
+      }
+    },
+    {
+      "id": "language-menu",
+      "props": {
+        "macInputItems": false
+      }
+    },
+    "gnome-quick-settings"
+  ]
+}

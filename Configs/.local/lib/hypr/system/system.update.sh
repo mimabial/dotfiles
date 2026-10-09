@@ -187,6 +187,20 @@ review_orphans() {
   hyprshell pm remove-orphans
 }
 
+review_arch_news() {
+  local news="" reply=""
+
+  [[ -n "${aur_helper}" ]] || return 0
+  news="$("${aur_helper}" -Pw 2>/dev/null)" || return 0
+  [[ -n "${news}" ]] || return 0
+
+  printf '\nArch Linux news since your last upgrade:\n%s\n' "${news}"
+  [[ -t 0 ]] || return 0
+
+  read -r -p "Continue with the upgrade? [Y/n] " reply || reply=""
+  [[ ! "${reply}" =~ ^[Nn] ]]
+}
+
 kernel_replaced() {
   local kernel="" current="" found=0
   current="$(uname -r)"
@@ -263,6 +277,7 @@ run_updates() {
 
   command -v fastfetch >/dev/null 2>&1 && fastfetch
   printf '[Official] %-10s\n[AUR]      %-10s\n[Flatpak]  %-10s\n' "$official" "$aur" "$flatpak"
+  [[ "${source}" == flatpak ]] || review_arch_news || return 0
 
   inhibit_idle
   case "${source}" in

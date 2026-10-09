@@ -45,7 +45,7 @@ PopupCard {
             width: parent.width; spacing: Style.sm
             PopupSection { shell: root.shell; text: "COLOR SOURCE" }
             SourceRow { width: parent.width; rowSource: "theme"; icon: "󰏘"; title: "Theme"; detail: "Use the theme palette"; onPrevious: root.shell.run(["hyprshell", "theme/theme.switch", "-p", "--quiet"]); onNext: root.shell.run(["hyprshell", "theme/theme.switch", "-n", "--quiet"]) }
-            SourceRow { width: parent.width; rowSource: "pywal"; icon: "󰸉"; title: "Wallpaper"; detail: "Generate colors from the wallpaper"; onPrevious: root.shell.run(["hyprshell", "wallpaper", "previous", "--global"]); onNext: root.shell.run(["hyprshell", "wallpaper", "next", "--global"]) }
+            SourceRow { width: parent.width; rowSource: "wallpaper"; icon: "󰸉"; title: "Wallpaper"; detail: "Generate colors from the wallpaper"; onPrevious: root.shell.run(["hyprshell", "wallpaper", "previous", "--global"]); onNext: root.shell.run(["hyprshell", "wallpaper", "next", "--global"]) }
         }
         PopupSeparator { shell: root.shell }
         Column {

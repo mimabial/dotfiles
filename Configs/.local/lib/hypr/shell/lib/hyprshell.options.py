@@ -31,9 +31,7 @@ SUFFIXES = (".sh", ".py", ".bash")
 
 def script_roots() -> list[Path]:
     lib = os.environ.get("LIB_DIR", str(Path.home() / ".local/lib"))
-    config = os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))
-    default = f"{config}/hypr/scripts:{lib}/hypr"
-    raw = os.environ.get("HYPR_SCRIPTS_PATH", default)
+    raw = os.environ.get("HYPR_SCRIPTS_PATH", f"{lib}/hypr")
     roots, seen = [], set()
     for part in raw.split(":"):
         if part and part not in seen:

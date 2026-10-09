@@ -1,19 +1,30 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
-import tempfile
 import tomllib
 from pathlib import Path
 
-from _common import ANSI_COLOR_COUNT
+from _common import ANSI_COLOR_COUNT, CACHE_HOME, atomic_write, short_digest
 
 DEFAULT_OUT = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "hypr" / "active-palette.json"
-WAL_CACHE   = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "wal" / "colors.json"
 THEME_ROOT  = Path(os.environ.get("HYPR_CONFIG_HOME", str(Path.home() / ".config" / "hypr"))) / "themes"
+MATUGEN_CONFIG = Path(__file__).with_name("matugen.toml")
+MATUGEN_CACHE = CACHE_HOME / "matugen-schemes"
+MOST_DOMINANT_SOURCE = "0"
+
+HUE_ROLES = ("red", "green", "yellow", "blue", "magenta", "cyan")
+ANSI_ROLES = {
+    "dark":  ("surface", *HUE_ROLES, "on_surface",
+              "surface_variant", *(f"on_{hue}_container" for hue in HUE_ROLES), "on_surface_variant"),
+    "light": ("surface", *HUE_ROLES, "on_surface",
+              "surface_variant", *HUE_ROLES, "on_surface_variant"),
+}
 
 HEX = re.compile(r"#[0-9a-fA-F]{6}")
 KEY_VALUE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s+(\S+)\s*$")
@@ -25,16 +36,6 @@ def is_light_color(hex_value: str) -> bool:
     g = int(hex_value[3:5], 16)
     b = int(hex_value[5:7], 16)
     return ((0.299 * r + 0.587 * g + 0.114 * b) / 255) > 0.5
-
-PYWAL_DEFAULTS = {
-    "dark":  {"BACKEND": "colorthief", "CONTRAST": "3.0", "SATURATE": "0.4", "COLS16": "lighten"},
-    "light": {"BACKEND": "colorthief", "CONTRAST": "3.0", "SATURATE": "0.6", "COLS16": "darken"},
-}
-
-def pywal_setting(name: str, variant: str) -> str:
-    return (os.environ.get(f"PYWAL_{variant.upper()}_{name}")
-            or os.environ.get(f"PYWAL_{name}")
-            or PYWAL_DEFAULTS[variant].get(name, ""))
 
 def parse_kitty_theme(path: Path) -> dict:
     data = {"bg": None, "fg": None, "cursor": None, "cursor_text": None,
@@ -121,90 +122,55 @@ def resolve_wallpaper(image_path: str, variant: str) -> dict:
     if not img.is_file():
         sys.exit(f"_palette: wallpaper not found: {img}")
 
-    backend = pywal_setting("BACKEND", variant)
-    contrast = pywal_setting("CONTRAST", variant)
-    saturate = pywal_setting("SATURATE", variant)
-    cols16 = pywal_setting("COLS16", variant)
-
-    wal_cmd = ["wal", "-q", "-n", "-s", "-t", "-e", "-i", str(img)]
-    if variant == "light":
-        wal_cmd.append("-l")
-    if backend:
-        wal_cmd += ["--backend", backend]
-    if contrast:
-        wal_cmd += ["--contrast", contrast]
-    if saturate:
-        wal_cmd += ["--saturate", saturate]
-    if cols16:
-        wal_cmd += ["--cols16", cols16]
-
-    # Defer extraction to pywal16; it writes WAL_CACHE.
-    try:
-        subprocess.run(wal_cmd, check=True)
-    except FileNotFoundError:
-        sys.exit("_palette: pywal (wal) not installed")
-    except subprocess.CalledProcessError as e:
-        sys.exit(f"_palette: pywal failed: {e}")
-    if not WAL_CACHE.is_file():
-        sys.exit(f"_palette: pywal did not produce {WAL_CACHE}")
-    return palette_from_wal(json.loads(WAL_CACHE.read_text()), f"wallpaper:{img}", variant)
-
-def atomic_write_json(path: Path, payload: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
-    try:
-        with os.fdopen(fd, "w") as f:
-            json.dump(payload, f, indent=2)
-            f.write("\n")
-        os.replace(tmp, path)
-    except Exception:
-        try: os.unlink(tmp)
-        except FileNotFoundError: pass
-        raise
-
-def palette_from_wal(wal_cache: dict, source: str, variant: str) -> dict:
-    colors = wal_cache.get("colors", {})
-    special = wal_cache["special"]
-    palette = {
-        "source": source,
+    roles = matugen_roles(img)
+    role = lambda name: roles[name][variant]["color"]
+    return {
+        "source": f"wallpaper:{img}",
         "mode":   "wallpaper",
         "background": variant,
-        "bg":     special["background"],
-        "fg":     special["foreground"],
-        "colors": [colors[f"color{i}"] for i in range(ANSI_COLOR_COUNT)],
+        "bg":     role("surface"),
+        "fg":     role("on_surface"),
+        "colors": [role(name) for name in ANSI_ROLES[variant]],
+        "cursor": role("on_surface"),
+        "cursor_text":  role("surface"),
+        "selection_fg": role("on_secondary_container"),
+        "selection_bg": role("secondary_container"),
     }
-    if special.get("cursor"):
-        palette["cursor"] = special["cursor"]
-    return palette
 
-def resolve_from_wal_cache(variant: str) -> dict:
-    if not WAL_CACHE.is_file():
-        sys.exit(f"_palette: no wal cache at {WAL_CACHE}")
-    wal_cache = json.loads(WAL_CACHE.read_text())
-    img = wal_cache.get("wallpaper") or ""
-    if img == "None":
-        img = ""
-    return palette_from_wal(wal_cache, f"wallpaper:{img}", variant)
+def matugen_roles(img: Path) -> dict:
+    matugen = shutil.which("matugen") or sys.exit("_palette: matugen not installed")
+    hasher = hashlib.sha256(MATUGEN_CONFIG.read_bytes())
+    for path in (Path(matugen), img):
+        stat = path.stat()
+        hasher.update(f"{path}\0{stat.st_size}\0{stat.st_mtime_ns}\0".encode())
+    cache = MATUGEN_CACHE / f"{short_digest(hasher)}.json"
+    if cache.is_file():
+        return json.loads(cache.read_text())
+    try:
+        scheme = subprocess.run([matugen, "image", str(img), "--config", str(MATUGEN_CONFIG), "--dry-run", "--quiet",
+                                 "--json", "hex", "--source-color-index", MOST_DOMINANT_SOURCE],
+                                check=True, capture_output=True, text=True).stdout
+    except subprocess.CalledProcessError as error:
+        sys.exit(f"_palette: matugen failed: {error.stderr.strip()}")
+    roles = json.loads(scheme)["colors"]
+    atomic_write(cache, json.dumps(roles) + "\n")
+    return roles
 
 def main():
     parser = argparse.ArgumentParser()
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--theme", metavar="PACK")
     source.add_argument("--wallpaper", metavar="PATH")
-    source.add_argument("--from-wal-cache", action="store_true",
-                   help="reshape existing ~/.cache/wal/colors.json instead of re-running pywal")
     parser.add_argument("--variant", choices=("dark", "light"), default=os.environ.get("HYPR_COLOR_VARIANT", "dark"))
     parser.add_argument("--out", default=str(DEFAULT_OUT))
     args = parser.parse_args()
 
     if args.theme:
         payload = resolve_theme(args.theme)
-    elif args.from_wal_cache:
-        payload = resolve_from_wal_cache(args.variant)
     else:
         payload = resolve_wallpaper(args.wallpaper, args.variant)
 
-    atomic_write_json(Path(args.out), payload)
+    atomic_write(Path(args.out), json.dumps(payload, indent=2) + "\n")
     print(f"_palette: wrote {args.out} ({payload['source']})", file=sys.stderr)
 
 if __name__ == "__main__":

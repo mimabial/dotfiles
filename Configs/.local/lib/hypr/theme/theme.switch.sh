@@ -31,6 +31,7 @@ theme_switch_previous_color_mode="${selected_color_mode:-}"
 theme_switch_state_updated=0
 theme_switch_auto_mode_changed=0
 theme_switch_metadata_file=""
+theme_switch_render_failures=""
 theme_switch_nvim_mapping=""
 theme_switch_nvim_background=""
 theme_switch_nvim_transparency=""
@@ -114,10 +115,12 @@ select_adjacent_theme() {
 theme_notify_finish() {
   local exit_code="$1"
   local theme_name="${selected_theme:-${HYPR_THEME}}"
+  local failed_renderers=""
   [[ -z "${exit_code}" ]] && exit_code=0
 
   if [[ "${exit_code}" -ne 0 && "${theme_switch_state_updated}" -eq 1 ]]; then
-    theme_notify_send "Theme switch interrupted" "${theme_name}" 2500 critical
+    [[ -s "${theme_switch_render_failures}" ]] && failed_renderers="$(paste -sd, "${theme_switch_render_failures}")"
+    theme_notify_send "Theme switch interrupted" "${theme_name}${failed_renderers:+ [${failed_renderers} failed]}" 2500 critical
   fi
 }
 
@@ -288,6 +291,7 @@ prepare_active_theme_config() {
 
 theme_switch_reconcile_color_mode() {
   local mode polarity desired
+  [[ "${selected_color_source}" == "theme" ]] || return 0
   mode="${selected_color_mode}"
   state_color_mode_is_valid "${mode}" || return 0
   polarity="$(theme_polarity "${selected_theme}")"
@@ -320,7 +324,10 @@ main() {
   prepare_active_theme_config || exit 1
   [[ "${quiet}" == "true" ]] && theme_apply_cmd+=(--quiet)
   theme_apply_cmd+=("${theme_switch_cache_args[@]}")
-  HYPR_THEME_METADATA_FILE="${theme_switch_metadata_file}" "${theme_apply_cmd[@]}" || exit 1
+  theme_switch_render_failures="${HYPR_RUNTIME_DIR}/theme-switch.render-failures"
+  : >"${theme_switch_render_failures}" || exit 1
+  HYPR_THEME_METADATA_FILE="${theme_switch_metadata_file}" HYPR_THEME_RENDER_FAILURES="${theme_switch_render_failures}" \
+    "${theme_apply_cmd[@]}" || exit 1
 }
 
 main "$@"

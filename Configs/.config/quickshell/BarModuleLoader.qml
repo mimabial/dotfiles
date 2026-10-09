@@ -16,12 +16,15 @@ Loader {
     readonly property var moduleProps: typeof moduleEntry === "string" ? null : (moduleEntry.props || null)
     readonly property bool spacer: moduleId === "spacer"
     readonly property bool customSource: !registry[moduleId] && !!moduleEntry.source
+    readonly property point dragPosition: handle.centroid.scenePosition
     // a hosted drag released where no drop area of its own window took it
     signal droppedOutside(point position)
     function moduleVisible(module: var): bool {
         if (!module) return true
         if ("shown" in module) return module.shown
+        const button = module as BarButton
         return !("text" in module) || String(module.text) !== ""
+            || button !== null && (button.symbolic || button.leadingIcon !== "" || button.trailingWidth > 0)
     }
     Layout.fillWidth: spacer || !!(moduleProps && moduleProps.fillAvailableWidth)
     Layout.fillHeight: true

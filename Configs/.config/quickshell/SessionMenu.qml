@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Wayland
 
@@ -7,6 +8,14 @@ PanelWindow {
     id: root
     required property var shell
     property int cursor: -1
+    readonly property FolderListModel pacmanLock: FolderListModel { folder: "file:///var/lib/pacman"; nameFilters: ["db.lck"]; showDirs: false }
+    readonly property FolderListModel unfinishedDownloads: FolderListModel {
+        folder: "file://" + root.shell.home + "/Downloads"; nameFilters: ["*.part", "*.crdownload"]; showDirs: false
+    }
+    readonly property var shutdownWarnings: [
+        pacmanLock.count > 0 ? "The package database is locked: an update may be running" : "",
+        unfinishedDownloads.count > 0 ? unfinishedDownloads.count + (unfinishedDownloads.count === 1 ? " download is" : " downloads are") + " unfinished in ~/Downloads" : ""
+    ].filter(Boolean)
 
     readonly property real restInsetX: width * 0.35
     readonly property real restInsetY: height * 0.25
@@ -109,6 +118,16 @@ PanelWindow {
                 onClicked: root.run(quadrant.modelData)
             }
         }
+    }
+    Text {
+        visible: root.shutdownWarnings.length > 0
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        anchors.topMargin: Math.max(Style.popupPadding / 2, Style.sm)
+        text: root.shutdownWarnings.join(" · ")
+        color: root.shell.role("warning", root.shell.foreground)
+        font.family: root.shell.fontFamily
+        font.pixelSize: Style.body
     }
     Text {
         anchors.horizontalCenter: parent.horizontalCenter

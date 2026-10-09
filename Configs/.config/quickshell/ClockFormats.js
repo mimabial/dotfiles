@@ -12,6 +12,12 @@ var BY_KIND = {
         { pattern: "HH:mm", hasDate: false, hasTime: true },
         { pattern: "HH:mm  dd/MM/yyyy", hasDate: true, hasTime: true }
     ],
+    gnome: [
+        { pattern: "MMM d  HH:mm", hasDate: true, hasTime: true },
+        { pattern: "MMM d  h:mm AP", hasDate: true, hasTime: true },
+        { pattern: "ddd MMM d  HH:mm", hasDate: true, hasTime: true },
+        { pattern: "HH:mm", hasDate: false, hasTime: true }
+    ],
     macos: [
         { pattern: "ddd d MMM  HH:mm", hasDate: true, hasTime: true },
         { pattern: "ddd MMM d  h:mm AP", hasDate: true, hasTime: true },

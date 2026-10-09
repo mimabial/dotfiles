@@ -7,7 +7,7 @@ var IGNORED_TOKENS = {
   "window": true, "default": true, "profile": true, "profile_1": true, "profile_2": true,
   "chrome": true, "chromium": true, "brave": true, "edge": true, "microsoft-edge": true,
   "helium": true, "helium-browser": true, "opera": true, "vivaldi": true,
-  "web": true,
+  "web": true, "steam": true,
   "https": true, "http": true, "www": true, "x86_64": true, "x86": true, "amd64": true, "lib": true
 };
 

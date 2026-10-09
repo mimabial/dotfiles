@@ -16,6 +16,7 @@ Item {
     property var menuHandle: null
     property Item menuAnchor: null
     property string menuLabel: ""
+    property string cursorKey: ""
     readonly property var box: shell.style.box("tray")
     readonly property int scaledIcon: Math.round(box.iconSize !== undefined ? box.iconSize : iconSize)
     readonly property real sectionSpacing: shell.style.box(".modules-" + host?.sectionName).spacing || 0
@@ -29,23 +30,37 @@ Item {
         for (let i = 0; i < values.length; i++) if (values[i].status !== Status.Passive) result.push(values[i])
         return result
     }
-    readonly property var drawerIcons: shell.prefs.trayShowIcons ? icons.filter(item => !shell.trayHidden.includes(String(item.id || "")) && !shell.trayPinned.includes(String(item.id || ""))) : []
-    readonly property var pinnedIcons: shell.prefs.trayShowIcons ? icons.filter(item => !shell.trayHidden.includes(String(item.id || "")) && shell.trayPinned.includes(String(item.id || ""))) : []
+    readonly property var shownIcons: shell.prefs.trayShowIcons ? icons.filter(item => !shell.trayHidden.includes(iconId(item))) : []
+    readonly property var pinnedIcons: [].concat(...shell.trayPinned.map(id => shownIcons.filter(item => iconId(item) === id)))
+    readonly property var attentionIcons: shownIcons.filter(item => item.status === Status.NeedsAttention && !pinnedIcons.includes(item))
+    readonly property var barIcons: pinnedIcons.concat(attentionIcons)
+    readonly property var drawerIcons: shownIcons.filter(item => !barIcons.includes(item))
     readonly property BarModuleLoader host: parent as BarModuleLoader
     readonly property var drawerEntries: {
         const entries = []
         for (const entry of shell.barLayout.tray || []) {
             const key = shell.trayKey("tray", entry), icon = typeof entry === "string" && entry.startsWith("icon:") ? entry.slice(5) : ""
-            const data = icon ? drawerIcons.find(item => String(item.id) === icon) : { key, section: "tray", entry }
+            const data = icon ? drawerIcons.find(item => iconId(item) === icon) : { key, section: "tray", entry }
             if (data) entries.push({ key, data, widget: !icon })
         }
         for (const data of drawerIcons) {
-            const key = shell.trayKey("tray", "icon:" + data.id)
+            const key = iconKey(data)
             if (!entries.some(entry => entry.key === key)) entries.push({ key, data, widget: false })
         }
         return entries
     }
-    readonly property var hostedEntries: drawerEntries.filter(entry => entry.widget).map(entry => entry.data)
+    readonly property var barWidgets: [].concat(...shell.barSections.map(section => (shell.barLayout[section] || []).map(entry =>
+        ({ key: shell.trayKey(section, entry), id: typeof entry === "string" ? entry : String(entry.id || ""), onBar: section !== "tray" }))))
+        .filter(widget => !["tray", "taskbar", "spacer"].includes(widget.id) && !widget.id.startsWith("icon:"))
+        .sort((a, b) => a.id.localeCompare(b.id) || a.key.localeCompare(b.key))
+    function iconId(item) { return String(item.id || "") }
+    function iconKey(item) { return shell.trayKey("tray", "icon:" + iconId(item)) }
+    function setPinned(id, pinned) { if (shell.trayPinned.includes(id) !== pinned) shell.toggleTrayPin(id) }
+    // the StatusNotifierItem spec allows markup in the description only
+    function tooltipText(item) {
+        const title = String(item.tooltipTitle || item.title || item.id).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        return item.tooltipDescription ? title + "<br>" + item.tooltipDescription : title
+    }
     function afterKey(key) {
         const keys = drawerEntries.map(entry => entry.key)
         return keys[keys.indexOf(key) + 1] || ""
@@ -60,7 +75,8 @@ Item {
         const key = module ? module.moduleKey : String(drop.source?.["trayKey"] || "")
         if (!key || key === before || (module && module.moduleId === "tray")) return
         drop.acceptProposedAction()
-        Qt.callLater(() => shell.moveBarModule(key, "tray", before, false))
+        const id = String(drop.source?.["iconId"] ?? "")
+        Qt.callLater(() => { setPinned(id, false); shell.moveBarModule(key, "tray", before, false) })
     }
     function activateIcon(icon, button, anchor) {
         if (button === Qt.MiddleButton) { icon.secondaryActivate(); popupHold = false }
@@ -76,6 +92,34 @@ Item {
             if (shell.popupName !== "tray") shell.togglePopup("tray")
         }
     }
+    function toggleFlyout() {
+        const reopen = !popupOwned && !popupHold
+        shell.closePopup()
+        popupHold = reopen
+    }
+    function keyboardTarget(item) {
+        if (!item || item.navigable === true) return item
+        for (const child of item.children) {
+            const target = child.visible ? keyboardTarget(child) : null
+            if (target) return target
+        }
+        return null
+    }
+    function handleKey(event) {
+        const cells = Array.from({ length: slots.count }, (_, index) => slots.itemAt(index)).filter(cell => cell?.visible)
+        const index = cells.findIndex(cell => cell.trayKey === cursorKey)
+        const step = { [Qt.Key_Left]: -1, [Qt.Key_Backtab]: -1, [Qt.Key_Right]: 1, [Qt.Key_Tab]: 1,
+            [Qt.Key_Up]: -overflowGrid.columns, [Qt.Key_Down]: overflowGrid.columns }[event.key]
+        if (step !== undefined) {
+            const next = cells[index < 0 ? 0 : index + step]
+            if (next) cursorKey = next.trayKey
+        } else if (event.key === Qt.Key_Escape) popupHold = false
+        else if (index < 0) return false
+        else if ([Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space].includes(event.key)) cells[index].activate(Qt.LeftButton)
+        else if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier))) cells[index].activate(Qt.RightButton)
+        else return false
+        return true
+    }
     property bool popupHold: false
     // hosted widgets load with the flyout, and some report their state only later;
     // keeping the cells of those shown last time stops the grid shifting under the pointer
@@ -85,7 +129,9 @@ Item {
     }
     readonly property bool popupOwned: ownsPopup()
     readonly property bool draggingContent: drawerEntries.some(entry => entry.key === shell.dragKey)
-    readonly property bool expanded: popupHold || popupOwned || draggingContent
+    readonly property bool draggingWidget: drawerEntries.some(entry => entry.widget && entry.key === shell.dragKey)
+    readonly property bool expanded: popupsAllowed && (popupHold || popupOwned || draggingContent)
+    onPopupsAllowedChanged: if (!popupsAllowed) popupHold = false
     implicitWidth: content.implicitWidth
     implicitHeight: Math.max(content.implicitHeight, scaledIcon + spanY)
 
@@ -97,6 +143,11 @@ Item {
         }
         function onPopupCardChanged() {
             if (root.shell.popupCard && !root.ownsPopup()) root.popupHold = false
+        }
+        function onTrayToggleRequested() {
+            if (!root.popupsAllowed) return
+            root.toggleFlyout()
+            if (root.popupHold) root.cursorKey = root.drawerEntries[0]?.key ?? ""
         }
     }
     RowLayout {
@@ -112,11 +163,7 @@ Item {
             Layout.fillHeight: true
             onClicked: button => {
                 if (button === Qt.RightButton && root.popupsAllowed) root.shell.togglePopup("tray-manage")
-                else if (button === Qt.LeftButton) {
-                    const reopen = !root.popupOwned && !root.popupHold
-                    root.shell.closePopup()
-                    root.popupHold = reopen
-                }
+                else if (button === Qt.LeftButton) root.toggleFlyout()
             }
             DragHandler {
                 id: trayDrag
@@ -159,7 +206,7 @@ Item {
             id: iconFrame
             readonly property var box: root.box
             readonly property real radius: root.radius
-            visible: root.pinnedIcons.length > 0
+            visible: root.barIcons.length > 0
             Layout.fillHeight: true
             Layout.preferredWidth: frameRow.implicitWidth + root.spanX
             Rectangle {
@@ -181,21 +228,11 @@ Item {
                 anchors.leftMargin: root.box.margin[3] + root.borderInset + root.box.padding[3]
                 spacing: root.sectionSpacing
                 Repeater {
-                    model: root.pinnedIcons
-                    delegate: Item {
-                        id: pin
+                    model: root.barIcons
+                    delegate: TrayIcon {
                         required property var modelData
+                        trayItem: modelData
                         implicitWidth: root.scaledIcon; implicitHeight: root.scaledIcon
-                        IconImage { anchors.fill: parent; source: pin.modelData.icon }
-                        MouseArea {
-                            id: pinMouse
-                            anchors.fill: parent
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-                            hoverEnabled: true
-                            onClicked: event => root.activateIcon(pin.modelData, event.button, pin)
-                            onWheel: event => pin.modelData.scroll(event.angleDelta.y, false)
-                        }
-                        BarTooltip { anchorItem: pin; shell: root.shell; text: pin.modelData.tooltipTitle || pin.modelData.title || pin.modelData.id; hovered: pinMouse.containsMouse }
                     }
                 }
             }
@@ -208,26 +245,40 @@ Item {
         readonly property var bar: root.QsWindow.window
         readonly property bool onTop: root.shell.barEdge === "top"
         property real anchorX: 0
+        property point widgetDragPosition
+        function overBar(position) {
+            const barY = position.y + (onTop ? -bar.margins.top : bar.height + bar.margins.bottom - height)
+            return barY >= 0 && barY <= bar.height
+        }
         // drag and drop stays within one window, so a widget dragged out of the
         // flyout lands in whichever bar section lies under the release point
         function dropOnBar(key, position) {
-            const barY = position.y + (onTop ? -bar.margins.top : bar.height + bar.margins.bottom - height)
-            if (barY < 0 || barY > bar.height) return
-            const placement = bar.gapPlacement(position.x - bar.margins.left)
+            if (!overBar(position)) return
+            const placement = bar.dropPlacement(position.x - bar.margins.left)
             Qt.callLater(() => root.shell.moveBarModule(key, placement.section, placement.target, false))
         }
         screen: bar ? bar.screen : null
         visible: root.expanded && root.drawerEntries.length > 0
-        onVisibleChanged: if (visible) anchorX = bar.margins.left + chevron.mapToItem(null, chevron.width / 2, 0).x
+        onVisibleChanged: {
+            if (!visible) { root.cursorKey = ""; return }
+            anchorX = bar.margins.left + chevron.mapToItem(null, chevron.width / 2, 0).x
+        }
         color: "transparent"
         anchors.left: true; anchors.right: true; anchors.top: onTop; anchors.bottom: !onTop
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.namespace: "hypr-shell-bar"
-        WlrLayershell.keyboardFocus: root.popupOwned ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        // keyboard navigation holds focus exclusively, as the dock's does: dropping to
+        // on-demand hands it back to the window under the pointer
+        WlrLayershell.keyboardFocus: root.cursorKey && root.shell.popupName === "" ? WlrKeyboardFocus.Exclusive
+            : root.popupOwned ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         implicitHeight: (bar ? bar.height + bar.margins.top + bar.margins.bottom : 0) + Style.popupGap + card.height
         mask: Region { item: card }
         // a popup anchored in here may get the keyboard instead of the bar; route it the same way
-        Item { anchors.fill: parent; focus: true; Keys.onPressed: event => { if (root.shell.popupCard) event.accepted = root.shell.popupCard.handleKey(event) } }
+        Item {
+            anchors.fill: parent
+            focus: true
+            Keys.onPressed: event => { event.accepted = root.shell.popupName && root.shell.popupCard ? root.shell.popupCard.handleKey(event) : root.handleKey(event) }
+        }
         Rectangle {
             id: card
             x: Math.max(Style.popupGap, Math.min(overflow.width - width - Style.popupGap, overflow.anchorX - width / 2))
@@ -243,9 +294,19 @@ Item {
                 columns: Math.ceil(Math.sqrt(root.drawerEntries.length))
                 spacing: Style.xxs
                 Repeater {
+                    id: slots
                     model: overflow.visible ? root.drawerEntries : []
                     delegate: TraySlot {}
                 }
+            }
+        }
+        Loader {
+            active: root.draggingWidget
+            sourceComponent: Rectangle {
+                visible: overflow.overBar(overflow.widgetDragPosition)
+                x: overflow.bar.margins.left + Math.min(overflow.bar.width - width, overflow.bar.dropPlacement(overflow.widgetDragPosition.x - overflow.bar.margins.left).x)
+                y: overflow.onTop ? overflow.bar.margins.top : overflow.height - overflow.bar.margins.bottom - overflow.bar.height
+                width: 2; height: overflow.bar.height; color: root.shell.accent
             }
         }
         HyprlandFocusGrab {
@@ -259,16 +320,27 @@ Item {
         required property var modelData
         readonly property bool widget: modelData.widget
         readonly property string trayKey: modelData.key
+        readonly property bool cursored: root.cursorKey === trayKey
         readonly property bool live: !widget || host.item !== null && host.moduleVisible(host.item)
         property bool reported: false
         visible: live || root.shownKeys.includes(trayKey)
         // recorded only while shown: tearing the flyout down reports its widgets hidden
         function note() { if (widget && overflow.visible && (live || reported)) { reported = true; root.remember(trayKey, live) } }
+        function activate(button) {
+            if (widget) root.keyboardTarget(host.item)?.clicked(button)
+            else root.activateIcon(modelData.data, button, slot)
+        }
         onLiveChanged: note()
         Component.onCompleted: note()
         Component.onDestruction: if (widget && !reported) root.remember(trayKey, false)
         width: Math.max(root.cellSize, widget ? host.implicitWidth : 0); height: root.cellSize
-        Rectangle { anchors.fill: parent; visible: mouse.containsMouse; radius: root.radius; color: root.shell.hoverFill() }
+        HoverHandler { id: hover }
+        Rectangle {
+            anchors.fill: parent
+            visible: slot.cursored || hover.hovered && !slot.widget
+            radius: root.radius; color: root.shell.hoverFill()
+            border.color: root.shell.hoverEdge(.85); border.width: slot.cursored ? 2 : 0
+        }
         BarModuleLoader {
             id: host
             anchors.centerIn: parent
@@ -279,42 +351,14 @@ Item {
             hosted: true; visible: slot.widget
             onDroppedOutside: position => overflow.dropOnBar(moduleKey, position)
         }
-        IconImage { anchors.centerIn: parent; width: root.scaledIcon; height: root.scaledIcon; visible: !slot.widget; source: slot.widget ? "" : slot.modelData.data.icon }
-        MouseArea {
-            id: mouse
+        Binding { target: overflow; property: "widgetDragPosition"; value: host.dragPosition; when: slot.widget && root.shell.dragKey === slot.trayKey }
+        Loader {
             anchors.fill: parent
-            enabled: !slot.widget
-            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-            hoverEnabled: true
-            onClicked: event => root.activateIcon(slot.modelData.data, event.button, slot)
-            onWheel: event => slot.modelData.data.scroll(event.angleDelta.y, false)
-        }
-        DragHandler {
-            id: iconDrag
-            target: null
-            enabled: !slot.widget
-            dragThreshold: 8
-            onActiveChanged: {
-                if (active) { root.shell.dragKey = slot.trayKey; iconMarker.Drag.active = true }
-                else {
-                    if (iconMarker.Drag.active) iconMarker.Drag.drop()
-                    if (root.shell.dragKey === slot.trayKey) root.shell.dragKey = ""
-                }
-            }
-        }
-        Item {
-            id: iconMarker
-            width: 1; height: 1
-            x: iconDrag.centroid.position.x; y: iconDrag.centroid.position.y
-            Drag.source: slot
-            Drag.keys: ["tray-icon"]
-            Drag.proposedAction: Qt.MoveAction
-            Rectangle {
-                anchors.centerIn: parent
-                width: root.scaledIcon + 10; height: width; radius: 4
-                color: root.shell.alpha(root.shell.background, .94)
-                border.color: root.shell.accent; visible: iconDrag.active
-                IconImage { anchors.centerIn: parent; implicitWidth: root.scaledIcon; implicitHeight: root.scaledIcon; source: slot.widget ? "" : slot.modelData.data.icon }
+            active: !slot.widget
+            sourceComponent: TrayIcon {
+                id: drawerIcon
+                trayItem: slot.modelData.data
+                onDroppedOutside: position => { if (overflow.overBar(position)) Qt.callLater(() => root.setPinned(drawerIcon.iconId, true)) }
             }
         }
         DropArea {
@@ -329,7 +373,50 @@ Item {
                 width: 2; height: parent.height; color: root.shell.accent
             }
         }
-        BarTooltip { anchorItem: slot; shell: root.shell; text: slot.widget ? "" : (slot.modelData.data.tooltipTitle || slot.modelData.data.title || slot.modelData.data.id); hovered: mouse.containsMouse }
+    }
+    component TrayIcon: Item {
+        id: trayIcon
+        required property var trayItem
+        readonly property string iconId: root.iconId(trayItem)
+        readonly property string trayKey: root.iconKey(trayItem)
+        signal droppedOutside(point position)
+        IconImage { anchors.centerIn: parent; width: root.scaledIcon; height: root.scaledIcon; source: trayIcon.trayItem.icon }
+        MouseArea {
+            id: pointer
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+            hoverEnabled: true
+            onClicked: event => root.activateIcon(trayIcon.trayItem, event.button, trayIcon)
+            onWheel: event => trayIcon.trayItem.scroll(event.angleDelta.y, false)
+        }
+        DragHandler {
+            id: iconDrag
+            target: null
+            dragThreshold: 8
+            onActiveChanged: {
+                if (active) { root.shell.dragKey = trayIcon.trayKey; marker.Drag.active = true }
+                else {
+                    if (marker.Drag.active && marker.Drag.drop() === Qt.IgnoreAction) trayIcon.droppedOutside(marker.mapToItem(null, 0, 0))
+                    if (root.shell.dragKey === trayIcon.trayKey) root.shell.dragKey = ""
+                }
+            }
+        }
+        Item {
+            id: marker
+            width: 1; height: 1
+            x: iconDrag.centroid.position.x; y: iconDrag.centroid.position.y
+            Drag.source: trayIcon
+            Drag.keys: ["tray-icon"]
+            Drag.proposedAction: Qt.MoveAction
+            Rectangle {
+                anchors.centerIn: parent
+                width: root.scaledIcon + 10; height: width; radius: 4
+                color: root.shell.alpha(root.shell.background, .94)
+                border.color: root.shell.accent; visible: iconDrag.active
+                IconImage { anchors.centerIn: parent; implicitWidth: root.scaledIcon; implicitHeight: root.scaledIcon; source: trayIcon.trayItem.icon }
+            }
+        }
+        BarTooltip { anchorItem: trayIcon; shell: root.shell; text: root.tooltipText(trayIcon.trayItem); textFormat: Text.StyledText; hovered: pointer.containsMouse }
     }
     TrayMenu {
         shell: root.shell
@@ -339,7 +426,8 @@ Item {
         popupEnabled: root.popupsAllowed
     }
     TrayManagePopup {
-        shell: root.shell; anchorItem: root; popupEnabled: root.popupsAllowed; icons: root.icons; hostedEntries: root.hostedEntries
-        onRestore: key => root.shell.moveBarModule(key, root.host.sectionName, root.host.moduleKey, true)
+        shell: root.shell; anchorItem: root; popupEnabled: root.popupsAllowed; icons: root.icons; widgets: root.barWidgets
+        onRestoreWidget: key => root.shell.moveBarModule(key, root.host.sectionName, root.host.moduleKey, true, true)
+        onHideWidget: key => root.shell.moveBarModule(key, "tray", "", false)
     }
 }

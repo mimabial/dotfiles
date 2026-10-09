@@ -30,18 +30,31 @@ BarSurface {
     }
     function centerStart() { return centerAnchorIndex < 0 ? centerFallback.x : centerBefore.width ? centerBefore.x : centerAnchor.x }
     function centerEnd() { return centerAnchorIndex < 0 ? centerFallback.x + centerFallback.width : centerAfter.width ? centerAfter.x + centerAfter.width : centerAnchor.x + centerAnchor.width }
-    function gapPlacement(x) {
-        const section = sectionAt(x), start = section === "left" ? leftRow.x : section === "center" ? centerStart() : rightRow.x
-        const end = section === "left" ? leftRow.x + leftRow.width : section === "center" ? centerEnd() : rightRow.x + rightRow.width
-        const first = (layout[section] || [])[0], before = first && x < start
-        return { section, target: before ? shell.trayKey(section, first) : "", x: before ? start : end }
+    function sectionModules(section) {
+        const modules = []
+        function collect(item) {
+            for (const child of item.children) {
+                const module = child as BarModuleLoader
+                if (!module) collect(child)
+                else if (module.sectionName === section && module.visible)
+                    modules.push({ key: module.moduleKey, x: module.mapToItem(root.contentItem, 0, 0).x, width: module.width })
+            }
+        }
+        collect(root.contentItem)
+        return modules.sort((a, b) => a.x - b.x)
+    }
+    function dropPlacement(x) {
+        const section = sectionAt(x), modules = sectionModules(section)
+        const next = modules.find(module => x < module.x + module.width / 2), last = modules[modules.length - 1]
+        return { section, target: next ? next.key : "",
+            x: next ? next.x : last ? last.x + last.width : section === "left" ? leftRow.x : section === "center" ? centerStart() : rightRow.x }
     }
     active: shell.barShown
     anchors.left: true; anchors.right: true; anchors.top: onTop; anchors.bottom: !onTop
     margins.left: floatMargin("left"); margins.right: floatMargin("right")
     margins.top: onTop ? (active ? floatMargin("top") : -implicitHeight) : floatMargin("top")
     margins.bottom: onTop ? floatMargin("bottom") : (active ? floatMargin("bottom") : -implicitHeight)
-    implicitHeight: Math.max(leftRow.implicitHeight, centerFallback.implicitHeight, centerBefore.implicitHeight, centerAnchor.implicitHeight, centerAfter.implicitHeight, rightRow.implicitHeight)
+    implicitHeight: Math.max(Style.fontPx(shell.style.box("bar." + shell.barEdge).fontSize) * (shell.style.box("bar." + shell.barEdge).heightEm ?? 0), leftRow.implicitHeight, centerFallback.implicitHeight, centerBefore.implicitHeight, centerAnchor.implicitHeight, centerAfter.implicitHeight, rightRow.implicitHeight)
 
     BarSection {
         id: leftRow
@@ -92,7 +105,7 @@ BarSurface {
         onDropped: drop => {
             const module = drop.source as BarModuleLoader
             if (!module) return
-            const shell = root.shell, key = module.moduleKey, placement = root.gapPlacement(drop.x)
+            const shell = root.shell, key = module.moduleKey, placement = root.dropPlacement(drop.x)
             drop.acceptProposedAction()
             Qt.callLater(() => shell.moveBarModule(key, placement.section, placement.target, false))
         }
@@ -100,7 +113,7 @@ BarSurface {
     Rectangle {
         visible: gapTarget.containsDrag
         z: 20
-        x: Math.max(0, Math.min(root.width - width, root.gapPlacement(gapTarget.drag.x).x))
+        x: Math.max(0, Math.min(root.width - width, root.dropPlacement(gapTarget.drag.x).x))
         width: 2; height: root.height; color: root.shell.accent
     }
 

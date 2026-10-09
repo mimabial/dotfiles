@@ -8,7 +8,7 @@ hyprshell_builtin_commands() {
     "--release-notes" "release-notes" \
     "list" "--list-script" "--list-script-path" \
     "--completions" "completions" \
-    "pyinit" "init" "--init" "lock-session" "logout" "pip" "app" "resolve"
+    "pyinit" "init" "--init" "logout" "pip" "app" "resolve"
 }
 
 print_init_env() {
@@ -80,14 +80,5 @@ hyprlogout() {
     uwsm stop
   elif [[ -n "${HYPRLAND_INSTANCE_SIGNATURE}" ]]; then
     hypr_lua_dispatch 'hl.dsp.exit()'
-  fi
-}
-
-lock_session() {
-  if [[ "$(dbus-send --session --print-reply=literal --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.NameHasOwner string:org.freedesktop.ScreenSaver)" == *true ]]; then
-    echo "Using org.freedesktop.ScreenSaver for locking"
-    loginctl lock-session
-  else
-    lock-screen.sh
   fi
 }

@@ -5,7 +5,6 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/dotfiles.lib.bash"
 
-DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles/Configs}"
 declare -A HYPRLAND_REQUIRED_HOST_FILES=([.config/hypr/gpu.lua]=1 [.config/hypr/monitors.lua]=1)
 
 usage() {
@@ -14,7 +13,6 @@ Usage: ${0##*/} <command> [args]
 Commands:
   show                Print the selected host profile
   list                List available host profiles from dotfiles
-  path [profile]      Print the dotfiles path for a host profile
   set <profile>       Select a host profile and create its dotfiles directory
   apply [profile]     Apply a host profile onto the live config paths
   apply --dry-run     Preview host profile changes without writing
@@ -27,25 +25,9 @@ die() {
   exit 1
 }
 
-require_rsync() {
-  command -v rsync >/dev/null 2>&1 || die "rsync is required"
-}
-
-path_exists() {
-  [[ -e "$1" || -L "$1" ]]
-}
-
 validate_profile() {
   local profile="${1:-}"
   host_profile_is_valid "${profile}" || die "Invalid host profile: ${profile:-<empty>}"
-}
-
-current_profile() {
-  local profile=""
-  [[ -f "${HOST_PROFILE_STATE_FILE}" ]] || return 1
-  read -r profile <"${HOST_PROFILE_STATE_FILE}" || true
-  validate_profile "${profile}"
-  printf '%s\n' "${profile}"
 }
 
 profile_dir() {
@@ -80,10 +62,8 @@ apply_profile() {
   local -a manifest_records=()
   local -a host_targets=()
 
-  if [[ -z "${profile}" ]]; then
-    profile="$(current_profile || true)"
-  fi
-  [[ -n "${profile}" ]] || die "No host profile selected. Use dotfiles-host-profile set <profile>."
+  [[ -n "${profile}" ]] || profile="$(read_host_profile)" \
+    || die "No host profile selected. Use dotfiles-host-profile set <profile>."
   validate_profile "${profile}"
 
   host_dir="$(profile_dir "${profile}")"
@@ -173,23 +153,10 @@ shift $(( $# > 0 ? 1 : 0 ))
 
 case "${command_name}" in
   show)
-    if profile="$(current_profile 2>/dev/null)"; then
-      printf '%s\n' "${profile}"
-    else
-      echo '(not set)'
-    fi
+    read_host_profile 2>/dev/null || echo '(not set)'
     ;;
   list)
     list_profiles
-    ;;
-  path)
-    if [[ $# -gt 0 ]]; then
-      profile="$1"
-    else
-      profile="$(current_profile || true)"
-    fi
-    [[ -n "${profile}" ]] || die "No host profile selected. Use dotfiles-host-profile set <profile>."
-    profile_dir "${profile}"
     ;;
   set)
     [[ $# -ge 1 ]] || die "Usage: ${0##*/} set <profile>"

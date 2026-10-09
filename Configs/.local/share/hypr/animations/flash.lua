@@ -1,5 +1,4 @@
 local runtime = require("runtime")
-local vars = require("vars")
 
 runtime.config("animations.enabled", true)
 hl.curve("linear", {type = "bezier", points = {{0, 0}, {1, 1}}})

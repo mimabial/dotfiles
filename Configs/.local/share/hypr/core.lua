@@ -53,9 +53,17 @@ local function scrolling_columns(ws)
     return columns
 end
 
+local function usable_area(m)
+    local gaps = hl.get_config("general.gaps_out")
+    local left, top = m.reserved.left + gaps.left, m.reserved.top + gaps.top
+    local right, bottom = m.reserved.right + gaps.right, m.reserved.bottom + gaps.bottom
+    return m.position.x + left, m.position.y + top, m.size.width / m.scale - left - right, m.size.height / m.scale - top - bottom
+end
+
 local function usable_edges(ws)
-    local m, gaps, border = ws.monitor, hl.get_config("general.gaps_out"), hl.get_config("general.border_size")
-    return m.position.x + m.reserved.left + gaps.left + border, m.position.x + m.size.width / m.scale - m.reserved.right - gaps.right - border
+    local x, _, width = usable_area(ws.monitor)
+    local border = hl.get_config("general.border_size")
+    return x + border, x + width - border
 end
 
 local function fills_screen(ws, columns)
@@ -101,6 +109,16 @@ hl.on("window.close", function(window) expand_after_close = not window.floating 
 for _, event in ipairs({"window.destroy", "window.active", "workspace.active"}) do hl.on(event, function() sync_scrolling(nil, expand_after_close); expand_after_close = false end) end
 sync_scrolling()
 
+local function fit_floating_window(window)
+    if not window.floating then return end
+    local _, _, width, height = usable_area(window.monitor)
+    if window.size.x <= width and window.size.y <= height then return end
+    local target = "address:" .. window.address
+    hl.dispatch(hl.dsp.window.resize({window = target, x = math.min(window.size.x, math.floor(width)), y = math.min(window.size.y, math.floor(height)), exact = true}))
+    hl.dispatch(hl.dsp.window.center({window = target, respect_reserved = true}))
+end
+hl.on("window.open", fit_floating_window)
+
 hl.curve("wind", {type = "bezier", points = {{0.05, 0.9}, {0.1, 1.05}}})
 hl.curve("winIn", {type = "bezier", points = {{0.1, 1.1}, {0.1, 1.1}}})
 hl.curve("winOut", {type = "bezier", points = {{0.3, -0.3}, {0, 1}}})
@@ -136,8 +154,8 @@ hl.env("PATH", home .. "/.local/bin:" .. home .. "/.local/lib/hypr:" .. (os.gete
 
 -- Generated palette is consumed before the theme override.
 runtime.load(config_home .. "/hypr/themes/colors.lua")
-local function color(name, fallback)
-    return "rgba(" .. vars.get(name, fallback) .. ")"
+local function color(name)
+    return "rgba(" .. vars.get(name) .. ")"
 end
 hl.config({
     group = {
@@ -148,16 +166,16 @@ hl.config({
             font_weight_inactive = "normal",
             font_weight_active = "semibold",
             col = {
-                active = color("color3ee", "89b4faee"),
-                inactive = color("color1ee", "f38ba8ee"),
-                locked_active = color("color2ee", "a6e3a1ee"),
-                locked_inactive = color("color4ee", "89b4faee"),
+                active = color("color3ee"),
+                inactive = color("color1ee"),
+                locked_active = color("color2ee"),
+                locked_inactive = color("color4ee"),
             },
-            text_color = color("color15ee", "cdd6f4ee"),
-            text_color_inactive = color("color7ee", "bac2deee"),
+            text_color = color("color15ee"),
+            text_color_inactive = color("color7ee"),
             blur = true,
-            font_size = tonumber(vars.get("FONT_SIZE", "10")),
-            font_family = vars.get("GROUPBAR_FONT", "Cantarell"),
+            font_size = tonumber(vars.get("FONT_SIZE")),
+            font_family = vars.get("GROUPBAR_FONT"),
         },
     },
     decoration = {
@@ -165,23 +183,18 @@ hl.config({
     },
 })
 
-hl.exec_cmd("mkdir -p '" .. (vars.get("XDG_RUNTIME_DIR") or "") .. "/hypr' '" .. cache_home .. "/hypr/wal' '" .. config_home .. "/hypr' '" .. data_home .. "/hypr' '" .. state_home .. "/hypr' && python3 '" .. vars.get("scrPath") .. "/keybinds/lib/keybinds_hint.py' --format rofi > '" .. (vars.get("XDG_RUNTIME_DIR") or "") .. "/hypr/keybinds_hint.rofi'")
+hl.exec_cmd("mkdir -p '" .. (vars.get("XDG_RUNTIME_DIR") or "") .. "/hypr' '" .. config_home .. "/hypr' '" .. data_home .. "/hypr' '" .. state_home .. "/hypr' && python3 '" .. vars.get("scrPath") .. "/keybinds/lib/keybinds_hint.py' --format rofi > '" .. (vars.get("XDG_RUNTIME_DIR") or "") .. "/hypr/keybinds_hint.rofi'")
 
 local startup = {
     "dbus-update-activation-environment --systemd --all",
     vars.get("start.USER_SUPERVISOR"),
-    vars.get("start.DBUS_SHARE_PICKER"),
-    vars.get("start.SYSTEMD_SHARE_PICKER"),
     vars.get("start.XDG_PORTAL_RESET"),
     vars.get("start.KEYBIND_SYNC"),
     vars.get("start.SUBMAP_HINT"),
-    vars.get("start.THEME_OUTPUT_SYNC"),
     vars.get("start.DISPLAY_PROFILES"),
     vars.get("start.AUTO_THEME"),
-    vars.get("start.IDLE_DAEMON"),
-    vars.get("start.LID_INHIBITOR"),
+    vars.get("start.LOGIND_INHIBITOR"),
     vars.get("start.IDLE_MANAGER"),
-    vars.get("start.MONITOR_WATCH"),
     vars.get("start.POWER_PROFILE_AUTO"),
     vars.get("start.ZSH_ZCOMPDUMP"),
     vars.get("start.AUTH_DIALOGUE"),

@@ -3,7 +3,7 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 $ICON_THEME = Fluent-yellow-dark
 $COLOR_SCHEME = prefer-dark
 
-$NVIM_SCHEME = pywal
+$NVIM_SCHEME = hypr
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 

@@ -2,8 +2,14 @@
 kvconfig.theme [GeneralColors] and colors.map. Wallpaper mode keeps generated
 fallbacks because there is no fixed theme source palette."""
 
+import hashlib
 import os
 import re
+from pathlib import Path
+
+from _common import short_digest
+
+ALTERNATE_SURFACE_SHADE = 0.06
 
 
 def hex_to_rgb(hex_):
@@ -119,7 +125,7 @@ def _resolve_roles(bg, fg, colors, is_dark):
     return {
         "window_surface": bg,
         "base_surface": bg,
-        "alternate_surface": None,
+        "alternate_surface": shade(bg, ALTERNATE_SURFACE_SHADE * (1 if is_dark else -1)),
         "button_surface": normal_surface,
         "tooltip_surface": normal_surface,
         "text": fg,
@@ -130,7 +136,7 @@ def _resolve_roles(bg, fg, colors, is_dark):
     }
 
 
-def palette_to_pywal(palette):
+def palette_to_ansi_scheme(palette):
     return {
         "special": {"background": palette["bg"], "foreground": palette["fg"]},
         "colors": {
@@ -143,10 +149,10 @@ class QtRoles:
     """The palette is the only colour authority. The shell's colours.map says which
     of its kvconfig literals stands for which palette role."""
 
-    def __init__(self, *, pywal, kvconfig_path=None, colors_map_path=None):
-        bg = pywal["special"]["background"]
-        fg = pywal["special"]["foreground"]
-        self.colors = pywal["colors"]
+    def __init__(self, *, scheme, kvconfig_path=None, colors_map_path=None):
+        bg = scheme["special"]["background"]
+        fg = scheme["special"]["foreground"]
+        self.colors = scheme["colors"]
         palette_full = {**self.colors, "background": bg, "foreground": fg}
         source = _RoleSource(
             _parse_general_colors(kvconfig_path),
@@ -159,3 +165,20 @@ class QtRoles:
         resolved.update(_resolve_roles(bg, fg, self.colors, self.is_dark))
         for name, value in resolved.items():
             setattr(self, name, value)
+
+
+def palette_roles(palette, shell_kvconfig, shell_colors_map):
+    return QtRoles(
+        scheme=palette_to_ansi_scheme(palette),
+        kvconfig_path=str(shell_kvconfig) if shell_kvconfig else None,
+        colors_map_path=str(shell_colors_map) if shell_colors_map else None,
+    )
+
+
+def roles_digest(palette_path, shell_kvconfig, shell_colors_map, renderer):
+    hasher = hashlib.sha256()
+    hasher.update(palette_path.read_bytes())
+    for path in (shell_kvconfig, shell_colors_map, renderer, Path(__file__)):
+        if path and path.is_file():
+            hasher.update(path.read_bytes())
+    return short_digest(hasher)

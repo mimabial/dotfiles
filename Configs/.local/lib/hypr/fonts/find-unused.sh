@@ -24,7 +24,6 @@ SEARCH_ROOTS=(
   "${XDG_CONFIG_HOME:-$HOME/.config}/gtk-4.0"
   "${XDG_CONFIG_HOME:-$HOME/.config}/nvim"
   "${XDG_CONFIG_HOME:-$HOME/.config}/tmux"
-  "${XDG_CONFIG_HOME:-$HOME/.config}/wal"
   "${XDG_CONFIG_HOME:-$HOME/.config}/swappy"
   "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}"
 )
@@ -302,7 +301,7 @@ reference_scope() {
       printf 'active\n'
       ;;
     "${config_home}/hypr/themes/"* | \
-      "${config_home}/wal/templates/"* | \
+      "${config_home}/hypr/templates/"* | \
       "${data_home}/rofi/"* | \
       "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/"*)
       printf 'installed-config\n'

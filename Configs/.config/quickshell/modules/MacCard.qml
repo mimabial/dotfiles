@@ -11,7 +11,7 @@ PopupCard {
         id: body
         width: parent.width; spacing: Style.xs
         Column { id: list; width: parent.width; spacing: Style.xs }
-        PopupSeparator { shell: root.shell }
-        PopupRow { width: parent.width; shell: root.shell; title: root.settings + " Settings…"; onClicked: root.shell.togglePopup(root.settingsPopup) }
+        PopupSeparator { shell: root.shell; visible: root.settings !== "" }
+        PopupRow { width: parent.width; shell: root.shell; visible: root.settings !== ""; title: root.settings + " Settings…"; onClicked: root.shell.togglePopup(root.settingsPopup) }
     }
 }

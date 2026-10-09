@@ -209,7 +209,7 @@ main() {
       -a "Keyboard switch" \
       -r "${NOTIFY_ID_KEYBOARD_LAYOUT}" \
       -t "${NOTIFY_OSD_MS}" \
-      -i "${ICONS_DIR}/Pywal16-Icon/keyboard.svg" \
+      -i "${ICONS_DIR}/Hypr-Icon/keyboard.svg" \
       "${target_keymap}" || true
   fi
 

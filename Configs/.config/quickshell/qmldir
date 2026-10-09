@@ -10,7 +10,6 @@ BarLayoutPopup 1.0 BarLayoutPopup.qml
 BarModuleLoader 1.0 BarModuleLoader.qml
 BarModules 1.0 BarModules.qml
 BarSection 1.0 BarSection.qml
-BarSlider 1.0 BarSlider.qml
 BarSurface 1.0 BarSurface.qml
 BarTooltip 1.0 BarTooltip.qml
 Bitwarden 1.0 Bitwarden.qml
@@ -21,7 +20,6 @@ BookmarkEditor 1.0 BookmarkEditor.qml
 BookmarkImport 1.0 BookmarkImport.qml
 BookmarkStore 1.0 BookmarkStore.qml
 Bookmarks 1.0 Bookmarks.qml
-BrightnessSlider 1.0 BrightnessSlider.qml
 BrowserPicker 1.0 BrowserPicker.qml
 CaffeinePopup 1.0 CaffeinePopup.qml
 CavaView 1.0 CavaView.qml
@@ -107,12 +105,12 @@ TrayManagePopup 1.0 TrayManagePopup.qml
 TrayMenu 1.0 TrayMenu.qml
 UpdatesButton 1.0 UpdatesButton.qml
 UpdatesPopup 1.0 UpdatesPopup.qml
-VolumeSlider 1.0 VolumeSlider.qml
 VpnPopup 1.0 VpnPopup.qml
 WallpaperPopup 1.0 WallpaperPopup.qml
 WeatherPopup 1.0 WeatherPopup.qml
 WebcamPanel 1.0 WebcamPanel.qml
 WifiQrPopup 1.0 WifiQrPopup.qml
+WindowInfoPopup 1.0 WindowInfoPopup.qml
 WindowList 1.0 WindowList.qml
 WorkspacePopup 1.0 WorkspacePopup.qml
 Workspaces 1.0 Workspaces.qml
@@ -126,3 +124,5 @@ singleton Removable 1.0 Removable.qml
 singleton Style 1.0 Style.qml
 singleton Wallpaper 1.0 Wallpaper.qml
 singleton Weather 1.0 Weather.qml
+singleton Notifications 1.0 Notifications.qml
+singleton GnomeStatus 1.0 GnomeStatus.qml

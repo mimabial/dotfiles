@@ -7,7 +7,6 @@ usage() {
 Usage:
   hypr-theme apply <pack-name>      # theme mode
   hypr-theme wallpaper <path>       # wallpaper mode
-  hypr-theme refresh                # re-run renderers on the current palette
 
 Flags:
   --regen      force re-render even if input hash matches
@@ -81,9 +80,6 @@ prepare_palette() {
       [[ -n "${target}" ]] || { echo "hypr-theme wallpaper: image path required" >&2; exit 2; }
       python3 "${RENDER_DIR}/_palette.py" --wallpaper "${target}" --variant "${variant}" --out "${PALETTE}"
       ;;
-    refresh)
-      [[ -f "${PALETTE}" ]] || { echo "hypr-theme refresh: no palette at ${PALETTE}" >&2; exit 1; }
-      ;;
   esac
 }
 
@@ -110,14 +106,11 @@ run_renderers() {
   for i in "${!pids[@]}"; do
     if ! wait "${pids[$i]}"; then
       echo "hypr-theme: ${names[$i]} failed" >&2
+      [[ -z "${HYPR_THEME_RENDER_FAILURES:-}" ]] || printf '%s\n' "${names[$i]}" >>"${HYPR_THEME_RENDER_FAILURES}"
       ((++failed))
     fi
   done
   return "${failed}"
-}
-
-refresh_rendered_nothing() {
-  [[ "${subcommand}" == refresh && ! -e "${HYPR_THEME_CHANGED_FILE}" ]]
 }
 
 reload_clients() {
@@ -136,6 +129,8 @@ reload_clients() {
 
   reload_live_theme_client kitty
   reload_live_theme_client alacritty
+  reload_live_theme_client cava
+  reload_live_theme_client zathura
   reload_live_theme_client rmpc
   reload_live_theme_client tmux
 
@@ -151,21 +146,14 @@ reload_clients() {
 }
 
 case "${subcommand}" in
-  apply|wallpaper|refresh)
+  apply|wallpaper)
     prepare_palette "${subcommand}" "${positional[0]:-}"
     if [[ "${subcommand}" == apply ]]; then
       state_set "HYPR_THEME" "${positional[0]}" "staterc"
     fi
-    if [[ "${subcommand}" == refresh ]]; then
-      render_change_dir="$(mktemp -d "${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}/hypr-theme.XXXXXX")"
-      export HYPR_THEME_CHANGED_FILE="${render_change_dir}/rendered"
-      trap 'rm -rf -- "${render_change_dir}"' EXIT
-    fi
     render_failed=0
     run_renderers || render_failed=1
-    if ((render_failed)) || ! refresh_rendered_nothing; then
-      reload_clients
-    fi
+    reload_clients
     exit "${render_failed}"
     ;;
   *)

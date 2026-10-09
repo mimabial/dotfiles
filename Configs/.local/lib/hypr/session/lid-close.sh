@@ -35,8 +35,8 @@ rm -f -- "${log}"
 ((locked)) || { notify_send_safe -u critical 'Suspend cancelled' 'Hyprland did not confirm the screen lock'; exit 1; }
 
 [[ "${suspend}" -eq 1 ]] || exit 0
-if ! exec {inhibitor_fd}<"${HYPR_RUNTIME_DIR}/lid-inhibitor" || flock -n "${inhibitor_fd}"; then
-  notify_send_safe -u critical 'Suspend cancelled' 'Lid inhibitor is not running'
+if ! exec {inhibitor_fd}<"${HYPR_RUNTIME_DIR}/logind-inhibitor" || flock -n "${inhibitor_fd}"; then
+  notify_send_safe -u critical 'Suspend cancelled' 'Logind inhibitor is not running'
   exit 1
 fi
 exec hyprshell system/power-manager.sh perform "${action}" --locked

@@ -10,10 +10,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#define THEME_SMALL "pywal16-small"
-#define THEME_MEDIUM "pywal16"
-#define THEME_LARGE "pywal16-big"
-#define THEME_WIDE "pywal16-wide"
+#define THEME_SMALL "hypr-small"
+#define THEME_MEDIUM "hypr"
+#define THEME_LARGE "hypr-big"
+#define THEME_WIDE "hypr-wide"
 #define WIDE_MIN_COLUMNS 100
 #define TALL_MIN_ROWS 24
 

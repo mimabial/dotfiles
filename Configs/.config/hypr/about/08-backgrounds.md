@@ -36,7 +36,7 @@ hyprshell wallpaper --backend hyprlock ...
 ## Colors from the wallpaper
 
 If the theme is in wallpaper mode, changing the wallpaper regenerates the entire
-palette through pywal16 and reruns every renderer. That is the same two-phase
+palette through matugen and reruns every renderer. That is the same two-phase
 pipeline as a theme switch, so it is fast and it cancels cleanly if you keep
 pressing the key.
 

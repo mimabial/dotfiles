@@ -227,7 +227,7 @@ wallpaper_action_notify() {
 wallpaper_action_start() {
   local current_wallpaper=""
   [[ -e "${active_wallpaper_link}" ]] || { print_log -err "wallpaper" "No current wallpaper found: ${active_wallpaper_link}"; exit 1; }
-  export WALLPAPER_RELOAD_ALL=0 PYWAL_STARTUP=1
+  export WALLPAPER_RELOAD_ALL=0
   current_wallpaper="$(realpath "${active_wallpaper_link}")"
   wallpaper_catalog_load_file "${current_wallpaper}" || exit 1
   apply_selected_wallpaper

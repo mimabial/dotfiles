@@ -122,7 +122,6 @@ FILL_FIELDS = ("title", "artist", "album", "date", "tracknumber", "genre")
 # iTunes serves any size by substituting into the URL; 600px is ~85KB against
 # 231KB for 1000px, matching what yt-dlp embeds for new downloads.
 ARTWORK_SIZE = "600x600bb.jpg"
-# Carried alongside the tags but never written as one.
 NON_TAG_FIELDS = {"artwork_url", "_preserved_credits"}
 
 FIELDS = ("title", "artist", "album", "albumartist", "tracknumber", "date")

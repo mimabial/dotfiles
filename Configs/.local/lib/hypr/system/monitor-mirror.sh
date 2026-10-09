@@ -5,7 +5,7 @@ source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR}/system/monitor.common.bash"
 
-hypr_help_guard "Usage: hyprshell system/monitor-mirror {on|off|toggle|recover|status}
+hypr_help_guard "Usage: hyprshell system/monitor-mirror {on|off|toggle|status}
 Mirror the internal display onto a connected external one (default: toggle)." "$@"
 
 toggle_name="90-internal-mirror"
@@ -39,14 +39,6 @@ mirror_off() {
   monitor_notify "Display mirroring disabled"
 }
 
-mirror_recover() {
-  if ! monitor_has_connected_external && monitor_fragment_exists "${toggle_name}"; then
-    monitor_remove_fragment "${toggle_name}"
-    monitor_reload
-    monitor_notify "Display mirror recovered" "External display removed"
-  fi
-}
-
 mirror_status() {
   if monitor_fragment_exists "${toggle_name}"; then
     printf 'on\n'
@@ -69,14 +61,11 @@ case "${1:-toggle}" in
       mirror_on
     fi
     ;;
-  recover)
-    mirror_recover
-    ;;
   status)
     mirror_status
     ;;
   *)
-    echo "Usage: $(basename "$0") {on|off|toggle|recover|status}" >&2
+    echo "Usage: $(basename "$0") {on|off|toggle|status}" >&2
     exit 2
     ;;
 esac

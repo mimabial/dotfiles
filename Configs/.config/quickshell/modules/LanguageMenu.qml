@@ -6,8 +6,9 @@ import ".."
 LanguageButton {
     id: root
     popupName: "language-menu"
+    property bool macInputItems: true
     MacCard {
-        anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: "language-menu"; settings: "Keyboard"; settingsPopup: "language"
+        anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: "language-menu"; settings: root.macInputItems ? "Keyboard" : ""; settingsPopup: "language"
         onOpenChanged: if (open) root.settingsPanel.ensureCatalog()
         Repeater {
             model: root.output.configured ?? []
@@ -20,7 +21,7 @@ LanguageButton {
                 onClicked: { root.shell.closePopup(); root.shell.run(["hyprshell", "util/keyboard-layout", "--use", String(index)]) }
             }
         }
-        PopupSeparator { shell: root.shell }
-        PopupRow { width: parent.width; shell: root.shell; title: "Show Emoji & Symbols"; onClicked: { root.shell.closePopup(); root.shell.run(["hyprshell", "emoji-picker.sh"]) } }
+        PopupSeparator { shell: root.shell; visible: root.macInputItems }
+        PopupRow { width: parent.width; shell: root.shell; visible: root.macInputItems; title: "Show Emoji & Symbols"; onClicked: { root.shell.closePopup(); root.shell.run(["hyprshell", "emoji-picker.sh"]) } }
     }
 }

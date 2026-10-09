@@ -13,7 +13,9 @@ from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from pyutils.lock_paths import runtime_root
 from pyutils.shell_env import load_shell_assignments, shell_quote_value
+from pyutils.xdg_base_dirs import xdg_cache_home, xdg_config_home, xdg_state_home
 
 try:
     from astral import LocationInfo
@@ -23,13 +25,10 @@ except ImportError:
     ASTRAL_AVAILABLE = False
     print("Warning: astral not installed, sunrise/sunset calculation disabled")
 
-_xdg_config = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
-_xdg_state = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
-_tmpdir = Path(os.environ.get("TMPDIR", "/tmp"))
-
-CONFIG_FILE = _xdg_config / "hypr/auto_theme.conf"
-STATE_FILE = _xdg_state / "hypr/auto_theme_state.json"
-TMPDIR_PATH = _tmpdir
+CONFIG_FILE = xdg_config_home() / "hypr/auto_theme.conf"
+STATE_FILE = xdg_state_home() / "hypr/auto_theme_state.json"
+STATE_TARGETS = ("staterc", "env-overrides", "color_variant")
+TMPDIR_PATH = Path(os.environ.get("TMPDIR", "/tmp"))
 STATE_LOCATION_ENV_KEYS = {
     "AUTO_THEME_LATITUDE": "latitude",
     "AUTO_THEME_LONGITUDE": "longitude",
@@ -48,49 +47,24 @@ DEFAULT_CONFIG = {
 }
 
 
-def state_home() -> Path:
-    return Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
-
-
-def config_home() -> Path:
-    return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
-
-
-def cache_home() -> Path:
-    return Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
-
-
-def state_config_file() -> Path:
-    return state_home() / "hypr" / "env-overrides"
-
-
 def active_palette_file() -> Path:
-    return state_home() / "hypr" / "active-palette.json"
+    return xdg_state_home() / "hypr" / "active-palette.json"
 
 
 def wallpaper_state_file() -> Path:
-    return cache_home() / "hypr" / "wallpaper" / "current" / "wall.set"
+    return xdg_cache_home() / "hypr" / "wallpaper" / "current" / "wall.set"
 
 
 def runtime_lock_dir() -> Path:
     # Mirrors core/common.bash:hypr_runtime_root_dir so this shares a lock
     # directory, not just a lock name, with bash state_set.
-    root = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}")
-    try:
-        root.mkdir(parents=True, exist_ok=True)
-    except OSError:
-        root = state_home() / "hypr" / "runtime"
-    return root / "hypr"
+    return runtime_root() / "hypr"
 
 
 def state_data_file(target_file: str) -> Path:
-    if target_file == "staterc":
-        return state_home() / "hypr" / "staterc"
-    if target_file == "env-overrides":
-        return state_home() / "hypr" / "env-overrides"
-    if target_file == "color_variant":
-        return state_home() / "hypr" / "color_variant"
-    raise ValueError(f"Unsupported state target '{target_file}'")
+    if target_file not in STATE_TARGETS:
+        raise ValueError(f"Unsupported state target '{target_file}'")
+    return xdg_state_home() / "hypr" / target_file
 
 
 def state_lock_file(target_file: str) -> Path:
@@ -235,7 +209,7 @@ def save_state(state: dict, state_file: Path = STATE_FILE) -> None:
 
 
 def read_staterc() -> dict:
-    staterc = state_home() / "hypr" / "staterc"
+    staterc = state_data_file("staterc")
     if not staterc.exists():
         return {}
     try:
@@ -245,7 +219,7 @@ def read_staterc() -> dict:
 
 
 def read_color_variant_file() -> Optional[str]:
-    variant_file = state_home() / "hypr" / "color_variant"
+    variant_file = state_data_file("color_variant")
     if variant_file.exists():
         return variant_file.read_text().strip()
     return None
@@ -269,14 +243,14 @@ def resolve_wallpaper(staterc_values: dict) -> Optional[Path]:
 
     theme = staterc_values.get("HYPR_THEME")
     if theme:
-        theme_wall = config_home() / "hypr" / "themes" / theme / "wall.set"
+        theme_wall = xdg_config_home() / "hypr" / "themes" / theme / "wall.set"
         if theme_wall.exists():
             return theme_wall.resolve()
     return None
 
 
 def load_state_env(config_file: Path | None = None) -> dict:
-    config_file = state_config_file() if config_file is None else config_file
+    config_file = state_data_file("env-overrides") if config_file is None else config_file
     if not config_file.exists():
         return {}
     try:

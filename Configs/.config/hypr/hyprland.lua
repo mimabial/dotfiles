@@ -59,8 +59,10 @@ hl.config({cursor = {
 require("keybindings")
 runtime.load(config_home .. "/hypr/monitors.lua")
 runtime.load(state_home .. "/hypr/monitor-toggles.lua", true)
+runtime.load(state_home .. "/hypr/touchpads-disabled.lua", true)
 runtime.load(state_home .. "/hypr/window-layout.lua", true)
 runtime.load(state_home .. "/hypr/workflows.lua", true)
+require("gestures")
 require("workspaces")
 
 -- Generated monitor rules must load last.

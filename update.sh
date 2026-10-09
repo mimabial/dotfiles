@@ -9,4 +9,5 @@ if [ -d "${repo_dir}/.git" ]; then
   git -C "${repo_dir}" pull --ff-only
 fi
 
-exec "${repo_dir}/Scripts/install.sh" -r -s
+"${repo_dir}/Scripts/install.sh" -r -s
+hyprshell setup/migrate

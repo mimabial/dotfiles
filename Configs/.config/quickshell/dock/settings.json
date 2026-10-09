@@ -29,9 +29,9 @@
   "clickToMinimize": true,
   "iconSize": 36,
   "recentApps": [
-    "signal",
-    "steam_app_default",
-    "xdg-desktop-portal-gtk"
+    "xdg-desktop-portal-gtk",
+    "org.pwmt.zathura",
+    "org.tui.Rmpc"
   ],
   "showRecents": true,
   "showIndicators": true

@@ -13,7 +13,7 @@ QtObject {
     property string loadedStyle: ""
     readonly property bool ready: loadedStyle === styleName
 
-    readonly property var palette: theme.palette || ({})
+    readonly property var palette: mergeRules(theme.palette || {}, overrides.palette || {})
     readonly property real radius: theme.rounding || 0
     readonly property real border: theme.borderSize || 0
     readonly property var fallback: ({

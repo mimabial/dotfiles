@@ -22,9 +22,6 @@ LOCK_NAMES = {
     "wallpaper_switch": "wallpaper-switch.lock",
     "wallpaper_awww": "wallpaper-awww.lock",
     "mode_switch": "mode-switch.lock",
-    "wal_cache_clean": "wal-cache-clean.lock",
-    "wal_cache_store": "wal-cache-store.lock",
-    "wal_cache_prune": "wal-cache-prune.lock",
 }
 
 
@@ -32,11 +29,15 @@ def runtime_lock_name(name: str) -> str:
     return LOCK_NAMES[name]
 
 
-def runtime_lock_path(name: str) -> Path:
+def runtime_root() -> Path:
     root = xdg_runtime_dir() or Path(f"/run/user/{os.getuid()}")
     try:
         root.mkdir(parents=True, exist_ok=True)
     except OSError:
         root = xdg_state_home() / "hypr/runtime"
         root.mkdir(parents=True, exist_ok=True)
-    return root / runtime_lock_name(name)
+    return root
+
+
+def runtime_lock_path(name: str) -> Path:
+    return runtime_root() / runtime_lock_name(name)

@@ -74,11 +74,6 @@ FALLBACK_COLORS = {
     "accent-orange": "#ffb86c",
     "gray": "#6272a4",
 }
-WAL_TEMPLATES_DIR = (
-    Path(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")))
-    / "wal"
-    / "templates"
-)
 
 APP = "dunst"
 # the 1.0 anchor for the text-size knob, matching system/text-size.sh
@@ -261,30 +256,6 @@ def load_pack_overrides(pack_name):
     return _parse_define_colors(theme_path.read_text())
 
 
-def dunst_template_layers(variant):
-    layers = []
-    for name in ("colors-dunst.theme", f"colors-dunst.{variant}.theme"):
-        template_path = WAL_TEMPLATES_DIR / name
-        if template_path.is_file():
-            layers.append(template_path)
-    return layers
-
-
-def load_dunst_template(variant, bg, fg, colors):
-    """colors-dunst.<variant>.theme wins over the shared colors-dunst.theme; both files
-    are sparse and list only the roles they override."""
-    subs = {"background": bg, "foreground": fg}
-    for i, col in enumerate(colors):
-        subs[f"color{i}"] = col
-    merged = {}
-    for f in dunst_template_layers(variant):
-        text = f.read_text()
-        for key, value in subs.items():
-            text = text.replace("{" + key + "}", value)
-        merged.update(_parse_define_colors(text))
-    return merged
-
-
 def ensure_base_dunst_config():
     if BASE_CONF.is_file():
         return
@@ -398,12 +369,10 @@ def resolve_colors(palette):
     variant = palette.get("background", "dark")
     if variant not in ("dark", "light"):
         variant = "dark"
-    template = {} if pack else load_dunst_template(variant, bg, fg, colors)
 
     def role(name, *candidates):
         return (
             overrides.get(name)
-            or template.get(name)
             or first_nonempty(*candidates, FALLBACK_COLORS.get(name))
         )
 
@@ -584,8 +553,6 @@ def renderer_hash(pack, variant, colors, layout, font):
         hasher.update(str(s).encode())
     hasher.update(Path(__file__).read_bytes())
     hasher.update(variant.encode())
-    for f in dunst_template_layers(variant):
-        hasher.update(f.read_bytes())
     return short_digest(hasher)
 
 

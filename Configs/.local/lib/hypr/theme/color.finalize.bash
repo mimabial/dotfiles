@@ -19,13 +19,6 @@ _safe_hyq_get() {
   echo "${value}"
 }
 
-color_finalize_source_generated_colors() {
-  set -a
-  # shellcheck source=/dev/null
-  source "${WAL_CACHE}/colors-shell.sh" || return 1
-  set +a
-}
-
 color_finalize_export_icon_theme() {
   local theme_conf="${HYPR_THEME_METADATA_FILE:-${HYPR_CONFIG_HOME}/themes/theme.meta}"
   local hyq_out=""

@@ -5,7 +5,6 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/dotfiles.lib.bash"
 
-DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles/Configs}"
 RESTORE_ONLY_HOST_DIR=".system"
 SYNC_MODE="apply"
 ACTIVE_HOST_PROFILE=""
@@ -141,50 +140,23 @@ run_rsync_transfer() {
   fi
 }
 
-require_rsync() {
-  if ! command -v rsync &>/dev/null; then
-    log_error "rsync is required. Install rsync and rerun."
-    exit 1
-  fi
+log_section() {
+  case "${SYNC_MODE}" in
+    list) log_info "Planning $1 mappings..." ;;
+    dry-run) log_info "Previewing $1..." ;;
+    apply) log_info "Syncing $1..." ;;
+  esac
 }
 
-get_host_profile() {
-  local profile=""
+remove_destination() {
+  local dest="$1" name="$2"
 
-  if [[ -f "${HOST_PROFILE_STATE_FILE}" ]]; then
-    read -r profile <"${HOST_PROFILE_STATE_FILE}" || true
-  fi
-
-  if [[ -n "${profile}" ]] && ! host_profile_is_valid "${profile}"; then
-    log_warn "Ignoring invalid host profile in ${HOST_PROFILE_STATE_FILE}: ${profile}"
-    return 1
-  fi
-
-  [[ -n "${profile}" ]] || return 1
-  printf '%s\n' "${profile}"
-}
-
-remove_managed_path() {
-  local dest="$1"
-  local name="$2"
-  local rel_dest="${dest#"${DOTFILES_DIR}"/}"
-
-  if [[ "${SYNC_MODE}" == "list" ]]; then
-    echo "PLAN ABSENT ${dest}"
-    return
-  fi
-
-  if [[ ! -e "${dest}" && ! -L "${dest}" ]]; then
-    return
-  fi
-
-  if [[ "${SYNC_MODE}" == "dry-run" ]]; then
-    emit_preview_result "${name}" "*deleting   ${rel_dest}"
-    return
-  fi
-
-  rm -rf -- "${dest}"
-  log_success "Removed ${name}"
+  [[ "${SYNC_MODE}" == "list" ]] || path_exists "${dest}" || return 0
+  case "${SYNC_MODE}" in
+    list) echo "PLAN ABSENT ${dest}" ;;
+    dry-run) emit_preview_result "${name}" "*deleting   ${dest#"${DOTFILES_DIR}/"}" ;;
+    apply) rm -rf -- "${dest}"; log_success "Removed ${name}" ;;
+  esac
 }
 
 purge_orphaned_host_files() {
@@ -213,16 +185,7 @@ purge_orphaned_host_files() {
   while IFS= read -r -d '' host_entry; do
     rel_path="${host_entry#"${host_root}/"}"
     [[ -z "${managed_paths["${rel_path}"]+managed}" ]] || continue
-
-    if [[ "${SYNC_MODE}" == "list" ]]; then
-      printf 'PLAN ABSENT %s\n' "${host_entry}"
-    elif [[ "${SYNC_MODE}" == "dry-run" ]]; then
-      emit_preview_result "orphaned host file ${rel_path}" \
-        "*deleting   ${host_entry#"${DOTFILES_DIR}/"}"
-    else
-      rm -f -- "${host_entry}"
-      log_success "Removed orphaned host file ${rel_path}"
-    fi
+    remove_destination "${host_entry}" "orphaned host file ${rel_path}"
   done < <(find -P "${host_root}" -mindepth 1 -path "${host_root}/${RESTORE_ONLY_HOST_DIR}" -prune -o ! -type d -print0)
 
   if [[ "${SYNC_MODE}" == "apply" ]]; then
@@ -234,32 +197,20 @@ purge_orphaned_host_files() {
 
 sync_host_profile_files() {
   local profile="${ACTIVE_HOST_PROFILE}"
-  local host_root=""
-  local rel_path=""
-  local -a host_paths=()
-
-  if [[ -n "${profile}" ]]; then
-    host_root="${DOTFILES_DIR}/hosts/${profile}"
-  else
+  [[ -n "${profile}" ]] || {
     log_warn "No host profile selected; managed host-specific files will not be saved. Use dotfiles-host-profile set <profile>."
-  fi
+    return
+  }
 
+  local host_root="${DOTFILES_DIR}/hosts/${profile}" rel_path=""
+  local -a host_paths=()
   manifest_host_paths SYNC_MANIFEST_RECORDS host_paths
 
-  if [[ -z "${host_root}" ]]; then
-    return
-  fi
-
   for rel_path in "${host_paths[@]}"; do
-    remove_managed_path "${DOTFILES_DIR}/${rel_path}" "root host file ${rel_path}"
+    remove_destination "${DOTFILES_DIR}/${rel_path}" "root host file ${rel_path}"
   done
 
-  case "${SYNC_MODE}" in
-    list) log_info "Planning host profile mappings (${profile})..." ;;
-    dry-run) log_info "Previewing host profile '${profile}'..." ;;
-    apply) log_info "Syncing host profile '${profile}'..." ;;
-  esac
-
+  log_section "host profile '${profile}'"
   for rel_path in "${host_paths[@]}"; do
     sync_mapped_path file "${HOME}/${rel_path}" "${host_root}/${rel_path}" "hosts/${profile}/${rel_path}"
   done
@@ -299,19 +250,6 @@ sync_directory_path() {
   emit_apply_result "$name" "$transfer_output"
 }
 
-remove_stale_destination() {
-  local src="$1" dest="$2" name="$3"
-
-  if [[ ! -e "$dest" && ! -L "$dest" ]]; then
-    log_warn "Skipping $name (not found: $src)"
-  elif [[ "${SYNC_MODE}" == "dry-run" ]]; then
-    emit_preview_result "$name" "*deleting   $(basename "$dest")"
-  else
-    rm -rf -- "$dest"
-    log_success "Removed stale $name"
-  fi
-}
-
 sync_file_path() {
   local src="$1" dest="$2" name="$3" transfer_output=""
 
@@ -346,8 +284,9 @@ sync_mapped_path() {
       return
     fi
   fi
-  if [[ ! -e "$src" && ! -L "$src" ]]; then
-    remove_stale_destination "$src" "$dest" "$name"
+  if ! path_exists "$src"; then
+    path_exists "$dest" || { log_warn "Skipping $name (not found: $src)"; return; }
+    remove_destination "$dest" "stale $name"
     return
   fi
   sync_file_path "$src" "$dest" "$name"
@@ -390,23 +329,12 @@ sync_manifest_mappings() {
   done
 }
 
-sync_manifest_section() {
-  local section="$1" label="$2"
-  case "${SYNC_MODE}" in
-    list) log_info "Planning ${label} mappings..." ;;
-    dry-run) log_info "Previewing ${label}..." ;;
-    apply) log_info "Syncing ${label}..." ;;
-  esac
-  sync_manifest_mappings "${section}"
-}
-
 main() {
   parse_args "$@"
   printf '=========================================\n  Dotfiles Sync\n=========================================\nTarget: %s\n' "$DOTFILES_DIR"
-  if ACTIVE_HOST_PROFILE="$(get_host_profile)"; then
+  if ACTIVE_HOST_PROFILE="$(read_host_profile)"; then
     echo "Host profile: ${ACTIVE_HOST_PROFILE}"
   else
-    ACTIVE_HOST_PROFILE=""
     echo "Host profile: (not set)"
   fi
   case "${SYNC_MODE}" in
@@ -418,10 +346,12 @@ main() {
   [[ "${SYNC_MODE}" == "list" ]] || require_rsync
   read_sync_manifest SYNC_MANIFEST_RECORDS || exit 1
 
-  sync_manifest_section home "${HOME} (outside .local)"
+  log_section "${HOME} (outside .local)"
+  sync_manifest_mappings home
   sync_host_profile_files
   echo
-  sync_manifest_section local "${HOME}/.local"
+  log_section "${HOME}/.local"
+  sync_manifest_mappings local
 
   printf '\n=========================================\n'
   case "${SYNC_MODE}" in

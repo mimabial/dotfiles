@@ -12,6 +12,16 @@ reload_live_theme_client() {
     kitty)
       pkill -SIGUSR1 -x kitty 2>/dev/null || true
       ;;
+    cava)
+      pkill -SIGUSR2 -x cava 2>/dev/null || true
+      ;;
+    zathura)
+      local pid
+      for pid in $(pgrep -x zathura); do
+        gdbus call --session --dest "org.pwmt.zathura.PID-${pid}" --object-path /org/pwmt/zathura \
+          --method org.pwmt.zathura.ExecuteCommand source >/dev/null 2>&1 || true
+      done
+      ;;
     tmux)
       if command -v tmux &>/dev/null; then
         tmux source-file "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/colors.conf" 2>/dev/null || true

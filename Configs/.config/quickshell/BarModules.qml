@@ -2,6 +2,8 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
+import Quickshell.Io
 import "modules"
 import qs.systemstats
 
@@ -28,7 +30,6 @@ Item {
         "systemstats": mod_systemstats, "agents": mod_agents,
         "wifi": mod_wifi, "bluetooth": mod_bluetooth, "vpn": mod_vpn,
         "printers": mod_printers, "removable": mod_removable, "volume": mod_volume, "microphone": mod_microphone,
-        "volume-slider": mod_volume_slider, "microphone-slider": mod_microphone_slider, "backlight-slider": mod_backlight_slider,
         "display": mod_display, "updates": mod_updates, "notifications": mod_notifications, "tasks": mod_tasks,
         "wallpaper": mod_wallpaper, "colormode": mod_colormode, "barlayout": mod_barlayout, "windowlayout": mod_windowlayout, "workflows": mod_workflows,
         "colorpicker": mod_colorpicker, "powerprofile": mod_powerprofile, "powerbutton": mod_powerbutton,
@@ -36,7 +37,7 @@ Item {
         "hyprsunset": mod_hyprsunset, "caffeine": mod_caffeine, "screenrecord": mod_screenrecord,
         "screenshot": mod_screenshot, "webcam": mod_webcam, "terminal": mod_terminal,
         "converter": mod_converter, "sudoku": mod_sudoku, "games": mod_games,
-        "appmenu": mod_appmenu, "battery": mod_battery, "spotlight": mod_spotlight, "controlcenter": mod_controlcenter, "nowplaying": mod_nowplaying, "sound-menu": mod_sound,
+        "appmenu": mod_appmenu, "battery": mod_battery, "spotlight": mod_spotlight, "controlcenter": mod_controlcenter, "gnome-activities": mod_gnome_activities, "gnome-date-menu": mod_gnome_date, "gnome-quick-settings": mod_gnome_settings, "gnome-screen-record": mod_gnome_record, "nowplaying": mod_nowplaying, "sound-menu": mod_sound,
         "wifi-menu": mod_wifi_menu, "bluetooth-menu": mod_bluetooth_menu, "vpn-menu": mod_vpn_menu, "language-menu": mod_language_menu, "mirroring-menu": mod_mirroring_menu, "display-menu": mod_display_menu,
         "notification-center": mod_notification_center,
         "task-view": mod_task_view, "launcher-strip": mod_launcher_strip
@@ -60,12 +61,6 @@ Item {
     Component { id: mod_volume; AudioButton { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_microphone; MicrophoneButton { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_display; DisplayButton { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
-    Component { id: mod_volume_slider; AudioButton { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; levelIcons: false; Layout.fillHeight: true
-        VolumeSlider { shell: catalog.shell; z: 2; anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter } } }
-    Component { id: mod_microphone_slider; MicrophoneButton { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true
-        VolumeSlider { shell: catalog.shell; microphone: true; z: 2; anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter } } }
-    Component { id: mod_backlight_slider; DisplayButton { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true
-        BrightnessSlider { shell: catalog.shell; z: 2; anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter } } }
     Component { id: mod_updates; UpdatesButton { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_notifications; NotificationButton { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; indicator: "dnd"; polling: false; showBadge: false; Layout.fillHeight: true; Component.onCompleted: refresh() } }
     Component { id: mod_tasks; TasksButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
@@ -112,6 +107,38 @@ Item {
     Component { id: mod_battery; BatteryButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_spotlight; BarButton { shell: catalog.shell; css: "spotlight"; text: "󰍉"; symbol: "system-search"; symbolContext: "actions"; fixedWidth: catalog.controlButtonStep; Layout.fillHeight: true; onClicked: catalog.shell.togglePopup("spotlight", true) } }
     Component { id: mod_task_view; BarButton { shell: catalog.shell; css: "task-view"; text: ""; symbol: "focus-windows"; symbolContext: "actions"; tooltip: "Task view"; fixedWidth: catalog.controlButtonStep; Layout.fillHeight: true; onClicked: catalog.shell.expose?.open() } }
+    Component { id: mod_gnome_activities; GnomeActivities { shell: catalog.shell; Layout.fillHeight: true } }
+    Component { id: mod_gnome_date; GnomeDateMenu { shell: catalog.shell; kind: catalog.shell.clockKind; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_gnome_settings; GnomeQuickSettings { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_gnome_record; ScriptButton {
+        id: gnomeRecorder
+        property bool showElapsed: false
+        readonly property bool recording: output.class === "recording"
+        readonly property bool elapsedShown: showElapsed && recording
+        readonly property int elapsedSeconds: Math.max(0, Math.floor(elapsedClock.date.getTime() / 1000) - Number(output.started || 0))
+        shell: catalog.shell; css: "screenrecord"; visible: recording; polling: false; indicator: "screenrecord"
+        command: ["bash", catalog.shell.home + "/.local/lib/hypr/capture/screenrecord.sh", "--status"]
+        backgroundColor: catalog.shell.role("error", catalog.shell.accent); textColor: catalog.shell.foreground
+        symbol: "media-record"; symbolContext: "actions"; Layout.fillHeight: true
+        trailingWidth: elapsedShown ? elapsedLabel.implicitWidth + Style.sm : 0
+        Component.onCompleted: refresh()
+        SystemClock { id: elapsedClock; precision: SystemClock.Seconds; enabled: gnomeRecorder.elapsedShown }
+        Text {
+            id: elapsedLabel
+            visible: gnomeRecorder.elapsedShown
+            anchors.right: parent.right; anchors.rightMargin: gnomeRecorder.box.margin[1] + gnomeRecorder.box.padding[1]
+            anchors.verticalCenter: parent.verticalCenter
+            text: Math.floor(gnomeRecorder.elapsedSeconds / 60) + ":" + String(gnomeRecorder.elapsedSeconds % 60).padStart(2, "0")
+            color: gnomeRecorder.contentColor
+            font.family: gnomeRecorder.shell.fontFamily; font.pixelSize: gnomeRecorder.fontSize; font.weight: gnomeRecorder.fontWeight
+        }
+        onClicked: catalog.shell.run(["bash", catalog.shell.home + "/.local/lib/hypr/capture/screenrecord.sh", "--quit"])
+        Process {
+            command: ["pidwait", "--euid", Quickshell.env("USER"), "--full", "^gpu-screen-recorder($| )"]
+            running: gnomeRecorder.recording
+            onExited: gnomeRecorder.refresh()
+        }
+    } }
     Component { id: mod_controlcenter; ControlCenter { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_nowplaying; NowPlaying { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_sound; SoundMenu { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }

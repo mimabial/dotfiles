@@ -177,7 +177,7 @@ Singleton {
         root.pendingNext = next
         root.lastError = ""
         // --global is what the rest of this config uses to advance a wallpaper:
-        // it updates the theme links, the thumbnail cache and, in pywal mode,
+        // it updates the theme links, the thumbnail cache and, in wallpaper mode,
         // the palette
         setProc.command = ["hyprshell", "wallpaper", "set", target, "--global"]
         root.busy = true

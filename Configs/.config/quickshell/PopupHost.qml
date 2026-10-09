@@ -28,6 +28,10 @@ Item {
         sourceComponent: Component { StartPopup { popupName: "spotlight"; anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
     }
     Host {
+        popup: "windowinfo"; owners: []
+        sourceComponent: Component { WindowInfoPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
+    }
+    Host {
         popup: "bookmarks"; owners: ["menu"]
         sourceComponent: Component { Bookmarks { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
     }

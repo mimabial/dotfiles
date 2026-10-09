@@ -1,5 +1,5 @@
 import QtQuick
-import Quickshell.Io
+import Quickshell.Services.Mpris
 
 PopupCard {
     id: root
@@ -8,31 +8,17 @@ PopupCard {
     contentHeight: caffeineColumn.implicitHeight + padding * 2
 
     // the provider is the single source of truth; the popup only toggles
-    property var report: ({})
-    readonly property bool manual: report.manual === true
-    readonly property bool audioEnabled: report.audioEnabled === true
-    readonly property bool playing: report.playing === true
+    readonly property bool manual: shell.keepAwakeManual
+    readonly property bool audioEnabled: shell.keepAwakeAudio
+    readonly property bool playing: Mpris.players.values.some(player => player.isPlaying)
     readonly property bool audioHolding: audioEnabled && playing
-    readonly property bool fullscreenEnabled: report.fullscreenEnabled === true
-    readonly property bool fullscreenActive: report.fullscreen === true
-    readonly property bool gameActive: report.game === true
+    readonly property bool fullscreenEnabled: shell.keepAwakeFullscreen
+    readonly property bool fullscreenActive: shell.caffeineFullscreenActive
+    readonly property bool gameActive: shell.caffeineGameActive
     readonly property bool windowHolding: fullscreenEnabled && (fullscreenActive || gameActive)
     readonly property bool awake: manual || audioHolding || windowHolding
-    readonly property string reason: String(report.reason || "None")
-
-    function refresh() { if (!readProc.running) readProc.running = true }
-    function toggle(script) { shell.run(["hyprshell", script], root.refresh) }
-
-    onOpenChanged: if (open) refresh()
-
-    property Process readProc: Process {
-        command: ["hyprshell", "quickshell/caffeine"]
-        stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
-            try { root.report = JSON.parse(text) || ({}) }
-            catch (error) { root.report = ({}) }
-        } }
-    }
-    property Timer poll: Timer { interval: 3000; running: root.open; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
+    readonly property string reason: [[manual, "Manual"], [audioHolding, "Audio"], [fullscreenEnabled && fullscreenActive, "Fullscreen"], [fullscreenEnabled && gameActive, "Game"]].filter(([active]) => active).map(([, label]) => label).join(", ") || "None"
+    function toggle(script) { shell.run([shell.home + "/.local/lib/hypr/" + script]) }
 
     Column {
         id: caffeineColumn

@@ -39,8 +39,7 @@ from auto_theme_support import (
     resolve_wallpaper,
     save_state,
     set_state_value,
-    state_config_file,
-    state_home,
+    state_data_file,
     wallpaper_state_file,
     watchdog_interval_seconds,
 )
@@ -101,7 +100,7 @@ class AutoThemeDaemon:
         return active_palette_file()
 
     def _state_config_file(self) -> Path:
-        return state_config_file()
+        return state_data_file("env-overrides")
 
     def _theme_update_lock_file(self) -> Path:
         return runtime_lock_path("theme_update")
@@ -124,8 +123,8 @@ class AutoThemeDaemon:
         return [
             CONFIG_FILE,
             self._state_config_file(),
-            state_home() / "hypr" / "staterc",
-            state_home() / "hypr" / "color_variant",
+            state_data_file("staterc"),
+            state_data_file("color_variant"),
             wallpaper_state_file(),
             self._active_palette_file(),
         ]
@@ -170,11 +169,11 @@ class AutoThemeDaemon:
         resolve_auto_location(self.config)
 
     @staticmethod
-    def _color_source(staterc_values: dict) -> Literal["theme", "pywal"]:
+    def _color_source(staterc_values: dict) -> Literal["theme", "wallpaper"]:
         source = staterc_values.get("selected_color_source")
-        if source in ("theme", "pywal"):
+        if source in ("theme", "wallpaper"):
             return source
-        return "theme" if staterc_values.get("selected_color_mode") in (None, LEGACY_THEME_COLOR_MODE) else "pywal"
+        return "theme" if staterc_values.get("selected_color_mode") in (None, LEGACY_THEME_COLOR_MODE) else "wallpaper"
 
     def _active_palette_matches(self, mode: Literal["light", "dark"], staterc_values: dict) -> bool:
         palette = read_active_palette()
@@ -285,7 +284,7 @@ class AutoThemeDaemon:
                 staterc_values = read_staterc()
                 color_source = self._color_source(staterc_values)
                 current_theme = staterc_values.get("HYPR_THEME")
-                target_theme = self._pair_theme_for(current_theme, mode)
+                target_theme = self._pair_theme_for(current_theme, mode) if color_source == "theme" else None
                 if target_theme and current_theme and target_theme != current_theme:
                     self._switch_theme(target_theme)
                     return
@@ -302,17 +301,13 @@ class AutoThemeDaemon:
         set_state_value("BACKGROUND_MODE", mode, "staterc")
         set_state_value("", mode, "color_variant")
 
-        hypr_theme = shutil.which("hypr-theme")
-        if not hypr_theme:
-            candidate = Path.home() / ".local" / "bin" / "hypr-theme"
-            if candidate.exists():
-                hypr_theme = str(candidate)
+        env = os.environ.copy()
+        env["PATH"] = f"{Path.home() / '.local' / 'bin'}:{env.get('PATH', '')}"
+        hypr_theme = shutil.which("hypr-theme", path=env["PATH"])
         if not hypr_theme:
             print("Warning: hypr-theme not found, cannot apply colors")
             return
 
-        env = os.environ.copy()
-        env["PATH"] = f"{Path.home() / '.local' / 'bin'}:{env.get('PATH', '')}"
         if current_theme:
             env["HYPR_THEME"] = current_theme
 
@@ -324,7 +319,7 @@ class AutoThemeDaemon:
         else:
             wallpaper = resolve_wallpaper(staterc_values)
             if not wallpaper or not wallpaper.exists():
-                print("Warning: Could not resolve current wallpaper for pywal update")
+                print("Warning: Could not resolve current wallpaper for palette update")
                 return
             command = [hypr_theme, "wallpaper", "--variant", mode, str(wallpaper)]
 

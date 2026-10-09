@@ -125,7 +125,6 @@ resolve_percentages() {
 
   local padded_width padded_height remaining_geometry
 
-  # Percentages use usable geometry, excluding reserved areas and edge gaps.
   load_window_lib launch_monitor_usable_geometry || return 1
   IFS=$'\t' read -r padded_width padded_height remaining_geometry \
     <<<"$(launch_monitor_usable_geometry)" || return 1

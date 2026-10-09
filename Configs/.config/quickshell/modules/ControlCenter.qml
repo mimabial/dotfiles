@@ -4,24 +4,45 @@ import QtQuick.Layouts
 import Quickshell.Bluetooth
 import Quickshell.Networking
 import Quickshell.Services.Pipewire
+import Quickshell.Services.UPower
 import ".."
+import "StatusSymbols.js" as StatusSymbols
 
 BarButton {
     id: root
     property bool popupsAllowed: true
+    property bool statusIcons: false
     readonly property real badgeSize: Style.px(30)
     readonly property var sink: Pipewire.defaultAudioSink
     readonly property var wifi: Array.from(Networking.devices.values).find(device => device.type === DeviceType.Wifi)
-    readonly property string wifiName: Array.from(wifi?.networks.values ?? []).find(network => network.connected)?.name ?? ""
+    readonly property var wifiNetwork: Array.from(wifi?.networks.values ?? []).find(network => network.connected) ?? null
+    readonly property string wifiName: wifiNetwork?.name ?? ""
     readonly property string bluetoothNames: Bluetooth.devices.values.filter(device => device.connected).map(device => device.name).join(", ")
     readonly property var indicators: [
         { nodes: Privacy.camera, color: shell.role("success", "#30d158"), icon: "󰄀", label: "Camera" },
         { nodes: Privacy.microphone, color: shell.role("warning", "#ff9f0a"), icon: "󰍬", label: "Microphone" },
         { nodes: Privacy.screen, color: shell.role("c5", "#bf5af2"), icon: "󰹑", label: "Screen Recording" }
     ].filter(indicator => indicator.nodes.length > 0)
-    css: "controlcenter"; text: "󰔡"; symbol: "org.gnome.Tweaks"; symbolContext: "apps"
+    readonly property bool privacyShown: indicators.length > 0 || Privacy.location
+    readonly property bool shown: text !== "" || statusIcons
+    css: "controlcenter"; text: statusIcons ? "" : "󰔡"; symbol: statusIcons ? "" : "org.gnome.Tweaks"; symbolContext: "apps"
     onClicked: shell.togglePopup("controlcenter")
-    trailingWidth: indicators.length || Privacy.location ? dots.width + Style.xs : 0
+    trailingWidth: statusCluster.width + (privacyShown ? dots.width + Style.xs : 0)
+    component StatusIcon: SymbolicIcon {
+        anchors.verticalCenter: parent.verticalCenter
+        color: root.textColor; size: root.symbolSize; directory: root.box.symbols ?? ""
+    }
+    Loader {
+        id: statusCluster
+        active: root.statusIcons
+        anchors.right: dots.left; anchors.rightMargin: root.privacyShown ? Style.xs : 0; anchors.verticalCenter: parent.verticalCenter
+        sourceComponent: Row {
+            spacing: Style.sm
+            StatusIcon { name: StatusSymbols.wifi(Networking.wifiEnabled, root.wifiNetwork) }
+            StatusIcon { name: StatusSymbols.volume(root.sink, !!root.sink?.audio?.muted) }
+            StatusIcon { visible: UPower.displayDevice.isPresent; name: StatusSymbols.battery(UPower.displayDevice, UPower.onBattery) }
+        }
+    }
     Row {
         id: dots
         anchors.right: parent.right; anchors.rightMargin: root.box.margin[1] + root.box.padding[1]; anchors.verticalCenter: parent.verticalCenter

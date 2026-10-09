@@ -34,7 +34,7 @@ def default_pages():
             item("theme", "Theme", "enum"),
             item("font", "Theme font", "reading"),
             item("text_size", "Text size", "reading"),
-            item("color_source", "Palette source", "enum", options=["theme", "pywal"]),
+            item("color_source", "Palette source", "enum", options=["theme", "wallpaper"]),
             item("color_mode", "Color mode", "enum", options=["dark", "light", "auto"]),
             item("wallpaper", "Next wallpaper", "action", value="apply"),
         ]},

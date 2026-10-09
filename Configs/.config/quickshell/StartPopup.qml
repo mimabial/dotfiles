@@ -132,7 +132,7 @@ PopupCard {
     readonly property var searchIndex: StartMenuModel.searchIndex(availableApplications, menus, places, spotlight ? recentFiles : [])
     readonly property var searchResults: {
         const results = StartMenuModel.search(searchQuery, searchIndex, indexedDocuments)
-        if (spotlight && searchActive) results.push({type: "fileSearch", query: searchQuery.trim()})
+        if (spotlight && searchActive) results.push({type: "fileSearch", query: searchQuery.trim()}, {type: "webSearch", query: searchQuery.trim()})
         return results
     }
     readonly property var browseEntries: browseOnly
@@ -149,8 +149,10 @@ PopupCard {
         action: {section: "Commands", kind: "Command", verb: "Run"},
         place: {section: "Places", kind: "Place", verb: "Open"},
         file: {section: "Files", kind: "File", verb: "Open"},
-        fileSearch: {section: "Files", kind: "File Finder", verb: "Search"}
+        fileSearch: {section: "Files", kind: "File Finder", verb: "Search"},
+        webSearch: {section: "Web", kind: "Web Search", verb: "Search"}
     })
+    readonly property string webSearchUrl: "https://duckduckgo.com/?q="
     readonly property var spotlightHeadings: searchResults.map((item, index) => {
         const section = spotlightKinds[item.type].section
         return index > 0 && spotlightKinds[searchResults[index - 1].type].section === section ? "" : section
@@ -170,6 +172,7 @@ PopupCard {
         case "place": return row(item.place.label, tildePath(item.place.path), item.place.icon)
         case "file": return row(item.file.text, tildePath(StartMenuModel.filePath(item.file.uri).replace(/\/[^/]*$/, "")),
             item.file.folder ? "\u{f024b}" : "\u{f0219}")
+        case "webSearch": return row("Search the web for “" + item.query + "”…", "", "\u{f059f}")
         }
         return row("Find more files for “" + item.query + "”…", "", "\u{f0349}")
     }
@@ -226,6 +229,11 @@ PopupCard {
         }
         if (item.type === "fileSearch") {
             shell.run([shell.home + "/.local/lib/hypr/launch/file-finder.sh", item.query])
+            shell.closePopup()
+            return
+        }
+        if (item.type === "webSearch") {
+            shell.run(["xdg-open", webSearchUrl + encodeURIComponent(item.query)])
             shell.closePopup()
             return
         }

@@ -513,7 +513,7 @@ class Daemon:
                     str(request.get("method", "")), request.get("params") or {}, client
                 )
             reply["result"] = result
-        except Exception as error:  # surfaced to the panel as a readable message
+        except Exception as error:
             reply["error"] = {"message": str(error) or error.__class__.__name__}
         try:
             client.sendall((json.dumps(reply) + "\n").encode())

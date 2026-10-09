@@ -64,7 +64,7 @@ hypr_hash_cache_is_current() {
 hypr_hash_cache_store() {
   local hash_file="$1" value="$2" hash_dir
 
-  [[ "${HYPR_WAL_CACHE_ENABLE:-1}" -eq 0 ]] && return 0
+  [[ "${HYPR_HASH_CACHE_ENABLE:-1}" -eq 0 ]] && return 0
   hash_dir="${hash_file%/*}"
   [[ "$hash_dir" != "$hash_file" ]] || hash_dir=.
   mkdir -p "$hash_dir"

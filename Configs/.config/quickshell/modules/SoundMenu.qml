@@ -2,19 +2,20 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell.Services.Pipewire
 import ".."
+import "StatusSymbols.js" as StatusSymbols
 
 AudioButton {
     id: root
     property bool popupsAllowed: true
     property bool mediaCard: false
+    css: (portKey ? "volume." + portKey : "volume") + (muted ? ".muted" : "")
     readonly property var devices: Pipewire.nodes.values.filter(node => node?.audio && !node.isStream)
     readonly property var inputs: devices.filter(node => !node.isSink)
     popupName: "sound-menu"; popupEnabled: popupsAllowed
     text: !sink ? "󰖁" : muted ? mutedPortIcon || "󰝟" : portIcon && !zeroVolume ? portIcon
         : (sink.audio?.volume ?? 0) < .34 ? "󰕿" : sink.audio.volume < .67 ? "󰖀" : "󰕾"
     symbolContext: ["headphone", "headset", "hands-free"].includes(portKey) && !muted ? "devices" : "status"
-    symbol: !sink || muted ? "audio-volume-muted" : symbolContext === "devices" ? "audio-headphones"
-        : (sink.audio?.volume ?? 0) < .34 ? "audio-volume-low" : sink.audio.volume < .67 ? "audio-volume-medium" : "audio-volume-high"
+    symbol: symbolContext === "devices" ? "audio-headphones" : StatusSymbols.volume(sink, muted)
     function deviceIcon(node) { return node.name.startsWith("bluez") ? "󰋋" : /hdmi|displayport/i.test(node.name) ? "󰍹" : node.isSink ? "󰓃" : "󰍬" }
     component Device: PopupRow {
         required property var modelData

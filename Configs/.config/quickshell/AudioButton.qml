@@ -7,9 +7,8 @@ BarButton {
     property bool popupEnabled: true
     property string popupName: "audio"
     property bool framed: true
-    property bool levelIcons: true
     readonly property bool muted: root.sink ? root.sink.audio.muted : false
-    css: (root.portKey ? "volume." + root.portKey : "volume") + (root.muted ? ".muted" : "")
+    css: "volume" + (root.muted ? ".muted" : "")
     // must measure the face BarButton draws with, or the nudge corrects an ink
     // overhang the drawn glyph does not have
     TextMetrics { id: iconMetrics; font.family: root.usesIconFont ? root.shell.iconGlyphFont : root.shell.fontFamily; font.pixelSize: root.renderedFontSize; font.weight: root.fontWeight; text: root.text }
@@ -50,10 +49,7 @@ BarButton {
     readonly property string mutedPortIcon: ["headphone", "hands-free", "headset"].includes(root.portKey) ? "󱡒" : ""
 
     readonly property bool zeroVolume: root.sink ? Math.round(root.sink.audio.volume * 100) === 0 : false
-    readonly property string volumeIcon: !root.sink || root.zeroVolume ? "" : root.sink.audio.volume < .34 ? ""
-        : root.sink.audio.volume < .67 ? "" : ""
-    text: !root.levelIcons ? (!root.sink || root.muted ? "\uEB24" : "\uEB75")
-        : !root.sink ? "󰖁" : root.muted ? root.mutedPortIcon || "" : root.zeroVolume ? root.volumeIcon : root.portIcon || root.volumeIcon
+    text: !root.sink || root.muted ? "\uEB24" : "\uEB75"
     tooltip: !root.sink ? "No output device"
         : "Volume level: " + Math.round(root.sink.audio.volume * 100) + "%" + (root.portKey ? " " + root.portKey : "")
             + "\nUsing: " + (root.sink.description || root.sink.nickname || root.sink.name)

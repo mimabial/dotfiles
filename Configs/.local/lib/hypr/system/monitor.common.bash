@@ -139,10 +139,6 @@ monitor_has_active_external() {
   [[ -n "$(monitor_external_active_name)" ]]
 }
 
-monitor_has_connected_external() {
-  [[ -n "$(monitor_external_connected_name)" ]]
-}
-
 monitor_gdk_scale_for() {
   awk -v s="$1" 'BEGIN { printf "%d\n", (s == int(s)) ? s : int(s) + 1 }'
 }
