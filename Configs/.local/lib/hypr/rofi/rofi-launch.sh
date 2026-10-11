@@ -1,33 +1,24 @@
 #!/usr/bin/env bash
 
-ROFI_SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-LAUNCHER_STYLE_NOTIFY_MS=2200
 # shellcheck source=/dev/null
-source "${ROFI_SCRIPT_DIR}/close.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
+hypr_runtime_load_shell_environment || exit 1
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR}/rofi/close.bash" || exit 1
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash"
 
+LAUNCHER_STYLE_NOTIFY_MS=2200
 GRID_MIN_CELLS=2
 GRID_MAX_COLUMNS=5
 GRID_MAX_ROWS=4
-
-ensure_rofi_runtime() {
-  local lib_root="${LIB_DIR:-}"
-  local hyprshell_path=""
-
-  if [[ -z "${lib_root}" ]]; then
-    hyprshell_path="$(command -v hyprshell)" || return 1
-    lib_root="$(realpath "$(dirname "${hyprshell_path}")/../lib")" || return 1
-    export LIB_DIR="${lib_root}"
-  fi
-
-  # shellcheck source=/dev/null
-  source "${lib_root}/hypr/runtime/init.bash" || return 1
-  hypr_runtime_bootstrap || return 1
-}
-
-ensure_rofi_runtime || exit 1
-rofi_close_running
-# shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/rofi/rofi.lib.bash"
+LAUNCHER_STYLE_PREVIEW_PX=192
+LAUNCHER_STYLE_HIDPI_SCALE=2
+LAUNCHER_STYLE_ICON_EM=20
+LAUNCHER_STYLE_FALLBACK_RADIUS_PX=10
+LAUNCHER_STYLE_RADIUS_SCALE=5
+LAUNCHER_STYLE_MARGIN_X_PER_SCALE=8
+LAUNCHER_STYLE_MARGIN_Y_PER_SCALE=16
 
 resolve_rofi_launcher_theme() {
   local style_ref="${1:-${ROFI_LAUNCH_STYLE:-style_1}}"
@@ -35,7 +26,7 @@ resolve_rofi_launcher_theme() {
 }
 
 launcher_run_command() {
-  printf '%s\n' "${ROFI_SCRIPT_DIR}/run-after-close.sh -- hyprshell app -- {cmd}"
+  printf '%s\n' "${HYPR_LIB_DIR}/rofi/run-after-close.sh -- hyprshell app -- {cmd}"
 }
 
 show_help() {
@@ -61,17 +52,17 @@ launcher_style_notification() {
 
 launcher_style_menu_override() {
   local font_scale="$1"
-  local preview_image_size="${ROFI_LAUNCH_SELECT_PREVIEW_SIZE:-192}"
-  local hidpi_scale="${ROFI_LAUNCH_SELECT_HIDPI_SCALE:-2}"
-  local launcher_style_icon_size="${ROFI_LAUNCH_SELECT_ICON_SIZE:-20}"
+  local preview_image_size="${ROFI_LAUNCH_SELECT_PREVIEW_SIZE:-${LAUNCHER_STYLE_PREVIEW_PX}}"
+  local hidpi_scale="${ROFI_LAUNCH_SELECT_HIDPI_SCALE:-${LAUNCHER_STYLE_HIDPI_SCALE}}"
+  local launcher_style_icon_size="${ROFI_LAUNCH_SELECT_ICON_SIZE:-${LAUNCHER_STYLE_ICON_EM}}"
   local launcher_style_element_padding="${ROFI_LAUNCH_SELECT_ELEMENT_PADDING:-0em}"
   local launcher_style_list_spacing="${ROFI_LAUNCH_SELECT_LIST_SPACING:-3em}"
   local launcher_style_list_padding="${ROFI_LAUNCH_SELECT_LIST_PADDING:-1em}"
   local hypr_border=""
   local elem_border=0
   local icon_border=0
-  local mon_x_res_px=1920
-  local mon_y_res_px=1080
+  local mon_x_res_px=0
+  local mon_y_res_px=0
   local elm_width_px=0
   local elm_height_px=0
   local max_avail_x_px=0
@@ -79,22 +70,20 @@ launcher_style_menu_override() {
   local col_count=0
   local row_count=0
 
-  [[ "${preview_image_size}" =~ ^[0-9]+$ ]] || preview_image_size=192
-  [[ "${hidpi_scale}" =~ ^[0-9]+$ ]] || hidpi_scale=2
-  [[ "${launcher_style_icon_size}" =~ ^[0-9]+$ ]] || launcher_style_icon_size=20
+  [[ "${preview_image_size}" =~ ^[0-9]+$ ]] || preview_image_size="${LAUNCHER_STYLE_PREVIEW_PX}"
+  [[ "${hidpi_scale}" =~ ^[0-9]+$ ]] || hidpi_scale="${LAUNCHER_STYLE_HIDPI_SCALE}"
+  [[ "${launcher_style_icon_size}" =~ ^[0-9]+$ ]] || launcher_style_icon_size="${LAUNCHER_STYLE_ICON_EM}"
 
-  hypr_border="$(rofi_default_border_radius 10)"
-  elem_border=$((hypr_border * 5))
-  icon_border=$((elem_border - 5))
+  hypr_border="$(rofi_default_border_radius "${LAUNCHER_STYLE_FALLBACK_RADIUS_PX}")"
+  elem_border=$((hypr_border * LAUNCHER_STYLE_RADIUS_SCALE))
+  icon_border=$((elem_border - LAUNCHER_STYLE_RADIUS_SCALE))
   [[ "${icon_border}" -lt 0 ]] && icon_border=0
 
   read -r mon_x_res_px mon_y_res_px < <(rofi_focused_monitor_logical_size)
-  mon_x_res_px=${mon_x_res_px:-1920}
-  mon_y_res_px=${mon_y_res_px:-1080}
   elm_width_px=$((preview_image_size * hidpi_scale))
   elm_height_px=$((preview_image_size * hidpi_scale))
-  max_avail_x_px=$((mon_x_res_px - (8 * font_scale)))
-  max_avail_y_px=$((mon_y_res_px - (16 * font_scale)))
+  max_avail_x_px=$((mon_x_res_px - LAUNCHER_STYLE_MARGIN_X_PER_SCALE * font_scale))
+  max_avail_y_px=$((mon_y_res_px - LAUNCHER_STYLE_MARGIN_Y_PER_SCALE * font_scale))
   col_count="$(hypr_clamp $((max_avail_x_px / elm_width_px)) "${GRID_MIN_CELLS}" "${GRID_MAX_COLUMNS}")"
   row_count="$(hypr_clamp $((max_avail_y_px / elm_height_px)) "${GRID_MIN_CELLS}" "${GRID_MAX_ROWS}")"
 
@@ -114,7 +103,8 @@ list_launcher_styles() {
 
   rofi_list_theme_files | while IFS= read -r theme_file; do
     rg -q "Attribute: .*launcher" "${theme_file}" || continue
-    style_name="$(basename "${theme_file}" .rasi)"
+    style_name="${theme_file##*/}"
+    style_name="${style_name%.rasi}"
     preview_asset="$(rofi_theme_preview_asset "${style_name}" 2>/dev/null || true)"
     if [[ -n "${preview_asset}" && -f "${preview_asset}" ]]; then
       printf '%s\0icon\x1f%s\n' "${style_name}" "${preview_asset}"
@@ -157,7 +147,7 @@ launcher_style_select() {
 configure_drun_mode() {
   rofi_mode="drun"
   rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_DRUN_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
-  rofi_args+=("${ROFI_LAUNCH_DRUN_ARGS[@]:-}" "-run-command" "$(launcher_run_command)")
+  rofi_args+=("${ROFI_LAUNCH_DRUN_ARGS[@]}" "-run-command" "$(launcher_run_command)")
 }
 
 configure_mode() {
@@ -169,19 +159,20 @@ configure_mode() {
     w | --window)
       rofi_mode="window"
       rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_WINDOW_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
-      rofi_args+=("${ROFI_LAUNCH_WINDOW_ARGS[@]:-}")
+      rofi_args+=("${ROFI_LAUNCH_WINDOW_ARGS[@]}")
       ;;
     f | --filebrowser)
       rofi_mode="filebrowser"
       rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_FILEBROWSER_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
-      rofi_args+=("${ROFI_LAUNCH_FILEBROWSER_ARGS[@]:-}")
+      rofi_args+=("${ROFI_LAUNCH_FILEBROWSER_ARGS[@]}")
       ;;
     r | --run)
       rofi_mode="run"
       rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_RUN_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
-      rofi_args+=("-run-command" "$(launcher_run_command)" "${ROFI_LAUNCH_RUN_ARGS[@]:-}")
+      rofi_args+=("-run-command" "$(launcher_run_command)" "${ROFI_LAUNCH_RUN_ARGS[@]}")
       ;;
     s | -s | --select-style)
+      rofi_ensure_closed || exit 1
       launcher_style_select
       exit 0
       ;;
@@ -192,23 +183,13 @@ configure_mode() {
   esac
 }
 
-width_override_args() {
-  local rofi_theme_file="$1"
-  local font_name="$2"
-  local font_scale="$3"
-  local width_override=""
-
-  width_override="$(rofi_wallpaper_width_override "${rofi_theme_file}" "${font_name}" "${font_scale}")"
-  [[ -n "${width_override}" ]] && printf '%s\0%s\n' "-theme-str" "${width_override}"
-}
-
 build_runtime_overrides() {
   local font_scale="$1"
   local font_name="$2"
   local font_override=""
   local icon_override=""
   local window_override=""
-  local -a width_args=()
+  local width_override=""
 
   window_override="$(rofi_window_override "${rofi_config}")"
   font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
@@ -216,10 +197,10 @@ build_runtime_overrides() {
 
   rofi_args+=(-theme-str "${font_override}" -theme-str "${icon_override}" -theme-str "${window_override}")
 
-  mapfile -d '' -t width_args < <(width_override_args "${rofi_config}" "${font_name}" "${font_scale}" | tr '\n' '\0')
-  [[ ${#width_args[@]} -gt 0 ]] && rofi_args+=("${width_args[@]}")
+  width_override="$(rofi_wallpaper_width_override "${rofi_config}" "${font_name}" "${font_scale}")"
+  [[ -n "${width_override}" ]] && rofi_args+=(-theme-str "${width_override}")
 
-  if [[ "$(state_get "HYPR_WORKFLOW" "default")" == "windows" && "$(basename "${rofi_config}" .rasi)" == "style_11" ]]; then
+  if [[ "$(state_get "HYPR_WORKFLOW" "default")" == "windows" && "${rofi_config##*/}" == "style_11.rasi" ]]; then
     rofi_args+=(-theme-str "inputbar { background-color: #000000CC; } listbox { background-color: #000000CC; }")
   fi
 
@@ -238,4 +219,5 @@ launch_rofi() {
 }
 
 configure_mode "${1:-}"
+rofi_ensure_closed || exit 1
 launch_rofi

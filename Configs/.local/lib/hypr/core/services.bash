@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-hypr_init_system() {
+hypr_detect_init_system() {
   if [[ -n "${HYPR_INIT_SYSTEM:-}" ]]; then
     printf '%s\n' "${HYPR_INIT_SYSTEM}"
     return 0
@@ -25,7 +25,7 @@ hypr_svc_user() {
   local action="${1:-}" name="${2:-}"
   [[ -n "${action}" && -n "${name}" ]] || return 2
 
-  hypr_init_system >/dev/null
+  hypr_detect_init_system >/dev/null
   case "$HYPR_INIT_SYSTEM" in
     systemd)
       local unit="${name%.service}.service"
@@ -59,7 +59,7 @@ hypr_svc_user() {
       esac
       ;;
     *)
-      case "$action" in is-active | status | enable | disable) return 1 ;; *) return 0 ;; esac
+      return 1
       ;;
   esac
 }
@@ -68,7 +68,7 @@ hypr_svc_user_signal() {
   local name="${1:-}" sig="${2:-}"
   [[ -n "${name}" && -n "${sig}" ]] || return 2
 
-  hypr_init_system >/dev/null
+  hypr_detect_init_system >/dev/null
   case "$HYPR_INIT_SYSTEM" in
     systemd)
       systemctl --user kill --signal="${sig}" "${name%.service}.service" >/dev/null 2>&1
@@ -88,7 +88,7 @@ hypr_svc_user_signal() {
       SVDIR="$(hypr_user_sv_dir)" sv "${sv_cmd}" "${name%.service}" >/dev/null 2>&1
       ;;
     *)
-      return 0
+      return 1
       ;;
   esac
 }

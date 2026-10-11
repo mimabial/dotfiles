@@ -3,6 +3,8 @@
 set -eu
 umask 077
 
+STORE_VERSION=3
+
 if [ "$#" -ne 2 ]; then
   echo "usage: bookmark_store_init.sh DATA_DIR DATA_PATH" >&2
   exit 2
@@ -25,7 +27,7 @@ fi
 temp_path=$(mktemp -p "$data_dir" ".bookmarks.json.init.XXXXXX")
 trap 'rm -f -- "$temp_path"' EXIT HUP INT TERM
 
-printf '{"version":3,"bookmarks":[]}\n' >"$temp_path"
+printf '{"version":%d,"bookmarks":[]}\n' "$STORE_VERSION" >"$temp_path"
 
 mv -T -- "$temp_path" "$data_path"
 trap - EXIT HUP INT TERM

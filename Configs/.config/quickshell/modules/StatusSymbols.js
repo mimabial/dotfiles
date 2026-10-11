@@ -10,9 +10,14 @@ function wifi(enabled, connectedNetwork) {
         : "network-wireless-signal-" + level(connectedNetwork.signalStrength, ["none", "weak", "ok", "good", "excellent"])
 }
 
-function volume(sink, muted) {
-    const volume = sink?.audio?.volume ?? 0
-    return !sink || muted ? "audio-volume-muted" : volume < .34 ? "audio-volume-low" : volume < .67 ? "audio-volume-medium" : "audio-volume-high"
+function volume(node, muted, prefix = "audio-volume") {
+    const volume = node?.audio?.volume ?? 0
+    return prefix + "-" + (!node || muted ? "muted" : prefix === "audio-volume" && volume > 1 ? "overamplified"
+        : level(volume, ["low", "medium", "high"]))
+}
+
+function brightness(fraction) {
+    return "display-brightness-" + (fraction === 0 ? "off" : level(fraction, ["low", "medium", "high"]))
 }
 
 function battery(device, onBattery) {

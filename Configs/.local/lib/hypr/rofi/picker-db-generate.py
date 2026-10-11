@@ -5,10 +5,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import unicodedata
 import urllib.request
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from pyutils.xdg_base_dirs import xdg_config_home
 
 
 NERD_FONTS_GLYPHNAMES_URL = (
@@ -42,12 +47,7 @@ def read_rows(path: Path) -> list[tuple[str, str]]:
 
 
 def unicode_label(char: str) -> str:
-    name = unicodedata.name(char)
-    for prefix in ("BOX DRAWINGS ",):
-        if name.startswith(prefix):
-            name = name[len(prefix) :]
-            break
-    return name.lower()
+    return unicodedata.name(char).removeprefix("BOX DRAWINGS ").lower()
 
 
 def assigned_chars(start: int, end: int) -> list[str]:
@@ -124,7 +124,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--hypr-dir",
         type=Path,
-        default=Path.home() / ".config" / "hypr",
+        default=Path(os.environ.get("HYPR_CONFIG_HOME") or xdg_config_home() / "hypr"),
         help="directory containing picker DB files",
     )
     parser.add_argument(

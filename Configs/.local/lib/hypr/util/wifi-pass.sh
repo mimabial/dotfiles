@@ -6,6 +6,15 @@ copy=false
 qr=false
 target_ssid=""
 
+wifi_qr_escape_into() {
+  local -n escaped_ref="$1"
+  escaped_ref=${2//\\/\\\\}
+  escaped_ref=${escaped_ref//;/\\;}
+  escaped_ref=${escaped_ref//,/\\,}
+  escaped_ref=${escaped_ref//:/\\:}
+  escaped_ref=${escaped_ref//\"/\\\"}
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -c | --copy) copy=true ;;
@@ -13,7 +22,7 @@ while [[ $# -gt 0 ]]; do
     -Q | --qr) qr=true ;;
     -h | --help)
       cat <<USAGE
-Usage: $(basename "$0") [options] [SSID]
+Usage: hyprshell util/wifi-pass [options] [SSID]
 Options:
   -c, --copy   Copy password to clipboard (wl-copy)
   -q, --quiet  Suppress informational messages
@@ -31,7 +40,7 @@ USAGE
 done
 
 if [[ -z "$target_ssid" ]]; then
-  target_ssid=$(nmcli -t -f active,ssid dev wifi 2>/dev/null \
+  target_ssid=$(nmcli -t -e no -f active,ssid dev wifi 2>/dev/null \
     | grep '^yes:' | head -1 | cut -d: -f2-) || true
 
   if [[ -z "$target_ssid" ]]; then
@@ -52,14 +61,17 @@ if [[ "$qr" == true ]]; then
     echo "Error: qrencode not installed (pacman -S qrencode)" >&2
     exit 1
   fi
-  nmcli device wifi show-password
+  wifi_qr_escape_into qr_ssid "$target_ssid"
+  wifi_qr_escape_into qr_password "$password"
+  qrencode -t ansiutf8 "WIFI:T:WPA;S:${qr_ssid};P:${qr_password};;"
+  [[ "$quiet" == true ]] || echo "Scan to join '$target_ssid'"
 elif [[ "$copy" == true ]]; then
   if ! command -v wl-copy &>/dev/null; then
     echo "Error: wl-copy not found" >&2
     exit 1
   fi
   printf '%s' "$password" | wl-copy
-  [[ "$quiet" == false ]] && echo "Password for '$target_ssid' copied to clipboard"
+  [[ "$quiet" == true ]] || echo "Password for '$target_ssid' copied to clipboard"
 else
   printf '%s\n' "$password"
 fi

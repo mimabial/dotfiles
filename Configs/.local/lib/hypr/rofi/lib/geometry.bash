@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+ROFI_WINDOW_RADIUS_PERCENT=150
+
 rofi_default_border_metrics() {
   local fallback_border="${1:-0}"
   local fallback_width="${2:-0}"
@@ -20,7 +22,7 @@ rofi_container_radius_override() {
   local base_border_radius="$2"
   local theme_name=""
 
-  theme_name="$(basename "${theme_file}")"
+  theme_name="${theme_file##*/}"
   theme_name="${theme_name%.rasi}"
 
   case "${theme_name}" in
@@ -46,10 +48,9 @@ rofi_window_override() {
   local container_override=""
 
   IFS=$'\t' read -r base_border_radius hypr_width < <(rofi_default_border_metrics "${fallback_border}" "${fallback_width}")
-  theme_name="$(basename "${theme_file}")"
+  theme_name="${theme_file##*/}"
   theme_name="${theme_name%.rasi}"
-  window_radius="${base_border_radius}"
-  [[ "${base_border_radius}" -ne 0 ]] && window_radius=$((base_border_radius * 3 / 2))
+  window_radius=$((base_border_radius * ROFI_WINDOW_RADIUS_PERCENT / 100))
   [[ "${base_border_radius}" -ne 0 ]] && elem_border=$((base_border_radius * 2))
   element_radius="${elem_border}"
 
@@ -82,7 +83,7 @@ rofi_standard_window_theme() {
   local border_radius border_width window_radius elem_radius
 
   IFS=$'\t' read -r border_radius border_width < <(rofi_default_border_metrics 0 0)
-  window_radius=$((border_radius * 3 / 2))
+  window_radius=$((border_radius * ROFI_WINDOW_RADIUS_PERCENT / 100))
 
   case "${elem_mode}" in
     min5)
@@ -102,33 +103,16 @@ rofi_standard_window_theme() {
     "${border_width}" "${window_radius}" "${container_name}" "${elem_radius}" "${elem_radius}"
 }
 
-rofi_prepare_standard_context() {
-  local out_scale_name="$1"
-  local out_font_name="$2"
-  local out_font_override_name="$3"
-  local out_window_theme_name="$4"
-  local requested_scale="${5:-}"
-  local requested_font="${6:-}"
-  local container_name="${7:-wallbox}"
-  local elem_mode="${8:-same}"
-  # prefixed so a caller naming an out-variable after one of these (font_override,
-  # window_theme, ...) does not have its own local shadowed by ours: printf -v
-  # would then write to this frame and the caller would come back empty
-  local _ctx_scale=""
-  local _ctx_font=""
-  local _ctx_font_override=""
-  local _ctx_window_theme=""
+rofi_resolve_style_into() {
+  local -n style_ref="$1"
+  local requested_scale="${2:-}" requested_font="${3:-}"
+  local container_name="${4:-wallbox}" elem_mode="${5:-same}"
 
   rofi_hypr_snapshot
-  _ctx_scale="$(rofi_effective_font_scale "${requested_scale}")"
-  _ctx_font="$(rofi_effective_font_name "${requested_font}")"
-  _ctx_font_override="$(rofi_font_override "${_ctx_font}" "${_ctx_scale}")"
-  _ctx_window_theme="$(rofi_standard_window_theme "${container_name}" "${elem_mode}")"
-
-  printf -v "${out_scale_name}" '%s' "${_ctx_scale}"
-  printf -v "${out_font_name}" '%s' "${_ctx_font}"
-  printf -v "${out_font_override_name}" '%s' "${_ctx_font_override}"
-  printf -v "${out_window_theme_name}" '%s' "${_ctx_window_theme}"
+  style_ref[font_scale]="$(rofi_effective_font_scale "${requested_scale}")"
+  style_ref[font_name]="$(rofi_effective_font_name "${requested_font}")"
+  style_ref[font_theme]="$(rofi_font_override "${style_ref[font_name]}" "${style_ref[font_scale]}")"
+  style_ref[window_theme]="$(rofi_standard_window_theme "${container_name}" "${elem_mode}")"
 }
 
 rofi_window_position_for_size() {
@@ -192,6 +176,14 @@ rofi_build_standard_menu_args() {
   [[ -n "${placeholder}" ]] && rofi_menu_args_ref+=(-theme-str "entry { placeholder: \"${placeholder}\"; }")
   [[ -n "${position_override}" ]] && rofi_menu_args_ref+=(-theme-str "${position_override}")
   return 0
+}
+
+rofi_pick() {
+  local prompt="$1"
+  local -a rofi_args=()
+
+  rofi_build_standard_menu_args rofi_args "${prompt}" "${prompt}" "$(rofi_resolve_theme clipboard)"
+  rofi_with_background_theme "${rofi_args[@]}" -no-custom -no-show-icons
 }
 
 rofi_theme_width_multiplier_override() {

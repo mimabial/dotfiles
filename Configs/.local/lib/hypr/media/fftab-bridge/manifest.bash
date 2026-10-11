@@ -2,6 +2,9 @@
 
 # Firefox reads this to find the native host; the extension id must match the
 # one the installed extension was signed with or Firefox refuses the connection.
+FFTAB_EXTENSION_ID="fftab-bridge@hypr.local"
+FFTAB_MANIFEST="${HOME}/.mozilla/native-messaging-hosts/fftab_bridge.json"
+
 fftab_write_manifest() {
   local manifest="$1"
   local host_path="$2"

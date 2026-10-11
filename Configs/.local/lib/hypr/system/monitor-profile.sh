@@ -34,7 +34,14 @@ case "${1:-}" in
     hyprmoncfg unmanage
     ;;
   restart)
-    pkill -TERM -x hyprmoncfgd && timeout "${HYPRMONCFGD_EXIT_WAIT_S}" pidwait -x hyprmoncfgd || true
+    if pkill -TERM -x hyprmoncfgd; then
+      exit_wait_status=0
+      timeout "${HYPRMONCFGD_EXIT_WAIT_S}" pidwait -x hyprmoncfgd || exit_wait_status=$?
+      if ((exit_wait_status != 0 && exit_wait_status != PROCPS_NO_MATCH_STATUS)); then
+        printf 'hyprmoncfgd did not exit within %ss; not starting another\n' "${HYPRMONCFGD_EXIT_WAIT_S}" >&2
+        exit 1
+      fi
+    fi
     start_daemon
     ;;
   service-enabled) service_enabled ;;

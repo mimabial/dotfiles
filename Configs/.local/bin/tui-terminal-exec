@@ -92,7 +92,7 @@ validate_geometry() {
 load_window_lib() {
   declare -F "$1" >/dev/null 2>&1 && return
   # shellcheck source=/dev/null
-  source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/launch/window.common.bash"
+  source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/launch/lib/window-launch.bash"
 }
 
 apply_geometry_profile() {
@@ -142,8 +142,9 @@ resolve_percentages() {
   fi
 }
 
-app_shows_images() {
-  [[ "$1" == org.tui.Rmpc ]]
+app_requires_kitty() {
+  local app_id="$1"
+  [[ "${app_id}" == org.tui.Rmpc ]]
 }
 
 validate_exec_command() {
@@ -230,7 +231,7 @@ main() {
   local terminal_pid exit_code=0
 
   parse_args options terminal_args command "$@"
-  if app_shows_images "${options[app_id]}"; then
+  if app_requires_kitty "${options[app_id]}"; then
     TERMINAL_TUI=kitty
   fi
   validate_geometry options || return 2

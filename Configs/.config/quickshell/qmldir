@@ -6,7 +6,6 @@ AudioButton 1.0 AudioButton.qml
 AudioPopup 1.0 AudioPopup.qml
 BarButton 1.0 BarButton.qml
 BarGroup 1.0 BarGroup.qml
-BarLayoutPopup 1.0 BarLayoutPopup.qml
 BarModuleLoader 1.0 BarModuleLoader.qml
 BarModules 1.0 BarModules.qml
 BarSection 1.0 BarSection.qml

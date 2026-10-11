@@ -11,11 +11,11 @@ Install the KDE service menu that adds a wallpaper to a theme; with no options,
 regenerate the menu entry from the current theme list." "$@"
 
 hypr_runtime_require state wallpaper_catalog || exit 1
-hypr_runtime_load_state || exit 1
+hypr_runtime_load_desktop_environment || exit 1
 script_path="$(realpath "$0")"
 service_menu_dir="${XDG_DATA_HOME:-$HOME/.local/share}/kio/servicemenus"
 service_menu_file="${service_menu_dir}/hyprwallpaper.desktop"
-themes_dir="$(dirname "${HYPR_THEME_DIR}")"
+themes_dir="${HYPR_THEME_DIR%/*}"
 selected_theme=""
 selected_wallpaper=""
 declare -a theme_names=() theme_wallpapers=()
@@ -51,7 +51,7 @@ while getopts "t:w:" option; do
   esac
 done
 
-if [[ -n "${selected_theme}" && -n "${selected_wallpaper}" ]]; then
+wallpaper_import_into_theme() {
   theme_hashes=()
   theme_walls=()
 
@@ -62,17 +62,25 @@ if [[ -n "${selected_theme}" && -n "${selected_wallpaper}" ]]; then
     exit 0
   fi
 
-  cp "${selected_wallpaper}" "${themes_dir}/${selected_theme}/wallpapers"
-  ln -fs "${themes_dir}/${selected_theme}/wallpapers/$(basename "${selected_wallpaper}")" "${themes_dir}/${selected_theme}/wall.set"
+  local theme_wallpapers_dir=""
+  wallpaper_theme_source_dir_into theme_wallpapers_dir "${themes_dir}/${selected_theme}"
+  cp -- "${selected_wallpaper}" "${theme_wallpapers_dir}/"
+  ln -fs "${theme_wallpapers_dir}/${selected_wallpaper##*/}" "${themes_dir}/${selected_theme}/wall.set"
 
   "${HYPR_LIB_DIR}/theme/theme.switch.sh" -s "${selected_theme}"
   send_ephemeral_notif "hypr-wallpaper-kde" -a "Wallpaper" -i "${WALLPAPER_THUMB_DIR}/${incoming_wallpaper_hash}.sqre" -t "${NOTIFY_BRIEF_MS}" "Wallpaper set in ${selected_theme}"
+}
 
-else
-
+wallpaper_write_kde_service_menu() {
+  mkdir -p "${service_menu_dir}"
   echo -e "[Desktop Entry]\nType=Service\nMimeType=image/png;image/jpeg;image/jpg;image/gif\nActions=Menu-Refresh$(printf ";%s" "${theme_names[@]}")\nX-KDE-Submenu=Set As Wallpaper...\n\n[Desktop Action Menu-Refresh]\nName=.: Refresh List :.\nExec=${script_path}" >"${service_menu_file}"
   for theme_index in "${!theme_names[@]}"; do
     echo -e "\n[Desktop Action ${theme_names[theme_index]}]\nName=${theme_names[theme_index]}\nExec=${script_path} -t \"${theme_names[theme_index]}\" -w %u" >>"${service_menu_file}"
   done
+}
 
+if [[ -n "${selected_theme}" && -n "${selected_wallpaper}" ]]; then
+  wallpaper_import_into_theme
+else
+  wallpaper_write_kde_service_menu
 fi

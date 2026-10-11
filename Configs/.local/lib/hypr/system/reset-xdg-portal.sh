@@ -2,7 +2,6 @@
 
 set -euo pipefail
 
-
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require system || exit 1
@@ -21,7 +20,7 @@ reset_portal() {
 
   hypr_svc_user stop "${name}" || true
   # Instances started outside the unit: the whole cmdline is the binary path.
-  pkill -u "$(id -u)" -f "^[^ ]*/${name}$" 2>/dev/null || true
+  pkill -u "${UID}" -f "^[^ ]*/${name}$" 2>/dev/null || true
   hypr_svc_user reset-failed "${name}" || true
 }
 

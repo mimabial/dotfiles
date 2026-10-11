@@ -1,45 +1,18 @@
 #!/usr/bin/env bash
 
-_hypr_lock_paths_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-if ! declare -F hypr_runtime_root_dir >/dev/null 2>&1; then
+if ! declare -F hypr_ensure_runtime_root_dir >/dev/null 2>&1; then
+  _hypr_lock_source_dir="${BASH_SOURCE[0]%/*}"
+  [[ "${_hypr_lock_source_dir}" != "${BASH_SOURCE[0]}" ]] || _hypr_lock_source_dir=.
   # shellcheck source=/dev/null
-  source "${_hypr_lock_paths_dir}/../core/common.bash" || return 1 2>/dev/null || exit 1
+  source "${_hypr_lock_source_dir}/../core/paths.bash" || return 1 2>/dev/null || exit 1
+  unset _hypr_lock_source_dir
 fi
-unset _hypr_lock_paths_dir
 
-if declare -p HYPR_LOCK_NAMES >/dev/null 2>&1; then
-  return 0 2>/dev/null || exit 0
-fi
-declare -grA HYPR_LOCK_NAMES=(
-  [color_gen]="color-gen.lock"
-  [color_cache_only]="color-cache-only.lock"
-  [theme_update]="theme-update.lock"
-  [theme_switch]="theme-switch.lock"
-  [theme_precache]="theme-precache.lock"
-  [theme_phase_d_gtk]="theme-phase-d-gtk.lock"
-  [theme_phase_d_qt]="theme-phase-d-qt.lock"
-  [theme_phase_d_chrome]="theme-phase-d-chrome.lock"
-  [theme_phase_d_firefox]="theme-phase-d-firefox.lock"
-  [theme_phase_d_gimp]="theme-phase-d-gimp.lock"
-  [theme_phase_d_theme_files]="theme-phase-d-theme-files.lock"
-  [theme_phase_d_desktop]="theme-phase-d-desktop.lock"
-  [dunst_render]="dunst-render.lock"
-  [wallpaper_cache]="wallpaper-cache.lock"
-  [wallpaper_catalog]="wallpaper-catalog.lock"
-  [wallpaper_inventory]="wallpaper-inventory.lock"
-  [wallpaper_switch]="wallpaper-switch.lock"
-  [wallpaper_awww]="wallpaper-awww.lock"
-  [mode_switch]="mode-switch.lock"
-  [system_update]="system-update.lock"
-  [notify_archive]="notify-archive.lock"
-)
+hypr_lock_path_ensure_parent() {
+  local operation="$1"
+  local runtime_parent_dir=""
 
-hypr_lock_path() {
-  local key="$1"
-  local lock_name="${HYPR_LOCK_NAMES[${key}]:-}"
-  local runtime_root=""
-
-  [[ -n "${lock_name}" ]] || return 1
-  runtime_root="$(hypr_runtime_root_dir)" || return 1
-  printf '%s/%s\n' "${runtime_root}" "${lock_name}"
+  [[ -n "${operation}" ]] || return 1
+  runtime_parent_dir="$(hypr_ensure_runtime_root_dir)" || return 1
+  printf '%s/%s.lock\n' "${runtime_parent_dir}" "${operation//_/-}"
 }

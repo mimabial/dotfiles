@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 # shellcheck source=/dev/null
-source "${SCRIPT_DIR}/window.common.bash"
+source "${SCRIPT_DIR}/lib/window-launch.bash"
 
 usage() {
   cat <<EOF

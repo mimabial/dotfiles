@@ -9,7 +9,8 @@ MEDIA_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(MEDIA_DIR))
 
 import rename_from_tags
-from rename_from_tags import credit_loss_for_rename, default_pattern_for, fields_for
+from audio_tags import SUPPORTED
+from rename_from_tags import credit_loss_for_rename, default_pattern_for, filename_fields_from_tags
 
 
 class RenameCreditSafetyTests(unittest.TestCase):
@@ -68,7 +69,7 @@ class RenameCreditSafetyTests(unittest.TestCase):
         )
 
     def test_track_position_is_extracted_before_filename_sanitizing(self):
-        values = fields_for(
+        values = filename_fields_from_tags(
             {
                 "artist": ["Imani Imani"],
                 "title": ["Chasing"],
@@ -84,7 +85,7 @@ class RenameCreditSafetyTests(unittest.TestCase):
         output = io.StringIO()
         with (
             patch.object(sys, "argv", ["rename_from_tags.py", "/music"]),
-            patch("rename_from_tags.collect", return_value=[self.path]),
+            patch("rename_from_tags.collect_audio_files", return_value=[self.path]),
             patch("rename_from_tags.read_tags", return_value=tags),
             patch("rename_from_tags.build_move_plan") as build_move_plan,
             contextlib.redirect_stderr(output),
@@ -103,15 +104,15 @@ class RenameCreditSafetyTests(unittest.TestCase):
         output = io.StringIO()
         with (
             patch.object(sys, "argv", ["rename_from_tags.py"]),
-            patch("rename_from_tags.collect", return_value=[]) as collect,
+            patch("rename_from_tags.collect_audio_files", return_value=[]) as collect_audio_files,
             contextlib.redirect_stderr(output),
         ):
             return_code = rename_from_tags.main()
 
         self.assertEqual(return_code, 0)
-        collect.assert_called_once_with(
+        collect_audio_files.assert_called_once_with(
             ["/configured/music"],
-            set(rename_from_tags.SUPPORTED),
+            SUPPORTED,
         )
 
 if __name__ == "__main__":

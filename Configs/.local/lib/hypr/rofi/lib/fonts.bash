@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-ROFI_PANGO_MEASURE="$(dirname -- "${BASH_SOURCE[0]}")/pango_measure.py"
+ROFI_PANGO_MEASURE="${BASH_SOURCE[0]%/*}/pango_measure.py"
 
 rofi_effective_font_scale() {
   local requested_scale="${1:-}"
@@ -22,11 +22,11 @@ rofi_effective_font_scale() {
     local text_size="${TEXT_SIZE:-}"
     if [[ ! "${text_size}" =~ ^[0-9]+$ ]]; then
       declare -F state_get >/dev/null 2>&1 || hypr_runtime_require state >/dev/null 2>&1 || true
-      text_size="$(state_get TEXT_SIZE 12 2>/dev/null || true)"
+      text_size="$(state_get TEXT_SIZE "${ROFI_TEXT_SIZE_AT_DEFAULT_SCALE_PX}" 2>/dev/null || true)"
     fi
-    [[ "${text_size}" =~ ^[0-9]+$ ]] && scale=$(( text_size * 10 / 12 ))
+    [[ "${text_size}" =~ ^[0-9]+$ ]] && scale=$((text_size * ROFI_DEFAULT_FONT_SCALE / ROFI_TEXT_SIZE_AT_DEFAULT_SCALE_PX))
   fi
-  [[ -n "${scale}" ]] || scale="10"
+  [[ -n "${scale}" ]] || scale="${ROFI_DEFAULT_FONT_SCALE}"
   printf '%s\n' "${scale}"
 }
 

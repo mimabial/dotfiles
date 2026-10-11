@@ -1,12 +1,57 @@
 #!/usr/bin/env bash
 
+install_pick_fonts() {
+  source "${BASH_SOURCE[0]%/*}/../menu/font-packages.bash"
+  local selection=""
+  local label=""
+  local title=""
+  local empty_label="No installable Nerd Fonts"
+  local -a font_labels=()
+  local -A font_packages=()
+  local -a packages=()
+
+  nerd_font_menu_build installable font_labels font_packages
+  if [[ "${#font_labels[@]}" -gt 0 ]]; then
+    selection="$(menu "Install Font" "$(printf '%s\n' "${font_labels[@]}")" --nav multi)"
+  else
+    selection="$(menu "Install Font" "${empty_label}")"
+  fi
+
+  case "${selection}" in
+    "${empty_label}" | "")
+      menu_exit_or_show install
+      return 0
+      ;;
+  esac
+
+  while IFS= read -r label; do
+    [[ -n "${label}" ]] || continue
+    [[ -n "${font_packages["${label}"]:-}" ]] || continue
+    packages+=("${font_packages["${label}"]}")
+    title+="${label}, "
+  done <<<"${selection}"
+
+  if [[ "${#packages[@]}" -eq 0 ]]; then
+    install_pick_fonts
+    return 0
+  fi
+
+  if [[ "${#packages[@]}" -gt 1 ]]; then
+    title="${#packages[@]} Nerd Fonts"
+  else
+    title="${title%, }"
+  fi
+
+  menu_present_terminal --hypr-profile dialog --app-id org.font.Install --title "Install ${title}" -- hyprshell fonts/font-nerd-install.sh --packages "${packages[@]}"
+}
+
 install() {
   local name="$1"
   local package_list="$2"
   local desktop_id="${3:-}"
   local -a packages=()
   read -r -a packages <<<"${package_list}"
-  present_terminal -- bash -lc '
+  menu_present_terminal -- bash -lc '
     name="$1"
     desktop_id="$2"
     shift 2
@@ -24,7 +69,7 @@ aur_install() {
   local package_list="$2"
   local -a packages=()
   read -r -a packages <<<"${package_list}"
-  present_terminal -- bash -lc '
+  menu_present_terminal -- bash -lc '
     name="$1"
     shift
     printf "Installing %s from AUR...\n" "$name"
@@ -33,7 +78,7 @@ aur_install() {
 }
 
 run_dev_env_install() {
-  present_terminal -- hyprshell install/dev-env.sh "$1"
+  menu_present_terminal -- hyprshell install/dev-env.sh "$1"
 }
 
 menu_register_domain_install() {
@@ -99,8 +144,10 @@ menu_run_action_install() {
   local ollama_pkg=""
 
   case "${action_id}" in
-    install_package) terminal hyprshell pm install-repo ;;
-    install_aur) terminal hyprshell pm install-aur ;;
+    install_font) install_pick_fonts ;;
+    install_language) menu_pick_language install install ;;
+    install_package) menu_launch_shell_terminal hyprshell pm install-repo ;;
+    install_aur) menu_launch_shell_terminal hyprshell pm install-aur ;;
     install_ai_claude) install "Claude Code" "claude-code" ;;
     install_ai_openai) install "OpenAI Codex" "openai-codex-bin" ;;
     install_ai_ollama)
@@ -112,17 +159,17 @@ menu_run_action_install() {
       install "Ollama" "${ollama_pkg}"
       ;;
     install_ai_opencode) install "opencode" "opencode" ;;
-    install_webapp) present_terminal hyprshell install/webapp.sh ;;
-    install_tui) present_terminal hyprshell install/tui.sh ;;
-    install_windows) present_terminal hyprshell vm/windows.sh install ;;
-    install_gaming_steam) present_terminal hyprshell gaming/install-steam.sh ;;
-    install_gaming_xbox_controllers) present_terminal hyprshell install/xbox-controllers.sh ;;
+    install_webapp) menu_present_terminal hyprshell install/webapp.sh ;;
+    install_tui) menu_present_terminal hyprshell install/tui.sh ;;
+    install_windows) menu_present_terminal hyprshell vm/windows.sh install ;;
+    install_gaming_steam) menu_present_terminal hyprshell gaming/install-steam.sh ;;
+    install_gaming_xbox_controllers) menu_present_terminal hyprshell install/xbox-controllers.sh ;;
     install_gaming_retroarch) install "RetroArch" "retroarch retroarch-assets-xmb libretro-core-info" "com.libretro.RetroArch.desktop" ;;
     install_gaming_lutris) install "Lutris" "lutris umu-launcher wine-staging wine-mono wine-gecko winetricks python-protobuf" "net.lutris.Lutris.desktop" ;;
     install_gaming_heroic) aur_install "Heroic Games Launcher" "heroic-games-launcher-bin" ;;
-    install_gaming_retro_launcher) hyprshell gaming/retro-launcher.sh ;;
+    install_gaming_retro_launcher) hyprshell gaming/retro-launcher.sh install ;;
     install_dev_ruby) run_dev_env_install ruby ;;
-    install_dev_docker_dbs) present_terminal hyprshell install/docker-dbs.sh ;;
+    install_dev_docker_dbs) menu_present_terminal hyprshell install/docker-dbs.sh ;;
     install_dev_go) run_dev_env_install go ;;
     install_dev_python) run_dev_env_install python ;;
     install_dev_zig) run_dev_env_install zig ;;
@@ -140,10 +187,8 @@ menu_run_action_install() {
     install_dev_symfony) run_dev_env_install symfony ;;
     install_dev_elixir) run_dev_env_install elixir ;;
     install_dev_phoenix) run_dev_env_install phoenix ;;
-    *) return 1 ;;
+    *) return "${MENU_ACTION_UNKNOWN}" ;;
   esac
-
-  return 0
 }
 
 menu_register_action_handler menu_run_action_install

@@ -51,18 +51,18 @@ menu_run_action_core() {
 
   case "${action_id}" in
     ai_dashboard) hyprshell system/agent-hub ;;
-    ai_claude) present_terminal --hypr-profile large --app-id org.agent.Claude --title "Claude Code" -- claude ;;
-    ai_codex) present_terminal --hypr-profile large --app-id org.agent.Codex --title Codex -- codex ;;
-    ai_opencode) present_terminal --hypr-profile large --app-id org.agent.OpenCode --title OpenCode -- opencode ;;
+    ai_claude) menu_present_terminal --hypr-profile large --app-id org.agent.Claude --title "Claude Code" -- claude ;;
+    ai_codex) menu_present_terminal --hypr-profile large --app-id org.agent.Codex --title Codex -- codex ;;
+    ai_opencode) menu_present_terminal --hypr-profile large --app-id org.agent.OpenCode --title OpenCode -- opencode ;;
     main_apps) hyprshell rofi/rofi-launch.sh ;;
     main_bookmarks) hyprshell rofi/run-after-close.sh -- quickshell ipc call bar bookmarks ;;
-    main_about) present_terminal --hypr-profile tui --app-id org.tui.About --title About -- hyprshell util/about.sh ;;
-    dev_calculator) present_terminal --hypr-cells 96 28 --app-id org.tui.Calc --title Calculator -- hyprshell util/calc-tui.py ;;
-    dev_git) present_terminal --hypr-profile tui --app-id org.tui.LazyGit --title LazyGit -- lazygit ;;
-    dev_docker) present_terminal --hypr-profile tui --app-id org.tui.LazyDocker --title LazyDocker -- lazydocker ;;
+    main_about) menu_present_terminal --hypr-profile tui --app-id org.tui.About --title About -- hyprshell util/about.sh ;;
+    dev_calculator) menu_present_terminal --hypr-cells 96 28 --app-id org.tui.Calc --title Calculator -- hyprshell util/calc-tui.py ;;
+    dev_git) menu_present_terminal --hypr-profile tui --app-id org.tui.LazyGit --title LazyGit -- lazygit ;;
+    dev_docker) menu_present_terminal --hypr-profile tui --app-id org.tui.LazyDocker --title LazyDocker -- lazydocker ;;
     dev_system_monitor) hyprshell util/sysmon-launch.sh ;;
-    dev_gpu_monitor) present_terminal --hypr-profile tui --app-id org.tui.Nvtop --title Nvtop -- nvtop ;;
-    dev_disk_usage) present_terminal --hypr-profile tui --app-id org.tui.Dua --title Dua -- dua i ;;
+    dev_gpu_monitor) menu_present_terminal --hypr-profile tui --app-id org.tui.Nvtop --title Nvtop -- nvtop ;;
+    dev_disk_usage) menu_present_terminal --hypr-profile tui --app-id org.tui.Dua --title Dua -- dua i ;;
     dev_music_player) hyprshell launch/summon.sh --float-if-workspace-occupied class:org.tui.Rmpc -- hyprshell launch/tui.sh --app-id org.tui.Rmpc --title Rmpc -- "${XDG_CONFIG_HOME}/rmpc/lib/launch" ;;
     learn_keybindings_hyprland) hyprshell rofi/run-after-close.sh -- hyprshell keybinds/keybinds_hint.sh ;;
     learn_keybindings_kitty) hyprshell rofi/run-after-close.sh -- hyprshell keybinds/app-hints.sh kitty ;;
@@ -79,10 +79,8 @@ menu_run_action_core() {
     learn_python_argparse) hyprshell launch/webapp.sh "https://docs.python.org/3/library/argparse.html" ;;
     learn_python_requests) hyprshell launch/webapp.sh "https://requests.readthedocs.io/" ;;
     learn_python_psutil) hyprshell launch/webapp.sh "https://psutil.readthedocs.io/" ;;
-    *) return 1 ;;
+    *) return "${MENU_ACTION_UNKNOWN}" ;;
   esac
-
-  return 0
 }
 
 menu_register_action_handler menu_run_action_core

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-hypr_runtime_root_dir() {
+hypr_ensure_runtime_root_dir() {
   local runtime_dir="${XDG_RUNTIME_DIR:-/run/user/${UID}}"
   local fallback_dir=""
 
@@ -14,12 +14,12 @@ hypr_runtime_root_dir() {
   printf '%s\n' "${fallback_dir}"
 }
 
-hypr_runtime_subdir() {
+hypr_ensure_runtime_subdir() {
   local subdir="${1:-}"
   local runtime_root=""
   local target_dir=""
 
-  runtime_root="$(hypr_runtime_root_dir)" || return 1
+  runtime_root="$(hypr_ensure_runtime_root_dir)" || return 1
   if [[ -z "${subdir}" ]]; then
     printf '%s\n' "${runtime_root}"
     return 0

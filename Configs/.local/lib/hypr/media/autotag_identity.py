@@ -15,6 +15,7 @@ MIN_ARTIST_SIMILARITY = 0.50
 MIN_ALBUM_SIMILARITY = 0.60
 CREDIT_NAME_SIMILARITY = 0.90
 CREDIT_RECOVERY_TITLE_SIMILARITY = 0.80
+LATIN_EXTENDED_B_END = 0x24F
 
 BRACKETED_FEATURE = re.compile(
     r"\s*[\(\[]\s*(?:feat\.?|ft\.?|featuring|with)\s+"
@@ -76,7 +77,7 @@ def similarity(left: str, right: str) -> float:
 
 
 def has_non_latin(text: str) -> bool:
-    return any(character.isalpha() and ord(character) > 0x24F for character in text)
+    return any(character.isalpha() and ord(character) > LATIN_EXTENDED_B_END for character in text)
 
 
 def same_script(left: str, right: str) -> bool:
@@ -175,9 +176,7 @@ def primary_artist(album_artist: str, artist: str) -> str:
     """The release owner, not a collaboration-specific credit."""
     if album_artist:
         return album_artist
-    return re.split(
-        r"\s*(?:,|&|;|\bfeat\.?\b|\bft\.?\b|\bwith\b)\s*", artist, maxsplit=1
-    )[0].strip()
+    return CREDIT_SEPARATOR.split(artist, maxsplit=1)[0].strip()
 
 
 def credit_names(artist: str, title: str = "") -> list[str]:
@@ -239,7 +238,7 @@ def split_leading_artist(title: str, artist: str) -> str:
     if " - " not in title:
         return title
     left, _, right = title.partition(" - ")
-    return right.strip() if right and (not artist or similarity(left, artist) >= 0.5) else title
+    return right.strip() if right and (not artist or similarity(left, artist) >= MIN_ARTIST_SIMILARITY) else title
 
 
 def bucket_index(parts: tuple[str, ...]) -> int:

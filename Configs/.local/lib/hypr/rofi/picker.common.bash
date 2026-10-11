@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+source "${BASH_SOURCE[0]%/*}/close.bash"
+
 PICKER_CATEGORY_TAG=":cat:"
 PICKER_BACK_TAG=":b:a:c:k:"
 PICKER_BACK_ENTRY="◀ Back	${PICKER_BACK_TAG}"
@@ -19,26 +21,35 @@ rofi_picker_is_back() {
   [[ "$1" == *"${PICKER_BACK_TAG}" ]]
 }
 
-rofi_picker_bootstrap() {
-  pkill -u "$USER" rofi && exit 0
+rofi_picker_help_requested() {
+  local arg=""
+  for arg in "$@"; do
+    [[ "${arg}" == -h || "${arg}" == --help ]] && return 0
+  done
+  return 1
+}
 
-  local hyprshell_path=""
-  hyprshell_path="$(command -v hyprshell)" || return 1
+rofi_picker_toggle_off_if_open() {
+  rofi_picker_help_requested "$@" && return 0
+  rofi_close_running && exit 0
+  (($? == ROFI_NOT_RUNNING)) || exit 1
+}
 
+rofi_picker_load_environment() {
   # shellcheck source=/dev/null
-  source "${hyprshell_path}" || return 1
+  source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || return 1
+  hypr_runtime_load_shell_environment || return 1
   # shellcheck source=/dev/null
   source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/rofi/rofi.lib.bash" || return 1
 }
 
-rofi_picker_hypr_dir_vars() {
-  local out_config_name="$1"
-  local out_cache_name="$2"
-  local _picker_config_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}"
-  local _picker_cache_dir="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}"
-
-  printf -v "${out_config_name}" '%s' "${_picker_config_dir}"
-  printf -v "${out_cache_name}" '%s' "${_picker_cache_dir}"
+rofi_picker_paths_into() {
+  local -n picker_paths_ref="$1"
+  local picker_name="$2"
+  picker_paths_ref[config_dir]="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}"
+  picker_paths_ref[cache_dir]="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}"
+  picker_paths_ref[data_file]="${picker_paths_ref[config_dir]}/${picker_name}.db"
+  picker_paths_ref[recent_file]="${picker_paths_ref[cache_dir]}/landing/show_${picker_name}.recent"
 }
 
 rofi_picker_prepare_data_file() {

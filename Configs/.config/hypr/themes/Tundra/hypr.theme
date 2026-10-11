@@ -16,7 +16,7 @@ $NOTIFICATION_FONT = ZedMono Nerd Font Mono
 general {
     gaps_in = 7
     gaps_out = 11
-    border_size = 2
+    border_size = 3
     col.active_border = rgba(E69AADff)
     col.inactive_border = rgba(5E7A94ff)
     layout = dwindle

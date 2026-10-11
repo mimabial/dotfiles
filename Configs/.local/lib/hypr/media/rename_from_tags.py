@@ -11,7 +11,7 @@ from pathlib import Path
 
 from mutagen import MutagenError
 
-from audio_tags import SUPPORTED, read_tags
+from audio_tags import SUPPORTED_LABEL, read_tags, selected_extensions
 from autotag_identity import (
     MIN_ALBUM_SIMILARITY,
     drop_redundant_feat,
@@ -35,18 +35,18 @@ DEFAULT_ALBUM_PATTERN = "{tracknumber}. {title}"
 FIELDS = ("artist", "albumartist", "title", "album", "tracknumber", "date", "genre")
 
 
-def sanitize(value: str) -> str:
+def sanitize_filename_field(value: str) -> str:
     value = value.replace("/", "-")
     value = re.sub(r"[\x00-\x1f]", "", value)
     value = re.sub(r"\s{2,}", " ", value)
     return value.strip().rstrip(". ")
 
 
-def fields_for(tags) -> dict:
-    values = {name: sanitize(existing(tags, name)) for name in FIELDS}
+def filename_fields_from_tags(tags) -> dict:
+    values = {name: sanitize_filename_field(existing(tags, name)) for name in FIELDS}
     # Ripped-video tags repeat the artist in the title and keep the "(Music Video)"
     # suffix; without this the pattern renders both twice over.
-    values["title"] = sanitize(
+    values["title"] = sanitize_filename_field(
         drop_redundant_feat(
             clean_title(split_leading_artist(values["title"], values["artist"])),
             values["artist"],
@@ -58,9 +58,9 @@ def fields_for(tags) -> dict:
     return values
 
 
-def render(pattern: str, values: dict) -> str:
+def render_filename_pattern(pattern: str, values: dict) -> str:
     try:
-        return sanitize(pattern.format(**values))
+        return sanitize_filename_field(pattern.format(**values))
     except KeyError as exc:
         raise SystemExit(f"unknown field {exc} in pattern; known: {', '.join(FIELDS)}")
 
@@ -100,7 +100,7 @@ def credit_loss_for_rename(path: Path, values: dict) -> list[str]:
     )
 
 
-def collect(paths: list[str], wanted: set[str]) -> list[Path]:
+def collect_audio_files(paths: list[str], wanted: set[str]) -> list[Path]:
     found: list[Path] = []
     for raw in paths:
         path = Path(raw).expanduser()
@@ -116,7 +116,7 @@ def collect(paths: list[str], wanted: set[str]) -> list[Path]:
     return found
 
 
-class Skip(Exception):
+class SkipRename(Exception):
     """A file left alone; the message is the line reported for it."""
 
 
@@ -150,36 +150,33 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--ext", default="",
                         help="Comma-separated extensions to include "
-                             f"(default: {','.join(sorted(e[1:] for e in SUPPORTED))})")
+                             f"(default: {SUPPORTED_LABEL})")
     args = parser.parse_args()
 
-    if args.ext:
-        args.wanted = {"." + e.strip().lstrip(".").lower() for e in args.ext.split(",") if e.strip()}
-        unknown = args.wanted - SUPPORTED
-        if unknown:
-            parser.error(f"unsupported extension(s): {', '.join(sorted(unknown))}")
-    else:
-        args.wanted = set(SUPPORTED)
+    try:
+        args.wanted = selected_extensions(args.ext)
+    except ValueError as error:
+        parser.error(str(error))
     return args
 
 
 def rename_target(path: Path, pattern_override: str, allow_credit_loss: bool) -> Path:
     try:
         tags = read_tags(path)
-        values = fields_for(tags)
+        values = filename_fields_from_tags(tags)
     except (MutagenError, OSError) as exc:
-        raise Skip(f"!! {path.name}: unreadable: {exc}") from exc
+        raise SkipRename(f"!! {path.name}: unreadable: {exc}") from exc
 
     pattern = pattern_override or default_pattern_for(path, tags)
     missing = [f for f in re.findall(r"{(\w+)}", pattern) if not values.get(f)]
     if missing:
-        raise Skip(f"?? {path.name}: no {', '.join(missing)} tag")
+        raise SkipRename(f"?? {path.name}: no {', '.join(missing)} tag")
 
     lost_credits = credit_loss_for_rename(path, values)
     if lost_credits and not allow_credit_loss:
-        raise Skip(f"!! {path.name}: would remove credit(s): {', '.join(lost_credits)}")
+        raise SkipRename(f"!! {path.name}: would remove credit(s): {', '.join(lost_credits)}")
 
-    return path.with_name(render(pattern, values) + path.suffix.lower())
+    return path.with_name(render_filename_pattern(pattern, values) + path.suffix.lower())
 
 
 def report_move(path: Path, target: Path, move_plan, applied: bool) -> None:
@@ -196,7 +193,7 @@ def report_move(path: Path, target: Path, move_plan, applied: bool) -> None:
 
 def main() -> int:
     args = parse_args()
-    files = collect(args.paths or [str(music_library_dir())], args.wanted)
+    files = collect_audio_files(args.paths or [str(music_library_dir())], args.wanted)
     if not files:
         print(f"no {'/'.join(sorted(args.wanted))} files found", file=sys.stderr)
         return 0
@@ -211,19 +208,19 @@ def main() -> int:
                 unchanged += 1
                 continue
             if target in planned or (target.exists() and not target.samefile(path)):
-                raise Skip(f"!! {path.name}: target exists: {target.name}")
+                raise SkipRename(f"!! {path.name}: target exists: {target.name}")
             try:
                 move_plan = build_move_plan(path, target)
             except MoveError as exc:
-                raise Skip(f"!! {path.name}: {exc}") from exc
+                raise SkipRename(f"!! {path.name}: {exc}") from exc
 
             planned.add(target)
             if args.apply:
                 try:
                     apply_move_plan(move_plan)
                 except (MoveError, OSError) as exc:
-                    raise Skip(f"!! {path.name}: rename failed: {exc}") from exc
-        except Skip as skip:
+                    raise SkipRename(f"!! {path.name}: rename failed: {exc}") from exc
+        except SkipRename as skip:
             print(skip, file=sys.stderr)
             skipped += 1
             continue

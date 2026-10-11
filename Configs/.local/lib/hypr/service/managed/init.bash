@@ -1,0 +1,6 @@
+source "${BASH_SOURCE[0]%/*}/output.bash"
+source "${BASH_SOURCE[0]%/*}/cli.bash"
+source "${BASH_SOURCE[0]%/*}/paths.bash"
+source "${BASH_SOURCE[0]%/*}/backup.bash"
+source "${BASH_SOURCE[0]%/*}/apply.bash"
+source "${BASH_SOURCE[0]%/*}/manifest.bash"

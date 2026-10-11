@@ -81,14 +81,14 @@ class MediaPlayerPresenterTests(unittest.TestCase):
         self.assertEqual(window_aliases("mpd"), ("org.tui.Rmpc",))
         self.assertEqual(window_aliases("fftab_t98"), ("firefox",))
 
-    @patch("mediaplayer_presenter.command")
-    def test_focus_actions_dispatch_hypr_lua(self, command):
-        command.return_value.returncode = 0
+    @patch("mediaplayer_presenter.run_desktop_command")
+    def test_focus_actions_dispatch_hypr_lua(self, run_desktop_command):
+        run_desktop_command.return_value.returncode = 0
 
         self.assertTrue(focus_window("0xplayer"))
         self.assertTrue(focus_empty_workspace())
         self.assertEqual(
-            command.call_args_list[0].args[0],
+            run_desktop_command.call_args_list[0].args[0],
             [
                 "hyprctl",
                 "dispatch",
@@ -96,7 +96,7 @@ class MediaPlayerPresenterTests(unittest.TestCase):
             ],
         )
         self.assertEqual(
-            command.call_args_list[1].args[0],
+            run_desktop_command.call_args_list[1].args[0],
             ["hyprctl", "dispatch", 'hl.dsp.focus({workspace="empty"})'],
         )
 
@@ -153,14 +153,14 @@ class MediaPlayerPresenterTests(unittest.TestCase):
         self.assertIn("launch/tui.sh", launch)
         self.assertIn("org.tui.Rmpc", launch)
 
-    @patch("mediaplayer_presenter.command")
+    @patch("mediaplayer_presenter.run_desktop_command")
     @patch("mediaplayer_presenter.shutil.which", return_value="/usr/bin/hyprshell")
-    def test_mpd_summon_uses_conditional_float_policy(self, _which, command):
-        command.return_value.returncode = 0
+    def test_mpd_summon_uses_conditional_float_policy(self, _which, run_desktop_command):
+        run_desktop_command.return_value.returncode = 0
 
         self.assertTrue(launch_frontend("mpd", "", ""))
 
-        summon = command.call_args.args[0]
+        summon = run_desktop_command.call_args.args[0]
         self.assertEqual(
             summon[:4],
             [

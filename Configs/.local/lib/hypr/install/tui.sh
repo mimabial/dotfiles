@@ -4,20 +4,11 @@ set -euo pipefail
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/install/lib/desktop-entry.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell install/tui [name exec float|tile icon-url]
 Create a TUI app-launcher desktop entry (prompts when args are omitted)." "$@"
-
-desktop_exec_escape() {
-  local value="$1"
-
-  value=${value//\\/\\\\}
-  value=${value//\"/\\\"}
-  value=${value//\$/\\\$}
-  value=${value//\`/\\\`}
-
-  printf '%s\n' "$value"
-}
 
 if [ "$#" -ne 4 ]; then
   echo -e "\e[32mLet's create a TUI shortcut you can start with the app launcher.\n\e[0m"
@@ -41,15 +32,13 @@ if [[ -z "$APP_NAME" || -z "$APP_EXEC" || -z "$ICON_URL" ]]; then
   exit 1
 fi
 
-XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
-ICON_DIR="${XDG_DATA_HOME}/applications/icons"
-DESKTOP_FILE="${XDG_DATA_HOME}/applications/$APP_NAME.desktop"
+DESKTOP_FILE="${DESKTOP_ENTRY_DIR}/$APP_NAME.desktop"
 
 if [[ ! "$ICON_URL" =~ ^https?:// ]] && [ -f "$ICON_URL" ]; then
   ICON_PATH="$ICON_URL"
 else
-  ICON_PATH="$ICON_DIR/$APP_NAME.png"
-  mkdir -p "$ICON_DIR"
+  ICON_PATH="$DESKTOP_ENTRY_ICON_DIR/$APP_NAME.png"
+  mkdir -p "$DESKTOP_ENTRY_ICON_DIR"
   if ! curl -sL -o "$ICON_PATH" "$ICON_URL"; then
     echo "Error: Failed to download icon."
     exit 1
@@ -64,19 +53,21 @@ else
   EXEC_PREFIX="tui-terminal-exec --app-id=$APP_CLASS -- "
 fi
 
-APP_EXEC_DESKTOP=$(desktop_exec_escape "$APP_EXEC")
+APP_NAME_DESKTOP="$(desktop_entry_escape_string_value "$APP_NAME")"
+APP_EXEC_DESKTOP="$(desktop_entry_quote_exec_arg "$APP_EXEC")"
+ICON_PATH_DESKTOP="$(desktop_entry_escape_string_value "$ICON_PATH")"
 
 cat >"$DESKTOP_FILE" <<EOF
 [Desktop Entry]
 Version=1.0
-Name=$APP_NAME
-Comment=$APP_NAME
-Exec=${EXEC_PREFIX}bash -lc "$APP_EXEC_DESKTOP"
+Name=$APP_NAME_DESKTOP
+Comment=$APP_NAME_DESKTOP
+Exec=${EXEC_PREFIX}bash -lc $APP_EXEC_DESKTOP
 Terminal=false
 Type=Application
-Icon=$ICON_PATH
+Icon=$ICON_PATH_DESKTOP
 StartupNotify=true
-X-Hypr-Tui=true
+$TUI_MARKER
 EOF
 
 chmod +x "$DESKTOP_FILE"

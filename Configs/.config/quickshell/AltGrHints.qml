@@ -13,6 +13,17 @@ Scope {
     readonly property string luaPath: decodeURIComponent(Qt.resolvedUrl("altgr-hints.lua").toString().replace(/^file:\/\//, ""))
     property var rows: []
     property int level: 0
+    readonly property bool capsLock: root.level > 2
+    readonly property bool shiftHeld: root.level % 2 === 0
+    readonly property int unshifted: root.capsLock ? 2 : 0
+    readonly property int shifted: root.unshifted + 1
+    readonly property color unshiftedColor: root.shiftHeld ? root.shell.mutedText : root.shell.foreground
+    readonly property color shiftedColor: root.shell.accent
+    readonly property int glyphSize: Commons.Style.font.body * 2
+    readonly property int keyGap: Commons.Style.spacing.sm
+    readonly property int keyInset: Commons.Style.spacing.md
+    readonly property real faceSize: glyphMetrics.height + captionMetrics.height * 2
+    readonly property real keyUnit: root.faceSize + root.keyGap
 
     function refresh() {
         root.level = 0
@@ -54,7 +65,31 @@ Scope {
     }
 
     LayerBlur { surface: "hypr-shell-altgr"; enabled: root.shell.prefs.barBlur; ignoreAlpha: 0.1 }
-    TextMetrics { id: cellMetrics; font.family: root.shell.fontFamily; font.pixelSize: Commons.Style.font.body; text: "◌◌" }
+    FontMetrics { id: glyphMetrics; font.family: root.shell.fontFamily; font.pixelSize: root.glyphSize }
+    FontMetrics { id: captionMetrics; font.family: root.shell.fontFamily; font.pixelSize: Commons.Style.font.caption }
+
+    component KeyLegend: Item {
+        id: legend
+        property string symbol
+        property bool dead
+        property color color
+        property int pixelSize
+        implicitWidth: Math.max(glyph.implicitWidth, legend.dead ? dottedCircle.implicitWidth : 0)
+        implicitHeight: glyph.implicitHeight
+        Text { id: dottedCircle; anchors.centerIn: parent; visible: legend.dead; text: "◌"; color: root.shell.faintText; font: glyph.font }
+        Text { id: glyph; anchors.centerIn: parent; text: legend.symbol; color: legend.color; font.family: root.shell.fontFamily; font.pixelSize: legend.pixelSize }
+    }
+
+    component DeadKeyName: Text {
+        width: parent.width
+        height: captionMetrics.height
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+        fontSizeMode: Text.HorizontalFit
+        minimumPixelSize: 1
+        font.family: root.shell.fontFamily
+        font.pixelSize: Commons.Style.font.caption
+    }
 
     PanelWindow {
         id: window
@@ -70,6 +105,7 @@ Scope {
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
         PopupSurface {
+            id: card
             shell: root.shell
             anchors.fill: parent
 
@@ -78,36 +114,76 @@ Scope {
                 anchors.centerIn: parent
                 spacing: Commons.Style.spacing.controlGap
 
-                Repeater {
-                    model: root.rows
-                    delegate: Row {
-                        required property var modelData
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        spacing: Commons.Style.spacing.sm
+                Row {
+                    Text { id: altgrHeader; text: "altgr"; color: root.unshiftedColor; font.family: root.shell.fontFamily; font.pixelSize: Commons.Style.font.body }
+                    Text { text: " · "; color: root.shell.mutedText; font: altgrHeader.font }
+                    Text { text: "shift"; color: root.shiftedColor; font: altgrHeader.font }
+                    Text { text: (root.capsLock ? " · caps lock" : "") + " · ◌ dead key"; color: root.shell.mutedText; font: altgrHeader.font }
+                }
 
-                        Repeater {
-                            model: parent.modelData
-                            delegate: PopupRow {
-                                id: cell
-                                shell: root.shell
-                                required property var modelData
-                                readonly property string symbol: modelData.symbols[Math.max(0, root.level - 1)]
-                                width: cellMetrics.width + Commons.Style.spacing.controlPaddingX * 2
-                                title: cell.symbol
-                                detail: cell.modelData.key
-                                titleColor: cell.symbol.startsWith("◌") ? root.shell.accent : root.shell.foreground
-                                centerTitle: true
-                                detailAlignment: Text.AlignHCenter
-                                interactive: false
-                                color: root.shell.hoverFill()
+                Column {
+                    spacing: root.keyGap
+
+                    Repeater {
+                        model: root.rows
+                        delegate: Row {
+                            id: keyRow
+                            required property var modelData
+                            leftPadding: keyRow.modelData.indent * root.keyUnit
+                            spacing: root.keyGap
+
+                            Repeater {
+                                model: keyRow.modelData.keys
+                                delegate: Rectangle {
+                                    id: key
+                                    required property var modelData
+                                    readonly property bool letter: key.modelData.key.toLowerCase() !== key.modelData.key
+                                    width: key.modelData.width * root.keyUnit - root.keyGap
+                                    height: deadKeyNames.height + root.faceSize
+                                    radius: root.shell.rounding
+                                    color: root.shell.hoverFill(key.letter ? 2 : 1)
+                                    border.color: card.border.color
+                                    border.width: card.border.width
+
+                                    Column {
+                                        id: deadKeyNames
+                                        width: parent.width
+                                        topPadding: Commons.Style.spacing.xxs
+                                        DeadKeyName { text: key.modelData.dead[root.unshifted]; color: root.unshiftedColor }
+                                        DeadKeyName { text: key.modelData.dead[root.shifted]; color: root.shiftedColor }
+                                    }
+
+                                    Item {
+                                        y: deadKeyNames.height
+                                        width: parent.width
+                                        height: root.faceSize
+
+                                        KeyLegend {
+                                            anchors.centerIn: parent
+                                            symbol: key.modelData.symbols[root.unshifted]
+                                            dead: key.modelData.dead[root.unshifted] !== ""
+                                            color: root.unshiftedColor
+                                            pixelSize: root.glyphSize
+                                        }
+                                        KeyLegend {
+                                            anchors { top: parent.top; right: parent.right; margins: root.keyInset }
+                                            symbol: key.modelData.symbols[root.shifted]
+                                            dead: key.modelData.dead[root.shifted] !== ""
+                                            color: root.shiftedColor
+                                            pixelSize: Commons.Style.font.caption
+                                        }
+                                        Text {
+                                            anchors { bottom: parent.bottom; left: parent.left; margins: root.keyInset }
+                                            text: key.modelData.key
+                                            color: root.shell.mutedText
+                                            font.family: root.shell.fontFamily
+                                            font.pixelSize: Commons.Style.font.caption
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
-                }
-                PopupHint {
-                    shell: root.shell
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: "AltGr" + (root.level % 2 === 0 ? " + Shift" : "") + (root.level > 2 ? " · Caps Lock" : "") + " · ◌ dead key"
                 }
             }
         }

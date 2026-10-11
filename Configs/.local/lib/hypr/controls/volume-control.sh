@@ -1,49 +1,21 @@
 #!/usr/bin/env bash
 set -u
 
-print_volume_limits() {
-  local sink="" sink_fields="" device_api="" card_index="" active_port="" mixer_control="PCM" codec_file="" capabilities=""
-  if ! command -v pactl >/dev/null || ! command -v jq >/dev/null; then
-    printf '{"minimum":-60,"maximum":0,"step":1,"backend":"software"}\n'
-    return
-  fi
-  sink="$(pactl get-default-sink 2>/dev/null || true)"
-  sink_fields="$(pactl --format=json list sinks 2>/dev/null | jq -r --arg sink "${sink}" '.[] | select(.name == $sink) | [(.properties["device.api"] // ""), (.properties["alsa.card"] // ""), (.active_port // "")] | @tsv' | head -1)"
-  IFS=$'\t' read -r device_api card_index active_port <<< "${sink_fields}"
-  [[ "${device_api}" == "alsa" && "${card_index}" =~ ^[0-9]+$ ]] || { printf '{"minimum":-60,"maximum":0,"step":1,"backend":"software"}\n'; return; }
-  case "${active_port,,}" in *headphone*|*headset*) mixer_control="Headphone" ;; *speaker*) mixer_control="Speaker" ;; *lineout*|*line-out*) mixer_control="Line Out" ;; esac
-  for codec_file in /proc/asound/card"${card_index}"/codec#*; do
-    [[ -r "${codec_file}" ]] || continue
-    capabilities="$(awk -v wanted="${mixer_control} Playback Volume" '/Control: name=/ { volume=/Playback Volume/; exact=index($0, "name=\"" wanted "\"") } volume && /Amp-Out caps:/ { if (exact) { print; found=1; exit } if (!fallback) fallback=$0; volume=0 } END { if (!found && fallback) print fallback }' "${codec_file}")"
-    [[ -n "${capabilities}" ]] && break
-  done
-  if [[ "${capabilities}" =~ ofs=0x([[:xdigit:]]+),[[:space:]]+nsteps=0x([[:xdigit:]]+),[[:space:]]+stepsize=0x([[:xdigit:]]+) ]]; then
-    local offset=$((16#${BASH_REMATCH[1]})) steps=$((16#${BASH_REMATCH[2]})) step_size=$((16#${BASH_REMATCH[3]}))
-    awk -v offset="${offset}" -v steps="${steps}" -v step_size="${step_size}" 'BEGIN { step_db=(step_size+1)/4; printf "{\"minimum\":%.2f,\"maximum\":%.2f,\"step\":%.2f,\"backend\":\"alsa\"}\n", -offset*step_db, (steps-offset)*step_db, step_db }'
-    return
-  fi
-  codec_file="/proc/asound/card${card_index}/usbmixer"
-  [[ -r "${codec_file}" ]] && capabilities="$(awk -v wanted="${mixer_control} Playback Volume" '/Control: name=/ { volume=/Playback Volume/; exact=index($0, "name=\"" wanted "\"") } volume && /Volume:.*dBmin=/ { if (exact) { print; found=1; exit } if (!fallback) fallback=$0; volume=0 } END { if (!found && fallback) print fallback }' "${codec_file}")"
-  if [[ "${capabilities}" =~ dBmin=(-?[0-9]+),[[:space:]]*dBmax=(-?[0-9]+) ]]; then
-    awk -v minimum="${BASH_REMATCH[1]}" -v maximum="${BASH_REMATCH[2]}" 'BEGIN { printf "{\"minimum\":%.2f,\"maximum\":%.2f,\"step\":1,\"backend\":\"alsa\"}\n", minimum/100, maximum/100 }'
-  else
-    printf '{"minimum":-60,"maximum":0,"step":1,"backend":"software"}\n'
-  fi
-}
+source "${BASH_SOURCE[0]%/*}/lib/volume-limits.bash"
 
 [[ "${1:-}" == "--limits" ]] && { print_volume_limits; exit; }
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR}/controls/lib/control.common.bash"
+source "${HYPR_LIB_DIR}/controls/lib/control-feedback.bash"
+source "${HYPR_LIB_DIR}/controls/lib/audio-streams.bash"
 
-readonly VOLUME_NOTIFY_REPLACE_ID=8
-readonly VOLUME_NOTIFY_TIMEOUT_MS=800
+source "${HYPR_LIB_DIR}/controls/lib/audio-outputs.bash"
+
 readonly VOLUME_DEFAULT_BOOST_LIMIT=150
 readonly VOLUME_DEFAULT_STEP=5
-readonly VOLUME_BAR_DIVISOR=15
-readonly VOLUME_ANGLE_QUANTIZATION_DEG=5
+readonly PLAYER_UNMUTE_FALLBACK_VOLUME=0.5
 
 usage() {
   cat <<EOF
@@ -73,45 +45,6 @@ require_commands() {
   done
 }
 
-get_default_sink_label() {
-  wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk -F'"' '/node.description = / { print $2; exit }'
-}
-
-get_default_sink_id() {
-  wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null \
-    | awk '/^id / { gsub(/,/, "", $2); print $2; exit }'
-}
-
-list_sinks_tsv() {
-  pw-dump |
-    jq -r '.[] | select(.type=="PipeWire:Interface:Node" and .info?.props?."media.class"=="Audio/Sink") | [.info.props."object.id", (.info.props."node.description" // .info.props."node.name" // "Unknown")] | @tsv'
-}
-
-audio_sink_id_at_offset() {
-  local current_id="$1"
-  local offset="$2"
-  local -a sinks=()
-  local current_index=-1
-  local next_index=0
-  local i=0
-  local sink_id=""
-
-  mapfile -t sinks < <(list_sinks_tsv)
-  (( ${#sinks[@]} == 0 )) && return 1
-
-  for i in "${!sinks[@]}"; do
-    sink_id="${sinks[$i]%%$'\t'*}"
-    [[ "${sink_id}" == "${current_id}" ]] && { current_index="${i}"; break; }
-  done
-
-  if (( current_index < 0 )); then
-    next_index=0
-  else
-    next_index=$(( (current_index + offset) % ${#sinks[@]} ))
-  fi
-  printf '%s\n' "${sinks[$next_index]}"
-}
-
 playerctl_cmd() {
   local player_name="$1"
   shift
@@ -132,26 +65,13 @@ sink_is_muted() {
   wpctl get-volume "${target}" 2>/dev/null | grep -q "MUTED"
 }
 
-icons_media_dir() {
-  printf '%s/Hypr-Icon/media\n' "${ICONS_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/icons}"
-}
-
 notify_volume() {
   local notify_enabled="$1"
   local volume_pct="$2"
   local label="$3"
-  local angle=""
-  local icon=""
-  local bar=""
 
   is_true "${notify_enabled}" || return 0
-  angle=$(((volume_pct + VOLUME_ANGLE_QUANTIZATION_DEG / 2) / VOLUME_ANGLE_QUANTIZATION_DEG * VOLUME_ANGLE_QUANTIZATION_DEG))
-  ((angle > 100)) && angle=100
-  icon="$(icons_media_dir)/knob-${angle}.svg"
-  printf -v bar '%*s' "$((volume_pct / VOLUME_BAR_DIVISOR))" ''
-  bar="${bar// /.}"
-  dunstify -a "Volume control" -r "${VOLUME_NOTIFY_REPLACE_ID}" -t "${VOLUME_NOTIFY_TIMEOUT_MS}" \
-    -e -i "${icon}" "${volume_pct}${bar}" "${label}"
+  notify_level "Volume control" "${NOTIFY_ID_VOLUME}" "${volume_pct}" "${label}"
 }
 
 notify_mute() {
@@ -166,8 +86,8 @@ notify_mute() {
   [[ "${device_kind}" == "source" ]] && icon_suffix="microphone"
   [[ "${muted}" == "true" ]] && prefix="muted"
 
-  dunstify -a "Volume control" -r "${VOLUME_NOTIFY_REPLACE_ID}" -t "${VOLUME_NOTIFY_TIMEOUT_MS}" \
-    -e -i "$(icons_media_dir)/${prefix}-${icon_suffix}.svg" "${prefix}" "${label}"
+  dunstify -a "Volume control" -r "${NOTIFY_ID_VOLUME}" -t "${NOTIFY_OSD_MS}" \
+    -e -i "$(media_icons_dir)/${prefix}-${icon_suffix}.svg" "${prefix}" "${label}"
 }
 
 apply_sink_delta() {
@@ -232,69 +152,9 @@ toggle_player_mute() {
   if [[ -f "${volume_file}" ]]; then
     playerctl_cmd "${player_name}" volume "$(<"${volume_file}")"
   else
-    playerctl_cmd "${player_name}" volume 0.5
+    playerctl_cmd "${player_name}" volume "${PLAYER_UNMUTE_FALLBACK_VOLUME}"
   fi
   printf 'false\n'
-}
-
-move_application_streams() {
-  local old_sink="$1" new_sink="$2" old_index="" metadata="" streams=""
-  local input="" object_id="" target=""
-  local -A explicit_targets=()
-
-  [[ -n ${old_sink} && ${old_sink} != "${new_sink}" ]] || return 0
-  metadata=$(pw-metadata -n default 2>/dev/null) || return 0
-  old_index=$(pactl -f json list sinks 2>/dev/null |
-    jq -r --arg name "${old_sink}" 'map(select(.name == $name))[0].index // empty') || return 0
-  [[ ${old_index} =~ ^[0-9]+$ ]] || return 0
-  streams=$(pactl -f json list sink-inputs 2>/dev/null |
-    jq -r --arg sink "${old_index}" '.[]
-      | select((.sink | tostring) == $sink)
-      | select(.properties."application.name" != null and .properties."application.name" != "EasyEffects")
-      | [.index, (.properties."object.id" // "")] | @tsv') || return 0
-
-  while IFS=$'\t' read -r object_id target; do
-    [[ ${object_id} =~ ^[0-9]+$ && ${target} != -1 ]] && explicit_targets["${object_id}"]=1
-  done < <(sed -n "s/^update: id:\([0-9][0-9]*\) key:'target\.\(object\|node\)' value:'\([^']*\)'.*/\1\t\3/p" <<<"${metadata}")
-
-  while IFS=$'\t' read -r input object_id; do
-    [[ ${input} =~ ^[0-9]+$ ]] || continue
-    [[ -n ${object_id} && -n ${explicit_targets[${object_id}]:-} ]] && continue
-    pactl move-sink-input "${input}" "${new_sink}" >/dev/null 2>&1 || true
-  done <<<"${streams}"
-}
-
-set_default_output() {
-  local sink_id="$1"
-  local sink_name="$2"
-  local old_sink=""
-
-  old_sink=$(pactl get-default-sink 2>/dev/null || true)
-
-  if wpctl set-default "${sink_id}" && pactl set-default-sink "${sink_name}"; then
-    move_application_streams "${old_sink}" "${sink_name}"
-    dunstify -t "${VOLUME_NOTIFY_TIMEOUT_MS}" -i "$(icons_media_dir)/unmuted-speaker.svg" \
-      -r "${VOLUME_NOTIFY_REPLACE_ID}" -u low "Activated: ${sink_name}"
-  else
-    dunstify -t "${VOLUME_NOTIFY_TIMEOUT_MS}" -r "${VOLUME_NOTIFY_REPLACE_ID}" -u critical \
-      -i "dialog-error" "Error activating ${sink_name}"
-    return 1
-  fi
-}
-
-toggle_output_to_next_sink() {
-  local current_id=""
-  local next_line=""
-  local next_id=""
-  local next_desc=""
-
-  require_commands pw-dump jq wpctl pactl dunstify || return 1
-  current_id="$(get_default_sink_id)"
-  next_line="$(audio_sink_id_at_offset "${current_id}" 1)" || return 1
-  next_id="${next_line%%$'\t'*}"
-  next_desc="${next_line#*$'\t'}"
-
-  set_default_output "${next_id}" "${next_desc}"
 }
 
 run_action() {
@@ -387,7 +247,7 @@ parse_args() {
       o)
         options_ref[device_kind]="sink"
         options_ref[target]="@DEFAULT_AUDIO_SINK@"
-        options_ref[label]="$(get_default_sink_label)"
+        options_ref[label]="$(get_sink_label @DEFAULT_AUDIO_SINK@)"
         ;;
       p)
         options_ref[device_kind]="player"

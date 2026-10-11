@@ -20,6 +20,7 @@ PopupCard {
     // marked ids stay hidden until a report finishes with nothing pending
     property var dismissed: []
     property var queued: []
+    property var marking: []
     property bool refreshAgain: false
     readonly property var notifications: (inbox.items || []).filter(item => !dismissed.includes(item.id))
     readonly property var reviewItems: reviews.items || []
@@ -29,6 +30,7 @@ PopupCard {
     function markRead(id) { dismissed = dismissed.concat(id); queued = queued.concat(id); sendMarks() }
     function sendMarks() {
         if (markProc.running || queued.length === 0) return
+        marking = queued
         markProc.command = ["hyprshell", "github-notifications", "--mark-read"].concat(queued)
         queued = []
         markProc.running = true
@@ -46,7 +48,9 @@ PopupCard {
         } }
     }
     property Process markProc: Process {
-        onExited: {
+        onExited: (exitCode) => {
+            if (exitCode !== 0) root.dismissed = root.dismissed.filter(id => !root.marking.includes(id))
+            root.marking = []
             if (root.queued.length > 0) root.sendMarks()
             else {
                 root.moduleRefreshRequested()

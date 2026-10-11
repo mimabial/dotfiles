@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 
+TRIGGER_ROFI_CLOSE_WAIT_S=3
+
 trigger_rofi_gone() {
   ! hypr_layer_mapped rofi
 }
 
 trigger_spawn_detached() {
   (
-    pkill -u "${UID}" -x rofi >/dev/null 2>&1 && hypr_wait_for 3 'closelayer>>rofi' trigger_rofi_gone
+    if pkill -u "${UID}" -x rofi >/dev/null 2>&1; then
+      hypr_wait_for "${TRIGGER_ROFI_CLOSE_WAIT_S}" 'closelayer>>rofi' trigger_rofi_gone || exit 1
+    fi
     exec "$@"
   ) >/dev/null 2>&1 </dev/null &
 }
@@ -93,10 +97,8 @@ menu_run_action_trigger() {
     trigger_toggle_bar) hyprshell quickshell/visibility.sh toggle ;;
     trigger_toggle_workspace_layout_*) hyprshell util/window-layout --set "${action_id#trigger_toggle_workspace_layout_}" ;;
     trigger_toggle_window_gaps) hyprshell window/gaps-toggle.sh ;;
-    *) return 1 ;;
+    *) return "${MENU_ACTION_UNKNOWN}" ;;
   esac
-
-  return 0
 }
 
 menu_register_action_handler menu_run_action_trigger
@@ -111,11 +113,11 @@ menu_active_trigger() {
   local target="$1" gaps_on='"css": *"[1-9]'
 
   case "${target}" in
-    trigger_toggle_nightlight) menu_state HYPRSUNSET_ENABLED state_get HYPRSUNSET_ENABLED 0 && [[ "${REPLY}" == 1 ]] ;;
-    trigger_toggle_keep_awake) menu_state HYPR_KEEP_AWAKE state_get HYPR_KEEP_AWAKE 0 && [[ "${REPLY}" == 1 ]] ;;
-    trigger_toggle_notifications) menu_state notifications_paused dunstctl is-paused && [[ "${REPLY}" == false ]] ;;
-    trigger_toggle_window_gaps) menu_state gaps_out hyprctl -j getoption general:gaps_out && [[ "${REPLY}" =~ ${gaps_on} ]] ;;
-    trigger_toggle_workspace_layout_*) menu_choice "${target}" trigger_toggle_workspace_layout_ trigger_workspace_layout ;;
+    trigger_toggle_nightlight) menu_cached_state_reply HYPRSUNSET_ENABLED state_get HYPRSUNSET_ENABLED 0 && [[ "${REPLY}" == 1 ]] ;;
+    trigger_toggle_keep_awake) menu_cached_state_reply HYPR_KEEP_AWAKE state_get HYPR_KEEP_AWAKE 0 && [[ "${REPLY}" == 1 ]] ;;
+    trigger_toggle_notifications) menu_cached_state_reply notifications_paused dunstctl is-paused && [[ "${REPLY}" == false ]] ;;
+    trigger_toggle_window_gaps) menu_cached_state_reply gaps_out rofi_option_json general:gaps_out && [[ "${REPLY}" =~ ${gaps_on} ]] ;;
+    trigger_toggle_workspace_layout_*) menu_choice_matches "${target}" trigger_toggle_workspace_layout_ trigger_workspace_layout ;;
     *) return 1 ;;
   esac
 }

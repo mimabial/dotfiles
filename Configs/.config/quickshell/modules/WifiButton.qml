@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell.Networking
 import ".."
+import "StatusSymbols.js" as StatusSymbols
 
 BarButton {
     id: root
@@ -15,6 +16,7 @@ BarButton {
         return null
     }
     css: "wifi"; text: "󰖩"
+    symbol: root.styledSymbol ? StatusSymbols.wifi(Networking.wifiEnabled, root.connectedNetwork) : ""
     tooltip: !Networking.wifiEnabled ? "Wi-Fi off"
         : !root.connectedNetwork ? "Not connected"
         : root.connectedNetwork.name + "\nSignal: " + Math.round(root.connectedNetwork.signalStrength * 100) + "%"

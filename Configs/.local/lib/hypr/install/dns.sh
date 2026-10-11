@@ -17,6 +17,8 @@ if ! [[ -d /run/systemd/system ]] || ! command -v resolvectl >/dev/null 2>&1; th
   exit 1
 fi
 
+QUAD9_FALLBACK_DNS="9.9.9.9 149.112.112.112"
+
 validate_dns_entry() {
   local entry="$1"
   local address="$entry"
@@ -64,18 +66,16 @@ write_resolved_config() {
 }
 
 disable_network_dns_override_file() {
-  local file="$1"
+  local file="$1" section=""
 
-  grep -q "^\[DHCPv4\]" "${file}" || return 0
-
-  if ! sed -n '/^\[DHCPv4\]/,/^\[/p' "${file}" | grep -q "^UseDNS="; then
-    sudo sed -i '/^\[DHCPv4\]/a UseDNS=no' "${file}"
-  fi
-
-  if grep -q "^\[IPv6AcceptRA\]" "${file}" &&
-    ! sed -n '/^\[IPv6AcceptRA\]/,/^\[/p' "${file}" | grep -q "^UseDNS="; then
-    sudo sed -i '/^\[IPv6AcceptRA\]/a UseDNS=no' "${file}"
-  fi
+  for section in DHCPv4 IPv6AcceptRA; do
+    grep -q "^\[${section}\]" "${file}" || continue
+    if sed -n "/^\[${section}\]/,/^\[/p" "${file}" | grep -q "^UseDNS="; then
+      sudo sed -i "/^\[${section}\]/,/^\[/ s/^UseDNS=.*/UseDNS=no/" "${file}"
+    else
+      sudo sed -i "/^\[${section}\]/a UseDNS=no" "${file}"
+    fi
+  done
 }
 
 enable_network_dns_override_file() {
@@ -94,11 +94,21 @@ for_each_network_file() {
   done
 }
 
+networkd_manages_links() {
+  systemctl is-active --quiet systemd-networkd
+}
+
 restart_dns_services() {
-  sudo systemctl restart systemd-networkd systemd-resolved
+  if networkd_manages_links; then
+    sudo systemctl restart systemd-networkd systemd-resolved
+  else
+    sudo systemctl restart systemd-resolved
+  fi
 }
 
 apply_dns_override_mode() {
+  networkd_manages_links ||
+    printf 'systemd-networkd is not active, so DNS from DHCP is left to the network manager in use.\n' >&2
   case "$1" in
     static) for_each_network_file disable_network_dns_override_file ;;
     dhcp) for_each_network_file enable_network_dns_override_file ;;
@@ -132,10 +142,10 @@ prompt_custom_dns_servers() {
 }
 
 apply_cloudflare_dns() {
-  write_resolved_config <<'EOF'
+  write_resolved_config <<EOF
 [Resolve]
 DNS=1.1.1.1#cloudflare-dns.com 1.0.0.1#cloudflare-dns.com
-FallbackDNS=9.9.9.9 149.112.112.112
+FallbackDNS=${QUAD9_FALLBACK_DNS}
 DNSOverTLS=opportunistic
 EOF
 
@@ -156,7 +166,7 @@ EOF
 apply_custom_dns() {
   local dns_servers="$1"
 
-  printf '[Resolve]\nDNS=%s\nFallbackDNS=9.9.9.9 149.112.112.112\n' "${dns_servers}" |
+  printf '[Resolve]\nDNS=%s\nFallbackDNS=%s\n' "${dns_servers}" "${QUAD9_FALLBACK_DNS}" |
     write_resolved_config
 
   apply_dns_override_mode static

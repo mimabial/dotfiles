@@ -23,8 +23,6 @@ card=$("$script_dir/profiles.sh" | jq -r --arg address "$address" --arg profile 
 ')
 
 [[ -n $card ]] || { echo "Bluetooth audio profile is not available" >&2; exit 1; }
-# WirePlumber's device.restore-profile policy stores this profile against the
-# individual BlueZ card and restores it the next time that device appears.
 profile_set_pid=
 cancel_profile_set() {
   trap - INT TERM HUP
@@ -36,6 +34,8 @@ cancel_profile_set() {
 }
 trap cancel_profile_set INT TERM HUP
 
+# WirePlumber's device.restore-profile policy stores this profile against the
+# individual BlueZ card and restores it the next time that device appears.
 "$script_dir/audio-profile-transition.sh" "$card" "$profile" &
 profile_set_pid=$!
 profile_set_status=0

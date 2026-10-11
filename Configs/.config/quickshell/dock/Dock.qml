@@ -2753,8 +2753,7 @@ Item {
           id: appsButton
           visible: root.showAppsButton
           homeCenter: root.slotHomeCenter(0, 0, 0)
-          icon: "view-app-grid"
-          iconContext: "actions"
+          icon: "applications-other"
           tooltip: "Applications"
           onPressed: Quickshell.execDetached(["hyprshell", "rofi-launch.sh", "d"])
           onMiddleClicked: { if (root.shell) root.shell.run([root.shell.terminal]) }

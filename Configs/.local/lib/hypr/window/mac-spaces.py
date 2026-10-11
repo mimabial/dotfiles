@@ -2,118 +2,126 @@ import json
 import subprocess
 import sys
 
-
-SPACE_PREFIX = "macspace_"
-ORIGIN_PREFIX = "macorigin_"
+from settings.lua_config import render_value
 
 
-def hyprctl(*args):
+FULLSCREEN_SPACE_PREFIX = "macspace_"
+SAVED_ORIGIN_TAG_PREFIX = "macorigin_"
+MAXIMIZED_FULLSCREEN_STATE = 1
+
+
+def run_hyprctl(*args):
     result = subprocess.run(["hyprctl", *args], check=True, capture_output=True, text=True)
     if args[0] in ("dispatch", "eval") and result.stdout.strip() != "ok":
         raise RuntimeError(result.stdout.strip())
     return result.stdout
 
 
-def dispatch(method, **values):
-    fields = ", ".join(f"{key} = {json.dumps(value)}" for key, value in values.items())
-    hyprctl("dispatch", f"hl.dsp.window.{method}({{{fields}}})")
+def dispatch_window_action(method, **values):
+    fields = ", ".join(f"{key} = {render_value(value)}" for key, value in values.items())
+    run_hyprctl("dispatch", f"hl.dsp.window.{method}({{{fields}}})")
 
 
-def window(client):
+def window_selector(client):
     return "address:" + client["address"]
 
 
-def space(client):
+def workspace_name(client):
     return client["workspace"]["name"]
 
 
-def origin(client):
+def saved_window_origin(client):
     for tag in client["tags"]:
-        if tag.startswith(ORIGIN_PREFIX):
-            return tag, json.loads(bytes.fromhex(tag[len(ORIGIN_PREFIX):]).decode())
+        if tag.startswith(SAVED_ORIGIN_TAG_PREFIX):
+            return tag, json.loads(bytes.fromhex(tag[len(SAVED_ORIGIN_TAG_PREFIX):]).decode())
     return None, None
 
 
-def remember(client):
-    workspace = space(client)
+def save_window_origin(client):
+    workspace = workspace_name(client)
     selector = workspace if workspace.isdecimal() or workspace.startswith("special:") else "name:" + workspace
     state = {"workspace": selector, "floating": client["floating"], "fullscreen": client["fullscreen"], "pinned": client["pinned"]}
-    tag = ORIGIN_PREFIX + json.dumps(state, separators=(",", ":")).encode().hex()
-    dispatch("tag", window=window(client), tag="+" + tag)
+    tag = SAVED_ORIGIN_TAG_PREFIX + json.dumps(state, separators=(",", ":")).encode().hex()
+    dispatch_window_action("tag", window=window_selector(client), tag="+" + tag)
 
 
-def fullscreen(client, action, mode=None):
-    dispatch("fullscreen", window=window(client), mode=mode or ("maximized" if client["fullscreen"] == 1 else "fullscreen"), action=action)
+def set_fullscreen(client, action, mode=None):
+    dispatch_window_action("fullscreen", window=window_selector(client), mode=mode or ("maximized" if client["fullscreen"] == MAXIMIZED_FULLSCREEN_STATE else "fullscreen"), action=action)
 
 
-def restore_remaining(clients, former_space, moved):
-    remaining = [client for client in clients if space(client) == former_space and client["address"] != moved["address"]]
+def fullscreen_single_remaining_window(clients, former_space, moved):
+    remaining = [client for client in clients if workspace_name(client) == former_space and client["address"] != moved["address"]]
     if len(remaining) == 1:
-        fullscreen(remaining[0], "set", "fullscreen")
+        set_fullscreen(remaining[0], "set", "fullscreen")
 
 
-def leave(client, clients, destination=None):
-    tag, state = origin(client)
+def restore_window_origin(client, clients, destination=None):
+    tag, state = saved_window_origin(client)
     if not state:
         return
-    former_space = space(client)
+    former_space = workspace_name(client)
     if client["fullscreen"]:
-        fullscreen(client, "unset")
-    dispatch("move", window=window(client), workspace=destination or state["workspace"], follow=destination is None)
+        set_fullscreen(client, "unset")
+    dispatch_window_action("move", window=window_selector(client), workspace=destination or state["workspace"], follow=destination is None)
     if state["floating"]:
-        dispatch("float", window=window(client), action="set")
+        dispatch_window_action("float", window=window_selector(client), action="set")
     if state["pinned"]:
-        dispatch("pin", window=window(client), action="set")
+        dispatch_window_action("pin", window=window_selector(client), action="set")
     if state["fullscreen"]:
-        fullscreen(client, "set", "maximized" if state["fullscreen"] == 1 else "fullscreen")
-    dispatch("tag", window=window(client), tag="-" + tag)
-    restore_remaining(clients, former_space, client)
+        set_fullscreen(client, "set", "maximized" if state["fullscreen"] == MAXIMIZED_FULLSCREEN_STATE else "fullscreen")
+    dispatch_window_action("tag", window=window_selector(client), tag="-" + tag)
+    fullscreen_single_remaining_window(clients, former_space, client)
 
 
-def enter(client):
-    name = SPACE_PREFIX + client["address"].removeprefix("0x")
+def create_fullscreen_space(client):
+    name = FULLSCREEN_SPACE_PREFIX + client["address"].removeprefix("0x")
     rule = f'hl.workspace_rule({{ workspace = "name:{name}", layout = "dwindle", gaps_in = 0, gaps_out = 0, no_border = true }})'
-    hyprctl("eval", rule)
-    remember(client)
+    run_hyprctl("eval", rule)
+    save_window_origin(client)
     if client["pinned"]:
-        dispatch("pin", window=window(client), action="unset")
+        dispatch_window_action("pin", window=window_selector(client), action="unset")
     if client["fullscreen"]:
-        fullscreen(client, "unset")
+        set_fullscreen(client, "unset")
     if client["floating"]:
-        dispatch("float", window=window(client), action="unset")
-    dispatch("move", window=window(client), workspace="name:" + name, follow=True)
-    fullscreen(client, "set", "fullscreen")
+        dispatch_window_action("float", window=window_selector(client), action="unset")
+    dispatch_window_action("move", window=window_selector(client), workspace="name:" + name, follow=True)
+    set_fullscreen(client, "set", "fullscreen")
 
 
-def pair(client, clients, target):
-    occupants = [other for other in clients if space(other) == target and other["address"] != client["address"]]
-    if len(occupants) != 1 or space(client) == target:
+def join_split_space(client, clients, target):
+    occupants = [other for other in clients if workspace_name(other) == target and other["address"] != client["address"]]
+    if len(occupants) != 1 or workspace_name(client) == target:
         return
-    former_space = space(client)
-    if not former_space.startswith(SPACE_PREFIX):
-        remember(client)
+    former_space = workspace_name(client)
+    if not former_space.startswith(FULLSCREEN_SPACE_PREFIX):
+        save_window_origin(client)
     if client["fullscreen"]:
-        fullscreen(client, "unset")
+        set_fullscreen(client, "unset")
     if client["floating"]:
-        dispatch("float", window=window(client), action="unset")
+        dispatch_window_action("float", window=window_selector(client), action="unset")
     if client["pinned"]:
-        dispatch("pin", window=window(client), action="unset")
+        dispatch_window_action("pin", window=window_selector(client), action="unset")
     if occupants[0]["fullscreen"]:
-        fullscreen(occupants[0], "unset")
-    dispatch("move", window=window(client), workspace="name:" + target, follow=False)
-    if former_space.startswith(SPACE_PREFIX):
-        restore_remaining(clients, former_space, client)
+        set_fullscreen(occupants[0], "unset")
+    dispatch_window_action("move", window=window_selector(client), workspace="name:" + target, follow=False)
+    if former_space.startswith(FULLSCREEN_SPACE_PREFIX):
+        fullscreen_single_remaining_window(clients, former_space, client)
 
 
-clients = json.loads(hyprctl("-j", "clients"))
-chosen = next((client for client in clients if client["address"] == sys.argv[2]), None)
-if chosen:
-    action = sys.argv[1]
-    if action == "toggle":
-        leave(chosen, clients) if space(chosen).startswith(SPACE_PREFIX) else enter(chosen)
-    elif action == "move":
-        target = sys.argv[3]
-        if target.startswith(SPACE_PREFIX):
-            pair(chosen, clients, target)
-        elif space(chosen).startswith(SPACE_PREFIX):
-            leave(chosen, clients, target)
+def main(arguments):
+    clients = json.loads(run_hyprctl("-j", "clients"))
+    chosen = next((client for client in clients if client["address"] == arguments[1]), None)
+    if chosen:
+        action = arguments[0]
+        if action == "toggle":
+            restore_window_origin(chosen, clients) if workspace_name(chosen).startswith(FULLSCREEN_SPACE_PREFIX) else create_fullscreen_space(chosen)
+        elif action == "move":
+            target = arguments[2]
+            if target.startswith(FULLSCREEN_SPACE_PREFIX):
+                join_split_space(chosen, clients, target)
+            elif workspace_name(chosen).startswith(FULLSCREEN_SPACE_PREFIX):
+                restore_window_origin(chosen, clients, target)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

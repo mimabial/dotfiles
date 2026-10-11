@@ -6,9 +6,9 @@ DEBUG_DIR="$STATE_HOME/hypr/lyrics"
 DEBUG_LOG="$DEBUG_DIR/fetch.log"
 ORIGINAL_LRC_FILE="${LRC_FILE:-}"
 
-if [ -r "$MEDIA_LIB/lyrics_paths.lib.sh" ]; then
+if [ -r "$MEDIA_LIB/lib/lyrics-paths.bash" ]; then
   # shellcheck source=/dev/null
-  . "$MEDIA_LIB/lyrics_paths.lib.sh"
+  . "$MEDIA_LIB/lib/lyrics-paths.bash"
   [ -n "$ORIGINAL_LRC_FILE" ] && LRC_FILE="$(lyrics_lrc_path "$ORIGINAL_LRC_FILE")"
 fi
 

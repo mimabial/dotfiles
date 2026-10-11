@@ -10,12 +10,10 @@ hypr_help_guard "Usage: hyprshell fonts/font-apply [font-name]
 Apply the configured (or given) fonts across terminals, Quickshell, Rofi, and GTK." "$@"
 
 hypr_runtime_require state system || exit 1
-hypr_runtime_load_state || exit 1
+hypr_runtime_load_desktop_environment || exit 1
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR}/theme/color.targets.bash"
-# shellcheck source=/dev/null
-source "${HYPR_LIB_DIR}/fonts/font.sync.lib.bash"
+source "${HYPR_LIB_DIR}/fonts/lib/font-consumers.bash"
 
 FONT_NAME="${1:-}"
 UPDATED_CONFIGS=()
@@ -65,13 +63,6 @@ apply_terminal_fonts() {
   apply_alacritty_font
 }
 
-apply_theme_terminal_overlays() {
-  if [[ "${selected_color_source:-theme}" == "theme" ]]; then
-    process_theme_files
-    append_updated 'Theme terminal overlays'
-  fi
-}
-
 apply_fontconfig_alias() {
   [[ -f "${FONTCONFIG_FILE}" ]] || return 0
   local escaped_font=""
@@ -85,17 +76,18 @@ apply_fontconfig_alias() {
     return 0
   fi
 
-  sed -i "/<test qual=\"any\" name=\"family\">/,/<\\/edit>/ s|<string>.*</string>|<string>${escaped_font}</string>|" "${FONTCONFIG_FILE}"
-  append_updated 'Fontconfig monospace alias'
+  if sed -i "/<test qual=\"any\" name=\"family\">/,/<\\/edit>/ s|<string>.*</string>|<string>${escaped_font}</string>|" "${FONTCONFIG_FILE}"; then
+    append_updated 'Fontconfig monospace alias'
+  fi
 }
 
-sync_ui_fonts() {
-  hyprshell fonts/font-sync.sh --rofi-to "${MENU_FONT}" >/dev/null 2>&1 || true
-  append_updated 'Rofi fonts'
-
-  hypr_user_pgrep -x rofi >/dev/null 2>&1 || return 0
-  hypr_user_pkill -x rofi >/dev/null 2>&1 || true
-  append_updated 'Rofi launcher'
+sync_rofi_fonts() {
+  if "${HYPR_LIB_DIR}/fonts/font-sync.sh" --rofi-to "${MENU_FONT}" >/dev/null 2>&1; then
+    append_updated 'Rofi fonts'
+  fi
+  if hypr_user_pkill -x rofi >/dev/null 2>&1; then
+    append_updated 'Rofi launcher'
+  fi
 }
 
 sync_hyprlock_font() {
@@ -103,16 +95,18 @@ sync_hyprlock_font() {
   append_updated 'Hyprlock font'
 }
 
-sync_desktop_ui_fonts() {
+resync_desktop_settings() {
   local desktop_sync_script="${HYPR_LIB_DIR}/theme/desktop.sync.sh"
 
-  if [[ -x "${desktop_sync_script}" ]]; then
-    THEME_DESKTOP_SYNC_LOG_DCONF=0 "${desktop_sync_script}" --full --quiet >/dev/null 2>&1 || true
+  [[ -x "${desktop_sync_script}" ]] || return 0
+  if THEME_DESKTOP_SYNC_LOG_DCONF=0 "${desktop_sync_script}" --full --quiet >/dev/null 2>&1; then
     append_updated 'Desktop UI fonts'
   fi
+}
 
-  if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl >/dev/null 2>&1; then
-    hyprctl reload config-only >/dev/null 2>&1 || true
+reload_hyprland_config() {
+  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl >/dev/null 2>&1 || return 0
+  if hyprctl reload config-only >/dev/null 2>&1; then
     append_updated 'Hyprland font reload'
   fi
 }
@@ -142,11 +136,11 @@ notify_user() {
 
 resolve_font_targets
 apply_terminal_fonts
-apply_theme_terminal_overlays
 apply_fontconfig_alias
-sync_ui_fonts
+sync_rofi_fonts
 sync_hyprlock_font
-sync_desktop_ui_fonts
+resync_desktop_settings
+reload_hyprland_config
 refresh_font_cache
 show_summary
 notify_user

@@ -41,13 +41,13 @@ fi
   exit 0
 }
 
-shell_pid="$(pgrep -P "${terminal_pid}" | tail -n1)"
+shell_pid="$(pgrep -P "${terminal_pid}" | tail -n1 || true)"
 
 if [[ -n "${shell_pid}" ]]; then
   cwd="$(cd -P "/proc/${shell_pid}/cwd" 2>/dev/null && pwd -P || true)"
   shell_path="$(readlink "/proc/${shell_pid}/exe" 2>/dev/null || true)"
 
-  if [[ -d "${cwd}" ]] && grep -qs "${shell_path}" /etc/shells; then
+  if [[ -d "${cwd}" && -n "${shell_path}" ]] && grep -qsxF -- "${shell_path}" /etc/shells; then
     printf '%s\n' "${cwd}"
     exit 0
   fi

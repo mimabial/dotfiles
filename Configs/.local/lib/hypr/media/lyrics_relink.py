@@ -9,7 +9,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
-from fetch_album_lyrics import get_audio_metadata
+from audio_tags import parse_extensions
+from fetch_album_lyrics import DEFAULT_EXTENSIONS, get_audio_metadata
 from lyrics_paths import (
     absolute_path,
     hidden_lyrics_root,
@@ -17,9 +18,9 @@ from lyrics_paths import (
     is_in_music_library,
     lrc_path_for,
     music_library_dir,
+    prune_empty_lyrics_parents,
 )
 
-DEFAULT_EXTENSIONS = "mp3,flac,m4a,ogg,opus"
 LRC_TAG = re.compile(r"^\[(ar|al|ti):(.*)]\s*$", re.IGNORECASE)
 
 
@@ -60,14 +61,6 @@ class LibraryIndex:
 
     def remove(self, entry: LrcEntry) -> None:
         self.active_paths.discard(entry.path)
-
-
-def parse_extensions(raw: str) -> set[str]:
-    return {
-        "." + value.strip().lstrip(".").casefold()
-        for value in raw.split(",")
-        if value.strip()
-    }
 
 
 def path_stem_key(path: Path) -> str:
@@ -208,17 +201,6 @@ def find_relink_candidate(
     return None, []
 
 
-def _prune_empty_hidden_parents(path: Path) -> None:
-    stop = hidden_lyrics_root()
-    current = path
-    while current != stop and stop in current.parents:
-        try:
-            current.rmdir()
-        except OSError:
-            return
-        current = current.parent
-
-
 def relink_directory(
     directory: Path,
     *,
@@ -257,7 +239,7 @@ def relink_directory(
         if not dry_run:
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(candidate.path), str(target))
-            _prune_empty_hidden_parents(candidate.path.parent)
+            prune_empty_lyrics_parents(candidate.path.parent)
         index.remove(candidate)
         moved += 1
 

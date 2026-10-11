@@ -124,6 +124,7 @@ Item {
     property bool opened: false
     property bool surfaceMounted: false
     property string pendingWorkspaceAction: ""
+    property var pendingWindowActivation: null
     property bool hotCornerArmed: true
     property string pendingHotCornerScreen: ""
     property string filterText: ""
@@ -222,6 +223,7 @@ Item {
     function open(app) {
         hotCornerTimer.stop();
         root.pendingWorkspaceAction = "";
+        root.pendingWindowActivation = null;
         var blurRestoreInFlight = root.restoringDesktopBlur && backgroundBlurSession.running;
         if (!blurRestoreInFlight)
             root.restoringDesktopBlur = false;
@@ -807,6 +809,19 @@ Item {
     function activate(top) {
         if (!top)
             return;
+        root.pendingWindowActivation = top;
+        root.dismiss();
+        root.activatePendingWindow();
+    }
+
+    function activatePendingWindow() {
+        if (!root.pendingWindowActivation)
+            return;
+        for (var index = 0; index < surfaceInstances.instances.length; index++)
+            if (surfaceInstances.instances[index].keyboardActive)
+                return;
+        var top = root.pendingWindowActivation;
+        root.pendingWindowActivation = null;
         var address = WindowModel.addressFor(top);
         var appId = WindowModel.appIdFor(top);
         var dock = root.shell.dock;
@@ -821,7 +836,6 @@ Item {
             String(top.title || ""),
             root.moveCursorToWindow ? "true" : "false"
         ]);
-        root.dismiss();
     }
 
     function toggleFullscreen(top) {
@@ -1551,6 +1565,8 @@ Item {
                 return true;
             }
             WlrLayershell.keyboardFocus: root.opened && acceptsKeyboard ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            readonly property bool keyboardActive: keyCatcher.Window.active
+            onKeyboardActiveChanged: if (!overviewWindow.keyboardActive) root.activatePendingWindow()
 
             property alias keyboardItem: keyCatcher
             readonly property var screenToplevels: {

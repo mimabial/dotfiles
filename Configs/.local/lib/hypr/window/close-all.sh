@@ -25,4 +25,4 @@ for window_address in "${window_addresses[@]}"; do
   close_dispatchers+=("hl.dsp.window.close({window=$(hypr_lua_quote "address:${window_address}")})")
 done
 
-hypr_lua_batch "${close_dispatchers[@]}" >/dev/null 2>&1 || true
+hypr_lua_batch "${close_dispatchers[@]}" >/dev/null

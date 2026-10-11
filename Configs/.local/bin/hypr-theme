@@ -51,7 +51,7 @@ hypr_runtime_require state || exit 1
 RENDER_DIR="${HYPR_LIB_DIR}/render"
 PALETTE="${HYPR_STATE_HOME}/active-palette.json"
 
-COLOR_GEN_LOCK="$(hypr_lock_path color_gen)"
+COLOR_GEN_LOCK="$(hypr_lock_path_ensure_parent color_gen)"
 exec {COLOR_GEN_LOCK_FD}>"${COLOR_GEN_LOCK}"
 flock "${COLOR_GEN_LOCK_FD}"
 
@@ -118,7 +118,7 @@ reload_clients() {
     hyprctl reload config-only >/dev/null 2>&1 || true
   fi
   [[ "${HYPR_THEME_DEFER_CLIENTS:-0}" == 1 ]] && return
-  source "${HYPR_LIB_DIR}/theme/color.apply.bash"
+  source "${HYPR_LIB_DIR}/theme/lib/clients.reload.bash"
 
   local background=""
   background="$(jq -r '.background // empty' "${PALETTE}" 2>/dev/null || true)"

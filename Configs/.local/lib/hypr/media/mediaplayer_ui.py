@@ -5,9 +5,16 @@ import math
 import os
 import sys
 from dataclasses import dataclass
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from pyutils.xdg_base_dirs import xdg_state_home
 
 
 PROGRESS_BAR_CELLS = 20
+PLAYING_GLYPH = "󰼛"
+DEFAULT_STANDBY_TEXT = " MPlayer"
 
 
 @dataclass(frozen=True)
@@ -25,7 +32,7 @@ class MediaPlayerUiConfig:
 
 
 def load_palette_colors() -> dict:
-    state_home = os.path.expanduser(os.getenv("XDG_STATE_HOME", "~/.local/state"))
+    state_home = str(xdg_state_home())
     try:
         with open(os.path.join(state_home, "hypr", "active-palette.json"), encoding="utf-8") as f:
             palette = json.load(f)
@@ -47,7 +54,7 @@ def normalize_color(value: str, palette_colors: dict, fallback: str) -> str:
         return lookup
     if value.startswith("#"):
         return value
-    if len(value) in (3, 6, 8):
+    if len(f"#{value}") in HEX_COLOR_LENGTHS:
         return f"#{value}"
     return fallback
 
@@ -108,7 +115,7 @@ def validate_ui_config() -> MediaPlayerUiConfig:
         max_length_module=configured_max_length(),
         prefix_playing=str(os.getenv("MEDIAPLAYER_PREFIX_PLAYING", ""))[:MAX_PREFIX_LENGTH],
         prefix_paused=str(os.getenv("MEDIAPLAYER_PREFIX_PAUSED", ""))[:MAX_PREFIX_LENGTH],
-        standby_text=str(os.getenv("MEDIAPLAYER_STANDBY_TEXT", " MPlayer"))[:MAX_STANDBY_TEXT_LENGTH],
+        standby_text=str(os.getenv("MEDIAPLAYER_STANDBY_TEXT", DEFAULT_STANDBY_TEXT))[:MAX_STANDBY_TEXT_LENGTH],
         artist_track_separator=str(os.getenv("MEDIAPLAYER_ARTIST_TRACK_SEPARATOR", "  "))[:MAX_SEPARATOR_LENGTH],
         **tooltip_colors(),
     )
@@ -138,7 +145,7 @@ def format_time_multiple_lines(
         total = quantize_display_seconds(seconds, countdown=countdown)
         h, m = divmod(total, 3600)
         m, s = divmod(m, 60)
-        icon = "󰼛" if playing else "󰈅"
+        icon = PLAYING_GLYPH if playing else "󰈅"
         if h:
             return f"{icon}{h:02d}\n:{m:02d}\n:{s:02d}"
         return f"{icon}{m:02d}\n:{s:02d}"
@@ -159,19 +166,19 @@ def format_state_icon(status: str) -> str:
 
 
 def format_live_multiple_lines(playing: bool) -> str:
-    icon = "󰼛" if playing else " "
+    icon = PLAYING_GLYPH if playing else " "
     return f"{icon}LI\n:VE"
 
 
 def format_time_single_line(
     seconds: float, playing: bool, *, countdown: bool = False
 ) -> str:
-    icon = "󰼛 " if playing else " "
+    icon = f"{PLAYING_GLYPH} " if playing else " "
     return f"{icon}{format_time(seconds, countdown=countdown)}"
 
 
 def format_live_single_line(playing: bool) -> str:
-    icon = "󰼛 " if playing else " "
+    icon = f"{PLAYING_GLYPH} " if playing else " "
     return f"{icon}LIVE"
 
 

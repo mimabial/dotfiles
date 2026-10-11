@@ -6,11 +6,8 @@ source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR}/controls/lib/brightness.common.bash"
 
-readonly BRIGHTNESS_NOTIFY_REPLACE_ID=7
-readonly BRIGHTNESS_UNAVAILABLE_REPLACE_ID=9
-readonly BRIGHTNESS_NOTIFY_TIMEOUT_MS=800
-readonly BRIGHTNESS_UNAVAILABLE_TIMEOUT_MS=1200
-readonly BRIGHTNESS_BAR_DIVISOR=15
+readonly BRIGHTNESS_DEFAULT_STEP=5
+readonly BRIGHTNESS_FINE_STEP=1
 readonly BRIGHTNESS_LOW_THRESHOLD=10
 readonly BRIGHTNESS_VERY_LOW_THRESHOLD=1
 
@@ -37,46 +34,30 @@ brightness_percent() {
 
 notify_unavailable() {
   command -v dunstify >/dev/null 2>&1 || return 0
-  dunstify -a "Brightness control" -r "${BRIGHTNESS_UNAVAILABLE_REPLACE_ID}" -t "${BRIGHTNESS_UNAVAILABLE_TIMEOUT_MS}" \
+  dunstify -a "Brightness control" -r "${NOTIFY_ID_BRIGHTNESS_UNAVAILABLE}" -t "${NOTIFY_OSD_ALERT_MS}" \
     "Brightness unavailable" "$(brightness_unavailable_reason)"
 }
 
 notify_brightness() {
   local notify_enabled="$1"
-  local info="" device_name="" _class _raw percent _max brightness=""
-  local angle=0
-  local icon=""
-  local bar=""
-  local icon_dir=""
+  local info=""
 
   is_true "${notify_enabled}" || return 0
   command -v dunstify >/dev/null 2>&1 || return 0
 
   info="$(brightnessctl -m 2>/dev/null)" || return 0
-  IFS=, read -r device_name _class _raw percent _max <<<"${info}"
-  brightness="$((10#${percent%%%}))"
-  angle=$((((brightness + 2) / 5) * 5))
-  ((angle < 0)) && angle=0
-  ((angle > 100)) && angle=100
-
-  icon_dir="${ICONS_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/icons}"
-  icon="${icon_dir}/Hypr-Icon/media/knob-${angle}.svg"
-  printf -v bar '%*s' "$((brightness / BRIGHTNESS_BAR_DIVISOR))" ''
-  bar="${bar// /.}"
-
-  dunstify -a "Brightness control" -r "${BRIGHTNESS_NOTIFY_REPLACE_ID}" -t "${BRIGHTNESS_NOTIFY_TIMEOUT_MS}" \
-    -e -i "${icon}" "${brightness}${bar}" "${device_name}"
+  notify_level "Brightness control" "${NOTIFY_ID_BRIGHTNESS}" "$(brightness_percent "${info}")" "${info%%,*}"
 }
 
 apply_increase() {
   local step="$1" current="$2"
-  ((current < BRIGHTNESS_LOW_THRESHOLD)) && step=1
+  ((current < BRIGHTNESS_LOW_THRESHOLD)) && step=${BRIGHTNESS_FINE_STEP}
   brightnessctl set +"${step}%" >/dev/null
 }
 
 apply_decrease() {
   local step="$1" current="$2"
-  ((current <= BRIGHTNESS_LOW_THRESHOLD)) && step=1
+  ((current <= BRIGHTNESS_LOW_THRESHOLD)) && step=${BRIGHTNESS_FINE_STEP}
   if ((current <= BRIGHTNESS_VERY_LOW_THRESHOLD)); then
     brightnessctl set "${step}%" >/dev/null
   else
@@ -86,7 +67,7 @@ apply_decrease() {
 
 main() {
   local notify_enabled="${BRIGHTNESS_NOTIFY:-true}"
-  local default_step="${BRIGHTNESS_STEPS:-5}"
+  local default_step="${BRIGHTNESS_STEPS:-${BRIGHTNESS_DEFAULT_STEP}}"
   local action="${1:-}"
   local step="${2:-${default_step}}"
   local info="" current=""

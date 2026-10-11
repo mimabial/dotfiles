@@ -7,11 +7,8 @@ source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 hypr_help_guard "Usage: hyprshell notify/history [LIMIT]
 Emit dunst's pause state and counts with the archived notifications as JSON." "$@"
 
-limit="${1:-200}"
-[[ "${limit}" =~ ^[0-9]+$ ]] || limit=200
-
 archive_cmd="${HYPR_LIB_DIR}/notify/archive.sh"
-snapshot="$("${archive_cmd}" snapshot "${limit}" 2>/dev/null || printf '{"entries":[],"unread":0,"seen":0}')"
+snapshot="$("${archive_cmd}" snapshot "${1:-}" 2>/dev/null || printf '{"entries":[],"unread":0,"seen":0}')"
 
 paused=false
 waiting=0

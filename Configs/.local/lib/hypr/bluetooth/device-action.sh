@@ -39,95 +39,32 @@ strip_terminal_codes() {
   sed $'s/\033\[[0-9;?]*[ -\/]*[@-~]//g'
 }
 
-# timeout(1) exits 124 when it stops the command and 137 when --kill-after had to kill it.
 TIMEOUT_EXIT_STATUS=124
 TIMEOUT_KILLED_EXIT_STATUS=137
+declare -rA BLUETOOTHCTL_TIMEOUT_S=([pair]=20 [connect]=20 [disconnect]=10 [remove]=10 [trust]=5)
 
-timeout_message() {
-  local phase=$1
-  case "$phase" in
-    pair) echo "Pairing timed out. Put the device in pairing mode and try again." ;;
-    connect) echo "Connection timed out. Make sure the device is nearby and awake." ;;
-    disconnect) echo "Disconnecting the device timed out." ;;
-    remove) echo "Forgetting the device timed out." ;;
-    *) echo "The Bluetooth operation timed out." ;;
+source "${BASH_SOURCE[0]%/*}/lib/device-action-errors.bash"
+
+requested_state_already_holds() {
+  local phase=$1 lower=$2
+
+  case $phase in
+    connect) [[ $lower == *alreadyconnected* || $lower == *already\ connected* ]] ;;
+    pair) [[ $lower == *alreadyexists* || $lower == *already\ paired* ]] ;;
+    disconnect) [[ $lower == *notconnected* || $lower == *not\ connected* ]] ;;
+    remove) [[ $lower == *doesnotexist* || $lower == *not\ available* ]] ;;
+    *) false ;;
   esac
-}
-
-known_error_message() {
-  case "${1,,}" in
-    *authenticationrejected*|*authentication\ rejected*)
-      echo "Pairing was rejected by the device. Confirm the code and try again."
-      ;;
-    *authenticationfailed*|*authentication\ failed*)
-      echo "Pairing failed authentication. Remove the device's old pairing and try again."
-      ;;
-    *authenticationtimeout*|*authentication\ timeout*)
-      echo "Pairing timed out. Put the device in pairing mode and try again."
-      ;;
-    *authenticationcanceled*|*authenticationcancelled*|*authentication\ canceled*|*authentication\ cancelled*)
-      echo "Pairing was cancelled."
-      ;;
-    *blocked*)
-      echo "This device is blocked. Unblock it before trying again."
-      ;;
-    *notready*|*not\ ready*)
-      echo "The Bluetooth adapter is not ready. Turn Bluetooth on and try again."
-      ;;
-    *inprogress*|*in\ progress*)
-      echo "Another Bluetooth operation is already in progress."
-      ;;
-    *profile-unavailable*|*profile\ unavailable*)
-      echo "The device's Bluetooth service is unavailable. Reconnect or repair the device."
-      ;;
-    *connectionattemptfailed*|*page-timeout*|*connection\ attempt\ failed*)
-      echo "The device did not respond. Make sure it is nearby, awake, and not connected elsewhere."
-      ;;
-    *notavailable*|*not\ available*)
-      echo "The device is unavailable. Make sure it is nearby and in pairing mode."
-      ;;
-    *) return 1 ;;
-  esac
-}
-
-generic_failure_message() {
-  local phase=$1
-  local detail=$2
-  case "$phase" in
-    pair) printf 'Could not pair with the device%s\n' "${detail:+: $detail}" ;;
-    connect) printf 'Could not connect to the device%s\n' "${detail:+: $detail}" ;;
-    disconnect) printf 'Could not disconnect the device%s\n' "${detail:+: $detail}" ;;
-    remove) printf 'Could not forget the device%s\n' "${detail:+: $detail}" ;;
-    *) printf 'The Bluetooth operation failed%s\n' "${detail:+: $detail}" ;;
-  esac
-}
-
-failure_message() {
-  local phase=$1
-  local status=$2
-  local output=$3
-  local detail
-
-  if (( status == TIMEOUT_EXIT_STATUS || status == TIMEOUT_KILLED_EXIT_STATUS )); then
-    timeout_message "$phase"
-    return
-  fi
-  known_error_message "$output" && return
-  detail=$(printf '%s\n' "$output" | awk 'NF { line=$0 } END { print line }')
-  generic_failure_message "$phase" "$detail"
 }
 
 run_bluetoothctl_action() {
   local phase=$1
-  local seconds=$2
-  shift 2
-
   local output status lower failed=false
   active_output_file=$(mktemp) || {
     echo "Could not start the Bluetooth operation." >&2
     return 1
   }
-  timeout --kill-after=2s "${seconds}s" bluetoothctl "$@" >"$active_output_file" 2>&1 &
+  timeout --kill-after=2s "${BLUETOOTHCTL_TIMEOUT_S[$phase]}s" bluetoothctl "$phase" "$address" >"$active_output_file" 2>&1 &
   active_control_pid=$!
   status=0
   wait "$active_control_pid" || status=$?
@@ -138,19 +75,7 @@ run_bluetoothctl_action() {
   active_output_file=
   lower=${output,,}
 
-  # These outcomes already satisfy the requested idempotent operation.
-  if [[ $phase == connect && ( $lower == *alreadyconnected* || $lower == *already\ connected* ) ]]; then
-    return 0
-  fi
-  if [[ $phase == pair && ( $lower == *alreadyexists* || $lower == *already\ paired* ) ]]; then
-    return 0
-  fi
-  if [[ $phase == disconnect && ( $lower == *notconnected* || $lower == *not\ connected* ) ]]; then
-    return 0
-  fi
-  if [[ $phase == remove && ( $lower == *doesnotexist* || $lower == *not\ available* ) ]]; then
-    return 0
-  fi
+  requested_state_already_holds "$phase" "$lower" && return 0
 
   (( status == 0 )) || failed=true
   if [[ $lower == *org.bluez.error* || $lower == *"failed to "*
@@ -159,27 +84,23 @@ run_bluetoothctl_action() {
   fi
 
   if [[ $failed == true ]]; then
-    failure_message "$phase" "$status" "$output" >&2
+    bluetoothctl_failure_message "$phase" "$status" "$output" >&2
     return 1
   fi
 }
 
-ensure_powered() {
+ensure_bluetooth_adapter_powered() {
   local state
   state=$(hypr_daemon_call bluetoothctl show 2>/dev/null | strip_terminal_codes) || state=
   [[ $state == *"Powered: yes"* ]] && return 0
 
-  if ! hyprshell bluetooth/power on >/dev/null 2>&1; then
+  if ! "${BASH_SOURCE[0]%/*}/power.sh" on >/dev/null 2>&1; then
     echo "The Bluetooth adapter could not be powered on." >&2
     return 1
   fi
-  # hyprshell bluetooth/power waits for a powered controller and handles
-  # multi-controller machines. A second default-controller-only check would
-  # incorrectly reject a device owned by another powered adapter; the actual
-  # pair/connect command remains the authoritative readiness check.
 }
 
-ensure_not_blocked() {
+ensure_bluetooth_device_not_blocked() {
   local info
   info=$(hypr_daemon_call bluetoothctl info "$address" 2>/dev/null | strip_terminal_codes) || return 0
   if [[ $info == *"Blocked: yes"* ]]; then
@@ -188,34 +109,29 @@ ensure_not_blocked() {
   fi
 }
 
-trust_device() {
-  # Trust is a convenience for future incoming reconnects, not a condition for
-  # completing the user's immediate pair/connect request.
-  run_bluetoothctl_action trust 5 trust "$address" >/dev/null 2>&1 || true
+run_optional_bluetoothctl_action() {
+  run_bluetoothctl_action "$1" >/dev/null 2>&1 || true
 }
 
 case "$action" in
   pair)
-    ensure_powered || exit 1
-    ensure_not_blocked || exit 1
-    run_bluetoothctl_action pair 20 pair "$address" || exit 1
-    trust_device
-    run_bluetoothctl_action connect 20 connect "$address" || exit 1
+    ensure_bluetooth_adapter_powered || exit 1
+    ensure_bluetooth_device_not_blocked || exit 1
+    run_bluetoothctl_action pair || exit 1
+    run_optional_bluetoothctl_action trust
+    run_bluetoothctl_action connect || exit 1
     ;;
   connect)
-    ensure_powered || exit 1
-    ensure_not_blocked || exit 1
-    run_bluetoothctl_action connect 20 connect "$address" || exit 1
-    trust_device
+    ensure_bluetooth_adapter_powered || exit 1
+    ensure_bluetooth_device_not_blocked || exit 1
+    run_bluetoothctl_action connect || exit 1
+    run_optional_bluetoothctl_action trust
     ;;
   disconnect)
-    run_bluetoothctl_action disconnect 10 disconnect "$address" || exit 1
+    run_bluetoothctl_action disconnect || exit 1
     ;;
   forget)
-    # Removal is authoritative and also tears down a live connection. Do not
-    # power the radio on just to remove cached bonding data, and do not make a
-    # misbehaving device's failed disconnect prevent it being forgotten.
-    run_bluetoothctl_action disconnect 10 disconnect "$address" >/dev/null 2>&1 || true
-    run_bluetoothctl_action remove 10 remove "$address" || exit 1
+    run_optional_bluetoothctl_action disconnect
+    run_bluetoothctl_action remove || exit 1
     ;;
 esac

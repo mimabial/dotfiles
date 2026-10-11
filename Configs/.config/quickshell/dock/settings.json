@@ -30,8 +30,8 @@
   "iconSize": 36,
   "recentApps": [
     "xdg-desktop-portal-gtk",
-    "org.pwmt.zathura",
-    "org.tui.Rmpc"
+    "chromium",
+    "dropdown-terminal"
   ],
   "showRecents": true,
   "showIndicators": true

@@ -6,10 +6,11 @@ source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state system || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR}/theme/pairs.sh"
-export_hypr_config
+state_load_runtime_environment
 
-hypr_help_guard "Usage: hyprshell theme/color-mode [-q] [n|p|--set <theme|wallpaper> [dark|light|auto]]
-Choose a palette source and colour mode: next (n), prev (p), or explicit --set (default: next)." "$@"
+color_mode_usage="Usage: hyprshell theme/color-mode [-q] [n|p|--set <theme|wallpaper> [dark|light|auto]]
+Choose a palette source and colour mode: next (n), prev (p), or explicit --set (default: next)."
+hypr_help_guard "${color_mode_usage}" "$@"
 
 color_mode_values=("${STATE_COLOR_MODE_DARK}" "${STATE_COLOR_MODE_LIGHT}" "${STATE_COLOR_MODE_AUTO}")
 MODE_SWITCH_LOCK_FD=""
@@ -19,7 +20,7 @@ selected_color_source="$(state_resolve_color_source "$(state_get selected_color_
 selected_color_mode="$(state_resolve_color_mode "${selected_color_mode}" "${BACKGROUND_MODE:-}")"
 
 acquire_mode_switch_lock() {
-  MODE_SWITCH_LOCK="$(hypr_lock_path mode_switch)"
+  MODE_SWITCH_LOCK="$(hypr_lock_path_ensure_parent mode_switch)"
   exec {MODE_SWITCH_LOCK_FD}>"${MODE_SWITCH_LOCK}"
   ! flock -n "${MODE_SWITCH_LOCK_FD}" && {
     print_log -sec "color-mode" -stat "wait" "Another mode operation in progress, waiting..."
@@ -96,7 +97,7 @@ set_policy_from_args() {
 }
 
 auto_theme_supervised() {
-  [[ "$(hypr_init_system)" != "other" ]]
+  [[ "$(hypr_detect_init_system)" != "other" ]]
 }
 
 start_auto_theme_service() {
@@ -177,7 +178,8 @@ parse_target_policy() {
     p | -p | --prev) cycle_color_mode p ;;
     -s | --set) set_policy_from_args "${2:-}" "${3:-}" ;;
     --set=*) set_policy_from_args "${1#--set=}" "${2:-}" ;;
-    *) cycle_color_mode n ;;
+    "") cycle_color_mode n ;;
+    *) printf '%s\n' "${color_mode_usage}" >&2; exit 1 ;;
   esac
 
   if [[ ! "${target_color_source}" =~ ^(theme|wallpaper)$ ]] || ! state_color_mode_is_valid "${target_color_mode}"; then

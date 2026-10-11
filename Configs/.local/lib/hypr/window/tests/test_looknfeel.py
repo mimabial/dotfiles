@@ -12,11 +12,11 @@ STATE = Path(os.path.expanduser("~/.local/state/hypr"))
 RESOLVER = STATE / "looknfeel.lua"
 HYPRSHELL = Path(os.path.expanduser("~/.local/bin/hyprshell"))
 
-sys.path.insert(0, str(WINDOW_DIR / "lib"))
+sys.path.insert(0, str(WINDOW_DIR))
 
-import looknfeel_lua as lua  # noqa: E402
-import looknfeel_schema as schema  # noqa: E402
-import looknfeel_tui as tui  # noqa: E402
+from settings import lua_config as lua  # noqa: E402
+from settings import visual_schema as schema  # noqa: E402
+from settings import values  # noqa: E402
 
 
 def read(source):
@@ -97,8 +97,8 @@ class ReaderTest(unittest.TestCase):
             capture_output=True, text=True,
         )
         self.assertEqual(proc.returncode, 0, proc.stderr)
-        leaves = [l.split("\t")[1] for l in proc.stdout.splitlines()
-                  if l.startswith("a\t")]
+        leaves = [line.split("\t")[1] for line in proc.stdout.splitlines()
+                  if line.startswith("a\t")]
         self.assertTrue(leaves, "no animation leaves — recursion did not happen")
         self.assertIn("workspaces", leaves)
 
@@ -119,8 +119,8 @@ class ResolverTest(unittest.TestCase):
     def test_hyprland_loads_the_resolver_after_userprefs(self):
         lines = (Path(os.path.expanduser("~/.config/hypr/hyprland.lua"))
                  .read_text().splitlines())
-        prefs = next(i for i, l in enumerate(lines) if 'require("userprefs")' in l)
-        load = next(i for i, l in enumerate(lines) if "looknfeel.lua" in l)
+        prefs = next(index for index, line in enumerate(lines) if 'require("userprefs")' in line)
+        load = next(index for index, line in enumerate(lines) if "looknfeel.lua" in line)
         self.assertGreater(load, prefs,
                            "resolver must load after userprefs to win on conflicts")
 
@@ -144,7 +144,28 @@ class ResolverTest(unittest.TestCase):
             proc = subprocess.run(
                 ["lua", "-e", lua_slug + f'io.write(slug("{name}"))'],
                 capture_output=True, text=True)
-            self.assertEqual(tui.slug(name), proc.stdout, name)
+            self.assertEqual(values.theme_override_slug(name), proc.stdout, name)
+
+
+class PresetPathTest(unittest.TestCase):
+    def test_named_and_direct_file_paths_preserve_user_precedence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            user = Path(directory) / "user"
+            shared = Path(directory) / "shared"
+            user.mkdir()
+            shared.mkdir()
+            for path in (user / "my preset.lua", shared / "my preset.lua", shared / "stock.lua"):
+                path.write_text("")
+            script = 'source "$1"; hypr_visual_preset_resolve_path "$2" lua "$3" "$4"'
+            for name, expected in (("my preset", user / "my preset.lua"),
+                                   ("my preset.lua", user / "my preset.lua"),
+                                   (str(user / "my preset.lua"), user / "my preset.lua"),
+                                   ("stock", shared / "stock.lua")):
+                result = subprocess.run(["bash", "-c", script, "preset-test",
+                                         str(WINDOW_DIR / "lib/visual-presets.bash"),
+                                         name, str(user), str(shared)],
+                                        capture_output=True, text=True, check=True)
+                self.assertEqual(result.stdout.strip(), str(expected))
 
 
 class PipelineCliTest(unittest.TestCase):
@@ -154,7 +175,7 @@ class PipelineCliTest(unittest.TestCase):
     def rows(self, *args):
         proc = hyprshell(*args)
         self.assertEqual(proc.returncode, 0, proc.stderr)
-        return [l.split("\t") for l in proc.stdout.splitlines() if l]
+        return [line.split("\t") for line in proc.stdout.splitlines() if line]
 
     def test_workflows_list_is_the_reference_format(self):
         rows = self.rows("util/workflows.sh", "--list")
@@ -234,10 +255,10 @@ class CursorCliTest(unittest.TestCase):
                 "set -e",
                 'source "$HOME/.local/lib/hypr/core/common.bash"',
                 'source "$HOME/.local/lib/hypr/theme/lib/desktop.sync.bash"',
-                'CURSOR_THEME=default CURSOR_SIZE=24',
-                'HYPR_THEME="Rosé Pine" resolved_color_variant=dark',
-                "theme_desktop_load_looknfeel_cursor_values",
-                "printf '%s\\t%s' \"$CURSOR_THEME\" \"$CURSOR_SIZE\"",
+                'declare -A cursor=([CURSOR_THEME]=default [CURSOR_SIZE]=24)',
+                'HYPR_THEME="Rosé Pine"',
+                "theme_desktop_load_looknfeel_cursor_values cursor dark",
+                "printf '%s\\t%s' \"${cursor[CURSOR_THEME]}\" \"${cursor[CURSOR_SIZE]}\"",
             ])
             env = os.environ.copy()
             env["HYPR_STATE_HOME"] = temp
@@ -356,6 +377,12 @@ class LivePreviewTest(unittest.TestCase):
 
 
 class RenderTest(unittest.TestCase):
+    def test_lua_string_preserves_unicode_and_control_characters(self):
+        value = 'Bureau été "\\\n\r\0' + '7'
+        result = subprocess.run(["lua", "-e", "io.write(" + lua.render_value(value) + ")"],
+                                capture_output=True, check=True)
+        self.assertEqual(result.stdout.decode(), value)
+
     def test_empty_overrides_render_nothing(self):
         self.assertEqual(render({}).strip(), "")
 

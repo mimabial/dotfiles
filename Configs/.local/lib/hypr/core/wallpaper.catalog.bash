@@ -3,26 +3,26 @@
 wallpaper_find_hashes_and_paths() {
   local wall_source="$1"
   shift
-  local -a supported_files=("$@")
+  local -a supported_extensions=("$@")
   local -a find_args=()
   local error_file errors ext
 
   if [[ -z "${wall_source}" ]]; then
-    print_log -err "ERROR: wallpaper source is empty"
+    print_log -err "wallpaper source is empty"
     return 1
   fi
 
-  if ((${#supported_files[@]} == 0)); then
-    print_log -err "ERROR: no supported wallpaper extensions configured"
+  if ((${#supported_extensions[@]} == 0)); then
+    print_log -err "no supported wallpaper extensions configured"
     return 1
   fi
 
-  find_args=(-H "${wall_source}" -type f \( -iname "*.${supported_files[0]}")
+  find_args=(-H "${wall_source}" -type f \( -iname "*.${supported_extensions[0]}")
 
-  for ext in "${supported_files[@]:1}"; do
+  for ext in "${supported_extensions[@]:1}"; do
     find_args+=(-o -iname "*.${ext}")
   done
-  find_args+=(\) ! -path "*/logo/*" -exec "${HYPR_HASH_COMMAND:-xxh64sum}" {} +)
+  find_args+=(\) ! -path "*/logo/*" -exec "${HYPR_HASH_COMMAND}" {} +)
 
   [[ "${LOG_LEVEL:-}" == "debug" ]] && print_log -g "DEBUG:" -b "Running find with args:" "${find_args[*]}"
 
@@ -30,7 +30,7 @@ wallpaper_find_hashes_and_paths() {
   find "${find_args[@]}" 2>"${error_file}" | LC_ALL=C sort -k2 || :
   errors=$(<"${error_file}")
   rm -f -- "${error_file}"
-  [[ -z "${errors}" ]] || print_log -err "ERROR:" -b "found an error: " -r "${errors}" -y " skipping..."
+  [[ -z "${errors}" ]] || print_log -err "wallpaper" -b "found an error: " -r "${errors}" -y " skipping..."
   return 0
 }
 
@@ -63,7 +63,7 @@ catalog_adjacent_index() {
   esac
 }
 
-wallpaper_supported_files_array() {
+wallpaper_supported_extensions_into() {
   local out_name="${1}"
   local -n out_ref="${out_name}"
 
@@ -79,7 +79,7 @@ wallpaper_resolved_source() {
   [[ "${LOG_LEVEL:-}" == "debug" ]] && print_log -g "DEBUG:" -b "wallpaper source path:" "${wall_source}"
   [[ -n "${wall_source}" ]] || return 1
   [[ -e "${wall_source}" ]] || {
-    print_log -err "ERROR:" -b "wallpaper source does not exist:" "${wall_source}" -y " skipping..."
+    print_log -err "wallpaper" -b "source does not exist:" "${wall_source}" -y " skipping..."
     return 1
   }
   wall_source="$(realpath -- "${wall_source}")" || return 1
@@ -93,17 +93,17 @@ wallpaper_scan_hashes_into() {
   shift 2
   local -n hash_ref="${hash_name}"
   local -n list_ref="${list_name}"
-  local -a wall_sources=("$@") missing_sources=() supported_files=()
+  local -a wall_sources=("$@") missing_sources=() supported_extensions=()
   local wall_source hashed_paths hash image
 
   hash_ref=()
   list_ref=()
   ((${#wall_sources[@]} > 0)) || return 1
-  wallpaper_supported_files_array supported_files
+  wallpaper_supported_extensions_into supported_extensions
 
   for wall_source in "${wall_sources[@]}"; do
     wall_source="$(wallpaper_resolved_source "${wall_source}")" || continue
-    hashed_paths=$(wallpaper_find_hashes_and_paths "${wall_source}" "${supported_files[@]}") || hashed_paths=""
+    hashed_paths=$(wallpaper_find_hashes_and_paths "${wall_source}" "${supported_extensions[@]}") || hashed_paths=""
     if [[ -z "${hashed_paths}" ]]; then
       missing_sources+=("${wall_source}")
       continue
@@ -158,7 +158,7 @@ wallpaper_file_hash() {
   local hash_image="${1}" output
 
   [[ -r "${hash_image}" ]] || return 1
-  output="$("${HYPR_HASH_COMMAND:-xxh64sum}" "${hash_image}")" || return 1
+  output="$("${HYPR_HASH_COMMAND}" "${hash_image}")" || return 1
   printf '%s\n' "${output%% *}"
 }
 
@@ -170,7 +170,7 @@ wallpaper_cached_file_hashes_into() {
   local -A file_meta=()
   local -a stat_lines=()
   local -a missing=()
-  local cache_dir="" cache_file="" hash_command="${HYPR_HASH_COMMAND:-xxh64sum}"
+  local cache_dir="" cache_file="" hash_command="${HYPR_HASH_COMMAND}"
   local cache_tmp cache_value line hash mtime size path
   local cache_dirty=0
 
@@ -228,4 +228,16 @@ extract_thumbnail() {
   local thumbnail_width=1000
   video_path="$(realpath "$1")"
   ffmpeg -y -i "${video_path}" -vf "thumbnail,scale=${thumbnail_width}:-1" -frames:v 1 -update 1 "${thumbnail_path}" &>/dev/null
+}
+
+wallpaper_theme_source_dir_into() {
+  local -n theme_source_dir_ref="$1"
+  local theme_dir="$2"
+  if [[ -d "${theme_dir}/wallpapers" ]]; then
+    theme_source_dir_ref="${theme_dir}/wallpapers"
+  elif [[ -d "${theme_dir}/wallpaper" ]]; then
+    theme_source_dir_ref="${theme_dir}/wallpaper"
+  else
+    theme_source_dir_ref="${theme_dir}"
+  fi
 }

@@ -36,7 +36,7 @@ The general mechanism, used by the menu and by any script that needs to show
 output in a window:
 
 ```bash
-present_terminal --hypr-profile tui --app-id org.tui.Thing --title Thing -- <command>
+menu_present_terminal --hypr-profile tui --app-id org.tui.Thing --title Thing -- <command>
 ```
 
 Profiles size the window; `--hypr-cells 96 28` sizes it in character cells

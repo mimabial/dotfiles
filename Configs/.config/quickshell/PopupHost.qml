@@ -12,6 +12,10 @@ Item {
     component Host: LazyPopup { shell: root.shell; popupsAllowed: root.popupsAllowed }
 
     Host {
+        popup: "desktop"; owners: ["barlayout", "windowlayout", "gnome-quick-settings"]
+        sourceComponent: Component { DesktopPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
+    }
+    Host {
         popup: "sudoku"; owners: ["sudoku"]
         sourceComponent: Component { SudokuPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
     }

@@ -20,69 +20,18 @@ if [[ "${1-}" == "-h" || "${1-}" == "--help" ]]; then
     exit 0
 fi
 
-total_capacity=0 battery_count=0 battery_path=
-for bat in /sys/class/power_supply/BAT*; do
-    [[ -r $bat/capacity && -r $bat/status ]] || continue
-    [[ -n $battery_path ]] || battery_path=$bat
-    total_capacity=$((total_capacity + $(<"$bat/capacity")))
-    ((++battery_count))
-done
-((battery_count)) || exit 0
+sysinfo_dir="${BASH_SOURCE[0]%/*}"
+source "$sysinfo_dir/battery/readings.bash"
+battery_read_all || exit 0
+battery_status="${battery_statuses[0]}"
+source "$sysinfo_dir/battery/render.bash"
+capacity_icon_index=$((battery_percent * (${#discharging_icons[@]} - 1) / 100))
 
-average_capacity=$((total_capacity / battery_count))
-index=$((average_capacity / 10))
-
-charging_icons=("󰂆 " "󰂇 " "󰂈 " "󰂉 " "󰂊 " "󰂋 " "󰂋 " "󰂋 " "󰂋 " "󰂋 " "󰂅 ") 
-discharging_icons=("󰂎" "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹")
-status_icons=("" "X" "󰂇")
-
-battery_status=$(<"$battery_path/status")
-
-formats=("$@")
-
-output_format() {
-    case "$1" in
-    icon)
-        if [[ "$battery_status" == "Charging" ]]; then
-            echo -n "${charging_icons[$index]} "
-        else
-            echo -n "${discharging_icons[$index]} "
-        fi
-        ;;
-    percentage)
-        echo -n "$average_capacity% "
-        ;;
-    int)
-        echo -n "$average_capacity "
-        ;;
-    status)
-        echo -n "$battery_status "
-        ;;
-    status-icon)
-        case "$battery_status" in
-        "Charging")
-            echo -n "${status_icons[0]} "
-            ;;
-        "Not Charging")
-            echo -n "${status_icons[1]} "
-            ;;
-        *)
-            echo -n "${status_icons[2]} "
-            ;;
-        esac
-        ;;
-    *)
-        echo "Invalid format option: $1. Use 'icon', 'percentage', 'int', 'status', or 'status-icon'."
-        exit 1
-        ;;
-    esac
-}
-
-if [ ${#formats[@]} -eq 0 ]; then
-    output_format "icon"
+if (($# == 0)); then
+    battery_render_format icon
 else
-    for format in "${formats[@]}"; do
-        output_format "$format"
+    for format in "$@"; do
+        battery_render_format "$format"
     done
     echo
 fi

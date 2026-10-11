@@ -61,7 +61,9 @@ PopupCard {
   property int _preMuteVol: 80
 
   property var historyList: []
+  readonly property bool historyLocalOnly: root.shell.barLayout.mediaHistoryLocalOnly ?? true
   readonly property var historyGroups: MediaModel.historyGroups(root.historyList, Qt.locale())
+  onHistoryLocalOnlyChanged: { root.loadHistory(); root.loadPlaylists() }
   property var playlistsList: []
   property var queueItems: []
   property string queueSource: "cliamp"
@@ -114,13 +116,14 @@ PopupCard {
     "siriwave", "soundcloud_wave", "telegram_wave",
     "daw_wave", "led_scrubber", "heatmap_wave", "grounded_wave",
     "retro", "matrix", "binary", "terrain", "mosaic",
-    "scatter", "butterfly",
-    "plasma", "osc_warp", "crt_scanline", "cyber_tunnel"
+    "scatter", "butterfly", "yinyang",
+    "plasma", "osc_warp", "crt_scanline", "cyber_tunnel", "red_sector"
   ]
 
   property var visBands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   property var visBandsRaw: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   property var visBandsStereo: ({ "left": [], "right": [] })
+  property var visBandsFine: []
   property var visPeaks: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   property var visWave: []
   property var visWaveStereo: ({ "left": [], "right": [] })
@@ -136,13 +139,24 @@ PopupCard {
   property double visFrame: 0
   readonly property double _visEpoch: Date.now()
   readonly property double _visTick: 42.7
+  readonly property real _levelRiseTau: 0.075
+  readonly property real _levelFallTau: 0.23
   property var _visState: ({})
   property var resumeInfo: null
   property bool resumeVisible: false
   // Dismissal has to outlive the status poll below, which would otherwise raise
   // the banner again a tick later. Keyed by url so a different saved track asks.
   property string resumeDismissedUrl: ""
-  property var activePlaylist: null
+  property var selectedPlaylist: null
+  readonly property var activePlaylist: {
+    const playlist = root.selectedPlaylist
+    if (!playlist || playlist.name !== "Recently Played") return playlist
+    return { name: playlist.name, system: true, tracks: root.historyList.map(track => ({
+      title: track.title || "Track", artist: track.artist || "",
+      duration: track.duration_secs ? Media.time(track.duration_secs) : "",
+      url: track.path || (track.title + " " + track.artist)
+    })) }
+  }
   property bool isImportingPl: false
   property string plImportError: ""
   readonly property var mprisPlayer: {
@@ -396,7 +410,7 @@ PopupCard {
     root.isImportingPl = true
     root.plImportError = ""
     root.selectedTab = "playlists"
-    root.activePlaylist = null
+    root.selectedPlaylist = null
     importPlProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "import_playlist", url.trim(), name || ""]
     importPlProc.running = true
   }
@@ -404,33 +418,18 @@ PopupCard {
   function deletePlaylist(name) {
     if (!name) return
     if (root.activePlaylist && root.activePlaylist.name === name) {
-      root.activePlaylist = null
+      root.selectedPlaylist = null
     }
     runCmd(["delete_playlist", name])
     Qt.callLater(loadPlaylists)
   }
 
   function openPlaylist(playlist) {
-    if (!playlist) return
-    if (playlist.name === "Recently Played") {
-      var recents = []
-      for (var i = 0; i < root.historyList.length; i++) {
-        var h = root.historyList[i]
-        recents.push({
-          title: h.title || "Track",
-          artist: h.artist || "",
-          duration: h.duration_secs ? Media.time(h.duration_secs) : "",
-          url: h.path || (h.title + " " + h.artist)
-        })
-      }
-      root.activePlaylist = { name: "Recently Played", tracks: recents, system: true }
-    } else {
-      root.activePlaylist = playlist
-    }
+    if (playlist) root.selectedPlaylist = playlist
   }
 
   function closePlaylist() {
-    root.activePlaylist = null
+    root.selectedPlaylist = null
   }
 
   function doResume() { runCmd(["resume"]); root.resumeVisible = false; root.loadingVid = "" }
@@ -559,7 +558,9 @@ PopupCard {
   }
 
   function loadHistory() {
-    if (!historyProc.running) historyProc.running = true
+    if (historyProc.running) return
+    historyProc.localOnly = root.historyLocalOnly
+    historyProc.running = true
   }
 
   // Mirrors liked_key() in cliamp_ctl.py: a real target identifies the song, and the
@@ -581,7 +582,9 @@ PopupCard {
   }
 
   function loadPlaylists() {
-    if (!playlistsProc.running) playlistsProc.running = true
+    if (playlistsProc.running) return
+    playlistsProc.localOnly = root.historyLocalOnly
+    playlistsProc.running = true
   }
 
   function ctlCmd(args) {
@@ -739,25 +742,30 @@ PopupCard {
 
   Process {
     id: historyProc
-    command: ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "history", "99"]
+    property bool localOnly: true
+    command: root.ctlCmd(["history", "99"].concat(historyProc.localOnly ? ["--local-only"] : []))
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        if (historyProc.localOnly !== root.historyLocalOnly) return
         try { root.historyList = JSON.parse(text || "[]") }
         catch (e) { root.historyList = [] }
       }
     }
   }
+  Connections { target: historyProc; function onExited() { if (historyProc.localOnly !== root.historyLocalOnly) root.loadHistory() } }
 
   Process { id: recentProc }
   Connections { target: recentProc; function onExited() { if (root.open) root.loadHistory() } }
 
   Process {
     id: playlistsProc
-    command: ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "playlists"]
+    property bool localOnly: true
+    command: root.ctlCmd(["playlists"].concat(playlistsProc.localOnly ? ["--local-only"] : []))
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        if (playlistsProc.localOnly !== root.historyLocalOnly) return
         try { root.playlistsList = JSON.parse(text || "[]") }
         catch (e) { root.playlistsList = [] }
         // a reload that raced a still-pending toggle would drop its optimistic flip
@@ -765,6 +773,7 @@ PopupCard {
       }
     }
   }
+  Connections { target: playlistsProc; function onExited() { if (playlistsProc.localOnly !== root.historyLocalOnly) root.loadPlaylists() } }
 
   Process {
     id: importPlProc
@@ -853,18 +862,25 @@ PopupCard {
     onLoadFailed: {}
   }
 
+  function unitLevel(value) {
+    return Math.min(1.0, Math.max(0.0, Number(value) || 0.0))
+  }
+
+  function easeLevel(previous, target, dt) {
+    var tau = target > previous ? root._levelRiseTau : root._levelFallTau
+    var eased = previous + (target - previous) * (1.0 - Math.exp(-dt / tau))
+    return target === 0 && eased < 0.001 ? 0 : eased
+  }
+
+  function decayLevels(levels) {
+    return levels.map(level => Math.max(0, level * 0.8 - 0.02))
+  }
+
   function updateSpectrumData(raw) {
     if (!root.open) return
     if (!root.isPlaying) {
-      var decayedBands = [], decayedPeaks = [], hasAny = false
-      for (var k = 0; k < 24; k++) {
-        var b = Math.max(0, (root.visBands[k] || 0) * 0.8 - 0.02)
-        var p = Math.max(0, (root.visPeaks[k] || 0) * 0.8 - 0.02)
-        decayedBands.push(b); decayedPeaks.push(p)
-        if (b > 0 || p > 0) hasAny = true
-      }
-      root.visBands = decayedBands; root.visPeaks = decayedPeaks
-      if (hasAny && playerComp) playerComp.requestPaint()
+      root.visBands = decayLevels(root.visBands); root.visPeaks = decayLevels(root.visPeaks); root.visBandsFine = decayLevels(root.visBandsFine)
+      if (playerComp && root.visBands.concat(root.visPeaks, root.visBandsFine).some(level => level > 0)) playerComp.requestPaint()
       return
     }
 
@@ -885,24 +901,18 @@ PopupCard {
         var previousStereo = root.visBandsStereo || ({}), previousLeft = previousStereo.left || [], previousRight = previousStereo.right || []
         var newBands = [], newRawBands = [], newPeaks = [], newLeft = [], newRight = []
         for (var i = 0; i < 24; i++) {
-          var target = Math.min(1.0, Math.max(0.0, Number(bands[i]) || 0.0))
-          var previous = Number(root.visBands[i]) || 0.0
-          var tau = target > previous ? 0.075 : 0.23
-          var display = previous + (target - previous) * (1.0 - Math.exp(-spectrumDt / tau))
-          if (target === 0 && display < 0.001) display = 0
+          var target = root.unitLevel(bands[i])
+          var display = root.easeLevel(Number(root.visBands[i]) || 0.0, target, spectrumDt)
           var prevPeak = root.visPeaks[i] || 0.0
           newRawBands.push(target)
           newBands.push(display)
           newPeaks.push(Math.max(display, prevPeak - 0.38 * spectrumDt))
-          var leftTarget = Math.min(1.0, Math.max(0.0, Number(stereoLeft[i]) || 0.0))
-          var rightTarget = Math.min(1.0, Math.max(0.0, Number(stereoRight[i]) || 0.0))
-          var leftPrevious = Number(previousLeft[i]) || 0.0, rightPrevious = Number(previousRight[i]) || 0.0
-          var leftTau = leftTarget > leftPrevious ? 0.075 : 0.23
-          var rightTau = rightTarget > rightPrevious ? 0.075 : 0.23
-          newLeft.push(leftPrevious + (leftTarget - leftPrevious) * (1.0 - Math.exp(-spectrumDt / leftTau)))
-          newRight.push(rightPrevious + (rightTarget - rightPrevious) * (1.0 - Math.exp(-spectrumDt / rightTau)))
+          newLeft.push(root.easeLevel(Number(previousLeft[i]) || 0.0, root.unitLevel(stereoLeft[i]), spectrumDt))
+          newRight.push(root.easeLevel(Number(previousRight[i]) || 0.0, root.unitLevel(stereoRight[i]), spectrumDt))
         }
         root.visBandsRaw = newRawBands; root.visBands = newBands; root.visPeaks = newPeaks
+        root.visBandsFine = (data.bands_fine || []).map((level, index) =>
+          root.easeLevel(Number(root.visBandsFine[index]) || 0.0, root.unitLevel(level), spectrumDt))
         root.visBandsStereo = ({ "left": newLeft, "right": newRight })
         root.visWave = Array.isArray(data.wave) ? data.wave : []
         root.visWaveStereo = data.wave_stereo || ({ "left": [], "right": [] })

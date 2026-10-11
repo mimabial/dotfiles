@@ -1,22 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
-PALETTE_ARG="${1:-}"
-. "$(dirname "$0")/_lib.sh"
-render_init cava theme
+source "${BASH_SOURCE[0]%/*}/_render_job.bash"
+declare -A render_job=()
+render_job_into render_job "${1:-}" cava theme
 
-render_link_output "${XDG_CONFIG_HOME:-$HOME/.config}/cava/themes/hypr"
+render_link_output render_job "${XDG_CONFIG_HOME:-$HOME/.config}/cava/themes/hypr"
 
-render_begin
+render_output_is_current render_job && exit 0
+render_stage_output_into render_job
+trap 'rm -f -- "${render_job[staged_file]}"' EXIT
 
-render_read_palette
-red="${c[1]}" green="${c[2]}" yellow="${c[3]}" blue="${c[4]}" magenta="${c[5]}" cyan="${c[6]}"
+render_read_palette_into render_job
+red="${render_job[color1]}" green="${render_job[color2]}" yellow="${render_job[color3]}" blue="${render_job[color4]}" magenta="${render_job[color5]}" cyan="${render_job[color6]}"
 gradient=("${red}" "${green}" "${yellow}" "${blue}" "${magenta}" "${cyan}" "${magenta}" "${cyan}")
 {
   printf '[color]\ngradient = 1\ngradient_count = %d\n' "${#gradient[@]}"
   for i in "${!gradient[@]}"; do
     printf "gradient_color_%d = '%s'\n" "$((i + 1))" "${gradient[i]}"
   done
-} >"${tmp}"
+} >"${render_job[staged_file]}"
 
-render_commit "${tmp}" "${hash}"
+render_commit_staged_output render_job
 trap - EXIT

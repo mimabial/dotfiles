@@ -124,41 +124,34 @@ rofi_resolve_monitors_json() {
   fi
 }
 
-rofi_monitor_record() {
-  local selector="$1"
+rofi_monitor_geometry_into() {
+  local output_name="$1"
   shift
   local monitors_json=""
 
   monitors_json="$(rofi_resolve_monitors_json)"
   [[ -n "${monitors_json}" ]] || return 1
 
-  printf '%s\n' "${monitors_json}" |
-    jq -r "$@" "def monitor_width: if (.transform % 2 == 0) then .width else .height end;
-def monitor_height: if (.transform % 2 == 0) then .height else .width end;
-def record: [
-  monitor_width,
-  monitor_height,
-  (.scale // 1),
-  (.x // 0),
-  (.y // 0),
-  (.reserved[0] // 0),
-  (.reserved[1] // 0),
-  (.reserved[2] // 0),
-  (.reserved[3] // 0)
-] | @tsv;
-${selector} | record" 2>/dev/null | head -n 1
+  hypr_select_monitor_geometry_into "${output_name}" "$@" <<<"${monitors_json}"
 }
 
-rofi_focused_monitor_record() {
-  rofi_monitor_record '.[] | select(.focused == true)'
+rofi_focused_monitor_geometry_into() {
+  rofi_monitor_geometry_into "$1" '.[] | select(.focused == true)'
 }
+
+# Rofi window geometry is budgeted in em but specified in px. font_scale is the
+# scale in tenths (TEXT_SIZE 12 -> 10), so one em is approximated at twice it.
+# rofi_font_text_height_px measures the real value when the font is known.
+ROFI_EM_PX_PER_SCALE=2
+ROFI_DEFAULT_FONT_SCALE=10
+ROFI_TEXT_SIZE_AT_DEFAULT_SCALE_PX=12
 
 rofi_default_window_size() {
   local width_name="$1"
   local height_name="$2"
   local -n width_ref="${width_name}"
   local -n height_ref="${height_name}"
-  local font_scale="${ROFI_SCALE:-10}"
+  local font_scale="${ROFI_SCALE:-${ROFI_DEFAULT_FONT_SCALE}}"
 
   if [[ "${width_ref}" -eq 0 && "${height_ref}" -eq 0 ]]; then
     local default_width_em=23
@@ -166,49 +159,6 @@ rofi_default_window_size() {
     width_ref=$((default_width_em * font_scale * ROFI_EM_PX_PER_SCALE))
     height_ref=$((default_height_em * font_scale * ROFI_EM_PX_PER_SCALE))
   fi
-}
-
-rofi_scale_milli() {
-  local scale="${1:-1}"
-  local whole_part=""
-  local fraction_part=""
-
-  if [[ "${scale}" =~ ^([0-9]+)([.]([0-9]+))?$ ]]; then
-    whole_part="${BASH_REMATCH[1]}"
-    fraction_part="${BASH_REMATCH[3]:-}"
-    fraction_part="${fraction_part:0:3}"
-
-    while ((${#fraction_part} < 3)); do
-      fraction_part="${fraction_part}0"
-    done
-
-    if [[ "${whole_part}" != "0" || "${fraction_part}" != "000" ]]; then
-      printf '%s\n' $((10#${whole_part} * ROFI_MILLI + 10#${fraction_part:-000}))
-      return 0
-    fi
-  fi
-
-  printf '1000\n'
-}
-
-ROFI_MILLI=1000
-
-rofi_scaled_divide() {
-  local value="${1:-0}"
-  local scale="${2:-1}"
-  local min_value="${3:-}"
-  local scale_milli=""
-  local result=0
-
-  [[ "${value}" =~ ^-?[0-9]+$ ]] || value=0
-  scale_milli="$(rofi_scale_milli "${scale}")"
-  result=$((value * ROFI_MILLI / scale_milli))
-
-  if [[ -n "${min_value}" ]] && [[ "${result}" -lt "${min_value}" ]]; then
-    result="${min_value}"
-  fi
-
-  printf '%s\n' "${result}"
 }
 
 ROFI_CURSOR_GAP_PX=8
@@ -226,44 +176,36 @@ rofi_cursor_position() {
   printf '%s\t%s\n' "${cursor_x}" "${cursor_y}"
 }
 
-rofi_monitor_under_cursor() {
-  rofi_monitor_record '
+rofi_monitor_under_cursor_into() {
+  rofi_monitor_geometry_into "$1" '
     (
       .[] | select(
         ($cx >= .x) and
-        ($cx < (.x + monitor_width)) and
+        ($cx < (.x + logical_width_px)) and
         ($cy >= .y) and
-        ($cy < (.y + monitor_height))
+        ($cy < (.y + logical_height_px))
       )
     ),
     (.[] | select(.focused == true))
-  ' --argjson cx "$1" --argjson cy "$2"
+  ' --argjson cx "$2" --argjson cy "$3"
 }
 
 rofi_window_position_theme() {
   local window_width="${1:-0}"
   local window_height="${2:-0}"
-  local cursor_x=0 cursor_y=0 monitor_line=""
-  local parsed_width=0 parsed_height=0 parsed_scale=1 mon_x=0 mon_y=0
-  local off_left=0 off_top=0 off_right=0 off_bottom=0
-  local mon_width=0 mon_height=0 edge_padding=0 usable_width=0 usable_height=0
+  local cursor_x=0 cursor_y=0
+  local -A monitor=()
+  local edge_padding=0 usable_width=0 usable_height=0
   local max_x=0 max_y=0 x_off=0 y_off=0
 
   rofi_default_window_size window_width window_height
   IFS=$'\t' read -r cursor_x cursor_y < <(rofi_cursor_position)
-  monitor_line="$(rofi_monitor_under_cursor "${cursor_x}" "${cursor_y}")" || return 1
-  [[ -n "${monitor_line}" ]] || return 1
-
-  IFS=$'\t' read -r parsed_width parsed_height parsed_scale mon_x mon_y \
-    off_left off_top off_right off_bottom <<<"${monitor_line}"
-  [[ "${parsed_scale}" =~ ^[0-9]+([.][0-9]+)?$ ]] || parsed_scale=1
-  mon_width="$(rofi_scaled_divide "${parsed_width}" "${parsed_scale}" 1)"
-  mon_height="$(rofi_scaled_divide "${parsed_height}" "${parsed_scale}" 1)"
+  rofi_monitor_under_cursor_into monitor "${cursor_x}" "${cursor_y}" || return 1
   edge_padding="$(hypr_window_edge_padding_px 2>/dev/null || true)"
   [[ "${edge_padding}" =~ ^[0-9]+$ ]] || edge_padding="${ROFI_FALLBACK_EDGE_PADDING_PX}"
 
-  usable_width=$((mon_width - off_left - off_right))
-  usable_height=$((mon_height - off_top - off_bottom))
+  usable_width=$((monitor[logical_width_px] - monitor[reserved_left_px] - monitor[reserved_right_px]))
+  usable_height=$((monitor[logical_height_px] - monitor[reserved_top_px] - monitor[reserved_bottom_px]))
   ((usable_width < 1)) && usable_width=1
   ((usable_height < 1)) && usable_height=1
   max_x=$((usable_width - window_width - edge_padding))
@@ -272,8 +214,8 @@ rofi_window_position_theme() {
   ((max_y < edge_padding)) && max_y="${edge_padding}"
 
   # cursorpos and monitor x/y are logical; only width/height need descaling
-  x_off="$(hypr_clamp $((cursor_x - mon_x - off_left + ROFI_CURSOR_GAP_PX)) "${edge_padding}" "${max_x}")"
-  y_off="$(hypr_clamp $((cursor_y - mon_y - off_top + ROFI_CURSOR_GAP_PX)) "${edge_padding}" "${max_y}")"
+  x_off="$(hypr_clamp $((cursor_x - monitor[logical_x_px] - monitor[reserved_left_px] + ROFI_CURSOR_GAP_PX)) "${edge_padding}" "${max_x}")"
+  y_off="$(hypr_clamp $((cursor_y - monitor[logical_y_px] - monitor[reserved_top_px] + ROFI_CURSOR_GAP_PX)) "${edge_padding}" "${max_y}")"
   printf 'window{location:%s %s;anchor:%s %s;x-offset:%spx;y-offset:%spx;}\n' \
     west north west north "${x_off}" "${y_off}"
 }

@@ -2,8 +2,7 @@
 
 set -euo pipefail
 
-script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-lib_root="$(cd -- "${script_dir}/../.." && pwd -P)"
+lib_root="${BASH_SOURCE[0]%/*}/../.."
 xdg_lib="${lib_root}/hypr/core/xdg.bash"
 notify_lib="${lib_root}/hypr/core/notify.bash"
 state_lib="${lib_root}/hypr/core/state.bash"
@@ -140,7 +139,7 @@ sync_other_keyboards() {
 
 regenerate_keybind_hint_cache() {
   local hint_py="${lib_root}/hypr/keybinds/lib/keybinds_hint.py"
-  local cache_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr"
+  local cache_dir="${XDG_RUNTIME_DIR:-/run/user/${UID}}/hypr"
   local cache="${cache_dir}/keybinds_hint.rofi"
   local tmp=""
 

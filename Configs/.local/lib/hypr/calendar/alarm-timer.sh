@@ -6,11 +6,10 @@ usage() { printf 'Usage: %s {list|add KIND EPOCH [LABEL]|cancel ID|restore}\n' "
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/notify.bash"
 
-# sleep's clock stops during suspend, so a wait re-reads the wall clock at least this often.
-WALL_CLOCK_RECHECK_S=30
 timer_state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell"
 timer_state_file="${timer_state_dir}/timers.json"
 timer_script_path="$(readlink -f "${BASH_SOURCE[0]}")"
+exec_at="${timer_script_path%/*}/lib/exec_at.py"
 mkdir -p "${timer_state_dir}"
 [[ -s "${timer_state_file}" ]] || printf '[]\n' >"${timer_state_file}"
 
@@ -24,13 +23,13 @@ update_timer_state_under_lock() {
 
 timer_process_is_alive() {
   [[ "$1" =~ ^[0-9]+$ && -r "/proc/$1/cmdline" ]] || return 1
-  [[ "$(tr '\0' ' ' <"/proc/$1/cmdline")" == *"${timer_script_path} wait $2 "* ]]
+  [[ "$(tr '\0' ' ' <"/proc/$1/cmdline")" == *"${timer_script_path} fire $2 "* ]]
 }
 
 start_timer_wait_process() {
   local id="$1" epoch="$2"
-  nohup "${timer_script_path}" wait "${id}" "${epoch}" >/dev/null 2>&1 &
-  printf 'process\t%s\n' "$!"
+  nohup python3 "${exec_at}" "${epoch}" "${timer_script_path}" fire "${id}" >/dev/null 2>&1 &
+  printf '%s\n' "$!"
 }
 
 case "${1:-list}" in
@@ -40,21 +39,16 @@ case "${1:-list}" in
   add)
     kind="${2:-}"; epoch="${3:-}"; label="${4:-}"
     [[ "${kind}" == timer || "${kind}" == alarm ]] && [[ "${epoch}" =~ ^[0-9]+$ ]] && ((epoch > $(date +%s))) || exit 2
-    id="$(date +%s%N)"; IFS=$'\t' read -r backend ref < <(start_timer_wait_process "${id}" "${epoch}")
-    update_timer_state_under_lock '. + [{id:$id, epoch:$epoch, kind:$kind, label:$label, backend:$backend, ref:$ref}] | sort_by(.epoch)' \
-      --arg id "${id}" --argjson epoch "${epoch}" --arg kind "${kind}" --arg label "${label}" --arg backend "${backend}" --arg ref "${ref}"
+    id="$(date +%s%N)"; pid="$(start_timer_wait_process "${id}" "${epoch}")"
+    update_timer_state_under_lock '. + [{id:$id, epoch:$epoch, kind:$kind, label:$label, pid:$pid}] | sort_by(.epoch)' \
+      --arg id "${id}" --argjson epoch "${epoch}" --arg kind "${kind}" --arg label "${label}" --arg pid "${pid}"
     ;;
   cancel)
     id="${2:-}"; item="$(jq -c --arg id "${id}" '.[] | select(.id == $id)' "${timer_state_file}")"
     [[ -n "${item}" ]] || exit 0
-    backend="$(jq -r .backend <<<"${item}")"; ref="$(jq -r .ref <<<"${item}")"
-    if [[ "${backend}" == process ]] && timer_process_is_alive "${ref}" "${id}"; then kill "${ref}"; fi
+    pid="$(jq -r .pid <<<"${item}")"
+    if timer_process_is_alive "${pid}" "${id}"; then kill "${pid}"; fi
     update_timer_state_under_lock 'map(select(.id != $id))' --arg id "${id}"
-    ;;
-  wait)
-    id="${2:-}"; epoch="${3:-0}"
-    while remaining=$((epoch - $(date +%s))) && ((remaining > 0)); do ((remaining > WALL_CLOCK_RECHECK_S)) && remaining=${WALL_CLOCK_RECHECK_S}; sleep "${remaining}"; done
-    exec "${timer_script_path}" fire "${id}"
     ;;
   fire)
     id="${2:-}"; item="$(jq -c --arg id "${id}" '.[] | select(.id == $id)' "${timer_state_file}")"
@@ -70,10 +64,10 @@ case "${1:-list}" in
     while IFS= read -r item; do
       id="$(jq -r .id <<<"${item}")"; epoch="$(jq -r .epoch <<<"${item}")"
       if ((epoch <= $(date +%s))); then "${timer_script_path}" fire "${id}"; continue; fi
-      backend="$(jq -r .backend <<<"${item}")"; ref="$(jq -r .ref <<<"${item}")"
-      [[ "${backend}" == process ]] && timer_process_is_alive "${ref}" "${id}" && continue
-      IFS=$'\t' read -r backend ref < <(start_timer_wait_process "${id}" "${epoch}")
-      update_timer_state_under_lock 'map(if .id == $id then .backend=$backend | .ref=$ref else . end)' --arg id "${id}" --arg backend "${backend}" --arg ref "${ref}"
+      pid="$(jq -r .pid <<<"${item}")"
+      timer_process_is_alive "${pid}" "${id}" && continue
+      pid="$(start_timer_wait_process "${id}" "${epoch}")"
+      update_timer_state_under_lock 'map(if .id == $id then .pid=$pid else . end)' --arg id "${id}" --arg pid "${pid}"
     done < <(jq -c '.[]' "${timer_state_file}")
     ;;
   *) usage >&2; exit 2 ;;

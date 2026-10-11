@@ -3,11 +3,12 @@ set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 
-hypr_help_guard "Usage: hyprshell system/agent-recommendation <id> <name> [usage-summary]
+readonly USAGE="Usage: hyprshell system/agent-recommendation <id> <name> [usage-summary]"
+hypr_help_guard "${USAGE}
 Record the current AI-agent recommendation and notify on changes when enabled." "$@"
 
 [[ $# -ge 2 && $# -le 3 ]] || {
-  printf 'Usage: hyprshell system/agent-recommendation <id> <name> [usage-summary]\n' >&2
+  printf '%s\n' "${USAGE}" >&2
   exit 2
 }
 

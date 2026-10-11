@@ -18,20 +18,23 @@ fi
 
 # tmux resolves its own bindings, notes and prefix, so ask it rather than
 # re-parsing a config full of key tables and line continuations
-tmux_binds() {
+list_tmux_bindings() {
   local conf="${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf"
+  local key_and_note_format=$'#{?#{==:#{key_table},prefix},#{key_prefix} ,}#{key_string}\t#{key_note}'
+  local private_server_socket="hypr-app-hints"
   local listing=""
 
-  listing="$(tmux list-keys -N 2>/dev/null || true)"
+  listing="$(tmux list-keys -N -F "${key_and_note_format}" 2>/dev/null || true)"
   if [[ -z "${listing}" && -f "${conf}" ]]; then
-    listing="$(tmux -f "${conf}" start-server \; list-keys -N \; kill-server 2>/dev/null || true)"
+    listing="$(tmux -L "${private_server_socket}" -f "${conf}" start-server \; \
+      list-keys -N -F "${key_and_note_format}" \; kill-server 2>/dev/null || true)"
   fi
   [[ -n "${listing}" ]] || return 1
-  sed -E 's/[[:space:]]{2,}/\t/' <<<"${listing}"
+  printf '%s\n' "${listing}"
 }
 
 # kitty has no resolved-keymap dump in this build, so read the config layers
-kitty_binds() {
+list_kitty_bindings() {
   local conf_dir="${XDG_CONFIG_HOME:-$HOME/.config}/kitty"
   local -a confs=("${conf_dir}"/*.conf)
 
@@ -41,11 +44,20 @@ kitty_binds() {
       line = $0
       sub(/^[ \t]*map[ \t]+/, "", line)
       cond = ""
-      if (line ~ /^--when-focus-on[ \t]+/) {
-        sub(/^--when-focus-on[ \t]+/, "", line)
-        split(line, parts, " ")
-        cond = " (" parts[1] ")"
+      while (line ~ /^--/) {
+        option = line
+        sub(/[ \t].*/, "", option)
         sub(/^[^ \t]+[ \t]+/, "", line)
+        if (option ~ /=/) {
+          value = option
+          sub(/^[^=]*=/, "", value)
+          sub(/=.*/, "", option)
+        } else {
+          value = line
+          sub(/[ \t].*/, "", value)
+          sub(/^[^ \t]+[ \t]+/, "", line)
+        }
+        if (option == "--when-focus-on") cond = " (" value ")"
       }
       split(line, parts, " ")
       key = parts[1]
@@ -58,8 +70,8 @@ kitty_binds() {
 
 app="${1:-}"
 case "${app}" in
-  kitty) binds="$(kitty_binds || true)" ;;
-  tmux) binds="$(tmux_binds || true)" ;;
+  kitty) binds="$(list_kitty_bindings || true)" ;;
+  tmux) binds="$(list_tmux_bindings || true)" ;;
   *) printf 'usage: %s <kitty|tmux>\n' "$(basename "$0")" >&2; exit 1 ;;
 esac
 
@@ -68,7 +80,10 @@ if [[ -z "${binds}" ]]; then
   exit 0
 fi
 
-rows="$(awk -F '\t' '{ printf "%-24s >   %s\n", $1, $2 }' <<<"${binds}")"
+rows="$(awk -F '\t' '
+  { keys[NR] = $1; actions[NR] = $2; if (length($1) > key_width) key_width = length($1) }
+  END { for (row = 1; row <= NR; row++) printf "%-" key_width "s >   %s\n", keys[row], actions[row] }
+' <<<"${binds}")"
 font_scale="$(rofi_effective_font_scale "${ROFI_KEYBIND_HINT_SCALE:-}")"
 font_name="$(rofi_effective_font_name "${ROFI_KEYBIND_HINT_FONT:-${ROFI_FONT:-}}")"
 

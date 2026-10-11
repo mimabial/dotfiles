@@ -34,9 +34,11 @@ Singleton {
         onLoaded: root.raw = Number(String(text()).trim())
     }
 
-    // sysfs does not always notify, so keep a cheap fallback read
-    property Timer poll: Timer {
-        running: root.device !== ""; interval: 2000; repeat: true
-        onTriggered: root.refresh()
+    property Process events: Process {
+        running: root.device !== ""
+        command: ["udevadm", "monitor", "--kernel", "--subsystem-match=backlight"]
+        stdout: SplitParser { onRead: line => {
+            if (line.includes(" change ") && line.includes("/" + root.device + " ")) root.refresh()
+        } }
     }
 }

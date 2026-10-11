@@ -7,15 +7,15 @@ usage() {
   printf 'Usage: hyprshell install/sshd.sh [--key PUBLIC_KEY | --gh-keys USERNAME]\n'
 }
 
-valid_key() {
+is_valid_ssh_public_key() {
   ssh-keygen -lf /dev/stdin <<<"$1" >/dev/null 2>&1
 }
 
-authorize_key() {
+authorize_ssh_public_key() {
   local key="$1"
   local authorized_keys="${HOME}/.ssh/authorized_keys"
 
-  valid_key "${key}" || { printf 'Invalid SSH public key\n' >&2; return 1; }
+  is_valid_ssh_public_key "${key}" || { printf 'Invalid SSH public key\n' >&2; return 1; }
   mkdir -p "${HOME}/.ssh"
   chmod 700 "${HOME}/.ssh"
   touch "${authorized_keys}"
@@ -23,7 +23,7 @@ authorize_key() {
   grep -qxF -- "${key}" "${authorized_keys}" || printf '%s\n' "${key}" >>"${authorized_keys}"
 }
 
-authorize_github_keys() {
+authorize_github_ssh_public_keys() {
   local username="$1"
   local keys=""
   local key=""
@@ -34,7 +34,7 @@ authorize_github_keys() {
   [[ -n "${keys}" ]] || { printf 'No SSH keys found for %s\n' "${username}" >&2; return 1; }
   while IFS= read -r key; do
     [[ -n "${key}" ]] || continue
-    authorize_key "${key}" && ((added += 1))
+    authorize_ssh_public_key "${key}" && ((added += 1))
   done <<<"${keys}"
   ((added > 0))
 }
@@ -62,7 +62,7 @@ fi
 printf 'Installing and starting OpenSSH server...\n'
 hyprshell pm add openssh
 sudo sshd -t
-case "$(hypr_init_system)" in
+case "$(hypr_detect_init_system)" in
   systemd) sudo systemctl enable --now sshd.service ;;
   runit)
     [[ -d /etc/runit/sv/sshd ]] || { printf 'runit sshd service not found\n' >&2; exit 1; }
@@ -78,8 +78,8 @@ if command -v ufw >/dev/null 2>&1; then
 fi
 
 if [[ -n "${github_user}" ]]; then
-  authorize_github_keys "${github_user}"
+  authorize_github_ssh_public_keys "${github_user}"
 else
-  authorize_key "${key}"
+  authorize_ssh_public_key "${key}"
 fi
 printf 'SSHD is running; connect with: ssh %s@%s\n' "${USER}" "$(hostname)"

@@ -414,6 +414,7 @@ ShellRoot {
                 const gap = parseFloat(String(data.css || "").trim().split(/\s+/)[0])
                 if (isFinite(gap)) barFloatGap = Math.max(0, gap)
             } else if (data.option === "general:border_size" && typeof data.int === "number") windowBorderWidth = data.int
+            else if (data.option === "general:layout" && typeof data.str === "string") windowLayout = data.str
         } catch (error) {}
     }
     function barLayoutIcon() { return ({top:"", bottom:""})[barEdge] || "" }
@@ -504,7 +505,6 @@ ShellRoot {
         onFileChanged: reload()
     }
     FileView { path: Quickshell.env("XDG_RUNTIME_DIR") + "/hypr/caffeine-windows"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadCaffeineWindowState(text()); onFileChanged: reload() }
-    FileView { path: shellRoot.home + "/.local/state/hypr/window-layout.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.windowLayout = String(text()).match(/layout\s*=\s*["']([^"']+)/)?.[1] ?? ""; onFileChanged: reload() }
     FileView { id: layoutFile; path: shellRoot.home + "/.config/quickshell/layouts/" + shellRoot.layoutName + ".json"; watchChanges: true; atomicWrites: true; blockWrites: true; printErrors: false; onPathChanged: reload(); onLoaded: shellRoot.loadBarLayout(text()); onFileChanged: reload() }
     FileView { id: sharedLayoutFile; path: shellRoot.layoutData.extends ? shellRoot.home + "/.config/quickshell/layouts/shared/" + shellRoot.layoutData.extends + ".json" : ""; watchChanges: true; atomicWrites: true; blockWrites: true; printErrors: false; onLoaded: shellRoot.loadSharedLayout(text()); onFileChanged: reload() }
     FileView { id: varsFile; path: shellRoot.home + "/.local/share/hypr/vars.lua"; watchChanges: true; onLoaded: shellRoot.loadHyprVars("vars", text()); onFileChanged: reload() }
@@ -519,7 +519,7 @@ ShellRoot {
     Timer { id: timeVisibilityWrite; interval: 0; running: true; onTriggered: timeVisibilityFile.setText(shellRoot.timeVisibility) }
     Timer { interval: 1000; repeat: true; running: shellRoot.activeEntries.length > 0; triggeredOnStart: true; onTriggered: shellRoot.timerNowMs = Date.now() }
     Process { id: volumeRangeProbe; command: [shellRoot.home + "/.local/lib/hypr/controls/volume-control.sh", "--limits"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadVolumeRange(text) } }
-    Process { id: windowMetricsProbe; command: ["hyprctl", "-j", "--batch", "getoption general:gaps_out ; getoption general:border_size"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadWindowMetrics(text) } }
+    Process { id: windowMetricsProbe; command: ["hyprctl", "-j", "--batch", "getoption general:layout ; getoption general:gaps_out ; getoption general:border_size"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadWindowMetrics(text) } }
     Process { id: pausedProbe; command: ["dunstctl", "is-paused"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.notificationsPaused = text.trim() === "true" } }
     Process {
         id: powerProfileRestore

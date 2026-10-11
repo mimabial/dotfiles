@@ -1,13 +1,10 @@
 import QtQuick
-import qs.Commons
-import ".." as Shell
 
 Item {
   id: btn
   required property var dock
 
   property string icon: ""
-  property string iconContext: ""
   property string tooltip: ""
   signal pressed()
   signal middleClicked()
@@ -34,12 +31,15 @@ Item {
   width: btn.slotMain
   height: btn.dock.iconSlot
 
-  Shell.SymbolicIcon {
+  Image {
     anchors.centerIn: parent
-    name: btn.icon
-    context: btn.iconContext
-    color: area.containsMouse ? Color.accent : Color.bar.text
-    size: btn.dock.iconSize
+    width: btn.dock.iconSize
+    height: width
+    source: btn.dock.appLibrary.iconSource(btn.icon)
+    sourceSize: Qt.size(width * btn.dock.magnifyPeak, height * btn.dock.magnifyPeak)
+    fillMode: Image.PreserveAspectFit
+    asynchronous: true
+    mipmap: true
     transformOrigin: btn.dock.floorTransformOrigin
     scale: btn.magnifyScale * (area.pressed ? 0.92 : 1.0)
   }

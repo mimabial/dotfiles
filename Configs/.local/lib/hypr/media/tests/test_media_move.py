@@ -104,7 +104,7 @@ class MusicMoveTests(unittest.TestCase):
                 patch.dict(os.environ, {"XDG_MUSIC_DIR": str(root)}),
                 patch.object(sys, "argv", argv),
                 patch("rename_from_tags.read_tags", return_value={}),
-                patch("rename_from_tags.fields_for", return_value=values),
+                patch("rename_from_tags.filename_fields_from_tags", return_value=values),
                 patch("rename_from_tags.update_mpd") as update_mpd,
             ):
                 self.assertEqual(rename_from_tags.main(), 0)

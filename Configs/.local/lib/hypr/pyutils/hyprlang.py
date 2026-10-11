@@ -2,25 +2,35 @@ import glob as globlib
 import logging
 import os
 import re
-from typing import Any
+from typing import Any, NamedTuple
 
 logger = logging.getLogger(__name__)
 VARIABLE_ASSIGNMENT = re.compile(r"\$([A-Za-z_][A-Za-z0-9_.-]*)\s*=\s*(.+)")
 SOURCE_DIRECTIVE = re.compile(r"source\s*=\s*(.+)")
 SECTION_START = re.compile(r"([A-Za-z_][A-Za-z0-9_-]*(?:\[[^\]]+\])?)\s*\{")
 KEY_ASSIGNMENT = re.compile(r"([A-Za-z_][A-Za-z0-9_:-]*)\s*=\s*(.*)")
+# A braced reference must close, or ${USER:0:1} would be read as ${USER.
+VARIABLE_REFERENCE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_.-]*)\}|\$([A-Za-z_][A-Za-z0-9_.-]*)")
+MAX_VARIABLE_EXPANSION_DEPTH = 10
+SECTION_VALUE_KEY = "_value"
+
+
+class SourceSection(NamedTuple):
+    section_name: str
+    source_path: str
+    resolved_text_values: dict[str, str]
 
 
 class HyprlangParser:
-    def __init__(self, follow_source: bool = False, config_dir: str | None = None):
+    def __init__(self, follow_includes: bool = False, source_directory: str | None = None):
         self.variables: dict[str, str] = {}
-        self.config: dict[str, Any] = {}
-        self.blocks: list[dict[str, Any]] = []
-        self.current_file = ""
-        self.follow_source = follow_source
-        self.config_dir = config_dir or os.getcwd()
+        self.parsed_values: dict[str, Any] = {}
+        self.source_sections: list[SourceSection] = []
+        self.current_source_path = ""
+        self.follow_includes = follow_includes
+        self.source_directory = source_directory or os.getcwd()
 
-    def normalize_path(self, path: str) -> str:
+    def resolve_config_path(self, path: str) -> str:
         path = path.strip().strip('"').strip("'")
 
         if path.startswith("~"):
@@ -29,110 +39,107 @@ class HyprlangParser:
         path = os.path.expandvars(path)
 
         if not os.path.isabs(path):
-            path = os.path.join(self.config_dir, path)
+            path = os.path.join(self.source_directory, path)
 
         return path
 
-    def resolve_glob(self, pattern: str) -> list[str]:
-        pattern = self.normalize_path(pattern)
+    def expand_source_paths(self, pattern: str) -> list[str]:
+        pattern = self.resolve_config_path(pattern)
         matches = globlib.glob(pattern)
         return sorted(matches)
 
-    def resolve_variable(self, value: str, depth: int = 0, max_depth: int = 10) -> str:
-        if depth >= max_depth:
+    def expand_variables(self, value: str, depth: int = 0) -> str:
+        if depth >= MAX_VARIABLE_EXPANSION_DEPTH:
             return value
 
-        # A braced reference must close, or ${USER:0:1} would be read as ${USER.
-        pattern = r"\$\{([A-Za-z_][A-Za-z0-9_.-]*)\}|\$([A-Za-z_][A-Za-z0-9_.-]*)"
-
-        def replacer(match):
-            var_name, rest = match.group(1) or match.group(2), ""
-            if var_name not in self.variables and "." in var_name:
-                var_name, dot, tail = var_name.partition(".")
-                rest = dot + tail
-            if var_name in self.variables:
-                return self.resolve_variable(self.variables[var_name], depth + 1) + rest
-            if var_name in os.environ:
-                return os.environ[var_name] + rest
+        def expand_reference(match):
+            variable_name, literal_suffix = match.group(1) or match.group(2), ""
+            if variable_name not in self.variables and "." in variable_name:
+                variable_name, dot_separator, attribute_suffix = variable_name.partition(".")
+                literal_suffix = dot_separator + attribute_suffix
+            if variable_name in self.variables:
+                return self.expand_variables(self.variables[variable_name], depth + 1) + literal_suffix
+            if variable_name in os.environ:
+                return os.environ[variable_name] + literal_suffix
             return match.group(0)
 
-        return re.sub(pattern, replacer, value)
+        return VARIABLE_REFERENCE.sub(expand_reference, value)
 
     def strip_comment(self, line: str) -> str:
         in_quotes = False
         quote_char = None
-        i = -1
-        while (i := i + 1) < len(line):
-            char = line[i]
-            if line.startswith("##", i):
-                i += 1
-            elif char in ('"', "'") and (i == 0 or line[i - 1] != "\\"):
+        character_index = -1
+        while (character_index := character_index + 1) < len(line):
+            char = line[character_index]
+            if line.startswith("##", character_index):
+                character_index += 1
+            elif char in ('"', "'") and (character_index == 0 or line[character_index - 1] != "\\"):
                 if not in_quotes:
                     in_quotes = True
                     quote_char = char
                 elif char == quote_char:
                     in_quotes = False
             elif char == "#" and not in_quotes:
-                return line[:i].rstrip()
+                return line[:character_index].rstrip()
         return line
 
-    def parse_value(self, value_str: str) -> Any:
-        value_str = value_str.strip()
+    def parse_value(self, value_text: str) -> Any:
+        value_text = value_text.strip()
 
-        if (value_str.startswith('"') and value_str.endswith('"')) or (
-            value_str.startswith("'") and value_str.endswith("'")
+        if (value_text.startswith('"') and value_text.endswith('"')) or (
+            value_text.startswith("'") and value_text.endswith("'")
         ):
-            return value_str[1:-1]
+            return value_text[1:-1]
 
-        if value_str.lower() in ("true", "yes", "on"):
+        if value_text.lower() in ("true", "yes", "on"):
             return True
-        if value_str.lower() in ("false", "no", "off"):
+        if value_text.lower() in ("false", "no", "off"):
             return False
 
-        if value_str.startswith(("0x", "0X")):
+        if value_text.startswith(("0x", "0X")):
             try:
-                return int(value_str, 16)
+                return int(value_text, 16)
             except ValueError:
                 pass
 
         try:
-            return int(value_str)
+            return int(value_text)
         except ValueError:
             pass
 
         try:
-            return float(value_str)
+            return float(value_text)
         except ValueError:
             pass
 
-        return value_str
+        return value_text
 
-    def set_nested_value(self, keys: list[str], value: Any):
-        current = self.config
-        for key in keys[:-1]:
-            if key not in current:
-                current[key] = {}
-            elif not isinstance(current[key], dict):
-                current[key] = {"_value": current[key]}
-            current = current[key]
+    def store_parsed_value(self, key_path: list[str], value: Any):
+        section_values = self.parsed_values
+        for key in key_path[:-1]:
+            if key not in section_values:
+                section_values[key] = {}
+            elif not isinstance(section_values[key], dict):
+                section_values[key] = {SECTION_VALUE_KEY: section_values[key]}
+            section_values = section_values[key]
 
-        final_key = keys[-1]
-        if final_key not in current:
-            current[final_key] = value
+        final_key = key_path[-1]
+        if final_key not in section_values:
+            section_values[final_key] = value
             return
 
-        if isinstance(current[final_key], dict):
+        if isinstance(section_values[final_key], dict):
             # Preserve repeated directives even when a section and value share a key.
-            existing_value = current[final_key].get("_value")
+            existing_value = section_values[final_key].get(SECTION_VALUE_KEY)
             if existing_value is None:
-                current[final_key]["_value"] = value
+                section_values[final_key][SECTION_VALUE_KEY] = value
             else:
-                current[final_key]["_value"] = self.merge_repeated_values(
+                section_values[final_key][SECTION_VALUE_KEY] = self.merge_repeated_values(
                     existing_value, value
                 )
             return
 
-        current[final_key] = self.merge_repeated_values(current[final_key], value)
+        section_values[final_key] = self.merge_repeated_values(section_values[final_key], value)
 
     @staticmethod
     def merge_repeated_values(existing: Any, new_value: Any) -> list[Any]:
@@ -140,98 +147,97 @@ class HyprlangParser:
             return [*existing, new_value]
         return [existing, new_value]
 
-    def get_nested_value(self, keys: list[str]) -> Any | None:
-        current = self.config
-        for key in keys[:-1]:
-            if key not in current:
+    def parsed_value_at(self, key_path: list[str]) -> Any | None:
+        section_values = self.parsed_values
+        for key in key_path[:-1]:
+            if key not in section_values:
                 return None
-            current = current[key]
-            if not isinstance(current, dict):
+            section_values = section_values[key]
+            if not isinstance(section_values, dict):
                 return None
 
-        final_key = keys[-1]
-        if final_key not in current:
+        final_key = key_path[-1]
+        if final_key not in section_values:
             return None
 
-        value = current[final_key]
-        if isinstance(value, dict) and "_value" in value:
-            return value["_value"]
+        value = section_values[final_key]
+        if isinstance(value, dict) and SECTION_VALUE_KEY in value:
+            return value[SECTION_VALUE_KEY]
         return value
 
-    def logical_lines(self, filepath: str):
-        with open(filepath) as config_file:
-            lines = config_file.readlines()
-        i = 0
-        while i < len(lines):
-            line = self.strip_comment(lines[i]).strip()
-            i += 1
-            if not line:
-                continue
-            while line.endswith("\\") and i < len(lines):
-                line = line[:-1] + " " + self.strip_comment(lines[i]).strip()
-                i += 1
-            yield line
+    def iter_logical_lines(self, source_path: str):
+        with open(source_path) as config_file:
+            for physical_line in config_file:
+                line = self.strip_comment(physical_line).strip()
+                if not line:
+                    continue
+                while line.endswith("\\"):
+                    continuation = next(config_file, None)
+                    if continuation is None:
+                        break
+                    line = line[:-1] + " " + self.strip_comment(continuation).strip()
+                yield line
 
-    def follow_sources(self, value: str, context_stack: list[str]):
-        source_path = self.resolve_variable(value.strip())
-        for source_file in self.resolve_glob(source_path):
+    def follow_sources(self, value: str, section_stack: list[str]):
+        source_path = self.expand_variables(value.strip())
+        for source_file in self.expand_source_paths(source_path):
             if os.path.isfile(source_file):
                 logger.debug("Following source: %s", source_file)
-                self.parse_file(source_file, context_stack.copy())
+                self.parse_file(source_file, section_stack.copy())
 
-    def parse_line(self, line: str, context_stack: list[str]):
+    def parse_line(self, line: str, section_stack: list[str]):
         if match := VARIABLE_ASSIGNMENT.match(line):
             name = match.group(1)
-            self.variables[name] = self.resolve_variable(match.group(2).strip())
+            self.variables[name] = self.expand_variables(match.group(2).strip())
             logger.debug("Variable: $%s = %s", name, self.variables[name])
-        elif self.follow_source and (match := SOURCE_DIRECTIVE.match(line)):
-            self.follow_sources(match.group(1), context_stack)
+        elif self.follow_includes and (match := SOURCE_DIRECTIVE.match(line)):
+            self.follow_sources(match.group(1), section_stack)
         elif match := SECTION_START.match(line):
-            context_stack.append(re.sub(r"\[.*?\]", "", match.group(1)))
-            if len(context_stack) == 1:
-                self.blocks.append(
-                    {"type": context_stack[0], "file": self.current_file, "keys": {}}
+            section_stack.append(re.sub(r"\[.*?\]", "", match.group(1)))
+            if len(section_stack) == 1:
+                self.source_sections.append(
+                    SourceSection(section_stack[0], self.current_source_path, {})
                 )
-            logger.debug("Entering section: %s", ":".join(context_stack))
+            logger.debug("Entering section: %s", ":".join(section_stack))
         elif line == "}":
-            if context_stack:
-                context_stack.pop()
+            if section_stack:
+                section_stack.pop()
                 logger.debug(
-                    "Exiting section, now at: %s", ":".join(context_stack) or "root"
+                    "Exiting section, now at: %s", ":".join(section_stack) or "root"
                 )
         elif match := KEY_ASSIGNMENT.match(line):
-            key, raw = match.group(1), match.group(2).strip()
-            resolved = self.resolve_variable(raw).replace("##", "#")
-            if len(context_stack) == 1:
-                self.blocks[-1]["keys"][key] = resolved
-            if raw:
-                full_path = [*context_stack, key]
-                value = self.parse_value(resolved)
-                self.set_nested_value(full_path, value)
-                logger.debug("Config: %s = %s", ":".join(full_path), value)
+            key, raw_value_text = match.group(1), match.group(2).strip()
+            resolved_value_text = self.expand_variables(raw_value_text).replace("##", "#")
+            if len(section_stack) == 1:
+                self.source_sections[-1].resolved_text_values[key] = resolved_value_text
+            if raw_value_text:
+                key_path = [*section_stack, key]
+                value = self.parse_value(resolved_value_text)
+                self.store_parsed_value(key_path, value)
+                logger.debug("Config: %s = %s", ":".join(key_path), value)
 
-    def parse_file(self, filepath: str, context_stack: list[str] | None = None):
-        filepath = self.normalize_path(filepath)
-        if not os.path.exists(filepath):
-            logger.error("File not found: %s", filepath)
+    def parse_file(self, source_path: str, section_stack: list[str] | None = None):
+        source_path = self.resolve_config_path(source_path)
+        if not os.path.exists(source_path):
+            logger.error("File not found: %s", source_path)
             return
 
-        logger.debug("Parsing file: %s", filepath)
-        context_stack = context_stack or []
-        previous_config_dir, previous_file = self.config_dir, self.current_file
-        self.config_dir, self.current_file = os.path.dirname(filepath), filepath
+        logger.debug("Parsing file: %s", source_path)
+        section_stack = section_stack or []
+        previous_source_directory, previous_source_path = self.source_directory, self.current_source_path
+        self.source_directory, self.current_source_path = os.path.dirname(source_path), source_path
         try:
-            for line in self.logical_lines(filepath):
-                self.parse_line(line, context_stack)
+            for line in self.iter_logical_lines(source_path):
+                self.parse_line(line, section_stack)
         finally:
-            self.config_dir, self.current_file = previous_config_dir, previous_file
+            self.source_directory, self.current_source_path = previous_source_directory, previous_source_path
 
     def query(self, query_str: str) -> Any | None:
         if query_str.startswith("$"):
-            var_name = query_str[1:]
-            if var_name in self.variables:
-                return self.resolve_variable(self.variables[var_name])
+            variable_name = query_str[1:]
+            if variable_name in self.variables:
+                return self.expand_variables(self.variables[variable_name])
             return None
 
-        keys = query_str.split(":")
-        return self.get_nested_value(keys)
+        key_path = query_str.split(":")
+        return self.parsed_value_at(key_path)

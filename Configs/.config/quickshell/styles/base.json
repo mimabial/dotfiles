@@ -75,6 +75,7 @@
     "fontWeight": 700
   },
 
+  "wallpaper": { "badgeColor": "accent" },
   "bluetooth, tasks, notifications, removable, microphone": {
     "badgeColor": ["accent", 0.5],
     "badgeSize": 7.0

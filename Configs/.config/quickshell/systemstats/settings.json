@@ -9,7 +9,7 @@
   "sensorsStyle": "",
   "batteryStyle": "",
   "graphWidth": 24,
-  "barLabels": "none",
+  "barLabels": "icon",
   "disksSource": "nvme0n1",
   "barSensors": "",
   "temperatureUnit": "Celsius",

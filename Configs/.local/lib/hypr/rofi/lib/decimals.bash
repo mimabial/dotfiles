@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 ROFI_MILLI=1000
+ROFI_MILLI_DIGITS=3
 
 rofi_decimal_milli() {
   local value="${1:-0}"
@@ -14,7 +15,7 @@ rofi_decimal_milli() {
   if [[ -n "${BASH_REMATCH[3]:-}" ]]; then
     fraction="${BASH_REMATCH[3]#.}"
     fraction="${fraction}000"
-    fraction="${fraction:0:3}"
+    fraction="${fraction:0:ROFI_MILLI_DIGITS}"
   fi
 
   milli=$((10#${whole} * ROFI_MILLI + 10#${fraction}))

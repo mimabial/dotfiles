@@ -6,7 +6,7 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state system || exit 1
-hypr_runtime_load_state || exit 1
+hypr_runtime_load_desktop_environment || exit 1
 
 desktop_sync_lib="${HYPR_LIB_DIR}/theme/lib/desktop.sync.bash"
 if [[ ! -r "${desktop_sync_lib}" ]]; then
@@ -20,7 +20,7 @@ source "${desktop_sync_lib}" || exit 1
 sync_mode="full"
 
 desktop_sync_usage() {
-  printf '%s\n' "Usage: $(basename "$0") [--full|--static-only|--runtime-only] [--quiet]"
+  printf '%s\n' "Usage: hyprshell theme/desktop.sync [--full|--static-only|--runtime-only] [--quiet]"
 }
 
 while (($#)); do

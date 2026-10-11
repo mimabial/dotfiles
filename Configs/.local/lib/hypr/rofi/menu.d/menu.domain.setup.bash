@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
 
-setup_add_default_item() {
-  local menu_id="$1"
-  local current="$2"
-  local value="$3"
-  local label="$4"
-  local action_id="$5"
-  local command_name="$6"
+setup_pick_input_language() {
+  local layouts="" selection="" layout="" variant=""
 
-  command -v "${command_name}" >/dev/null 2>&1 || return 0
-  [[ "${current}" == "${value}" ]] && menu_mark_active "${action_id}"
-  menu_add_item "${menu_id}" "${label}" action "${action_id}"
+  layouts="$(xkbcli list | awk -F"'" '/^option_groups:/ { exit } /^- layout:/ { layout = $2 } /^  variant:/ { variant = $2 }
+    layout && /^  description:/ { sub(/^  description: /, ""); print $0 "\t" layout "\t" variant }')"
+  selection="$(menu "Input Language" "$(cut -f1 <<<"${layouts}")" --select "$(hyprctl -j devices | jq -r '.keyboards[] | select(.main).active_keymap')")"
+  [[ -n "${selection}" ]] || menu_exit_or_show setup_language
+  IFS=$'\t' read -r _ layout variant < <(awk -F'\t' -v description="${selection}" '$1 == description { print; exit }' <<<"${layouts}")
+  hyprshell util/keyboard-layout --select "${layout}" "${variant}" >/dev/null
 }
 
 setup_register_power_profiles() {
@@ -40,54 +38,27 @@ setup_register_monitors() {
 }
 
 setup_register_defaults() {
-  local default_agent="${HYPR_DEFAULT_AGENT:-}"
-  local default_browser="${BROWSER:-}"
-  local default_editor="${EDITOR:-}"
-  local default_terminal="${TERMINAL:-}"
-
-  default_browser="${default_browser##*/}"
-  default_editor="${default_editor##*/}"
-  default_terminal="${default_terminal##*/}"
-
-  case "${default_browser}" in
-    google-chrome-stable) default_browser="chrome" ;;
-    microsoft-edge-stable) default_browser="edge" ;;
-    zen-browser) default_browser="zen" ;;
-  esac
+  # shellcheck source=/dev/null
+  source "${HYPR_LIB_DIR}/setup/default-apps/applications.bash"
+  local record="" role="" selection="" command="" name="" icon=""
+  local -A current=([agent]="${HYPR_DEFAULT_AGENT:-}" [browser]="${BROWSER:-}" [terminal]="${TERMINAL:-}" [editor]="${EDITOR:-}")
 
   menu_define setup_default "Defaults"
   menu_add_item setup_default "󰚩  Agent" submenu setup_default_agent
   menu_add_item setup_default "  Browser" submenu setup_default_browser
   menu_add_item setup_default "  Terminal" submenu setup_default_terminal
   menu_add_item setup_default "  Editor" submenu setup_default_editor
-
   menu_define setup_default_agent "Default Agent" choice
-  setup_add_default_item setup_default_agent "${default_agent}" claude "󰛄  Claude" setup_default_agent_claude claude
-  setup_add_default_item setup_default_agent "${default_agent}" codex "󱙺  Codex" setup_default_agent_codex codex
-  setup_add_default_item setup_default_agent "${default_agent}" opencode "󰚩  OpenCode" setup_default_agent_opencode opencode
-
   menu_define setup_default_browser "Default Browser" choice
-  setup_add_default_item setup_default_browser "${default_browser}" chromium "  Chromium" setup_default_browser_chromium chromium
-  setup_add_default_item setup_default_browser "${default_browser}" chrome "󰊯  Chrome" setup_default_browser_chrome google-chrome-stable
-  setup_add_default_item setup_default_browser "${default_browser}" brave "󰖟  Brave" setup_default_browser_brave brave
-  setup_add_default_item setup_default_browser "${default_browser}" brave-origin "󰖟  Brave Origin" setup_default_browser_brave-origin brave-origin
-  setup_add_default_item setup_default_browser "${default_browser}" edge "󰇩  Edge" setup_default_browser_edge microsoft-edge-stable
-  setup_add_default_item setup_default_browser "${default_browser}" firefox "  Firefox" setup_default_browser_firefox firefox
-  setup_add_default_item setup_default_browser "${default_browser}" zen "󰖟  Zen" setup_default_browser_zen zen-browser
-
   menu_define setup_default_terminal "Default Terminal" choice
-  setup_add_default_item setup_default_terminal "${default_terminal}" alacritty "  Alacritty" setup_default_terminal_alacritty alacritty
-  setup_add_default_item setup_default_terminal "${default_terminal}" kitty "󰄛  Kitty" setup_default_terminal_kitty kitty
-
   menu_define setup_default_editor "Default Editor" choice
-  setup_add_default_item setup_default_editor "${default_editor}" nvim "  Neovim" setup_default_editor_nvim nvim
-  setup_add_default_item setup_default_editor "${default_editor}" code "  VSCode" setup_default_editor_code code
-  setup_add_default_item setup_default_editor "${default_editor}" cursor "  Cursor" setup_default_editor_cursor cursor
-  setup_add_default_item setup_default_editor "${default_editor}" zeditor "󰬡  Zed" setup_default_editor_zeditor zeditor
-  setup_add_default_item setup_default_editor "${default_editor}" sublime_text "  Sublime Text" setup_default_editor_sublime_text sublime_text
-  setup_add_default_item setup_default_editor "${default_editor}" hx "󰚄  Helix" setup_default_editor_hx hx
-  setup_add_default_item setup_default_editor "${default_editor}" vim "  Vim" setup_default_editor_vim vim
-  setup_add_default_item setup_default_editor "${default_editor}" emacs "  Emacs" setup_default_editor_emacs emacs
+
+  for record in "${DEFAULT_APP_CATALOG[@]}"; do
+    IFS='|' read -r role selection command _ name icon <<<"${record}"
+    command -v "${command}" >/dev/null 2>&1 || continue
+    [[ "${current[${role}]##*/}" == "${command}" ]] && menu_mark_active "setup_default_${role}_${selection}"
+    menu_add_item "setup_default_${role}" "${icon}  ${name}" action "setup_default_${role}_${selection}"
+  done
 }
 
 menu_register_domain_setup() {
@@ -121,50 +92,51 @@ menu_register_domain_setup() {
   menu_add_item setup_security "󰟵  Passwordless Sudo" action setup_security_passwordless_sudo
   menu_add_item setup_security "󰡨  Sudoless Docker" action setup_security_sudoless_docker
 
-  [[ -f ~/.config/hypr/keybindings.lua ]] && menu_add_item setup "  Keybindings" action setup_keybindings
+  [[ -f "${HYPR_CONFIG_HOME}/keybindings.lua" ]] && menu_add_item setup "  Keybindings" action setup_keybindings
 }
 
 menu_run_action_setup() {
   local action_id="$1"
 
   case "${action_id}" in
-    setup_default_agent_*) hyprshell setup/default.sh agent "${action_id#setup_default_agent_}" ;;
-    setup_default_browser_*) hyprshell setup/default.sh browser "${action_id#setup_default_browser_}" ;;
-    setup_default_terminal_*) hyprshell setup/default.sh terminal "${action_id#setup_default_terminal_}" ;;
-    setup_default_editor_*) hyprshell setup/default.sh editor "${action_id#setup_default_editor_}" ;;
+    setup_language_system) menu_pick_language system setup_language ;;
+    setup_language_display) menu_pick_language display setup_language ;;
+    setup_language_input) setup_pick_input_language ;;
+    setup_default_agent_*) hyprshell setup/default-app.sh agent "${action_id#setup_default_agent_}" ;;
+    setup_default_browser_*) hyprshell setup/default-app.sh browser "${action_id#setup_default_browser_}" ;;
+    setup_default_terminal_*) hyprshell setup/default-app.sh terminal "${action_id#setup_default_terminal_}" ;;
+    setup_default_editor_*) hyprshell setup/default-app.sh editor "${action_id#setup_default_editor_}" ;;
     setup_power_profile_*) hyprshell system/powerprofiles.sh --set "${action_id#setup_power_profile_}" ;;
-    setup_audio) present_terminal --hypr-profile tui --app-id org.tui.Wiremix --title Wiremix -- wiremix ;;
-    setup_wifi) rfkill unblock wifi && present_terminal --hypr-profile tui --app-id org.tui.Impala --title Impala -- impala ;;
+    setup_audio) menu_present_terminal --hypr-profile tui --app-id org.tui.Wiremix --title Wiremix -- wiremix ;;
+    setup_wifi) rfkill unblock wifi && menu_present_terminal --hypr-profile tui --app-id org.tui.Impala --title Impala -- impala ;;
     setup_bluetooth) hyprshell launch/bluetooth ;;
-    setup_network) present_terminal --hypr-profile tui --app-id org.tui.Oryx --title Oryx -- sudo oryx ;;
-    setup_monitors_config) open_in_editor ~/.config/hypr/monitors.lua ;;
+    setup_network) menu_present_terminal --hypr-profile tui --app-id org.tui.Oryx --title Oryx -- sudo oryx ;;
+    setup_monitors_config) menu_edit_config "${HYPR_CONFIG_HOME}/monitors.lua" ;;
     setup_monitor_scale_*) hyprshell system/monitor-scale.sh "${action_id#setup_monitor_scale_}" ;;
     setup_monitor_laptop_toggle) hyprshell system/monitor-internal.sh toggle ;;
     setup_monitor_mirror_toggle) hyprshell system/monitor-mirror.sh toggle ;;
-    setup_keybindings) open_in_editor ~/.config/hypr/keybindings.lua ;;
-    setup_dns) present_terminal hyprshell install/dns.sh ;;
-    setup_wifi_qr) present_terminal --app-id org.tui.WifiQr --title "Wi-Fi QR" -- hyprshell util/wifi-pass.sh --qr ;;
-    setup_security_fingerprint) present_terminal hyprshell install/fingerprint.sh ;;
-    setup_security_fido2) present_terminal hyprshell install/fido2.sh ;;
-    setup_security_sshd) present_terminal hyprshell install/sshd.sh ;;
-    setup_security_passwordless_sudo) present_terminal hyprshell install/passwordless-sudo.sh ;;
-    setup_security_sudoless_docker) present_terminal hyprshell install/sudoless-docker.sh ;;
-    *) return 1 ;;
+    setup_keybindings) menu_edit_config "${HYPR_CONFIG_HOME}/keybindings.lua" ;;
+    setup_dns) menu_present_terminal hyprshell install/dns.sh ;;
+    setup_wifi_qr) menu_present_terminal --app-id org.tui.WifiQr --title "Wi-Fi QR" -- hyprshell util/wifi-pass.sh --qr ;;
+    setup_security_fingerprint) menu_present_terminal hyprshell install/fingerprint.sh ;;
+    setup_security_fido2) menu_present_terminal hyprshell install/fido2.sh ;;
+    setup_security_sshd) menu_present_terminal hyprshell install/sshd.sh ;;
+    setup_security_passwordless_sudo) menu_present_terminal hyprshell install/passwordless-sudo.sh ;;
+    setup_security_sudoless_docker) menu_present_terminal hyprshell install/sudoless-docker.sh ;;
+    *) return "${MENU_ACTION_UNKNOWN}" ;;
   esac
-
-  return 0
 }
 
 menu_register_action_handler menu_run_action_setup
 
 setup_focused_monitor_scale() {
-  hyprctl -j monitors | jq -r '[.[] | select(.focused)][0].scale * 100 | round / 100'
+  rofi_monitors_json | jq -r '[.[] | select(.focused)][0].scale * 100 | round / 100'
 }
 
 menu_active_setup() {
   case "$1" in
-    setup_power_profile_*) menu_choice "$1" setup_power_profile_ hypr_power_profile ;;
-    setup_monitor_scale_*) menu_choice "$1" setup_monitor_scale_ setup_focused_monitor_scale ;;
+    setup_power_profile_*) menu_choice_matches "$1" setup_power_profile_ hypr_power_profile ;;
+    setup_monitor_scale_*) menu_choice_matches "$1" setup_monitor_scale_ setup_focused_monitor_scale ;;
     *) return 1 ;;
   esac
 }

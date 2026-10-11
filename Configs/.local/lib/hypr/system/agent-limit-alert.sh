@@ -22,8 +22,7 @@ readonly limit_label="$3"
 readonly used_permille="$4"
 readonly resets_at="$5"
 readonly observed_at="$6"
-now_ms="$(date +%s%3N)"
-readonly now_ms
+readonly now_ms=$((${EPOCHREALTIME//[!0-9]/} / 1000))
 
 ((observed_at > 0 && now_ms - observed_at <= OBSERVATION_MAX_AGE_MS && observed_at - now_ms <= OBSERVATION_MAX_LEAD_MS)) || exit 0
 jq -e '.notifyLimit == true' "${XDG_CONFIG_HOME}/quickshell/agents.json" >/dev/null 2>&1 || exit 0

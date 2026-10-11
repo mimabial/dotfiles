@@ -7,7 +7,20 @@ from mutagen.mp3 import MP3
 from mutagen.oggopus import OggOpus
 
 SUPPORTED = {".mp3", ".opus", ".flac"}
+SUPPORTED_LABEL = ",".join(sorted(suffix[1:] for suffix in SUPPORTED))
 VORBIS = {".opus", ".flac"}
+
+
+def parse_extensions(raw: str) -> set[str]:
+    return {"." + value.strip().lstrip(".").casefold() for value in raw.split(",") if value.strip()}
+
+
+def selected_extensions(raw: str) -> set[str]:
+    wanted = parse_extensions(raw) if raw else set(SUPPORTED)
+    unknown = wanted - SUPPORTED
+    if unknown:
+        raise ValueError(f"unsupported extension(s): {', '.join(sorted(unknown))}")
+    return wanted
 
 
 def read_tags(path: Path):

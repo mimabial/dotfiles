@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   id="Capa_1"
+   enable-background="new 0 0 510 510"
+   height="48"
+   viewBox="0 0 47.8125 47.8125"
+   width="48"
+   version="1.1"
+   sodipodi:docname="youtube.svg"
+   inkscape:version="1.4 (e7c3feb100, 2024-10-09)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs11" />
+  <sodipodi:namedview
+     id="namedview11"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="10.166667"
+     inkscape:cx="23.950819"
+     inkscape:cy="23.999999"
+     inkscape:window-width="1366"
+     inkscape:window-height="696"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="Capa_1" />
+  <linearGradient
+     id="SVGID_1_"
+     gradientUnits="userSpaceOnUse"
+     x1="125.695"
+     x2="392.30301"
+     y1="125.695"
+     y2="392.30301">
+    <stop
+       offset="0"
+       stop-color="#ff637b"
+       id="stop1" />
+    <stop
+       offset="1"
+       stop-color="#f90217"
+       id="stop2" />
+  </linearGradient>
+  <linearGradient
+     id="lg1">
+    <stop
+       offset="0"
+       stop-color="#f90217"
+       stop-opacity="0"
+       id="stop3" />
+    <stop
+       offset=".2669"
+       stop-color="#e7010f"
+       stop-opacity=".267"
+       id="stop4" />
+    <stop
+       offset=".7232"
+       stop-color="#ce0004"
+       stop-opacity=".723"
+       id="stop5" />
+    <stop
+       offset="1"
+       stop-color="#c50000"
+       id="stop6" />
+  </linearGradient>
+  <linearGradient
+     id="SVGID_2_"
+     gradientUnits="userSpaceOnUse"
+     x1="255"
+     x2="255"
+     xlink:href="#lg1"
+     y1="362"
+     y2="465.078" />
+  <linearGradient
+     id="SVGID_3_"
+     gradientUnits="userSpaceOnUse"
+     x1="389.216"
+     x2="291.556"
+     xlink:href="#lg1"
+     y1="425.82599"
+     y2="289.302" />
+  <linearGradient
+     id="SVGID_4_"
+     gradientUnits="userSpaceOnUse"
+     x1="225.813"
+     x2="284.82199"
+     y1="244.32201"
+     y2="303.33099">
+    <stop
+       offset="0"
+       stop-color="#ebeff0"
+       id="stop7" />
+    <stop
+       offset="1"
+       stop-color="#e3e5e4"
+       id="stop8" />
+  </linearGradient>
+  <g
+     id="g11"
+     transform="matrix(0.07812485,0,0,0.07812485,3.9844523,3.9843742)">
+    <g
+       id="g9">
+      <path
+         d="M 486.851,106.657 C 479.878,84.393 461.716,67.418 438.98,62.185 316.795,34.061 193.201,34.061 71.018,62.185 48.282,67.418 30.121,84.393 23.148,106.657 -7.72,205.213 -7.715,304.799 23.149,403.344 c 6.973,22.264 25.135,39.239 47.87,44.472 122.183,28.124 245.776,28.124 367.961,0 22.735,-5.233 40.897,-22.208 47.87,-44.472 30.865,-98.546 30.868,-198.13 10e-4,-296.687 z"
+         fill="url(#SVGID_1_)"
+         id="path8"
+         style="fill:url(#SVGID_1_)" />
+      <path
+         d="m 2.508,303.736 c 3.402,33.267 10.271,66.496 20.641,99.607 6.973,22.263 25.135,39.239 47.87,44.472 122.183,28.124 245.776,28.124 367.961,0 22.735,-5.233 40.897,-22.208 47.87,-44.472 10.37,-33.111 17.239,-66.34 20.641,-99.607 z"
+         fill="url(#SVGID_2_)"
+         id="path9"
+         style="fill:url(#SVGID_2_)" />
+    </g>
+    <path
+       d="m 438.981,447.815 c 22.735,-5.233 40.897,-22.208 47.87,-44.472 3.744,-11.956 7.025,-23.927 9.861,-35.91 L 369.254,239.975 c -1.995,-2.934 -4.63,-5.547 -7.927,-7.614 L 225.341,149.073 C 207.544,137.911 186.42,148.702 186.42,169.71 v 170.579 c 0,9.496 2.731,17.303 9.554,21.988 l 105.3,105.3 c 46.001,-2.643 91.953,-9.23 137.707,-19.762 z"
+       fill="url(#SVGID_3_)"
+       id="path10"
+       style="fill:url(#SVGID_3_)" />
+    <path
+       d="M 361.327,232.361 225.341,147.072 c -17.797,-11.162 -40.922,1.631 -40.922,22.639 V 340.29 c 0,21.008 23.125,33.801 40.922,22.639 L 361.327,277.64 c 16.699,-10.475 16.699,-34.805 0,-45.279 z"
+       fill="url(#SVGID_4_)"
+       id="path11"
+       style="fill:url(#SVGID_4_)" />
+  </g>
+</svg>

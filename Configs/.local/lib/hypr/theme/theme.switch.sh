@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state system wallpaper_catalog || exit 1
@@ -9,7 +8,7 @@ hypr_runtime_require state system wallpaper_catalog || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR}/theme/pairs.sh" || exit 1
 
-THEME_SWITCH_LOCK="$(hypr_lock_path theme_switch)"
+THEME_SWITCH_LOCK="$(hypr_lock_path_ensure_parent theme_switch)"
 exec {theme_switch_lock_fd}>"${THEME_SWITCH_LOCK}"
 if ! flock -n "${theme_switch_lock_fd}"; then
   for theme_switch_arg in "$@"; do
@@ -22,7 +21,7 @@ if ! flock -n "${theme_switch_lock_fd}"; then
   flock "${theme_switch_lock_fd}"
 fi
 
-hypr_runtime_load_state || exit 1
+hypr_runtime_load_desktop_environment || exit 1
 [[ -n "${HYPR_THEME}" ]] || { echo "ERROR: unable to detect theme"; exit 1; }
 declare -a theme_names=() theme_wallpapers=()
 theme_catalog_load_and_repair_links_into theme_names theme_wallpapers
@@ -35,8 +34,7 @@ theme_switch_render_failures=""
 theme_switch_nvim_mapping=""
 theme_switch_nvim_background=""
 theme_switch_nvim_transparency=""
-THEME_SWITCH_NOTIFY_ID="${THEME_SWITCH_NOTIFY_ID:-94}"
-THEME_SWITCH_NOTIFY_STACK_TAG="${THEME_SWITCH_NOTIFY_STACK_TAG:-theme-switch}"
+THEME_SWITCH_NOTIFY_STACK_TAG=theme-switch
 
 sanitize_hypr_theme() {
   local input_file="$1"
@@ -120,14 +118,14 @@ theme_notify_finish() {
 
   if [[ "${exit_code}" -ne 0 && "${theme_switch_state_updated}" -eq 1 ]]; then
     [[ -s "${theme_switch_render_failures}" ]] && failed_renderers="$(paste -sd, "${theme_switch_render_failures}")"
-    theme_notify_send "Theme switch interrupted" "${theme_name}${failed_renderers:+ [${failed_renderers} failed]}" 2500 critical
+    theme_notify_send "Theme switch interrupted" "${theme_name}${failed_renderers:+ [${failed_renderers} failed]}" "${NOTIFY_ERROR_MS}" critical
   fi
 }
 
 theme_notify_send() {
   local summary="$1"
   local body="$2"
-  local timeout_ms="${3:-2000}"
+  local timeout_ms="${3:-${NOTIFY_BRIEF_MS}}"
   local urgency="${4:-normal}"
   local icon_path="preferences-desktop-theme"
   local -a args=(
@@ -141,7 +139,7 @@ theme_notify_send() {
   if command -v dunstify >/dev/null 2>&1; then
     dunstify \
       "${args[@]}" \
-      -r "${THEME_SWITCH_NOTIFY_ID}" \
+      -r "${NOTIFY_ID_THEME_SWITCH}" \
       --stack-tag "${THEME_SWITCH_NOTIFY_STACK_TAG}" \
       "${summary}" "${body}" >/dev/null 2>&1 || true
     return 0
@@ -178,7 +176,7 @@ theme_switch_cache_args=()
 
 theme_switch_usage() {
   cat <<EOF
-Usage: $(basename "${0}") [options]
+Usage: hyprshell theme/theme.switch [options]
 Switch the active theme pack: step to the next or previous, or set one by name.
 
 Options:
@@ -260,17 +258,16 @@ update_nvim_mapping() {
 }
 
 resolve_theme_selection() {
-  local theme_exists=0
   local theme_name=""
 
   for theme_name in "${theme_names[@]}"; do
-    if [[ "${theme_name}" == "${selected_theme}" ]]; then
-      theme_exists=1
-      break
-    fi
+    [[ "${theme_name}" == "${selected_theme}" ]] && return 0
   done
-
-  [[ "${theme_exists}" -eq 1 ]] || selected_theme="${HYPR_THEME}"
+  if ((theme_switch_selection_requested)); then
+    print_log -sec "theme" -err "select" "Unknown theme: ${selected_theme}"
+    exit 1
+  fi
+  selected_theme="${HYPR_THEME}"
 }
 
 set_active_theme() {
@@ -284,8 +281,8 @@ set_active_theme() {
 
 prepare_active_theme_config() {
   [[ -r "${HYPR_THEME_DIR}/hypr.theme" ]] || return 0
-  mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/hypr" || return 1
-  theme_switch_metadata_file="$(mktemp "${XDG_CACHE_HOME:-$HOME/.cache}/hypr/theme.meta.XXXXXX")" || return 1
+  mkdir -p "${HYPR_CACHE_HOME}" || return 1
+  theme_switch_metadata_file="$(mktemp "${HYPR_CACHE_HOME}/theme.meta.XXXXXX")" || return 1
   sanitize_hypr_theme "${HYPR_THEME_DIR}/hypr.theme" "${theme_switch_metadata_file}"
 }
 

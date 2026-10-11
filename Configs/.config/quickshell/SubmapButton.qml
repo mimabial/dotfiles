@@ -17,7 +17,6 @@ BarButton {
     function updateSubmap(value) {
         const name = String(value).trim()
         submap = name === "default" || name === "reset" ? "" : name
-        console.log("submap resolved", JSON.stringify(submap))
     }
     function refreshSubmap() {
         if (submapQuery.running) queryPending = true
@@ -38,7 +37,6 @@ BarButton {
         target: Hyprland
         function onRawEvent(event) {
             if (event.name !== "submap") return
-            console.log("submap event", JSON.stringify(event.data))
             root.eventSerial++
             if (String(event.data).trim()) root.updateSubmap(event.data)
             else root.refreshSubmap()
@@ -50,7 +48,6 @@ BarButton {
         command: ["hyprctl", "submap"]
         stdout: SplitParser {
             onRead: line => {
-                console.log("submap query", JSON.stringify(line), root.queryPending, root.querySerial, root.eventSerial)
                 if (line.trim() && !root.queryPending && root.querySerial === root.eventSerial)
                     root.updateSubmap(line)
             }

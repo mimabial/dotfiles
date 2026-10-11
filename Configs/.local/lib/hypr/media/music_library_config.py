@@ -12,9 +12,13 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from lyrics_paths import absolute_path, music_library_dir
 
-RMPC_CONFIG = Path.home() / ".config/rmpc/config.ron"
+from pyutils.xdg_base_dirs import xdg_config_home
+
+RMPC_CONFIG = xdg_config_home() / "rmpc/config.ron"
 RMPC_LYRICS_SETTING = re.compile(
     r"(?m)^(?P<prefix>\s*lyrics_dir:\s*)(?:Some\(.*\)|None),\s*$"
 )

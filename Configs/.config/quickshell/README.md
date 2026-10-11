@@ -157,7 +157,9 @@ when `Media.player` is null.
 
 In `gnome`, the bar mirrors GNOME Shell and carries nothing it lacks: no tray drawer,
 no submap. `gnome-activities` opens Exposé and draws GNOME's workspace dots, one per
-workspace plus the empty one after the last; the wheel steps through those dots. `gnome-date-menu`
+workspace plus the empty one after the last; the wheel steps through those dots.
+`fixedWorkspaceCount: N` switches to GNOME's fixed mode: dots 1–N always, plus any
+higher workspace in use. `gnome-date-menu`
 combines the notification archive (grouped by app, stacks expand on click), media
 controls, calendar, agenda, and weather; its clock stays centred beside the unread
 dot, days with events carry a dot, the date heading returns to today, and the menu
@@ -232,9 +234,12 @@ Rules are keyed by a component's `css` value. Common fields are `margin`,
 `minHeight`, `fontSize`, `fontWeight`, `justify`, and `hover`. `open.backgroundColor`
 paints a button while its popup is open, `menuTracking: true` switches to a hovered
 button's popup while another is open, and `borderRadius` overrides the theme rounding.
-`iconBox` scales every icon glyph to that nominal height, its width capped at 1.2× it, in a slot of that width: `GlyphInk.qml` draws
+A numeric `iconBox` scales every icon glyph to that nominal height, its width capped at 1.2× it, in a slot of that width: `GlyphInk.qml` draws
 the glyph once into a hidden Canvas and reads back its real ink, because Nerd Font
-metrics misreport some glyph bottoms, and `BarButton` scales and centers that ink. Mixed icon families still
+metrics misreport some glyph bottoms, and `BarButton` scales and centers that ink.
+`iconBox: "reference"` uses the visible height of the button selected by
+`shell.iconReference`; the horizontal style selects the center's `updates` button.
+Mixed icon families still
 differ in weight, so the macOS modules set `BarButton.symbol` instead: `SymbolicIcon.qml`
 draws that freedesktop symbolic icon from MacTahoe-dark, recolored to the text color, and
 the glyph shows only when the icon is missing. A style's `symbols` key names the icon
@@ -279,8 +284,10 @@ Important geometry rules:
 - `agents` shows a confused robot outline, switching to angry at 90% and dead
   at 100% of any reported provider limit. All states use `color`.
 - A button's count badge (`BarButton.badgeText`, used by `notifications`,
-  `bluetooth`, and `removable`) is an `md-numeric_<n>` glyph (`9+` past nine)
-  drawn as an exponent past the glyph's top-right. `badgeColor` sets its
+  `bluetooth`, `tasks`, and `removable`) uses an `md-numeric_<n>` glyph by default
+  (`9+` past nine). `badgeNumerals: "standard"` uses plain digits in the text font,
+  as on the horizontal bar's Bluetooth, tasks, and notifications buttons.
+  The badge is drawn as an exponent past the glyph's top-right. `badgeColor` sets its
   colour and opacity; otherwise it follows the glyph. `badgeBackgroundColor` paints a pill behind it. `badgeSize` sets its px size (default 9);
   `badgeOffsetX`/`badgeOffsetY` nudge it, positive right and down. It tracks the
   glyph, not the module frame, so it stays put as the bar widens.
@@ -326,17 +333,13 @@ a value copies it.
 The power popup reads `power-manager.json`. Automatic profile, idle, and lid
 rules are off by default; enabling them routes decisions through
 `system/power-manager.sh`, the existing power-profile watcher, hypridle, and
-the lid helper. The charge-limit control calls the separately installed,
-Polkit-protected helper only when the user applies a limit. Its udev rule
-persists the accepted hardware limit across boots.
-
-On a restored host, install the privileged charge-limit pieces from the mirrored
-sources before using that control:
-
-```bash
-sudo install -D -o root -g root -m 0755 ~/.local/lib/hypr/system/power-manager-backend/charge-limit /usr/local/libexec/hypr-power-manager-charge-limit
-sudo install -D -o root -g root -m 0644 ~/.local/lib/hypr/system/power-manager-backend/org.hypr.power-manager.policy /usr/share/polkit-1/actions/org.hypr.power-manager.policy
-```
+the lid helper. The charge-limit control toggles UPower's own threshold
+(`EnableChargeThreshold` on the laptop battery, read back with `GetAll`), which
+the active session may change without a password and UPower restores at boot.
+The cut-off is UPower's `CHARGE_LIMIT` udev property (`75,80` by default; this
+hardware honours only the end value). `UPower.displayDevice` is the composite
+device and has no native path, so sysfs and D-Bus paths come from the
+`isLaptopBattery` entry of `UPower.devices`.
 
 ## Cross-component contracts
 

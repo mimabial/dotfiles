@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 _hypr_hash_cache_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-if ! declare -F hypr_runtime_subdir >/dev/null 2>&1; then
+if ! declare -F hypr_ensure_runtime_subdir >/dev/null 2>&1; then
   # shellcheck source=/dev/null
   source "${_hypr_hash_cache_dir}/common.bash" || return 1 2>/dev/null || exit 1
 fi
@@ -46,7 +46,7 @@ hypr_hash_cache_runtime_file() {
   local runtime_dir=""
 
   [[ -n "${filename}" ]] || return 1
-  runtime_dir="$(hypr_runtime_subdir hypr)" || return 1
+  runtime_dir="$(hypr_ensure_runtime_subdir hypr)" || return 1
   printf '%s/%s\n' "${runtime_dir}" "${filename}"
 }
 

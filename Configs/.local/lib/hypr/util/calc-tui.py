@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import argparse
+import codecs
 import curses
 from curses.ascii import ctrl
 import locale
 import os
 import queue
 import re
+import select
 import shutil
 import subprocess
 import sys
@@ -15,16 +17,20 @@ import threading
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 # the converter popup owns the curated unit table; reuse it rather than
 # maintaining a second one
 from converter import GROUPS
+from pyutils import child_process
+from pyutils.xdg_base_dirs import xdg_state_home
 
-STATE_DIR = Path(os.environ.get("HYPR_STATE_HOME", Path.home() / ".local/state/hypr"))
+STATE_DIR = Path(os.environ.get("HYPR_STATE_HOME") or xdg_state_home() / "hypr")
 HISTORY_FILE = STATE_DIR / "calc-history"
 HISTORY_LIMIT = 1000
-# keep any single evaluation inside the frame read budget below
 TIME_LIMIT_MS = 400
-POLL_MS = 5
+QALC_ANSWER_TIMEOUT_SECONDS = 3.0
+QALC_PROMPT = "> "
+QALC_READ_SIZE = 4096
 KEYPAD_MIN_HEIGHT = 15
 SIDE_PANEL_MIN_WIDTH = 62
 ESCAPE = "\x1b"
@@ -87,6 +93,9 @@ class QalcSession:
     """One long-lived `qalc -t`, so variables, ans and settings survive."""
 
     def __init__(self) -> None:
+        self._start()
+
+    def _start(self) -> None:
         self.proc = subprocess.Popen(
             ["qalc", "-t", "-m", str(TIME_LIMIT_MS)],
             stdin=subprocess.PIPE,
@@ -95,10 +104,26 @@ class QalcSession:
             text=True,
             bufsize=1,
         )
-        self._lines: queue.Queue[str] = queue.Queue()
+        self._answers: queue.Queue[str | None] = queue.Queue()
         self._notes: queue.Queue[str] = queue.Queue()
-        self._reader(self.proc.stdout, self._lines)
+        threading.Thread(target=self._read_answers, args=(self.proc.stdout, self._answers), daemon=True).start()
         self._reader(self.proc.stderr, self._notes)
+
+    @staticmethod
+    def _read_answers(stream, answers: queue.Queue[str | None]) -> None:
+        decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+        pending = "\n"
+        startup_prompt_seen = False
+        try:
+            while chunk := os.read(stream.fileno(), QALC_READ_SIZE):
+                *complete, pending = (pending + decoder.decode(chunk)).split("\n" + QALC_PROMPT)
+                for answer in complete:
+                    if startup_prompt_seen:
+                        answers.put(answer)
+                    startup_prompt_seen = True
+        except OSError:
+            pass
+        answers.put(None)
 
     def _reader(self, stream, sink: queue.Queue[str]) -> None:
         def pump() -> None:
@@ -107,15 +132,9 @@ class QalcSession:
 
         threading.Thread(target=pump, daemon=True).start()
 
-    def evaluate(self, expr: str, budget: float = 3.0) -> tuple[list[str], str]:
-        """Piped qalc answers in a fixed frame: the echoed input, a blank line, the
-        result, then an empty line. Internal blank lines inside a result carry
-        indentation, so only a truly empty line ends it."""
+    def evaluate(self, expr: str) -> tuple[list[str], str]:
         if not expr.strip():
             return [], ""
-
-        while not self._lines.empty():
-            self._lines.get()
 
         try:
             self.proc.stdin.write(expr + "\n")
@@ -123,32 +142,25 @@ class QalcSession:
         except OSError:
             return [], "qalc session ended"
 
-        body: list[str] = []
-        echoed = False
-        while True:
-            try:
-                line = self._lines.get(timeout=budget)
-            except queue.Empty:
-                break
-            if not echoed:
-                echoed = line.startswith("> ")
-                continue
-            if line == "" and body:
-                break
-            if line != "":
-                body.append(line)
-            budget = 0.5
+        try:
+            answer = self._answers.get(timeout=QALC_ANSWER_TIMEOUT_SECONDS)
+        except queue.Empty:
+            self.close()
+            self._start()
+            return [], f"qalc gave no answer within {QALC_ANSWER_TIMEOUT_SECONDS:g} s; session restarted"
+        if answer is None:
+            return [], "qalc session ended"
 
+        _echoed_input, _, body = answer.partition("\n")
         note = ""
         while not self._notes.empty():
             note = self._notes.get()
-        return [line.strip() for line in body], note
+        return [line.strip() for line in body.split("\n") if line != ""], note
 
     def close(self) -> None:
         try:
             self.proc.stdin.close()
-            self.proc.terminate()
-            self.proc.wait(timeout=1)
+            child_process.stop(self.proc)
         except (OSError, subprocess.SubprocessError):
             pass
 
@@ -274,37 +286,14 @@ class Calculator:
                 continue
             if self.handle(key) is False:
                 return
-            if not self.drain():
-                return
+            if self.input_pending():
+                continue
             if self.live and self.dirty:
                 self.evaluate()
 
-    def drain(self) -> bool:
-        """Absorb a burst of keys, so a paste costs one evaluation.
-
-        A pasted line arrives in chunks with sub-millisecond gaps; evaluating
-        every prefix of a long expression costs the better part of a second.
-
-        This waits rather than polling: under nodelay ncurses cannot assemble an
-        escape sequence, so an arrow key caught mid-burst arrives as a bare ESC
-        followed by its bytes as literal text.
-        """
-        self.screen.timeout(POLL_MS)
-        grace = True
-        try:
-            while True:
-                try:
-                    key = self.screen.get_wch()
-                except curses.error:
-                    if not grace:
-                        return True
-                    grace = False
-                    continue
-                grace = True
-                if self.handle(key) is False:
-                    return False
-        finally:
-            self.screen.timeout(-1)
+    @staticmethod
+    def input_pending() -> bool:
+        return bool(select.select([sys.stdin], [], [], 0)[0])
 
     @staticmethod
     def color_for(role: str) -> int:

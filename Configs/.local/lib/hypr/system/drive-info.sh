@@ -5,10 +5,11 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 
-hypr_help_guard "Usage: hyprshell system/drive-info /dev/drive
+usage="Usage: hyprshell system/drive-info /dev/drive"
+hypr_help_guard "${usage}
 Print the size and model for a drive or partition." "$@"
 
-(( $# )) || { echo "Usage: hyprshell drive-info [/dev/drive]"; exit 1; }
+(( $# )) || { echo "${usage}"; exit 1; }
 drive=$1
 
 read -r size root_drive < <(lsblk -dno SIZE,PKNAME "$drive" 2>/dev/null) || true

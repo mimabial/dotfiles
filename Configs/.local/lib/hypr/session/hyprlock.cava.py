@@ -9,6 +9,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from pyutils.xdg_base_dirs import xdg_runtime_dir
+
 LEVELS = 9
 BARS = 48
 BLOCKS = "▁▂▃▄▅▆▇█"  # eight steps per row, so bars rise smoothly at ~17 repaints/sec
@@ -90,7 +94,7 @@ def main(argv):
         pidfd = os.pidfd_open(pid)
     except (OSError, ValueError, IndexError):
         return 0
-    runtime = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "hypr"
+    runtime = (xdg_runtime_dir() or Path(f"/run/user/{os.getuid()}")) / "hypr"
     runtime.mkdir(parents=True, exist_ok=True)
     out, settings = runtime / "hyprlock-cava.txt", runtime / "hyprlock-cava.conf"
     bars = bars_for(float(argv[2]), float(argv[3]), " ".join(argv[4:])) if len(argv) > 4 else BARS

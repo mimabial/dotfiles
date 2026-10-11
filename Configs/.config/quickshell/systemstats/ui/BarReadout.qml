@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import qs as Bar
 import qs.Commons
 import "../Model.js" as Model
 
@@ -185,14 +186,10 @@ Item {
     horizontalItemAlignment: Grid.AlignHCenter
     verticalItemAlignment: Grid.AlignVCenter
 
-    Text {
+    ReadoutIcon {
       visible: root.module !== "sensors" && root.labelMode === "icon"
-      textFormat: Text.PlainText
-      text: root.glyph
+      glyph: root.glyph
       color: root.glyphColor
-      font.family: root.shell.iconGlyphFont
-      font.pixelSize: root.iconSize
-      renderType: Text.NativeRendering
     }
 
     StackLabel {
@@ -237,14 +234,10 @@ Item {
         horizontalItemAlignment: Grid.AlignHCenter
         verticalItemAlignment: Grid.AlignVCenter
 
-        Text {
+        ReadoutIcon {
           visible: root.labelMode === "icon"
-          textFormat: Text.PlainText
-          text: sensorPair.reading.icon || "󰔏"
+          glyph: sensorPair.reading.icon || "󰔏"
           color: sensorPair.readingColor
-          font.family: root.shell.iconGlyphFont
-          font.pixelSize: root.iconSize
-          renderType: Text.NativeRendering
         }
 
         StackLabel {
@@ -275,6 +268,26 @@ Item {
         }
       }
     }
+  }
+
+  component ReadoutIcon: Item {
+    id: readoutIcon
+    required property string glyph
+    required property color color
+    readonly property string symbol: typeof root.box.symbol === "string" ? root.box.symbol : root.box.symbol?.[glyph] ?? ""
+    implicitWidth: glyphText.implicitWidth; implicitHeight: glyphText.implicitHeight
+    Loader {
+      id: symbolic
+      active: readoutIcon.visible && readoutIcon.symbol !== ""; anchors.centerIn: parent
+      sourceComponent: Component { Bar.SymbolicIcon { name: readoutIcon.symbol; color: readoutIcon.color; size: Math.round(metrics.tightBoundingRect.height); directory: root.box.symbols ?? "" } }
+    }
+    Text {
+      id: glyphText
+      visible: !((symbolic.item as Bar.SymbolicIcon)?.loaded ?? false)
+      textFormat: Text.PlainText; text: readoutIcon.glyph; color: readoutIcon.color
+      font.family: root.shell.iconGlyphFont; font.pixelSize: root.iconSize; renderType: Text.NativeRendering
+    }
+    TextMetrics { id: metrics; text: glyphText.text; font: glyphText.font }
   }
 
   Component {

@@ -14,21 +14,26 @@ case "${1:-}" in
   *) printf 'Unknown argument: %s\n' "$1" >&2; exit 2 ;;
 esac
 
-migrations_dir="${BASH_SOURCE[0]%/*}/_migrations"
-done_list="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/migrations-done"
-mkdir -p "${done_list%/*}"
-touch "${done_list}"
+migration_directory="${BASH_SOURCE[0]%/*}/_migrations"
+completed_migrations_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/migrations-done"
+declare -A completed_migrations=()
+if [[ -f "${completed_migrations_file}" ]]; then
+  while IFS= read -r migration_name || [[ -n "${migration_name}" ]]; do
+    [[ -z "${migration_name}" ]] || completed_migrations["${migration_name}"]=1
+  done <"${completed_migrations_file}"
+fi
 
-for migration in "${migrations_dir}"/*.sh; do
-  [[ -f "${migration}" ]] || continue
-  name="${migration##*/}"
-  if grep -qxF -- "${name}" "${done_list}"; then status="done"; else status="pending"; fi
+for migration_script in "${migration_directory}"/*.sh; do
+  [[ -f "${migration_script}" ]] || continue
+  migration_name="${migration_script##*/}"
+  if [[ -n "${completed_migrations[${migration_name}]:-}" ]]; then migration_status=done; else migration_status=pending; fi
   if ${list_only}; then
-    printf '%-8s %s\n' "${status}" "${name}"
+    printf '%-8s %s\n' "${migration_status}" "${migration_name}"
     continue
   fi
-  [[ "${status}" == pending ]] || continue
-  printf 'Running migration %s\n' "${name}"
-  bash "${migration}"
-  printf '%s\n' "${name}" >>"${done_list}"
+  [[ "${migration_status}" == pending ]] || continue
+  printf 'Running migration %s\n' "${migration_name}"
+  bash "${migration_script}"
+  [[ -d "${completed_migrations_file%/*}" ]] || mkdir -p "${completed_migrations_file%/*}"
+  printf '%s\n' "${migration_name}" >>"${completed_migrations_file}"
 done

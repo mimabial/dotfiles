@@ -1,23 +1,16 @@
 #!/usr/bin/env python3
 import json
-import os
 import sys
 from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import atomic_write, cache_hit, cache_store
-from _roles import palette_roles, roles_digest
+from _common import CONFIG_HOME, atomic_write, cache_hit, cache_store, palette_path
+from _roles import qt_roles_from_palette, qt_role_inputs_digest
 
-from _shell import shell_files
+from _kvantum import resolve_kvantum_color_files
 
 APP = "hyprtoolkit"
-PALETTE = Path(
-    sys.argv[1]
-    if len(sys.argv) > 1 and sys.argv[1]
-    else os.environ.get("HYPR_STATE_HOME", os.path.expanduser("~/.local/state/hypr"))
-    + "/active-palette.json"
-)
-OUT_FILE = Path(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))) / "hypr" / "hyprtoolkit.conf"
+PALETTE = palette_path()
+OUT_FILE = CONFIG_HOME / "hyprtoolkit.conf"
 
 
 def opaque_argb(color):
@@ -43,12 +36,12 @@ def main():
         sys.exit(f"render/{APP}: missing {PALETTE}")
 
     palette = json.loads(PALETTE.read_text())
-    shell_kvconfig, shell_colors_map = shell_files(palette)
-    digest = roles_digest(PALETTE, shell_kvconfig, shell_colors_map, Path(__file__))
+    kvantum_files = resolve_kvantum_color_files(palette)
+    digest = qt_role_inputs_digest(PALETTE, kvantum_files, Path(__file__))
     if cache_hit(APP, digest) and OUT_FILE.exists():
         return
 
-    atomic_write(OUT_FILE, render(palette_roles(palette, shell_kvconfig, shell_colors_map)))
+    atomic_write(OUT_FILE, render(qt_roles_from_palette(palette, kvantum_files)))
     cache_store(APP, digest)
 
 

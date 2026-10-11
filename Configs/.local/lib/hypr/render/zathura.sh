@@ -1,21 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
-PALETTE_ARG="${1:-}"
-. "$(dirname "$0")/_lib.sh"
-render_init zathura colors
-render_link_output "${XDG_CONFIG_HOME:-$HOME/.config}/zathura/colors"
+source "${BASH_SOURCE[0]%/*}/_render_job.bash"
+declare -A render_job=()
+render_job_into render_job "${1:-}" zathura colors
+render_link_output render_job "${XDG_CONFIG_HOME:-$HOME/.config}/zathura/colors"
 
-render_begin
+render_output_is_current render_job && exit 0
+render_stage_output_into render_job
+trap 'rm -f -- "${render_job[staged_file]}"' EXIT
 
-render_read_palette
-red="${c[1]}" green="${c[2]}" yellow="${c[3]}" accent="${c[4]}" bar_fg="${c[7]}" bar_bg="${c[8]}"
-cat >"${tmp}" <<EOF
-set default-bg                  "${bg}"
-set default-fg                  "${fg}"
-set render-loading-bg           "${bg}"
-set render-loading-fg           "${fg}"
-set recolor-lightcolor          "${bg}"
-set recolor-darkcolor           "${fg}"
+render_read_palette_into render_job
+red="${render_job[color1]}" green="${render_job[color2]}" yellow="${render_job[color3]}" accent="${render_job[color4]}" bar_fg="${render_job[color7]}" bar_bg="${render_job[color8]}"
+cat >"${render_job[staged_file]}" <<EOF
+set default-bg                  "${render_job[background_color]}"
+set default-fg                  "${render_job[foreground_color]}"
+set render-loading-bg           "${render_job[background_color]}"
+set render-loading-fg           "${render_job[foreground_color]}"
+set recolor-lightcolor          "${render_job[background_color]}"
+set recolor-darkcolor           "${render_job[foreground_color]}"
 
 set statusbar-bg                "${bar_bg}"
 set statusbar-fg                "${bar_fg}"
@@ -44,5 +46,5 @@ set highlight-color             "${yellow}"
 set highlight-active-color      "${green}"
 EOF
 
-render_commit "${tmp}" "${hash}"
+render_commit_staged_output render_job
 trap - EXIT

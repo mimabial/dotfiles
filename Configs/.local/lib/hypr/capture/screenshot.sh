@@ -3,9 +3,9 @@ set -euo pipefail
 
 hypr_lib="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}"
 # shellcheck source=/dev/null
-source "${hypr_lib}/capture/capture.select.bash"
+source "${hypr_lib}/capture/lib/selection.bash"
 # shellcheck source=/dev/null
-source "${hypr_lib}/capture/ocr.common.bash"
+source "${hypr_lib}/capture/lib/text-recognition.bash"
 
 usage() {
   cat <<USAGE
@@ -38,17 +38,18 @@ cleanup_temp_screenshot() {
   if [[ -n "${temp_screenshot:-}" && -f "${temp_screenshot}" ]]; then
     rm -f "${temp_screenshot}" || true
   fi
-  if [[ -n "${HYPR_OCR_TEMP_IMAGE:-}" && -f "${HYPR_OCR_TEMP_IMAGE}" ]]; then
-    rm -f "${HYPR_OCR_TEMP_IMAGE}" || true
+  if [[ -n "${ocr_temp_image}" && -f "${ocr_temp_image}" ]]; then
+    rm -f "${ocr_temp_image}" || true
   fi
   return "${exit_code}"
 }
 
 temp_screenshot=$(mktemp -t screenshot_XXXXXX.png)
+ocr_temp_image=""
 
 XDG_PICTURES_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}"
 
-grimblast_script="${hypr_lib}/capture/grimblast.sh"
+OCR_ERROR_NOTIFY_MS=7000
 mode="${1:-}"
 destination_arg="${2:-}"
 save_dir_arg="${2:-}"
@@ -104,24 +105,11 @@ screenshot_notify() {
 }
 
 screenshot_error_notify() {
-  screenshot_notify 5000 "dialog-error" "Screenshot Error" "$1"
+  screenshot_notify "${NOTIFY_LONG_MS}" "dialog-error" "Screenshot Error" "$1"
 }
 
-grimblast_capture() {
-  "${grimblast_script}" "$@"
-}
-
-grimblast_capture_geometry() {
-  local action="$1"
-  local selection="$2"
-  local output_file="${3:-}"
-  local args=(--geometry "${selection}" "${action}" "area")
-
-  if [[ -n "${output_file}" ]]; then
-    args+=("${output_file}")
-  fi
-
-  grimblast_capture "${args[@]}"
+focused_output_name() {
+  hyprctl monitors -j | jq -r '.[] | select(.focused) | .name'
 }
 
 capture_then_annotate() {
@@ -142,30 +130,22 @@ capture_selected_geometry() {
 
   case "${destination}" in
     clipboard)
-      if ! grimblast_capture_geometry "copy" "${selection}"; then
+      if ! grim -g "${selection}" "${temp_screenshot}" || ! wl-copy --type image/png <"${temp_screenshot}"; then
         screenshot_error_notify "Failed to take screenshot"
         return 1
       fi
-      screenshot_notify 3000 "camera-photo" "Copied to clipboard"
+      screenshot_notify "${NOTIFY_MS}" "camera-photo" "Copied to clipboard"
       ;;
     save)
-      if ! grimblast_capture_geometry "save" "${selection}" "${save_dir}/${save_file}"; then
+      if ! grim -g "${selection}" "${save_dir}/${save_file}"; then
         screenshot_error_notify "Failed to save screenshot"
         return 1
       fi
       ;;
     *)
-      capture_then_annotate grimblast_capture_geometry "save" "${selection}" "${temp_screenshot}"
+      capture_then_annotate grim -g "${selection}" "${temp_screenshot}"
       ;;
   esac
-}
-
-manual_area_screenshot() {
-  local freeze_selection="${1:-0}"
-  local -a grimblast_args=()
-
-  [[ "${freeze_selection}" -eq 1 ]] && grimblast_args+=(--freeze)
-  capture_then_annotate grimblast_capture "${grimblast_args[@]}" save area "${temp_screenshot}"
 }
 
 smart_screenshot() {
@@ -173,8 +153,8 @@ smart_screenshot() {
   local rectangles=""
   local selection=""
 
-  rectangles="$(capture_smart_rectangles)"
-  selection="$(capture_select_geometry "${rectangles}")" || return 0
+  rectangles="$(capture_active_workspace_rectangles)"
+  selection="$(capture_select_geometry frozen "${rectangles}")" || return 0
   selection="$(capture_expand_tiny_selection "${selection}" "${rectangles}")"
 
   capture_selected_geometry "${selection}" "${destination}"
@@ -184,161 +164,41 @@ window_screenshot() {
   local rectangles=""
   local selection=""
 
-  rectangles="$(capture_smart_rectangles)"
-  selection="$(capture_select_geometry "${rectangles}" -r)" || return 0
+  rectangles="$(capture_active_workspace_rectangles)"
+  selection="$(capture_select_geometry frozen "${rectangles}" -r)" || return 0
   capture_selected_geometry "${selection}" "annotate"
 }
 
-capture_mode_then_annotate() {
-  local mode="$1"
-  shift
-  local extra_args=("$@")
-
-  capture_then_annotate grimblast_capture "${extra_args[@]}" save "$mode" "$temp_screenshot"
-}
-
-ocr_screenshot() {
-  local subject="${1:-area}"
-  local destination="${2:-clipboard}"
-  local ocr_image="${temp_screenshot}"
-  local text_file="${save_dir}/${save_text_file}"
-  local tesseract_languages_body=""
-  local tesseract_output=""
-  local -a tesseract_languages=()
-
-  ocr_capture_subject "${subject}" || {
-    screenshot_notify 5000 "dialog-error" "OCR: screenshot error"
-    return 1
-  }
-
-  hypr_ocr_prepare_languages tesseract_languages || {
-    screenshot_notify 7000 "dialog-error" "OCR: ${HYPR_OCR_ERROR%%$'\n'*}" "${HYPR_OCR_ERROR#*$'\n'}"
-    return 1
-  }
-  tesseract_languages_body="$(hypr_ocr_language_summary tesseract_languages)"
-
-  hypr_ocr_preprocess_into ocr_image "${temp_screenshot}" screen
-  [[ -z "${HYPR_OCR_ERROR}" ]] || screenshot_notify 5000 "dialog-warning" "OCR: ${HYPR_OCR_ERROR}"
-
-  if ! tesseract_output="$(hypr_ocr_recognize "${ocr_image}" "$(hypr_ocr_language_argument tesseract_languages)")"; then
-    screenshot_notify 5000 "dialog-error" "OCR: text recognition failed"
-    return 1
-  fi
-
-  if [[ -z "${tesseract_output//[[:space:]]/}" ]]; then
-    screenshot_notify 5000 "${temp_screenshot}" "OCR: no text found" "${tesseract_languages_body}"
-    return 1
-  fi
-
-  deliver_ocr_text "${destination}" "${tesseract_output}" "${text_file}" || return 1
-  ocr_notify_success "${destination}" "${text_file}" "${#tesseract_output}" "${tesseract_languages_body}"
-}
-
-ocr_capture_subject() {
-  local subject="$1"
-  local rectangles=""
+area_screenshot() {
+  local freeze="$1"
   local selection=""
 
-  case "${subject}" in
-    area | region | selection)
-      grimblast_capture --freeze save area "${temp_screenshot}"
-      ;;
-    smart)
-      rectangles="$(capture_smart_rectangles)"
-      selection="$(capture_select_geometry "${rectangles}")" || return 1
-      selection="$(capture_expand_tiny_selection "${selection}" "${rectangles}")"
-      grimblast_capture_geometry "save" "${selection}" "${temp_screenshot}"
-      ;;
-    window | w)
-      rectangles="$(capture_smart_rectangles)"
-      selection="$(capture_select_geometry "${rectangles}" -r)" || return 1
-      grimblast_capture_geometry "save" "${selection}" "${temp_screenshot}"
-      ;;
-    monitor | output | m)
-      grimblast_capture save output "${temp_screenshot}"
-      ;;
-    screen | fullscreen | p)
-      grimblast_capture save screen "${temp_screenshot}"
-      ;;
-    *)
-      screenshot_error_notify "OCR: invalid subject '${subject}'"
-      return 1
-      ;;
-  esac
+  selection="$(capture_select_geometry "${freeze}" "$(capture_visible_workspace_rectangles)")" || return 0
+  capture_selected_geometry "${selection}" "annotate"
 }
 
-deliver_ocr_text() {
-  local destination="$1"
-  local text="$2"
-  local text_file="$3"
-
-  case "${destination}" in
-    "" | clipboard | copy)
-      printf '%s' "${text}" | wl-copy --sensitive
-      ;;
-    save | file)
-      printf '%s\n' "${text}" >"${text_file}"
-      ;;
-    both | copy-save | save-copy)
-      printf '%s' "${text}" | wl-copy --sensitive
-      printf '%s\n' "${text}" >"${text_file}"
-      ;;
-    stdout | print)
-      printf '%s\n' "${text}"
-      ;;
-    *)
-      screenshot_error_notify "OCR: invalid destination '${destination}'"
-      return 1
-      ;;
-  esac
-}
-
-ocr_notify_success() {
-  local destination="$1"
-  local text_file="$2"
-  local symbol_count="$3"
-  local language_body="$4"
-  local summary="OCR: ${symbol_count} symbols recognized"
-  local body="${language_body}"
-
-  case "${destination}" in
-    "" | clipboard | copy)
-      body="Copied to clipboard"$'\n'"${body}"
-      ;;
-    save | file)
-      body="Saved to ${text_file}"$'\n'"${body}"
-      ;;
-    both | copy-save | save-copy)
-      body="Copied to clipboard"$'\n'"Saved to ${text_file}"$'\n'"${body}"
-      ;;
-    stdout | print)
-      return 0
-      ;;
-  esac
-
-  screenshot_notify 5000 "${temp_screenshot}" "${summary}" "${body}"
-}
+source "${hypr_lib}/capture/lib/screenshot-ocr.bash"
 
 trap 'cleanup_temp_screenshot "$?"' EXIT
 
 case "${mode}" in
   p)
-    capture_mode_then_annotate "screen"
+    capture_then_annotate grim "${temp_screenshot}"
     ;;
   smart)
     smart_screenshot "${smart_destination}"
     ;;
   area)
-    manual_area_screenshot 0
+    area_screenshot live
     ;;
   area-freeze)
-    manual_area_screenshot 1
+    area_screenshot frozen
     ;;
   w)
     window_screenshot
     ;;
   m)
-    capture_mode_then_annotate "output"
+    capture_then_annotate grim -o "$(focused_output_name)" "${temp_screenshot}"
     ;;
   ocr | text)
     ocr_screenshot "${2:-area}" "${3:-clipboard}"
@@ -368,5 +228,5 @@ case "${mode}" in
 esac
 
 if [ -f "${save_dir}/${save_file}" ]; then
-  screenshot_notify 5000 "${save_dir}/${save_file}" "saved in ${save_dir}"
+  screenshot_notify "${NOTIFY_LONG_MS}" "${save_dir}/${save_file}" "saved in ${save_dir}"
 fi

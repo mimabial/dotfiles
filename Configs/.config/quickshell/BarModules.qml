@@ -75,10 +75,10 @@ Item {
         ColorModePopup { anchorItem: colorButton; shell: catalog.shell; popupEnabled: catalog.popupsAllowed }
     } }
     Component { id: mod_barlayout; BarButton {
-        id: barButton; shell: catalog.shell; css: "barlayout-button"; text: catalog.shell.barLayoutIcon(); Layout.fillHeight: true
-        onClicked: button => button === Qt.LeftButton ? catalog.shell.togglePopup("barlayout")
+        id: barButton; shell: catalog.shell; css: "barlayout-button"; text: catalog.shell.barLayoutIcon(); tooltip: "Bar layout, window layout and workflow"; Layout.fillHeight: true
+        onClicked: button => button === Qt.LeftButton ? catalog.shell.togglePopup("desktop")
             : catalog.shell.run(["hyprshell", "quickshell/layout", button === Qt.RightButton ? "previous" : "next"])
-        BarLayoutPopup { anchorItem: barButton; shell: catalog.shell; popupEnabled: catalog.popupsAllowed }
+        DesktopPopup { anchorItem: barButton; shell: catalog.shell; popupEnabled: catalog.popupsAllowed }
     } }
     Component { id: mod_windowlayout; WindowLayoutButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_workflows; ScriptButton {

@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 
 _hypr_state_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-if ! declare -F hypr_runtime_subdir >/dev/null 2>&1; then
+if ! declare -F hypr_ensure_runtime_subdir >/dev/null 2>&1; then
   # shellcheck source=/dev/null
   source "${_hypr_state_dir}/common.bash" || return 1 2>/dev/null || exit 1
 fi
+# shellcheck source=/dev/null
+source "${_hypr_state_dir}/state-read.bash" || return 1 2>/dev/null || exit 1
 unset _hypr_state_dir
 
 STATE_COLOR_MODE_AUTO=1
@@ -49,7 +51,7 @@ state_resolve_color_mode() {
   fi
 }
 
-export_hypr_config() {
+state_load_runtime_environment() {
   local state_root="${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}"
   local state_rc_path="${STATE_RC:-${state_root}/staterc}"
   local env_overrides_path="${STATE_ENV_OVERRIDES:-${state_root}/env-overrides}"
@@ -127,55 +129,6 @@ state_color_variant_file() {
   printf '%s\n' "${STATE_COLOR_VARIANT:-${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/color_variant}"
 }
 
-state_decode_raw_value() {
-  local out_name="$1" decoded="${2-}"
-
-  if [[ ${#decoded} -ge 2 && "${decoded:0:1}" == '"' && "${decoded:${#decoded}-1:1}" == '"' ]]; then
-    decoded="${decoded:1:${#decoded}-2}"
-    decoded="${decoded//\\\"/\"}"
-    decoded="${decoded//\\\$/\$}"
-    decoded="${decoded//\\\`/\`}"
-    decoded="${decoded//\\\\/\\}"
-    printf -v "${out_name}" '%s' "${decoded}"
-    return 0
-  fi
-
-  if [[ ${#decoded} -ge 2 && "${decoded:0:1}" == "'" && "${decoded:${#decoded}-1:1}" == "'" ]]; then
-    printf -v "${out_name}" '%s' "${decoded:1:${#decoded}-2}"
-    return 0
-  fi
-
-  printf -v "${out_name}" '%s' "${decoded}"
-}
-
-state_get() {
-  local var_name="${1:-}"
-  local default_value="${2:-}"
-  local state_root="${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}"
-  local state_file="" line="" stripped="" raw_value="" value=""
-
-  if [[ -z "${var_name}" || ! "${var_name}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
-    printf '%s\n' "${default_value}"
-    return 1
-  fi
-
-  for state_file in \
-    "${STATE_RC:-${state_root}/staterc}" \
-    "${STATE_ENV_OVERRIDES:-${state_root}/env-overrides}"; do
-    [[ -f "${state_file}" ]] || continue
-    while IFS= read -r line || [[ -n "${line}" ]]; do
-      stripped="${line#"${line%%[![:space:]]*}"}"
-      [[ "${stripped}" =~ ^(export[[:space:]]+)?${var_name}=(.*)$ ]] || continue
-      raw_value="${BASH_REMATCH[2]}"
-      [[ "${raw_value}" == \(* ]] && continue
-      state_decode_raw_value value "${raw_value}"
-      printf '%s\n' "${value}"
-      return 0
-    done < "${state_file}"
-  done
-  printf '%s\n' "${default_value}"
-}
-
 state_target_file() {
   case "${1:-staterc}" in
     staterc) state_rc_file ;;
@@ -185,17 +138,22 @@ state_target_file() {
   esac
 }
 
+state_lock_file() {
+  local out_name="$1" lock_label="${2##*/}" lock_dir=""
+
+  lock_label="${lock_label//[^A-Za-z0-9._-]/_}"
+  lock_dir="$(hypr_ensure_runtime_subdir hypr)" || return 1
+  printf -v "${out_name}" '%s/state-%s.lock' "${lock_dir}" "${lock_label:-state}"
+}
+
 state_acquire_lock() {
   local lock_target="$1"
   local fd_name="$2"
   local -n fd_ref="${fd_name}"
   local lock_timeout="${STATE_LOCK_TIMEOUT:-5}"
-  local lock_dir="" lock_label="${lock_target##*/}" lock_file=""
+  local lock_file=""
 
-  # auto_theme_support.py derives the same basename-only lock key.
-  lock_label="${lock_label//[^A-Za-z0-9._-]/_}"
-  lock_dir="$(hypr_runtime_subdir hypr)" || return 1
-  lock_file="${lock_dir}/state-${lock_label:-state}.lock"
+  state_lock_file lock_file "${lock_target}" || return 1
 
   if ! exec {fd_ref}>"${lock_file}"; then
     print_log -sec "state" -err "state_set" "failed to open lock ${lock_file}"

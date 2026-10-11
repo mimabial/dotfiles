@@ -5,7 +5,9 @@ import ".."
 ScriptButton {
     id: root
     property bool popupEnabled: true
+    property bool keepVisible: false
     css: "github"
+    fallback: root.keepVisible ? "" : ""
     command: ["hyprshell", "github-notifications"]
     interval: 60 * 60 * 1000
     onClicked: button => button === Qt.RightButton

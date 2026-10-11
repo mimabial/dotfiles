@@ -1,13 +1,17 @@
 from __future__ import annotations
 
-import os
 import shlex
+import sys
 from functools import lru_cache
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from pyutils.xdg_base_dirs import xdg_config_home
+
 
 def default_config_path() -> Path:
-    config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    config_home = xdg_config_home()
     return config_home / "yt-dlp" / "config"
 
 

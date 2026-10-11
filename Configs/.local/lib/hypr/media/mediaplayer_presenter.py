@@ -6,11 +6,18 @@ import os
 import shutil
 import socket
 import subprocess
+import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from pyutils.xdg_base_dirs import xdg_config_home
+
 from gi.repository import Gio, GLib
 
+
+FFTAB_PLAYER_PREFIX = "fftab_"
 
 PLAYER_ALIASES = {
     "elisa": ("elisa", "org.kde.elisa"),
@@ -21,7 +28,7 @@ PLAYER_ALIASES = {
 }
 
 
-def command(args: list[str]) -> subprocess.CompletedProcess:
+def run_desktop_command(args: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run(
         args,
         text=True,
@@ -30,8 +37,12 @@ def command(args: list[str]) -> subprocess.CompletedProcess:
     )
 
 
+def hyprshell_executable() -> str:
+    return shutil.which("hyprshell") or str(Path.home() / ".local/bin/hyprshell")
+
+
 def player_base(player: str) -> str:
-    if player.startswith("fftab_"):
+    if player.startswith(FFTAB_PLAYER_PREFIX):
         return "fftab"
     return player.split(".", 1)[0].lower()
 
@@ -48,7 +59,7 @@ def window_aliases(player: str, desktop_entry: str = "") -> tuple[str, ...]:
 
 
 def hypr_clients() -> list[dict]:
-    proc = command(["hyprctl", "clients", "-j"])
+    proc = run_desktop_command(["hyprctl", "clients", "-j"])
     if proc.returncode != 0 or not proc.stdout.strip():
         return []
     try:
@@ -77,14 +88,14 @@ def focus_window(address: str) -> bool:
     if not address:
         return False
     selector = json.dumps(f"address:{address}")
-    proc = command(
+    proc = run_desktop_command(
         ["hyprctl", "dispatch", f"hl.dsp.focus({{window={selector}}})"]
     )
     return proc.returncode == 0
 
 
 def focus_empty_workspace() -> bool:
-    proc = command(
+    proc = run_desktop_command(
         ["hyprctl", "dispatch", 'hl.dsp.focus({workspace="empty"})']
     )
     return proc.returncode == 0
@@ -133,19 +144,18 @@ def launch_spec(
     media_url: str,
 ) -> tuple[str, list[str]] | None:
     base = player_base(player)
-    hyprshell = shutil.which("hyprshell") or str(Path.home() / ".local/bin/hyprshell")
     if base == "mpd":
         return (
             "class:org.tui.Rmpc",
             [
-                hyprshell,
+                hyprshell_executable(),
                 "launch/tui.sh",
                 "--app-id",
                 "org.tui.Rmpc",
                 "--title",
                 "Rmpc",
                 "--",
-                str(Path.home() / ".config/rmpc/lib/launch"),
+                str(xdg_config_home() / "rmpc/lib/launch"),
             ],
         )
     if base == "elisa":
@@ -178,16 +188,15 @@ def launch_frontend(
     if spec is None:
         return False
     pattern, launch = spec
-    hyprshell = shutil.which("hyprshell") or str(Path.home() / ".local/bin/hyprshell")
     summon = [
-        hyprshell,
+        hyprshell_executable(),
         "launch/summon.sh",
         "--float-if-workspace-occupied"
         if player_base(player) == "mpd"
         else "--empty-workspace-if-occupied",
     ]
     summon.extend([pattern, "--", *launch])
-    proc = command(summon)
+    proc = run_desktop_command(summon)
     return proc.returncode == 0
 
 

@@ -2,56 +2,46 @@
 
 set -euo pipefail
 
-
-queue_art_update() {
-  local dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr" lock fd path last=0
-  [[ -d "${dir}" ]] || mkdir -m 700 "${dir}" || return
-  lock="${dir}/hyprlock-art.lock"
-  exec {fd}>"${lock}" && flock -n "${fd}" || return 0
-  read -r last 2>/dev/null <"${lock}.stamp" || last=0
-  ((EPOCHSECONDS - last > 2)) || return 0
-  printf '%s\n' "${EPOCHSECONDS}" >"${lock}.stamp"
-  exec {fd}>&-
-  # hyprlock reads a label's pipe until every holder closes it, background work included
-  ( for path in /proc/self/fd/*; do fd="${path##*/}"; ((fd < 3)) || exec {fd}>&-; done
-    exec "${BASH_SOURCE[0]}" --update-art ) >/dev/null 2>&1 &
-}
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/xdg.bash"
+hypr_init_xdg_env
+source "${BASH_SOURCE[0]%/*}/hyprlock/paths.bash"
+source "${BASH_SOURCE[0]%/*}/hyprlock/media.bash"
+source "${BASH_SOURCE[0]%/*}/hyprlock/artwork.bash"
+declare -A HYPRLOCK_PATHS=()
+declare -a HYPRLOCK_MAGICK_ARGS=()
+hyprlock_paths_into HYPRLOCK_PATHS
 
 case "${1:-}" in
-  --mpris|--title|--artist|--source|--status|--length)
-    source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/session/hyprlock.media.bash"
-    queue_art_update  # most layouts never ask for --source; this self-rate-limits
-    "fn_${1#--}" "${2:-}"
-    exit
-    ;;
+  --mpris) media_reader=hyprlock_active_media_title ;;
+  --title) media_reader=hyprlock_media_title ;;
+  --artist) media_reader=hyprlock_media_artist ;;
+  --source) media_reader=hyprlock_media_player_icon ;;
+  --status) media_reader=hyprlock_media_status_icon ;;
+  --length) media_reader=hyprlock_media_duration ;;
 esac
+if [[ -n "${media_reader:-}" ]]; then
+  media_player="$(mpris_selected_player)"
+  hyprlock_queue_artwork_update HYPRLOCK_PATHS "${media_player}"
+  "${media_reader}" "${2:-${media_player}}"
+  exit
+fi
 
 # Theme renders can invoke this without hyprshell on PATH.
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state system notify wallpaper_catalog || exit 1
-hypr_runtime_load_state || exit 1
+hypr_runtime_load_desktop_environment || exit 1
 
-ensure_xdg_dirs() {
-  [[ -n "${XDG_CONFIG_HOME:-}" ]] || export XDG_CONFIG_HOME="$HOME/.config"
-  [[ -n "${XDG_CACHE_HOME:-}" ]] || export XDG_CACHE_HOME="$HOME/.cache"
-  [[ -n "${XDG_DATA_HOME:-}" ]] || export XDG_DATA_HOME="$HOME/.local/share"
-}
+source "${BASH_SOURCE[0]%/*}/hyprlock/process.bash"
+source "${BASH_SOURCE[0]%/*}/hyprlock/images.bash"
+source "${BASH_SOURCE[0]%/*}/hyprlock/layouts.bash"
 
-setup_hyprlock_paths() {
-  HYPR_CACHE_HOME="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME}/hypr}"
-  WALLPAPER_CACHE_DIR="${WALLPAPER_CACHE_DIR:-${HYPR_CACHE_HOME}/wallpaper}"
-  WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${WALLPAPER_CACHE_DIR}/current}"
-  WALLPAPER_VIDEO_DIR="${WALLPAPER_VIDEO_DIR:-${WALLPAPER_CURRENT_DIR}/thumbnails}"
-  WALLPAPER="${WALLPAPER_CURRENT_DIR}/wall.set"
-  HYPRLOCK_SCOPE_NAME="${XDG_SESSION_DESKTOP:-unknown}-lockscreen.scope"
-  HYPRLOCK_USER_DIR="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME}/hypr}/hyprlock"
-  HYPRLOCK_SHARED_DIR="${HYPR_DATA_HOME:-${XDG_DATA_HOME}/hypr}/hyprlock"
-}
+hyprlock_paths_into HYPRLOCK_PATHS
+hyprlock_init_magick
 
 usage() {
   cat <<EOF
-Usage: $(basename "${0}") --[arg]
+Usage: hyprshell session/hyprlock --[arg]
 
 arguments:
   --background -b    - Converts and ensures background to be a png
@@ -76,99 +66,49 @@ arguments:
 EOF
 }
 
-source_hyprlock_modules() {
-  MAGICK_LIMITS=()
-  # shellcheck source=/dev/null
-  source "${HYPR_LIB_DIR}/session/hyprlock.assets.bash"
-  # shellcheck source=/dev/null
-  source "${HYPR_LIB_DIR}/session/hyprlock.media.bash"
-  # shellcheck source=/dev/null
-  source "${HYPR_LIB_DIR}/session/hyprlock.layout.bash"
-  resolve_magick_limits
-}
-
 handle_hyprlock_action() {
   case "$1" in
     --test)
-      preview_hyprlock_layout "$2"
+      hyprlock_preview_layout HYPRLOCK_PATHS "$2"
       ;;
     --apply)
-      fn_apply "$2"
+      hyprlock_apply_layout HYPRLOCK_PATHS "$2"
       ;;
-    select|-S|--select)
-      fn_select
+    -S|--select)
+      hyprlock_open_layout_selector
       ;;
-    repair|--repair)
-      ensure_hyprlock_conf
+    --repair)
+      hyprlock_ensure_config HYPRLOCK_PATHS
       ;;
-    background|--background|-b)
-      fn_background
+    --background|-b)
+      hyprlock_render_background HYPRLOCK_PATHS
       ;;
-    profile|--profile)
-      fn_profile
-      ;;
-    --title)
-      fn_title
-      ;;
-    --artist)
-      fn_artist
-      ;;
-    --source)
-      fn_source
-      ;;
-    --status)
-      fn_status
-      ;;
-    --length)
-      fn_length
+    --profile)
+      hyprlock_render_profile HYPRLOCK_PATHS
       ;;
     --play-pause|--next|--previous|--rewind|--forward)
-      fn_control "${1#--}"
+      hyprlock_control_media "${1#--}"
       ;;
     --update-art)
-      fn_update_art
+      hyprlock_update_artwork HYPRLOCK_PATHS
       ;;
-    art|--art)
-      fn_art
+    --art)
+      hyprlock_artwork_path HYPRLOCK_PATHS
       ;;
-    help|--help|-h)
+    --help|-h)
       usage
       ;;
   esac
 }
 
 parse_and_dispatch_args() {
-  local longopts="select,repair,background,profile,title,artist,source,status,length,play-pause,next,previous,rewind,forward,update-art,art,help,test:,apply:"
+  local longopts="select,repair,background,profile,play-pause,next,previous,rewind,forward,update-art,art,help,test:,apply:"
   local parsed=""
 
   parsed=$(getopt --options Shb --longoptions "$longopts" --name "$0" -- "$@") || exit 2
   eval set -- "$parsed"
-
-  while true; do
-    case "$1" in
-      --test|--apply)
-        handle_hyprlock_action "$1" "$2"
-        exit 0
-        ;;
-      select|-S|--select|repair|--repair|background|--background|-b|profile|--profile|--title|--artist|--source|--status|--length|--play-pause|--next|--previous|--rewind|--forward|--update-art|art|--art|help|--help|-h)
-        handle_hyprlock_action "$1"
-        exit 0
-        ;;
-      --)
-        shift
-        break
-        ;;
-      *)
-        break
-        ;;
-    esac
-    shift
-  done
+  [[ "$1" == -- ]] || handle_hyprlock_action "$1" "${2:-}"
 }
-
-ensure_xdg_dirs
-setup_hyprlock_paths
-source_hyprlock_modules
 
 [[ $# -gt 0 ]] || set -- --help
 parse_and_dispatch_args "$@"

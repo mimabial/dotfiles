@@ -1,0 +1,19 @@
+dev_env_install_with_mise() {
+  local label="$1"
+  shift
+  local tool=""
+
+  printf 'Installing %s...\n\n' "${label}"
+  for tool in "$@"; do
+    mise use --global "${tool}"
+  done
+}
+
+dev_env_ensure_bashrc_path() {
+  local export_line="$1"
+  local bashrc_file="$HOME/.bashrc"
+
+  touch "${bashrc_file}"
+  grep -Fxq "${export_line}" "${bashrc_file}" && return 0
+  printf '%s\n' "${export_line}" >>"${bashrc_file}"
+}

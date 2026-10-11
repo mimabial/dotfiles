@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 rofi_normalize_launcher_style() {
   local style_ref="${1:-style_1}"
-  [[ -z "${style_ref}" ]] && style_ref="style_1"
   if [[ "${style_ref}" =~ ^[0-9]+$ ]]; then
     printf 'style_%s\n' "${style_ref}"
     return 0
@@ -38,8 +37,8 @@ rofi_resolve_import_ref() {
 
   [[ -n "${import_ref}" ]] || return 1
 
-  if [[ "${import_ref}" == ~/* ]]; then
-    resolved="${HOME}/${import_ref#~/}"
+  if [[ "${import_ref}" == "~/"* ]]; then
+    resolved="${HOME}/${import_ref#"~/"}"
   elif [[ "${import_ref}" == /* ]]; then
     resolved="${import_ref}"
   elif [[ "${import_ref}" == *"/"* ]]; then
@@ -65,7 +64,7 @@ rofi_theme_effective_files() {
   fi
   _rofi_seen["${theme_file}"]=1
 
-  base_dir="$(dirname "${theme_file}")"
+  base_dir="${theme_file%/*}"
   while IFS= read -r import_ref; do
     import_file="$(rofi_resolve_import_ref "${import_ref}" "${base_dir}" 2>/dev/null || true)"
     [[ -n "${import_file}" ]] || continue
@@ -105,6 +104,6 @@ rofi_theme_is_fullscreen() {
 
 rofi_icon_theme_override() {
   local icon_theme
-  icon_theme="$(get_hypr_conf "ICON_THEME")"
+  icon_theme="$(hypr_theme_variable "ICON_THEME")"
   printf 'configuration {icon-theme: "%s";}\n' "${icon_theme}"
 }

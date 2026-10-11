@@ -23,16 +23,17 @@ printf '%s\n' 'local values = {' '    FONT = "Default Font",' '    FONT_SIZE = "
   '    MONOSPACE_FONT = "Default Mono",' '    TERMINAL = "default-term",' '}' >"${HYPR_DATA_HOME}/vars.lua"
 printf '%s\n' 'local vars = require("vars")' 'vars.set("TERMINAL", "prefs-term")' >"${HYPR_CONFIG_HOME}/userprefs.lua"
 
+declare -A settings=()
 selected_color_source=theme
-theme_desktop_resolve_base_values
-check "${FONT}" 'Env Font' env-precedence
-check "${MONOSPACE_FONT}" 'User Mono' user-precedence
-check "${DOCUMENT_FONT}" 'Default Doc' default-layer
-check "${TERMINAL}" 'prefs-term' prefs-precedence
-check "${ICON_THEME}:${CURSOR_THEME}:${CURSOR_SIZE}" 'Theme Icons:Theme Cursor:28' theme-assets
+theme_desktop_resolve_base_values_into settings "${selected_color_source}"
+check "${settings[FONT]}" 'Env Font' env-precedence
+check "${settings[MONOSPACE_FONT]}" 'User Mono' user-precedence
+check "${settings[DOCUMENT_FONT]}" 'Default Doc' default-layer
+check "${settings[TERMINAL]}" 'prefs-term' prefs-precedence
+check "${settings[ICON_THEME]}:${settings[CURSOR_THEME]}:${settings[CURSOR_SIZE]}" 'Theme Icons:Theme Cursor:28' theme-assets
 selected_color_source=wallpaper
-theme_desktop_resolve_base_values
-check "${ICON_THEME}" 'Env Icons' wallpaper-precedence
+theme_desktop_resolve_base_values_into settings "${selected_color_source}"
+check "${settings[ICON_THEME]}" 'Env Icons' wallpaper-precedence
 
 (
   HOME="${tmp_dir}/home" STATE_DIR="${HYPR_STATE_HOME}" HYPR_THEME='New Pack'
@@ -40,11 +41,11 @@ check "${ICON_THEME}" 'Env Icons' wallpaper-precedence
   ln -s "${HYPR_CONFIG_HOME}/themes/Gone" "${HOME}/.themes/Gone"
   ln -s "${HYPR_CONFIG_HOME}/themes/Old" "${HOME}/.themes/Old"
   ln -s "${tmp_dir}/foreign" "${HOME}/.themes/Foreign"
-  theme_desktop_resolve_values
+  theme_desktop_resolve_settings_into settings
   [[ -L "${HOME}/.themes/Old" && ! -e "${HOME}/.themes/New-Pack" ]] || { printf 'failed: resolution changed gtk links\n' >&2; exit 1; }
-  theme_desktop_prepare_state
+  theme_desktop_prepare_settings_into settings
   links=("${HOME}/.themes"/*)
-  check "${RESOLVED_GTK_THEME}:${links[*]##*/}" 'New-Pack:Foreign New-Pack' gtk-theme-link-prune
+  check "${settings[RESOLVED_GTK_THEME]}:${links[*]##*/}" 'New-Pack:Foreign New-Pack' gtk-theme-link-prune
 )
 
 ini_file="${tmp_dir}/settings.ini"
@@ -60,22 +61,22 @@ inode="$(stat -c %i "${generated}")"
 printf same | theme_desktop_write_generated_file "${generated}"
 check "$(stat -c %i "${generated}")" "${inode}" unchanged-generated-file
 
-CURSOR_THEME='Test Cursor'
-CURSOR_SIZE=32
+settings[CURSOR_THEME]='Test Cursor'
+settings[CURSOR_SIZE]=32
 resource="${tmp_dir}/Xresources"
 printf '%s\n' 'keep: yes' 'Xcursor.theme: old' 'Xcursor.theme: duplicate' >"${resource}"
-theme_desktop_update_xcursor_resource "${resource}"
+theme_desktop_update_xcursor_resource settings "${resource}"
 check "$(grep -c '^Xcursor.theme:' "${resource}")" 1 cursor-dedup
 grep -qx 'Xcursor.theme: Test Cursor' "${resource}"
 grep -qx 'Xcursor.size: 32' "${resource}"
 grep -qx 'keep: yes' "${resource}"
 
-FONT='Test Sans'
-MONOSPACE_FONT='Test Mono'
-ICON_THEME='Test Icons'
-RESOLVED_KDE_COLOR_SCHEME='KvGnome'
-RESOLVED_QT_STYLE='Breeze'
-theme_desktop_configure_qt_kde_bridge
+settings[FONT]='Test Sans'
+settings[MONOSPACE_FONT]='Test Mono'
+settings[ICON_THEME]='Test Icons'
+settings[RESOLVED_KDE_COLOR_SCHEME]='KvGnome'
+settings[RESOLVED_QT_STYLE]='Breeze'
+theme_desktop_configure_qt_kde_bridge settings
 ui_scheme="$(awk '/^\[UiSettings\]$/ { found=1; next } /^\[/ { found=0 } found && /^ColorScheme=/ { print; exit }' "${XDG_CONFIG_HOME}/kdeglobals")"
 check "${ui_scheme}" 'ColorScheme=' system-kde-scheme
 kde_style="$(awk '/^\[KDE\]$/ { found=1; next } /^\[/ { found=0 } found && /^widgetStyle=/ { print; exit }' "${XDG_CONFIG_HOME}/kdeglobals")"
@@ -102,8 +103,8 @@ unset -f dbus-send
   mkdir -p "${XDG_DATA_HOME}/themes/Hypr-Gtk/gtk-3.0"
   touch "${XDG_DATA_HOME}/themes/Hypr-Gtk/gtk-3.0/gtk.css"
   printf '%s\n' 'Hypr-Gtk-Alt' >"${XDG_DATA_HOME}/themes/Hypr-Gtk/theme-name"
-  theme_desktop_resolve_values
-  check "${RESOLVED_GTK_THEME}" 'Hypr-Gtk-Alt' generated-gtk-theme-name
+  theme_desktop_resolve_settings_into settings
+  check "${settings[RESOLVED_GTK_THEME]}" 'Hypr-Gtk-Alt' generated-gtk-theme-name
 )
 
 gtk_notifications=()
@@ -118,7 +119,7 @@ unset -f gsettings pkill
 marker="${tmp_dir}/continued"
 theme_desktop_install_kde_color_scheme() { return 1; }
 theme_desktop_configure_qt_kde_bridge() { touch "${marker}"; }
-if theme_desktop_apply_static_resolved; then
+if theme_desktop_apply_static_resolved settings; then
   printf 'failed: static error was masked\n' >&2
   exit 1
 fi

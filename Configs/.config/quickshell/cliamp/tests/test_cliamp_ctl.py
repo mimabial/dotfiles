@@ -23,6 +23,21 @@ class CliampTests(unittest.TestCase):
         send.assert_called_once_with([["get_property", name] for name in
             ("time-pos", "duration", "pause", "media-title", "volume", "speed", "idle-active")])
 
+    @patch.object(cliamp, "read_now_playing", return_value={})
+    @patch.object(cliamp, "play_item")
+    @patch.object(cliamp, "is_mpv_running", return_value=True)
+    @patch.object(cliamp, "send_mpv_cmd", return_value={"data": []})
+    @patch.object(cliamp, "send_mpv_cmds")
+    def test_idle_status_preserves_queue(self, send_properties, _send, _running, play, _playing):
+        send_properties.side_effect = [[{"data": value} for value in
+            (None, None, False, "", cliamp.DEFAULT_VOLUME, 1, idle)] for idle in (True, False)]
+        queue = [{"url": "/music/next.opus"}]
+        with TemporaryDirectory() as directory, patch.object(cliamp, "QUEUE_PATH", str(Path(directory) / "queue.json")):
+            cliamp.save_queue(queue)
+            self.assertEqual(cliamp.get_status()["state"], "stopped")
+            self.assertEqual(cliamp.read_queue(), queue)
+        play.assert_not_called()
+
     @patch.object(cliamp, "play_next_in_queue", return_value={"success": True})
     @patch.object(cliamp, "reconcile_queue", return_value=[{"url": "/music/next.opus"}])
     @patch.object(cliamp, "send_mpv_cmd", side_effect=[{"data": False}, {"data": True}])
@@ -39,6 +54,22 @@ class CliampTests(unittest.TestCase):
             "loadfile", "/music/next.opus", "append", -1,
             {"force-media-title": "Next"},
         ])
+
+    @patch.object(cliamp, "save_youtube_meta")
+    @patch.object(cliamp, "resolve_youtube_stream_url")
+    @patch.object(cliamp, "get_cached_stream_url")
+    @patch.object(cliamp, "send_mpv_cmd")
+    def test_youtube_load_uses_cache_without_resolving(self, send, cached_stream, resolve, _metadata):
+        url = "https://www.youtube.com/watch?v=f9l5Z5Vu_c0"
+        for cached in (None, "https://media.example/audio"):
+            with self.subTest(cached=cached):
+                cached_stream.return_value = cached
+                cliamp.load_mpv(url, "append", "Next")
+                send.assert_called_with([
+                    "loadfile", cached or url, "append", -1,
+                    {"force-media-title": "Next", "ytdl-format": "18/best"},
+                ])
+        resolve.assert_not_called()
 
     @patch.object(cliamp, "save_now_playing")
     @patch.object(cliamp, "save_queue")
@@ -63,6 +94,19 @@ class CliampTests(unittest.TestCase):
     def test_current_song_does_not_consume_queued_repeat(self, read, _send, save):
         self.assertEqual(cliamp.reconcile_queue(), read.return_value)
         save.assert_not_called()
+
+    def test_local_history_filters_before_limit(self):
+        with TemporaryDirectory() as directory:
+            local = Path(directory) / "local.opus"
+            local.touch()
+            entries = [
+                {"path": str(local), "title": "Local"},
+                {"path": str(local.with_name("missing.opus")), "title": "Missing"},
+                {"path": "https://www.youtube.com/watch?v=f9l5Z5Vu_c0", "title": "Online"},
+                {"title": "Metadata only"},
+            ]
+            self.assertEqual(cliamp.unique_history(entries, 1, local_only=True), [entries[0]])
+            self.assertEqual(cliamp.unique_history(entries, len(entries)), [entries[3], entries[2], entries[0]])
 
     def test_blank_artist_does_not_inherit_previous_artist(self):
         with TemporaryDirectory() as directory, patch.object(cliamp, "NOW_PLAYING_PATH", str(Path(directory) / "playing.json")):

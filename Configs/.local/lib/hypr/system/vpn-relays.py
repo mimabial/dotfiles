@@ -9,21 +9,27 @@ import json
 import re
 import subprocess
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from pyutils import child_process
 
 COUNTRY = re.compile(r"^(?P<name>.+) \((?P<code>[a-z]{2})\)\s*$")
 CITY = re.compile(r"^\t(?P<name>.+) \((?P<code>[a-z]{3})\) @")
 RELAY = re.compile(r"^\t\t(?P<host>\S+)")
+MULLVAD_TIMEOUT_SECONDS = 20
 
 
-def run(args):
+def mullvad_output(args):
     try:
-        out = subprocess.run(args, capture_output=True, text=True, timeout=20)
+        completed_command = child_process.run(args, capture_output=True, text=True, timeout=MULLVAD_TIMEOUT_SECONDS)
     except (OSError, subprocess.SubprocessError):
         return ""
-    return out.stdout if out.returncode == 0 else ""
+    return completed_command.stdout if completed_command.returncode == 0 else ""
 
 
-def current_location():
+def current_relay_location():
     """Read the pinned location out of `mullvad relay get`.
 
     Four shapes, and the city one puts the city *before* its country:
@@ -32,7 +38,7 @@ def current_location():
         city prg, cz
         city prg, cz, hostname cz-prg-wg-101
     """
-    text = run(["mullvad", "relay", "get"])
+    text = mullvad_output(["mullvad", "relay", "get"])
     match = re.search(r"^\s*Location:\s*(.+)$", text, re.M)
     if not match:
         return {}
@@ -41,22 +47,22 @@ def current_location():
     if not segments or segments[0] == "any":
         return {"kind": "any"}
 
-    here = {"kind": "", "country": "", "city": "", "hostname": ""}
+    relay_location = {"kind": "", "country": "", "city": "", "hostname": ""}
     for index, segment in enumerate(segments):
         head, _, value = segment.partition(" ")
         if head == "country":
-            here["kind"] = here["kind"] or "country"
-            here["country"] = value
+            relay_location["kind"] = relay_location["kind"] or "country"
+            relay_location["country"] = value
         elif head == "city":
-            here["kind"] = "city"
-            here["city"] = value
+            relay_location["kind"] = "city"
+            relay_location["city"] = value
             # the bare segment that follows a city is its country code
             if index + 1 < len(segments) and " " not in segments[index + 1]:
-                here["country"] = segments[index + 1]
+                relay_location["country"] = segments[index + 1]
         elif head == "hostname":
-            here["kind"] = "hostname"
-            here["hostname"] = value
-    return here
+            relay_location["kind"] = "hostname"
+            relay_location["hostname"] = value
+    return relay_location
 
 
 def parse_relays(text):
@@ -88,7 +94,7 @@ def main():
     parser = argparse.ArgumentParser(description="Emit Mullvad relay locations as JSON.")
     parser.parse_args()
 
-    text = run(["mullvad", "relay", "list"])
+    text = mullvad_output(["mullvad", "relay", "list"])
     if not text:
         json.dump({"current": {}, "countries": []}, sys.stdout)
         sys.stdout.write("\n")
@@ -97,7 +103,7 @@ def main():
     countries = parse_relays(text)
     for country in countries:
         country["relays"] = sum(city["relays"] for city in country["cities"])
-    json.dump({"current": current_location(), "countries": countries}, sys.stdout)
+    json.dump({"current": current_relay_location(), "countries": countries}, sys.stdout)
     sys.stdout.write("\n")
 
 

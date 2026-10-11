@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 NOTIFY_OSD_MS=800
+NOTIFY_OSD_ALERT_MS=1200
 NOTIFY_BRIEF_MS=2000
 NOTIFY_MS=3000
 NOTIFY_ERROR_MS=4000
@@ -10,10 +11,16 @@ NOTIFY_SEND_TIMEOUT_S=2
 
 # dunstify -r ids: one per feature, so a notification only ever replaces its own.
 NOTIFY_ID_BATTERY=5
+NOTIFY_ID_BRIGHTNESS=7
+NOTIFY_ID_VOLUME=8
+NOTIFY_ID_BRIGHTNESS_UNAVAILABLE=9
+NOTIFY_ID_WINDOW_MUTE=18
 NOTIFY_ID_HYPRSUNSET=19
 NOTIFY_ID_WINDOWS_VM=42
 NOTIFY_ID_THEME_SELECT=92
+NOTIFY_ID_THEME_SWITCH=93
 NOTIFY_ID_LAUNCHER_STYLE=94
+NOTIFY_ID_SUBMAP_HINT=9042
 NOTIFY_ID_KEYBOARD_LAYOUT=91190
 
 notify_send_safe() {
@@ -122,16 +129,18 @@ print_log_emit_segment() {
 }
 
 # Styled tokens consume the next argument; other arguments are literal.
-# Tokens: -sec, -stat, -warn, -err, and -/+ r|g|y|b|m|c.
 print_log() {
+  local token=""
+
   while (("$#")); do
-    if print_log_emit_segment "$1" "${2-}"; then
-      shift 2
+    token="$1"
+    shift
+    if print_log_emit_segment "${token}" "${1-}"; then
+      (($# == 0)) || shift
       continue
     fi
 
-    printf '%s' "$1" >&2
-    shift
+    printf '%s' "${token}" >&2
   done
   printf '\n' >&2
 }

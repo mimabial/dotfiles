@@ -9,46 +9,36 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import atomic_write, cache_hit, cache_store, short_digest
+from _common import (CONFIG_HOME, RENDER_OUTPUT_DIR, STATE_HOME, XDG_CONFIG_HOME, atomic_write, cache_hit, cache_store,
+                     palette_path, short_digest)
+from _dunst_inputs import read_layer_variable, read_theme_variable, read_theme_metric
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from pyutils.bar_position import bar_position
+from pyutils.bar_edge import bar_edge
 from pyutils.hyprctl import batch_json
-from pyutils.lock_paths import runtime_lock_path
+from pyutils.lock_paths import runtime_lock_path_ensure_parent
 from pyutils.shell_env import load_shell_assignments
 
-PALETTE = Path(
-    sys.argv[1]
-    if len(sys.argv) > 1 and sys.argv[1]
-    else os.environ.get("HYPR_STATE_HOME", os.path.expanduser("~/.local/state/hypr"))
-    + "/active-palette.json"
-)
-CONF_DIR = (
-    Path(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))) / "dunst"
-)
+PALETTE = palette_path()
+CONF_DIR = XDG_CONFIG_HOME / "dunst"
 BASE_CONF = CONF_DIR / "dunst.conf"
 DUNST_CONF = CONF_DIR / "dunstrc"
-THEMES_DIR = (
-    Path(os.environ.get("HYPR_CONFIG_HOME", os.path.expanduser("~/.config/hypr")))
-    / "themes"
-)
-THEME_CONF = THEMES_DIR / "theme.meta"
-OUT_DIR = (
-    Path(os.environ.get("HYPR_CACHE_HOME", os.path.expanduser("~/.cache/hypr")))
-    / "render"
-    / "dunst"
-)
+MINIMAL_BASE_CONFIG = "[global]\n    monitor = 0\n"
+THEMES_DIR = CONFIG_HOME / "themes"
+OUT_DIR = RENDER_OUTPUT_DIR / "dunst"
 OUT_FILE = OUT_DIR / "dunstrc"
 ROLES_FILE = OUT_DIR / "colors.conf"
 BACKGROUND_ALPHA = "80"
 TEXT_ALPHA = "E6"
 CATEGORY_ALPHA = "55"
 FRAME_ALPHA = {"low": "33", "normal": "55", "critical": "CC"}
-WINDOWS_WORKFLOW_ALPHA = "E6"
 OPAQUE_ALPHA = "FF"
+WORKFLOW_BACKGROUND_RULES = {"windows_90": "E6", "gaming_opaque": OPAQUE_ALPHA, "powersaver_opaque": OPAQUE_ALPHA}
 FALLBACK_CORNER_RADIUS = 7
+FALLBACK_GAP_SIZE = 10
+DEFAULT_FONT_SIZE = "10"
 URGENCY_TIMEOUT_SECONDS = {"low": 2, "normal": 2, "critical": 0}
+CATEGORY_TIMEOUT_SECONDS = 2
 CATEGORY_ROLES = {
     "email": "accent-blue",
     "chat": "accent-aqua",
@@ -84,7 +74,7 @@ BASE_PX = 12
 # but none of its icons. quickshell/shell.qml borrows only icons, so its map
 # can name a different face.
 GLYPH_COMPANIONS = {"Miracode": "Monocraft"}
-STATE_FILE = Path(os.environ.get("HYPR_STATE_HOME", Path.home() / ".local/state/hypr")) / "staterc"
+STATE_FILE = STATE_HOME / "staterc"
 
 
 DEFAULT_WIDTH = 300
@@ -94,10 +84,12 @@ FALLBACK_EDGE_PADDING = 14
 
 @dataclass(frozen=True)
 class DunstColors:
+    theme_pack: str
+    variant: str
     roles: dict
     urgency: dict
     categories: dict
-    progress_fg: str
+    progress_foreground: str
 
 
 @dataclass(frozen=True)
@@ -138,89 +130,6 @@ def with_alpha(color, alpha_hex):
     if len(rgb) == 6:
         return "#" + rgb.upper() + alpha
     return "#" + rgb
-
-
-_VAR_RX = re.compile(r"^\s*\$(\S+?)\s*=\s*(.*?)(?:\s*#.*)?$")
-_METRIC_RX = re.compile(r"^\s*([^$\s]\S*)\s*=\s*(\S+)")
-_theme_cache = None
-
-
-def _theme_cache_get():
-    global _theme_cache
-    if _theme_cache is not None:
-        return _theme_cache
-    vars_d, metrics_d = {}, {}
-    if THEME_CONF.is_file():
-        for line in THEME_CONF.read_text().splitlines():
-            m = _VAR_RX.match(line)
-            if m:
-                vars_d[m.group(1)] = m.group(2).strip().strip('"').strip("'")
-                continue
-            m = _METRIC_RX.match(line)
-            if m:
-                metrics_d[m.group(1)] = m.group(2)
-    _theme_cache = (vars_d, metrics_d)
-    return _theme_cache
-
-
-def read_theme_var(key):
-    return _theme_cache_get()[0].get(key, "")
-
-
-# Mirrors hypr_config_layer_files() / hypr_config_parse_layer_file() in core/config-layers.bash.
-_VARS_SET_RX = re.compile(r'^\s*vars\.set\("([^"]+)",\s*"([^"]*)"\)')
-_VARS_TABLE_FIELD_RX = re.compile(r'^\s*(?:\["([^"]+)"\]|([A-Za-z_]\w*))\s*=\s*"([^"]*)",?\s*$')
-_layer_cache = None
-
-
-def _layer_files():
-    config_home = Path(
-        os.environ.get("HYPR_CONFIG_HOME", os.path.expanduser("~/.config/hypr"))
-    )
-    data_home = Path(
-        os.environ.get("HYPR_DATA_HOME", os.path.expanduser("~/.local/share/hypr"))
-    )
-    vars_file = config_home / "vars.lua"
-    if not vars_file.is_file():
-        vars_file = data_home / "vars.lua"
-    return (config_home / "userprefs.lua", config_home / "userfonts.lua", THEME_CONF, vars_file)
-
-
-def _layer_cache_get():
-    global _layer_cache
-    if _layer_cache is not None:
-        return _layer_cache
-    vars_d = {}
-    for path in _layer_files():
-        if not path.is_file():
-            continue
-        is_vars_table = path.name == "vars.lua"
-        for line in path.read_text().splitlines():
-            if not line.strip() or line.lstrip().startswith("#"):
-                continue
-            m = _VARS_SET_RX.match(line)
-            field = is_vars_table and _VARS_TABLE_FIELD_RX.match(line)
-            if m:
-                key, value = m.group(1), m.group(2)
-            elif field:
-                key, value = field.group(1) or field.group(2), field.group(3)
-            else:
-                m = _VAR_RX.match(line)
-                if not m:
-                    continue
-                key, value = m.group(1), m.group(2).strip().strip('"').strip("'")
-            if value and key not in vars_d:
-                vars_d[key] = value
-    _layer_cache = vars_d
-    return _layer_cache
-
-
-def read_layer_var(key):
-    return _layer_cache_get().get(key, "")
-
-
-def read_theme_metric(key):
-    return _theme_cache_get()[1].get(key, "")
 
 
 def read_hypr_metrics(options):
@@ -265,7 +174,7 @@ def ensure_base_dunst_config():
     elif Path("/etc/dunst/dunstrc").is_file():
         BASE_CONF.write_text(Path("/etc/dunst/dunstrc").read_text())
     else:
-        BASE_CONF.write_text("[global]\n    monitor = 0\n")
+        BASE_CONF.write_text(MINIMAL_BASE_CONFIG)
 
 
 def reload_dunst():
@@ -297,7 +206,7 @@ def reload_dunst():
             check=False,
         )
     workflow = load_shell_assignments(STATE_FILE).get("HYPR_WORKFLOW")
-    for rule in ("windows_90", "gaming_opaque", "powersaver_opaque"):
+    for rule in WORKFLOW_BACKGROUND_RULES:
         state = "enable" if workflow == rule.split("_", 1)[0] else "disable"
         subprocess.run(["dunstctl", "rule", rule, state], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     refresh_submap_hint()
@@ -356,7 +265,7 @@ def urgency_style(level, background, foreground, frame=None):
     return styled
 
 
-def resolve_colors(palette):
+def resolve_dunst_colors(palette) -> DunstColors:
     bg = palette["bg"]
     fg = palette["fg"]
     colors = palette["colors"]
@@ -382,6 +291,8 @@ def resolve_colors(palette):
     frame_critical = role("frame-critical", roles["accent-red"])
 
     resolved = DunstColors(
+        theme_pack=pack,
+        variant=variant,
         roles=roles,
         urgency={
             "low": urgency_style("low", roles["bg-secondary"], roles["fg-secondary"], roles["border-secondary"]),
@@ -393,9 +304,9 @@ def resolve_colors(palette):
             category: with_alpha(roles[role_name], CATEGORY_ALPHA)
             for category, role_name in CATEGORY_ROLES.items()
         },
-        progress_fg=roles["accent-blue"],
+        progress_foreground=roles["accent-blue"],
     )
-    return pack, variant, resolved
+    return resolved
 
 
 def text_size_px():
@@ -407,7 +318,6 @@ def text_size_px():
 
 
 def text_scale():
-    """For pixel geometry; 12px is the 1.0 anchor."""
     return text_size_px() / BASE_PX
 
 
@@ -450,17 +360,14 @@ def resolve_layout():
     try:
         gap_size = int(gaps_in) * 2
     except ValueError:
-        gap_size = 10
+        gap_size = FALLBACK_GAP_SIZE
     try:
         edge_padding = int(gaps_out) * 2 + int(border_size)
     except ValueError:
         edge_padding = FALLBACK_EDGE_PADDING
 
     width = max(1, round(base_metric("width", DEFAULT_WIDTH) * text_scale()))
-    origin = {
-        "bottom": "bottom-right",
-        "top": "top-right",
-    }.get(bar_position(), "top-right")
+    origin = f"{bar_edge()}-right"
     return DunstLayout(
         rounding=rounding,
         gaps_in=gaps_in,
@@ -477,7 +384,7 @@ def resolve_icon_theme():
     icon_theme = first_nonempty(
         os.environ.get("ICON_THEME"),
         os.environ.get("GTK_ICON"),
-        read_theme_var("ICON_THEME"),
+        read_theme_variable("ICON_THEME"),
     )
     if not icon_theme:
         try:
@@ -500,18 +407,18 @@ def resolve_icon_theme():
 def resolve_font():
     notification_font = first_nonempty(
         os.environ.get("NOTIFICATION_FONT"),
-        read_layer_var("NOTIFICATION_FONT"),
-        read_layer_var("FONT"),
+        read_layer_variable("NOTIFICATION_FONT"),
+        read_layer_variable("FONT"),
     )
     notification_font = GLYPH_COMPANIONS.get(notification_font, notification_font)
     font_size_env = os.environ.get("FONT_SIZE", "")
     notification_font_size = (
         font_size_env
         if font_size_env.isdigit()
-        else (read_theme_var("FONT_SIZE") or "10")
+        else (read_theme_variable("FONT_SIZE") or DEFAULT_FONT_SIZE)
     )
     if not notification_font_size.isdigit():
-        notification_font_size = "10"
+        notification_font_size = DEFAULT_FONT_SIZE
     # Integer division, not rounding: system/text-size.sh derives rofi's point size
     # the same way, and the launcher and the notification stack share the same 10pt
     # base - rounding here landed them a point apart at most text sizes.
@@ -525,16 +432,16 @@ def resolve_font():
     )
 
 
-def renderer_hash(pack, variant, colors, layout, font):
+def dunst_input_digest(colors: DunstColors, layout: DunstLayout, font: DunstFont):
     hasher = hashlib.sha256()
     hasher.update(PALETTE.read_bytes())
     if BASE_CONF.is_file():
         hasher.update(BASE_CONF.read_bytes())
-    if pack:
-        dt = THEMES_DIR / pack / "dunst.theme"
-        if dt.is_file():
-            hasher.update(dt.read_bytes())
-    for s in (
+    if colors.theme_pack:
+        pack_override = THEMES_DIR / colors.theme_pack / "dunst.theme"
+        if pack_override.is_file():
+            hasher.update(pack_override.read_bytes())
+    for resolved_value in (
         layout.rounding,
         layout.gaps_in,
         layout.border_size,
@@ -548,11 +455,12 @@ def renderer_hash(pack, variant, colors, layout, font):
         colors.urgency["normal"]["background"],
         colors.urgency["normal"]["foreground"],
         colors.urgency["normal"]["frame"],
-        colors.progress_fg,
+        colors.progress_foreground,
     ):
-        hasher.update(str(s).encode())
+        hasher.update(str(resolved_value).encode())
     hasher.update(Path(__file__).read_bytes())
-    hasher.update(variant.encode())
+    hasher.update(Path(__file__).with_name("_dunst_inputs.py").read_bytes())
+    hasher.update(colors.variant.encode())
     return short_digest(hasher)
 
 
@@ -567,7 +475,7 @@ def category_rule(section, category, color, colors):
     foreground = "{colors.urgency["category"]["foreground"]}"
     frame_color = "{color}"
     highlight = "{color}"
-    timeout = 2""")
+    timeout = {CATEGORY_TIMEOUT_SECONDS}""")
     return "".join(out)
 
 
@@ -625,8 +533,8 @@ def render_config(base, colors, layout, font):
     icon_corner_radius = {layout.rounding}
 {font.config_line}
 
-{urgency_section("low", colors.urgency["low"], colors.progress_fg)}
-{urgency_section("normal", colors.urgency["normal"], colors.progress_fg)}
+{urgency_section("low", colors.urgency["low"], colors.progress_foreground)}
+{urgency_section("normal", colors.urgency["normal"], colors.progress_foreground)}
 {urgency_section("critical", colors.urgency["critical"], critical_frame)}{category_rules(colors)}
 
 [submap_hint]
@@ -635,9 +543,7 @@ def render_config(base, colors, layout, font):
     format = "<span foreground='{colors.roles["accent-red"]}'>%s</span>\\n%b"
     foreground = "{colors.urgency["low"]["foreground"]}"
 
-{workflow_background_rule("windows_90", colors, WINDOWS_WORKFLOW_ALPHA)}
-{workflow_background_rule("gaming_opaque", colors, OPAQUE_ALPHA)}
-{workflow_background_rule("powersaver_opaque", colors, OPAQUE_ALPHA)}"""
+{chr(10).join(workflow_background_rule(name, colors, alpha) for name, alpha in WORKFLOW_BACKGROUND_RULES.items())}"""
 
 
 def render_roles(colors):
@@ -654,10 +560,10 @@ def render():
     ensure_base_dunst_config()
 
     palette = json.loads(PALETTE.read_text())
-    pack, variant, colors = resolve_colors(palette)
+    colors = resolve_dunst_colors(palette)
     layout = resolve_layout()
     font = resolve_font()
-    cache_key = renderer_hash(pack, variant, colors, layout, font)
+    cache_key = dunst_input_digest(colors, layout, font)
     if (
         cache_hit(APP, cache_key)
         and DUNST_CONF.exists()
@@ -667,7 +573,7 @@ def render():
         return
 
     base = (
-        BASE_CONF.read_text() if BASE_CONF.is_file() else "[global]\n    monitor = 0\n"
+        BASE_CONF.read_text() if BASE_CONF.is_file() else MINIMAL_BASE_CONFIG
     )
     content = render_config(base, colors, layout, font)
     for target in (OUT_FILE, DUNST_CONF):
@@ -679,7 +585,7 @@ def render():
 
 
 def main():
-    lock_file = runtime_lock_path("dunst_render")
+    lock_file = runtime_lock_path_ensure_parent("dunst_render")
     with lock_file.open("a+") as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         render()

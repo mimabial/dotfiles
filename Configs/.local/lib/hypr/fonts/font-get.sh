@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-font_sync_lib="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/fonts/font.sync.lib.bash"
+font_sync_lib="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/fonts/lib/font-consumers.bash"
 
 if [[ ! -r "${font_sync_lib}" ]]; then
   printf 'ERROR: missing %s\n' "${font_sync_lib}" >&2
@@ -23,6 +23,7 @@ Kinds:
   bar      -> $BAR_FONT (fallback to native monospace)
   bar-icon -> $BAR_ICON_FONT (fallback to CaskaydiaCove Nerd Font)
   menu     -> $MENU_FONT (fallback to native monospace)
+  terminal -> $TERMINAL_FONT (fallback to $MONOSPACE_FONT, then native monospace)
 EOF
 }
 

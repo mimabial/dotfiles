@@ -18,6 +18,7 @@ MAGICK_MEM_SHARE=8
 MAGICK_MEM_MIN_MB=256
 MAGICK_MEM_MAX_MB=1024
 MAGICK_MEM_FALLBACK_MB=512
+MAGICK_MAP_MEM_RATIO=2
 MAGICK_MAP_MIN_MB=512
 MAGICK_MAP_MAX_MB=4096
 MAGICK_MAX_THREADS=4
@@ -33,7 +34,7 @@ hypr_export_magick_limits() {
     fi
   fi
   [[ "${WALLPAPER_MAGICK_MAP_MB:-}" =~ ^[0-9]+$ ]] \
-    || WALLPAPER_MAGICK_MAP_MB="$(hypr_clamp $((WALLPAPER_MAGICK_MEM_MB * 2)) "${MAGICK_MAP_MIN_MB}" "${MAGICK_MAP_MAX_MB}")"
+    || WALLPAPER_MAGICK_MAP_MB="$(hypr_clamp $((WALLPAPER_MAGICK_MEM_MB * MAGICK_MAP_MEM_RATIO)) "${MAGICK_MAP_MIN_MB}" "${MAGICK_MAP_MAX_MB}")"
   [[ "${WALLPAPER_MAGICK_THREADS:-}" =~ ^[0-9]+$ ]] \
     || WALLPAPER_MAGICK_THREADS="$(hypr_clamp "${cores}" 1 "${MAGICK_MAX_THREADS}")"
   export WALLPAPER_MAGICK_MEM_MB WALLPAPER_MAGICK_MAP_MB WALLPAPER_MAGICK_THREADS
@@ -47,6 +48,8 @@ hypr_magick_limit_args_into() {
   [[ -z "${WALLPAPER_MAGICK_MAP_MB:-}" ]] || limit_args_ref+=(-limit map "${WALLPAPER_MAGICK_MAP_MB}MiB")
   [[ -z "${WALLPAPER_MAGICK_THREADS:-}" ]] || limit_args_ref+=(-limit thread "${WALLPAPER_MAGICK_THREADS}")
 }
+
+PROCPS_NO_MATCH_STATUS=1
 
 hypr_user_pgrep() {
   pgrep -u "${UID}" "$@"

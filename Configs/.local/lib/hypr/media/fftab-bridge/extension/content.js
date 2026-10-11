@@ -1,5 +1,7 @@
 (() => {
   let media = null;
+  let mediaListeners = null;
+  let bridgePort = null;
 
   const playlistCapabilities = () =>
     globalThis.fftabPlaylistNavigation?.capabilities(document, location.href) || {
@@ -29,26 +31,48 @@
     };
   };
 
+  const connectBridge = () => {
+    bridgePort = browser.runtime.connect({ name: "fftab-media" });
+    bridgePort.onMessage.addListener((msg) => {
+      if (msg && msg.type === "report") reportMediaState("report");
+    });
+    bridgePort.onDisconnect.addListener(() => {
+      bridgePort = null;
+    });
+    return bridgePort;
+  };
+
   const reportMediaState = (eventName) => {
     const mediaState = currentMediaState();
     if (!mediaState) return;
-    browser.runtime
-      .sendMessage({ type: "update", state: mediaState, event: eventName || "" })
-      .catch(() => {});
+    (bridgePort || connectBridge()).postMessage({ type: "update", state: mediaState, event: eventName || "" });
   };
 
   const attachMediaElement = (element) => {
     if (media === element) return;
+    mediaListeners?.abort();
+    mediaListeners = new AbortController();
     media = element;
+    element.addEventListener(
+      "pause",
+      () => {
+        if (element.isConnected) return;
+        releaseMediaElement();
+        rescanMediaElements(true);
+      },
+      { signal: mediaListeners.signal }
+    );
     reportMediaState("attach");
   };
 
   // Firefox only autostarts muted, so muted-on-play means trailer, not track.
   const worthAttaching = (element) => !element.muted;
 
-  // Going quiet is the signal; background.js prunes 20s after the last report.
   const releaseMediaElement = () => {
+    mediaListeners?.abort();
+    mediaListeners = null;
     media = null;
+    bridgePort?.postMessage({ type: "released" });
   };
 
   const rescanMediaElements = (requirePlaying) => {
@@ -74,17 +98,6 @@
       true
     );
   }
-
-  // Heartbeat: keeps positions fresh and lets the background prune dead tabs.
-  setInterval(() => {
-    if (!media) return;
-    if (!media.isConnected) {
-      releaseMediaElement();
-      rescanMediaElements(true);
-      return;
-    }
-    reportMediaState("tick");
-  }, 5000);
 
   browser.runtime.onMessage.addListener((msg) => {
     if (!msg || msg.type !== "command") return;

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-executable_path="$(realpath "${BASH_SOURCE[0]:-$0}")"
+executable_path="${BASH_SOURCE[0]:-$0}"
+[[ "${executable_path}" == /* && ! -L "${executable_path}" ]] || executable_path="$(realpath "${executable_path}")"
 BIN_DIR="${executable_path%/*}"
 LIB_DIR="${BIN_DIR%/*}/lib"
 unset executable_path
@@ -36,14 +37,14 @@ HYPR_SCRIPTS_PATH="${HYPR_SCRIPTS_PATH:-${LIB_DIR}/hypr}"
 
 export BIN_DIR LIB_DIR PATH HYPR_SCRIPTS_PATH
 
-hyprshell_load_python_helpers() {
-  declare -F python_activate >/dev/null 2>&1 && return 0
+hyprshell_load_venv_helpers() {
+  declare -F hyprshell_ensure_and_activate_python_environment >/dev/null 2>&1 && return 0
   # shellcheck source=/dev/null
-  source "${LIB_DIR}/hypr/shell/lib/hyprshell.python.bash"
+  source "${LIB_DIR}/hypr/shell/lib/hyprshell.venv.bash"
 }
 
 hyprshell_load_completion_helpers() {
-  declare -F generate_completions >/dev/null 2>&1 && return 0
+  declare -F hyprshell_print_completions >/dev/null 2>&1 && return 0
   # shellcheck source=/dev/null
   source "${LIB_DIR}/hypr/shell/lib/hyprshell.completion.bash"
 }
@@ -55,7 +56,8 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" && "${1:-}" == "app" ]]; then
 fi
 
 for hyprshell_lib in \
-  "${LIB_DIR}/hypr/shell/lib/hyprshell.runner.bash" \
+  "${LIB_DIR}/hypr/shell/lib/hyprshell.discovery.bash" \
+  "${LIB_DIR}/hypr/shell/lib/hyprshell.dispatch.bash" \
   "${LIB_DIR}/hypr/shell/lib/hyprshell.commands.bash"; do
   if [[ ! -r "${hyprshell_lib}" ]]; then
     printf 'Error: missing lib %s\n' "${hyprshell_lib}" >&2
@@ -66,9 +68,9 @@ for hyprshell_lib in \
 done
 
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
-  hyprshell_load_python_helpers || return 1
+  hyprshell_load_venv_helpers || return 1
   hyprshell_load_completion_helpers || return 1
-  if ! hypr_runtime_bootstrap; then
+  if ! hypr_runtime_load_shell_environment; then
     printf 'Error: could not load config, broken installation?\n' >&2
     return 1
   fi
@@ -79,52 +81,52 @@ export HYPR_SHELL_INIT=1
 
 case "${1:-}" in
   init | --init)
-    print_init_env
+    hyprshell_print_init_environment
     ;;
   logout)
-    hyprlogout
+    hyprshell_exit_session
     ;;
   pip)
-    hyprshell_load_python_helpers || exit 1
-    run_pip "$@"
+    shift
+    hyprshell_load_venv_helpers || exit 1
+    hyprshell_run_managed_pip "$@"
     ;;
   -r | reload)
-    hyprshell_load_python_helpers || exit 1
-    hyprreload
+    hyprshell_load_venv_helpers || exit 1
+    hyprshell_refresh_python_wallpaper_and_theme
     ;;
   --release-notes | release-notes)
-    get_release_notes
+    hyprshell_print_dotfiles_changes
     ;;
   --version | version | -v)
-    get_version
+    hyprshell_print_dotfiles_version
     ;;
   --help | help | -h)
-    usage
+    hyprshell_print_usage
     ;;
   "" | list)
-    list_script_described
+    hyprshell_print_described_scripts
     ;;
   --list-script)
-    list_script
+    hyprshell_print_script_names
     ;;
   --list-script-path)
-    list_script_path
+    hyprshell_print_script_paths
     ;;
   completions | --completions)
     shift
     hyprshell_load_completion_helpers || exit 1
-    generate_completions "${1:-}"
+    hyprshell_print_completions "${1:-}"
     ;;
   pyinit)
-    hyprshell_load_python_helpers || exit 1
-    python_env_rebuild
+    hyprshell_load_venv_helpers || exit 1
+    hyprshell_update_python_environment
     ;;
   resolve)
     shift
-    resolve_command_target "${1:-}"
-    exit $?
+    hyprshell_print_command_path "${1:-}"
     ;;
   *)
-    run_command "$@"
+    hyprshell_exec_command "$@"
     ;;
 esac

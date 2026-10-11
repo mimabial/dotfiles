@@ -73,21 +73,19 @@ rofi_wallpaper_post_clamp_reduction_px() {
 }
 
 rofi_wallpaper_monitor_width_logical() {
-  local monitor_line="" mon_width="" mon_scale="" mon_scale_milli=0 logical_width_milli=0
+  local -A monitor=()
+  local monitor_scale_milli=0 logical_width_milli=0
 
-  monitor_line="$(rofi_focused_monitor_record 2>/dev/null || true)"
-  [[ -n "${monitor_line}" ]] || return 0
+  rofi_focused_monitor_geometry_into monitor 2>/dev/null || return 0
+  [[ "${monitor[physical_width_px]}" =~ ^[0-9]+$ ]] || return 0
 
-  IFS=$'\t' read -r mon_width _ mon_scale _ <<<"${monitor_line}"
-  [[ "${mon_width}" =~ ^[0-9]+$ ]] || return 0
-
-  if ! rofi_positive_decimal "${mon_scale}"; then
-    printf '%s\n' "${mon_width}"
+  if ! rofi_positive_decimal "${monitor[scale]}"; then
+    printf '%s\n' "${monitor[physical_width_px]}"
     return 0
   fi
 
-  mon_scale_milli="$(rofi_decimal_milli "${mon_scale}")" || return 1
-  logical_width_milli="$(rofi_divide_milli "$((mon_width * 1000))" "${mon_scale_milli}")" || return 1
+  monitor_scale_milli="$(rofi_decimal_milli "${monitor[scale]}")" || return 1
+  logical_width_milli="$(rofi_divide_milli "$((monitor[physical_width_px] * ROFI_MILLI))" "${monitor_scale_milli}")" || return 1
   rofi_milli_to_fixed2 "${logical_width_milli}"
 }
 
@@ -151,7 +149,7 @@ rofi_wallpaper_width_override() {
   local width_milli=0
 
   [[ -n "${theme_file}" ]] || return 0
-  theme_name="$(basename "${theme_file}")"
+  theme_name="${theme_file##*/}"
   theme_name="${theme_name%.rasi}"
 
   read -r theme_height_px theme_height_unit font_px < <(

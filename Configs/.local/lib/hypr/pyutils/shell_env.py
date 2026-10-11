@@ -37,22 +37,16 @@ def shell_unquote_value(raw_value: str) -> str:
     if len(value) >= 2 and value[0] == value[-1] == "'":
         return value[1:-1]
     try:
-        parts = shlex.split(value, posix=True)
+        return " ".join(shlex.split(value, posix=True))
     except ValueError:
         return value.strip("'\"")
-    if not parts:
-        return ""
-    if len(parts) == 1:
-        return parts[0]
-    return " ".join(parts)
 
 
 def parse_shell_assignment_line(raw_line: str) -> tuple[str, str] | None:
     line = raw_line.strip()
     if not line or line.startswith("#"):
         return None
-    if line.startswith("export "):
-        line = line[len("export ") :].lstrip()
+    line = line.removeprefix("export ").lstrip()
     if "=" not in line:
         return None
     key, raw_value = line.split("=", 1)

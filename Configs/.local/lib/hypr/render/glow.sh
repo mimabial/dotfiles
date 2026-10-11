@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
-PALETTE_ARG="${1:-}"
-. "$(dirname "$0")/_lib.sh"
-render_init glow style.json
+source "${BASH_SOURCE[0]%/*}/_render_job.bash"
+declare -A render_job=()
+render_job_into render_job "${1:-}" glow style.json
 
-render_begin
+render_output_is_current render_job && exit 0
+render_stage_output_into render_job
+trap 'rm -f -- "${render_job[staged_file]}"' EXIT
 
-if [[ -n "${PACK_OVERRIDE}" ]]; then
-  render_emit_pack_override "${tmp}"
+if [[ -n "${render_job[pack_override]}" ]]; then
+  render_write_pack_override render_job
 else
   jq "${RENDER_PALETTE_ROLES_JQ}${RENDER_PALETTE_NUMBERED_JQ} | . as \$r | {
     document: {block_prefix: \"\\n\", block_suffix: \"\\n\", color: \$r.fg, margin: 2},
@@ -42,8 +44,8 @@ else
       background: {background_color: \$r.bg}
     })},
     definition_description: {block_prefix: \"\\n🠶 \"}
-  }" "${PALETTE}" > "${tmp}"
+  }" "${render_job[palette_file]}" > "${render_job[staged_file]}"
 fi
 
-render_commit "${tmp}" "${hash}"
+render_commit_staged_output render_job
 trap - EXIT

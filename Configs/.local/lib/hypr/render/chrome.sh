@@ -1,41 +1,35 @@
 #!/usr/bin/env bash
 set -euo pipefail
-PALETTE_ARG="${1:-}"
-. "$(dirname "$0")/_lib.sh"
-render_init chrome manifest.json nonexistent.theme
+source "${BASH_SOURCE[0]%/*}/_render_job.bash"
+declare -A render_job=()
+render_job_into render_job "${1:-}" chrome Hypr-chrome-theme/manifest.json ""
 
-THEME_DIR="${OUT_DIR}/Hypr-chrome-theme"
-MANIFEST="${THEME_DIR}/manifest.json"
-OUT_FILE="${MANIFEST}"
+chrome_theme_dir="${render_job[output_file]%/*}"
+chrome_render_dir="${chrome_theme_dir%/*}"
+mkdir -p "${chrome_render_dir}"
 
-WALL="${WALLPAPER_CURRENT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current}/wall.set.png"
+wallpaper_file="${WALLPAPER_CURRENT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current}/wall.set.png"
 
-hash="$(
-  {
-    cat "${PALETTE}"
-    [[ -f "${WALL}" ]] && md5sum "${WALL}"
-    cat "${BASH_SOURCE[0]}"
-  } | { xxh64sum 2>/dev/null || md5sum; } | awk '{print $1}'
-)"
-render_should_skip "${hash}" && exit 0
+render_fold_stdin_into_input_digest render_job < <([[ ! -f "${wallpaper_file}" ]] || md5sum "${wallpaper_file}")
+render_output_is_current render_job && exit 0
 
-rgb() {
-  local h="${1#\#}"
-  printf '%d, %d, %d' "0x${h:0:2}" "0x${h:2:2}" "0x${h:4:2}"
+chrome_rgb_components() {
+  local color_hex="${1#\#}"
+  printf '%d, %d, %d' "0x${color_hex:0:2}" "0x${color_hex:2:2}" "0x${color_hex:4:2}"
 }
 
-render_read_palette
-background="$(rgb "${c[0]}")"
-foreground="$(rgb "${c[15]}")"
-accent="$(rgb "${c[4]}")"
-secondary="$(rgb "${c[8]}")"
+render_read_palette_into render_job
+background="$(chrome_rgb_components "${render_job[color0]}")"
+foreground="$(chrome_rgb_components "${render_job[color15]}")"
+accent="$(chrome_rgb_components "${render_job[color4]}")"
+secondary="$(chrome_rgb_components "${render_job[color8]}")"
 
-staging="$(mktemp -d "${OUT_DIR}/.staging.XXXXXX")"
-trap 'rm -rf -- "${staging}"' EXIT
-mkdir -p "${staging}/images"
-[[ -f "${WALL}" ]] && cp -f "${WALL}" "${staging}/images/theme_ntp_background_norepeat.png"
+staged_theme_dir="$(mktemp -d "${chrome_render_dir}/.staging.XXXXXX")"
+trap 'rm -rf -- "${staged_theme_dir}"' EXIT
+mkdir -p "${staged_theme_dir}/images"
+[[ -f "${wallpaper_file}" ]] && cp -f "${wallpaper_file}" "${staged_theme_dir}/images/theme_ntp_background_norepeat.png"
 
-cat > "${staging}/manifest.json" <<EOF
+cat > "${staged_theme_dir}/manifest.json" <<EOF
 {
   "manifest_version": 3,
   "version": "1.0",
@@ -60,7 +54,7 @@ cat > "${staging}/manifest.json" <<EOF
 }
 EOF
 
-rm -rf -- "${THEME_DIR}"
-mv -f "${staging}" "${THEME_DIR}"
+rm -rf -- "${chrome_theme_dir}"
+mv -f "${staged_theme_dir}" "${chrome_theme_dir}"
 trap - EXIT
-render_cache_store chrome "${hash}"
+render_store_input_digest render_job

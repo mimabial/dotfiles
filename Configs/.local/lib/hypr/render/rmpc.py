@@ -2,29 +2,15 @@
 
 import hashlib
 import json
-import os
 import sys
 from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import ANSI_COLOR_COUNT, atomic_write, cache_hit, cache_store, short_digest
+from _common import (ANSI_COLOR_COUNT, CONFIG_HOME, RENDER_OUTPUT_DIR, atomic_write, cache_hit, cache_store, palette_path,
+                     short_digest)
 
-STATE_HOME = Path(
-    os.environ.get(
-        "HYPR_STATE_HOME",
-        str(Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "hypr"),
-    )
-)
-CACHE_HOME = Path(
-    os.environ.get(
-        "HYPR_CACHE_HOME",
-        str(Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "hypr"),
-    )
-)
-CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
-PALETTE = Path(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1] else STATE_HOME / "active-palette.json"
-TEMPLATE_DIR = CONFIG_HOME / "hypr" / "templates"
-OUT_DIR = CACHE_HOME / "render" / "rmpc"
+PALETTE = palette_path()
+TEMPLATE_DIR = CONFIG_HOME / "templates"
+OUT_DIR = RENDER_OUTPUT_DIR / "rmpc"
 TEMPLATES = {
     "hypr.ron": TEMPLATE_DIR / "rmpc.ron",
     "hypr-small.ron": TEMPLATE_DIR / "rmpc-small.ron",

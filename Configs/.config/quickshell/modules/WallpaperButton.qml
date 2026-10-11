@@ -6,9 +6,9 @@ BarButton {
     property bool popupsAllowed: true
     css: "wallpaper"
     text: "󰸉"
-    // accent means the rotation is running; plain foreground means it is paused
-    textColor: Wallpaper.lastError !== "" ? shell.role("error", shell.foreground)
-        : Wallpaper.enabled ? shell.accent : shell.foreground
+    badgeText: Wallpaper.enabled ? "󰑖" : "󰏤"
+    textColor: Wallpaper.lastError !== "" ? shell.role("error", shell.foreground) : shell.foreground
+    tooltip: Wallpaper.enabled ? "Automatic switching · " + Wallpaper.intervalLabel(Wallpaper.intervalMinutes) : "Automatic switching paused"
     active: root.shell.popupName === "wallpaper"
 
     onClicked: button => button === Qt.LeftButton ? root.shell.togglePopup("wallpaper")

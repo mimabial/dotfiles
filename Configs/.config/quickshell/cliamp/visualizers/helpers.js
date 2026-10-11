@@ -136,8 +136,12 @@ function specTiers(d) {
   return [rgba(c[10] || d.accent, 1), rgba(c[11] || d.accent, 1), rgba(c[9] || d.foreground, 1)]
 }
 
+function playerSpectrum(d) {
+  return [d.accent, d.foreground, d.success || d.foreground]
+}
+
 function playerTiers(d) {
-  return [rgba(d.accent, 1), rgba(d.foreground, 1), rgba(d.success || d.foreground, 1)]
+  return playerSpectrum(d).map(function (color) { return rgba(color, 1) })
 }
 
 // specTag — cliamp's row colour tier (visualizer.go specTag): a hard three-way split
@@ -201,4 +205,64 @@ function roundedRect(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y + h, x, y + h - radius, radius)
   ctx.lineTo(x, y + radius)
   ctx.arcTo(x, y, x + radius, y, radius)
+}
+
+var CLIAMP_TICK_MS = 50
+var CLIAMP_MAX_CATCH_UP_TICKS = 4
+var CLIAMP_BAND_EDGES_HZ = [20, 100, 200, 400, 800, 1600, 3200, 6400, 12800, 16000, 20000]
+
+function cliampTicks(clock) {
+  var now = Date.now()
+  if (!clock.last) {
+    clock.last = now
+    clock.pending = 0
+    return 1
+  }
+  clock.pending += now - clock.last
+  clock.last = now
+  var ticks = Math.floor(clock.pending / CLIAMP_TICK_MS)
+  if (ticks > CLIAMP_MAX_CATCH_UP_TICKS) {
+    clock.pending = 0
+    return CLIAMP_MAX_CATCH_UP_TICKS
+  }
+  clock.pending -= ticks * CLIAMP_TICK_MS
+  return ticks
+}
+
+function cliampTickFraction(clock) {
+  return Math.min(1, clock.pending / CLIAMP_TICK_MS)
+}
+
+function cliampBands(bands, edgesHz) {
+  var out = new Array(CLIAMP_BAND_EDGES_HZ.length - 1).fill(0)
+  if (edgesHz.length !== bands.length + 1) return out
+  for (var band = 0; band < out.length; band++) {
+    var lo = Math.log(CLIAMP_BAND_EDGES_HZ[band]), hi = Math.log(CLIAMP_BAND_EDGES_HZ[band + 1])
+    var sum = 0, weight = 0
+    for (var i = 0; i < bands.length; i++) {
+      var overlap = Math.min(hi, Math.log(edgesHz[i + 1])) - Math.max(lo, Math.log(edgesHz[i]))
+      if (overlap > 0) {
+        sum += bands[i] * overlap
+        weight += overlap
+      }
+    }
+    out[band] = weight > 0 ? sum / weight : 0
+  }
+  return out
+}
+
+function paintTagGrid(ctx, tags, cols, rows, colors) {
+  var runs = colors.map(function () { return [] })
+  for (var y = 0; y < rows; y++) {
+    var row = y * cols
+    for (var x = 0; x < cols;) {
+      var tag = tags[row + x], start = x
+      while (++x < cols && tags[row + x] === tag) {}
+      if (tag) runs[tag].push(start, y, x - start)
+    }
+  }
+  for (var t = 1; t < colors.length; t++) {
+    ctx.fillStyle = colors[t]
+    for (var i = 0; i < runs[t].length; i += 3) ctx.fillRect(runs[t][i], runs[t][i + 1], runs[t][i + 2], 1)
+  }
 }

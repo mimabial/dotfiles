@@ -11,24 +11,47 @@ if (( __hypr_runtime_force == 0 )) \
   return 0 2>/dev/null || exit 0
 fi
 
-HYPR_RUNTIME_GUARD_PID="${BASHPID}"
-unset __hypr_runtime_force __hypr_runtime_guard_pid
+unset HYPR_RUNTIME_GUARD_PID __hypr_runtime_force __hypr_runtime_guard_pid
 
-__hypr_runtime_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-__hypr_runtime_root="$(cd -- "${__hypr_runtime_dir}/.." && pwd)"
-LIB_DIR="${LIB_DIR:-$(cd -- "${__hypr_runtime_root}/.." && pwd)}"
-HYPR_LIB_DIR="${HYPR_LIB_DIR:-${__hypr_runtime_root}}"
+__hypr_runtime_source_dir="${BASH_SOURCE[0]%/*}"
+[[ "${__hypr_runtime_source_dir}" != "${BASH_SOURCE[0]}" ]] || __hypr_runtime_source_dir=.
+HYPR_LIB_DIR="${HYPR_LIB_DIR:-$(cd -- "${__hypr_runtime_source_dir}/.." && pwd)}"
+LIB_DIR="${LIB_DIR:-${HYPR_LIB_DIR%/*}}"
 BIN_DIR="${BIN_DIR:-${HOME}/.local/bin}"
 
-_hypr_xdg_lib="${HYPR_LIB_DIR}/core/xdg.bash"
-[[ -r "${_hypr_xdg_lib}" ]] || {
-  printf 'ERROR: missing runtime module %s\n' "${_hypr_xdg_lib}" >&2
-  return 1 2>/dev/null || exit 1
+declare -gA HYPR_RUNTIME_MODULE_PATHS=(
+  [xdg]="${HYPR_LIB_DIR}/core/xdg.bash"
+  [notify]="${HYPR_LIB_DIR}/core/notify.bash"
+  [common]="${HYPR_LIB_DIR}/core/common.bash"
+  [state]="${HYPR_LIB_DIR}/core/state.bash"
+  [system]="${HYPR_LIB_DIR}/core/system.bash"
+  [rofi]="${HYPR_LIB_DIR}/core/rofi.bash"
+  [wallpaper_catalog]="${HYPR_LIB_DIR}/core/wallpaper.catalog.bash"
+  [lock_paths]="${HYPR_LIB_DIR}/runtime/lock_paths.bash"
+)
+declare -gA HYPR_RUNTIME_MODULES_LOADED=()
+
+hypr_runtime_require() {
+  local module_name="" module_path=""
+
+  for module_name in "$@"; do
+    [[ -n "${module_name}" ]] || continue
+    [[ -n "${HYPR_RUNTIME_MODULES_LOADED[${module_name}]:-}" ]] && continue
+
+    module_path="${HYPR_RUNTIME_MODULE_PATHS[${module_name}]:-}"
+    [[ -n "${module_path}" && -r "${module_path}" ]] || {
+      printf 'ERROR: unavailable runtime module %s (%s)\n' "${module_name}" "${module_path}" >&2
+      return 1
+    }
+
+    # shellcheck source=/dev/null
+    source "${module_path}" || return 1
+    HYPR_RUNTIME_MODULES_LOADED["${module_name}"]=1
+  done
 }
-# shellcheck source=/dev/null
-source "${_hypr_xdg_lib}" || { return 1 2>/dev/null || exit 1; }
+
+hypr_runtime_require xdg || { return 1 2>/dev/null || exit 1; }
 hypr_init_xdg_env
-unset _hypr_xdg_lib
 
 export BIN_DIR LIB_DIR HYPR_LIB_DIR
 export HYPR_CONFIG_HOME="${XDG_CONFIG_HOME}/hypr"
@@ -52,56 +75,11 @@ declare -p WALLPAPER_CUSTOM_PATHS >/dev/null 2>&1 || declare -ga WALLPAPER_CUSTO
 declare -p wallpaper_paths >/dev/null 2>&1 || declare -ga wallpaper_paths=()
 declare -p wallpaper_source_paths >/dev/null 2>&1 || declare -ga wallpaper_source_paths=()
 
-for _hypr_runtime_core in \
-  "${HYPR_LIB_DIR}/core/notify.bash" \
-  "${HYPR_LIB_DIR}/core/common.bash" \
-  "${HYPR_LIB_DIR}/runtime/lock_paths.bash"; do
-  [[ -r "${_hypr_runtime_core}" ]] || {
-    printf 'ERROR: missing runtime module %s\n' "${_hypr_runtime_core}" >&2
-    return 1 2>/dev/null || exit 1
-  }
-  # shellcheck source=/dev/null
-  source "${_hypr_runtime_core}" || { return 1 2>/dev/null || exit 1; }
-done
-unset _hypr_runtime_core
+hypr_runtime_require notify common lock_paths || { return 1 2>/dev/null || exit 1; }
 
-declare -gA HYPR_RUNTIME_MODULE_PATHS
-HYPR_RUNTIME_MODULE_PATHS[notify]="${HYPR_LIB_DIR}/core/notify.bash"
-HYPR_RUNTIME_MODULE_PATHS[common]="${HYPR_LIB_DIR}/core/common.bash"
-HYPR_RUNTIME_MODULE_PATHS[state]="${HYPR_LIB_DIR}/core/state.bash"
-HYPR_RUNTIME_MODULE_PATHS[system]="${HYPR_LIB_DIR}/core/system.bash"
-HYPR_RUNTIME_MODULE_PATHS[rofi]="${HYPR_LIB_DIR}/core/rofi.bash"
-HYPR_RUNTIME_MODULE_PATHS[wallpaper_catalog]="${HYPR_LIB_DIR}/core/wallpaper.catalog.bash"
-HYPR_RUNTIME_MODULE_PATHS[lock_paths]="${HYPR_LIB_DIR}/runtime/lock_paths.bash"
-
-declare -gA HYPR_RUNTIME_MODULES_LOADED
-HYPR_RUNTIME_MODULES_LOADED[notify]=1
-HYPR_RUNTIME_MODULES_LOADED[common]=1
-HYPR_RUNTIME_MODULES_LOADED[lock_paths]=1
-
-hypr_runtime_require() {
-  local module_name=""
-  local module_path=""
-
-  for module_name in "$@"; do
-    [[ -n "${module_name}" ]] || continue
-    [[ -n "${HYPR_RUNTIME_MODULES_LOADED[${module_name}]:-}" ]] && continue
-
-    module_path="${HYPR_RUNTIME_MODULE_PATHS[${module_name}]:-}"
-    [[ -n "${module_path}" && -r "${module_path}" ]] || {
-      printf 'ERROR: unknown runtime module %s\n' "${module_name}" >&2
-      return 1
-    }
-
-    # shellcheck source=/dev/null
-    source "${module_path}" || return 1
-    HYPR_RUNTIME_MODULES_LOADED["${module_name}"]=1
-  done
-}
-
-hypr_runtime_load_state() {
-  hypr_runtime_require state wallpaper_catalog || return 1
-  export_hypr_config || return 1
+hypr_runtime_load_desktop_environment() {
+  hypr_runtime_require state || return 1
+  state_load_runtime_environment || return 1
   hypr_runtime_refresh_border_metrics
 }
 
@@ -113,13 +91,14 @@ hypr_runtime_refresh_border_metrics() {
     hypr_border_metrics_into runtime_border_radius runtime_border_width 2>/dev/null || true
   fi
 
-  export HYPR_RUNTIME_BORDER_RADIUS="${runtime_border_radius:-${HYPR_BORDER_RADIUS:-2}}"
-  export HYPR_RUNTIME_BORDER_WIDTH="${runtime_border_width:-${HYPR_BORDER_WIDTH:-2}}"
+  export HYPR_RUNTIME_BORDER_RADIUS="${runtime_border_radius:-${HYPR_BORDER_RADIUS:-${HYPR_FALLBACK_ROUNDING_PX}}}"
+  export HYPR_RUNTIME_BORDER_WIDTH="${runtime_border_width:-${HYPR_BORDER_WIDTH:-${HYPR_FALLBACK_BORDER_PX}}}"
 }
 
-hypr_runtime_bootstrap() {
+hypr_runtime_load_shell_environment() {
   hypr_runtime_require state system rofi wallpaper_catalog || return 1
-  hypr_runtime_load_state
+  hypr_runtime_load_desktop_environment
 }
 
-unset __hypr_runtime_dir __hypr_runtime_root
+HYPR_RUNTIME_GUARD_PID="${BASHPID}"
+unset __hypr_runtime_source_dir

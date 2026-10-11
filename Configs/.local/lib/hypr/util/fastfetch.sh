@@ -10,8 +10,7 @@ if [ -z "${*}" ]; then
   exec fastfetch
 fi
 
-script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-lib_root="$(cd -- "${script_dir}/.." && pwd -P)"
+lib_root="${BASH_SOURCE[0]%/*}/.."
 xdg_lib="${lib_root}/core/xdg.bash"
 state_lib="${lib_root}/core/state.bash"
 
@@ -88,7 +87,7 @@ fastfetch_logo_label() {
   local logo_path="$1"
   local display_name=""
 
-  display_name="$(basename "${logo_path}")"
+  display_name="${logo_path##*/}"
   display_name="${display_name%.*}"
   display_name="${display_name//_/ }"
   display_name="${display_name//-/ }"
@@ -223,7 +222,6 @@ options:
   --local   Display a logo inside the fastfetch logo directory
   --theme   Display a logo inside the theme directory
   --rand    Display a random logo
-  *         Display a random logo
   *help*    Display this help message
 
 Note: Options can be combined to search across multiple sources
@@ -232,21 +230,20 @@ HELP
 }
 
 logo_dirs_from_args() {
-  local arg=""
+  local arg="" logo_source=""
   image_dirs=()
   for arg in "$@"; do
     case "${arg}" in
-      --quad) image_dirs+=("$WALLPAPER_CURRENT_DIR/wall.quad") ;;
-      --sqre) image_dirs+=("$WALLPAPER_CURRENT_DIR/wall.sqre") ;;
-      --prof) [ -f "$HOME/.face.icon" ] && image_dirs+=("$HOME/.face.icon") ;;
-      --os) [ -f "$distro_logo" ] && image_dirs+=("$distro_logo") ;;
-      --local) image_dirs+=("${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/logo") ;;
-      --theme)
-        if [ -n "${HYPR_THEME:-}" ] && [ -d "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${HYPR_THEME}/logo" ]; then
-          image_dirs+=("${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${HYPR_THEME}/logo")
-        fi
-        ;;
+      --quad) logo_source="$WALLPAPER_CURRENT_DIR/wall.quad" ;;
+      --sqre) logo_source="$WALLPAPER_CURRENT_DIR/wall.sqre" ;;
+      --prof) logo_source="$HOME/.face.icon" ;;
+      --os) logo_source="${LOGO:+$distro_logo}" ;;
+      --local) logo_source="${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/logo" ;;
+      --theme) logo_source="${HYPR_THEME:+${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${HYPR_THEME}/logo}" ;;
+      *) logo_usage >&2; return 1 ;;
     esac
+    [[ -n "${logo_source}" && -e "${logo_source}" ]] || { echo "No logo available for ${arg}" >&2; return 1; }
+    image_dirs+=("${logo_source}")
   done
 }
 
@@ -257,7 +254,7 @@ handle_logo_command() {
   [[ "$1" = "--rand" ]] && { random_logo; return 0; }
   [[ "$1" = *"help"* ]] && { logo_usage; return 0; }
 
-  logo_dirs_from_args "$@"
+  logo_dirs_from_args "$@" || return 1
   find_logo_files | shuf -n 1
 }
 
@@ -272,7 +269,7 @@ case "$1" in
     usage
     ;;
   *)
-    clear
-    exec fastfetch
+    usage >&2
+    exit 1
     ;;
 esac

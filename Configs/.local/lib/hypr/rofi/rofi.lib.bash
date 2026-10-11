@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-_ROFI_LIB_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/lib" && pwd)"
+_ROFI_LIB_DIR="${BASH_SOURCE[0]%/*}/lib"
+
+# shellcheck source=/dev/null
+declare -F rofi_resolve_theme >/dev/null || source "${_ROFI_LIB_DIR}/../../core/rofi.bash"
 
 # shellcheck source=/dev/null
 source "${_ROFI_LIB_DIR}/decimals.bash"

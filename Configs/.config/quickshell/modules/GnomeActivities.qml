@@ -15,7 +15,11 @@ BarButton {
     readonly property var workspaces: Hyprland.workspaces.values.filter(workspace => workspace.id > 0).sort((a, b) => a.id - b.id)
     readonly property var lastWorkspace: workspaces[workspaces.length - 1] ?? null
     readonly property bool endsWithEmptyWorkspace: !!lastWorkspace && lastWorkspace.toplevels.values.length === 0
-    readonly property var dotIds: workspaces.map(workspace => workspace.id).concat(endsWithEmptyWorkspace ? [] : [(lastWorkspace?.id ?? 0) + 1])
+    property int fixedWorkspaceCount: 0
+    readonly property var workspaceIds: workspaces.map(workspace => workspace.id)
+    readonly property var dynamicDotIds: workspaceIds.concat(endsWithEmptyWorkspace ? [] : [(lastWorkspace?.id ?? 0) + 1])
+    readonly property var fixedDotIds: Array.from({ length: fixedWorkspaceCount }, (_, offset) => offset + 1).concat(workspaceIds.filter(id => id > fixedWorkspaceCount))
+    readonly property var dotIds: fixedWorkspaceCount > 0 ? fixedDotIds : dynamicDotIds
     readonly property int activeIndex: dotIds.indexOf(Hyprland.focusedWorkspace?.id ?? -1)
     readonly property real activeDotWidthMultiplier: activeDotWidthSteps.find(step => dotIds.length <= step.maxDots).multiplier
     property real activePosition: activeIndex

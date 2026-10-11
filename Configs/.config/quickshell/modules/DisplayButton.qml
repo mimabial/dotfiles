@@ -1,5 +1,6 @@
 import QtQuick
 import ".."
+import "StatusSymbols.js" as StatusSymbols
 
 BarButton {
     id: root
@@ -8,6 +9,7 @@ BarButton {
     opensPopup: true
     css: "display"
     text: Backlight.icon
+    symbol: root.styledSymbol ? StatusSymbols.brightness(Backlight.percent / 100) : ""
     readonly property var displayPanel: displayPanelLoader.item
     tooltip: root.displayPanel && root.displayPanel.activeProfile
         ? "Display profile: " + root.displayPanel.activeProfile + "\nBacklight: " + Backlight.percent + "%"

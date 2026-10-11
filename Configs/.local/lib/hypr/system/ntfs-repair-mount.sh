@@ -106,11 +106,11 @@ fi
 
 label="$(blkid -o value -s LABEL "${device}" 2>/dev/null || true)"
 if [[ -z "${label}" ]]; then
-  label="$(basename "${device}")"
+  label="${device##*/}"
 fi
 
 mountpoint="${2:-/run/media/${USER}/${label}}"
-uid="$(id -u)"
+uid="${UID}"
 gid="$(id -g)"
 mount_opts="uid=${uid},gid=${gid},iocharset=utf8,force"
 

@@ -1,16 +1,8 @@
 #!/usr/bin/env bash
 
-wallpaper_catalog_hash_command() {
-  local hash_cmd="${HYPR_HASH_COMMAND:-sha1sum}"
-  if ! command -v "${hash_cmd}" >/dev/null 2>&1; then
-    hash_cmd="sha1sum"
-  fi
-  printf '%s\n' "${hash_cmd}"
-}
-
 wallpaper_catalog_lock() {
   local lock_file=""
-  lock_file="$(hypr_lock_path wallpaper_catalog)" || return 1
+  lock_file="$(hypr_lock_path_ensure_parent wallpaper_catalog)" || return 1
   exec {wallpaper_catalog_lock_fd}>"${lock_file}" || return 1
   flock "${wallpaper_catalog_lock_fd}"
 }
@@ -67,25 +59,6 @@ wallpaper_catalog_load_index() {
   done <"${cache_file}"
 }
 
-wallpaper_catalog_hash_for_file() {
-  local wall_file="$1"
-  local wall_meta="$2"
-  local hash_cmd="$3"
-  local hash_name="$4"
-  local meta_name="$5"
-  local -n hash_ref="${hash_name}"
-  local -n meta_ref="${meta_name}"
-  local wall_hash=""
-
-  if [[ "${meta_ref["${wall_file}"]-}" == "${wall_meta}" ]]; then
-    printf '%s\n' "${hash_ref["${wall_file}"]-}"
-    return 0
-  fi
-
-  wall_hash="$("${hash_cmd}" "${wall_file}")"
-  printf '%s\n' "${wall_hash%% *}"
-}
-
 wallpaper_catalog_write_runtime_cache() {
   local cache_file="$1"
   local hash_name="$2"
@@ -93,25 +66,29 @@ wallpaper_catalog_write_runtime_cache() {
   local -n hash_ref="${hash_name}"
   local -n list_ref="${list_name}"
   local tmp_cache="${cache_file}.tmp"
-  local i="" wall_meta=""
+  local wall_mtime="" wall_size="" wall_file=""
 
-  : >"${tmp_cache}"
-  for i in "${!list_ref[@]}"; do
-    wall_meta="$(stat -c '%Y\t%s' -- "${list_ref[i]}" 2>/dev/null)" || continue
-    printf '%s\t%s\t%s\n' "${hash_ref["${list_ref[i]}"]}" "${wall_meta}" "${list_ref[i]}" >>"${tmp_cache}"
-  done
+  ((${#list_ref[@]})) || return 0
+  while IFS=$'\t' read -r -d '' wall_mtime wall_size wall_file; do
+    printf '%s\t%s\t%s\t%s\n' "${hash_ref["${wall_file}"]}" "${wall_mtime}" "${wall_size}" "${wall_file}"
+  done < <(find -H "${list_ref[@]}" -maxdepth 0 -printf '%T@\t%s\t%p\0' 2>/dev/null) >"${tmp_cache}"
   wallpaper_catalog_replace_if_changed "${tmp_cache}" "${cache_file}"
 }
 
 wallpaper_hash_inventory_into() {
   local -n inventory_hash_ref="$1" inventory_list_ref="$2"
-  local hash_cmd="$3" regex_ext="$4" cache_hash_name="$5" cache_meta_name="$6"
-  shift 6
+  local regex_ext="$3"
+  local -n cache_hash_ref="$4" cache_meta_ref="$5"
+  shift 5
   local wall_file wall_mtime wall_size wall_meta wall_hash
 
   while IFS=$'\t' read -r -d '' wall_mtime wall_size wall_file; do
     wall_meta="${wall_mtime}"$'\t'"${wall_size}"
-    wall_hash="$(wallpaper_catalog_hash_for_file "${wall_file}" "${wall_meta}" "${hash_cmd}" "${cache_hash_name}" "${cache_meta_name}")"
+    if [[ "${cache_meta_ref["${wall_file}"]-}" == "${wall_meta}" ]]; then
+      wall_hash="${cache_hash_ref["${wall_file}"]-}"
+    else
+      read -r wall_hash _ < <("${HYPR_HASH_COMMAND}" "${wall_file}") || :
+    fi
     inventory_hash_ref["${wall_file}"]="${wall_hash}"
     inventory_list_ref+=("${wall_file}")
     printf '%s\t%s\t%s\n' "${wall_hash}" "${wall_meta}" "${wall_file}"
@@ -143,21 +120,20 @@ wallpaper_hashmap_cached_into() {
   local -a wall_sources=("$@")
   [[ ${#wall_sources[@]} -gt 0 ]] || return 1
 
-  local -a supported_files=()
+  local -a supported_extensions=()
   local -A cache_hash=() cache_meta=()
-  local hash_cmd="" cache_file="" regex_ext="" tmp_cache=""
-  wallpaper_supported_files_array supported_files
-  hash_cmd="$(wallpaper_catalog_hash_command)"
+  local cache_file="" regex_ext="" tmp_cache=""
+  wallpaper_supported_extensions_into supported_extensions
   cache_file="$(wallpaper_hashmap_cache_file "${wall_sources[@]}")"
   mkdir -p "$(wallpaper_cache_root)/hashmap"
 
-  wallpaper_catalog_write_meta "${cache_file}.meta" wall_sources supported_files
+  wallpaper_catalog_write_meta "${cache_file}.meta" wall_sources supported_extensions
   wallpaper_catalog_load_index "${cache_file}" cache_hash cache_meta
-  regex_ext="$(wallpaper_extensions_regex "${supported_files[@]}")"
+  regex_ext="$(wallpaper_extensions_regex "${supported_extensions[@]}")"
 
   tmp_cache="${cache_file}.tmp"
   : >"${tmp_cache}"
-  wallpaper_hash_inventory_into "${hash_name}" "${list_name}" "${hash_cmd}" "${regex_ext}" cache_hash cache_meta \
+  wallpaper_hash_inventory_into "${hash_name}" "${list_name}" "${regex_ext}" cache_hash cache_meta \
     "${wall_sources[@]}" >"${tmp_cache}"
 
   if [[ ${#list_ref[@]} -eq 0 ]]; then
@@ -190,8 +166,8 @@ wallpaper_list_into() {
   shift
   local -n list_ref="${list_name}"
   local -a wall_sources=("$@")
-  local -a supported_files=()
-  wallpaper_supported_files_array supported_files
+  local -a supported_extensions=()
+  wallpaper_supported_extensions_into supported_extensions
 
   local -a find_sources=()
   local src resolved
@@ -205,7 +181,7 @@ wallpaper_list_into() {
   [[ ${#find_sources[@]} -eq 0 ]] && return 1
 
   local regex_ext=""
-  regex_ext="$(wallpaper_extensions_regex "${supported_files[@]}")"
+  regex_ext="$(wallpaper_extensions_regex "${supported_extensions[@]}")"
 
   local wall_file
   while IFS= read -r -d '' wall_file; do

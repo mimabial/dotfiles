@@ -16,9 +16,12 @@ fi
 hypr_config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
 cache_dependencies=("$hypr_config_dir/keybindings.lua")
 cache_dependencies+=("${ROFI_KEYBIND_HINT_CONFIG[@]}")
-cache_dependencies+=("${BASH_SOURCE[0]}" "${HYPR_LIB_DIR}/keybinds/lib/keybinds_hint.py")
+cache_dependencies+=("${BASH_SOURCE[0]}" "${HYPR_LIB_DIR}"/keybinds/lib/*.py)
 
-hint_cache_dir="$(hypr_runtime_subdir hypr)" || exit 1
+ROFI_FIELD_SEPARATOR=':::'
+LUA_ACTION_DISPATCHER='__lua_action'
+
+hint_cache_dir="$(hypr_ensure_runtime_subdir hypr)" || exit 1
 hint_cache_file="${hint_cache_dir}/keybinds_hint.rofi"
 
 needs_regeneration=false
@@ -63,31 +66,29 @@ icon_override="$(rofi_icon_theme_override)"
 window_override="$(rofi_standard_window_theme listview same)"
 entry_count=$(printf '%s\n' "${hint_rows}" | sed '/^[[:space:]]*$/d' | wc -l)
 entry_count=${entry_count//[[:space:]]/}
-[[ "${entry_count}" =~ ^[0-9]+$ ]] || entry_count=13
 layout_override="$(rofi_cheatsheet_layout_override "${entry_count}" "${font_name}" "${font_scale}")"
 
 selected_binding=$(printf '%s\n' "${hint_rows}" | rofi_with_background_theme -dmenu -p " Keybinds" -i \
   -display-columns 1 \
-  -display-column-separator ":::" \
+  -display-column-separator "${ROFI_FIELD_SEPARATOR}" \
   -theme "$(rofi_resolve_theme "${ROFI_KEYBIND_HINT_STYLE:-clipboard}")" \
   -theme-str "entry { placeholder: \"  Keybindings\"; }" \
   -theme-str "${font_override}" \
   -theme-str "${icon_override}" \
   -theme-str "${window_override}" \
-  -theme-str "${layout_override}" \
-  | sed 's/.*\s*//')
+  -theme-str "${layout_override}")
 [[ -z "${selected_binding}" ]] && exit 0
 
-dispatcher=$(awk -F ':::' '{print $2}' <<<"${selected_binding}" | xargs)
-dispatcher_arg=$(awk -F ':::' '{print $3}' <<<"${selected_binding}" | xargs)
-repeat_mode=$(awk -F ':::' '{print $4}' <<<"${selected_binding}" | xargs)
+dispatcher=$(awk -F "${ROFI_FIELD_SEPARATOR}" '{print $2}' <<<"${selected_binding}" | xargs)
+dispatcher_arg=$(awk -F "${ROFI_FIELD_SEPARATOR}" '{print $3}' <<<"${selected_binding}" | xargs)
+repeat_mode=$(awk -F "${ROFI_FIELD_SEPARATOR}" '{print $4}' <<<"${selected_binding}" | xargs)
 
 run_selected_dispatch() {
   local dispatch_output=""
   local action_key=""
   local action_lua=""
 
-  if [[ "${dispatcher}" == "__lua_action" ]]; then
+  if [[ "${dispatcher}" == "${LUA_ACTION_DISPATCHER}" ]]; then
     action_key="$(printf '%s' "${dispatcher_arg}" | base64 --decode 2>/dev/null)" || return 1
     action_lua="$(hypr_lua_quote "${action_key}")"
     dispatch_output="$(hypr_lua_dispatch "_G.HYPR_BIND_ACTIONS[${action_lua}]" 2>&1)"

@@ -14,9 +14,46 @@ var FALL_RATE = 10.0
 var BAR_CHARS = 1
 var BAR_GAP_CHARS = 1
 var FALLBACK_DT = 1 / 60
+var MIN_FPS = 24
+var MAX_FPS = 60
 
 function colsForWidth(cols) {
   return Math.max(1, Math.floor((cols + BAR_GAP_CHARS) / (BAR_CHARS + BAR_GAP_CHARS)))
+}
+
+function levelToPower(level, dbFloor) {
+  return level > 0 ? Math.pow(10, (1 - level) * dbFloor / 10) : 0
+}
+
+function powerToLevel(power, dbFloor) {
+  return Math.min(1, Math.max(0, 1 - 10 * Math.log10(power) / dbFloor))
+}
+
+function bandsForCols(bands, cols, dbFloor) {
+  if (cols >= bands.length) return H.resampleBandsLinear(bands, cols)
+  var bandsPerCol = bands.length / cols
+  var out = new Array(cols)
+  for (var col = 0; col < cols; col++) {
+    var start = col * bandsPerCol, end = Math.min(bands.length, start + bandsPerCol), power = 0
+    for (var band = Math.floor(start); band < end; band++) {
+      var overlap = Math.min(end, band + 1) - Math.max(start, band)
+      power += levelToPower(bands[band], dbFloor) * overlap
+    }
+    out[col] = powerToLevel(power, dbFloor)
+  }
+  return out
+}
+
+function frameInterval(height) {
+  return 1000 / Math.min(MAX_FPS, Math.max(MIN_FPS, LAUNCH_MAX * height))
+}
+
+function animating(state) {
+  if (!state.peakBar) return false
+  for (var i = 0; i < state.peakBar.length; i++) {
+    if (state.peakBar[i] > EPSILON || state.peakPos[i] > state.peakBar[i] + EPSILON) return true
+  }
+  return false
 }
 
 function step(current, target, dt) {
@@ -35,9 +72,8 @@ function render(ctx, d) {
   var w = d.width, h = d.height
   var charW = 6
   var bars = colsForWidth(Math.floor(w / charW))
-  if (bars < 1 || h < 1) return
-
-  var levels = H.resampleBandsLinear(d.bands, bars)
+  var levels = bandsForCols(d.bandsFine, bars, d.analysis.db_floor)
+  if (!levels.length || h < 1) return
   var s = d.state
   if (!s.peakBar || s.peakBar.length !== bars) {
     s.peakBar = levels.slice()

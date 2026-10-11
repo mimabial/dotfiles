@@ -142,6 +142,7 @@ hl.layer_rule({
 	["ignore_alpha"] = 0,
 })
 hl.layer_rule({ ["name"] = "blur-session-menu", ["match"] = { ["namespace"] = "^(hypr-shell-session)$" }, ["blur"] = true })
+hl.layer_rule({ ["name"] = "selection-no-animation", ["match"] = { ["namespace"] = "^(selection)$" }, ["animation"] = "none" })
 hl.layer_rule({
 	["name"] = "bitwarden-popup-private",
 	["match"] = { ["namespace"] = "hypr-shell-bitwarden" },

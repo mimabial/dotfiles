@@ -5,16 +5,17 @@ import hashlib
 import json
 import os
 import sqlite3
+import sys
 import threading
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from pyutils.xdg_base_dirs import xdg_cache_home
+
 MISS_TTL = 60 * 60
 CACHE_COMMIT_BATCH = 64
-
-
-def cache_home() -> Path:
-    return Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
 
 
 def miss_cache_key(
@@ -194,7 +195,7 @@ def lyrics_miss_cache() -> LyricsMissCache | None:
     if _CACHE_UNAVAILABLE:
         return None
     try:
-        _CACHE = LyricsMissCache(cache_home() / "hypr" / "lyrics.sqlite3")
+        _CACHE = LyricsMissCache(xdg_cache_home() / "hypr" / "lyrics.sqlite3")
     except (OSError, sqlite3.Error):
         _CACHE_UNAVAILABLE = True
     return _CACHE

@@ -22,7 +22,8 @@ layout_dir="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/layouts"
 shopt -s nullglob
 files=("${layout_dir}"/*.json)
 (( ${#files[@]} )) || { printf 'no bar layouts found in %s\n' "${layout_dir}" >&2; exit 1; }
-mapfile -t layouts < <(printf '%s\n' "${files[@]}" | sed -E 's!.*/!!;s/\.json$//' | sort -u)
+layouts=("${files[@]##*/}")
+layouts=("${layouts[@]%.json}")
 action="${1:-next}"
 [[ "${action}" == list ]] && { printf '%s\n' "${layouts[@]}"; exit; }
 read -ra workflow_layouts <<<"$(state_get WORKFLOW_QUICKSHELL_LAYOUT "")"

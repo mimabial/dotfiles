@@ -3,49 +3,39 @@ set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR}/fonts/font-nerd.common.bash"
+source "${HYPR_LIB_DIR}/fonts/lib/font-packages.bash"
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR}/fonts/lib/font-consumers.bash"
 
 used_fonts=()
 
 detect_used_fonts() {
-  used_fonts=()
-  local config_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}"
   local kitty_conf="${XDG_CONFIG_HOME:-$HOME/.config}/kitty/kitty.conf"
-  local font_ref font_line var font_name
+  local kind variable font_name
 
-  if [[ -d "${config_dir}" ]]; then
-    while IFS= read -r font_ref; do
-      font_name=$(echo "$font_ref" | sed -E 's/.*[fF]ont[_-]?[fF]amily[[:space:]]*[:=][[:space:]]*"?([^",;]+)"?.*/\1/; s/.*[fF]ont[[:space:]]*[:=][[:space:]]*"?([^",;]+)"?.*/\1/')
-      [[ -n "${font_name}" ]] && used_fonts+=("${font_name}")
-    done < <(grep -rh -E '([fF]ont[_-]?[fF]amily|[fF]ont)[[:space:]]*[:=]' "${config_dir}" 2>/dev/null | grep -v '^[[:space:]]*#')
-
-    while IFS= read -r var; do
-      font_name=$(echo "$var" | cut -d'=' -f2 | tr -d '"' | tr -d "'")
-      [[ -n "${font_name}" ]] && used_fonts+=("${font_name}")
-    done < <(grep -rh '^\$MONOSPACE_FONT=' "${config_dir}" 2>/dev/null)
-  fi
-
+  used_fonts=()
+  for kind in mono bar bar-icon menu terminal; do
+    used_fonts+=("$(font_sync_resolve_font_value "${kind}")")
+  done
+  for variable in FONT DOCUMENT_FONT; do
+    font_name="$(hypr_config_value_from_layers "${variable}" 2>/dev/null || true)"
+    [[ -n "${font_name}" ]] && used_fonts+=("${font_name}")
+  done
   if [[ -f "${kitty_conf}" ]]; then
-    while IFS= read -r font_line; do
-      font_name=$(echo "$font_line" | sed -E 's/^[[:space:]]*font_family[[:space:]]+//')
+    while IFS= read -r font_name; do
       [[ -n "${font_name}" ]] && used_fonts+=("${font_name}")
-    done < <(grep -E '^[[:space:]]*font_family' "${kitty_conf}")
+    done < <(sed -nE 's/^[[:space:]]*font_family[[:space:]]+//p' "${kitty_conf}")
   fi
 
-  if [[ ${#used_fonts[@]} -gt 0 ]]; then
-    mapfile -t used_fonts < <(printf '%s\n' "${used_fonts[@]}" | sort -u)
-  fi
+  mapfile -t used_fonts < <(printf '%s\n' "${used_fonts[@]}" | sort -u)
 }
 
 font_package_family_names() {
-  local pkg="$1"
-  local font_file font_name
+  local font_file
 
-  while IFS= read -r font_file; do
-    [[ -f "${font_file}" ]] || continue
-    font_name=$(fc-query "${font_file}" 2>/dev/null | awk -F'"' '/^[[:space:]]*family:/{print $2; exit}')
-    [[ -n "${font_name}" ]] && printf '%s\n' "${font_name}"
-  done < <(pacman -Ql "${pkg}" 2>/dev/null | grep -E '\.(ttf|otf)$' | awk '{print $2}')
+  pacman -Qlq "$1" 2>/dev/null | grep -E '\.(ttf|otf)$' | while IFS= read -r font_file; do
+    [[ -f "${font_file}" ]] && fc-scan --format '%{family}\n' "${font_file}" 2>/dev/null
+  done | unique_family_names
 }
 
 is_font_in_use() {
@@ -77,31 +67,6 @@ list_unused_nerd_fonts() {
   done < <(list_installed_nerd_fonts)
 }
 
-remove_nerd_font_packages() {
-  local -a packages=("$@")
-  local package_label=""
-
-  if [[ "${#packages[@]}" -eq 0 ]]; then
-    echo "No font packages specified." >&2
-    return 1
-  fi
-
-  package_label="$(font_packages_label "${packages[@]}")"
-
-  if hyprshell pm --noconfirm remove "${packages[@]}"; then
-    echo
-    echo "Refreshing font cache..."
-    refresh_font_cache
-    notify_send_safe -a "Font Manager" -i "preferences-desktop-font" "Removed Nerd Font" "${package_label}"
-    echo -e "\033[1;32m✓ Removed: ${package_label}\033[0m"
-    return 0
-  fi
-
-  notify_send_safe -u critical -a "Font Manager" -i "preferences-desktop-font" "Failed to remove Nerd Font" "${package_label}"
-  echo -e "\033[1;31m✗ Removal failed.\033[0m" >&2
-  return 1
-}
-
 usage() {
   cat <<'HELP'
 Usage: hyprshell fonts/font-nerd-remove.sh <mode> [packages...]
@@ -122,7 +87,7 @@ case "${1:-}" in
     ;;
   --packages)
     shift
-    remove_nerd_font_packages "$@"
+    change_nerd_font_packages remove "$@"
     ;;
   -h|--help|help|'')
     usage

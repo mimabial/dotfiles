@@ -38,9 +38,10 @@ Every change must be fast and efficient, keep the line count low, and be self-do
 - YAGNI: build only what the task needs. No speculative flags, options, parameters, config keys, fallbacks, validation layers, or abstractions for a case that does not exist yet.
 - Read the existing implementation first and follow its local patterns. Add no new code smells, and fix nearby ones in the area you touch.
 - If a flag, config key, or API detail is uncertain, check local `--help`, man pages, or official docs before using it.
-- No sleeps, polls, settle timers, or debounces. Wait on the event itself: `hypr_wait_for` (socket2) and `hypr_wait_for_path` in `core/common.sh`, `pidwait`, a daemon's own event stream, or a CLI's `--wait`. A timeout is a failure deadline, never the expected path.
+- No sleeps, polls, settle timers, or debounces. Wait on the event itself: `hypr_wait_for` (socket2) and `hypr_wait_for_path` in `core/common.bash`, `pidwait`, a daemon's own event stream, or a CLI's `--wait`. A timeout is a failure deadline, never the expected path.
+- Apply these rules to assessments as well as edits, even when the request emphasizes one quality. Check waits and readiness loops before naming or structure: identify the event or blocking wait that advances each loop, report existing polling, and reject new polling before saving code. Named intervals, retry limits, and short delays do not satisfy the event-driven rule.
 - `hyprshell` costs ~49 forks per call. Never call it from a poll, a timer, or repeated QML; exec the script path directly.
-- No new systemd dependency (`systemctl`, `systemd-run`, units). The machine is moving to Artix/runit, so route services through `hypr_svc_user` in `core/common.sh`.
+- No new systemd dependency (`systemctl`, `systemd-run`, units). The machine is moving to Artix/runit, so route services through `hypr_svc_user` in `core/common.bash`.
 - Fix bugs you hit in passing and delete confirmed dead code, then say what changed. Confirm deadness first: `hyprshell` dispatches by bare stem, so `grep -rw <stem>` across `~/.local/lib`, `~/.local/bin`, `~/.config`, and the units. A fallback path (e.g. setsid vs systemd-run) and its cleanup helpers are live even when the primary path is what normally runs.
 - Never write a file whose only change is cosmetic: a header, shebang, strict mode, or formatting.
 - When docs and a script's CLI disagree, fix the docs; don't loosen the parser. Fix wrong statements in this file as you find them, verified against the code, and report the change.
@@ -77,7 +78,7 @@ Read generated files to understand behavior, but change their inputs or use thei
 
 Two manifests answer different questions:
 
-- `~/.local/lib/hypr/service/refresh.manifest.psv` defines refresh and restore domains (`hypr-config`, `hyprlock`, `hypridle`, `rofi`) with `domain|layer|kind|mode|backup|relative-path` entries. Its modes are `preserve`, `overwrite`, `sync`, and `trash`; current entries are `preserve` with `backup=never`. `hyprshell service/show-managed-split.sh [path...]` reads it; "No manifest entries matched" does not mean the path is absent from dotfiles.
+- `~/.local/lib/hypr/service/refresh.manifest.psv` defines refresh and restore domains (`hypr-config`, `hyprlock`, `hypridle`, `rofi`) with `domain|layer|kind|mode|backup|relative-path` entries. Its modes are `preserve`, `overwrite`, `sync`, and `trash`; current entries are `preserve` with `backup=never`. `hyprshell service/list-managed-domains.sh [domain...]` reads it; "No manifest entries matched" does not mean the path is absent from dotfiles.
 - `~/.config/hypr/dotfiles-sync.conf` defines what `dotfiles-sync` mirrors with `kind|path|excludes` entries, including `host|` entries. Read it or run `dotfiles-sync --list` (read-only) to see whether a path is tracked.
 
 Customize user-owned files: `userprefs.lua`, `keybindings.lua`, `windowrules.lua`, `monitors.lua`, and `workspaces.lua` under `~/.config/hypr/`; `~/.config/quickshell/`; `~/.config/rofi/config.rasi`; `~/.config/dunst/dunst.conf`; theme packs under `~/.config/hypr/themes/`; and scripts under `~/.local/lib/hypr/`. When a file lives in a shared layer (`~/.local/share/rofi/themes/`, say), edit it in place; do not fork a user-layer shadow copy unless asked. For Qt shell changes use `~/.config/hypr/kvantum/shells/<shell>/`; for GTK theme changes edit the renderer's `sweet.patch`, leaving its upstream Sweet sources untouched.
@@ -91,7 +92,7 @@ The active `host-profile` routes `host|` entries into per-host storage. Use `dot
 - `~/.config/hypr/` - Live Hyprland config and user overrides.
 - `~/.config/hypr/themes/` - Theme packs and theme assets.
 - `~/.config/quickshell/` - Active status bar: QML behavior, data-driven layouts, styles, and popups. Read its `README.md` before editing.
-- `~/.local/lib/hypr/` - Shared Hypr shell library; `core/common.sh` is the common foundation.
+- `~/.local/lib/hypr/` - Shared Hypr shell library; `core/common.bash` is the common foundation.
 - `~/.local/bin/` - User-facing entrypoints such as `hyprshell`, `dotfiles-sync`, and `auto-theme`.
 - `~/.local/state/hypr/` - Runtime Hypr state and exported config.
 
@@ -114,13 +115,13 @@ For `hyprctl getoption -j`, inspect the emitted type field (`int`, `float`, `boo
 
 `hyprctl -j --batch "getoption a ; getoption b"` emits blank-line-separated chunks and does not abort on a missing key. Failed chunks are plain text, so parse each JSON chunk independently. Per-leaf animations such as `animations:windows` cannot be enumerated by `getoption`; inspect `core.lua` and the state `animations.lua` instead. Keys are not gated by the active layout, although some documented keys may be absent from this build. Enumerate `hl.dsp` and `hl.dsp.window` before guessing dispatcher names.
 
-State under `~/.local/state/hypr/` includes `staterc` (theme, wallpaper, mode, and layout), runtime Lua fragments, `looknfeel.d/` presets, `active-palette.json`, `auto_theme_state.json`, `color_variant`, `env-overrides`, `host-profile`, the managed `pip_env/`, lyrics cache, and the notification archive written by `notify/archive`. Read it to diagnose behavior; use `state_get`/`state_set` and the lock helpers in `core/state.sh`, `runtime/lock_paths.sh`, and `pyutils/lock_paths.py` to change it. Theme, wallpaper, and mode operations have dedicated locks; do not bypass them.
+State under `~/.local/state/hypr/` includes `staterc` (theme, wallpaper, mode, and layout), runtime Lua fragments, `looknfeel.d/` presets, `active-palette.json`, `auto_theme_state.json`, `color_variant`, `env-overrides`, `host-profile`, the managed `pip_env/`, lyrics cache, and the notification archive written by `notify/archive`. Read it to diagnose behavior; use `state_get`/`state_set` and the lock helpers in `core/state.bash`, `runtime/lock_paths.bash`, and `pyutils/lock_paths.py` to change it. Theme, wallpaper, and mode operations have dedicated locks; do not bypass them.
 
-Theme mode uses the selected pack's palette; wallpaper mode derives one with pywal16. The theme pipeline writes `active-palette.json`, renders per-app outputs, reloads affected apps, and refreshes desktop state. `~/.local/bin/hypr-theme` runs executable, non-underscore files in `render/` in parallel; a renderer's executable bit controls whether that app is themed. In theme mode, `render_init <app> <output> [<basename>]` in `render/_lib.sh` looks up a per-pack override (normally `<app>.theme`) and supplies it as `PACK_OVERRIDE`. These files use each app's own config syntax. `theme/color.targets.bash` skips renderer-owned names `hypr`, `kitty`, `rofi`, `quickshell`, `alacritty`, `tmux`, and `dunst`; other `*.theme` names follow its target-path handling.
+Theme mode uses the selected pack's palette; wallpaper mode derives one with Matugen. The theme pipeline writes `active-palette.json`, renders per-app outputs, reloads affected apps, and refreshes desktop state. `~/.local/bin/hypr-theme` runs executable, non-underscore files in `render/` in parallel; a renderer's executable bit controls whether that app is themed. In theme mode, `render_job_into <job> <palette> <app> <output> [<basename>]` in `render/_render_job.bash` looks up a per-pack override (normally `<app>.theme`) and supplies it in the job's `pack_override` field. These files use each app's own config syntax. `theme/lib/pack.overrides.bash` skips renderer-owned names `hypr`, `kitty`, `rofi`, `quickshell`, `alacritty`, `tmux`, and `dunst`; other `*.theme` names follow its target-path handling.
 
 `quickshell.theme` is flat JSON mapping roles to hex colors. The bar reads `bg`, `fg`, `br`, `accent`, `act_*`, `alt_*`, `hvr_*`, `c0`–`c15`, `info`, `warning`, `error`, and `success` through `shell.role()`. `background` and `foreground` also appear in the rendered palette, but the bar's `shell.background` and `shell.foreground` properties use `bg` and `fg`. A missing or malformed pack override falls back to palette-derived values. Edit the source pack or renderer, then exercise the pipeline and inspect its generated output.
 
-Quickshell bar composition lives in `layouts/<layout>.json` (currently `top`, `bottom`, `winbar`, `macos`); `top` and `bottom` extend `layouts/shared/horizontal.json`. A layout's `panel` (`horizontal` or `winbar`) and `edge` select `HorizontalBar`, with `left`, `center`, and `right` module arrays. A module's `props` are assigned by name at load; a bad key produces `unknown bar module prop: <id>.<key>`. Check membership with `key in item`: `item[key] === undefined` also matches an unset `property var`. `ScriptButton` providers emit `{text, class, tooltip}`.
+Quickshell bar composition lives in `layouts/<layout>.json` (currently `top`, `bottom`, `winbar`, `macos`, `gnome`); `top` and `bottom` extend `layouts/shared/horizontal.json`. A layout's `panel` (`horizontal` or `winbar`) and `edge` select `HorizontalBar`, with `left`, `center`, and `right` module arrays. A module's `props` are assigned by name at load; a bad key produces `unknown bar module prop: <id>.<key>`. Check membership with `key in item`: `item[key] === undefined` also matches an unset `property var`. `ScriptButton` providers emit `{text, class, tooltip}`.
 
 Shared appearance is `styles/base.json`, recursively overridden by `styles/<layout>.json`; rules are keyed by `css`. Static appearance belongs in JSON, runtime color behavior in QML. `shell.qml` loads `HorizontalBar` and selects the layout from `QUICKSHELL_LAYOUT_NAME` in state. Change layouts through `hyprshell quickshell/layout`, which uses locked state helpers; it exits 0 without changing anything while the `windows` or `macos` workflow is active. A per-layout request stays in that layout's JSON: before editing a shared QML component, `grep -l '"<module-id>"' ~/.config/quickshell/layouts/*.json` to see which layouts it would change. Standalone `dock/`, `expose/`, `monitor/`, `cliamp/`, and `lockview/` panels are not bar layouts; they run alongside the bar and use the shared palette through `qs.Commons`.
 
@@ -131,16 +132,16 @@ Shared appearance is `styles/base.json`, recursively overridden by `styles/<layo
 - `hyprshell theme.switch.sh -s "<Theme Name>"` - switch theme and regenerate colors. The `-s` form is strict.
 - `hyprshell theme/theme.import <source> [--dry-run]` - import a theme from a directory or Git URL; inspect `--help` for name, icon, cursor, size, Neovim, Kvantum, and overwrite options.
 - `hyprshell wallpaper next --global` - rotate wallpaper and regenerate colors. `next`, `previous`, and `random` are subcommands; `--global` is the flag.
-- `hyprshell quickshell/layout list|select|next|previous|set <name>` - inspect or change the bar layout.
-- `hyprshell util/workflows --select` - choose `default`, `editing`, `windows`, `presentation`, `niri`, or `macos`; `gaming` and `powersaver` are automatic owners and block manual `--set` while active.
+- `hyprshell quickshell/layout [list|next|previous|set <name>]` - inspect or change the bar layout.
+- `hyprshell util/workflows --set <name>` - choose `default`, `editing`, `windows`, `presentation`, `niri`, or `macos`; `gaming` and `powersaver` are automatic owners and block manual `--set` while active.
 - `hyprshell animations.sh` and `hyprshell shaders.sh` - select an animation or shader preset.
 - `auto-theme start|stop|status|toggle` - control automatic light/dark selection.
 - `hyq -Q '<query>' <file>` - query hyprlang `.conf` or `.meta` files, not compositor Lua.
 - `hyprshell util/keyboard-switch.sh` - synchronize the active XKB layout across keyboards.
 - `hyprshell fonts/find-unused` - inspect fonts not referenced by config.
 - `hyprshell service/control restart hyprland-quickshell` - restart Quickshell when a reload cannot pick a change up.
-- `hyprshell service/show-managed-split.sh [path...]` - inspect refresh-domain paths, not dotfiles tracking.
-- `hyprshell service/config.sh --mode restore <relative-path-under-config>` or `hyprshell service/managed.sh --mode restore <domain> [domain...]` - restore a managed file or domain from stock defaults when requested; the domain restore backs up first.
+- `hyprshell service/list-managed-domains.sh [domain...]` - inspect refresh domains and their manifest entries, not dotfiles tracking.
+- `hyprshell service/apply-config.sh --mode restore <relative-path-under-config>` or `hyprshell service/apply-managed-domains.sh --mode restore <domain> [domain...]` - restore a managed file or domain from stock defaults when requested; the domain restore backs up first.
 - `dotfiles-sync --list` - inspect mirrored paths (read-only).
 - `hyprctl configerrors` - validate Hyprland config.
 - `hyprctl reload` - reload Hyprland.
@@ -167,7 +168,7 @@ Bindings live in `~/.config/hypr/keybindings.lua`, using local `bind`/`exec` hel
 - Submap leaders are `mod+W` window, `mod+T` theming, `mod+O` open, `mod+J` terminal, `mod+R` capture, `mod+I` insert, `mod+H` hints, and `mod+U` utilities. `submap_leader` adds `ESCAPE` to exit. Workspace digits use keycodes so they work on AZERTY.
 - Check whether a chord already exists before adding it. Edit its existing entry in place because duplicate `bind`/`exec` calls stack; tell the user what the previous binding did.
 - Use `submap_action`/`submap_exec` for anything that opens rofi: these leave the submap before the picker receives keys. `submap_stay_action`/`submap_stay_exec` and repeat helpers are for actions that stay in the submap.
-- Keep descriptions unique and stable: `keybinds_hint` uses them as lookup keys in `HYPR_BIND_ACTIONS`. The Lua plugin reports dispatchers as `__lua`, so hint lookup relies on `[Submap] ` leaders; keep that marker aligned with `keybinds/lib/keybinds_hint.py`. Keep `[Hidden] ` aligned with `keybinds/lib/submap_hint.py`.
+- Keep descriptions unique and stable: `keybinds_hint` uses them as lookup keys in `HYPR_BIND_ACTIONS`. The Lua plugin reports dispatchers as `__lua`, so hint lookup relies on `[Submap] ` leaders; keep that marker aligned with `keybinds/lib/binding_metadata.py`. Keep `[Hidden] ` aligned with `keybinds/lib/submap_bindings.py`.
 - Keep `{locked = true}` actions outside submaps so they work on the lock screen. `layout_action(layout, …)` gates dispatch at press time, so its hint category must name the layout.
 - Validate with `hyprctl configerrors` and inspect `hyprctl binds` plain output. `hyprctl binds -j` is malformed on this installation. To list described bindings as `modmask`, `key`, `submap`, and `description`, run:
 
@@ -197,7 +198,7 @@ Verification is a ceiling, not a floor. Name the specific risk, run the one chec
 - For delegate behavior with an empty live model, instantiate the changed component against a small model through `quickshell -p <temporary-QML-inside-config-root>` so `qs.*` resolves, and compare new warnings with the pre-change behavior. For standalone QML semantics that do not need `qs.*`, run the probe outside the config directory with `QT_ASSUME_STDERR_HAS_CONSOLE=1 QT_FORCE_STDERR_LOGGING=1 QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qml <file>`; `qmlscene` ignores `Qt.quit()` and can hang.
 - After QML edits, read only the new log output: `journalctl --user --since "10 seconds ago" | grep -iE 'WARN|ERROR|TypeError' | grep -v font.db`.
 - Quickshell layout/style changes: validate JSON with `jq empty` and verify the active layout live.
-- wlogout color changes: run `render/wlogout.sh`, then open the menu with `hyprshell logout-launch.sh 2`.
+- wlogout color changes: run `render/wlogout.sh` and inspect its generated colors. `session/logout-launch.sh` toggles the Quickshell session menu.
 - Notification changes: prefer dry runs or non-destructive test paths.
 
 ## Version Control Guardrails

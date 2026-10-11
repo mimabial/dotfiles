@@ -46,20 +46,17 @@ rofi_layers_json() {
 ROFI_FALLBACK_MONITOR_SIZE="1920 1080"
 
 rofi_focused_monitor_logical_size() {
-  local monitor_line=""
-  local mon_width mon_height mon_scale logical_width logical_height
+  local -A monitor=()
+  local logical_width logical_height
 
-  monitor_line="$(rofi_focused_monitor_record 2>/dev/null || true)"
-  if [[ -z "${monitor_line}" ]]; then
+  if ! rofi_focused_monitor_geometry_into monitor 2>/dev/null; then
     printf '%s\n' "${ROFI_FALLBACK_MONITOR_SIZE}"
     return 0
   fi
 
-  IFS=$'\t' read -r mon_width mon_height mon_scale _ <<<"${monitor_line}"
-  rofi_positive_decimal "${mon_scale}" || mon_scale=1
-  logical_width="$(rofi_scaled_divide "${mon_width}" "${mon_scale}" 1 2>/dev/null || true)"
-  logical_height="$(rofi_scaled_divide "${mon_height}" "${mon_scale}" 1 2>/dev/null || true)"
-  [[ "${logical_width}" =~ ^[0-9]+$ ]] || logical_width=1
-  [[ "${logical_height}" =~ ^[0-9]+$ ]] || logical_height=1
+  logical_width="${monitor[logical_width_px]}"
+  logical_height="${monitor[logical_height_px]}"
+  [[ "${logical_width}" =~ ^[1-9][0-9]*$ ]] || logical_width=1
+  [[ "${logical_height}" =~ ^[1-9][0-9]*$ ]] || logical_height=1
   printf '%s %s\n' "${logical_width}" "${logical_height}"
 }

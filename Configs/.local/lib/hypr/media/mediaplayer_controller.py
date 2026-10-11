@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 gi.require_version("Playerctl", "2.0")
 
-from gi.repository import GLib, Playerctl
+from gi.repository import Gio, GLib, Playerctl
 from mediaplayer_actions import (
     player_name_matches,
     read_active_player_state,
@@ -21,6 +21,7 @@ from mediaplayer_actions import (
 )
 from mediaplayer_browser import (
     get_ytdlp_timeout_seconds,
+    on_media_info_ready,
     set_ytdlp_timeout_seconds,
 )
 from mediaplayer_policy import (
@@ -31,6 +32,7 @@ from mediaplayer_policy import (
     resolve_playback,
 )
 from mediaplayer_ui import (
+    DEFAULT_STANDBY_TEXT,
     create_tooltip_text,
     emit_json_output,
     escape_markup_text,
@@ -43,14 +45,16 @@ from mediaplayer_ui import (
     validate_ui_config,
 )
 from pyutils.shell_env import load_shell_assignments
+from pyutils.xdg_base_dirs import xdg_state_home
 
 
 @dataclass
-class ControllerState:
+class MediaPlayerControllerState:
     current_player: object | None = None
     current_player_name: str = ""
     last_valid_player: object | None = None
-    timer_id: int | None = None
+    playback_clock_id: int | None = None
+    active_player_monitor: object | None = None
     main_loop: object | None = None
     shutdown_requested: bool = False
     ui_config: object | None = None
@@ -61,7 +65,8 @@ class ControllerState:
     playback: PlaybackState = field(default_factory=PlaybackState)
 
 
-STATE = ControllerState()
+STATE = MediaPlayerControllerState()
+PLAYBACK_CLOCK_INTERVAL_SECONDS = 1
 LOOP_STATUS_LABELS = {
     Playerctl.LoopStatus.NONE: "None",
     Playerctl.LoopStatus.TRACK: "Track",
@@ -69,16 +74,33 @@ LOOP_STATUS_LABELS = {
 }
 
 
-def stop_poll_timer() -> None:
-    timer_id = STATE.timer_id
-    STATE.timer_id = None
-    if timer_id:
-        GLib.source_remove(timer_id)
+def current_player_is_playing() -> bool:
+    try:
+        return STATE.current_player is not None and STATE.current_player.props.status == "Playing"
+    except Exception:
+        return False
 
 
-def start_poll_timer(manager) -> None:
-    if STATE.timer_id is None:
-        STATE.timer_id = GLib.timeout_add_seconds(1, timer_tick, manager)
+def stop_playback_clock() -> None:
+    clock_id = STATE.playback_clock_id
+    STATE.playback_clock_id = None
+    if clock_id:
+        GLib.source_remove(clock_id)
+
+
+def playback_clock_tick() -> bool:
+    if not current_player_is_playing():
+        STATE.playback_clock_id = None
+        return False
+    emit_player_state(STATE.current_player)
+    return True
+
+
+def sync_playback_clock() -> None:
+    if not current_player_is_playing():
+        stop_playback_clock()
+    elif STATE.playback_clock_id is None:
+        STATE.playback_clock_id = GLib.timeout_add_seconds(PLAYBACK_CLOCK_INTERVAL_SECONDS, playback_clock_tick)
 
 
 def cached_active_player_state() -> str:
@@ -166,7 +188,7 @@ def load_env_file(filepath: str) -> None:
 
 
 def emit_standby(player_name: str = "") -> None:
-    text = STATE.ui_config.standby_text if STATE.ui_config else " MPlayer"
+    text = STATE.ui_config.standby_text if STATE.ui_config else DEFAULT_STANDBY_TEXT
     emit_json_output(
         {
             "text": escape_markup_text(text),
@@ -271,12 +293,25 @@ def emit_player_state(player) -> None:
     emit_playback(resolve_playback(snapshot, STATE.playback))
 
 
+def follow_preferred_player(manager) -> None:
+    selected_player = preferred_player(manager.props.players)
+    if selected_player is not None and not is_current_player(selected_player):
+        set_player(manager, selected_player)
+
+
+def watch_active_player_state(manager) -> None:
+    monitor = Gio.File.new_for_path(str(active_player_state_path())).monitor_file(Gio.FileMonitorFlags.NONE, None)
+    monitor.connect("changed", lambda *_: follow_preferred_player(manager))
+    STATE.active_player_monitor = monitor
+
+
 def on_playback_changed(player, status, manager):
-    if player.props.status == "Playing" and not is_current_player(player):
-        set_player(manager, player)
-        return
-    if is_current_player(player):
+    selected_player = preferred_player(manager.props.players)
+    if selected_player is not None and not is_current_player(selected_player):
+        set_player(manager, selected_player)
+    elif is_current_player(player):
         emit_player_state(player)
+    sync_playback_clock()
 
 
 def on_metadata(player, metadata, manager):
@@ -300,13 +335,8 @@ def on_player_appeared(manager, player, selected_players=None):
         selected_players is None
         or any(player_name_matches(player.name, name) for name in selected_players)
     ):
-        managed_player = init_player(manager, player)
-        if (
-            STATE.current_player is None
-            or managed_player.props.status == "Playing"
-        ):
-            set_player(manager, managed_player)
-        start_poll_timer(manager)
+        init_player(manager, player)
+        follow_preferred_player(manager)
 
 
 def on_player_vanished(manager, player, loop):
@@ -326,7 +356,7 @@ def on_player_vanished(manager, player, loop):
     STATE.current_player = None
     STATE.current_player_name = ""
     STATE.playback.reset()
-    stop_poll_timer()
+    stop_playback_clock()
     emit_standby()
 
 
@@ -339,24 +369,6 @@ def init_player(manager, name):
     return player
 
 
-def timer_tick(manager):
-    players = list(manager.props.players or [])
-    if not players:
-        STATE.timer_id = None
-        return False
-
-    selected_player = preferred_player(players)
-    if selected_player is not None and not is_current_player(selected_player):
-        set_player(manager, selected_player)
-
-    if (
-        STATE.current_player
-        and STATE.current_player.props.status == "Playing"
-    ):
-        emit_player_state(STATE.current_player)
-    return True
-
-
 def set_player(manager, player):
     if player is None:
         return
@@ -366,6 +378,7 @@ def set_player(manager, player):
         manager.move_player_to_top(player)
         write_active_player_state(STATE.current_player_name)
     emit_player_state(player)
+    sync_playback_clock()
 
 
 def signal_handler(received_signal, frame):
@@ -391,10 +404,10 @@ def resolve_players(arguments, manager):
     return [name.name for name in manager.props.player_names], False
 
 
-def run(arguments):
+def watch_media_players(arguments):
     STATE.shutdown_requested = False
 
-    xdg_state = os.path.expanduser(os.getenv("XDG_STATE_HOME", "~/.local/state"))
+    xdg_state = str(xdg_state_home())
     set_ytdlp_timeout_seconds(get_ytdlp_timeout_seconds())
     state_dir = os.path.join(xdg_state, "hypr")
     load_env_file(os.path.join(state_dir, "staterc"))
@@ -437,8 +450,9 @@ def run(arguments):
     else:
         emit_player_state(STATE.current_player)
 
-    if manager.props.players:
-        start_poll_timer(manager)
+    sync_playback_clock()
+    watch_active_player_state(manager)
+    on_media_info_ready(lambda: emit_player_state(STATE.current_player))
 
     try:
         loop.run()
@@ -446,4 +460,4 @@ def run(arguments):
         print("INFO: Received interrupt, shutting down...", file=sys.stderr)
     finally:
         STATE.main_loop = None
-        stop_poll_timer()
+        stop_playback_clock()

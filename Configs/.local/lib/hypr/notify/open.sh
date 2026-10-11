@@ -27,9 +27,8 @@ esac
 }
 
 key="$1"
-store="${HYPR_STATE_HOME}/notifications"
-archive="${store}/archive.jsonl"
-images="${store}/images"
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR}/notify/lib/archive-storage.bash"
 
 [[ -f "${archive}" ]] || exit 0
 
@@ -48,7 +47,7 @@ if ((focus_only == 0)) && [[ -n "${preview}" && "${preview}" == "${images}/"* &&
 fi
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR}/launch/window.common.bash"
+source "${HYPR_LIB_DIR}/launch/lib/window-launch.bash"
 
 address=""
 for candidate in "${desktop}" "${app}"; do

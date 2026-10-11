@@ -2,10 +2,9 @@
 set -euo pipefail
 
 usage() {
-  cat <<EOF
-Usage: $(basename "$0") <shutdown|reboot>
-EOF
+  printf 'Usage: hyprshell system/powerctl <shutdown|reboot>\n'
 }
+CLIENTS_CLOSE_WAIT_S=10
 
 action="${1:-}"
 case "${action}" in
@@ -25,7 +24,7 @@ no_clients_left() {
 }
 
 # Best-effort: powering off must not hinge on the compositor being reachable.
-hyprshell window/close-all.sh && hypr_wait_for 10 'closewindow>>*' no_clients_left || true
+hyprshell window/close-all.sh && hypr_wait_for "${CLIENTS_CLOSE_WAIT_S}" 'closewindow>>*' no_clients_left || true
 
 # elogind (Artix) offers the same verbs through loginctl; both route the request
 # through the session manager, so neither needs sudo.

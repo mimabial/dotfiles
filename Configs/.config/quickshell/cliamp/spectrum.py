@@ -15,26 +15,24 @@ RUN_DIR = os.path.join(RUNTIME_DIR, "cliamp") if RUNTIME_DIR and os.path.isdir(R
 OUT_FILE = os.path.join(RUN_DIR, "spectrum.json")
 TARGET_FILE = os.path.join(RUN_DIR, "spectrum-target.json")
 RATE, CHANNELS, FFT_SIZE, HIGH_FFT_SIZE, HOP = 48000, 2, 8192, 2048, 1024
-NUM_BANDS, WAVE_SAMPLES, METER_SIZE, TRUE_PEAK_FACTOR = 24, 512, 2048, 4
+NUM_BANDS, NUM_FINE_BANDS, WAVE_SAMPLES, METER_SIZE, TRUE_PEAK_FACTOR = 24, 64, 512, 2048, 4
 TRIGGER_SEARCH, TRIGGER_TAPS = 2048, 96
 DB_FLOOR, MIN_FREQ, MAX_FREQ, LOW_MAX_FREQ = -72.0, 20.0, 20000.0, 300.0
 EDGES = np.geomspace(MIN_FREQ, MAX_FREQ, NUM_BANDS + 1)
+FINE_EDGES = np.geomspace(MIN_FREQ, MAX_FREQ, NUM_FINE_BANDS + 1)
 RECORDER_START_SECONDS = 1.0
 os.makedirs(RUN_DIR, mode=0o700, exist_ok=True)
+
+def cumulative_positions(size, edges):
+    position = edges / (RATE / size) + 0.5
+    index = np.floor(position).astype(int)
+    return index, position - index
 
 def fft_plan(size):
     window = np.hanning(size).astype(np.float32)
     gain = 2.0 / float(window.sum())
     enbw = size * float(np.sum(window * window)) / float(window.sum() ** 2)
-    frequencies = np.fft.rfftfreq(size, 1.0 / RATE)
-    bin_hz = RATE / size
-    lower, upper = frequencies - bin_hz / 2, frequencies + bin_hz / 2
-    weights = np.empty((NUM_BANDS, len(frequencies)), dtype=np.float32)
-    for index in range(NUM_BANDS):
-        low, high = EDGES[index], EDGES[index + 1]
-        weights[index] = np.clip((np.minimum(upper, high) - np.maximum(lower, low)) / bin_hz, 0.0, 1.0)
-    weights[:, 0] = 0
-    return window, gain, enbw, weights
+    return window, gain, enbw, cumulative_positions(size, EDGES), cumulative_positions(size, FINE_EDGES)
 
 LOW_PLAN, HIGH_PLAN = fft_plan(FFT_SIZE), fft_plan(HIGH_FFT_SIZE)
 
@@ -45,9 +43,20 @@ def normalize_db(db):
     return np.clip((db - DB_FLOOR) / -DB_FLOOR, 0.0, 1.0)
 
 def band_rms(audio, size, plan):
-    window, gain, enbw, weights = plan
+    window, gain, enbw, *edge_sets = plan
     spectra = np.abs(np.fft.rfft(audio[-size:] * window[:, None], axis=0)) * gain
-    return np.sqrt(np.maximum(weights @ (spectra * spectra), 0.0) / (2.0 * enbw))
+    cumulative_power = np.concatenate((np.zeros((1, CHANNELS)), np.cumsum(spectra * spectra, axis=0, dtype=np.float64)))
+    band_rms_sets = []
+    for index, fraction in edge_sets:
+        power_below_edge = cumulative_power[index] + (cumulative_power[index + 1] - cumulative_power[index]) * fraction[:, None]
+        band_rms_sets.append(np.sqrt(np.maximum(np.diff(power_below_edge, axis=0), 0.0) / (2.0 * enbw)))
+    return band_rms_sets
+
+def merge_resolutions(low, high, edges):
+    return np.where((edges[1:] <= LOW_MAX_FREQ)[:, None], low, high)
+
+def mono_dbfs(stereo_rms):
+    return to_dbfs(np.sqrt(np.mean(stereo_rms * stereo_rms, axis=1)))
 
 def true_peak(audio):
     size, oversampled_size = len(audio), len(audio) * TRUE_PEAK_FACTOR
@@ -84,11 +93,12 @@ def rounded(values, digits):
     return np.round(np.asarray(values, dtype=np.float64), digits).tolist()
 
 def analyze(audio):
-    low = band_rms(audio, FFT_SIZE, LOW_PLAN)
-    high = band_rms(audio, HIGH_FFT_SIZE, HIGH_PLAN)
-    stereo_band_rms = np.where((EDGES[1:] <= LOW_MAX_FREQ)[:, None], low, high)
+    low, fine_low = band_rms(audio, FFT_SIZE, LOW_PLAN)
+    high, fine_high = band_rms(audio, HIGH_FFT_SIZE, HIGH_PLAN)
+    stereo_band_rms = merge_resolutions(low, high, EDGES)
     stereo_band_db = to_dbfs(stereo_band_rms)
-    band_db = to_dbfs(np.sqrt(np.mean(stereo_band_rms * stereo_band_rms, axis=1)))
+    band_db = mono_dbfs(stereo_band_rms)
+    fine_band_db = mono_dbfs(merge_resolutions(fine_low, fine_high, FINE_EDGES))
     meter_audio = audio[-METER_SIZE:]
     rms = np.sqrt(np.mean(meter_audio * meter_audio, axis=0))
     sample_peaks = np.max(np.abs(meter_audio), axis=0)
@@ -98,6 +108,7 @@ def analyze(audio):
     return {
         "bands": rounded(normalize_db(band_db), 3),
         "bands_dbfs": rounded(band_db, 2),
+        "bands_fine": rounded(normalize_db(fine_band_db), 3),
         "bands_stereo": {"left": rounded(normalize_db(stereo_band_db[:, 0]), 3),
                          "right": rounded(normalize_db(stereo_band_db[:, 1]), 3)},
         "band_edges_hz": rounded(EDGES, 1),
@@ -198,13 +209,13 @@ def read_frames(process, frames):
 def empty_frame(selectors):
     zeros = [0.0] * NUM_BANDS
     floor = [DB_FLOOR] * NUM_BANDS
-    return {"bands": zeros, "bands_dbfs": floor, "band_edges_hz": rounded(EDGES, 1), "wave": [],
+    return {"bands": zeros, "bands_dbfs": floor, "bands_fine": [0.0] * NUM_FINE_BANDS, "band_edges_hz": rounded(EDGES, 1), "wave": [],
             "bands_stereo": {"left": zeros, "right": zeros},
             "wave_stereo": {"left": [], "right": []},
             "stereo": {"levels": [0, 0], "peaks": [0, 0], "sample_peaks": [0, 0],
                        "rms_dbfs": [DB_FLOOR, DB_FLOOR], "sample_peak_dbfs": [DB_FLOOR, DB_FLOOR],
                        "true_peak_dbfs": [DB_FLOOR, DB_FLOOR]},
-            "source": {"found": False, "selectors": selectors}}
+            "analysis": {"db_floor": DB_FLOOR}, "source": {"found": False, "selectors": selectors}}
 
 def write_frame(frame):
     temporary = OUT_FILE + ".tmp"

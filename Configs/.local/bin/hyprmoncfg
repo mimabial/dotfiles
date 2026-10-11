@@ -5,7 +5,7 @@ from pathlib import Path
 SYSTEM_LIB_DIR = Path(__file__).resolve().parent.parent / "lib/hypr/system"
 sys.path.insert(0, str(SYSTEM_LIB_DIR))
 
-from moncfg.cli import main
+from monitor_profiles.cli import main
 
 if __name__ == "__main__":
     raise SystemExit(main())

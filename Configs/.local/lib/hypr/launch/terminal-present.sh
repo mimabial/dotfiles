@@ -42,11 +42,11 @@ main() {
 
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
-      --app-id)        app_id="$2";        shift 2 ;;
-      --title)         title="$2";         shift 2 ;;
-      --hypr-profile)  hypr_profile="$2";  shift 2 ;;
-      --hypr-cells)    hypr_cells=("$2" "$3"); shift 3 ;;
-      --hypr-size)     hypr_size=("$2" "$3"); shift 3 ;;
+      --app-id)        app_id="$2";        shift 2 || { usage >&2; return 2; } ;;
+      --title)         title="$2";         shift 2 || { usage >&2; return 2; } ;;
+      --hypr-profile)  hypr_profile="$2";  shift 2 || { usage >&2; return 2; } ;;
+      --hypr-cells)    hypr_cells=("$2" "$3"); shift 3 || { usage >&2; return 2; } ;;
+      --hypr-size)     hypr_size=("$2" "$3"); shift 3 || { usage >&2; return 2; } ;;
       --)
         shift
         cmd=("$@")
@@ -71,7 +71,7 @@ main() {
 
   if command_needs_hold_prompt "${cmd[@]}"; then
     # shellcheck disable=SC2016 # The inner bash expands "$@" and "$status".
-    exec setsid uwsm-app -- tui-terminal-exec "${launch_args[@]}" bash -c '
+    exec "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/app2unit.sh" -- tui-terminal-exec "${launch_args[@]}" bash -c '
       "$@"
       status=$?
       echo
@@ -80,7 +80,7 @@ main() {
       exit "$status"
     ' bash "${cmd[@]}"
   else
-    exec setsid uwsm-app -- tui-terminal-exec "${launch_args[@]}" "${cmd[@]}"
+    exec "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/app2unit.sh" -- tui-terminal-exec "${launch_args[@]}" "${cmd[@]}"
   fi
 }
 

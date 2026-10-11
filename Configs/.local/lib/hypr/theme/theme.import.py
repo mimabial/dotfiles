@@ -14,25 +14,30 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+from contextlib import ExitStack
 from pathlib import Path
 
-XDG_CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")).expanduser()
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from pyutils.xdg_base_dirs import xdg_config_home, xdg_data_home
+
+XDG_CONFIG_HOME = xdg_config_home()
 CONFIG_HOME = Path(os.environ.get("HYPR_CONFIG_HOME", XDG_CONFIG_HOME / "hypr")).expanduser()
 THEMES_DIR = CONFIG_HOME / "themes"
 THEME_META = THEMES_DIR / "theme.meta"
 HYPR_LIB = Path(__file__).resolve().parents[1]
 NVIM_CONFIG = Path(os.environ.get("NVIM_CONFIG_DIR", XDG_CONFIG_HOME / os.environ.get("NVIM_APPNAME", "nvim")))
-NVIM_DEFS = NVIM_CONFIG.expanduser() / "lua" / "plugins" / "themes" / "definitions"
+NVIM_DEFINITIONS_DIR = NVIM_CONFIG.expanduser() / "lua" / "plugins" / "themes" / "definitions"
 ICON_ROOTS = (
-    Path(os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))) / "icons",
+    xdg_data_home() / "icons",
     Path.home() / ".icons",
     Path("/usr/share/icons"),
 )
 
 # Mirrors the extensions core/wallpaper.catalog.bash treats as wallpapers.
-WALL_SUFFIXES = (".gif", ".jpg", ".jpeg", ".png", ".webp")
+WALLPAPER_SUFFIXES = (".gif", ".jpg", ".jpeg", ".png", ".webp")
 ANSI_ORDER = ("black", "red", "green", "yellow", "blue", "magenta", "cyan", "white")
-SOURCE_ANSI = (
+SOURCE_ANSI_COLOR_KEYS = (
     "background", "red", "green", "yellow", "blue", "magenta", "cyan", "foreground",
     "muted", "bright_red", "bright_green", "bright_yellow", "bright_blue", "bright_magenta",
     "bright_cyan", "bright_foreground",
@@ -41,6 +46,7 @@ WALL_LINK = "wall.set"
 KEEP_BLOCKS = ("general", "group", "decoration")
 HEADER = "$HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta"
 KVANTUM_SHELLS = ("flat", "materia", "pill")
+MAX_VARIABLE_EXPANSION_PASSES = 5
 NVIM_ALIASES = {"catppuccin-nvim": ("catppuccin", ""), "nordfox": ("nord", "")}
 
 HEX_RX = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -50,11 +56,11 @@ REF_RX = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)")
 COLORSCHEME_RX = re.compile(r'colorscheme\s*=\s*"([^"]+)"')
 COLORSCHEME_CALL_RX = re.compile(r'colorscheme\("([^"]+)"\)')
 
-warnings = []
+import_warnings = []
 
 
 def warn(message):
-    warnings.append(message)
+    import_warnings.append(message)
     print(f"theme.import: {message}", file=sys.stderr)
 
 
@@ -62,7 +68,7 @@ def die(message):
     sys.exit(f"theme.import: {message}")
 
 
-def theme_meta_var(key):
+def read_active_theme_metadata_value(key):
     if not THEME_META.is_file():
         return ""
     for line in THEME_META.read_text().splitlines():
@@ -86,16 +92,16 @@ def cursor_installed(name):
 
 
 def nvim_scheme_installed(name):
-    return bool(name) and (NVIM_DEFS / f"{name}.lua").is_file()
+    return bool(name) and (NVIM_DEFINITIONS_DIR / f"{name}.lua").is_file()
 
 
 def nvim_scheme_has_background(name, mode):
     """Snapshots fall back to their first capture and force its background, so a
     scheme with no capture for this polarity would render the wrong one."""
-    data = NVIM_DEFS / "data" / f"{name}.lua"
+    data = NVIM_DEFINITIONS_DIR / "data" / f"{name}.lua"
     if data.is_file():
         return f'background = "{mode}"' in data.read_text()
-    definition = (NVIM_DEFS / f"{name}.lua").read_text()
+    definition = (NVIM_DEFINITIONS_DIR / f"{name}.lua").read_text()
     fixed = re.search(r'^\s*background\s*=\s*"(dark|light)"', definition, re.MULTILINE)
     return not fixed or fixed.group(1) == mode
 
@@ -105,7 +111,7 @@ def map_nvim_scheme(name):
         return name, ""
     if name in NVIM_ALIASES:
         return NVIM_ALIASES[name]
-    for definition in NVIM_DEFS.glob("*.lua"):
+    for definition in NVIM_DEFINITIONS_DIR.glob("*.lua"):
         scheme = definition.stem
         prefix = f"{scheme}-"
         if not name.startswith(prefix):
@@ -130,16 +136,15 @@ def derive_pack_name(raw):
     return " ".join(word[:1].upper() + word[1:] for word in words)
 
 
-def fetch_source(source, stack):
+def resolve_import_source(source, cleanup_stack: ExitStack):
     if re.match(r"^[a-z]+://", source) or source.startswith("git@") or source.endswith(".git"):
-        tmp = tempfile.mkdtemp(prefix="theme-import.")
-        stack.append(tmp)
+        source_checkout = cleanup_stack.enter_context(tempfile.TemporaryDirectory(prefix="theme-import."))
         print(f"theme.import: cloning {source}", file=sys.stderr)
-        result = subprocess.run(["git", "clone", "--depth", "1", source, tmp])
+        result = subprocess.run(["git", "clone", "--depth", "1", source, source_checkout])
         if result.returncode != 0:
             die(f"git clone failed: {source}")
         raw_name = re.sub(r"\.git$", "", source.rstrip("/").rsplit("/", 1)[-1])
-        return Path(tmp), raw_name
+        return Path(source_checkout), raw_name
 
     path = Path(source).expanduser().resolve()
     if not path.is_dir():
@@ -155,7 +160,7 @@ def load_toml(path):
             die(f"cannot parse {path}: {error}")
 
 
-def from_alacritty(raw):
+def palette_values_from_alacritty(raw):
     """Use Alacritty's color keys when the source has no colors.toml."""
     colors = raw.get("colors") or {}
     primary = colors.get("primary") or {}
@@ -176,36 +181,36 @@ def from_alacritty(raw):
     return data
 
 
-def load_source_data(src):
-    colors_file = src / "colors.toml"
+def load_source_palette_values(source_dir):
+    colors_file = source_dir / "colors.toml"
     if colors_file.is_file():
         return load_toml(colors_file)
 
-    alacritty = src / "alacritty.toml"
+    alacritty = source_dir / "alacritty.toml"
     if alacritty.is_file():
         warn(f"no colors.toml; deriving the palette from {alacritty.name}")
-        return from_alacritty(load_toml(alacritty))
+        return palette_values_from_alacritty(load_toml(alacritty))
 
-    die(f"no colors.toml or alacritty.toml in {src}; this is not a compatible theme source")
+    die(f"no colors.toml or alacritty.toml in {source_dir}; this is not a compatible theme source")
 
 
-def resolve_mode(src, data, background):
+def resolve_pack_polarity(source_dir, data, background):
     declared = data.get("mode")
     if declared in ("dark", "light"):
         return declared
-    if (src / "light.mode").is_file():
+    if (source_dir / "light.mode").is_file():
         return "light"
     return "light" if is_light(background) else "dark"
 
 
-def build_palette(data, kvantum):
+def render_palette_toml(data, kvantum):
     def hex_value(key):
         value = data.get(key)
         return value if isinstance(value, str) and HEX_RX.match(value) else None
 
     background = hex_value("background")
     foreground = hex_value("foreground")
-    colors = [hex_value(f"color{i}") or hex_value(name) for i, name in enumerate(SOURCE_ANSI)]
+    colors = [hex_value(f"color{i}") or hex_value(name) for i, name in enumerate(SOURCE_ANSI_COLOR_KEYS)]
 
     missing = [name for name, value in (("background", background), ("foreground", foreground)) if not value]
     missing += [f"color{i}" for i, color in enumerate(colors) if not color]
@@ -229,7 +234,7 @@ def build_palette(data, kvantum):
     return "\n".join(lines), background
 
 
-def parse_hyprland_conf(text):
+def parse_importable_hyprland_settings(text):
     variables = {}
     blocks = []
     lines = text.splitlines()
@@ -263,10 +268,10 @@ def parse_hyprland_conf(text):
     return variables, blocks
 
 
-def resolve_refs(line, variables):
+def expand_hyprlang_variable_references(line, variables):
     """Inline $var references so the emitted hypr.theme is self-contained."""
     resolved = line
-    for _ in range(5):
+    for _ in range(MAX_VARIABLE_EXPANSION_PASSES):
         expanded = REF_RX.sub(lambda m: variables.get(m.group(1), m.group(0)), resolved)
         if expanded == resolved:
             break
@@ -274,13 +279,13 @@ def resolve_refs(line, variables):
     return resolved
 
 
-def build_hypr_theme(header_vars, blocks, variables):
+def render_hypr_theme(header_vars, blocks, variables):
     out = [HEADER, ""]
     out += [f"${key} = {value}" for key, value in header_vars.items() if value]
     out.append("")
     for body in blocks:
         for line in body:
-            resolved = resolve_refs(line, variables)
+            resolved = expand_hyprlang_variable_references(line, variables)
             if REF_RX.search(resolved):
                 warn(f"unresolved variable in hypr.theme: {resolved.strip()}")
             out.append(resolved)
@@ -288,8 +293,8 @@ def build_hypr_theme(header_vars, blocks, variables):
     return "\n".join(out).rstrip() + "\n"
 
 
-def source_nvim_scheme(src):
-    nvim = src / "neovim.lua"
+def read_source_nvim_scheme(source_dir):
+    nvim = source_dir / "neovim.lua"
     if not nvim.is_file():
         return ""
     text = nvim.read_text()
@@ -297,18 +302,18 @@ def source_nvim_scheme(src):
     return match.group(1) if match else ""
 
 
-def resolve_icon_theme(src, override):
+def resolve_icon_theme(source_dir, override):
     if override:
         if not icon_installed(override):
             warn(f"--icons '{override}' is not installed; writing it anyway")
         return override
 
-    icons_file = src / "icons.theme"
+    icons_file = source_dir / "icons.theme"
     upstream = icons_file.read_text().strip() if icons_file.is_file() else ""
     if icon_installed(upstream):
         return upstream
 
-    current = theme_meta_var("ICON_THEME")
+    current = read_active_theme_metadata_value("ICON_THEME")
     if upstream:
         warn(f"icon theme '{upstream}' is not installed; keeping '{current}' (override with --icons)")
     else:
@@ -317,30 +322,30 @@ def resolve_icon_theme(src, override):
 
 
 def resolve_cursor(override_theme, override_size):
-    cursor = override_theme or theme_meta_var("CURSOR_THEME")
-    size = override_size or theme_meta_var("CURSOR_SIZE") or "30"
+    cursor = override_theme or read_active_theme_metadata_value("CURSOR_THEME")
+    size = override_size or read_active_theme_metadata_value("CURSOR_SIZE") or "30"
     if override_theme and not cursor_installed(override_theme):
         warn(f"--cursor '{override_theme}' is not installed; writing it anyway")
     return cursor, size
 
 
-def resolve_nvim_scheme(src, override, mode):
+def resolve_nvim_scheme(source_dir, override, mode):
     if override:
         scheme, variant = map_nvim_scheme(override)
         scheme = scheme or override
         if not nvim_scheme_installed(scheme):
-            warn(f"--nvim '{override}' has no definition in {NVIM_DEFS}; writing it anyway")
+            warn(f"--nvim '{override}' has no definition in {NVIM_DEFINITIONS_DIR}; writing it anyway")
         elif not nvim_scheme_has_background(scheme, mode):
             warn(f"--nvim '{override}' has no {mode} capture; writing it anyway")
         return scheme, variant
 
-    upstream = source_nvim_scheme(src)
+    upstream = read_source_nvim_scheme(source_dir)
     if not upstream:
         warn("source ships no neovim colorscheme; omitting $NVIM_SCHEME")
         return "", ""
     scheme, variant = map_nvim_scheme(upstream)
     if not scheme:
-        warn(f"nvim colorscheme '{upstream}' has no definition in {NVIM_DEFS}; omitting $NVIM_SCHEME")
+        warn(f"nvim colorscheme '{upstream}' has no definition in {NVIM_DEFINITIONS_DIR}; omitting $NVIM_SCHEME")
     elif not nvim_scheme_has_background(scheme, mode):
         warn(f"nvim colorscheme '{upstream}' has no {mode} capture; omitting $NVIM_SCHEME")
     else:
@@ -348,15 +353,15 @@ def resolve_nvim_scheme(src, override, mode):
     return "", ""
 
 
-def collect_wallpapers(src):
-    backgrounds = src / "backgrounds"
+def collect_wallpapers(source_dir):
+    backgrounds = source_dir / "backgrounds"
     if not backgrounds.is_dir():
-        die(f"no backgrounds/ directory in {src}")
+        die(f"no backgrounds/ directory in {source_dir}")
     entries = sorted(entry for entry in backgrounds.iterdir() if entry.is_file())
-    images = [entry for entry in entries if entry.suffix.lower() in WALL_SUFFIXES]
+    images = [entry for entry in entries if entry.suffix.lower() in WALLPAPER_SUFFIXES]
     skipped = [entry for entry in entries if entry not in images]
     if not images:
-        die(f"no {'/'.join(s.lstrip('.') for s in WALL_SUFFIXES)} wallpapers in {backgrounds}")
+        die(f"no {'/'.join(s.lstrip('.') for s in WALLPAPER_SUFFIXES)} wallpapers in {backgrounds}")
     return images, skipped
 
 
@@ -373,7 +378,7 @@ def install_wallpapers(images, pack_dir):
     return target
 
 
-def validate(pack_dir, name):
+def validate_installed_pack(pack_dir, name):
     ok = True
 
     if shutil.which("hyq"):
@@ -404,7 +409,7 @@ def validate(pack_dir, name):
     return ok
 
 
-def parse_args():
+def parse_import_arguments():
     parser = argparse.ArgumentParser(
         prog="hyprshell theme/theme.import",
         description="Convert a compatible theme source (directory or git URL) into a Hypr theme pack.",
@@ -421,19 +426,19 @@ def parse_args():
     return parser.parse_args()
 
 
-def source_hyprland_conf(src):
-    hypr_conf = src / "hyprland.conf"
+def load_source_hyprland_settings(source_dir):
+    hypr_conf = source_dir / "hyprland.conf"
     if hypr_conf.is_file():
-        return parse_hyprland_conf(hypr_conf.read_text())
+        return parse_importable_hyprland_settings(hypr_conf.read_text())
     warn("source ships no hyprland.conf; hypr.theme will carry metadata only")
     return {}, []
 
 
-def theme_header_vars(src, args, mode):
+def resolve_pack_metadata(source_dir, args, mode):
     cursor_theme, cursor_size = resolve_cursor(args.cursor, args.size)
-    nvim_scheme, nvim_variant = resolve_nvim_scheme(src, args.nvim, mode)
+    nvim_scheme, nvim_variant = resolve_nvim_scheme(source_dir, args.nvim, mode)
     return {
-        "ICON_THEME": resolve_icon_theme(src, args.icons),
+        "ICON_THEME": resolve_icon_theme(source_dir, args.icons),
         "COLOR_SCHEME": f"prefer-{mode}",
         "NVIM_SCHEME": nvim_scheme,
         "NVIM_VARIANT": nvim_variant,
@@ -444,7 +449,7 @@ def theme_header_vars(src, args, mode):
     }
 
 
-def print_dry_run(pack_dir, palette, hypr_theme, images, skipped):
+def print_pack_preview(pack_dir, palette, hypr_theme, images, skipped):
     print(f"==> {pack_dir}/palette.toml\n{palette}")
     print(f"==> {pack_dir}/hypr.theme\n{hypr_theme}")
     print(f"==> {pack_dir}/wallpapers/ ({len(images)} images, {len(skipped)} skipped)")
@@ -453,18 +458,18 @@ def print_dry_run(pack_dir, palette, hypr_theme, images, skipped):
     print(f"==> {WALL_LINK} -> wallpapers/{images[0].name}")
 
 
-def write_pack(pack_dir, name, palette, hypr_theme, images, skipped):
+def install_pack(pack_dir, name, palette, hypr_theme, images, skipped):
     pack_dir.mkdir(parents=True, exist_ok=True)
     (pack_dir / "palette.toml").write_text(palette)
     (pack_dir / "hypr.theme").write_text(hypr_theme)
     wall = install_wallpapers(images, pack_dir)
 
-    ok = validate(pack_dir, name)
+    ok = validate_installed_pack(pack_dir, name)
     print(f"theme.import: wrote {pack_dir}")
     print(f"theme.import: {len(images)} wallpapers, default {wall.name}", end="")
     print(f", skipped {len(skipped)} non-image files" if skipped else "")
-    if warnings:
-        print(f"theme.import: {len(warnings)} warning(s) above", file=sys.stderr)
+    if import_warnings:
+        print(f"theme.import: {len(import_warnings)} warning(s) above", file=sys.stderr)
     if not ok:
         return 1
     print(f'theme.import: apply with `hyprshell theme.switch.sh -s "{name}"`')
@@ -472,31 +477,26 @@ def write_pack(pack_dir, name, palette, hypr_theme, images, skipped):
 
 
 def main():
-    args = parse_args()
-    cleanup = []
-
-    try:
-        src, raw_name = fetch_source(args.source, cleanup)
+    args = parse_import_arguments()
+    with ExitStack() as source_cleanup:
+        source_dir, raw_name = resolve_import_source(args.source, source_cleanup)
         name = args.name or derive_pack_name(raw_name)
         pack_dir = THEMES_DIR / name
 
         if pack_dir.exists() and not (args.force or args.dry_run):
             die(f"{pack_dir} already exists; pass --force to overwrite")
 
-        data = load_source_data(src)
-        palette, background = build_palette(data, args.kvantum)
-        variables, blocks = source_hyprland_conf(src)
-        mode = resolve_mode(src, data, background)
-        hypr_theme = build_hypr_theme(theme_header_vars(src, args, mode), blocks, variables)
-        images, skipped = collect_wallpapers(src)
+        data = load_source_palette_values(source_dir)
+        palette, background = render_palette_toml(data, args.kvantum)
+        variables, blocks = load_source_hyprland_settings(source_dir)
+        mode = resolve_pack_polarity(source_dir, data, background)
+        hypr_theme = render_hypr_theme(resolve_pack_metadata(source_dir, args, mode), blocks, variables)
+        images, skipped = collect_wallpapers(source_dir)
 
         if args.dry_run:
-            print_dry_run(pack_dir, palette, hypr_theme, images, skipped)
+            print_pack_preview(pack_dir, palette, hypr_theme, images, skipped)
             return 0
-        return write_pack(pack_dir, name, palette, hypr_theme, images, skipped)
-    finally:
-        for path in cleanup:
-            shutil.rmtree(path, ignore_errors=True)
+        return install_pack(pack_dir, name, palette, hypr_theme, images, skipped)
 
 
 if __name__ == "__main__":

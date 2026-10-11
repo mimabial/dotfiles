@@ -2,6 +2,7 @@
   "panel": "horizontal",
   "edge": "top",
   "clock": "gnome",
+  "mediaHistoryLocalOnly": true,
   "left": [
     "gnome-activities"
   ],

@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell.Services.Pipewire
+import "modules/StatusSymbols.js" as StatusSymbols
 
 BarButton {
     id: root
@@ -9,6 +10,7 @@ BarButton {
     property bool framed: true
     readonly property bool muted: root.sink ? root.sink.audio.muted : false
     css: "volume" + (root.muted ? ".muted" : "")
+    symbol: root.styledSymbol ? StatusSymbols.volume(root.sink, root.muted) : ""
     // must measure the face BarButton draws with, or the nudge corrects an ink
     // overhang the drawn glyph does not have
     TextMetrics { id: iconMetrics; font.family: root.usesIconFont ? root.shell.iconGlyphFont : root.shell.fontFamily; font.pixelSize: root.renderedFontSize; font.weight: root.fontWeight; text: root.text }

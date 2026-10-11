@@ -1,27 +1,15 @@
 #!/usr/bin/env python3
 import json
-import os
 import sys
 from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import atomic_write, cache_hit, cache_store
-from _roles import hex_to_rgb, palette_roles, roles_digest
+from _common import RENDER_OUTPUT_DIR, atomic_write, cache_hit, cache_store, hex_to_rgb, palette_path
+from _roles import qt_roles_from_palette, qt_role_inputs_digest
 
-from _shell import shell_files
+from _kvantum import resolve_kvantum_color_files
 
-PALETTE = Path(
-    sys.argv[1]
-    if len(sys.argv) > 1 and sys.argv[1]
-    else os.environ.get("HYPR_STATE_HOME", os.path.expanduser("~/.local/state/hypr"))
-    + "/active-palette.json"
-)
-OUT_DIR = (
-    Path(os.environ.get("HYPR_CACHE_HOME", os.path.expanduser("~/.cache/hypr")))
-    / "render"
-    / "qtct"
-)
-KDE_FILE = OUT_DIR / "Hypr.colors"
+PALETTE = palette_path()
+KDE_FILE = RENDER_OUTPUT_DIR / "qtct" / "Hypr.colors"
 
 
 def rgb(color):
@@ -115,15 +103,14 @@ def main():
     if not PALETTE.is_file():
         print(f"render/qtct: missing {PALETTE}", file=sys.stderr)
         sys.exit(1)
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     palette = json.loads(PALETTE.read_text())
-    shell_kvconfig, shell_colors_map = shell_files(palette)
-    cache_key = roles_digest(PALETTE, shell_kvconfig, shell_colors_map, Path(__file__))
+    kvantum_files = resolve_kvantum_color_files(palette)
+    cache_key = qt_role_inputs_digest(PALETTE, kvantum_files, Path(__file__))
     if cache_hit("qtct", cache_key) and KDE_FILE.exists():
         return
 
-    roles = palette_roles(palette, shell_kvconfig, shell_colors_map)
+    roles = qt_roles_from_palette(palette, kvantum_files)
     atomic_write(KDE_FILE, render_kde(roles))
     cache_store("qtct", cache_key)
 

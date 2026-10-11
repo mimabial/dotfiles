@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import json
-import subprocess
+
+from pyutils import child_process
 
 
 def batch_json(*commands: str, timeout: float | None = None) -> list[object]:
     if not commands:
         return []
-    result = subprocess.run(
+    result = child_process.run(
         ["hyprctl", "--batch", "-j", ";".join(commands)],
         capture_output=True,
         text=True,

@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/dotfiles.lib.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/dotfiles/manifest.bash"
 
 declare -A HYPRLAND_REQUIRED_HOST_FILES=([.config/hypr/gpu.lua]=1 [.config/hypr/monitors.lua]=1)
 

@@ -5,11 +5,11 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state system || exit 1
-hypr_runtime_load_state || exit 1
+hypr_runtime_load_desktop_environment || exit 1
 
 show_help() {
   cat <<HELP
-Usage: $(basename "$0") --[option]
+Usage: hyprshell util/sysmon-launch --[option]
     -h, --help      Display this help and exit
     -e, --execute   Explicit command to execute, arguments included ("dua i")
 

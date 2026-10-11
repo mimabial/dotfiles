@@ -5,101 +5,17 @@ import fcntl
 import logging
 import os
 import signal
-import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from keybinds_hint import (
-    HYPRCTL_TIMEOUT_SECONDS,
-    annotate_bindings_with_display_metadata,
-    generate_hint,
-    get_hyprctl_binds,
-)
-from pyutils.hyprctl import batch_json
-from pyutils.shell_env import load_shell_assignments
+from pyutils.xdg_base_dirs import xdg_runtime_dir
+from submap_bindings import normalize_submap, build_submap_hint
 
 COMMAND_TIMEOUT = 2
 HINT_BUILD_TIMEOUT = 5
-NOTIFICATION_ID = "9042"
+NOTIFY_ID_SUBMAP_HINT = "9042"
 LOG = logging.getLogger("submap-hint")
-STATE_FILE = Path(os.environ.get("HYPR_STATE_HOME", Path.home() / ".local/state/hypr")) / "staterc"
-
-# keybindings.lua tags binds a submap re-exposes from the global set with this
-# prefix: they work inside the submap but stay out of its hint. Change both.
-HIDDEN_MARKER = "[Hidden] "
-
-# keybindings.lua gates these binds on the workspace layout at press time, inside
-# a Lua closure that hyprctl cannot see: every bind reports dispatcher "__lua".
-# The sub-category header is the only signal that a bind is layout-specific.
-LAYOUT_HEADERS = {
-    "Dwindle": "dwindle",
-    "Master": "master",
-    "Scrolling": "scrolling",
-    "Monocle": "monocle",
-}
-
-
-def normalize_submap(name):
-    name = name.strip()
-    return "" if name.casefold() in {"", "default", "reset"} else name
-
-
-def active_tiled_layout(monitors=None, workspaces=None):
-    """Mirrors layout_action in keybindings.lua: a special workspace, when one is
-    open on the focused monitor, owns the layout the gate compares against."""
-    if monitors is None or workspaces is None:
-        monitors, workspaces = batch_json("monitors", "workspaces", timeout=HYPRCTL_TIMEOUT_SECONDS)
-    focused = next((m for m in monitors if m.get("focused")), None)
-    if focused is None:
-        return None
-    special = (focused.get("specialWorkspace") or {}).get("name") or ""
-    wanted = special or (focused.get("activeWorkspace") or {}).get("name") or ""
-    if not wanted:
-        return None
-    for workspace in workspaces:
-        if workspace.get("name") == wanted:
-            return workspace.get("tiledLayout")
-    return None
-
-
-def applies_to_layout(bind, layout):
-    required = LAYOUT_HEADERS.get(bind.get("header2", ""))
-    return required is None or required == layout
-
-
-def build_hint(name):
-    binds = get_hyprctl_binds()
-    try:
-        layout = active_tiled_layout()
-    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
-        LOG.error("layout lookup failed, showing all binds: %s", error)
-        layout = None
-    annotate_bindings_with_display_metadata(binds)
-    submap_binds = [bind for bind in binds if bind.get("submap") == name]
-    # The annotation rewrites description; action_key keeps the original.
-    submap_binds = [
-        bind for bind in submap_binds if not bind.get("action_key", "").startswith(HIDDEN_MARKER)
-    ]
-    state = load_shell_assignments(STATE_FILE) if STATE_FILE.is_file() else {}
-    workflow = state.get("HYPR_WORKFLOW", "")
-    profile_locked = os.getenv("HYPR_PROFILE_WORKFLOW_LOCK", "1") != "0"
-    blocked = {
-        "gaming": ("bar", "select workflow"),
-        "powersaver": ("select workflow",) if profile_locked else (),
-        "windows": ("toggle bar",),
-    }.get(workflow, ())
-    if state.get("WORKFLOW_WINDOW_LAYOUT"):
-        blocked += ("cycle global layout",)
-    if len(state.get("WORKFLOW_QUICKSHELL_LAYOUT", "").split()) == 1:
-        blocked += ("bar layout",)
-    if blocked:
-        submap_binds = [bind for bind in submap_binds if not any(text in bind["action_key"] for text in blocked)]
-    if layout is not None:
-        submap_binds = [
-            bind for bind in submap_binds if applies_to_layout(bind, layout)
-        ]
-    return generate_hint(submap_binds)
 
 
 async def stop_process(process):
@@ -154,7 +70,7 @@ async def show_notification(name, body):
             "-a",
             "Submap",
             "-r",
-            NOTIFICATION_ID,
+            NOTIFY_ID_SUBMAP_HINT,
             "-t",
             "0",
             "-h",
@@ -169,22 +85,22 @@ async def show_notification(name, body):
 
 async def dismiss_notification():
     await run_command(
-        ["dunstify", "-C", NOTIFICATION_ID],
+        ["dunstify", "-C", NOTIFY_ID_SUBMAP_HINT],
         "Dunst dismiss",
     )
 
 
-async def hint_body(name):
+async def generate_submap_hint_with_deadline(name):
     try:
         return await asyncio.wait_for(
-            asyncio.to_thread(build_hint, name),
+            asyncio.to_thread(build_submap_hint, name),
             HINT_BUILD_TIMEOUT,
         )
     except TimeoutError as error:
         raise RuntimeError(f"hint generation timed out for submap {name!r}") from error
 
 
-class HintController:
+class SubmapHintController:
     def __init__(self):
         self.current_submap = None
         self.show_task = None
@@ -212,7 +128,7 @@ class HintController:
 
     async def show(self, name):
         try:
-            body = await hint_body(name)
+            body = await generate_submap_hint_with_deadline(name)
             if self.current_submap != name:
                 return
             if not body:
@@ -233,8 +149,8 @@ class HintController:
             LOG.error("%s", error)
 
 
-def socket_path():
-    runtime_dir = os.environ.get("XDG_RUNTIME_DIR")
+def hyprland_event_socket_path():
+    runtime_dir = xdg_runtime_dir()
     signature = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
     if not runtime_dir or not signature:
         raise RuntimeError(
@@ -243,47 +159,52 @@ def socket_path():
     return Path(runtime_dir) / "hypr" / signature / ".socket2.sock"
 
 
-async def wait_to_retry(stop_event):
+async def current_submap_or_none():
     try:
-        await asyncio.wait_for(stop_event.wait(), 1)
-    except TimeoutError:
-        pass
+        return await active_submap()
+    except (OSError, RuntimeError, ValueError) as error:
+        LOG.error("%s; assuming no submap is active", error)
+        return ""
 
 
-async def watch_events(controller, stop_event):
-    path = socket_path()
+async def forward_submap_events(controller, reader, stop_event):
+    await controller.set_submap(await current_submap_or_none())
     while not stop_event.is_set():
-        writer = None
+        raw_event = await reader.readline()
+        if not raw_event:
+            LOG.warning("Hyprland event stream closed; reconnecting")
+            return
+        event = raw_event.decode(errors="replace").rstrip("\n")
+        if event.startswith("submap>>"):
+            await controller.set_submap(event.removeprefix("submap>>"))
+
+
+async def watch_submap_events(controller, stop_event):
+    path = hyprland_event_socket_path()
+    while not stop_event.is_set():
         try:
             reader, writer = await asyncio.open_unix_connection(path)
-            await controller.set_submap(await active_submap())
-            while not stop_event.is_set():
-                raw_event = await reader.readline()
-                if not raw_event:
-                    raise ConnectionError("Hyprland submap event stream closed")
-                event = raw_event.decode(errors="replace").rstrip("\n")
-                if event.startswith("submap>>"):
-                    await controller.set_submap(event.removeprefix("submap>>"))
-        except asyncio.CancelledError:
-            raise
-        except (OSError, RuntimeError, ValueError) as error:
+        except OSError as error:
+            LOG.error("%s; the Hyprland instance is gone", error)
+            return
+        try:
+            await forward_submap_events(controller, reader, stop_event)
+        except OSError as error:
             LOG.error("%s; reconnecting", error)
-            await wait_to_retry(stop_event)
         finally:
-            if writer is not None:
-                writer.close()
-                with contextlib.suppress(OSError):
-                    await writer.wait_closed()
+            writer.close()
+            with contextlib.suppress(OSError):
+                await writer.wait_closed()
 
 
-async def watch():
-    controller = HintController()
+async def watch_submap_hints():
+    controller = SubmapHintController()
     stop_event = asyncio.Event()
     loop = asyncio.get_running_loop()
     for watched_signal in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(watched_signal, stop_event.set)
 
-    watcher = asyncio.create_task(watch_events(controller, stop_event))
+    watcher = asyncio.create_task(watch_submap_events(controller, stop_event))
     stopper = asyncio.create_task(stop_event.wait())
     try:
         done, _ = await asyncio.wait(
@@ -303,7 +224,7 @@ async def watch():
 
 
 async def show_once(name):
-    body = await hint_body(name)
+    body = await generate_submap_hint_with_deadline(name)
     if not body:
         raise RuntimeError(f"no configured binds found for submap {name!r}")
     await show_notification(name, body)
@@ -313,7 +234,7 @@ async def refresh():
     name = await active_submap()
     if not name:
         return
-    body = await hint_body(name)
+    body = await generate_submap_hint_with_deadline(name)
     if name != await active_submap():
         return
     if not body:
@@ -343,7 +264,7 @@ def run_watcher():
             fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             return
-        asyncio.run(watch())
+        asyncio.run(watch_submap_hints())
 
 
 def main():

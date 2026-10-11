@@ -13,6 +13,7 @@ from lyrics_paths import (
     is_in_music_library,
     lrc_path_for,
     lyrics_directory_for,
+    prune_empty_lyrics_parents,
 )
 
 
@@ -26,11 +27,7 @@ class MovePlan:
     target: Path
     lyrics_source: Path | None
     lyrics_target: Path | None
-    move_lyrics: bool
-
-    @property
-    def has_lyrics(self) -> bool:
-        return self.move_lyrics
+    has_lyrics: bool
 
 
 def _effective_target(source: Path, destination: str | Path) -> Path:
@@ -86,26 +83,15 @@ def build_move_plan(
     check_move_target(source_path, target, require_music_root)
 
     lyrics_source, lyrics_target = lyrics_paths_for_move(source_path, target)
-    move_lyrics = (
+    has_lyrics = (
         lyrics_source is not None
         and lyrics_target is not None
         and lyrics_source != lyrics_target
         and lyrics_source.exists()
     )
-    if move_lyrics and lyrics_target.exists():
+    if has_lyrics and lyrics_target.exists():
         raise MoveError(f"lyrics destination already exists: {lyrics_target}")
-    return MovePlan(source_path, target, lyrics_source, lyrics_target, move_lyrics)
-
-
-def _prune_empty_lyrics_parents(path: Path) -> None:
-    stop = hidden_lyrics_root()
-    current = path
-    while current != stop and stop in current.parents:
-        try:
-            current.rmdir()
-        except OSError:
-            return
-        current = current.parent
+    return MovePlan(source_path, target, lyrics_source, lyrics_target, has_lyrics)
 
 
 def apply_move_plan(plan: MovePlan) -> None:
@@ -132,7 +118,7 @@ def apply_move_plan(plan: MovePlan) -> None:
             ) from exc
         raise MoveError(f"lyrics move failed; audio move was rolled back: {exc}") from exc
 
-    _prune_empty_lyrics_parents(plan.lyrics_source.parent)
+    prune_empty_lyrics_parents(plan.lyrics_source.parent)
 
 
 def update_mpd() -> None:

@@ -1,25 +1,14 @@
-"""Theme mode is source-first: Qt/KDE roles come from the pack's
-kvconfig.theme [GeneralColors] and colors.map. Wallpaper mode keeps generated
-fallbacks because there is no fixed theme source palette."""
+"""Qt/KDE roles map the selected Kvantum shell's literals to the active palette."""
 
 import hashlib
 import os
 import re
 from pathlib import Path
 
-from _common import short_digest
+from _common import HEX_COLOR, LIGHT_LUMINANCE_THRESHOLD, hex_to_rgb, luminance, short_digest
 
 ALTERNATE_SURFACE_SHADE = 0.06
-
-
-def hex_to_rgb(hex_):
-    h = hex_.lstrip("#")
-    return tuple(int(h[i : i + 2], 16) for i in (0, 2, 4))
-
-
-def luminance(hex_):
-    r, g, b = (c / 255 for c in hex_to_rgb(hex_))
-    return 0.299 * r + 0.587 * g + 0.114 * b
+DISABLED_TEXT_SHADE = 0.18
 
 
 def contrast_text(bg, fg, against):
@@ -47,56 +36,56 @@ def shade(hex_, amount):
 def _parse_general_colors(kvconfig_path):
     if not kvconfig_path or not os.path.exists(kvconfig_path):
         return {}
-    with open(kvconfig_path) as f:
-        content = f.read()
-    sec = re.search(r"(?ms)^\[GeneralColors\]\n(.*?)(?=^\[|\Z)", content)
-    if not sec:
+    with open(kvconfig_path) as config_file:
+        config_text = config_file.read()
+    section_match = re.search(r"(?ms)^\[GeneralColors\]\n(.*?)(?=^\[|\Z)", config_text)
+    if not section_match:
         return {}
-    result = {}
-    for m in re.finditer(
-        r"^([a-z._]+)\s*=\s*(#[0-9a-fA-F]{6})(?:[0-9a-fA-F]{2})?",
-        sec.group(1),
-        re.MULTILINE,
-    ):
-        result[m.group(1)] = m.group(2).lower()
-    return result
+    return {
+        color_match["color_key"]: color_match["color_hex"].lower()
+        for color_match in re.finditer(
+            r"^(?P<color_key>[a-z._]+)\s*=\s*(?P<color_hex>#[0-9a-fA-F]{6})(?:[0-9a-fA-F]{2})?",
+            section_match[1],
+            re.MULTILINE,
+        )
+    }
 
 
-def _load_colors_map(colors_map_path, palette_full):
-    subs = {}
+def _load_colors_map(colors_map_path, palette_by_role):
+    color_substitutions = {}
     if not colors_map_path or not os.path.exists(colors_map_path):
-        return subs
-    with open(colors_map_path) as f:
-        for line in f:
+        return color_substitutions
+    with open(colors_map_path) as mapping_file:
+        for line in mapping_file:
             line = line.strip()
             if "=" not in line:
                 continue
-            hex_part, _, var = line.partition("=")
-            hex_part = hex_part.strip()
-            var = var.strip()
-            if not re.fullmatch(r"#[0-9a-fA-F]{6}", hex_part):
+            source_hex, _, replacement = line.partition("=")
+            source_hex = source_hex.strip()
+            replacement = replacement.strip()
+            if not HEX_COLOR.fullmatch(source_hex):
                 continue
-            if re.fullmatch(r"#[0-9a-fA-F]{6}", var):
-                subs[hex_part.lower()] = var.lower()
-            elif var in palette_full:
-                subs[hex_part.lower()] = palette_full[var]
-    return subs
+            if HEX_COLOR.fullmatch(replacement):
+                color_substitutions[source_hex.lower()] = replacement.lower()
+            elif replacement in palette_by_role:
+                color_substitutions[source_hex.lower()] = palette_by_role[replacement]
+    return color_substitutions
 
 
 class _RoleSource:
 
-    def __init__(self, general, substitutions):
-        self._general = general
-        self._substitutions = substitutions
+    def __init__(self, general_colors, color_substitutions):
+        self._general_colors = general_colors
+        self._color_substitutions = color_substitutions
 
-    def color(self, key):
-        target = self._general.get(key)
-        if not target:
+    def color(self, color_key):
+        source_color = self._general_colors.get(color_key)
+        if not source_color:
             return None
-        return self._substitutions.get(target, target)
+        return self._color_substitutions.get(source_color, source_color)
 
-    def role(self, key, default_var, colors, fg):
-        return self.color(key) or colors.get(default_var, fg)
+    def role(self, color_key, fallback_palette_role, palette_colors, fallback_color):
+        return self.color(color_key) or palette_colors.get(fallback_palette_role, fallback_color)
 
 
 def _resolve_shared_roles(source, bg, fg, colors):
@@ -131,7 +120,7 @@ def _resolve_roles(bg, fg, colors, is_dark):
         "text": fg,
         "window_text": fg,
         "button_text": fg,
-        "disabled_text": shade(fg, 0.18 * (-1 if is_dark else 1)),
+        "disabled_text": shade(fg, DISABLED_TEXT_SHADE * (-1 if is_dark else 1)),
         "tooltip_text": fg,
     }
 
@@ -153,32 +142,33 @@ class QtRoles:
         bg = scheme["special"]["background"]
         fg = scheme["special"]["foreground"]
         self.colors = scheme["colors"]
-        palette_full = {**self.colors, "background": bg, "foreground": fg}
+        palette_by_role = {**self.colors, "background": bg, "foreground": fg}
         source = _RoleSource(
             _parse_general_colors(kvconfig_path),
-            _load_colors_map(colors_map_path, palette_full),
+            _load_colors_map(colors_map_path, palette_by_role),
         )
 
         self.bg = bg
-        self.is_dark = luminance(bg) < 0.5
+        self.is_dark = luminance(bg) < LIGHT_LUMINANCE_THRESHOLD
         resolved = _resolve_shared_roles(source, bg, fg, self.colors)
         resolved.update(_resolve_roles(bg, fg, self.colors, self.is_dark))
         for name, value in resolved.items():
             setattr(self, name, value)
 
 
-def palette_roles(palette, shell_kvconfig, shell_colors_map):
+def qt_roles_from_palette(palette, kvantum_files):
     return QtRoles(
         scheme=palette_to_ansi_scheme(palette),
-        kvconfig_path=str(shell_kvconfig) if shell_kvconfig else None,
-        colors_map_path=str(shell_colors_map) if shell_colors_map else None,
+        kvconfig_path=kvantum_files.kvconfig_path,
+        colors_map_path=kvantum_files.color_map_path,
     )
 
 
-def roles_digest(palette_path, shell_kvconfig, shell_colors_map, renderer):
+def qt_role_inputs_digest(palette_path, kvantum_files, renderer_path):
     hasher = hashlib.sha256()
     hasher.update(palette_path.read_bytes())
-    for path in (shell_kvconfig, shell_colors_map, renderer, Path(__file__)):
+    for path in (*kvantum_files, renderer_path, Path(__file__), Path(__file__).with_name("_kvantum.py"),
+                 Path(__file__).with_name("_common.py")):
         if path and path.is_file():
             hasher.update(path.read_bytes())
     return short_digest(hasher)

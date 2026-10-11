@@ -5,7 +5,7 @@ set -euo pipefail
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state || exit 1
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR}/window/stateful-choice.common.bash"
+source "${HYPR_LIB_DIR}/window/lib/visual-presets.bash"
 
 animations_user_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/animations"
 animations_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/animations"
@@ -26,12 +26,11 @@ HELP
 
 resolve_animation_path() {
   local name="${1:-theme}"
-  name="${name%.lua}"
-  hypr_stateful_choice_resolve_path "${name}" "lua" "${animations_user_dir}" "${animations_shared_dir}"
+  hypr_visual_preset_resolve_path "${name}" "lua" "${animations_user_dir}" "${animations_shared_dir}"
 }
 
 list_animation_names() {
-  hypr_stateful_choice_list_names "lua" "${animations_user_dir}" "${animations_shared_dir}" "disable" "theme"
+  hypr_visual_preset_list_names "lua" "${animations_user_dir}" "${animations_shared_dir}" "disable" "theme"
 }
 
 # Keep workflow-compatible tab-separated fields, including empty metadata.
@@ -54,7 +53,7 @@ write_animation_state() {
     return 1
   }
 
-  hypr_stateful_choice_write_lua "${animations_state_file}" \
+  hypr_visual_preset_write_lua "${animations_state_file}" \
     --load "${animation_path}" \
     "ANIMATION=${current_animation}" \
     "ANIMATION_PATH=${animation_path}"
@@ -74,7 +73,7 @@ apply_animation() {
     echo "Error: unknown animation '${animation_name}'" >&2
     return 1
   }
-  hypr_stateful_choice_apply "HYPR_ANIMATION" "${animation_name}" "hypr-animation" "${notification_title}" write_animation_state
+  hypr_visual_preset_apply "HYPR_ANIMATION" "${animation_name}" "hypr-animation" "${notification_title}" write_animation_state
   hyprctl reload config-only -q
 }
 

@@ -16,8 +16,6 @@ if [[ -n "${FFTAB_ENSURE_DISABLE:-}" ]] ||
 fi
 
 host_path="${bridge_dir}/host/fftab_host.py"
-manifest="${HOME}/.mozilla/native-messaging-hosts/fftab_bridge.json"
-extension_id="fftab-bridge@hypr.local"
 issues=()
 
 for command_name in playerctl jq yt-dlp unzip; do
@@ -30,8 +28,8 @@ from gi.repository import Playerctl
 EOF
 
 [[ -x "${host_path}" ]] || chmod +x "${host_path}" 2>/dev/null || issues+=("host not executable: ${host_path}")
-if ! grep -qsF "\"path\": \"${host_path}\"" "${manifest}"; then
-  fftab_write_manifest "${manifest}" "${host_path}" "${extension_id}"
+if ! grep -qsF "\"path\": \"${host_path}\"" "${FFTAB_MANIFEST}"; then
+  fftab_write_manifest "${FFTAB_MANIFEST}" "${host_path}" "${FFTAB_EXTENSION_ID}"
 fi
 
 profiles_ini="${HOME}/.mozilla/firefox/profiles.ini"
@@ -50,7 +48,7 @@ if [[ -n "${profile_name}" && -d "${HOME}/.mozilla/firefox/${profile_name}" ]]; 
   extension_manifest="${bridge_dir}/extension/manifest.json"
   source_version="$(jq -r '.version // empty' "${extension_manifest}" 2>/dev/null || true)"
   installed_version="$(
-    jq -r --arg id "${extension_id}" \
+    jq -r --arg id "${FFTAB_EXTENSION_ID}" \
       '.addons[] | select(.id == $id) | .version' \
       "${profile_dir}/extensions.json" 2>/dev/null | head -1
   )"

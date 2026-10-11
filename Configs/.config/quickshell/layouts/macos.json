@@ -2,6 +2,7 @@
   "panel": "horizontal",
   "edge": "top",
   "clock": "macos",
+  "mediaHistoryLocalOnly": true,
   "left": [
     {
       "id": "menu",

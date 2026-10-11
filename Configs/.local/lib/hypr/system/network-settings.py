@@ -16,44 +16,44 @@ DNS_FIELDS = ["ipv4.ignore-auto-dns", "ipv4.dns", "ipv6.ignore-auto-dns", "ipv6.
 WIFI_BANDS_MHZ = {"2.4": (2400, 2500), "5": (4900, 5925), "6": (5925, 7125)}
 
 
-def nm(*args):
+def networkmanager_output(*args):
     return subprocess.run(["nmcli", "--escape", "no", *args], check=True, text=True, capture_output=True).stdout
 
 
-def read(uuid, fields):
-    return nm("--get-values", ",".join(fields), "connection", "show", "uuid", uuid).splitlines()
+def connection_fields(connection_uuid, fields):
+    return networkmanager_output("--get-values", ",".join(fields), "connection", "show", "uuid", connection_uuid).splitlines()
 
 
-def band_for(frequency):
+def wifi_band_for_frequency(frequency):
     return next((band for band, (low, high) in WIFI_BANDS_MHZ.items() if low <= frequency < high), "")
 
 
-def status(uuid, iface):
-    flags4, dns4, flags6, dns6 = read(uuid, DNS_FIELDS)
+def connection_status(connection_uuid, interface_name):
+    flags4, dns4, flags6, dns6 = connection_fields(connection_uuid, DNS_FIELDS)
     servers = dns4.replace(",", " ").split() + dns6.replace(",", " ").split()
     mode = "DHCP" if flags4 == flags6 == "no" else next((name for name, preset in DNS_PROVIDERS.items() if sorted(servers) == sorted(preset)), "Custom")
     result = {"dnsMode": mode, "dnsServers": " ".join(servers), "bands": [], "selectedBand": "auto"}
-    if nm("--get-values", "connection.type", "connection", "show", "uuid", uuid).strip() == "802-11-wireless":
-        ssid, selected = read(uuid, ["802-11-wireless.ssid", "802-11-wireless.band"])
-        frequencies = nm("--get-values", "FREQ,SSID", "device", "wifi", "list", "ifname", iface, "--rescan", "no")
+    if networkmanager_output("--get-values", "connection.type", "connection", "show", "uuid", connection_uuid).strip() == "802-11-wireless":
+        ssid, selected = connection_fields(connection_uuid, ["802-11-wireless.ssid", "802-11-wireless.band"])
+        frequencies = networkmanager_output("--get-values", "FREQ,SSID", "device", "wifi", "list", "ifname", interface_name, "--rescan", "no")
         bands = set()
         for line in frequencies.splitlines():
             frequency, _, name = line.partition(":")
             if name == ssid:
-                band = band_for(int(frequency.split()[0]))
+                band = wifi_band_for_frequency(int(frequency.split()[0]))
                 if band:
                     bands.add(band)
         result.update(bands=sorted(bands, key=float), selectedBand=next((key for key, value in BANDS.items() if value == selected), "auto"))
     return result
 
 
-def modify(uuid, fields, values):
-    nm("connection", "modify", "uuid", uuid, *[part for pair in zip(fields, values) for part in pair])
+def modify_connection_fields(connection_uuid, fields, values):
+    networkmanager_output("connection", "modify", "uuid", connection_uuid, *[part for pair in zip(fields, values) for part in pair])
 
 
-def apply(args):
+def apply_connection_setting(args):
     if args.action == "status":
-        print(json.dumps(status(args.uuid, args.iface)))
+        print(json.dumps(connection_status(args.connection_uuid, args.interface_name)))
         return
     if args.action == "dns":
         servers = [] if args.value == "DHCP" else DNS_PROVIDERS.get(args.value)
@@ -63,21 +63,21 @@ def apply(args):
                 raise ValueError("Enter at least one DNS server address.")
         fields = DNS_FIELDS
         values = ["no" if args.value == "DHCP" else "yes", " ".join(value for value in servers if ":" not in value), "no" if args.value == "DHCP" else "yes", " ".join(value for value in servers if ":" in value)]
-        activate = ["device", "reapply", args.iface]
+        activate = ["device", "reapply", args.interface_name]
     else:
         fields = ["802-11-wireless.band"]
         values = [BANDS[args.value]]
-        if args.value != "auto" and args.value not in status(args.uuid, args.iface)["bands"]:
+        if args.value != "auto" and args.value not in connection_status(args.connection_uuid, args.interface_name)["bands"]:
             raise ValueError("That band is no longer available on this network.")
-        activate = ["connection", "up", "uuid", args.uuid, "ifname", args.iface]
-    previous = read(args.uuid, fields)
-    modify(args.uuid, fields, values)
+        activate = ["connection", "up", "uuid", args.connection_uuid, "ifname", args.interface_name]
+    previous = connection_fields(args.connection_uuid, fields)
+    modify_connection_fields(args.connection_uuid, fields, values)
     try:
-        nm(*activate)
+        networkmanager_output(*activate)
     except subprocess.CalledProcessError as error:
-        modify(args.uuid, fields, previous)
+        modify_connection_fields(args.connection_uuid, fields, previous)
         try:
-            nm(*activate)
+            networkmanager_output(*activate)
         except subprocess.CalledProcessError:
             raise ValueError("Restored the previous profile settings, but could not reactivate the connection. " + error.stderr.strip())
         raise ValueError("Could not apply the change; restored the previous settings. " + error.stderr.strip())
@@ -85,12 +85,12 @@ def apply(args):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("action", choices=["status", "dns", "band"])
-parser.add_argument("uuid")
-parser.add_argument("iface")
+parser.add_argument("connection_uuid")
+parser.add_argument("interface_name")
 parser.add_argument("value", nargs="?", default="")
 parser.add_argument("servers", nargs="?", default="")
 try:
-    apply(parser.parse_args())
+    apply_connection_setting(parser.parse_args())
 except (subprocess.CalledProcessError, ValueError, KeyError) as error:
     print(str(getattr(error, "stderr", None) or error).strip(), file=sys.stderr)
     sys.exit(1)

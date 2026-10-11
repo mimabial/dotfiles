@@ -8,18 +8,16 @@ source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 hypr_help_guard "Usage: hyprshell session/toggle-keep-awake
 Toggle manual idle inhibition (keep the screen awake)." "$@"
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=/dev/null
-source "${script_dir}/idle.state.bash"
+source "${BASH_SOURCE[0]%/*}/idle/toggle.bash"
 
-idle_toggle_state \
-  idle_manual_enabled \
-  idle_set_manual \
-  0 \
-  "process-stop-symbolic" \
-  "Keep awake disabled" \
-  1 \
-  "system-run-symbolic" \
-  "Keep awake enabled" \
-  "Idle behavior restored." \
-  "Manual idle inhibition is active."
+declare -A keep_awake_setting=(
+  [enabled_fn]="idle_manual_enabled"
+  [setter_fn]="idle_set_manual"
+  [disabled_icon]="process-stop-symbolic"
+  [enabled_icon]="system-run-symbolic"
+  [disabled_summary]="Keep awake disabled"
+  [enabled_summary]="Keep awake enabled"
+  [disabled_body]="Idle behavior restored."
+  [enabled_body]="Manual idle inhibition is active."
+)
+idle_toggle_setting keep_awake_setting

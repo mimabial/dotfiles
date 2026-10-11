@@ -2,7 +2,6 @@ astral
 jsonschema
 lyricsgenius
 mutagen
-pulsectl==24.12.0
 PyGObject
 PyQt6
 pywayland

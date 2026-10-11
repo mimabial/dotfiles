@@ -108,8 +108,8 @@ A renderer with no exec bit is silently skipped.
 ## Starting over
 
 ```bash
-hyprshell service/config.sh --mode restore <relative-path>
-hyprshell service/managed.sh --mode restore hypr-config
+hyprshell service/apply-config.sh --mode restore <relative-path>
+hyprshell service/apply-managed-domains.sh --mode restore hypr-config
 ```
 
 One file, or a whole domain from stock defaults with a backup taken first. State

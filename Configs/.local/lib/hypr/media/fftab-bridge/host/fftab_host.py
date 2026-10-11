@@ -29,6 +29,7 @@ OBJ_PATH = "/org/mpris/MediaPlayer2"
 ROOT_IFACE = "org.mpris.MediaPlayer2"
 PLAYER_IFACE = "org.mpris.MediaPlayer2.Player"
 SEEK_SIGNAL_THRESHOLD = 2.0
+MESSAGE_LENGTH_PREFIX = struct.Struct("<I")
 
 NODE_XML = """
 <node>
@@ -81,7 +82,7 @@ _stdout_lock = threading.Lock()
 def send_to_extension(payload: dict) -> None:
     data = json.dumps(payload).encode()
     with _stdout_lock:
-        sys.stdout.buffer.write(struct.pack("<I", len(data)))
+        sys.stdout.buffer.write(MESSAGE_LENGTH_PREFIX.pack(len(data)))
         sys.stdout.buffer.write(data)
         sys.stdout.buffer.flush()
 
@@ -308,10 +309,10 @@ def dispatch_extension_message(msg: dict) -> bool:
 def read_extension_messages(loop: GLib.MainLoop) -> None:
     extension_input = sys.stdin.buffer
     while True:
-        header = extension_input.read(4)
-        if len(header) < 4:
+        header = extension_input.read(MESSAGE_LENGTH_PREFIX.size)
+        if len(header) < MESSAGE_LENGTH_PREFIX.size:
             break
-        (length,) = struct.unpack("<I", header)
+        (length,) = MESSAGE_LENGTH_PREFIX.unpack(header)
         data = extension_input.read(length)
         if len(data) < length:
             break

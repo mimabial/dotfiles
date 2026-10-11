@@ -2,68 +2,52 @@
 
 set -euo pipefail
 
-DEV_ENV_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/dev-env" && pwd)"
+DEV_ENV_DIR="${BASH_SOURCE[0]%/*}/dev-env"
 # shellcheck source=/dev/null
-source "${DEV_ENV_DIR}/common.bash"
-# shellcheck source=/dev/null
-source "${DEV_ENV_DIR}/simple.bash"
-# shellcheck source=/dev/null
-source "${DEV_ENV_DIR}/php.bash"
-# shellcheck source=/dev/null
-source "${DEV_ENV_DIR}/python.bash"
-# shellcheck source=/dev/null
-source "${DEV_ENV_DIR}/elixir.bash"
-# shellcheck source=/dev/null
-source "${DEV_ENV_DIR}/ruby.bash"
-# shellcheck source=/dev/null
-source "${DEV_ENV_DIR}/rust.bash"
-# shellcheck source=/dev/null
-source "${DEV_ENV_DIR}/ocaml.bash"
-# shellcheck source=/dev/null
-source "${DEV_ENV_DIR}/clojure.bash"
-# shellcheck source=/dev/null
-source "${DEV_ENV_DIR}/scala.bash"
+source "${DEV_ENV_DIR}/tool-installation.bash"
+
+DEV_ENV_RUNTIMES=(
+  "ruby|ruby|dev_env_install_ruby"
+  "node||dev_env_install_with_mise Node.js node@lts"
+  "bun||dev_env_install_with_mise Bun bun@latest"
+  "deno||dev_env_install_with_mise Deno deno@latest"
+  "go||dev_env_install_with_mise Go go@latest"
+  "laravel|php|dev_env_install_laravel"
+  "symfony|php|dev_env_install_symfony"
+  "php|php|dev_env_install_php_runtime"
+  "python|python|dev_env_install_python"
+  "elixir|elixir|dev_env_install_elixir"
+  "phoenix|elixir|dev_env_install_phoenix"
+  "rust|rust|dev_env_install_rust"
+  "java||dev_env_install_with_mise Java java@latest"
+  "zig||dev_env_install_with_mise Zig zig@latest zls@latest"
+  "ocaml|ocaml|dev_env_install_ocaml"
+  "dotnet||dev_env_install_with_mise .NET dotnet@latest"
+  "clojure|clojure|dev_env_install_clojure"
+  "scala|scala|dev_env_install_scala"
+)
 
 print_usage() {
   local runtime_list=""
-  runtime_list="$(dev_env_usage_list | paste -sd'|' -)"
+  runtime_list="$(printf '%s\n' "${DEV_ENV_RUNTIMES[@]%%|*}" | paste -sd'|' -)"
   printf 'Usage: hyprshell install/dev-env.sh <%s>\n' "${runtime_list}"
 }
 
-usage_error() {
-  print_usage >&2
-  exit 2
-}
-
 runtime="${1:-}"
-case "${runtime}" in
-  -h|--help)
-    print_usage
-    exit 0
-    ;;
-  "")
-    usage_error
-    ;;
-esac
+if [[ "${runtime}" == -h || "${runtime}" == --help ]]; then
+  print_usage
+  exit 0
+fi
 
-case "${runtime}" in
-  ruby) dev_env_install_ruby ;;
-  node) dev_env_install_simple_runtime 'Node.js' node@lts ;;
-  bun) dev_env_install_simple_runtime 'Bun' bun@latest ;;
-  deno) dev_env_install_simple_runtime 'Deno' deno@latest ;;
-  go) dev_env_install_simple_runtime 'Go' go@latest ;;
-  php) dev_env_install_php_runtime ;;
-  laravel) dev_env_install_laravel ;;
-  symfony) dev_env_install_symfony ;;
-  python) dev_env_install_python ;;
-  elixir) dev_env_install_elixir ;;
-  phoenix) dev_env_install_phoenix ;;
-  rust) dev_env_install_rust ;;
-  java) dev_env_install_simple_runtime 'Java' java@latest ;;
-  zig) dev_env_install_simple_runtime 'Zig' zig@latest zls@latest ;;
-  ocaml) dev_env_install_ocaml ;;
-  dotnet) dev_env_install_simple_runtime '.NET' dotnet@latest ;;
-  clojure) dev_env_install_clojure ;;
-  scala) dev_env_install_scala ;;
-  *) usage_error ;;
-esac
+for entry in "${DEV_ENV_RUNTIMES[@]}"; do
+  IFS='|' read -r name module command <<<"${entry}"
+  [[ "${name}" == "${runtime}" ]] || continue
+  # shellcheck source=/dev/null
+  [[ -z "${module}" ]] || source "${DEV_ENV_DIR}/${module}.bash"
+  read -r -a install_command <<<"${command}"
+  "${install_command[@]}"
+  exit
+done
+
+print_usage >&2
+exit 2

@@ -74,10 +74,22 @@ before a window takes focus.
 
 ```
 ~/.local/lib/hypr/window/
-  lib/looknfeel_schema.py   the option catalogue
-  lib/looknfeel_lua.py      render the managed block, parse reader + getoption
-  lib/looknfeel_tui.py      visual engine and shared curses UI
-  lib/settings_tui.py       desktop settings pages and local helper routing
+  settings/visual_schema.py    the visual option catalogue
+  settings/lua_config.py       managed Lua rendering and config parsing
+  settings/visual.py           visual values, previews and saved overrides
+  settings/desktop_pages.py    desktop page definitions and loaders
+  settings/desktop_commands.py desktop helper commands and actions
+  settings/desktop.py          desktop selection, search and command results
+  settings/compose.py          Compose sequence persistence
+  settings/terminal.py         terminal rendering and input
+  settings/events.py           file, input, resize and process events
+  settings/values.py           rounding, theme keys and command reads
+  settings/paths.py            library, config and state paths
+  settings/main.py             Settings application
+  settings/visual_app.py       standalone visual application
+  lib/looknfeel_tui.py          compatibility symlink to visual_app.py
+  lib/visual-presets.bash       preset discovery, state writing and application
+  lib/shader-compiler.bash      shader compilation and activation
   looknfeel-read.lua        recording-stub reader
   settings.sh               entry point; focus or launch
   looknfeel.sh              compatibility alias
@@ -96,7 +108,7 @@ before a window takes focus.
 ~/.local/lib/hypr/window/shaders.sh      --list, --set
 ```
 
-Adding an option must stay a single `looknfeel_schema.py` entry. If a change
+Adding an option must stay a single `settings/visual_schema.py` entry. If a change
 needs edits in both the schema and the TUI, the schema is not carrying enough.
 
 Two implementation choices that are not obvious and should not be "simplified"
@@ -110,7 +122,7 @@ later:
 - **Integral floats render without a decimal point.** Slider arithmetic produces
   floats, and Lua would happily take `gaps_in = 7.0`, but the rendered block is
   handed to `hyprctl eval` byte for byte and compared against fixtures.
-  `_number()` collapses `7.0` to `7`; `test_integral_floats_render_without_a_decimal_point`
+  `render_number()` collapses `7.0` to `7`; `test_integral_floats_render_without_a_decimal_point`
   pins it.
 
 ## Reading current state
@@ -185,11 +197,10 @@ key, `v` for a theme variable, and `a` for an animation leaf.
 
 ### Watching
 
-The QML panel used `FileView { watchChanges: true }` on `themes/theme.lua`,
-`staterc`, and `color_variant`. The TUI polls their mtimes on its idle tick
-(250 ms, the same tick that services the debounce deadlines). Three `stat` calls
-four times a second is cheaper than an inotify dependency and keeps the loop
-single-threaded.
+The terminal watches `themes/theme.lua`, `staterc`, and `color_variant`
+through inotify directory events, including atomic file replacements. Input,
+terminal resize signals and child-process completion share one blocking selector.
+There is no idle tick or mtime polling.
 
 ## Writing
 
@@ -212,21 +223,16 @@ dropped later.
 Cursor rows also queue `hyprctl setcursor <theme> <size>` for compositor
 preview. After the managed block is written, the existing desktop sync consumes
 the same saved `vars.set` values and updates GTK, Xresources, dconf, activation
-environments, and Hyprland. The 700 ms idle debounce keeps slider movement from
-running the desktop-wide sync for every intermediate size.
+environments, and Hyprland. Only one desktop sync runs at a time; further
+cursor edits are saved and trigger another sync when the running command ends.
 
-Debounce deadlines, all serviced from the input loop's idle tick:
+Each input edit previews and saves its block before the next input is handled.
+Reset reloads Hyprland only after saving successfully, since `eval` cannot un-set
+a key. Cursor preview starts immediately; desktop sync starts after persistence.
 
-| deadline | delay | what it defers |
-| -------- | ----- | -------------- |
-| `persist` | 250 ms | write the block, then `hyprctl configerrors` |
-| `reload` | 300 ms | `hyprctl reload` after a reset — `eval` cannot un-set a key |
-| `cursor_preview` | 40 ms | `hyprctl setcursor` |
-| `cursor_sync` | 700 ms | `theme/desktop.sync.sh --full --quiet` |
-
-Anything slow — the pipeline setters, the desktop sync, the reload — is spawned
-and harvested by `poll()`, so the UI never blocks on it. `hyprctl eval` and the
-block write are synchronous; they are a socket round trip and a rename.
+Pipeline setters, desktop sync and reload run asynchronously. Linux process
+descriptors report completion; captured option lists use temporary files so large
+output cannot fill a pipe. `hyprctl eval` and block writes remain synchronous.
 
 ### Per-theme memory
 
@@ -265,7 +271,7 @@ written where nothing reads them:
 | where | how |
 | ----- | --- |
 | `looknfeel.lua` | Lua `gsub("[^%a%d]+", "-")` |
-| `looknfeel_tui.py` | Python `re.sub(r"[^a-z0-9]+", "-", …)` |
+| `settings/values.py` | Python `re.sub(r"[^a-z0-9]+", "-", …)` |
 | `theme/lib/desktop.sync.bash` | `tr` + `sed -E 's/[^a-z0-9]+/-/g'` |
 
 Lua's `%a` is ASCII-only, so accented characters collapse: `"Rosé Pine"` slugs to
@@ -346,7 +352,7 @@ reaches the file rather than evaporating at the next reload.
 ```bash
 hyprshell launch/focus.sh org.tui.Settings -- \
   hyprshell launch/tui.sh --app-id org.tui.Settings --title Settings -- \
-  python3 "${HYPR_LIB_DIR}/window/lib/settings_tui.py"
+  python3 "${HYPR_LIB_DIR}/window/settings/main.py"
 ```
 
 Bound in the theming submap (`keybindings.lua`) on `V`:
@@ -387,7 +393,7 @@ Four of those tests earn their place:
   slug and the real Python slug over the same names, accents included, instead
   of comparing either against a hardcoded list.
 
-Alongside: `python3 -m py_compile` on the three modules; `bash -n` on
+Alongside: `python3 -m py_compile` on the Settings modules; `bash -n` on
 `looknfeel.sh`, `animations.sh`, `shaders.sh`; `luac -p` on `looknfeel-read.lua`
 and the resolver; `hyprctl configerrors` after a write.
 
@@ -396,7 +402,7 @@ immediately; `q` persists across `hyprctl reload`; `Backspace` restores the
 theme's value; switching themes swaps which `looknfeel.d/` file applies and
 returning restores the first theme's overrides. The Cursor section lists
 installed XCursor and hyprcursor themes; changing either cursor row updates the
-compositor immediately and desktop toolkit settings after the debounce.
+compositor immediately and desktop toolkit settings after persistence.
 
 `~/.local/lib/hypr` is dotfiles-tracked, so the modules, tests and this document
 mirror on the next `dotfiles-sync`. `~/.local/state/hypr` is not, so the resolver
@@ -407,7 +413,7 @@ and `looknfeel.d/` stay local by design.
 - **Live preview against a reloading compositor.** The theme pipeline reloads
   Hyprland on its own. A preview applied via `hyprctl eval` is lost on reload
   until the block is written, so a pending edit must reach the file before the
-  window closes; the close path flushes the debounce for exactly this reason.
+  next input is handled; the close path also saves any pending edit.
 - **`css` normalization** collapses per-edge gap values. Nothing in this config
   sets them per-edge, but a hand-edit elsewhere would be silently flattened on
   first touch of that row.
@@ -415,5 +421,5 @@ and `looknfeel.d/` stay local by design.
   re-reads `general:layout` from the same batch it queried, so switching the
   engine row repaints the section on the next refresh rather than immediately.
 - **A killed terminal skips the flush.** `q` flushes; `SIGKILL` does
-  not. The worst case is losing the last sub-250 ms edit, which the next
-  `hyprctl reload` reverts anyway.
+  not. An edit interrupted between preview and persistence can be lost; the next
+  `hyprctl reload` returns to the saved state.

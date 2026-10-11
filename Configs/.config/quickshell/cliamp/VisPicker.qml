@@ -37,11 +37,13 @@ BorderSurface {
 
     { id: "butterfly", name: "Butterfly", category: "particle", icon: "\uf1d8" },
     { id: "scatter", name: "Scatter", category: "particle", icon: "\uf005" },
+    { id: "yinyang", name: "Yin Yang", category: "particle", icon: "\ueee9" },
 
     { id: "plasma", name: "Liquid Plasma (2D)", category: "3d", icon: "\uf043" },
     { id: "osc_warp", name: "Oscilloscope Warp", category: "3d", icon: "\uf1fe" },
     { id: "crt_scanline", name: "CRT Radar Scope", category: "3d", icon: "\uf26c" },
-    { id: "cyber_tunnel", name: "3D Cyber Tunnel", category: "3d", icon: "\uf135" }
+    { id: "cyber_tunnel", name: "3D Cyber Tunnel", category: "3d", icon: "\uf135" },
+    { id: "red_sector", name: "Red Sector", category: "3d", icon: "\uf1b2" }
   ]
 
   readonly property var filteredModes: {

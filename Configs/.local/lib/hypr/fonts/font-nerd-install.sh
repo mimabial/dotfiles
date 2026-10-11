@@ -3,7 +3,7 @@ set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR}/fonts/font-nerd.common.bash"
+source "${HYPR_LIB_DIR}/fonts/lib/font-packages.bash"
 
 list_all_nerd_fonts() {
   pacman -Sl | awk '{print $2}' | grep -E '^(ttf|otf)-.*nerd' | sort -u
@@ -11,31 +11,6 @@ list_all_nerd_fonts() {
 
 list_installable_nerd_fonts() {
   comm -23 <(list_all_nerd_fonts) <(list_installed_nerd_fonts)
-}
-
-install_nerd_font_packages() {
-  local -a packages=("$@")
-  local package_label=""
-
-  if [[ "${#packages[@]}" -eq 0 ]]; then
-    echo "No font packages specified." >&2
-    return 1
-  fi
-
-  package_label="$(font_packages_label "${packages[@]}")"
-
-  if hyprshell pm add "${packages[@]}"; then
-    echo
-    echo "Refreshing font cache..."
-    refresh_font_cache
-    notify_send_safe -a "Font Manager" -i "preferences-desktop-font" "Installed Nerd Font" "${package_label}"
-    echo -e "\033[1;32m✓ Installed: ${package_label}\033[0m"
-    return 0
-  fi
-
-  notify_send_safe -u critical -a "Font Manager" -i "preferences-desktop-font" "Failed to install Nerd Font" "${package_label}"
-  echo -e "\033[1;31m✗ Installation failed.\033[0m" >&2
-  return 1
 }
 
 usage() {
@@ -58,7 +33,7 @@ case "${1:-}" in
     ;;
   --packages)
     shift
-    install_nerd_font_packages "$@"
+    change_nerd_font_packages install "$@"
     ;;
   -h|--help|help|'')
     usage

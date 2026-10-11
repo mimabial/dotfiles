@@ -41,153 +41,33 @@ theme_desktop_write_generated_file() {
   mv -f -- "${tmp_file}" "${target_file}"
 }
 
-theme_desktop_load_looknfeel_cursor_values() {
-  local theme_slug=""
-  local override_file=""
-  local -A looknfeel_values=()
-
-  [[ -n "${HYPR_THEME:-}" ]] || return 0
-  theme_slug="$(LC_ALL=C sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' <<<"${HYPR_THEME,,}")"
-  [[ -n "${theme_slug}" ]] || theme_slug="default"
-  override_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/looknfeel.d/${theme_slug}.${resolved_color_variant:-dark}.lua"
-
-  hypr_config_parse_layer_file "${override_file}" looknfeel_values
-  [[ -n "${looknfeel_values[CURSOR_THEME]-}" ]] \
-    && CURSOR_THEME="${looknfeel_values[CURSOR_THEME]}"
-  [[ -n "${looknfeel_values[CURSOR_SIZE]-}" ]] \
-    && CURSOR_SIZE="${looknfeel_values[CURSOR_SIZE]}"
-  return 0
-}
-
-declare -ga theme_desktop_layered_vars=(
-  ICON_THEME
-  CURSOR_THEME
-  CURSOR_SIZE
-  TERMINAL
-  FONT
-  FONT_SIZE
-  DOCUMENT_FONT
-  DOCUMENT_FONT_SIZE
-  MONOSPACE_FONT
-  MONOSPACE_FONT_SIZE
-  BUTTON_LAYOUT
-  FONT_ANTIALIASING
-  FONT_HINTING
-)
-
-theme_desktop_resolve_base_values() {
-  local env_theme_file="${HYPR_CONFIG_HOME}/env-theme"
-  local layer_var=""
-  local layer_value=""
-  local -A theme_meta_values=()
-
-  for layer_var in "${theme_desktop_layered_vars[@]}"; do printf -v "${layer_var}" %s ""; done
-  # shellcheck source=/dev/null
-  [[ -f "${env_theme_file}" ]] && source "${env_theme_file}"
-  hypr_config_layer_cache_load
-  hypr_config_parse_layer_file "${HYPR_CONFIG_HOME}/themes/theme.meta" theme_meta_values
-  for layer_var in "${theme_desktop_layered_vars[@]}"; do
-    [[ -n "${!layer_var-}" ]] && continue
-    layer_value="${HYPR_CONFIG_LAYER_CACHE[${layer_var}]-}"
-    [[ -n "${layer_value}" ]] && printf -v "${layer_var}" '%s' "${layer_value}"
-  done
-
-  if [[ "${selected_color_source:-theme}" == "theme" ]]; then
-    for layer_var in ICON_THEME CURSOR_THEME CURSOR_SIZE; do
-      layer_value="${theme_meta_values[${layer_var}]-}"
-      [[ -n "${layer_value}" ]] && printf -v "${layer_var}" %s "${layer_value}"
-    done
-  fi
-
-  FONT="${FONT:-Cantarell}"
-  FONT_SIZE="${FONT_SIZE:-10}"
-  DOCUMENT_FONT="${DOCUMENT_FONT:-Cantarell}"
-  DOCUMENT_FONT_SIZE="${DOCUMENT_FONT_SIZE:-10}"
-  MONOSPACE_FONT="${MONOSPACE_FONT:-JetBrainsMono Nerd Font}"
-  MONOSPACE_FONT_SIZE="${MONOSPACE_FONT_SIZE:-10}"
-  FONT_ANTIALIASING="${FONT_ANTIALIASING:-rgba}"
-  return 0
-}
-
-theme_desktop_resolve_values() {
-  local color_variant=""
-
-  if [[ -d /run/current-system/sw/share/themes ]]; then
-    THEMES_DIR=/run/current-system/sw/share/themes
-    export THEMES_DIR
-  fi
-
-  HYPRLAND_CONFIG="${HYPRLAND_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.lua}"
-  color_variant="$(state_get_color_variant 2>/dev/null || true)"
-  resolved_color_variant="${resolved_color_variant:-${color_variant:-dark}}"
-
-  selected_color_source="$(state_resolve_color_source "${selected_color_source:-}" "${selected_color_mode:-}")"
-  selected_color_mode="$(state_resolve_color_mode "${selected_color_mode:-}" "${resolved_color_variant}")"
-
-  COLOR_SCHEME="prefer-${resolved_color_variant}"
-  theme_desktop_resolve_base_values
-  theme_desktop_load_looknfeel_cursor_values
-
-  if [[ "${revert_colors:-0}" -eq 1 ]] \
-    || [[ "${selected_color_mode:-0}" == "${STATE_COLOR_MODE_DARK}" && "${resolved_color_variant:-}" == "light" ]] \
-    || [[ "${selected_color_mode:-0}" == "${STATE_COLOR_MODE_LIGHT}" && "${resolved_color_variant:-}" == "dark" ]]; then
-    if [[ "${resolved_color_variant}" == "dark" ]]; then
-      COLOR_SCHEME="prefer-light"
-    else
-      COLOR_SCHEME="prefer-dark"
-    fi
-  fi
-
-  local resolved_gtk="Adwaita"
-  local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME:-}"
-  local generated_gtk_dir="${XDG_DATA_HOME:-$HOME/.local/share}/themes/Hypr-Gtk"
-  if [[ -n "${HYPR_THEME:-}" && (-d "${pack_dir}/gtk-3.0" || -d "${pack_dir}/gtk-4.0") ]]; then
-    resolved_gtk="${HYPR_THEME// /-}"
-  elif [[ -f "${generated_gtk_dir}/gtk-3.0/gtk.css" || -f "${generated_gtk_dir}/gtk-4.0/gtk.css" ]]; then
-    resolved_gtk="Hypr-Gtk"
-    # render/gtk.py alternates two names for this folder on every build; GTK 3 reloads a theme only when its name changes.
-    [[ -s "${generated_gtk_dir}/theme-name" ]] && read -r resolved_gtk <"${generated_gtk_dir}/theme-name" || true
-  fi
-
-  RESOLVED_GTK_THEME="${resolved_gtk}"
-
-  if [[ -f "${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/Hypr.colors" ]]; then
-    RESOLVED_KDE_COLOR_SCHEME="Hypr"
-  elif [[ "${COLOR_SCHEME}" == "prefer-light" ]]; then
-    RESOLVED_KDE_COLOR_SCHEME="KvGnome"
-  else
-    RESOLVED_KDE_COLOR_SCHEME="KvGnomeDark"
-  fi
-  RESOLVED_QT_STYLE="Breeze"
-
-  export ICON_THEME COLOR_SCHEME CURSOR_THEME CURSOR_SIZE TERMINAL \
-    FONT FONT_SIZE DOCUMENT_FONT DOCUMENT_FONT_SIZE MONOSPACE_FONT \
-    MONOSPACE_FONT_SIZE BUTTON_LAYOUT FONT_ANTIALIASING FONT_HINTING \
-    RESOLVED_KDE_COLOR_SCHEME RESOLVED_QT_STYLE
-}
+source "${BASH_SOURCE[0]%/*}/desktop.settings.bash" || return 1
 
 theme_desktop_sync_gtk_theme_links() {
+  local -n desktop_settings_ref="$1"
   local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME:-}"
 
   if [[ -n "${HYPR_THEME:-}" && (-d "${pack_dir}/gtk-3.0" || -d "${pack_dir}/gtk-4.0") ]]; then
     mkdir -p "${HOME}/.themes"
-    ln -snf "${pack_dir}" "${HOME}/.themes/${RESOLVED_GTK_THEME}" || true
+    ln -snf "${pack_dir}" "${HOME}/.themes/${desktop_settings_ref[RESOLVED_GTK_THEME]}" || true
   fi
-  [[ -d "${HOME}/.themes" ]] && find "${HOME}/.themes" -maxdepth 1 -lname "${HYPR_CONFIG_HOME}/themes/*" ! -name "${RESOLVED_GTK_THEME}" -delete || true
+  [[ -d "${HOME}/.themes" ]] && find "${HOME}/.themes" -maxdepth 1 -lname "${HYPR_CONFIG_HOME}/themes/*" ! -name "${desktop_settings_ref[RESOLVED_GTK_THEME]}" -delete || true
 }
 
 theme_desktop_update_xcursor_resource() {
+  local -n desktop_settings_ref="$1"
+  shift
   local file="$1"
   local create="${2:-false}"
 
   if [[ ! -f "${file}" ]]; then
     [[ "${create}" == "true" ]] || return 0
-    printf 'Xcursor.theme: %s\nXcursor.size: %s\n' "${CURSOR_THEME}" "${CURSOR_SIZE}" |
+    printf 'Xcursor.theme: %s\nXcursor.size: %s\n' "${desktop_settings_ref[CURSOR_THEME]}" "${desktop_settings_ref[CURSOR_SIZE]}" |
       theme_desktop_write_generated_file "${file}"
     return
   fi
 
-  awk -v theme="${CURSOR_THEME}" -v size="${CURSOR_SIZE}" '
+  awk -v theme="${desktop_settings_ref[CURSOR_THEME]}" -v size="${desktop_settings_ref[CURSOR_SIZE]}" '
     /^Xcursor\.theme:/ { if (!seen_theme++) print "Xcursor.theme: " theme; next }
     /^Xcursor\.size:/ { if (!seen_size++) print "Xcursor.size: " size; next }
     { print }
@@ -199,15 +79,16 @@ theme_desktop_update_xcursor_resource() {
 }
 
 theme_desktop_export_cursor_environment() {
+  local -n desktop_settings_ref="$1"
   local xcursor_path=""
 
-  [[ -n "${CURSOR_THEME}" && -n "${CURSOR_SIZE}" ]] || return 0
+  [[ -n "${desktop_settings_ref[CURSOR_THEME]}" && -n "${desktop_settings_ref[CURSOR_SIZE]}" ]] || return 0
 
   xcursor_path="${XCURSOR_PATH:-${XDG_DATA_HOME:-$HOME/.local/share}/icons:$HOME/.icons:/usr/share/icons}"
-  export XCURSOR_THEME="${CURSOR_THEME}"
-  export XCURSOR_SIZE="${CURSOR_SIZE}"
-  export HYPRCURSOR_THEME="${CURSOR_THEME}"
-  export HYPRCURSOR_SIZE="${CURSOR_SIZE}"
+  export XCURSOR_THEME="${desktop_settings_ref[CURSOR_THEME]}"
+  export XCURSOR_SIZE="${desktop_settings_ref[CURSOR_SIZE]}"
+  export HYPRCURSOR_THEME="${desktop_settings_ref[CURSOR_THEME]}"
+  export HYPRCURSOR_SIZE="${desktop_settings_ref[CURSOR_SIZE]}"
   export XCURSOR_PATH="${xcursor_path}"
 
   if command -v uwsm >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
@@ -258,11 +139,12 @@ theme_desktop_resolve_instance_signature() {
 }
 
 theme_desktop_sanitize_cursor_theme_index() {
+  local -n desktop_settings_ref="$1"
   local dir=""
   local index=""
 
   for dir in "${XDG_DATA_HOME:-$HOME/.local/share}/icons" "${HOME}/.icons"; do
-    index="${dir}/${CURSOR_THEME}/index.theme"
+    index="${dir}/${desktop_settings_ref[CURSOR_THEME]}/index.theme"
     [[ -f "${index}" && -w "${index}" ]] || continue
     grep -qiE '^[[:space:]]*Inherits[[:space:]]*=[[:space:]]*"?default"?[[:space:]]*$' "${index}" || continue
     sed -i -E '/^[[:space:]]*Inherits[[:space:]]*=[[:space:]]*"?default"?[[:space:]]*$/d' "${index}"
@@ -271,21 +153,23 @@ theme_desktop_sanitize_cursor_theme_index() {
 }
 
 theme_desktop_apply_cursor_theme() {
-  [[ -n "${CURSOR_THEME}" && -n "${CURSOR_SIZE}" ]] || return 0
+  local -n desktop_settings_ref="$1"
+  [[ -n "${desktop_settings_ref[CURSOR_THEME]}" && -n "${desktop_settings_ref[CURSOR_SIZE]}" ]] || return 0
   theme_desktop_resolve_instance_signature || return 0
-  theme_desktop_sanitize_cursor_theme_index
+  theme_desktop_sanitize_cursor_theme_index "${!desktop_settings_ref}"
   if ! HYPRLAND_INSTANCE_SIGNATURE="${HYPRLAND_INSTANCE_SIGNATURE}" \
-    hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" >/dev/null 2>&1; then
-    print_log -sec "theme" -warn "cursor" "failed to apply ${CURSOR_THEME} (${CURSOR_SIZE})"
+    hyprctl setcursor "${desktop_settings_ref[CURSOR_THEME]}" "${desktop_settings_ref[CURSOR_SIZE]}" >/dev/null 2>&1; then
+    print_log -sec "theme" -warn "cursor" "failed to apply ${desktop_settings_ref[CURSOR_THEME]} (${desktop_settings_ref[CURSOR_SIZE]})"
   fi
 }
 
 theme_desktop_set_cursor_async() {
-  [[ -n "${CURSOR_THEME}" && -n "${CURSOR_SIZE}" ]] || return 0
+  local -n desktop_settings_ref="$1"
+  [[ -n "${desktop_settings_ref[CURSOR_THEME]}" && -n "${desktop_settings_ref[CURSOR_SIZE]}" ]] || return 0
   theme_desktop_resolve_instance_signature || return 0
-  theme_desktop_sanitize_cursor_theme_index
+  theme_desktop_sanitize_cursor_theme_index "${!desktop_settings_ref}"
   HYPRLAND_INSTANCE_SIGNATURE="${HYPRLAND_INSTANCE_SIGNATURE}" \
-    hyprctl setcursor "${CURSOR_THEME}" "${CURSOR_SIZE}" >/dev/null 2>&1 &
+    hyprctl setcursor "${desktop_settings_ref[CURSOR_THEME]}" "${desktop_settings_ref[CURSOR_SIZE]}" >/dev/null 2>&1 &
 }
 
 theme_desktop_install_file() {
@@ -371,43 +255,51 @@ theme_desktop_notify_kde_icons_changed() {
   done
 }
 
+THEME_DESKTOP_TEXT_SIZE_BASE_PX=12
+THEME_DESKTOP_UI_FONT_PT=10
+THEME_DESKTOP_SMALL_FONT_PT=8
+
 # Match Quickshell's px-to-point conversion.
 theme_desktop_kde_font_entries() {
+  local -n desktop_settings_ref="$1"
+  shift
   local -n font_entries_ref="$1"
-  local text_size="" ui_size="10.00" small_size="8.00" regular="-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
+  local text_size="" ui_size="" small_size="" regular="-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
 
-  text_size="$(state_get TEXT_SIZE 12 2>/dev/null || true)"
-  if [[ ${text_size} =~ ^[0-9]+$ ]]; then
-    read -r ui_size small_size < <(awk -v px="${text_size}" 'BEGIN { printf "%.2f %.2f\n", px * 10 / 12, px * 8 / 12 }')
-  fi
+  text_size="$(state_get TEXT_SIZE "${THEME_DESKTOP_TEXT_SIZE_BASE_PX}" 2>/dev/null || true)"
+  [[ ${text_size} =~ ^[0-9]+$ ]] || text_size="${THEME_DESKTOP_TEXT_SIZE_BASE_PX}"
+  read -r ui_size small_size < <(awk -v px="${text_size}" -v base="${THEME_DESKTOP_TEXT_SIZE_BASE_PX}" \
+    -v ui="${THEME_DESKTOP_UI_FONT_PT}" -v small="${THEME_DESKTOP_SMALL_FONT_PT}" \
+    'BEGIN { printf "%.2f %.2f\n", px * ui / base, px * small / base }')
   font_entries_ref=(
-    "General:font=${FONT},${ui_size},${regular}"
-    "General:menuFont=${FONT},${ui_size},${regular}"
-    "General:toolBarFont=${FONT},${ui_size},${regular}"
-    "General:fixed=${MONOSPACE_FONT},${ui_size},${regular}"
-    "General:smallestReadableFont=${FONT},${small_size},${regular}"
-    "WM:activeFont=${FONT},${ui_size},${regular}"
+    "General:font=${desktop_settings_ref[FONT]},${ui_size},${regular}"
+    "General:menuFont=${desktop_settings_ref[FONT]},${ui_size},${regular}"
+    "General:toolBarFont=${desktop_settings_ref[FONT]},${ui_size},${regular}"
+    "General:fixed=${desktop_settings_ref[MONOSPACE_FONT]},${ui_size},${regular}"
+    "General:smallestReadableFont=${desktop_settings_ref[FONT]},${small_size},${regular}"
+    "WM:activeFont=${desktop_settings_ref[FONT]},${ui_size},${regular}"
   )
 }
 
 theme_desktop_configure_qt_kde_bridge() {
+  local -n desktop_settings_ref="$1"
   local -a font_entries=()
-  theme_desktop_kde_font_entries font_entries
+  theme_desktop_kde_font_entries "${!desktop_settings_ref}" font_entries
 
   # A global per-window scheme makes KColorSchemeManager ignore system palette changes.
   theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/kdeglobals" \
-    "General:ColorScheme=${RESOLVED_KDE_COLOR_SCHEME}" \
-    "Icons:Theme=${ICON_THEME}" \
-    "KDE:widgetStyle=${RESOLVED_QT_STYLE}" \
+    "General:ColorScheme=${desktop_settings_ref[RESOLVED_KDE_COLOR_SCHEME]}" \
+    "Icons:Theme=${desktop_settings_ref[ICON_THEME]}" \
+    "KDE:widgetStyle=${desktop_settings_ref[RESOLVED_QT_STYLE]}" \
     "UiSettings:ColorScheme=" \
     "${font_entries[@]}" || return 1
 
   theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/kdedefaults/kdeglobals" \
-    "General:ColorScheme=${RESOLVED_KDE_COLOR_SCHEME}" \
-    "Icons:Theme=${ICON_THEME}" \
-    "KDE:widgetStyle=${RESOLVED_QT_STYLE}" || return 1
+    "General:ColorScheme=${desktop_settings_ref[RESOLVED_KDE_COLOR_SCHEME]}" \
+    "Icons:Theme=${desktop_settings_ref[ICON_THEME]}" \
+    "KDE:widgetStyle=${desktop_settings_ref[RESOLVED_QT_STYLE]}" || return 1
 
-  if [[ "${RESOLVED_KDE_COLOR_SCHEME:-}" == "Hypr" ]]; then
+  if [[ "${desktop_settings_ref[RESOLVED_KDE_COLOR_SCHEME]:-}" == "Hypr" ]]; then
     theme_desktop_install_kdeglobals_color_sections "${XDG_CONFIG_HOME}/kdeglobals" || return 1
     theme_desktop_install_kdeglobals_color_sections "${XDG_CONFIG_HOME}/kdedefaults/kdeglobals" || return 1
   fi
@@ -415,6 +307,8 @@ theme_desktop_configure_qt_kde_bridge() {
 
 # GTK3 and GTK4 take the same key set; only the file differs.
 theme_desktop_write_gtk_settings() {
+  local -n desktop_settings_ref="$1"
+  shift
   local settings_file="$1"
   local prefer_dark="$2"
   local gtk3_font="$3"
@@ -422,16 +316,18 @@ theme_desktop_write_gtk_settings() {
 
   mkdir -p "${settings_file%/*}" || return 1
   theme_desktop_ini_write_batch "${settings_file}" \
-    "Settings:gtk-theme-name=${RESOLVED_GTK_THEME}" \
-    "Settings:gtk-icon-theme-name=${ICON_THEME}" \
-    "Settings:gtk-cursor-theme-name=${CURSOR_THEME}" \
-    "Settings:gtk-cursor-theme-size=${CURSOR_SIZE}" \
+    "Settings:gtk-theme-name=${desktop_settings_ref[RESOLVED_GTK_THEME]}" \
+    "Settings:gtk-icon-theme-name=${desktop_settings_ref[ICON_THEME]}" \
+    "Settings:gtk-cursor-theme-name=${desktop_settings_ref[CURSOR_THEME]}" \
+    "Settings:gtk-cursor-theme-size=${desktop_settings_ref[CURSOR_SIZE]}" \
     "Settings:gtk-font-name=${gtk3_font} ${gtk3_font_size}" \
     "Settings:gtk-application-prefer-dark-theme=${prefer_dark}"
 }
 
 theme_desktop_write_gtk4_settings() {
-  theme_desktop_write_gtk_settings "${XDG_CONFIG_HOME}/gtk-4.0/settings.ini" "$@"
+  local -n desktop_settings_ref="$1"
+  shift
+  theme_desktop_write_gtk_settings "${!desktop_settings_ref}" "${XDG_CONFIG_HOME}/gtk-4.0/settings.ini" "$@"
 }
 
 theme_desktop_write_gtk3_css() {
@@ -452,10 +348,11 @@ EOF
 # ~/.config/gtk-4.0/gtk.css. Import the resolved theme's GTK4 CSS so palette
 # variables (@theme_bg_color, @theme_fg_color, …) reach libadwaita widgets.
 theme_desktop_write_gtk4_css() {
+  local -n desktop_settings_ref="$1"
   local gtk4_css="${XDG_CONFIG_HOME}/gtk-4.0/gtk.css"
   local theme_gtk4_css=""
 
-  case "${RESOLVED_GTK_THEME}" in
+  case "${desktop_settings_ref[RESOLVED_GTK_THEME]}" in
     Hypr-Gtk | Hypr-Gtk-Alt)
       theme_gtk4_css="${XDG_DATA_HOME:-$HOME/.local/share}/themes/Hypr-Gtk/gtk-4.0/gtk.css"
       ;;
@@ -463,10 +360,10 @@ theme_desktop_write_gtk4_css() {
       :
       ;;
     *)
-      if [[ -f "${HOME}/.themes/${RESOLVED_GTK_THEME}/gtk-4.0/gtk.css" ]]; then
-        theme_gtk4_css="${HOME}/.themes/${RESOLVED_GTK_THEME}/gtk-4.0/gtk.css"
-      elif [[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/themes/${RESOLVED_GTK_THEME}/gtk-4.0/gtk.css" ]]; then
-        theme_gtk4_css="${XDG_DATA_HOME:-$HOME/.local/share}/themes/${RESOLVED_GTK_THEME}/gtk-4.0/gtk.css"
+      if [[ -f "${HOME}/.themes/${desktop_settings_ref[RESOLVED_GTK_THEME]}/gtk-4.0/gtk.css" ]]; then
+        theme_gtk4_css="${HOME}/.themes/${desktop_settings_ref[RESOLVED_GTK_THEME]}/gtk-4.0/gtk.css"
+      elif [[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/themes/${desktop_settings_ref[RESOLVED_GTK_THEME]}/gtk-4.0/gtk.css" ]]; then
+        theme_gtk4_css="${XDG_DATA_HOME:-$HOME/.local/share}/themes/${desktop_settings_ref[RESOLVED_GTK_THEME]}/gtk-4.0/gtk.css"
       fi
       ;;
   esac
@@ -496,6 +393,8 @@ EOF
 }
 
 theme_desktop_write_gtkrc() {
+  local -n desktop_settings_ref="$1"
+  shift
   local gtkrc_file="$1"
   local font="$2"
   local font_size="$3"
@@ -504,11 +403,11 @@ theme_desktop_write_gtkrc() {
   theme_desktop_write_generated_file "${gtkrc_file}" <<EOF
 # Generated by hypr theme desktop sync.
 include "${HOME}/.gtkrc-2.0.mime"
-gtk-theme-name="${RESOLVED_GTK_THEME}"
-gtk-icon-theme-name="${ICON_THEME}"
+gtk-theme-name="${desktop_settings_ref[RESOLVED_GTK_THEME]}"
+gtk-icon-theme-name="${desktop_settings_ref[ICON_THEME]}"
 gtk-font-name="${font} ${font_size}"
-gtk-cursor-theme-name="${CURSOR_THEME}"
-gtk-cursor-theme-size=${CURSOR_SIZE}
+gtk-cursor-theme-name="${desktop_settings_ref[CURSOR_THEME]}"
+gtk-cursor-theme-size=${desktop_settings_ref[CURSOR_SIZE]}
 gtk-application-prefer-dark-theme=${prefer_dark}
 gtk-toolbar-style=GTK_TOOLBAR_ICONS
 gtk-toolbar-icon-size=GTK_ICON_SIZE_LARGE_TOOLBAR
@@ -524,6 +423,8 @@ EOF
 }
 
 theme_desktop_write_xsettingsd() {
+  local -n desktop_settings_ref="$1"
+  shift
   local xsettingsd_file="$1"
   local font="$2"
   local font_size="$3"
@@ -531,10 +432,10 @@ theme_desktop_write_xsettingsd() {
 
   theme_desktop_write_generated_file "${xsettingsd_file}" <<EOF
 # Generated by hypr theme desktop sync.
-Net/ThemeName "${RESOLVED_GTK_THEME}"
-Net/IconThemeName "${ICON_THEME}"
-Gtk/CursorThemeName "${CURSOR_THEME}"
-Gtk/CursorThemeSize ${CURSOR_SIZE}
+Net/ThemeName "${desktop_settings_ref[RESOLVED_GTK_THEME]}"
+Net/IconThemeName "${desktop_settings_ref[ICON_THEME]}"
+Gtk/CursorThemeName "${desktop_settings_ref[CURSOR_THEME]}"
+Gtk/CursorThemeSize ${desktop_settings_ref[CURSOR_SIZE]}
 Gtk/FontName "${font} ${font_size}"
 Gtk/ApplicationPreferDarkTheme ${prefer_dark}
 Net/EnableEventSounds 1
@@ -547,32 +448,34 @@ EOF
 }
 
 theme_desktop_flatpak_override() {
+  local -n desktop_settings_ref="$1"
   command -v flatpak >/dev/null 2>&1 || return 0
   flatpak \
     --user override \
     --filesystem="${HOME}/.icons" \
     --filesystem="${XDG_DATA_HOME:-$HOME/.local/share}/icons" \
-    --env=GTK_THEME="${RESOLVED_GTK_THEME}" \
-    --env=ICON_THEME="${ICON_THEME}" ||
+    --env=GTK_THEME="${desktop_settings_ref[RESOLVED_GTK_THEME]}" \
+    --env=ICON_THEME="${desktop_settings_ref[ICON_THEME]}" ||
     print_log -sec "theme" -warn flatpak "override failed"
 }
 
 theme_desktop_configure_gtk() {
-  local gtk3_font="${GTK3_FONT:-${FONT}}"
-  local gtk3_font_size="${GTK3_FONT_SIZE:-${FONT_SIZE}}"
+  local -n desktop_settings_ref="$1"
+  local gtk3_font="${GTK3_FONT:-${desktop_settings_ref[FONT]}}"
+  local gtk3_font_size="${GTK3_FONT_SIZE:-${desktop_settings_ref[FONT_SIZE]}}"
   local prefer_dark=0
 
-  [[ "${COLOR_SCHEME}" == "prefer-dark" ]] && prefer_dark=1
+  [[ "${desktop_settings_ref[COLOR_SCHEME]}" == "prefer-dark" ]] && prefer_dark=1
 
   mkdir -p "${XDG_CONFIG_HOME}/gtk-3.0" "${XDG_CONFIG_HOME}/xsettingsd" || return 1
   theme_desktop_write_gtk3_css || return 1
-  theme_desktop_write_gtkrc "${HOME}/.gtkrc-2.0" "${gtk3_font}" "${gtk3_font_size}" "${prefer_dark}" || return 1
-  theme_desktop_write_gtk_settings "${XDG_CONFIG_HOME}/gtk-3.0/settings.ini" \
+  theme_desktop_write_gtkrc "${!desktop_settings_ref}" "${HOME}/.gtkrc-2.0" "${gtk3_font}" "${gtk3_font_size}" "${prefer_dark}" || return 1
+  theme_desktop_write_gtk_settings "${!desktop_settings_ref}" "${XDG_CONFIG_HOME}/gtk-3.0/settings.ini" \
     "${prefer_dark}" "${gtk3_font}" "${gtk3_font_size}" || return 1
-  theme_desktop_write_gtk4_settings "${prefer_dark}" "${gtk3_font}" "${gtk3_font_size}" || return 1
-  theme_desktop_write_gtk4_css || return 1
-  theme_desktop_flatpak_override
-  theme_desktop_write_xsettingsd "${XDG_CONFIG_HOME}/xsettingsd/xsettingsd.conf" \
+  theme_desktop_write_gtk4_settings "${!desktop_settings_ref}" "${prefer_dark}" "${gtk3_font}" "${gtk3_font_size}" || return 1
+  theme_desktop_write_gtk4_css "${!desktop_settings_ref}" || return 1
+  theme_desktop_flatpak_override "${!desktop_settings_ref}"
+  theme_desktop_write_xsettingsd "${!desktop_settings_ref}" "${XDG_CONFIG_HOME}/xsettingsd/xsettingsd.conf" \
     "${gtk3_font}" "${gtk3_font_size}" "${prefer_dark}"
 }
 
@@ -583,53 +486,56 @@ theme_desktop_notify_gtk_theme_changed() {
 }
 
 theme_desktop_configure_xcursor_resources() {
-  theme_desktop_update_xcursor_resource "${HOME}/.Xresources" true || return 1
-  theme_desktop_update_xcursor_resource "${HOME}/.Xdefaults"
+  local -n desktop_settings_ref="$1"
+  theme_desktop_update_xcursor_resource "${!desktop_settings_ref}" "${HOME}/.Xresources" true || return 1
+  theme_desktop_update_xcursor_resource "${!desktop_settings_ref}" "${HOME}/.Xdefaults"
 }
 
 theme_desktop_dconf_payload() {
+  local -n desktop_settings_ref="$1"
   cat <<EOF
 [org/gnome/desktop/interface]
-icon-theme='${ICON_THEME}'
-gtk-theme='${RESOLVED_GTK_THEME}'
-color-scheme='${COLOR_SCHEME}'
-cursor-theme='${CURSOR_THEME}'
-cursor-size=${CURSOR_SIZE}
-font-name='${FONT} ${FONT_SIZE}'
-document-font-name='${DOCUMENT_FONT} ${DOCUMENT_FONT_SIZE}'
-monospace-font-name='${MONOSPACE_FONT} ${MONOSPACE_FONT_SIZE}'
-font-antialiasing='${FONT_ANTIALIASING}'
+icon-theme='${desktop_settings_ref[ICON_THEME]}'
+gtk-theme='${desktop_settings_ref[RESOLVED_GTK_THEME]}'
+color-scheme='${desktop_settings_ref[COLOR_SCHEME]}'
+cursor-theme='${desktop_settings_ref[CURSOR_THEME]}'
+cursor-size=${desktop_settings_ref[CURSOR_SIZE]}
+font-name='${desktop_settings_ref[FONT]} ${desktop_settings_ref[FONT_SIZE]}'
+document-font-name='${desktop_settings_ref[DOCUMENT_FONT]} ${desktop_settings_ref[DOCUMENT_FONT_SIZE]}'
+monospace-font-name='${desktop_settings_ref[MONOSPACE_FONT]} ${desktop_settings_ref[MONOSPACE_FONT_SIZE]}'
+font-antialiasing='${desktop_settings_ref[FONT_ANTIALIASING]}'
 EOF
 
   # dconf load does not validate against the schema, so an empty FONT_HINTING
   # would be stored as '', outside the key's enum, and GSettings then silently
   # serves the schema default instead.
-  [[ -n "${FONT_HINTING:-}" ]] && printf "font-hinting='%s'\n" "${FONT_HINTING}"
+  [[ -n "${desktop_settings_ref[FONT_HINTING]:-}" ]] && printf "font-hinting='%s'\n" "${desktop_settings_ref[FONT_HINTING]}"
 
   cat <<EOF
 
 [org/cinnamon/desktop/interface]
-icon-theme='${ICON_THEME}'
-gtk-theme='${RESOLVED_GTK_THEME}'
-cursor-theme='${CURSOR_THEME}'
-cursor-size=${CURSOR_SIZE}
-font-name='${FONT} ${FONT_SIZE}'
+icon-theme='${desktop_settings_ref[ICON_THEME]}'
+gtk-theme='${desktop_settings_ref[RESOLVED_GTK_THEME]}'
+cursor-theme='${desktop_settings_ref[CURSOR_THEME]}'
+cursor-size=${desktop_settings_ref[CURSOR_SIZE]}
+font-name='${desktop_settings_ref[FONT]} ${desktop_settings_ref[FONT_SIZE]}'
 
 [org/gnome/desktop/default-applications/terminal]
-exec='$(command -v "${TERMINAL}")'
+exec='$(command -v "${desktop_settings_ref[TERMINAL]}")'
 
 [org/gnome/desktop/wm/preferences]
-button-layout='${BUTTON_LAYOUT}'
+button-layout='${desktop_settings_ref[BUTTON_LAYOUT]}'
 EOF
 }
 
 theme_desktop_write_dconf_content() {
+  local -n desktop_settings_ref="$1"
   local dconf_file="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/dconf"
   local dconf_tmp=""
 
-  mkdir -p "$(dirname "${dconf_file}")"
+  mkdir -p "${dconf_file%/*}"
   dconf_tmp="$(mktemp "${dconf_file}.tmp.XXXXXX")" || return 1
-  theme_desktop_dconf_payload >"${dconf_tmp}" || {
+  theme_desktop_dconf_payload "${!desktop_settings_ref}" >"${dconf_tmp}" || {
     rm -f "${dconf_tmp}"
     return 1
   }
@@ -669,18 +575,20 @@ theme_desktop_restart_portal_backends_if_needed() {
   fi
 }
 
-theme_desktop_prepare_state() {
-  theme_desktop_resolve_values || return 1
-  theme_desktop_sync_gtk_theme_links
+theme_desktop_prepare_settings_into() {
+  local -n desktop_settings_ref="$1"
+  theme_desktop_resolve_settings_into "${!desktop_settings_ref}" || return 1
+  theme_desktop_sync_gtk_theme_links "${!desktop_settings_ref}"
 }
 
 theme_desktop_static_state_hash() {
+  local -n desktop_settings_ref="$1"
   local flatpak_installed=0
   local active_palette="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
   local qtct_kde_colors="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/render/qtct/Hypr.colors"
   local source_file=""
   local source_hash=""
-  local -a source_files=("${BASH_SOURCE[0]}")
+  local -a source_files=("${BASH_SOURCE[0]}" "${BASH_SOURCE[0]%/*}/desktop.settings.bash")
 
   command -v flatpak >/dev/null 2>&1 && flatpak_installed=1
   for source_file in "${active_palette}" "${qtct_kde_colors}"; do
@@ -690,26 +598,27 @@ theme_desktop_static_state_hash() {
 
   hypr_hash_cache_digest_strings \
     "source_hash=${source_hash}" \
-    "gtk_theme=${RESOLVED_GTK_THEME}" \
-    "icon_theme=${ICON_THEME}" \
-    "cursor_theme=${CURSOR_THEME}" \
-    "cursor_size=${CURSOR_SIZE}" \
-    "terminal=${TERMINAL}" \
-    "font=${FONT}" \
-    "font_size=${FONT_SIZE}" \
-    "document_font=${DOCUMENT_FONT}" \
-    "document_font_size=${DOCUMENT_FONT_SIZE}" \
-    "monospace_font=${MONOSPACE_FONT}" \
-    "monospace_font_size=${MONOSPACE_FONT_SIZE}" \
-    "button_layout=${BUTTON_LAYOUT}" \
-    "font_antialiasing=${FONT_ANTIALIASING}" \
-    "font_hinting=${FONT_HINTING}" \
-    "kde_color_scheme=${RESOLVED_KDE_COLOR_SCHEME}" \
-    "qt_style=${RESOLVED_QT_STYLE}" \
+    "gtk_theme=${desktop_settings_ref[RESOLVED_GTK_THEME]}" \
+    "icon_theme=${desktop_settings_ref[ICON_THEME]}" \
+    "cursor_theme=${desktop_settings_ref[CURSOR_THEME]}" \
+    "cursor_size=${desktop_settings_ref[CURSOR_SIZE]}" \
+    "terminal=${desktop_settings_ref[TERMINAL]}" \
+    "font=${desktop_settings_ref[FONT]}" \
+    "font_size=${desktop_settings_ref[FONT_SIZE]}" \
+    "document_font=${desktop_settings_ref[DOCUMENT_FONT]}" \
+    "document_font_size=${desktop_settings_ref[DOCUMENT_FONT_SIZE]}" \
+    "monospace_font=${desktop_settings_ref[MONOSPACE_FONT]}" \
+    "monospace_font_size=${desktop_settings_ref[MONOSPACE_FONT_SIZE]}" \
+    "button_layout=${desktop_settings_ref[BUTTON_LAYOUT]}" \
+    "font_antialiasing=${desktop_settings_ref[FONT_ANTIALIASING]}" \
+    "font_hinting=${desktop_settings_ref[FONT_HINTING]}" \
+    "kde_color_scheme=${desktop_settings_ref[RESOLVED_KDE_COLOR_SCHEME]}" \
+    "qt_style=${desktop_settings_ref[RESOLVED_QT_STYLE]}" \
     "flatpak_installed=${flatpak_installed}"
 }
 
 theme_desktop_static_targets_ready() {
+  local -n desktop_settings_ref="$1"
   local required_target=""
   local -a required_targets=(
     "${XDG_CONFIG_HOME}/kdeglobals"
@@ -725,7 +634,7 @@ theme_desktop_static_targets_ready() {
     "${HOME}/.Xresources"
   )
 
-  if [[ "${RESOLVED_KDE_COLOR_SCHEME:-}" == "Hypr" ]]; then
+  if [[ "${desktop_settings_ref[RESOLVED_KDE_COLOR_SCHEME]:-}" == "Hypr" ]]; then
     required_targets+=("${XDG_DATA_HOME:-$HOME/.local/share}/color-schemes/Hypr.colors")
   fi
 
@@ -735,26 +644,28 @@ theme_desktop_static_targets_ready() {
 }
 
 theme_desktop_apply_runtime_resolved() {
-  theme_desktop_export_cursor_environment
+  local -n desktop_settings_ref="$1"
+  theme_desktop_export_cursor_environment "${!desktop_settings_ref}"
   theme_desktop_export_session_qt_env
-  theme_desktop_write_dconf_content || return 1
+  theme_desktop_write_dconf_content "${!desktop_settings_ref}" || return 1
   theme_desktop_restart_portal_backends_if_needed
   if [[ "${THEME_DESKTOP_SYNC_LOG_DCONF:-1}" -eq 1 ]]; then
     print_log -sec "dconf" -stat "Loaded dconf settings" "::"
     print_log -y "#-----------------------------------------------#"
-    theme_desktop_dconf_payload
+    theme_desktop_dconf_payload "${!desktop_settings_ref}"
     print_log -y "#-----------------------------------------------#"
   fi
   return 0
 }
 
 theme_desktop_apply_static_resolved() {
+  local -n desktop_settings_ref="$1"
   theme_desktop_install_kde_color_scheme || return 1
-  theme_desktop_configure_qt_kde_bridge || return 1
-  theme_desktop_ini_write_batch "${XDG_DATA_HOME}/icons/default/index.theme" "Icon Theme:Inherits=${CURSOR_THEME}" || return 1
-  theme_desktop_ini_write_batch "${HOME}/.icons/default/index.theme" "Icon Theme:Inherits=${CURSOR_THEME}" || return 1
-  theme_desktop_configure_gtk || return 1
-  theme_desktop_configure_xcursor_resources || return 1
+  theme_desktop_configure_qt_kde_bridge "${!desktop_settings_ref}" || return 1
+  theme_desktop_ini_write_batch "${XDG_DATA_HOME}/icons/default/index.theme" "Icon Theme:Inherits=${desktop_settings_ref[CURSOR_THEME]}" || return 1
+  theme_desktop_ini_write_batch "${HOME}/.icons/default/index.theme" "Icon Theme:Inherits=${desktop_settings_ref[CURSOR_THEME]}" || return 1
+  theme_desktop_configure_gtk "${!desktop_settings_ref}" || return 1
+  theme_desktop_configure_xcursor_resources "${!desktop_settings_ref}" || return 1
   theme_desktop_notify_gtk_theme_changed
   # Dolphin re-renders its cached icons only on a palette change, so the icon theme must switch first.
   theme_desktop_notify_kde_icons_changed
@@ -763,38 +674,42 @@ theme_desktop_apply_static_resolved() {
 }
 
 theme_desktop_apply_static_resolved_if_needed() {
+  local -n desktop_settings_ref="$1"
   local static_hash=""
   local hash_file=""
 
   hash_file="$(hypr_hash_cache_runtime_file "theme-desktop-static.hash")" || return 1
-  static_hash="$(theme_desktop_static_state_hash)" || return 1
+  static_hash="$(theme_desktop_static_state_hash "${!desktop_settings_ref}")" || return 1
 
   # hypr_hash_cache_is_current honors FORCE_COLOR_REGEN; store honors
   # HYPR_HASH_CACHE_ENABLE — no per-callsite flag checks needed.
-  if theme_desktop_static_targets_ready \
+  if theme_desktop_static_targets_ready "${!desktop_settings_ref}" \
     && hypr_hash_cache_is_current "${hash_file}" "${static_hash}"; then
     print_log -sec "theme" -stat "skip" "static desktop sync unchanged"
     return 0
   fi
 
-  theme_desktop_apply_static_resolved || return 1
+  theme_desktop_apply_static_resolved "${!desktop_settings_ref}" || return 1
   hypr_hash_cache_store "${hash_file}" "${static_hash}" || return 1
 }
 
 theme_desktop_sync_runtime() {
-  theme_desktop_prepare_state || return 1
-  theme_desktop_apply_runtime_resolved || return 1
-  theme_desktop_set_cursor_async
+  local -A resolved_settings=()
+  theme_desktop_prepare_settings_into resolved_settings || return 1
+  theme_desktop_apply_runtime_resolved resolved_settings || return 1
+  theme_desktop_set_cursor_async resolved_settings
 }
 
 theme_desktop_sync_static() {
-  theme_desktop_prepare_state || return 1
-  theme_desktop_apply_static_resolved_if_needed
+  local -A resolved_settings=()
+  theme_desktop_prepare_settings_into resolved_settings || return 1
+  theme_desktop_apply_static_resolved_if_needed resolved_settings
 }
 
 theme_desktop_sync_full() {
-  theme_desktop_prepare_state || return 1
-  theme_desktop_apply_static_resolved_if_needed || return 1
-  theme_desktop_apply_runtime_resolved || return 1
-  theme_desktop_apply_cursor_theme
+  local -A resolved_settings=()
+  theme_desktop_prepare_settings_into resolved_settings || return 1
+  theme_desktop_apply_static_resolved_if_needed resolved_settings || return 1
+  theme_desktop_apply_runtime_resolved resolved_settings || return 1
+  theme_desktop_apply_cursor_theme resolved_settings
 }

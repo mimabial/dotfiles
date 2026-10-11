@@ -19,7 +19,7 @@ ${XDG_DATA_HOME:-$HOME/.local/share}/icons
 $HOME/.icons
 /usr/share/icons
 ROOTS
-  basename -- "${cursor_dir}"
+  printf '%s\n' "${cursor_dir##*/}"
 done | LC_ALL=C sort -fu | while IFS= read -r cursor_theme; do
   printf '%s\t\t\n' "${cursor_theme}"
 done

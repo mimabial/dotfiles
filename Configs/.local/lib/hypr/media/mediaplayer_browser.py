@@ -2,18 +2,23 @@
 import json
 import os
 import shutil
+import signal
 import subprocess
-import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from urllib.parse import parse_qs, urlparse
 
+from gi.repository import GLib
 from ytdlp_config import ytdlp_auth_args
 
 _media_info_probes_inflight = {}
+_completed_media_info = {}
+_media_info_ready_listeners = []
+PROBE_READ_CHUNK_BYTES = 64 * 1024
 DEFAULT_YTDLP_TIMEOUT_SECONDS = 20.0
 POSITION_JUMP_SECONDS = 15.0
+END_OF_TRACK_TOLERANCE_SECONDS = 1.0
+YOUTUBE_PAGE_TIMEOUT_SECONDS = 2.5
 _ytdlp_timeout_seconds = DEFAULT_YTDLP_TIMEOUT_SECONDS
-_youtube_page_timeout_seconds = 2.5
 _current_track_media_info = {"media_url": "", "info": None}
 
 
@@ -216,25 +221,92 @@ def _build_ytdlp_probe_command(url: str) -> list[str] | None:
     ]
 
 
+@dataclass
+class MediaInfoProbe:
+    process: subprocess.Popen
+    kind: str
+    output: bytearray = field(default_factory=bytearray)
+    output_closed: bool = False
+    exit_status: int | None = None
+    deadline_id: int | None = None
+
+
+def on_media_info_ready(listener) -> None:
+    _media_info_ready_listeners.append(listener)
+
+
+def _probe_timeout_seconds(kind: str) -> float:
+    return YOUTUBE_PAGE_TIMEOUT_SECONDS if kind == "page" else _ytdlp_timeout_seconds
+
+
 def _start_media_info_probe_command(url: str, command: list[str], kind: str) -> None:
     if url in _media_info_probes_inflight:
         return
 
     try:
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-        )
-    except Exception:
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    except OSError:
         return
 
-    _media_info_probes_inflight[url] = {
-        "process": process,
-        "started_at": time.time(),
-        "kind": kind,
-    }
+    probe = MediaInfoProbe(process, kind)
+    _media_info_probes_inflight[url] = probe
+    GLib.io_add_watch(
+        process.stdout.fileno(),
+        GLib.PRIORITY_DEFAULT,
+        GLib.IOCondition.IN | GLib.IOCondition.HUP,
+        _collect_probe_output,
+        url,
+        probe,
+    )
+    GLib.child_watch_add(GLib.PRIORITY_DEFAULT, process.pid, _record_probe_exit, url, probe)
+    probe.deadline_id = GLib.timeout_add(int(_probe_timeout_seconds(kind) * 1000), _kill_overdue_probe, probe)
+
+
+def _collect_probe_output(fd, condition, url: str, probe: MediaInfoProbe) -> bool:
+    chunk = os.read(fd, PROBE_READ_CHUNK_BYTES)
+    if chunk:
+        probe.output += chunk
+        return True
+    probe.output_closed = True
+    _finish_probe_when_complete(url, probe)
+    return False
+
+
+def _record_probe_exit(pid, wait_status, url: str, probe: MediaInfoProbe) -> None:
+    probe.exit_status = os.waitstatus_to_exitcode(wait_status)
+    probe.process.returncode = probe.exit_status
+    _finish_probe_when_complete(url, probe)
+
+
+def _kill_overdue_probe(probe: MediaInfoProbe) -> bool:
+    probe.deadline_id = None
+    if probe.exit_status is None:
+        try:
+            os.kill(probe.process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    return False
+
+
+def _finish_probe_when_complete(url: str, probe: MediaInfoProbe) -> None:
+    if not probe.output_closed or probe.exit_status is None:
+        return
+    if probe.deadline_id is not None:
+        GLib.source_remove(probe.deadline_id)
+    probe.process.stdout.close()
+    _media_info_probes_inflight.pop(url, None)
+
+    stdout = probe.output.decode(errors="replace")
+    if probe.kind == "page":
+        info = _parse_youtube_watch_page_media_info(stdout)
+        if info.duration_seconds is None and not info.live_status:
+            _start_ytdlp_fallback_probe(url)
+            return
+    else:
+        info = _parse_ytdlp_media_info(stdout) if probe.exit_status == 0 else YoutubeMediaInfo()
+    _completed_media_info[url] = info
+    for listener in _media_info_ready_listeners:
+        listener()
 
 
 def _start_ytdlp_fallback_probe(url: str) -> None:
@@ -256,48 +328,6 @@ def _start_youtube_media_info_probe(url: str) -> None:
         _start_media_info_probe_command(url, command, "page")
         return
     _start_ytdlp_fallback_probe(url)
-
-
-def _poll_youtube_media_info_probe(url: str) -> YoutubeMediaInfo | None:
-    probe = _media_info_probes_inflight.get(url)
-    if not probe:
-        return None
-
-    process = probe["process"]
-    started_at = float(probe["started_at"])
-    probe_kind = str(probe.get("kind", "ytdlp"))
-    if process.poll() is None:
-        timeout_seconds = (
-            _youtube_page_timeout_seconds
-            if probe_kind == "page"
-            else _ytdlp_timeout_seconds
-        )
-        if time.time() - started_at > timeout_seconds:
-            try:
-                process.kill()
-            except Exception:
-                pass
-            _media_info_probes_inflight.pop(url, None)
-            if probe_kind == "page":
-                _start_ytdlp_fallback_probe(url)
-        return None
-
-    stdout = ""
-    try:
-        stdout, _ = process.communicate()
-    except Exception:
-        pass
-
-    _media_info_probes_inflight.pop(url, None)
-    if probe_kind == "page":
-        page_info = _parse_youtube_watch_page_media_info(stdout)
-        if page_info.duration_seconds is not None or page_info.live_status:
-            return page_info
-        _start_ytdlp_fallback_probe(url)
-        return None
-    if process.returncode == 0:
-        return _parse_ytdlp_media_info(stdout)
-    return YoutubeMediaInfo()
 
 
 def _reuse_last_media_info(
@@ -348,7 +378,7 @@ def resolve_youtube_media_info(
     if reused_info is not None:
         return reused_info
 
-    completed_probe = _poll_youtube_media_info_probe(url)
+    completed_probe = _completed_media_info.pop(url, None)
     if completed_probe is not None:
         if completed_probe.duration_seconds is not None or completed_probe.live_status:
             _current_track_media_info = {"media_url": url, "info": completed_probe}
@@ -385,11 +415,11 @@ def youtube_position_is_untrusted(
 
     browser_duration_seconds = max(0.0, round(raw_metadata.duration_seconds, 2))
     terminal_against_duration = reported_position_seconds >= max(
-        0.0, duration_seconds - 1.0
+        0.0, duration_seconds - END_OF_TRACK_TOLERANCE_SECONDS
     )
     terminal_against_browser_duration = (
         browser_duration_seconds > 0
-        and reported_position_seconds >= max(0.0, browser_duration_seconds - 1.0)
+        and reported_position_seconds >= max(0.0, browser_duration_seconds - END_OF_TRACK_TOLERANCE_SECONDS)
     )
     browser_duration_mismatch = (
         browser_duration_seconds > 0

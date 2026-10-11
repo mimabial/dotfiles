@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
 
 hypr_dbus_get() {
-  local reply=""
+  local bus="$1" destination="$2" object_path="$3" interface="$4" property="$5" reply=""
 
-  reply="$(dbus-send "--$1" --print-reply=literal --dest="$2" "$3" org.freedesktop.DBus.Properties.Get "string:$4" "string:$5" 2>/dev/null)" || return
+  reply="$(dbus-send "--${bus}" --print-reply=literal --dest="${destination}" "${object_path}" org.freedesktop.DBus.Properties.Get "string:${interface}" "string:${property}" 2>/dev/null)" || return
   printf '%s\n' "${reply##* }"
 }
 
 hypr_dbus_set() {
-  dbus-send "--$1" --print-reply=literal --reply-timeout=5000 --dest="$2" "$3" org.freedesktop.DBus.Properties.Set "string:$4" "string:$5" "variant:$6:$7" >/dev/null
+  local bus="$1" destination="$2" object_path="$3" interface="$4" property="$5" value_type="$6" value="$7"
+
+  dbus-send "--${bus}" --print-reply=literal --reply-timeout=5000 --dest="${destination}" "${object_path}" org.freedesktop.DBus.Properties.Set "string:${interface}" "string:${property}" "variant:${value_type}:${value}" >/dev/null
+}
+
+hypr_login1_call() {
+  local method="$1"
+  shift
+  dbus-send --system --print-reply --dest=org.freedesktop.login1 /org/freedesktop/login1 "org.freedesktop.login1.Manager.${method}" "$@"
 }
 
 hypr_gamemode_active() {

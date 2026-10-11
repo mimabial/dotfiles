@@ -10,7 +10,7 @@ hypr_help_guard "Usage: hyprshell window/gaps-toggle [on|off|toggle]
 Toggle window gaps between the configured size and none (default: toggle)." "$@"
 
 hypr_runtime_require state || exit 1
-hypr_runtime_load_state || exit 1
+hypr_runtime_load_desktop_environment || exit 1
 
 # gaps_in/gaps_out are custom types: getoption reports them as a four-edge css
 # string ("7 7 7 7"), so take the first edge as the scalar to restore.
@@ -50,6 +50,10 @@ if [[ "${want}" == "off" ]]; then
     state_set HYPR_GAPS_SAVED_OUT "${current_out}"
   fi
   apply_gaps 0 0
+elif ((current_in != 0 || current_out != 0)); then
+  exit 0
+elif [[ -n "${saved_in}" && -n "${saved_out}" ]]; then
+  apply_gaps "${saved_in}" "${saved_out}"
 else
-  apply_gaps "${saved_in:-4}" "${saved_out:-7}"
+  hyprctl reload config-only >/dev/null
 fi

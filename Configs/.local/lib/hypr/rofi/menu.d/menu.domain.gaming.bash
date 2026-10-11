@@ -19,13 +19,11 @@ menu_run_action_gaming() {
     gaming_launcher_steam) hyprshell gaming/launcher.sh --backend steam ;;
     gaming_launcher_lutris) hyprshell gaming/launcher.sh --backend lutris ;;
     gaming_sudoku) quickshell ipc call bar popup sudoku ;;
-    gaming_steam) uwsm-app -- steam ;;
-    gaming_lutris) uwsm-app -- lutris ;;
+    gaming_steam) "${HYPR_LIB_DIR}/system/app2unit.sh" -- steam ;;
+    gaming_lutris) "${HYPR_LIB_DIR}/system/app2unit.sh" -- lutris ;;
     gaming_wine_stop) hyprshell gaming/wine-stop.sh ;;
-    *) return 1 ;;
+    *) return "${MENU_ACTION_UNKNOWN}" ;;
   esac
-
-  return 0
 }
 
 menu_register_action_handler menu_run_action_gaming

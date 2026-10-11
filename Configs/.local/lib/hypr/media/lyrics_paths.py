@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import os
 import shlex
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from pyutils.xdg_base_dirs import xdg_config_home
 
 
 def absolute_path(path: str | Path) -> Path:
@@ -11,8 +16,7 @@ def absolute_path(path: str | Path) -> Path:
 
 
 def _music_dir_from_user_dirs() -> str | None:
-    config_home = os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))
-    user_dirs = absolute_path(config_home) / "user-dirs.dirs"
+    user_dirs = xdg_config_home() / "user-dirs.dirs"
     try:
         lines = user_dirs.read_text(encoding="utf-8").splitlines()
     except OSError:
@@ -67,6 +71,17 @@ def lrc_path_for(file_path: str | Path) -> Path:
     except ValueError:
         return path.with_suffix(".lrc")
     return (hidden / relative).with_suffix(".lrc")
+
+
+def prune_empty_lyrics_parents(path: Path) -> None:
+    stop = hidden_lyrics_root()
+    current = path
+    while current != stop and stop in current.parents:
+        try:
+            current.rmdir()
+        except OSError:
+            return
+        current = current.parent
 
 
 def lyrics_directory_for(directory: str | Path) -> Path | None:

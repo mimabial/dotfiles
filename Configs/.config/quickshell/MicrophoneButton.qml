@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell.Services.Pipewire
+import "modules/StatusSymbols.js" as StatusSymbols
 
 BarButton {
     id: root
@@ -10,6 +11,7 @@ BarButton {
             && !group.source.isStream && !String(group.source.name).endsWith(".monitor"))).length
     readonly property bool live: source && !source.audio.muted
     css: live ? "microphone" : "microphone.muted"
+    symbol: root.styledSymbol ? StatusSymbols.volume(root.source, !root.live, "microphone-sensitivity") : ""
     text: !root.source || root.source.audio.muted ? "" : ""
     badgeText: recordingCount > 0 ? countGlyph(recordingCount) : ""
     smoothTextColor: false
@@ -21,6 +23,9 @@ BarButton {
     onClicked: button => button === Qt.RightButton
         ? (source ? source.audio.muted = !source.audio.muted : false)
         : shell.togglePopup("microphone")
+    onWheeled: delta => {
+        if (root.source) root.shell.run([root.shell.home + "/.local/lib/hypr/controls/volume-control.sh", "-i", delta > 0 ? "i" : "d"])
+    }
 
     PwObjectTracker { objects: [root.source].filter(x => x) }
     SequentialAnimation {

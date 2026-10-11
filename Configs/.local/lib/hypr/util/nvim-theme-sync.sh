@@ -15,7 +15,7 @@ log_warn() {
   printf '%s [warn] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "${log_file}"
 }
 
-runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+runtime_dir="${XDG_RUNTIME_DIR:-/run/user/${UID}}"
 remote_timeout="${NVIM_THEME_SYNC_TIMEOUT:-2s}"
 remote_kill_after="${NVIM_THEME_SYNC_KILL_AFTER:-1s}"
 remote_cmd='<Cmd>lua if vim.g.neocode_theme_sync then require("lib.theme_manager").sync(true); vim.cmd("redraw!") end<CR>'

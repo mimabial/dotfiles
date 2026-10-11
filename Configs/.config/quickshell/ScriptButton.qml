@@ -25,7 +25,8 @@ BarButton {
     text: rendered
     textFormat: markup ? Text.RichText : Text.PlainText
     tooltip: output.tooltip || ""
-    visible: text !== ""
+    readonly property bool hasContent: text !== ""
+    visible: hasContent
     // subscribes this button to `quickshell ipc call indicators refresh <name>`,
     // so a state change pushes one run instead of a timer discovering it later
     property string indicator: ""

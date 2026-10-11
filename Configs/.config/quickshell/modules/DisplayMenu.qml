@@ -1,11 +1,12 @@
 import QtQuick
 import ".."
+import "StatusSymbols.js" as StatusSymbols
 
 DisplayButton {
     id: root
     popupName: "display-menu"
     text: "󰃠"
-    symbol: "display-brightness"
+    symbol: StatusSymbols.brightness(Backlight.percent / 100)
     MacCard {
         anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: "display-menu"; settings: "Display"; settingsPopup: "monitor"
         PopupSlider {

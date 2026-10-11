@@ -3,17 +3,16 @@
 _hyprshell() {
     # Never declare `words` local: it is the completion system's array, and
     # shadowing it leaves $words[2] empty so the subcommand cannot be read.
-    local built_in_commands hyprscripts
-    built_in_commands=("--help" "help" "-h" "-r" "reload" "--version" "version" "-v" "--release-notes" "release-notes" "list" "--list-script" "--list-script-path" "--completions" "completions" "pyinit" "init" "--init" "logout" "pip" "app" "resolve" )
-
-    if (( $+commands[hyprshell] )); then
-        hyprscripts=(${(f)"$(hyprshell --list-script 2>/dev/null)"})
-    fi
+    local -a builtin_commands script_commands
+    builtin_commands=("--help" "help" "-h" "-r" "reload" "--version" "version" "-v" "--release-notes" "release-notes" "list" "--list-script" "--list-script-path" "--completions" "completions" "pyinit" "init" "--init" "logout" "pip" "app" "resolve" )
 
     if [[ $CURRENT -eq 2 ]]; then
-        local all_commands=($built_in_commands $hyprscripts)
+        if (( $+commands[hyprshell] )); then
+            script_commands=(${(f)"$(hyprshell --list-script 2>/dev/null)"})
+        fi
+        local all_commands=($builtin_commands $script_commands)
         compadd -M 'r:|/=* r:|=*' -a all_commands
-    elif [[ $CURRENT -eq 3 && $words[2] == --completions ]]; then
+    elif [[ $CURRENT -eq 3 && ($words[2] == --completions || $words[2] == completions) ]]; then
         compadd "bash" "zsh"
     else
         local -a script_options
@@ -32,29 +31,28 @@ _hyprshell() {
 # Cache hit stays inside zsh: no subprocess, no interpreter start. Python runs
 # only when the script changed, and then reparses just that one file.
 _hyprshell_script_options() {
-    local name="$1" cache line
-    local -a entry mt sz
-    [[ -n "$name" ]] || return 0
-    cache="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/completion-options"
+    local command_name="$1" cache_file cache_line
+    local cached_name script_path modified_seconds size_bytes cached_options
+    local -A script_stat
+    [[ -n "$command_name" ]] || return 0
+    cache_file="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/completion-options"
     zmodload -F zsh/stat b:zstat 2>/dev/null
 
-    if [[ -r "$cache" ]]; then
-        for line in ${(f)"$(<$cache)"}; do
-            [[ $line == $name$'\t'* ]] || continue
-            # (ps:...:) not (s:...:) — the latter splits on a literal backslash-t.
-            entry=(${(ps:\t:)line})
-            zstat -A mt +mtime $entry[2] 2>/dev/null
-            zstat -A sz +size $entry[2] 2>/dev/null
-            if [[ $mt[1] == $entry[3] && $sz[1] == $entry[4] ]]; then
-                print -r -- $entry[5]
+    if [[ -r "$cache_file" ]]; then
+        for cache_line in ${(f)"$(<$cache_file)"}; do
+            [[ $cache_line == $command_name$'\t'* ]] || continue
+            IFS=$'\t' read -r cached_name script_path modified_seconds size_bytes cached_options <<<"$cache_line"
+            if zstat -H script_stat "$script_path" 2>/dev/null &&
+                [[ $script_stat[mtime] == $modified_seconds && $script_stat[size] == $size_bytes ]]; then
+                print -r -- "$cached_options"
                 return 0
             fi
             break
         done
     fi
 
-    local helper="${LIB_DIR:-$HOME/.local/lib}/hypr/shell/lib/hyprshell.options.py"
-    [[ -r $helper ]] && python3 $helper $name 2>/dev/null
+    local helper="${LIB_DIR:-$HOME/.local/lib}/hypr/shell/lib/hyprshell.completion-options.py"
+    [[ -r $helper ]] && python3 "$helper" "$command_name" 2>/dev/null
 }
 
 compdef _hyprshell hyprshell

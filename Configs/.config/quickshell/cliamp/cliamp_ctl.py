@@ -556,7 +556,7 @@ def load_mpv(url, mode, title, artist="", start=None):
         options["start"] = str(start)
     if is_youtube_url(url):
         save_youtube_meta(url, title, artist)
-        target = resolve_youtube_stream_url(url) or url
+        target = get_cached_stream_url(url) or url
         options["ytdl-format"] = "18/best"
     result = send_mpv_cmd(["loadfile", target, mode, -1, options]) or {}
     return (result.get("data") or {}).get("playlist_entry_id")
@@ -683,23 +683,26 @@ def read_history():
     except Exception:
         return []
 
-def history_key(item):
+def history_key(item, local_only=False):
     title = str(item.get("title") or "").strip()
     path = str(item.get("path") or "").strip()
     artist = str(item.get("artist") or "").strip()
     if not (title or path):
         return None
-    if path and not path.startswith(("http://", "https://", "yt:", "spotify:")):
+    if local_only:
+        if not os.path.isfile(os.path.expanduser(path)):
+            return None
+    elif path and not path.startswith(("http://", "https://", "yt:", "spotify:")):
         expanded = os.path.expanduser(path)
         if os.path.isabs(expanded) and not os.path.exists(expanded):
             return None
     video_id = youtube_id(path)
     return f"yt:{video_id}" if video_id else f"path:{path}" if path else f"meta:{title.lower()}::{artist.lower()}"
 
-def unique_history(items, limit):
+def unique_history(items, limit, local_only=False):
     tracks, seen = [], set()
     for item in reversed(items):
-        key = history_key(item)
+        key = history_key(item, local_only)
         if key and key not in seen:
             seen.add(key)
             tracks.append(item)
@@ -707,8 +710,8 @@ def unique_history(items, limit):
             break
     return tracks
 
-def parse_history(limit=500):
-    entries = unique_history(read_history(), limit)
+def parse_history(limit=500, local_only=False):
+    entries = unique_history(read_history(), limit, local_only)
     for item in entries:
         video_id = youtube_id(item.get("path"))
         thumb = os.path.join(AUDIO_CACHE_DIR, f"{video_id}.jpg") if video_id else ""
@@ -955,8 +958,8 @@ VIS_MODES = {
     "siriwave", "soundcloud_wave", "telegram_wave",
     "daw_wave", "led_scrubber", "heatmap_wave", "grounded_wave",
     "retro", "matrix", "binary", "terrain", "mosaic",
-    "scatter", "butterfly",
-    "plasma", "osc_warp", "crt_scanline", "cyber_tunnel",
+    "scatter", "butterfly", "yinyang",
+    "plasma", "osc_warp", "crt_scanline", "cyber_tunnel", "red_sector",
 }
 DEFAULT_VIS_MODE = "osc_warp"
 
@@ -1151,9 +1154,6 @@ def get_status():
         is_paused = pause_res.get("data") is True if pause_res else False
 
         if is_idle:
-            if queue:
-                play_next_in_queue(queue)
-                return get_status()
             state = "stopped"
         elif is_paused:
             state = "paused"
@@ -1683,7 +1683,7 @@ if __name__ == "__main__":
         watch_status()
     elif action == "history":
         limit = int(sys.argv[2]) if len(sys.argv) > 2 else 30
-        print(json.dumps(parse_history(limit)))
+        print(json.dumps(parse_history(limit, "--local-only" in sys.argv[3:])))
     elif action == "remember":
         title, artist, url = (sys.argv[2:5] + ["", "", ""])[:3]
         record_history(title, artist, url, 0)
@@ -1693,7 +1693,7 @@ if __name__ == "__main__":
         liked = read_liked()
         history = read_history()
         popular = most_played(history)
-        result = [{"name": "Recently Played", "count": len(unique_history(history, HISTORY_PLAYLIST_LIMIT)), "system": True},
+        result = [{"name": "Recently Played", "count": len(unique_history(history, HISTORY_PLAYLIST_LIMIT, "--local-only" in sys.argv[2:])), "system": True},
                   {"name": "Most Played", "count": len(popular), "tracks": popular, "system": True},
                   {"name": LIKED_NAME, "count": len(liked), "tracks": liked, "system": True}]
         for pl in custom:

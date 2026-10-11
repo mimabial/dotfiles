@@ -11,8 +11,7 @@ hypr_lua_dispatch() {
 }
 
 hypr_lua_batch() {
-  local expression=""
-  local batch=""
+  local expression="" batch="" replies="" reply="" failed=0
 
   for expression in "$@"; do
     [[ -n "${expression}" ]] || continue
@@ -20,7 +19,13 @@ hypr_lua_batch() {
   done
 
   [[ -n "${batch}" ]] || return 0
-  hyprctl -q --batch "${batch}"
+  replies="$(hyprctl --batch "${batch}")" || return
+  while IFS= read -r reply; do
+    [[ "${reply}" == error:* ]] || continue
+    printf '%s\n' "${reply}" >&2
+    failed=1
+  done <<<"${replies}"
+  return "${failed}"
 }
 
 hypr_lua_apply() {

@@ -28,47 +28,47 @@ get_aur_helper() {
   return 1
 }
 
-get_hypr_conf_from_file() {
-  local file="$1"
-  local key="$2"
+hypr_theme_variable_assignment() {
+  local theme_file="$1"
+  local variable_key="$2"
 
-  [[ -r "${file}" ]] || return 1
+  [[ -r "${theme_file}" ]] || return 1
 
-  awk -F'=' -v key="${key}" '
+  awk -F'=' -v variable_key="${variable_key}" '
     /^[[:space:]]*#/ { next }
     {
-      lhs = $1
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", lhs)
-      if (lhs == key) {
+      assignment_key = $1
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", assignment_key)
+      if (assignment_key == variable_key) {
         sub(/^[^=]*=/, "", $0)
         gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
         print $0
         exit
       }
     }
-  ' "${file}"
+  ' "${theme_file}"
 }
 
-get_hypr_conf() {
-  local var_name="${1}"
-  local file="${2:-"$HYPR_THEME_DIR/hypr.theme"}"
+hypr_theme_variable() {
+  local variable_name="${1}"
+  local theme_file="${2:-"$HYPR_THEME_DIR/hypr.theme"}"
   local value=""
 
-  [[ -n "${var_name}" && -r "${file}" ]] || return 1
+  [[ -n "${variable_name}" && -r "${theme_file}" ]] || return 1
 
   if command -v hyq &>/dev/null; then
-    value="$(hyq --query "\$${var_name}" "${file}" 2>/dev/null || true)"
+    value="$(hyq --query "\$${variable_name}" "${theme_file}" 2>/dev/null || true)"
     [[ -n "${value}" ]] && printf '%s\n' "${value}" && return 0
   fi
 
-  value="$(get_hypr_conf_from_file "${file}" "\$${var_name}")"
+  value="$(hypr_theme_variable_assignment "${theme_file}" "\$${variable_name}")"
   if [[ -n "${value}" ]] && [[ "${value}" != \$* ]]; then
     printf '%s\n' "${value}"
   fi
 }
 
-paste_string() {
-  local class=""
+paste_clipboard() {
+  local window_class=""
   local arg=""
   local ignored_class=""
   local -a ignored_classes=(
@@ -87,9 +87,9 @@ paste_string() {
     esac
   done
 
-  class="$(hyprctl -j activewindow | jq -r '.initialClass // empty')"
+  window_class="$(hyprctl -j activewindow | jq -r '.initialClass // empty')"
   for ignored_class in "${ignored_classes[@]}"; do
-    [[ "${class}" == "${ignored_class}" ]] && return 0
+    [[ "${window_class}" == "${ignored_class}" ]] && return 0
   done
 
   if command -v wtype >/dev/null; then

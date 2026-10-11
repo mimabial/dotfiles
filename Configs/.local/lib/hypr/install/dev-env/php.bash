@@ -38,7 +38,7 @@ dev_env_install_php_runtime() {
 dev_env_install_laravel() {
   printf 'Installing PHP and Laravel...\n\n'
   dev_env_install_php_runtime
-  dev_env_install_simple_runtime "Node.js" node@lts
+  dev_env_install_with_mise "Node.js" node@lts
   composer global require laravel/installer
   printf '\nYou can now run: laravel new myproject\n'
 }

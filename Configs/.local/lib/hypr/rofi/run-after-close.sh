@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROFI_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
-source "${ROFI_DIR}/close.bash"
+source "${BASH_SOURCE[0]%/*}/close.bash"
 
 usage() {
   cat <<EOF
@@ -17,5 +16,5 @@ EOF
   exit 2
 }
 
-rofi_close_running
+rofi_ensure_closed || exit 1
 exec "$@"

@@ -9,7 +9,7 @@ hypr_help_guard "Usage: hyprshell system/time
 Restart the system time-sync daemon to resync the clock." "$@"
 
 echo "Updating time..."
-case "$(hypr_init_system)" in
+case "$(hypr_detect_init_system)" in
   systemd)
     sudo systemctl restart systemd-timesyncd
     ;;

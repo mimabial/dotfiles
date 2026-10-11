@@ -22,7 +22,7 @@ USAGE
 # Listing every destination makes lpstat browse DNS-SD for a second per flag;
 # naming the queues cupsd reports keeps it to the local answer.
 queue_names() {
-  ipptool -c ipp://localhost/ /dev/stdin 2>/dev/null <<'IPP' | tail -n +2
+  ipptool -c ipp://localhost/ /dev/stdin 2>/dev/null <<'IPP'
 {
   OPERATION CUPS-Get-Printers
   GROUP operation-attributes-tag
@@ -34,55 +34,66 @@ queue_names() {
 IPP
 }
 
-printers_json() {
-  local names
-  mapfile -t names < <(queue_names)
-  {
-    lpstat -d
-    if ((${#names[@]})); then lpstat -p "${names[@]}" -v "${names[@]}"; fi
-  } 2>/dev/null | jq -R -s '
-    (capture("system default destination: (?<name>\\S+)").name // "") as $default
-    | ([scan("device for ([^:]+): (\\S+)") | {key: .[0], value: .[1]}] | from_entries) as $devices
-    | [ scan("(?m)^printer (\\S+) (.*)\\n(?:\\t(.*))?") as [$name, $status, $reason]
-        | ($devices[$name] // "") as $device
-        | select($device | startswith("hpfax:") | not)
-        | {
-            name: $name,
-            state: (if $status | test("now printing|is printing") then "printing"
-                    elif $status | test("is idle") then "idle"
-                    else "stopped" end),
-            reason: ($reason // ""),
-            default: ($name == $default),
-            transport: ($device | if test("^(usb://|hp:/usb/)") then "usb"
-                        elif test("^(hp:/net/|ipps?://|socket://|lpd://)|ip=") then "network"
-                        else "" end)
-          }
-      ]'
-}
-
-jobs_json() {
-  lpstat -o 2>/dev/null | jq -R -s '
-    split("\n") | map(select(length > 0))
-    | map(
-        (split(" ") | map(select(length > 0))) as $f
-        | {
-            id: $f[0],
-            printer: ($f[0] | sub("-[0-9]+$"; "")),
-            user: ($f[1] // ""),
-            size: (($f[2] // "0") | tonumber? // 0)
-          }
-      )'
-}
-
 report_json() {
-  jq -n \
-    --argjson printers "$(printers_json)" \
-    --argjson jobs "$(jobs_json)" '{
-      printers: $printers,
-      jobs: $jobs,
-      pending: ($jobs | length),
-      stopped: ($printers | map(select(.state == "stopped")) | length)
-    }'
+  local view="$1" names csv_rows
+  mapfile -t csv_rows < <(queue_names)
+  names=("${csv_rows[@]:1}")
+  jq -n -r --arg view "${view}" \
+    --rawfile printers_text <({ lpstat -d; if ((${#names[@]})); then lpstat -p "${names[@]}" -v "${names[@]}"; fi; } 2>/dev/null) \
+    --rawfile jobs_text <(lpstat -o 2>/dev/null) '
+    def printers:
+      (capture("system default destination: (?<name>\\S+)").name // "") as $default
+      | ([scan("device for ([^:]+): (\\S+)") | {key: .[0], value: .[1]}] | from_entries) as $devices
+      | [ scan("(?m)^printer (\\S+) (.*)\\n(?:\\t(.*))?") as [$name, $status, $reason]
+          | ($devices[$name] // "") as $device
+          | select($device | startswith("hpfax:") | not)
+          | {
+              name: $name,
+              state: (if $status | test("now printing|is printing") then "printing"
+                      elif $status | test("is idle") then "idle"
+                      else "stopped" end),
+              reason: ($reason // ""),
+              default: ($name == $default),
+              transport: ($device | if test("^(usb://|hp:/usb/)") then "usb"
+                          elif test("^(hp:/net/|ipps?://|socket://|lpd://)|ip=") then "network"
+                          else "" end)
+            }
+        ];
+    def jobs:
+      split("\n") | map(select(length > 0))
+      | map(
+          (split(" ") | map(select(length > 0))) as $f
+          | {
+              id: $f[0],
+              printer: ($f[0] | sub("-[0-9]+$"; "")),
+              user: ($f[1] // ""),
+              size: (($f[2] // "0") | tonumber? // 0)
+            }
+        );
+    ($printers_text | printers) as $printers
+    | ($jobs_text | jobs) as $jobs
+    | {
+        printers: $printers,
+        jobs: $jobs,
+        pending: ($jobs | length),
+        stopped: ($printers | map(select(.state == "stopped")) | length)
+      }
+    | if $view == "bar" then
+        # a stopped queue is the case worth surfacing: jobs pile up silently
+        {
+          text: (if (.printers | length) == 0 then ""
+                 elif .stopped > 0 then "󰐬"
+                 elif .pending > 0 then "󱊖"
+                 else "󱞆" end),
+          class: (if (.printers | length) == 0 then "empty"
+                  elif .stopped > 0 then "stopped"
+                  elif .pending > 0 then "printing"
+                  else "idle" end),
+          tooltip: (if (.printers | length) == 0 then "No printers"
+                    else ((.printers | map("\(.name) — \(.state)")) + (if .pending > 0 then ["\(.pending) job(s) queued"] else [] end) | join("\n"))
+                    end)
+        } | @json
+      end'
 }
 
 case "${1:---report}" in
@@ -91,24 +102,10 @@ case "${1:---report}" in
     exit 0
     ;;
   --report)
-    report_json
+    report_json report
     ;;
   --bar)
-    # a stopped queue is the case worth surfacing: jobs pile up silently
-    report_json | jq -r '
-      {
-        text: (if (.printers | length) == 0 then ""
-               elif .stopped > 0 then "󰐬"
-               elif .pending > 0 then "󱊖"
-               else "󱞆" end),
-        class: (if (.printers | length) == 0 then "empty"
-                elif .stopped > 0 then "stopped"
-                elif .pending > 0 then "printing"
-                else "idle" end),
-        tooltip: (if (.printers | length) == 0 then "No printers"
-                  else ((.printers | map("\(.name) — \(.state)")) + (if .pending > 0 then ["\(.pending) job(s) queued"] else [] end) | join("\n"))
-                  end)
-      } | @json'
+    report_json bar
     ;;
   --enable)
     [[ -n "${2:-}" ]] || { usage >&2; exit 1; }

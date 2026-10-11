@@ -12,28 +12,29 @@ refute() {
 }
 
 test_parser() (
-  show_help() { exit 90; }
-  source "${WALLPAPER_DIR}/lib/parse.bash"
-  parse_wallpaper_args_modern --backend hyprlock -Gn
-  [[ "${wallpaper_setter_flag}:${wallpaper_backend}:${set_as_global}" == n:hyprlock:true ]]
-  ! (parse_wallpaper_args_modern next --set /tmp/wall 2>/dev/null)
+  wallpaper_show_help() { exit 90; }
+  source "${WALLPAPER_DIR}/lib/arguments.bash"
+  wallpaper_parse_arguments --backend hyprlock -Gn
+  [[ "${wallpaper_action}:${wallpaper_backend}:${wallpaper_is_global}" == next:hyprlock:true ]]
+  refute bash -c 'source "$1"; wallpaper_parse_arguments next --set /tmp/wall' bash "${WALLPAPER_DIR}/lib/arguments.bash" 2>/dev/null
 )
 
 test_actions() (
   print_log() { :; }
-  source "${WALLPAPER_DIR}/lib/dispatch.bash"
+  source "${WALLPAPER_DIR}/lib/command-policy.bash"
+  source "${WALLPAPER_DIR}/lib/commands.bash"
   local action
-  for action in n p r s resume display notify select start link g o clean json; do
-    wallpaper_setter_flag="${action}"
+  for action in next previous random set resume display notify select start link get output clean json; do
+    wallpaper_action="${action}"
     wallpaper_wait_for_lock=0
-    wallpaper_resolve_action_profile
+    wallpaper_configure_action
     declare -F "${wallpaper_action_handler}" >/dev/null
   done
 )
 
 test_json() (
   LIB_DIR="${WALLPAPER_DIR%/hypr/wallpaper}"
-  source "${WALLPAPER_DIR}/lib/ui.bash"
+  source "${WALLPAPER_DIR}/lib/catalog-json.bash"
   wallpaper_paths=("/tmp/a b.jpg" "/tmp/東京.png")
   declare -A wallpaper_hash_by_path=(["${wallpaper_paths[0]}"]=abc ["${wallpaper_paths[1]}"]=def)
   wallpaper_catalog_build_json /tmp |
@@ -41,7 +42,7 @@ test_json() (
 )
 
 test_json_cache_freshness() (
-  source "${WALLPAPER_DIR}/lib/ui.bash"
+  source "${WALLPAPER_DIR}/lib/catalog-json.bash"
   local dir
   dir="$(mktemp -d)"; trap 'rm -rf -- "${dir}"' EXIT
   printf 'cached\n' >"${dir}/catalog.json"
@@ -54,7 +55,7 @@ test_json_cache_freshness() (
 )
 
 test_trash_selection() (
-  source "${WALLPAPER_DIR}/lib/ui.bash"
+  source "${WALLPAPER_DIR}/lib/picker.bash"
   local dir catalog first second chosen="" backend_calls=0 fail_trash=1
   dir="$(mktemp -d)"
   trap 'rm -rf -- "${dir}"' EXIT
@@ -70,7 +71,7 @@ test_trash_selection() (
   print_log() { :; }
   wallpaper_resolve_path() { readlink -f -- "$1"; }
   wallpaper_catalog_load_file() { chosen="$1"; }
-  apply_selected_wallpaper() { ln -sfn "${chosen}" "${active_wallpaper_link}"; }
+  wallpaper_apply_selected() { ln -sfn "${chosen}" "${active_wallpaper_link}"; }
   wallpaper_apply_backend() { backend_calls=$((backend_calls + 1)); }
   gio() {
     [[ "$1" == trash && "$2" == -- ]] || return 1
@@ -98,15 +99,15 @@ test_queue() (
   trap 'rm -rf -- "${tmp_dir}"' EXIT
   printf 'test\n' >"${tmp_dir}/wall.jpg"
   source "${WALLPAPER_DIR}/wallcache.daemon.sh"
-  QUEUE_ROOT="${tmp_dir}/queue"
-  QUEUE_PENDING_DIR="${QUEUE_ROOT}/pending"
-  QUEUE_RUNNING_DIR="${QUEUE_ROOT}/running"
+  WALLCACHE_QUEUE_ROOT="${tmp_dir}/queue"
+  WALLCACHE_PENDING_DIR="${WALLCACHE_QUEUE_ROOT}/pending"
+  WALLCACHE_RUNNING_DIR="${WALLCACHE_QUEUE_ROOT}/running"
   WALLPAPER_THUMB_DIR="${tmp_dir}/thumbs"
-  ensure_queue_dirs
-  for i in {1..16}; do queue_wallpaper "${tmp_dir}/wall.jpg" & done
+  wallcache_prepare_queue_directories
+  for i in {1..16}; do wallcache_enqueue_wallpaper "${tmp_dir}/wall.jpg" & done
   wait
-  pending_count="$(find "${QUEUE_PENDING_DIR}" -type f -name '*.job' | wc -l)"
-  temp_count="$(find "${QUEUE_PENDING_DIR}" -type f -name '.*.job.*' | wc -l)"
+  pending_count="$(find "${WALLCACHE_PENDING_DIR}" -type f -name '*.job' | wc -l)"
+  temp_count="$(find "${WALLCACHE_PENDING_DIR}" -type f -name '.*.job.*' | wc -l)"
   [[ "${pending_count}:${temp_count}" == 1:0 ]]
 )
 
@@ -138,30 +139,30 @@ test_index_helpers() (
 test_select_adjacent() (
   source "${WALLPAPER_DIR%/wallpaper}/core/wallpaper.catalog.bash"
   source "${WALLPAPER_DIR}/lib/catalog.bash"
-  source "${WALLPAPER_DIR}/lib/actions.bash"
+  source "${WALLPAPER_DIR}/lib/apply.bash"
   # stubs must follow the sources, or the libraries redefine them
   print_log() { :; }
   wallpaper_resolve_path() { printf '%s\n' "${current_link_target}"; }
-  apply_selected_wallpaper() { applied="${wallpaper_paths[selected_wallpaper_index]}"; }
+  wallpaper_apply_selected() { applied="${wallpaper_paths[selected_wallpaper_index]}"; }
 
   local active_wallpaper_link=/unused applied="" selected_wallpaper_index=0 current_link_target=""
   local -a wallpaper_paths=(/w/a.jpg /w/b.jpg /w/c.jpg)
 
   current_link_target=/w/b.jpg
-  select_adjacent_wallpaper n
+  wallpaper_select_adjacent n
   [[ "${selected_wallpaper_index}:${applied}" == 2:/w/c.jpg ]]
 
   current_link_target=/w/c.jpg
-  select_adjacent_wallpaper n
+  wallpaper_select_adjacent n
   [[ "${selected_wallpaper_index}:${applied}" == 0:/w/a.jpg ]]
 
   current_link_target=/w/a.jpg
-  select_adjacent_wallpaper p
+  wallpaper_select_adjacent p
   [[ "${selected_wallpaper_index}:${applied}" == 2:/w/c.jpg ]]
 
   # unknown current wallpaper falls back to the first entry
   current_link_target=/w/gone.jpg
-  select_adjacent_wallpaper n
+  wallpaper_select_adjacent n
   [[ "${selected_wallpaper_index}:${applied}" == 0:/w/a.jpg ]]
 )
 
@@ -176,7 +177,7 @@ test_select_adjacent
 
 test_prune_unreferenced() (
   print_log() { :; }
-  source "${WALLPAPER_DIR}/lib/thumbs.bash"
+  source "${WALLPAPER_DIR}/lib/cache-prune.bash"
   local dir
   dir="$(mktemp -d)"
   trap 'rm -rf -- "${dir}"' EXIT
@@ -202,7 +203,7 @@ test_prune_unreferenced
 test_selected_path_is_the_only_catalog_read() (
   source "${WALLPAPER_DIR%/wallpaper}/core/wallpaper.catalog.bash"
   source "${WALLPAPER_DIR}/lib/catalog.bash"
-  source "${WALLPAPER_DIR}/lib/actions.bash"
+  source "${WALLPAPER_DIR}/lib/apply.bash"
   local -a wallpaper_paths=(/w/a.jpg /w/b.jpg /w/c.jpg)
   local selected_wallpaper_index=1
   [[ "$(wallpaper_selected_path)" == /w/b.jpg ]]
@@ -214,7 +215,7 @@ test_selected_path_is_the_only_catalog_read() (
 )
 
 test_ensure_hash_names_the_map_it_writes() (
-  source "${WALLPAPER_DIR}/lib/actions.bash"
+  source "${WALLPAPER_DIR}/lib/apply.bash"
   wallpaper_file_hash() { printf 'hash-of-%s\n' "${1##*/}"; }
   local -A hashes=()
 
@@ -235,7 +236,7 @@ test_ensure_hash_names_the_map_it_writes() (
 )
 
 test_link_selected_uses_the_path_it_is_given() (
-  source "${WALLPAPER_DIR}/lib/actions.bash"
+  source "${WALLPAPER_DIR}/lib/apply.bash"
   wallpaper_prepare_notification_payload() { payload_arg="$1"; }
   local dir payload_arg=""
   dir="$(mktemp -d)"; trap 'rm -rf -- "${dir}"' EXIT
@@ -272,3 +273,45 @@ test_selected_path_is_the_only_catalog_read
 test_ensure_hash_names_the_map_it_writes
 test_link_selected_uses_the_path_it_is_given
 test_theme_catalog_repairs_wall_link
+
+test_notification_follows_replacement_path() (
+  source "${WALLPAPER_DIR}/lib/apply.bash"
+  source "${WALLPAPER_DIR}/lib/notifications.bash"
+  local -A wallpaper_hash_by_path=([/w/first.jpg]=aaa [/w/replacement.jpg]=bbb)
+  local WALLPAPER_THUMB_DIR=/thumbs selected_wallpaper_path=/w/first.jpg
+  local selected_wallpaper=first.jpg selected_thumbnail=/thumbs/aaa.sqre
+  wallpaper_prepare_notification_payload /w/replacement.jpg
+  [[ "${selected_wallpaper_path}" == /w/replacement.jpg ]]
+  [[ "${HYPR_WALLPAPER_NOTIFY_NAME}" == replacement.jpg ]]
+  [[ "${HYPR_WALLPAPER_NOTIFY_ICON}" == /thumbs/bbb.sqre ]]
+)
+
+test_cache_worker_reports_failure() (
+  source "${WALLPAPER_DIR}/cache/render.bash"
+  local directory extension
+  directory="$(mktemp -d)"; trap 'rm -rf -- "${directory}"' EXIT
+  local WALLPAPER_THUMB_DIR="${directory}" TMPDIR="${directory}" NOTIFY_BRIEF_MS=0
+  hypr_magick_limit_args_into() { :; }
+  wallpaper_is_video() { return 1; }
+  magick() { return 1; }
+  refute wallcache_render_wallpaper hash "${directory}/source.jpg" 0
+  refute wallcache_render_wallpaper hash "${directory}/source.jpg" 1
+  refute wallcache_write_masked_thumbnail hash
+  for extension in thmb sqre blur quad; do : >"${directory}/hash.${extension}"; done
+  wallcache_render_wallpaper hash "${directory}/source.jpg" 0
+  wallpaper_is_video() { return 0; }
+  send_ephemeral_notif() { :; }
+  extract_thumbnail() { : >"$2"; return 1; }
+  refute wallcache_render_wallpaper video "${directory}/source.mp4" 0
+  [[ ! -e "${directory}/video.png" ]]
+)
+
+test_cache_job_budget_cannot_divide_by_zero() (
+  source "${WALLPAPER_DIR}/cache/batch.bash"
+  local WALLPAPER_CACHE_JOB_MB=0 WALLPAPER_CACHE_JOBS="" WALLPAPER_CACHE_RESERVE_MB=0
+  [[ "$(wallcache_job_count 4 4800)" == 4 ]]
+)
+
+test_notification_follows_replacement_path
+test_cache_worker_reports_failure
+test_cache_job_budget_cannot_divide_by_zero

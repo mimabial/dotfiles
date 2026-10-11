@@ -1,50 +1,45 @@
 #!/usr/bin/env bash
 set -euo pipefail
-PALETTE_ARG="${1:-}"
-. "$(dirname "$0")/_lib.sh"
-render_init quickshell theme.json quickshell.theme
+source "${BASH_SOURCE[0]%/*}/_render_job.bash"
+declare -A render_job=()
+render_job_into render_job "${1:-}" quickshell theme.json quickshell.theme
 
-theme_meta="${HYPR_CONFIG_HOME:-$HOME/.config/hypr}/themes/theme.meta"
-meta_number() {
+theme_metadata_file="${RENDER_CONFIG_DIR}/themes/theme.meta"
+read_theme_metric_number() {
   awk -F= -v key="$1" '
     $0 ~ "^[[:space:]]*" key "[[:space:]]*=" { gsub(/[[:space:]]/, "", $2); print $2; exit }
-  ' "${theme_meta}" 2>/dev/null || true
+  ' "${theme_metadata_file}" 2>/dev/null || true
 }
-rounding="$(meta_number rounding)"
+rounding="$(read_theme_metric_number rounding)"
 [[ "${rounding}" =~ ^[0-9]+([.][0-9]+)?$ ]] || rounding=0
-border="$(meta_number border_size)"
+border="$(read_theme_metric_number border_size)"
 [[ "${border}" =~ ^[0-9]+([.][0-9]+)?$ ]] || border=0
 
-hash="$(
-  {
-    render_input_hash
-    printf 'rounding:%s\nborder:%s\n' "${rounding}" "${border}"
-  } | { xxh64sum 2>/dev/null || md5sum; } | awk '{print $1}'
-)"
-render_should_skip "${hash}" && exit 0
+render_fold_stdin_into_input_digest render_job < <(printf 'rounding:%s\nborder:%s\n' "${rounding}" "${border}")
+render_output_is_current render_job && exit 0
 
-tmp="$(render_temp)"
-trap 'rm -f "${tmp}"' EXIT
+render_stage_output_into render_job
+trap 'rm -f -- "${render_job[staged_file]}"' EXIT
 
-palette=""
+palette_roles_json=""
 # A pack override is a flat {role: "#hex"} object. Unreadable or malformed packs
 # fall through to the palette-derived defaults rather than failing the render.
-if [[ -n "${PACK_OVERRIDE}" ]]; then
-  palette="$(jq -ce 'with_entries(select(.value | type == "string"))' "${PACK_OVERRIDE}" 2>/dev/null || true)"
+if [[ -n "${render_job[pack_override]}" ]]; then
+  palette_roles_json="$(jq -ce 'with_entries(select(.value | type == "string"))' "${render_job[pack_override]}" 2>/dev/null || true)"
 fi
 
-if [[ -z "${palette}" ]]; then
-  palette="$(jq -c "${RENDER_PALETTE_ROLES_JQ} + {background: .bg, foreground: .fg}\
-    ${RENDER_PALETTE_NUMBERED_JQ}" "${PALETTE}")"
+if [[ -z "${palette_roles_json}" ]]; then
+  palette_roles_json="$(jq -c "${RENDER_PALETTE_ROLES_JQ} + {background: .bg, foreground: .fg}\
+    ${RENDER_PALETTE_NUMBERED_JQ}" "${render_job[palette_file]}")"
 fi
 
-[[ "$(jq -r 'length' <<<"${palette}")" -gt 0 ]] || {
+[[ "$(jq -r 'length' <<<"${palette_roles_json}")" -gt 0 ]] || {
   echo "render/quickshell: empty palette" >&2
   exit 1
 }
 
-jq -n --argjson palette "${palette}" --argjson rounding "${rounding}" --argjson border "${border}" \
-  '{rounding: $rounding, borderSize: $border, palette: $palette}' > "${tmp}"
+jq -n --argjson palette "${palette_roles_json}" --argjson rounding "${rounding}" --argjson border "${border}" \
+  '{rounding: $rounding, borderSize: $border, palette: $palette}' > "${render_job[staged_file]}"
 
-render_commit "${tmp}" "${hash}"
+render_commit_staged_output render_job
 trap - EXIT

@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 
-# Rofi window geometry is budgeted in em but specified in px. font_scale is the
-# scale in tenths (TEXT_SIZE 12 -> 10), so one em is approximated at twice it.
-# rofi_font_text_height_px measures the real value when the font is known.
-ROFI_EM_PX_PER_SCALE=2
-
+ROFI_PICKER_RECENT_LIMIT=50
 # Mouse-driven dmenu selection: hovering highlights, primary click accepts.
 ROFI_MOUSE_SELECT_ARGS=(-sync -no-custom -hover-select -me-select-entry "" -me-accept-entry MousePrimary)
 
@@ -67,24 +63,23 @@ rofi_picker_index_to_line() {
 rofi_picker_run_indexed() {
   local out_line_var="$1"
   local data_file="$2"
-  shift 2
+  local row_format="$3"
+  shift 3
   local selection_index=""
   local rofi_exit=0
+  local stacked_glyph_rows=0
 
-  # DATA_FILE holds "glyph<TAB>label" rows. Remaining args go verbatim to rofi
-  # (callers own -i, theme layering, -no-custom, etc.). A caller passing -sep (with -markup-rows
-  # and -eh 5) gets glyph, family prefix and name stacked over three lines, which
-  # needs a NUL record so one entry can hold newlines; the glyph is grown with
-  # markup, which only renders unclipped because -eh reserves the extra rows.
-  # Matching still runs on the stripped text.
-  local stacked=0
-  [[ " $* " == *" -sep "* ]] && stacked=1
+  case "${row_format}" in
+    plain) ;;
+    stacked-glyph) stacked_glyph_rows=1 ;;
+    *) return 2 ;;
+  esac
   # shellcheck disable=SC2016 # Awk program is literal.
   selection_index="$(
-    awk -F $'\t' -v s="${stacked}" '
+    awk -F $'\t' -v stacked_glyph_rows="${stacked_glyph_rows}" '
       function e(t) {gsub(/&/,"\\&amp;",t); gsub(/</,"\\&lt;",t); gsub(/>/,"\\&gt;",t); return t}
       {l = ($2 == $1) ? "" : $2; n = index(l, "-"); t = substr(l, n + 1); u = index(t, "_")}
-      s {printf "<span size=\"220%%\">%s</span>\n%s\n%s\n%s%c", e($1), e(substr(l, 1, n)), e(u ? substr(t, 1, u) : t), e(u ? substr(t, u + 1) : ""), 0; next}
+      stacked_glyph_rows {printf "<span size=\"220%%\">%s</span>\n%s\n%s\n%s%c", e($1), e(substr(l, 1, n)), e(u ? substr(t, 1, u) : t), e(u ? substr(t, u + 1) : ""), 0; next}
       {print $1 (l == "" ? "" : " " l)}
     ' "${data_file}" |
       rofi_with_background_theme -dmenu -format 'i' "$@"
@@ -102,10 +97,8 @@ rofi_picker_run_indexed() {
 
 rofi_picker_ensure_data_file() {
   local target_file="$1"
-  local target_dir=""
 
-  target_dir="$(dirname "${target_file}")"
-  mkdir -p "${target_dir}" || return 1
+  mkdir -p "${target_file%/*}" || return 1
   [[ -f "${target_file}" ]] || : >"${target_file}"
 }
 
@@ -113,12 +106,10 @@ rofi_picker_save_recent_entry() {
   local recent_file="$1"
   local tmp_prefix="$2"
   local recent_line="$3"
-  local max_entries="${4:-50}"
+  local max_entries="${4:-${ROFI_PICKER_RECENT_LIMIT}}"
   local postprocess_fn="${5:-}"
-  local recent_dir=""
+  local recent_dir="${recent_file%/*}"
   local tmp_file=""
-
-  recent_dir="$(dirname "${recent_file}")"
   mkdir -p "${recent_dir}" || return 1
   tmp_file="$(mktemp "${recent_dir}/.${tmp_prefix}.XXXXXX")" || return 1
 
@@ -130,25 +121,23 @@ rofi_picker_save_recent_entry() {
     return 1
   }
 
-  if [[ -n "${postprocess_fn}" ]]; then
-    if ! "${postprocess_fn}" "${tmp_file}"; then
-      rm -f "${tmp_file}"
-      return 1
-    fi
-  else
-    local filtered_tmp=""
-    filtered_tmp="$(mktemp "${recent_dir}/.${tmp_prefix}.dedup.XXXXXX")" || {
-      rm -f "${tmp_file}"
-      return 1
-    }
-    if ! awk '!seen[$0]++' "${tmp_file}" | head -n "${max_entries}" >"${filtered_tmp}"; then
-      rm -f "${tmp_file}" "${filtered_tmp}"
-      return 1
-    fi
-    if ! mv "${filtered_tmp}" "${tmp_file}"; then
-      rm -f "${tmp_file}" "${filtered_tmp}"
-      return 1
-    fi
+  if [[ -n "${postprocess_fn}" ]] && ! "${postprocess_fn}" "${tmp_file}"; then
+    rm -f "${tmp_file}"
+    return 1
+  fi
+
+  local filtered_tmp=""
+  filtered_tmp="$(mktemp "${recent_dir}/.${tmp_prefix}.dedup.XXXXXX")" || {
+    rm -f "${tmp_file}"
+    return 1
+  }
+  if ! awk '!seen[$0]++' "${tmp_file}" | head -n "${max_entries}" >"${filtered_tmp}"; then
+    rm -f "${tmp_file}" "${filtered_tmp}"
+    return 1
+  fi
+  if ! mv "${filtered_tmp}" "${tmp_file}"; then
+    rm -f "${tmp_file}" "${filtered_tmp}"
+    return 1
   fi
 
   if ! mv "${tmp_file}" "${recent_file}"; then
@@ -172,25 +161,18 @@ rofi_picker_listview_height_em() {
     'BEGIN { printf "%.1f\n", (lines * row) + chrome }'
 }
 
-rofi_picker_compute_window_geometry() {
-  local out_position_name="$1"
-  local out_theme_name="$2"
-  local font_name="$3"
-  local font_scale="$4"
-  local width_em="$5"
-  local height_em="$6"
-  local fallback_width_px="$7"
-  local fallback_height_px="$8"
-  local width_px=""
-  local height_px=""
+rofi_resolve_window_geometry_into() {
+  local -n geometry_ref="$1"
+  local width_em="$2" height_em="$3"
+  local fallback_width_px="$4" fallback_height_px="$5"
 
   rofi_hypr_snapshot
-  width_px="$(rofi_length_em_to_px "${width_em}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
-  [[ "${width_px}" =~ ^[0-9]+$ ]] || width_px="${fallback_width_px}"
+  geometry_ref[width_px]="$(rofi_length_em_to_px "${width_em}" "${geometry_ref[font_name]}" "${geometry_ref[font_scale]}" 2>/dev/null || true)"
+  [[ "${geometry_ref[width_px]}" =~ ^[0-9]+$ ]] || geometry_ref[width_px]="${fallback_width_px}"
 
-  height_px="$(rofi_length_em_to_px "${height_em}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
-  [[ "${height_px}" =~ ^[0-9]+$ ]] || height_px="${fallback_height_px}"
+  geometry_ref[height_px]="$(rofi_length_em_to_px "${height_em}" "${geometry_ref[font_name]}" "${geometry_ref[font_scale]}" 2>/dev/null || true)"
+  [[ "${geometry_ref[height_px]}" =~ ^[0-9]+$ ]] || geometry_ref[height_px]="${fallback_height_px}"
 
-  printf -v "${out_position_name}" '%s' "$(rofi_window_position_theme "${width_px}" "${height_px}")"
-  printf -v "${out_theme_name}" '%s' "window { width: ${width_px}px; height: ${height_px}px; }"
+  geometry_ref[position_theme]="$(rofi_window_position_theme "${geometry_ref[width_px]}" "${geometry_ref[height_px]}")"
+  geometry_ref[size_theme]="window { width: ${geometry_ref[width_px]}px; height: ${geometry_ref[height_px]}px; }"
 }

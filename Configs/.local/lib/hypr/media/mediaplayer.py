@@ -2,7 +2,6 @@
 import argparse
 
 from mediaplayer_actions import ACTIONS, run_action
-from mediaplayer_controller import run
 
 
 def parse_arguments():
@@ -20,4 +19,6 @@ if __name__ == '__main__':
     args = parse_arguments()
     if args.action:
         raise SystemExit(run_action(args.action, args.player or ""))
-    run(args)
+    from mediaplayer_controller import watch_media_players
+
+    watch_media_players(args)

@@ -22,6 +22,7 @@ Loader {
     function moduleVisible(module: var): bool {
         if (!module) return true
         if ("shown" in module) return module.shown
+        if ("hasContent" in module) return module.hasContent
         const button = module as BarButton
         return !("text" in module) || String(module.text) !== ""
             || button !== null && (button.symbolic || button.leadingIcon !== "" || button.trailingWidth > 0)

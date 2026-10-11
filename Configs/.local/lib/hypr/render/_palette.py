@@ -10,10 +10,11 @@ import sys
 import tomllib
 from pathlib import Path
 
-from _common import ANSI_COLOR_COUNT, CACHE_HOME, atomic_write, short_digest
+from _common import (ANSI_COLOR_COUNT, CACHE_HOME, CONFIG_HOME, HEX_COLOR, LIGHT_LUMINANCE_THRESHOLD, STATE_HOME,
+                     atomic_write, luminance, short_digest)
 
-DEFAULT_OUT = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "hypr" / "active-palette.json"
-THEME_ROOT  = Path(os.environ.get("HYPR_CONFIG_HOME", str(Path.home() / ".config" / "hypr"))) / "themes"
+DEFAULT_OUT = STATE_HOME / "active-palette.json"
+THEME_ROOT = CONFIG_HOME / "themes"
 MATUGEN_CONFIG = Path(__file__).with_name("matugen.toml")
 MATUGEN_CACHE = CACHE_HOME / "matugen-schemes"
 MOST_DOMINANT_SOURCE = "0"
@@ -26,16 +27,10 @@ ANSI_ROLES = {
               "surface_variant", *HUE_ROLES, "on_surface_variant"),
 }
 
-HEX = re.compile(r"#[0-9a-fA-F]{6}")
 KEY_VALUE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s+(\S+)\s*$")
 
 def is_light_color(hex_value: str) -> bool:
-    if not HEX.fullmatch(hex_value or ""):
-        return False
-    r = int(hex_value[1:3], 16)
-    g = int(hex_value[3:5], 16)
-    b = int(hex_value[5:7], 16)
-    return ((0.299 * r + 0.587 * g + 0.114 * b) / 255) > 0.5
+    return bool(HEX_COLOR.fullmatch(hex_value or "")) and luminance(hex_value) > LIGHT_LUMINANCE_THRESHOLD
 
 def parse_kitty_theme(path: Path) -> dict:
     data = {"bg": None, "fg": None, "cursor": None, "cursor_text": None,
@@ -46,7 +41,7 @@ def parse_kitty_theme(path: Path) -> dict:
         if not m:
             continue
         k, v = m.group(1), m.group(2)
-        if not HEX.fullmatch(v):
+        if not HEX_COLOR.fullmatch(v):
             continue
         if k == "background":
             data["bg"] = v

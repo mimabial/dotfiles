@@ -1,55 +1,73 @@
 #!/usr/bin/env python3
 import argparse
+import errno
 import fcntl
 import json
 import os
 import select
 import shutil
 import signal
+import struct
 import subprocess
 import sys
-import threading
 import time
 from collections import deque
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal, NamedTuple, Optional
 
 HYPR_LIB_DIR = Path(__file__).resolve().parents[1]
 if str(HYPR_LIB_DIR) not in sys.path:
     sys.path.insert(0, str(HYPR_LIB_DIR))
 
-from auto_theme_support import (
+from auto_theme_schedule import (
     ASTRAL_AVAILABLE,
     CONFIG_FILE,
+    daylight_window,
+    load_config,
+    next_daylight_boundary,
+    resolve_location_settings_into,
+)
+from auto_theme_state import (
     STATE_FILE,
     TMPDIR_PATH,
     active_palette_file,
-    get_sun_times,
-    load_config,
     load_state,
     manual_override_deadline,
-    next_sun_boundary,
     read_active_palette,
     read_color_variant_file,
     read_staterc,
-    resolve_auto_location,
-    resolve_hyprshell,
     resolve_wallpaper,
     save_state,
     set_state_value,
     state_data_file,
     wallpaper_state_file,
-    watchdog_interval_seconds,
 )
 from auto_theme_watch import InotifyPathWatcher
-from pyutils.lock_paths import runtime_lock_path
+from pyutils.lock_paths import runtime_lock_path_ensure_parent
+from pyutils import child_process
 
-ERROR_BACKOFF_SECONDS = 5
+PAIR_LOOKUP_TIMEOUT_SECONDS = 10
+LOCALTIME_FILE = Path("/etc/localtime")
 
 AUTO_COLOR_MODE = 1
 LEGACY_THEME_COLOR_MODE = "0"
+
+
+def file_identity(path: Path) -> Optional[tuple[int, int, int]]:
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        return None
+    return info.st_ino, info.st_mtime_ns, info.st_size
+
+
+class PendingThemeEvents(NamedTuple):
+    signals: list[str]
+    config_reload: bool
+    state_refresh: bool
+    clock_change: bool
 
 
 class WakeupPipe:
@@ -61,9 +79,6 @@ class WakeupPipe:
             os.write(self.write_fd, b"\0")
         except BlockingIOError:
             pass
-
-    def wait(self, timeout):
-        select.select([self.read_fd], [], [], timeout)
 
     def clear(self):
         while True:
@@ -77,19 +92,46 @@ class WakeupPipe:
         os.close(self.write_fd)
 
 
+class WallClockTimer:
+    EXPIRATION_COUNT_SIZE = struct.calcsize("Q")
+
+    def __init__(self):
+        self.fd = os.timerfd_create(time.CLOCK_REALTIME, flags=os.TFD_NONBLOCK | os.TFD_CLOEXEC)
+
+    def arm(self, deadline: datetime):
+        os.timerfd_settime(self.fd, flags=os.TFD_TIMER_ABSTIME | os.TFD_TIMER_CANCEL_ON_SET, initial=deadline.timestamp())
+
+    def consume_clock_change(self) -> bool:
+        try:
+            os.read(self.fd, self.EXPIRATION_COUNT_SIZE)
+        except BlockingIOError:
+            return False
+        except OSError as exc:
+            if exc.errno == errno.ECANCELED:
+                return True
+            raise
+        return False
+
+    def close(self):
+        os.close(self.fd)
+
+
 class AutoThemeDaemon:
     def __init__(self):
         self.config = load_config()
-        resolve_auto_location(self.config)
+        resolve_location_settings_into(self.config)
         self.state = load_state()
         self.running = True
         self.wake_event = WakeupPipe()
-        self._event_lock = threading.Lock()
+        self.deadline_timer = WallClockTimer()
         self._signal_events = deque()
         self._pending_config_reload = False
         self._pending_state_refresh = False
+        self._pending_clock_change = False
         self._watcher: Optional[InotifyPathWatcher] = None
-        self._watchdog_due_at: Optional[datetime] = None
+        self._sun_due_at: Optional[datetime] = None
+        self._override_due_at: Optional[datetime] = None
+        self._failed_apply_signature: Optional[tuple] = None
 
         signal.signal(signal.SIGTERM, self._handle_signal)
         signal.signal(signal.SIGINT, self._handle_signal)
@@ -103,7 +145,7 @@ class AutoThemeDaemon:
         return state_data_file("env-overrides")
 
     def _theme_update_lock_file(self) -> Path:
-        return runtime_lock_path("theme_update")
+        return runtime_lock_path_ensure_parent("theme_update")
 
     @contextmanager
     def _theme_update_lock(self):
@@ -116,57 +158,71 @@ class AutoThemeDaemon:
             finally:
                 fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
-    def _watchdog_interval_seconds(self) -> float:
-        return watchdog_interval_seconds(self.config)
-
-    def _watched_paths(self) -> list[Path]:
+    def _watched_state_paths(self) -> list[Path]:
         return [
-            CONFIG_FILE,
-            self._state_config_file(),
             state_data_file("staterc"),
             state_data_file("color_variant"),
             wallpaper_state_file(),
             self._active_palette_file(),
         ]
 
+    def _watched_paths(self) -> list[Path]:
+        return [CONFIG_FILE, self._state_config_file(), *self._watched_state_paths(), LOCALTIME_FILE]
+
+    def _state_files_signature(self) -> tuple:
+        return tuple(file_identity(path) for path in self._watched_state_paths())
+
     def _on_watched_file_changed(self, changed_path: Path):
-        with self._event_lock:
-            if changed_path == CONFIG_FILE or changed_path == self._state_config_file():
-                self._pending_config_reload = True
-            else:
-                self._pending_state_refresh = True
-        self.wake_event.set()
+        if changed_path == LOCALTIME_FILE:
+            time.tzset()
+            self._pending_clock_change = True
+        elif changed_path == CONFIG_FILE or changed_path == self._state_config_file():
+            self._pending_config_reload = True
+        else:
+            self._pending_state_refresh = True
 
     def _start_file_watcher(self):
-        watcher = InotifyPathWatcher(self._on_watched_file_changed)
+        watcher = InotifyPathWatcher()
         if watcher.start(self._watched_paths()):
             self._watcher = watcher
             return
-        print("Warning: inotify watcher unavailable, relying on signals and timed fallbacks")
+        print("Warning: inotify watcher unavailable, relying on signals and the daylight timer")
         self._watcher = None
 
     def _stop_file_watcher(self):
         if self._watcher is not None:
-            self._watcher.stop()
+            self._watcher.close()
             self._watcher = None
 
-    def _consume_pending_events(self) -> dict:
-        with self._event_lock:
-            signals = []
-            while self._signal_events:
-                signals.append(self._signal_events.popleft())
-            pending = {
-                "signals": signals,
-                "config_reload": self._pending_config_reload,
-                "state_refresh": self._pending_state_refresh,
-            }
-            self._pending_config_reload = False
-            self._pending_state_refresh = False
+    def _wait_for_events(self, include_deadline: bool):
+        sources = [self.wake_event.read_fd]
+        if self._watcher is not None:
+            sources.append(self._watcher.fd)
+        if include_deadline:
+            sources.append(self.deadline_timer.fd)
+        select.select(sources, [], [])
+
+    def _collect_events(self):
+        self.wake_event.clear()
+        if self._watcher is not None:
+            for changed_path in self._watcher.read_changed_paths():
+                self._on_watched_file_changed(changed_path)
+        if self.deadline_timer.consume_clock_change():
+            self._pending_clock_change = True
+
+    def _consume_pending_events(self) -> PendingThemeEvents:
+        signals = []
+        while self._signal_events:
+            signals.append(self._signal_events.popleft())
+        pending = PendingThemeEvents(signals, self._pending_config_reload, self._pending_state_refresh, self._pending_clock_change)
+        self._pending_config_reload = False
+        self._pending_state_refresh = False
+        self._pending_clock_change = False
         return pending
 
     def _reload_config(self):
         self.config = load_config()
-        resolve_auto_location(self.config)
+        resolve_location_settings_into(self.config)
 
     @staticmethod
     def _color_source(staterc_values: dict) -> Literal["theme", "wallpaper"]:
@@ -206,9 +262,9 @@ class AutoThemeDaemon:
                 return is_light, "manual_override"
             self.state["manual_override_until"] = None
 
-        sunrise, sunset = get_sun_times(self.config, now.date())
-        is_daytime = sunrise <= now <= sunset
-        reason = f"sun ({'day' if is_daytime else 'night'}, rise={sunrise.strftime('%H:%M')}, set={sunset.strftime('%H:%M')})"
+        daylight = daylight_window(self.config, now.date())
+        is_daytime = daylight.starts_at <= now <= daylight.ends_at
+        reason = f"daylight ({'day' if is_daytime else 'night'}, start={daylight.starts_at.strftime('%H:%M')}, end={daylight.ends_at.strftime('%H:%M')})"
         return is_daytime, reason
 
     def _is_auto_mode(self) -> bool:
@@ -218,38 +274,36 @@ class AutoThemeDaemon:
         except ValueError:
             return False
 
-    def _apply_mode(self, mode: Literal["light", "dark"], reason: str):
+    def _apply_mode(self, mode: Literal["light", "dark"], reason: str) -> bool:
         if mode == self.state["current_mode"]:
-            if self._is_auto_mode():
-                if self.config["control_hyprland"]:
-                    current_color_variant = read_color_variant_file()
-                    staterc_values = read_staterc()
-                    if current_color_variant != mode or not self._active_palette_matches(mode, staterc_values):
-                        self._apply_hyprland(mode)
-            return
+            if self._is_auto_mode() and self.config["control_hyprland"]:
+                current_color_variant = read_color_variant_file()
+                staterc_values = read_staterc()
+                if current_color_variant != mode or not self._active_palette_matches(mode, staterc_values):
+                    return self._apply_desktop_palette(mode)
+            return True
 
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Switching to {mode} mode ({reason})")
+        if not self._is_auto_mode():
+            print("Auto mode inactive, skipping target updates")
+        elif self.config["control_hyprland"] and not self._apply_desktop_palette(mode):
+            print(f"Switch to {mode} mode failed; {self.state['current_mode']} mode stays recorded")
+            return False
+
         self.state["current_mode"] = mode
         self.state["last_change"] = datetime.now().isoformat()
         save_state(self.state)
-
-        if not self._is_auto_mode():
-            print("Auto mode inactive, skipping target updates")
-            return
-
-        if self.config["control_hyprland"]:
-            self._apply_hyprland(mode)
+        return True
 
     def _pair_theme_for(self, current_theme: Optional[str], mode: str) -> Optional[str]:
-        hyprshell = resolve_hyprshell()
-        if not hyprshell or not current_theme:
+        if not current_theme:
             return current_theme
         try:
-            result = subprocess.run(
-                [hyprshell, "theme/pairs", "--pair-for", current_theme, mode],
+            result = child_process.run(
+                [str(HYPR_LIB_DIR / "theme/pairs.sh"), "--pair-for", current_theme, mode],
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=PAIR_LOOKUP_TIMEOUT_SECONDS,
             )
             target = result.stdout.strip()
             if result.returncode == 0 and target:
@@ -259,13 +313,9 @@ class AutoThemeDaemon:
         return current_theme
 
     def _switch_theme(self, theme: str) -> bool:
-        hyprshell = resolve_hyprshell()
-        if not hyprshell:
-            print("Warning: hyprshell not found, cannot switch theme")
-            return False
         try:
             result = subprocess.run(
-                [hyprshell, "theme/theme.switch", "-s", theme, "--quiet", "--from-auto"],
+                [str(HYPR_LIB_DIR / "theme/theme.switch.sh"), "-s", theme, "--quiet", "--from-auto"],
                 capture_output=True,
                 text=True,
             )
@@ -278,7 +328,12 @@ class AutoThemeDaemon:
             print(f"Warning: theme switch failed: {exc}")
             return False
 
-    def _apply_hyprland(self, mode: Literal["light", "dark"]):
+    def _apply_desktop_palette(self, mode: Literal["light", "dark"]) -> bool:
+        applied = self._attempt_desktop_palette(mode)
+        self._failed_apply_signature = None if applied else self._state_files_signature()
+        return applied
+
+    def _attempt_desktop_palette(self, mode: Literal["light", "dark"]) -> bool:
         try:
             while True:
                 staterc_values = read_staterc()
@@ -286,27 +341,23 @@ class AutoThemeDaemon:
                 current_theme = staterc_values.get("HYPR_THEME")
                 target_theme = self._pair_theme_for(current_theme, mode) if color_source == "theme" else None
                 if target_theme and current_theme and target_theme != current_theme:
-                    self._switch_theme(target_theme)
-                    return
+                    return self._switch_theme(target_theme)
                 with self._theme_update_lock():
                     current = read_staterc()
                     if current.get("HYPR_THEME") != current_theme or self._color_source(current) != color_source:
                         continue
-                    self._apply_palette(mode, current, color_source, current_theme)
-                    return
+                    return self._apply_palette(mode, current, color_source, current_theme)
         except Exception as exc:
-            print(f"Warning: Failed to update Hyprland: {exc}")
+            print(f"Warning: Failed to update desktop palette: {exc}")
+            return False
 
-    def _apply_palette(self, mode, staterc_values, color_source, current_theme):
-        set_state_value("BACKGROUND_MODE", mode, "staterc")
-        set_state_value("", mode, "color_variant")
-
+    def _apply_palette(self, mode, staterc_values, color_source, current_theme) -> bool:
         env = os.environ.copy()
         env["PATH"] = f"{Path.home() / '.local' / 'bin'}:{env.get('PATH', '')}"
         hypr_theme = shutil.which("hypr-theme", path=env["PATH"])
         if not hypr_theme:
             print("Warning: hypr-theme not found, cannot apply colors")
-            return
+            return False
 
         if current_theme:
             env["HYPR_THEME"] = current_theme
@@ -314,19 +365,23 @@ class AutoThemeDaemon:
         if color_source == "theme":
             if not current_theme:
                 print("Warning: Could not resolve current theme for palette update")
-                return
+                return False
             command = [hypr_theme, "apply", current_theme]
         else:
             wallpaper = resolve_wallpaper(staterc_values)
             if not wallpaper or not wallpaper.exists():
                 print("Warning: Could not resolve current wallpaper for palette update")
-                return
+                return False
             command = [hypr_theme, "wallpaper", "--variant", mode, str(wallpaper)]
 
         result = subprocess.run(command, env=env, capture_output=True, text=True)
         if result.returncode != 0:
             detail = (result.stderr or result.stdout or "").strip()
             print(f"Warning: Failed to apply hypr-theme colors: {detail or 'unknown error'}")
+            return False
+        set_state_value("BACKGROUND_MODE", mode, "staterc")
+        set_state_value("", mode, "color_variant")
+        return True
 
     def _handle_signal(self, signum, frame):
         self.running = False
@@ -339,11 +394,12 @@ class AutoThemeDaemon:
 
     def _apply_toggle(self):
         new_mode = "dark" if self.state["current_mode"] == "light" else "light"
-        if self.config["manual_override_minutes"] > 0:
-            override_until = datetime.now() + timedelta(minutes=self.config["manual_override_minutes"])
-            self.state["manual_override_until"] = override_until.isoformat()
-            print(f"Manual override until {override_until.strftime('%H:%M')}")
-        self._apply_mode(new_mode, "manual_toggle")
+        if not self._apply_mode(new_mode, "manual_toggle") or self.config["manual_override_minutes"] <= 0:
+            return
+        override_until = datetime.now() + timedelta(minutes=self.config["manual_override_minutes"])
+        self.state["manual_override_until"] = override_until.isoformat()
+        save_state(self.state)
+        print(f"Manual override until {override_until.strftime('%H:%M')}")
 
     def _apply_refresh(self):
         print("Force refresh requested")
@@ -351,86 +407,86 @@ class AutoThemeDaemon:
         should_be_light, reason = self._should_be_light()
         self._apply_mode("light" if should_be_light else "dark", reason)
 
-    def _rearm_watchdog(self, now):
-        self._watchdog_due_at = now + timedelta(seconds=self._watchdog_interval_seconds())
-
     def _apply_computed_mode(self, trigger=""):
         should_be_light, reason = self._should_be_light()
         self._apply_mode("light" if should_be_light else "dark", f"{reason}; trigger={trigger}" if trigger else reason)
 
-    def _wake_timeout(self, now, sun_due_at, override_due_at):
-        deadlines = [due for due in (self._watchdog_due_at, sun_due_at, override_due_at) if due is not None]
-        if not deadlines:
-            return None
-        return max(0.0, min((deadline - now).total_seconds() for deadline in deadlines))
+    def _arm_next_deadline(self):
+        now = datetime.now()
+        sun_due_at = next_daylight_boundary(self.config, now)
+        override_due_at = manual_override_deadline(self.state)
+        if override_due_at is not None and override_due_at <= now:
+            override_due_at = None
+        self.deadline_timer.arm(min(due for due in (sun_due_at, override_due_at) if due is not None))
+        self._sun_due_at, self._override_due_at = sun_due_at, override_due_at
 
-    def _trigger_reasons(self, events, now, sun_due_at, override_due_at):
+    def _trigger_reasons(self, events, now):
         reasons = []
-        if events["config_reload"]:
+        if events.config_reload:
             reasons.append("config_change")
-        if events["state_refresh"]:
+        if events.state_refresh:
             reasons.append("state_change")
-        if self._watchdog_due_at is not None and now >= self._watchdog_due_at:
-            reasons.append("watchdog")
-            self._rearm_watchdog(now)
-        if sun_due_at is not None and now >= sun_due_at:
+        if events.clock_change:
+            reasons.append("clock_change")
+        if self._sun_due_at is not None and now >= self._sun_due_at:
             reasons.append("sun_boundary")
-        if override_due_at is not None and now >= override_due_at:
+        if self._override_due_at is not None and now >= self._override_due_at:
             reasons.append("override_expiry")
         return reasons
 
-    def _handle_wake(self, sun_due_at, override_due_at):
+    def _handle_wake(self):
         now = datetime.now()
         events = self._consume_pending_events()
 
-        if events["config_reload"]:
+        if events.config_reload:
             print("Auto-theme config changed, reloading")
             self._reload_config()
-            self._rearm_watchdog(now)
 
-        if events["signals"]:
-            for event in events["signals"]:
+        if events.signals:
+            for event in events.signals:
                 if event == "toggle":
                     self._apply_toggle()
                 else:
                     self._apply_refresh()
-            self._rearm_watchdog(datetime.now())
             return
 
-        trigger_reasons = self._trigger_reasons(events, now, sun_due_at, override_due_at)
+        trigger_reasons = self._trigger_reasons(events, now)
+        if trigger_reasons == ["state_change"] and self._failed_apply_signature == self._state_files_signature():
+            return
         if trigger_reasons:
             self._apply_computed_mode(",".join(dict.fromkeys(trigger_reasons)))
 
     def run(self):
         print(f"Auto-theme daemon started (PID: {os.getpid()})")
         print(f"  Location: {self.config['latitude']}, {self.config['longitude']}")
-        print(f"  Watchdog interval: {self._watchdog_interval_seconds():g}s")
 
         signal.set_wakeup_fd(self.wake_event.write_fd)
         if self._signal_events:
             self.wake_event.set()
         self._start_file_watcher()
         self._apply_computed_mode()
-        self._rearm_watchdog(datetime.now())
 
         try:
             while self.running:
                 try:
-                    now = datetime.now()
-                    sun_due_at = next_sun_boundary(self.config, now)
-                    override_due_at = manual_override_deadline(self.state)
-                    self.wake_event.wait(self._wake_timeout(now, sun_due_at, override_due_at))
-                    self.wake_event.clear()
-                    if not self.running:
-                        break
-                    self._handle_wake(sun_due_at, override_due_at)
+                    self._arm_next_deadline()
+                    deadline_armed = True
                 except Exception as exc:
-                    print(f"Error in main loop: {exc}")
-                    time.sleep(ERROR_BACKOFF_SECONDS)
+                    print(f"Error scheduling the next daylight boundary: {exc}; waiting for the next signal or file change")
+                    self._sun_due_at = self._override_due_at = None
+                    deadline_armed = False
+                self._wait_for_events(include_deadline=deadline_armed)
+                try:
+                    self._collect_events()
+                    if self.running:
+                        self._handle_wake()
+                except Exception as exc:
+                    print(f"Error handling wake: {exc}")
         finally:
             self._stop_file_watcher()
             signal.set_wakeup_fd(-1)
             self.wake_event.close()
+            self.deadline_timer.close()
 
         print("Auto-theme daemon stopped")
 
@@ -453,10 +509,11 @@ def main(argv=None):
         else:
             print("No state file found")
         if ASTRAL_AVAILABLE:
-            daemon = AutoThemeDaemon()
-            sunrise, sunset = get_sun_times(daemon.config)
-            print(f"Sunrise: {sunrise.strftime('%H:%M')}")
-            print(f"Sunset: {sunset.strftime('%H:%M')}")
+            config = load_config()
+            resolve_location_settings_into(config)
+            daylight = daylight_window(config)
+            print(f"Light mode starts: {daylight.starts_at.strftime('%H:%M')}")
+            print(f"Light mode ends: {daylight.ends_at.strftime('%H:%M')}")
         return 0
 
     if args.toggle or args.refresh:
@@ -475,8 +532,7 @@ def main(argv=None):
     daemon = AutoThemeDaemon()
     if args.once:
         should_be_light, reason = daemon._should_be_light()
-        daemon._apply_mode("light" if should_be_light else "dark", reason)
-        return 0
+        return 0 if daemon._apply_mode("light" if should_be_light else "dark", reason) else 1
 
     pidfile = TMPDIR_PATH / f"auto_theme_{os.getpid()}.pid"
     pidfile.write_text(str(os.getpid()))

@@ -1,30 +1,206 @@
 {
-  ".modules-right": {
-    "margin": [0.0, 0.0, 0.0, 0.0],
-    "padding": [0.0, 18.0, 0.0, 0.0]
+  ".modules-right": { "margin": [0.0, 8.0, 0.0, 0.0], "padding": [0.0, 8.0, 0.0, 0.0] },
+  "wallpaper, volume, removable, powerprofile, hyprsunset, privacy, display, vpn, microphone, wifi, bluetooth, tasks, notifications": {
+    "margin": [0.0, 8.0, 0.0, 8.0],
+    "symbolSize": 18
   },
-  "tray.chevron, workflows, window-layout, wallpaper, volume, terminal, sudoku, removable, powerprofile, powerbutton, microphone, github, converter, colorpicker, colormode, bitwarden, barlayout-button, agents, hyprsunset, screenshot, privacy, display, vpn, wifi, bluetooth, tasks, notifications": {
-    "iconBox": 8
-  },
-  "taskbar": {
-    "iconSize": 21.0,
-    "margin": [0.0, 0.0, 0.0, 0.0],
-    "padding": [0.0, 12.0, 6.0, 0.0]
-  },
-  "#taskbar button": {
-    "padding": [0.0, 0.0, 12.0, 0.0]
-  },
+  "taskbar": { "iconSize": 21.0, "margin": [0.0, 0.0, 0.0, 0.0], "padding": [0.0, 12.0, 6.0, 0.0] },
+  "#taskbar button": { "padding": [0.0, 0.0, 12.0, 0.0] },
   "#workspaces button": { "fontSize": 12, "fontWeight": 700 },
-  "mediaplayer": {
-    "fontSize": 10.0
+  "mediaplayer": { "fontSize": 10.0 },
+  "tray": { "margin": [3.0, 8.0, 3.0, 8.0], "iconSize": 18, "iconColor": ["fg", 1.0] },
+  "tray.chevron": {
+    "backgroundColor": null,
+    "symbolSize": 18,
+    "symbol": { "": "actions/pan-down", "": "actions/pan-up" }
   },
-  "tray.chevron": { "backgroundColor": null },
-  "submap": { "fontWeight": 400 },
+  "submap": { "fontWeight": 400, "symbolSize": 18, "symbol": "devices/input-keyboard" },
+  "vpn": {
+    "fontSize": 10.5,
+    "symbol": {
+      "󰳌": "status/network-vpn",
+      "󱆣": "status/network-vpn-acquiring",
+      "󱦛": "status/network-vpn-disconnected",
+      "󰻍": "status/network-error",
+      "󰒙": "status/network-offline",
+      "󰩠": "status/dialog-error"
+    }
+  },
+  "microphone": { "fontSize": 9.0, "symbol": "status/microphone-sensitivity-high" },
+  "wifi": { "fontSize": 13.5, "symbol": "status/network-wireless-connected" },
   "systemstats": { "color": ["fg", 0.5] },
-  "systemstats.cpu": { "fontSize": 14 },
-  "systemstats.gpu": { "fontSize": 16.5 },
-  "systemstats.memory": { "fontSize": 13.5 },
-  "systemstats.network": { "fontSize": 13.5 },
-  "systemstats.disks": { "fontSize": 11 },
-  "games": { "fontSize": 16 }
+  "systemstats.cpu": { "fontSize": 14, "symbol": "devices/cpu" },
+  "systemstats.gpu": { "fontSize": 16.5, "symbol": "devices/gpu" },
+  "systemstats.memory": { "fontSize": 13.5, "symbol": "devices/media-memory" },
+  "systemstats.network": { "fontSize": 13.5, "symbol": "devices/network-wired" },
+  "systemstats.disks": { "fontSize": 11, "symbol": "devices/drive-harddisk" },
+  "games": { "fontSize": 16 },
+  "": { "symbols": "MacTahoe-dark/{context}/symbolic" },
+  "wallpaper": { "symbol": "apps/preferences-desktop-wallpaper" },
+  "volume": { "symbol": "status/audio-volume-high" },
+  "volume.muted": { "symbol": "status/audio-volume-muted" },
+  "microphone.muted": { "symbol": "status/microphone-sensitivity-muted" },
+  "display": { "symbol": "status/display-brightness" },
+  "bluetooth": { "symbol": "status/bluetooth-active" },
+  "bluetooth.off": { "symbol": "status/bluetooth-disabled" },
+  "bluetooth.on": { "symbol": "status/bluetooth-disconnected" },
+  "powerprofile": { "symbol": "status/power-profile-balanced" },
+  "powerprofile.performance": { "symbol": "status/power-profile-performance" },
+  "powerprofile.power-saver": { "symbol": "status/power-profile-power-saver" },
+  "tasks": { "symbol": "apps/task-list" },
+  "bluetooth, tasks, notifications": { "badgeNumerals": "standard", "badgeSize": 9 },
+  "updates": { "symbol": "actions/view-refresh" },
+  "powerbutton": { "symbol": "actions/system-shutdown" },
+  "screenshot": { "symbol": "devices/camera-photo" },
+  "terminal": { "symbol": "apps/utilities-terminal" },
+  "converter": { "symbol": "apps/accessories-calculator" },
+  "sudoku": { "symbol": "apps/sudoku-app" },
+  "colorpicker": { "symbol": "actions/color-picker" },
+  "colormode": {
+    "symbol": "actions/color-palette"
+  },
+  "hyprsunset": { "symbol": { "󱩌": "status/night-light", "󱩍": "status/night-light-disabled" } },
+  "privacy": { "symbol": { "󱒃": "status/screen-shared", "󰍬": "devices/camera-video" } },
+  "caffeine": {
+    "symbol": {
+      "󰅶": "status/caffeine-cup-full",
+      "󰎆": "devices/audio-headphones",
+      "󰊴": "devices/input-gaming",
+      "󰊓": "actions/view-fullscreen",
+      "󰛊": "status/caffeine-cup-empty"
+    }
+  },
+  "removable": {
+    "symbol": {
+      "󱊟": "devices/drive-harddisk-usb",
+      "󰑹": "devices/media-memory-sd",
+      "󰋊": "devices/drive-harddisk",
+      "󰦧": "devices/phone",
+      "󰄀": "devices/camera-photo",
+      "󰀨": "status/dialog-warning"
+    }
+  },
+  "bitwarden": {
+    "symbol": {
+      "󰟵": "actions/object-unlocked",
+      "󱍝": "actions/object-locked",
+      "󰘎": "status/security-low"
+    }
+  },
+  "agents": {
+    "symbol": "apps/org.gnome.Robots",
+    "badges": {
+      "󱚞": { "text": "!", "color": ["warning", 1.0] },
+      "󱚢": { "text": "×", "color": ["error", 1.0] }
+    }
+  },
+  "agents, github": { "badgeSize": 7.0 },
+  "window-layout": {
+    "symbol": {
+      "󰕴": "actions/view-grid",
+      "󱂩": "actions/view-sidebar",
+      "󰮳": "actions/view-column",
+      "󰁌": "actions/view-fullscreen"
+    }
+  },
+  "barlayout-button": {
+    "symbol": {
+      "": "actions/view-top-pane",
+      "": "actions/view-bottom-pane",
+      "": "actions/view-layout"
+    }
+  },
+  "workflows": {
+    "symbol": {
+      "󰘮": "actions/view-grid",
+      "": "actions/view-dual",
+      "󰕭": "actions/view-column",
+      "󰐨": "actions/view-presentation",
+      "󰀵": "apps/preferences-desktop-wallpaper",
+      "": "actions/view-layout",
+      "󰽏": "actions/view-layout",
+      "": "devices/input-gaming",
+      "": "status/power-profile-power-saver"
+    }
+  },
+  "github": {
+    "symbol": "apps/github-desktop",
+    "badges": {
+      "": { "text": "×", "color": ["error", 1.0] },
+      "": { "text": "!", "color": ["warning", 1.0] },
+      "": { "text": "!", "color": ["warning", 1.0] },
+      "": { "text": "•", "color": ["accent", 1.0] }
+    }
+  },
+  "notifications": {
+    "symbol": {
+      "󰍡": "status/notification",
+      "󰍩": "status/notification",
+      "󱋲": "status/notification",
+      "󰍦": "status/notification",
+      "󱜺": "status/notification",
+      "󰍢": "status/notification",
+      "󱧌": "status/notification",
+      "󱖩": "status/notification",
+      "󰛱": "status/notification",
+      "󰍤": "status/notification",
+      "󱧎": "status/notification",
+      "󰍥": "status/notifications-disabled",
+      "󰍪": "status/notifications-disabled",
+      "󱋳": "status/notifications-disabled",
+      "󱅰": "status/notifications-disabled",
+      "󱜻": "status/notifications-disabled",
+      "󰨄": "status/notifications-disabled",
+      "󱧍": "status/notifications-disabled",
+      "󱖪": "status/notifications-disabled",
+      "󱅲": "status/notifications-disabled",
+      "󱅬": "status/notifications-disabled",
+      "󱧏": "status/notifications-disabled"
+    }
+  },
+  "systemstats.sensors": {
+    "symbol": {
+      "󰻠": "devices/cpu",
+      "󰢮": "devices/gpu",
+      "󰔏": "status/temperature",
+      "󰈐": "devices/fan"
+    }
+  },
+  "systemstats.battery": {
+    "symbol": {
+      "󰂎": "status/battery-level-0",
+      "󰁺": "status/battery-level-10",
+      "󰁻": "status/battery-level-20",
+      "󰁼": "status/battery-level-30",
+      "󰁽": "status/battery-level-40",
+      "󰁾": "status/battery-level-50",
+      "󰁿": "status/battery-level-60",
+      "󰂀": "status/battery-level-70",
+      "󰂁": "status/battery-level-80",
+      "󰂂": "status/battery-level-90",
+      "󰁹": "status/battery-level-100",
+      "󰂄": "status/battery-good-charging"
+    }
+  },
+  "weather": {
+    "symbolSize": 18,
+    "leadingSymbol": {
+      "󰖙": "status/weather-clear",
+      "󰖕": "status/weather-few-clouds",
+      "󰼰": "status/weather-many-clouds",
+      "󰖐": "status/weather-overcast",
+      "󰖑": "status/weather-fog",
+      "󰖗": "status/weather-showers-scattered",
+      "󰙿": "status/weather-snow-rain",
+      "󰙾": "status/weather-storm",
+      "󰖘": "status/weather-snow",
+      "󰼶": "status/weather-snow",
+      "󰖖": "status/weather-showers"
+    }
+  },
+  "weather.sunrise": { "leadingSymbol": "status/daytime-sunrise" },
+  "weather.sunset": { "leadingSymbol": "status/daytime-sunset" },
+  "weather.rain": { "leadingSymbol": "status/weather-showers" },
+  "weather.wind": { "leadingSymbol": "status/weather-windy" },
+  "weather.humidity": { "leadingSymbol": "status/weather-showers-scattered" }
 }

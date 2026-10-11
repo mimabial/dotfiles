@@ -3,84 +3,76 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/install/auth.common.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/install/lib/pam-authentication.bash"
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell install/fido2 [--remove]
 Set up (or remove) FIDO2 hardware-key authentication for PAM." "$@"
 
+FIDO2_AUTHFILE=/etc/fido2/fido2
+
 check_fido2_hardware() {
   local detected_tokens=""
   detected_tokens="$(fido2-token -L 2>/dev/null)"
   if [[ -z "${detected_tokens}" ]]; then
-    print_error "\nNo FIDO2 device detected. Please plug it in (you may need to unlock it as well)."
+    print_auth_error "\nNo FIDO2 device detected. Please plug it in (you may need to unlock it as well)."
     return 1
   fi
   return 0
 }
 
-setup_fido2_pam() {
-  setup_pam_module \
-    "FIDO2" \
-    "pam_u2f.so" \
-    "auth    sufficient pam_u2f.so cue authfile=/etc/fido2/fido2" \
-    "auth      sufficient pam_u2f.so cue authfile=/etc/fido2/fido2"
-}
-
-remove_fido2_pam() {
-  remove_pam_module "FIDO2" "pam_u2f.so" 'pam_u2f\.so'
-}
-
 if [[ "--remove" == "${1:-}" ]]; then
-  print_success "Removing FIDO2 device from authentication.\n"
+  print_auth_success "Removing FIDO2 device from authentication.\n"
 
-  remove_fido2_pam
+  remove_pam_authentication "FIDO2" "pam_u2f.so"
 
-  if [[ -d /etc/fido2 ]]; then
-    print_info "Removing FIDO2 configuration..."
-    sudo rm -rf /etc/fido2
+  if [[ -d "${FIDO2_AUTHFILE%/*}" ]]; then
+    print_auth_info "Removing FIDO2 configuration..."
+    sudo rm -rf "${FIDO2_AUTHFILE%/*}"
   fi
 
-  print_info "Removing FIDO2 packages..."
+  print_auth_info "Removing FIDO2 packages..."
   hyprshell pm --noconfirm remove libfido2 pam-u2f
 
-  print_success "FIDO2 authentication has been completely removed."
+  print_auth_success "FIDO2 authentication has been completely removed."
 else
-  print_success "Setting up FIDO2 device for authentication.\n"
+  print_auth_success "Setting up FIDO2 device for authentication.\n"
 
-  print_info "Installing required packages..."
+  print_auth_info "Installing required packages..."
   hyprshell pm add libfido2 pam-u2f
 
   if ! check_fido2_hardware; then
     exit 1
   fi
 
-  if [[ ! -f /etc/fido2/fido2 ]]; then
-    sudo mkdir -p /etc/fido2
-    print_success "\nLet's setup your device by confirming on the device now."
-    print_info "Touch your FIDO2 key when it lights up...\n"
+  if [[ ! -f "${FIDO2_AUTHFILE}" ]]; then
+    sudo mkdir -p "${FIDO2_AUTHFILE%/*}"
+    print_auth_success "\nLet's setup your device by confirming on the device now."
+    print_auth_info "Touch your FIDO2 key when it lights up...\n"
 
-    if pamu2fcfg >"${TMPDIR:-/tmp}/fido2"; then
-      sudo mv "${TMPDIR:-/tmp}/fido2" /etc/fido2/fido2
-      print_success "FIDO2 device registered successfully!"
+    registration="$(mktemp)"
+    if pamu2fcfg >"${registration}"; then
+      sudo mv "${registration}" "${FIDO2_AUTHFILE}"
+      print_auth_success "FIDO2 device registered successfully!"
     else
-      print_error "\nFIDO2 registration failed. Please try again."
+      rm -f -- "${registration}"
+      print_auth_error "\nFIDO2 registration failed. Please try again."
       exit 1
     fi
   else
-    print_info "FIDO2 device already registered."
+    print_auth_info "FIDO2 device already registered."
   fi
 
-  setup_fido2_pam
+  configure_pam_authentication "FIDO2" "pam_u2f.so" "cue authfile=${FIDO2_AUTHFILE}"
 
-  print_info "\nTesting FIDO2 authentication with sudo..."
-  print_info "Touch your FIDO2 key when prompted.\n"
+  print_auth_info "\nTesting FIDO2 authentication with sudo..."
+  print_auth_info "Touch your FIDO2 key when prompted.\n"
 
   if sudo echo "FIDO2 authentication test successful"; then
-    print_success "\nPerfect! FIDO2 authentication is now configured."
-    print_info "You can use your FIDO2 key for sudo and polkit authentication."
+    print_auth_success "\nPerfect! FIDO2 authentication is now configured."
+    print_auth_info "You can use your FIDO2 key for sudo and polkit authentication."
   else
-    print_error "\nVerification failed. You may want to check your configuration."
+    print_auth_error "\nVerification failed. You may want to check your configuration."
   fi
 fi

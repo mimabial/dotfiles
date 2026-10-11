@@ -2,7 +2,7 @@
 set -euo pipefail
 
 system_dir="$(cd -- "$(dirname -- "$0")/.." && pwd -P)"
-source "$system_dir/desktop-entry.exec.bash"
+source "$system_dir/applications/desktop-exec.bash"
 
 desktop_entry_exec_tokenize_spec 'printf "two words" literal=%%c'
 [[ "$DESKTOP_ENTRY_EXECUTABLE" == printf ]]

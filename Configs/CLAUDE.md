@@ -13,7 +13,7 @@ Guidance for Claude Code when working in this home directory.
 - Keep the line count low: build on existing primitives and prefer the smaller correct design, including when porting.
 - No magic numbers: derive a value from its source (theme vars, `Style`, font size, palette) or name it once where it is defined.
 - Follow YAGNI: no speculative flags, options, parameters, fallbacks, validation layers or abstractions for a case that does not exist yet.
-- Write self-documenting code: names and structure carry the meaning; a comment only states reasoning the code cannot.
+- Write self-documenting code: names and structure carry all the meaning. Add no comments, not even for reasoning the code cannot show: rename until the code says it, and put the rest in the reply or in memory. Existing comments may stay. `~/.claude/hooks/comment_guard.py` enforces this: it rejects edits that add a comment line to a dotfiles-tracked tree, and at the end of a turn it flags any added by other means (Bash, scripts).
 
 ## Critical Safety Rules
 
@@ -41,10 +41,10 @@ Two unrelated manifests exist; do not treat them as interchangeable:
 
 | Manifest | Read by | Describes |
 | -------- | ------- | --------- |
-| `~/.local/lib/hypr/service/refresh.manifest.psv` | `service/show-managed-split.sh`, `service/managed.sh` | `domain\|layer\|kind\|mode\|backup\|relative-path` — the restore/refresh domains (`hypr-config`, `hyprlock`, `hypridle`, `rofi`). `mode` drives refresh/restore (`preserve`/`overwrite`/`sync`/`trash`); every current entry is `preserve` with `backup=never` |
-| `~/.config/hypr/dotfiles-sync.conf` | `dotfiles-sync`, `dotfiles-host-profile` (parsed by `system/dotfiles.lib.bash`) | `kind\|path\|excludes` — what gets mirrored into `~/dotfiles/`, including `host\|` per-host routing |
+| `~/.local/lib/hypr/service/refresh.manifest.psv` | `service/list-managed-domains.sh`, `service/apply-managed-domains.sh` | `domain\|layer\|kind\|mode\|backup\|relative-path` — the restore/refresh domains (`hypr-config`, `hyprlock`, `hypridle`, `rofi`). `mode` drives refresh/restore (`preserve`/`overwrite`/`sync`/`trash`); every current entry is `preserve` with `backup=never` |
+| `~/.config/hypr/dotfiles-sync.conf` | `dotfiles-sync`, `dotfiles-host-profile` (parsed by `system/dotfiles/manifest.bash`) | `kind\|path\|excludes` — what gets mirrored into `~/dotfiles/`, including `host\|` per-host routing |
 
-`show-managed-split.sh` only knows the paths listed in `refresh.manifest.psv`, so "No manifest entries matched" means *not a refresh domain* — it says nothing about whether a path is dotfiles-tracked. Check `dotfiles-sync.conf` (or `dotfiles-sync --list`) for that.
+`list-managed-domains.sh` takes domain names, not paths, and only knows the domains in `refresh.manifest.psv`, so "No manifest entries matched" means *not a refresh domain* — it says nothing about whether a path is dotfiles-tracked. Check `dotfiles-sync.conf` (or `dotfiles-sync --list`) for that.
 
 **Always use these safe locations instead:**
 
@@ -56,8 +56,8 @@ Two unrelated manifests exist; do not treat them as interchangeable:
 | Rofi customization   | `~/.config/rofi/config.rasi` (family only — size is injected per launch from `TEXT_SIZE`); themes live in `~/.local/share/rofi/themes/`, shadowable in `~/.config/rofi/themes/` (currently empty)                       |
 | Dunst customization  | `~/.config/dunst/dunst.conf` (base — `render/dunst.py` reads it, then appends the palette/layout/rule block to generate `dunstrc`)                                                                                     |
 | Theme packs          | `~/.config/hypr/themes/` — palette + wallpapers only. It picks a shell with `kvantum-shell = "flat\|materia\|pill"` in `palette.toml` (absent = `flat`)                       |
-| Qt shells            | `~/.config/hypr/kvantum/shells/<shell>/` (`shell.kvconfig`, `shell.map`): `render/qtct.py` maps the active palette onto KDE colour roles through them; `render/_shell.py` owns the pack→shell rule. Qt apps run the KDE platform theme with Breeze, which repaints live from the `Colors:*` and font keys theme apply writes to `kdeglobals`. GTK apps get `Hypr-Gtk`, which `render/gtk.py` builds from Sweet for every pack: upstream sources sit untouched in `render/gtk-themes/sweet/`, every local change in `sweet.patch`, applied to a temporary copy at build time |
-| Shared layer         | `~/.local/share/hypr/` — the framework Lua modules (`core.lua`, `vars.lua`, `runtime.lua`), hyprlock layouts, shaders, animation/workflow presets, webapps. A same-named file under `~/.config/hypr/` replaces the shared one: `hyprland.lua` puts that directory first on `package.path`, and the preset/layout pickers search it first. Editing a shared module auto-reloads Hyprland like a user file. Live is the source, mirrored to the repo by `dotfiles-sync` like `~/.config`. `default/` is the stock baseline `service/config.sh --mode restore` copies from, so editing it changes what a reset restores |
+| Qt shells            | `~/.config/hypr/kvantum/shells/<shell>/` (`shell.kvconfig`, `shell.map`): `render/qtct.py` maps the active palette onto KDE colour roles through them; `render/_kvantum.py` (`kvantum_shell_name`) owns the pack→shell rule. Qt apps run the KDE platform theme with Breeze, which repaints live from the `Colors:*` and font keys theme apply writes to `kdeglobals`. GTK apps get `Hypr-Gtk`, which `render/gtk.py` builds from Sweet for every pack: upstream sources sit untouched in `render/gtk-themes/sweet/`, every local change in `sweet.patch`, applied to a temporary copy at build time |
+| Shared layer         | `~/.local/share/hypr/` — the framework Lua modules (`core.lua`, `vars.lua`, `runtime.lua`), hyprlock layouts, shaders, animation/workflow presets, webapps. A same-named file under `~/.config/hypr/` replaces the shared one: `hyprland.lua` puts that directory first on `package.path`, and the preset/layout pickers search it first. Editing a shared module auto-reloads Hyprland like a user file. Live is the source, mirrored to the repo by `dotfiles-sync` like `~/.config`. `default/` is the stock baseline `service/apply-config.sh --mode restore` copies from, so editing it changes what a reset restores |
 | Script library       | `~/.local/lib/hypr/`                                                                                                                                                                                                  |
 | User entrypoints     | `~/.local/bin/`                                                                                                                                                                                                       |
 
@@ -102,7 +102,7 @@ The compositor config is **Lua**, not hyprlang `.conf` (a Hyprland Lua plugin ev
 8. **Workspaces** — `workspaces.lua`.
 9. **Generated monitor rules** — `hyprmoncfg-monitors.lua`, `dofile`d dead last so nothing before it can override the applied layout.
 
-User overrides load after the shared/theme layers, so they win on conflicts. Variables follow the same order — `vars.lua` defaults, then `theme.lua`, `userfonts.lua`, `userprefs.lua`, each `vars.set` beating the last — and the readers outside Hyprland apply it identically: `core/config-layers.bash` (shell, with `theme.meta` standing in for `theme.lua`), `render/dunst.py`, and `shell.qml`'s `hyprVarLoadOrder`. `themes/colors.lua` (generated palette) is loaded from within `core.lua`. Use `hyprshell service/show-managed-split.sh` to inspect which paths are managed vs user-owned, within the refresh domains it covers.
+User overrides load after the shared/theme layers, so they win on conflicts. Variables follow the same order — `vars.lua` defaults, then `theme.lua`, `userfonts.lua`, `userprefs.lua`, each `vars.set` beating the last — and the readers outside Hyprland apply it identically: `core/config-layers.bash` (shell, with `theme.meta` standing in for `theme.lua`), `render/dunst.py`, and `shell.qml`'s `hyprVarLoadOrder`. `themes/colors.lua` (generated palette) is loaded from within `core.lua`. Use `hyprshell service/list-managed-domains [domain...]` to list each refresh domain's managed paths.
 
 Separate daemons keep their own hyprlang `.conf` files (not the Lua system): `hypridle.conf`, `hyprlock.conf`, `auto_theme.conf`, and `hyprlock/colors.conf`.
 
@@ -115,7 +115,7 @@ Separate daemons keep their own hyprlang `.conf` files (not the Lua system): `hy
 ├── gestures.lua          # Touchpad gestures; the workspace swipe follows WORKSPACE_SWIPE_AXIS
 ├── monitors.lua          # Display configuration (per-host)
 ├── hyprmoncfg-monitors.lua  # Generated monitor rules — dofile'd last, overrides the applied layout
-├── userprefs.lua         # Appearance, input, misc preferences; setup/default.sh upserts default-app vars.set lines here
+├── userprefs.lua         # Appearance, input, misc preferences; setup/default-app.sh upserts default-app vars.set lines here
 ├── keyboard.lua          # Keyboard/xkb overrides (optional user layer)
 ├── windowrules.lua       # Window rules (hl.window_rule)
 ├── window_profiles.lua   # Per-app profiles read by windowrules.lua
@@ -178,14 +178,14 @@ Renderers are enumerated by `~/.local/bin/hypr-theme`, which runs every executab
 non-`_`-prefixed file in `render/` in parallel against `active-palette.json`. **A renderer
 is enabled by its exec bit** — clearing it silently drops that app from theming.
 
-In theme mode each renderer also picks up a per-pack override: `render_init <app> <out>
-[<basename>]` (`render/_lib.sh`) looks for `~/.config/hypr/themes/<pack>/<basename>`,
-defaulting to `<app>.theme`, and feeds it in as `PACK_OVERRIDE`. That is what the
-`*.theme` files in each pack are for, and why `theme/color.targets.bash` skips the
+In theme mode each renderer also picks up a per-pack override: `render_job_into <job> <palette> <app> <out>
+[<basename>]` (`render/_render_job.bash`) looks for `~/.config/hypr/themes/<pack>/<basename>`,
+defaulting to `<app>.theme`, and records it as `render_job[pack_override]`. That is what the
+`*.theme` files in each pack are for, and why `theme/lib/pack.overrides.bash` skips the
 renderer-owned basenames instead of materializing them (its skip list is literal:
 `hypr` `kitty` `rofi` `quickshell` `alacritty` `tmux` `dunst`, so a pack
 `*.theme` for any other renderer falls through to the target-path path and warns). `render/dunst.py` does the same in Python via
-`load_pack_overrides()`. `render/chrome.sh` opts out by passing `nonexistent.theme`.
+`load_pack_overrides()`. `render/chrome.sh` opts out by passing an empty basename.
 
 Each `<app>.theme` is written in that app's own config syntax, so the renderer can mostly
 pass it through — `kitty.theme` is kitty conf, `rofi.theme` is rasi, and
@@ -262,6 +262,7 @@ State lives under `~/.local/state/hypr/`. Treat all of it as generated and use h
 | `migrations-done`                                   | Names of the `setup/_migrations/NNN-*.sh` scripts already run on this host; written only by `setup/migrate` |
 
 - Use the existing `state_get` / `state_set` patterns and locking helpers (`core/state.bash`, `runtime/lock_paths.bash`, `pyutils/lock_paths.py`).
+- `state_get` and the fork-free `state_get_into OUT KEY DEFAULT` live in `core/state-read.bash`, which has no dependencies: a hot path (a bar poll) sources that alone instead of `core/state.bash` and its `common.bash`. `env-overrides` wins over `staterc`, as in the runtime loader; never re-implement the reader.
 - Dedicated lock FDs prevent concurrent theme, wallpaper, and mode operations.
 - Do not edit `staterc` or other state files directly.
 - Avoid bypassing those locks.
@@ -295,7 +296,7 @@ accepts `category/name`, `name.sh` and `name.py` too.
 | ------------ | -------------------------------------------------- | --------------------------------------------------------------------------------- |
 | `bookmarks/` | Bookmark store for the rofi bookmarks picker       | `bookmark_helper.py`, `bookmark_store_init.sh`                                    |
 | `calendar/`  | Agenda, alarms/timers behind the bar popups        | `agenda.sh`, `alarm-timer.sh`                                                     |
-| `capture/`   | Screenshot, screenrecord, QR decode                | `screenshot.sh`, `screenrecord.sh`, `grimblast.sh`, `qr.sh`                       |
+| `capture/`   | Screenshot, screenrecord, QR decode                | `screenshot.sh`, `screenrecord.sh`, `qr.sh`, `lib/selection.bash`                 |
 | `clipboard/` | Clipboard history behind the bar popup             | `cliphist.sh`                                                                     |
 | `controls/`  | Hardware controls                                  | `brightness-control.sh`, `volume-control.sh`, `window-mute.py`                    |
 | `core/`      | Shared foundations                                 | `common.bash` (sources `services` `lua` `events` `processes` `dbus` `cli` `math` `paths` `config-layers` `geometry`), `state.bash`, `notify.bash`, `rofi.bash` |
@@ -306,18 +307,18 @@ accepts `category/name`, `name.sh` and `name.py` too.
 | `launch/`    | App launchers                                      | `browser.sh`, `editor.sh`, `focus.sh`, `summon.sh`, `terminal-present.sh`         |
 | `media/`     | Media/lyrics control                               | `mediaplayer.py`, `lyrics_runtime.sh`, `autotag.py`, `fftab-bridge/`              |
 | `notify/`    | Notification helpers + archive store               | `archive.sh`, `open.sh`, `history.sh`, `notifications.py`                          |
-| `pyutils/`   | Shared Python modules                              | `hyprctl.py`, `lock_paths.py`, `shell_env.py`, `pip_env.py`                    |
+| `pyutils/`   | Shared Python modules                              | `hyprctl.py`, `lock_paths.py`, `shell_env.py`, `managed_venv.py`               |
 | `quickshell/`| Active bar layout/style/visibility helpers         | `layout.sh`, `style-map.py`, `style-map-watch.sh`, `visibility.sh`                |
 | `render/`    | Per-app theme/palette renderers                    | `dunst.py`, `gtk.py`, `kitty.sh`, `rofi.sh`, `quickshell.sh`, `_palette.py`       |
 | `rofi/`      | Rofi menus and pickers                             | `menutree.sh`, `emoji-picker.sh`, `glyph-picker.sh`, `run-after-close.sh`         |
 | `runtime/`   | Hyprshell runtime init                             | `init.bash`, `lock_paths.bash`                                                    |
-| `service/`   | Service restart/refresh, managed-config inspection | `restart.sh`, `config.sh`, `managed.sh`, `show-managed-split.sh`                  |
+| `service/`   | Service restart/refresh, managed-config inspection | `control.sh`, `apply-config.sh`, `apply-managed-domains.sh`, `list-managed-domains.sh` |
 | `session/`   | Lock, idle, logout                                 | `lock-screen.sh`, `idle-manager.sh`, `hyprlock.sh`                                |
-| `setup/`     | First-run defaults                                 | `default.sh`                                                                      |
-| `shell/lib/` | hyprshell internals                                | `hyprshell.commands.bash`, `hyprshell.completion.bash`, `hyprshell.runner.bash`   |
+| `setup/`     | First-run defaults, one-time migrations            | `default-app.sh`, `migrate.sh`                                                    |
+| `shell/lib/` | hyprshell internals                                | `hyprshell.commands.bash`, `hyprshell.completion.bash`, `hyprshell.dispatch.bash`   |
 | `sysinfo/`   | System info                                        | `gpuinfo.sh`, `battery.sh`, `battery-notify.sh`                                  |
 | `system/`    | System, package, power, monitor management         | `pm.sh`, `system.update.sh`, `app2unit.sh`, `powerctl.sh`, `powerprofiles.auto.sh` |
-| `theme/`     | Theme/color pipeline + auto-theme daemon           | `theme.switch.sh`, `theme.apply.sh`, `color.apply.bash`, `auto_theme.py`          |
+| `theme/`     | Theme/color pipeline + auto-theme daemon           | `theme.switch.sh`, `theme.apply.sh`, `color-mode.sh`, `auto_theme.py`          |
 | `util/`      | Miscellaneous                                      | `workflows.sh`, `weather.py`, `keyboard-switch.sh`                                 |
 | `vm/`        | VM helpers                                         | `windows.sh`                                                                      |
 | `wallpaper/` | Wallpaper management                               | `wallpaper.awww.sh`, `wallpaper.cache.sh`, `wallcache.daemon.sh`                  |
@@ -375,9 +376,9 @@ dotfiles-host-profile show
 dotfiles-host-profile set <profile>
 dotfiles-host-profile apply [--dry-run]
 
-# Inspect the managed/generated split for refresh-domain paths (reads
-# refresh.manifest.psv — NOT dotfiles-sync.conf, and it knows nothing about hosts)
-hyprshell service/show-managed-split.sh [path...]
+# List each refresh domain's managed paths (reads refresh.manifest.psv —
+# NOT dotfiles-sync.conf, and it knows nothing about hosts)
+hyprshell service/list-managed-domains [domain...]
 
 # Check whether a path is mirrored into ~/dotfiles/ (reads dotfiles-sync.conf)
 dotfiles-sync --list
@@ -514,11 +515,11 @@ Both families record the bare dispatcher in `bind_actions[description]`, which i
 
 Invariants that are easy to break:
 
-- **Descriptions are lookup keys.** `keybinds_hint.py` base64s the description into `HYPR_BIND_ACTIONS[description]`, which `keybinds_hint.sh` dispatches. Keep them unique and stable.
-- **A submap leader is found by its `[Submap] ` description marker**, not by hyprctl. The Lua plugin reports every bind as dispatcher `__lua`, so `hyprctl binds` never reports `submap`. The marker string is duplicated in `keybinds_hint.py`; change both together.
-- **`[Hidden] ` is the same kind of marker**, for binds a submap re-exposes from the global set: they work inside the submap but stay out of its hint. Duplicated as `HIDDEN_MARKER` in `keybindings.lua` and `keybinds/lib/submap_hint.py`; change both together.
+- **Descriptions are lookup keys.** `keybinds/lib/hint_formats.py` base64s the description into `HYPR_BIND_ACTIONS[description]`, which `keybinds_hint.sh` dispatches. Keep them unique and stable.
+- **A submap leader is found by its `[Submap] ` description marker**, not by hyprctl. The Lua plugin reports every bind as dispatcher `__lua`, so `hyprctl binds` never reports `submap`. The marker string is duplicated as `SUBMAP_MARKER` in `keybinds/lib/binding_metadata.py`; change both together.
+- **`[Hidden] ` is the same kind of marker**, for binds a submap re-exposes from the global set: they work inside the submap but stay out of its hint. Duplicated as `HIDDEN_MARKER` in `keybindings.lua` and `keybinds/lib/submap_bindings.py`; change both together.
 - **`{locked = true}` binds work on the lock screen** and cannot move into a submap (the leader is unreachable there). `mod K` (keyboard layout) depends on this.
-- **`layout_action(layout, …)` gates the dispatch, not the bind.** The bind registers unconditionally; the layout check runs at press time inside the Lua closure, which hyprctl cannot see. So the sub-category header must name the layout — `[Window Mode|Scrolling]` for `layout_action("scrolling", …)` — because `LAYOUT_HEADERS` in `keybinds/lib/submap_hint.py` filters the hint on that header. A mismatch shows a bind that silently no-ops, or hides a working one.
+- **`layout_action(layout, …)` gates the dispatch, not the bind.** The bind registers unconditionally; the layout check runs at press time inside the Lua closure, which hyprctl cannot see. So the sub-category header must name the layout — `[Window Mode|Scrolling]` for `layout_action("scrolling", …)` — because `LAYOUT_HEADERS` in `keybinds/lib/submap_bindings.py` filters the hint on that header. A mismatch shows a bind that silently no-ops, or hides a working one.
 
 **When re-binding an existing key:**
 
@@ -555,10 +556,10 @@ When customizations go wrong, the service scripts can restore managed configs:
 
 ```bash
 # Restore one managed config file from ~/.local/share/hypr/default/
-hyprshell service/config.sh --mode restore <relative-path-under-config>
+hyprshell service/apply-config.sh --mode restore <relative-path-under-config>
 
 # Restore whole managed domains from stock defaults (backs up first)
-hyprshell service/managed.sh --mode restore <domain> [domain...]
+hyprshell service/apply-managed-domains.sh --mode restore <domain> [domain...]
 ```
 
 ## Working Workflow
@@ -572,11 +573,11 @@ hyprshell service/managed.sh --mode restore <domain> [domain...]
 ## Script Conventions
 
 - Bash: use `[[ ... ]]`, quote paths, and prefer explicit fallback handling.
-- The extension says how a file runs: `.sh` is an entrypoint that owns strict mode, `.bash` is a sourced module that inherits it. `media/lyrics_paths.lib.sh` is the one sourced `.sh`: it is POSIX sh for the rmpc hook.
+- The extension says how a file runs: `.sh` is an entrypoint that owns strict mode, `.bash` is a sourced module that inherits it. `media/lib/lyrics-paths.bash` is the one module written in POSIX sh, because the rmpc hook sources it.
 - Use absolute paths for config and state references where practical.
 - Keep functions small and composable.
 - Avoid backgrounding long-running work unless the path is already lock-safe.
-- Comments explain the reasoning behind the code, not what it does. Keep them concise and meaningful; never duplicate what the code already says.
+- No new comments (see Core Rules): a record format is documented by the parser's field names, a value mirrored across languages by using the same name on both sides.
 
 ## Verification Expectations
 

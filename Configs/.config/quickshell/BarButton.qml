@@ -33,12 +33,21 @@ Item {
     property real iconSize: 0
     property string symbol: ""
     property string symbolContext: "status"
-    readonly property bool symbolic: symbol !== ""
-    readonly property bool boxedIcon: symbolic || usesIconFont && box.iconBox !== undefined
+    readonly property string firstGlyph: labelText ? String.fromCodePoint(labelText.codePointAt(0)) : ""
+    readonly property string styledSymbol: typeof box.symbol === "string" ? box.symbol : box.symbol?.[firstGlyph] ?? ""
+    readonly property string resolvedSymbol: symbol || styledSymbol
+    readonly property bool symbolic: resolvedSymbol !== ""
+    readonly property SymbolicIcon symbolIcon: symbolLoader.item as SymbolicIcon
+    readonly property SymbolicIcon leadingSymbolIcon: leadingSymbolLoader.item as SymbolicIcon
+    readonly property bool inlineSymbolic: symbol === "" && styledSymbol !== "" && !usesIconFont
+    readonly property string renderedText: inlineSymbolic ? text.replace(firstGlyph, "").replace(/^ /, "") : text
+    readonly property string renderedLeadingIcon: inlineSymbolic ? firstGlyph : leadingIcon
+    readonly property string leadingSymbol: inlineSymbolic ? styledSymbol : typeof box.leadingSymbol === "string" ? box.leadingSymbol : box.leadingSymbol?.[leadingIcon] ?? ""
+    readonly property bool boxedIcon: symbolic && !inlineSymbolic || usesIconFont && box.iconBox !== undefined
     readonly property real iconBoxPx: iconSize || Style.fontPx(box.iconBox ?? box.fontSize)
-    readonly property int symbolSize: Math.round(iconSize || iconBoxPx * 1.15)
+    readonly property int symbolSize: Math.round(box.symbolSize ?? (iconSize || iconBoxPx * 1.15))
     readonly property rect glyphInk: (glyphProbe.item as GlyphInk)?.ink ?? Qt.rect(0, 0, 0, 0)
-    readonly property bool fitsIconBox: boxedIcon && glyphInk.width > 0
+    readonly property bool fitsIconBox: boxedIcon && glyphInk.width > 0 && iconBoxPx > 0
     readonly property real iconMaxAspect: 1.2
     readonly property real renderedFontSize: fitsIconBox ? Math.round(iconBoxPx / Math.max(glyphInk.height, glyphInk.width / iconMaxAspect))
         : usesIconFont ? fontSize * shell.iconFontScale : fontSize
@@ -63,7 +72,8 @@ Item {
     readonly property color contentColor: label.color
     property var hoverOverride: null
     // drawn as an exponent past the glyph's top-right; countGlyph() fills it
-    property string badgeText: ""
+    readonly property var badgeStyle: box.badges?.[firstGlyph] ?? ({})
+    property string badgeText: badgeStyle.text ?? ""
     property bool smoothTextColor: true
     signal clicked(int button)
     signal wheeled(int delta)
@@ -78,7 +88,10 @@ Item {
     }
 
     // md-numeric_<n> runs contiguously from 0; md-numeric_9_plus draws at half height, so 9+ is md-numeric_9 + md-plus_thick
-    function countGlyph(count) { return count > 9 ? "\u{f0b42}\u{f11ec}" : String.fromCodePoint(0xf0b39 + count) }
+    function countGlyph(count) {
+        if (box.badgeNumerals === "standard") return count > 9 ? "9+" : String(count)
+        return count > 9 ? "\u{f0b42}\u{f11ec}" : String.fromCodePoint(0xf0b39 + count)
+    }
 
     function interactiveColor(key, fallback) {
         if (!hovered) return fallback
@@ -99,17 +112,26 @@ Item {
     readonly property real paintedBorderWidth: sideBorder.replacesBorder || borderColor.a === 0 ? 0 : borderWidth
     readonly property real horizontalInsets: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * paintedBorderWidth
     readonly property real verticalInsets: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * paintedBorderWidth
-    readonly property real leadingIconWidth: leadingIcon !== "" ? icon.implicitWidth + (text !== "" ? leadingIconGap : 0) : 0
-    readonly property real naturalWidth: Math.max(box.minWidth, (boxedIcon ? Math.max(iconBoxPx * iconMaxAspect, label.implicitWidth) : label.implicitWidth)
+    readonly property real leadingIconWidth: renderedLeadingIcon !== "" ? icon.implicitWidth + (renderedText !== "" ? leadingIconGap : 0) : 0
+    readonly property real naturalWidth: Math.max(box.minWidth, (symbolIcon?.loaded ? symbolIcon.ink.width
+        : boxedIcon ? Math.max(iconBoxPx * iconMaxAspect, label.implicitWidth) : label.implicitWidth)
         + leadingIconWidth) + trailingWidth + horizontalInsets
     implicitWidth: fixedWidth > 0 ? fixedWidth : maxWidth > 0 ? Math.min(naturalWidth, maxWidth) : naturalWidth
     implicitHeight: Math.max(box.minHeight, boxedIcon ? iconBoxPx : label.implicitHeight, leadingIconMetrics.tightBoundingRect.height) + verticalInsets
-    readonly property rect paintedLabelBounds: Qt.rect(
-        label.x + textOffsetX + (textAlignment === Text.AlignLeft ? 0
-            : textAlignment === Text.AlignRight ? label.width - label.paintedWidth
-            : (label.width - label.paintedWidth) / 2),
-        label.y + (label.height - label.paintedHeight) / 2,
-        label.paintedWidth, label.paintedHeight)
+    readonly property rect paintedLabelBounds: {
+        if (symbolIcon?.loaded)
+            return Qt.rect(symbolLoader.x + symbolIcon.ink.x, symbolLoader.y, symbolIcon.ink.width, symbolLoader.height)
+        const size = label.font.pixelSize, tight = labelMetrics.tightBoundingRect
+        const ink = fitsIconBox
+            ? Qt.rect(size * glyphInk.x, label.baselineOffset + size * glyphInk.y, size * glyphInk.width, size * glyphInk.height)
+            : usesIconFont ? Qt.rect(tight.x, label.baselineOffset + tight.y, tight.width, tight.height)
+            : Qt.rect(0, (label.height - label.paintedHeight) / 2, label.paintedWidth, label.paintedHeight)
+        const textWidth = fitsIconBox || usesIconFont ? label.contentWidth : label.paintedWidth
+        const alignmentOffset = textAlignment === Text.AlignLeft ? 0
+            : textAlignment === Text.AlignRight ? label.width - textWidth : (label.width - textWidth) / 2
+        return Qt.rect(label.x + textOffsetX + alignmentOffset + ink.x,
+            label.y + textOffsetY + ink.y, ink.width, ink.height)
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -135,25 +157,39 @@ Item {
         }
         Loader {
             id: symbolLoader
-            active: root.symbolic; anchors.centerIn: label
-            sourceComponent: Component { SymbolicIcon { name: root.symbol; context: root.symbolContext; directory: root.box.symbols ?? ""; color: label.color; size: root.symbolSize } }
+            active: root.symbolic && !root.inlineSymbolic; anchors.verticalCenter: label.verticalCenter
+            x: label.x + (label.width - (root.symbolIcon?.ink.width ?? width)) / 2 - (root.symbolIcon?.ink.x ?? 0)
+            sourceComponent: Component { SymbolicIcon { name: root.resolvedSymbol; context: root.symbolContext; directory: root.box.symbols ?? ""; color: label.color; size: root.symbolSize } }
         }
-        Text {
+        Item {
             id: icon
-            visible: root.leadingIcon !== ""
+            visible: root.renderedLeadingIcon !== ""
+            implicitWidth: root.leadingSymbolIcon?.loaded ? root.leadingSymbolIcon.ink.width : root.box.symbolSize ?? leadingGlyph.implicitWidth
+            implicitHeight: root.box.symbolSize ?? leadingGlyph.implicitHeight
             anchors.left: parent.left
             anchors.leftMargin: root.box.margin[3] + root.paintedBorderWidth + root.box.padding[3]
             anchors.verticalCenter: parent.verticalCenter
-            text: root.leadingIcon
-            color: root.box.iconColor === undefined ? label.color : root.interactiveColor("iconColor", root.styleColor("iconColor"))
-            Behavior on color { enabled: root.smoothTextColor; ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
-            font.family: root.shell.iconGlyphFont
-            font.pixelSize: root.leadingIconSize
+            Loader {
+                id: leadingSymbolLoader
+                active: icon.visible && root.leadingSymbol !== ""; anchors.verticalCenter: parent.verticalCenter
+                x: (icon.width - (root.leadingSymbolIcon?.ink.width ?? width)) / 2 - (root.leadingSymbolIcon?.ink.x ?? 0)
+                sourceComponent: Component { SymbolicIcon { name: root.leadingSymbol; directory: root.box.symbols ?? ""; color: leadingGlyph.color; size: Math.round(root.box.symbolSize ?? leadingIconMetrics.tightBoundingRect.height) } }
+            }
+            Text {
+                id: leadingGlyph
+                visible: !(root.leadingSymbolIcon?.loaded ?? false)
+                text: root.renderedLeadingIcon
+                color: root.box.iconColor === undefined ? label.color : root.interactiveColor("iconColor", root.styleColor("iconColor"))
+                Behavior on color { enabled: root.smoothTextColor; ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
+                font.family: root.shell.iconGlyphFont
+                font.pixelSize: root.leadingIconSize
+            }
         }
-        TextMetrics { id: leadingIconMetrics; font: icon.font; text: icon.text }
+        TextMetrics { id: leadingIconMetrics; font: leadingGlyph.font; text: leadingGlyph.text }
+        TextMetrics { id: labelMetrics; font: label.font; text: root.labelText }
         Text {
             id: label
-            visible: !((symbolLoader.item as SymbolicIcon)?.loaded ?? false)
+            visible: !(root.symbolIcon?.loaded ?? false)
             anchors.fill: parent
             anchors.topMargin: root.box.margin[0] + root.paintedBorderWidth + root.box.padding[0]
             anchors.rightMargin: root.box.margin[1] + root.paintedBorderWidth + root.box.padding[1] + root.trailingWidth
@@ -170,7 +206,7 @@ Item {
             horizontalAlignment: root.textAlignment
             verticalAlignment: Text.AlignVCenter
             elide: Text.ElideRight
-            text: root.text
+            text: root.renderedText
         }
     }
     Item {
@@ -184,14 +220,17 @@ Item {
         }
     }
     Rectangle { id: badgeBackground; anchors.fill: badge; anchors.leftMargin: -Style.xxs; anchors.rightMargin: -Style.xxs; radius: root.box.badgeBorderRadius === null ? root.shell.rounding : root.box.badgeBorderRadius ?? height / 2; visible: badge.visible; color: root.styleColor("badgeBackgroundColor") }
+    TextMetrics { id: badgeMetrics; font: badge.font; text: badge.text }
     Text {
         id: badge
+        readonly property real glyphCenterY: badge.baselineOffset + badgeMetrics.tightBoundingRect.y + badgeMetrics.tightBoundingRect.height / 2
         visible: root.badgeText !== ""
         x: root.paintedLabelBounds.x + root.paintedLabelBounds.width + (root.box.badgeOffsetX || 0)
-        y: root.paintedLabelBounds.y + (root.box.badgeOffsetY || 0)
+        y: root.paintedLabelBounds.y - badge.glyphCenterY + (root.box.badgeOffsetY || 0)
         text: root.badgeText
-        color: root.box.badgeColor === undefined ? label.color : root.styleColor("badgeColor")
-        font.family: root.shell.iconGlyphFont
+        color: root.badgeStyle.color !== undefined ? root.shell.styleColor(root.badgeStyle.color, label.color)
+            : root.box.badgeColor === undefined ? label.color : root.styleColor("badgeColor")
+        font.family: root.box.badgeNumerals === "standard" ? root.shell.fontFamily : root.shell.iconGlyphFont
         font.pixelSize: Style.px(root.box.badgeSize || 9)
         font.weight: root.box.badgeFontWeight ?? Font.Normal
     }

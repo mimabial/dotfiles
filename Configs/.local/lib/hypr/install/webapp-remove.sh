@@ -4,13 +4,11 @@ set -euo pipefail
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/install/lib/desktop-entry.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell install/webapp-remove [name...]
 Remove web-app launchers and desktop entries (fzf multi-select when none given)." "$@"
-
-DESKTOP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
-LAUNCHER_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/hypr/webapps"
-ICON_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications/icons"
 
 read_desktop_field() {
   sed -n "s/^$1=//p" "$2" | head -n 1
@@ -23,8 +21,8 @@ collect_webapp_records() {
   local icon_path=""
 
   while IFS= read -r -d '' file; do
-    if grep -q '^X-Hypr-WebApp=true$' "$file"; then
-      app_id="$(read_desktop_field "X-Hypr-WebApp-Id" "$file")"
+    if grep -qx -- "$WEBAPP_MARKER" "$file"; then
+      app_id="$(read_desktop_field "$WEBAPP_ID_KEY" "$file")"
       app_name="$(read_desktop_field "Name" "$file")"
       icon_path="$(read_desktop_field "Icon" "$file")"
     elif grep -q '^Exec=.*hyprshell launch/webapp\.sh.*' "$file"; then
@@ -38,7 +36,7 @@ collect_webapp_records() {
     app_id="${app_id:-$(basename "${file%.desktop}")}"
     app_name="${app_name:-$app_id}"
     printf '%s\t%s\t%s\t%s\n' "$app_id" "$app_name" "$icon_path" "$file"
-  done < <(find "$DESKTOP_DIR" -maxdepth 1 -name '*.desktop' -print0)
+  done < <(find "$DESKTOP_ENTRY_DIR" -maxdepth 1 -name '*.desktop' -print0)
 }
 
 select_requests() {
@@ -66,8 +64,8 @@ remove_webapp_record() {
   local desktop_file=""
 
   IFS=$'\t' read -r app_id app_name icon_path desktop_file <<<"$record"
-  rm -f "$desktop_file" "$LAUNCHER_DIR/$app_id"
-  [[ "$icon_path" == "${ICON_DIR}/"* ]] && rm -f "$icon_path"
+  rm -f "$desktop_file" "$WEBAPP_LAUNCHER_DIR/$app_id"
+  [[ "$icon_path" == "${DESKTOP_ENTRY_ICON_DIR}/"* ]] && rm -f "$icon_path"
   echo "Removed $app_id"
 }
 

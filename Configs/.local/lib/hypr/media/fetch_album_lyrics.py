@@ -16,13 +16,15 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+from audio_tags import parse_extensions
+from autotag_identity import parse_filename
 from lyrics_io import save_lrc
 from lyrics_paths import lrc_path_for, music_library_dir
 from lyrics_provider import fetch_lyrics
-from lyrics_provider_common import _is_lrc_synced, _similarity
+from lyrics_text import is_lrc_synced, text_similarity
 
 DEFAULT_EXTENSIONS = "mp3,flac,m4a,ogg,opus"
-TRACK_PREFIX = re.compile(r"^\s*\d{1,3}\s*[-._)]\s*")
+LEADING_ARTIST_SIMILARITY = 0.5
 BUCKET = re.compile(r"\s*\[(?P<kind>[gc])\]\s*$", re.IGNORECASE)
 GENERIC_ALBUM_ARTISTS = {
     "various artists",
@@ -69,7 +71,7 @@ def lrc_state(path: Path) -> LrcState:
     except OSError as exc:
         print(f"Warning: Could not read lyrics file {path}: {exc}", file=sys.stderr)
         return LrcState.UNTIMED
-    return LrcState.SYNCED if _is_lrc_synced(content) else LrcState.UNTIMED
+    return LrcState.SYNCED if is_lrc_synced(content) else LrcState.UNTIMED
 
 
 def should_fetch_lrc(
@@ -152,14 +154,6 @@ def get_audio_metadata(file_path: str | Path) -> dict[str, Any]:
         return empty
 
 
-def parse_filename(path: Path) -> tuple[str, str]:
-    stem = TRACK_PREFIX.sub("", path.stem)
-    if " - " not in stem:
-        return "", stem.strip()
-    artist, _, title = stem.partition(" - ")
-    return artist.strip(), title.strip()
-
-
 def build_title_candidates(
     tagged_title: str,
     filename_title: str,
@@ -178,7 +172,7 @@ def build_title_candidates(
             if separator not in value:
                 continue
             prefix, title = value.split(separator, 1)
-            if title and any(_similarity(prefix, artist) >= 0.5 for artist in artists):
+            if title and any(text_similarity(prefix, artist) >= LEADING_ARTIST_SIMILARITY for artist in artists):
                 return title.strip()
         return value
 
@@ -343,18 +337,10 @@ def process_audio_file(
         print(f"  Lookup title used: {used_title}")
     save_lrc(lrc_file, lyrics, artist, title, album)
     if report_kind:
-        kind = "synchronized lyrics" if _is_lrc_synced(lyrics) else "untimed lyrics"
+        kind = "synchronized lyrics" if is_lrc_synced(lyrics) else "untimed lyrics"
         print(f"LYRICS_RESULT={kind}")
     print(f"✔ Saved lyrics: {lrc_file.name}")
     return ProcessResult.SAVED
-
-
-def parse_extensions(raw: str) -> set[str]:
-    return {
-        "." + value.strip().lstrip(".").casefold()
-        for value in raw.split(",")
-        if value.strip()
-    }
 
 
 def collect_audio_files(

@@ -20,10 +20,10 @@ PopupCard {
     property bool resumeConfigured: false
     property var managerConfig: ({})
     property var draftConfig: ({})
-    property int draftLimit: -1
-    property int limitRequested: -1
+    property bool chargeLimitSupported: false
+    property bool chargeLimitEnabled: false
+    property int chargeLimitPercent: -1
     property string limitMessage: ""
-    property bool limitBackendReady: false
     readonly property bool configDirty: JSON.stringify(managerConfig) !== JSON.stringify(draftConfig)
     readonly property var profileChoices: [
         { label: "Power saver", value: "power-saver" },
@@ -39,15 +39,14 @@ PopupCard {
     ]
     readonly property var battery: UPower.displayDevice
     readonly property bool hasBattery: battery && battery.isPresent
-    readonly property string sysfs: battery && battery.nativePath ? "/sys/class/power_supply/" + battery.nativePath : ""
+    readonly property var laptopBattery: UPower.devices.values.find(device => device.isLaptopBattery) ?? null
+    readonly property string sysfs: laptopBattery ? "/sys/class/power_supply/" + laptopBattery.nativePath : ""
+    readonly property string batteryObjectPath: laptopBattery ? "/org/freedesktop/UPower/devices/battery_" + laptopBattery.nativePath : ""
     readonly property color accentColor: shell.role("act_br", shell.accent)
     readonly property int thresholdEnd: sysfsEnd
     readonly property string thresholdText: sysfsStart > 0 && sysfsStart < thresholdEnd
         ? sysfsStart + "–" + thresholdEnd + "%" : thresholdEnd > 0 ? thresholdEnd + "%" : "Unavailable"
     readonly property bool discharging: UPower.onBattery
-    readonly property int minChargeLimit: 50
-    readonly property int maxChargeLimit: 100
-    readonly property int presetChargeLimit: 80
     readonly property bool thresholdActive: hasBattery && !discharging && thresholdEnd > 0 && thresholdEnd < 99
         && Math.round(battery.percentage * 100) >= thresholdEnd && Math.abs(battery.changeRate) <= 0.2
     readonly property bool full: hasBattery && battery.state === UPowerDeviceState.FullyCharged && !thresholdActive
@@ -100,15 +99,14 @@ PopupCard {
         shell.run(["hyprshell", "system/powerprofiles", "--restore"])
         shell.run(["hyprshell", "system/power-manager", "idle-rearm"])
     }
-    function applyLimit(limit) {
-        const requested = limit === undefined ? draftLimit : limit
-        if (!limitBackendReady || !hasBattery || requested < root.minChargeLimit || requested > root.maxChargeLimit
-                || requested === sysfsEnd || limitApply.running) return
+    function upowerDeviceCall(method, argument) {
+        return ["gdbus", "call", "--system", "--dest", "org.freedesktop.UPower", "--object-path", batteryObjectPath, "--method", method, argument]
+    }
+    function toggleChargeLimit() {
+        if (!chargeLimitSupported || chargeLimitToggle.running) return
         limitMessage = ""
-        draftLimit = requested
-        limitRequested = requested
-        limitApply.command = ["pkexec", "/usr/local/libexec/hypr-power-manager-charge-limit", String(requested), battery.nativePath]
-        limitApply.running = true
+        chargeLimitToggle.command = upowerDeviceCall("org.freedesktop.UPower.Device.EnableChargeThreshold", String(!chargeLimitEnabled))
+        chargeLimitToggle.running = true
     }
     function handleKey(event) {
         const index = Number(event.text) - 1
@@ -119,10 +117,9 @@ PopupCard {
         if (!open) return
         tab = "overview"
         draftConfig = JSON.parse(JSON.stringify(managerConfig))
-        draftLimit = -1
         limitMessage = ""
         managerFile.reload()
-        limitHelperFile.reload()
+        if (batteryObjectPath) chargeLimitState.running = true
     }
 
     Column {
@@ -315,33 +312,12 @@ PopupCard {
                 PopupSection { shell: root.shell; text: "BATTERY PROTECTION" }
                 PopupInfoPair { shell: root.shell; label: "Charge limit"; value: root.thresholdText }
                 PopupRow {
-                    visible: root.sysfsEnd > 0
-                    width: parent.width; shell: root.shell; icon: "󰂄"; title: "Stop charging at " + root.presetChargeLimit + "%"
-                    detail: root.sysfsEnd === root.presetChargeLimit ? "Active · restart level set by hardware"
-                        : !root.limitBackendReady ? "Privileged helper not installed"
-                        : limitApply.running ? "Applying…" : "Restart level set by hardware · authentication required"
-                    active: root.sysfsEnd === root.presetChargeLimit
-                    interactive: root.limitBackendReady && root.hasBattery && root.sysfsEnd !== root.presetChargeLimit && !limitApply.running
-                    onClicked: root.applyLimit(root.presetChargeLimit)
-                }
-                Row {
-                    visible: root.sysfsEnd > 0
-                    width: parent.width; spacing: Style.md
-                    Text { width: parent.width - limitField.width - parent.spacing; anchors.verticalCenter: parent.verticalCenter; text: "Charge cut-off (%)"; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
-                    PopupNumberField {
-                        id: limitField
-                        width: Style.px(110); shell: root.shell
-                        value: root.draftLimit >= 0 ? root.draftLimit : root.sysfsEnd
-                        minimum: root.minChargeLimit; maximum: root.maxChargeLimit
-                        onCommitted: value => root.draftLimit = value
-                    }
-                }
-                PopupRow {
-                    visible: root.sysfsEnd > 0
-                    width: parent.width; shell: root.shell; icon: "󰆓"; title: "Apply charge limit"
-                    detail: root.limitBackendReady ? (root.draftLimit < 0 || root.draftLimit === root.sysfsEnd ? "Up to date" : "Authentication required") : "Privileged helper not installed"
-                    interactive: root.limitBackendReady && root.draftLimit >= root.minChargeLimit && root.draftLimit !== root.sysfsEnd && !limitApply.running
-                    onClicked: root.applyLimit()
+                    visible: root.chargeLimitSupported
+                    width: parent.width; shell: root.shell; icon: "󰂄"; title: "Stop charging at " + root.chargeLimitPercent + "%"
+                    detail: chargeLimitToggle.running ? "Applying…" : root.chargeLimitEnabled ? "Active · restart level set by hardware" : "Off"
+                    active: root.chargeLimitEnabled
+                    interactive: !chargeLimitToggle.running
+                    onClicked: root.toggleChargeLimit()
                 }
                 Text { visible: root.limitMessage !== ""; width: parent.width; text: root.limitMessage; color: root.shell.role("error", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
             }
@@ -423,17 +399,10 @@ PopupCard {
         onLoaded: root.sysfsStart = parseInt(text()) || -1
     }
     FileView {
-        id: thresholdFile
         path: root.sysfs ? root.sysfs + "/charge_control_end_threshold" : ""
         watchChanges: root.sysfs !== ""; printErrors: false
         onFileChanged: reload()
-        onLoaded: {
-            root.sysfsEnd = parseInt(text()) || -1
-            if (root.limitRequested < 0) return
-            if (root.sysfsEnd === root.limitRequested) root.draftLimit = -1
-            else root.limitMessage = "Charge limit was not applied."
-            root.limitRequested = -1
-        }
+        onLoaded: root.sysfsEnd = parseInt(text()) || -1
     }
     FileView {
         id: managerFile
@@ -449,17 +418,24 @@ PopupCard {
             } catch (error) { console.warn("power manager settings: " + error) }
         }
     }
-    FileView {
-        id: limitHelperFile
-        path: "/usr/local/libexec/hypr-power-manager-charge-limit"
-        watchChanges: true; printErrors: false
-        onLoaded: root.limitBackendReady = true
+    Process {
+        id: chargeLimitState
+        command: root.upowerDeviceCall("org.freedesktop.DBus.Properties.GetAll", "org.freedesktop.UPower.Device")
+        stdout: StdioCollector {
+            waitForEnd: true
+            onStreamFinished: {
+                root.chargeLimitSupported = text.includes("'ChargeThresholdSupported': <true>")
+                root.chargeLimitEnabled = text.includes("'ChargeThresholdEnabled': <true>")
+                root.chargeLimitPercent = Number((/'ChargeEndThreshold': <uint32 (\d+)>/.exec(text) ?? [])[1] ?? -1)
+            }
+        }
     }
     Process {
-        id: limitApply
-        onRunningChanged: {
-            if (running || root.limitRequested < 0) return
-            thresholdFile.reload()
+        id: chargeLimitToggle
+        stderr: StdioCollector { id: chargeLimitToggleErr; waitForEnd: true }
+        onExited: code => {
+            if (code !== 0) root.limitMessage = chargeLimitToggleErr.text.trim() || "Charge limit was not changed."
+            chargeLimitState.running = true
         }
     }
     FileView { path: "/sys/power/state"; printErrors: false; onLoaded: root.sleepStates = String(text()).trim() }

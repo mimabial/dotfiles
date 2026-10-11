@@ -43,7 +43,7 @@ def unquote(value: str) -> str:
     return value
 
 
-def lua(value: object) -> str:
+def lua_literal(value: object) -> str:
     if value is True:
         return "true"
     if value is False:
@@ -53,24 +53,23 @@ def lua(value: object) -> str:
     if isinstance(value, (int, float)):
         return repr(value)
     if isinstance(value, list):
-        return "{" + ", ".join(lua(item) for item in value) + "}"
+        return "{" + ", ".join(lua_literal(item) for item in value) + "}"
     if isinstance(value, dict):
-        return "{" + ", ".join(f"[{lua(key)}] = {lua(item)}" for key, item in value.items()) + "}"
+        return "{" + ", ".join(f"[{lua_literal(key)}] = {lua_literal(item)}" for key, item in value.items()) + "}"
     return json.dumps(str(value), ensure_ascii=False)
 
 
-class Converter:
+class HyprlangToLuaConverter:
     def __init__(self) -> None:
         self.variables: dict[str, str] = dict(os.environ)
-        self.lines = [
+        self.lua_lines = [
             "-- Generated native Hyprland Lua. Do not edit manually.",
             'local runtime = require("runtime")',
             'local vars = require("vars")',
             "",
         ]
-        self.rule_index = 0
 
-    def expand(self, value: str) -> str:
+    def expand_variables(self, value: str) -> str:
         for _ in range(MAX_EXPANSION_PASSES):
             changed = False
 
@@ -87,8 +86,8 @@ class Converter:
                 break
         return value
 
-    def scalar(self, value: str, *, boolean: bool = False) -> object:
-        value = unquote(self.expand(value.strip()))
+    def parse_scalar(self, value: str, *, boolean: bool = False) -> object:
+        value = unquote(self.expand_variables(value.strip()))
         lower = value.lower()
         if lower in {"true", "yes", "on"}:
             return True
@@ -101,8 +100,8 @@ class Converter:
             return float(value)
         return value
 
-    def config_value(self, path: str, value: str) -> object:
-        parsed = self.scalar(value)
+    def parse_config_value(self, path: str, value: str) -> object:
+        parsed = self.parse_scalar(value)
         if not isinstance(parsed, str) or ".col." not in f".{path}.":
             return parsed
         tokens = parsed.split()
@@ -126,20 +125,20 @@ class Converter:
             "match": {},
         }
         booleans = BOOL_WINDOW_EFFECTS if kind == "windowrule" else BOOL_LAYER_EFFECTS
-        for part in (item.strip() for item in self.expand(raw).split(",")):
+        for part in (item.strip() for item in self.expand_variables(raw).split(",")):
             match = re.match(r"^match:([A-Za-z0-9_]+)\s+(.+)$", part)
             if match:
-                spec["match"][match.group(1)] = self.scalar(match.group(2))  # type: ignore[index]
+                spec["match"][match.group(1)] = self.parse_scalar(match.group(2))  # type: ignore[index]
                 continue
             effect = re.match(r"^([A-Za-z0-9_]+)\s*(.*)$", part)
             if effect and effect.group(2):
                 key, value = effect.groups()
-                spec[key] = self.scalar(value, boolean=key in booleans)
-        fn = "window_rule" if kind == "windowrule" else "layer_rule"
-        self.lines.append(f"hl.{fn}({lua(spec)})")
+                spec[key] = self.parse_scalar(value, boolean=key in booleans)
+        rule_function = "window_rule" if kind == "windowrule" else "layer_rule"
+        self.lua_lines.append(f"hl.{rule_function}({lua_literal(spec)})")
 
     def emit_monitor(self, raw: str) -> None:
-        fields = [self.expand(item.strip()) for item in raw.split(",")]
+        fields = [self.expand_variables(item.strip()) for item in raw.split(",")]
         spec: dict[str, object] = {"output": fields[0]}
         if len(fields) > 1 and fields[1].lower() == "disable":
             spec["disabled"] = True
@@ -150,18 +149,18 @@ class Converter:
                 "scale": fields[3] if len(fields) > 3 and fields[3] else "auto",
             })
             for index in range(4, len(fields) - 1, 2):
-                spec[fields[index].replace("-", "_")] = self.scalar(fields[index + 1])
-        self.lines.append(f"hl.monitor({lua(spec)})")
+                spec[fields[index].replace("-", "_")] = self.parse_scalar(fields[index + 1])
+        self.lua_lines.append(f"hl.monitor({lua_literal(spec)})")
 
     def emit_animation(self, raw: str) -> None:
-        fields = [item.strip() for item in self.expand(raw).split(",")]
-        enabled = bool(self.scalar(fields[1], boolean=True))
+        fields = [item.strip() for item in self.expand_variables(raw).split(",")]
+        enabled = bool(self.parse_scalar(fields[1], boolean=True))
         spec: dict[str, object] = {"leaf": fields[0], "enabled": enabled}
         if enabled:
             spec.update({"speed": float(fields[2]), "bezier": fields[3]})
             if len(fields) > 4 and fields[4]:
                 spec["style"] = fields[4]
-        self.lines.append(f"hl.animation({lua(spec)})")
+        self.lua_lines.append(f"hl.animation({lua_literal(spec)})")
 
     def convert(self, source: Path) -> str:
         blocks: list[str] = []
@@ -180,9 +179,9 @@ class Converter:
             variable = re.match(r"^\$([A-Za-z0-9_.&-]+)\s*=\s*(.*)$", line)
             if variable:
                 name, value = variable.groups()
-                value = unquote(self.expand(value))
+                value = unquote(self.expand_variables(value))
                 self.variables[name] = value
-                self.lines.append(f"vars.set({lua(name)}, {lua(value)})")
+                self.lua_lines.append(f"vars.set({lua_literal(name)}, {lua_literal(value)})")
                 continue
             assignment = re.match(r"^([^=]+?)\s*=\s*(.*)$", line)
             if not assignment:
@@ -194,9 +193,9 @@ class Converter:
             full_key = full_key.replace(":", ".")
 
             if full_key == "animations.bezier":
-                fields = [item.strip() for item in self.expand(raw_value).split(",")]
+                fields = [item.strip() for item in self.expand_variables(raw_value).split(",")]
                 points = "{{%s, %s}, {%s, %s}}" % tuple(fields[1:5])
-                self.lines.append(f"hl.curve({lua(fields[0])}, {{type = \"bezier\", points = {points}}})")
+                self.lua_lines.append(f"hl.curve({lua_literal(fields[0])}, {{type = \"bezier\", points = {points}}})")
             elif full_key == "animations.animation":
                 self.emit_animation(raw_value)
             elif key in {"windowrule", "layerrule"} and not prefix:
@@ -205,18 +204,18 @@ class Converter:
                 self.emit_monitor(raw_value)
             elif key == "env" and not prefix:
                 name, value = raw_value.split(",", 1)
-                self.lines.append(f"hl.env({lua(name.strip())}, {lua(self.expand(value.strip()))})")
+                self.lua_lines.append(f"hl.env({lua_literal(name.strip())}, {lua_literal(self.expand_variables(value.strip()))})")
             elif key == "gesture" and not prefix:
-                fields = [item.strip() for item in self.expand(raw_value).split(",")]
+                fields = [item.strip() for item in self.expand_variables(raw_value).split(",")]
                 if fields[2] != "unset":
-                    self.lines.append(f"hl.gesture({lua({'fingers': int(fields[0]), 'direction': fields[1], 'action': fields[2]})})")
+                    self.lua_lines.append(f"hl.gesture({lua_literal({'fingers': int(fields[0]), 'direction': fields[1], 'action': fields[2]})})")
             elif key == "blurls" and not prefix:
-                self.lines.append(f"hl.layer_rule({lua({'name': f'native:blurls:{source}:{line_number}', 'match': {'namespace': self.expand(raw_value.strip())}, 'blur': True})})")
+                self.lua_lines.append(f"hl.layer_rule({lua_literal({'name': f'native:blurls:{source}:{line_number}', 'match': {'namespace': self.expand_variables(raw_value.strip())}, 'blur': True})})")
             elif key != "source":
-                self.lines.append(f"runtime.config({lua(full_key)}, {lua(self.config_value(full_key, raw_value))})")
+                self.lua_lines.append(f"runtime.config({lua_literal(full_key)}, {lua_literal(self.parse_config_value(full_key, raw_value))})")
 
-        self.lines.append("")
-        return "\n".join(self.lines)
+        self.lua_lines.append("")
+        return "\n".join(self.lua_lines)
 
 
 def main() -> int:
@@ -226,13 +225,13 @@ def main() -> int:
     parser.add_argument("--set", action="append", default=[], metavar="NAME=VALUE")
     args = parser.parse_args()
 
-    converter = Converter()
+    converter = HyprlangToLuaConverter()
     for assignment in args.set:
         if "=" not in assignment:
             parser.error(f"--set expects NAME=VALUE, got: {assignment}")
         name, value = assignment.split("=", 1)
         converter.variables[name] = value
-        converter.lines.append(f"vars.set({lua(name)}, {lua(value)})")
+        converter.lua_lines.append(f"vars.set({lua_literal(name)}, {lua_literal(value)})")
     output = converter.convert(args.input)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

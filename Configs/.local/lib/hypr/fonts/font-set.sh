@@ -9,6 +9,7 @@ hypr_runtime_require system || exit 1
 
 FONT_NAME="${1:-}"
 USER_FONTS_FILE="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/userfonts.lua"
+FONT_SUGGESTION_LIMIT=20
 
 usage() {
   cat <<EOF2
@@ -27,19 +28,16 @@ EOF2
 
 require_font_name() {
   [[ -n "${FONT_NAME}" && "${FONT_NAME}" != '-h' && "${FONT_NAME}" != '--help' ]] || usage
-  if [[ "${FONT_NAME}" == 'CNCLD' ]]; then
-    exit 0
-  fi
 }
 
 require_installed_font() {
-  if fc-list | grep -i "${FONT_NAME}" >/dev/null 2>&1; then
+  if fc-list | grep -iF -- "${FONT_NAME}" >/dev/null 2>&1; then
     return 0
   fi
 
   printf "Font '%s' not found in system.\n\n" "${FONT_NAME}" >&2
   printf 'Available monospace fonts:\n' >&2
-  hyprshell fonts/font-list.sh | head -20 >&2
+  hyprshell fonts/font-list.sh | head -n "${FONT_SUGGESTION_LIMIT}" >&2
   printf '\nInstall fonts from Menu > Install > Font\n' >&2
   exit 1
 }

@@ -3,14 +3,14 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/notify/github-notifications.lib.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/notify/lib/github-notifications.bash"
 
 usage() {
   cat <<'USAGE'
 Usage: hyprshell notify/github-notifications [--report | --mark-read ID...]
 
 Emit GitHub inbox and security-alert status.
-  (default)          bar JSON: text, tooltip, class
+  (default)          bar JSON: text, class
   --report           structured JSON for a panel
   --mark-read ID...  mark notification threads read
 USAGE
@@ -32,8 +32,11 @@ while [ $# -gt 0 ]; do
 done
 [ "$mode" != mark ] || [ "${#mark_ids[@]}" -gt 0 ] || { usage >&2; exit 2; }
 
-ensure_github_notification_deps
-load_github_notification_tokens
+failure=""
+if ! ensure_github_notification_deps failure || ! load_github_notification_tokens failure; then
+  emit_github_failure "$mode" "$failure"
+  exit
+fi
 if [ "$mode" = mark ]; then
   mark_github_notifications_read "${mark_ids[@]}"
   exit

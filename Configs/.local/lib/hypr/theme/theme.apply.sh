@@ -6,13 +6,13 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state system wallpaper_catalog || exit 1
-hypr_runtime_load_state || exit 1
+hypr_runtime_load_desktop_environment || exit 1
 
 for theme_apply_lib in \
   "${HYPR_LIB_DIR}/theme/lib/desktop.sync.bash" \
-  "${HYPR_LIB_DIR}/theme/color.apply.bash" \
-  "${HYPR_LIB_DIR}/theme/lib/apply.phase_d.bash" \
-  "${HYPR_LIB_DIR}/fonts/font.sync.lib.bash"; do
+  "${HYPR_LIB_DIR}/theme/lib/clients.reload.bash" \
+  "${HYPR_LIB_DIR}/theme/lib/apply.background.bash" \
+  "${HYPR_LIB_DIR}/fonts/lib/font-consumers.bash"; do
   [[ -r "${theme_apply_lib}" ]] || {
     print_log -sec "theme.apply" -err "source" "missing ${theme_apply_lib}"
     exit 1
@@ -22,17 +22,18 @@ for theme_apply_lib in \
 done
 unset theme_apply_lib
 
-THEME_UPDATE_LOCK="$(hypr_lock_path theme_update)"
+THEME_UPDATE_LOCK="$(hypr_lock_path_ensure_parent theme_update)"
 
 theme_apply_lock_fd=""
 theme_apply_lock_owned=0
-theme_apply_desktop_state_prepared=0
+theme_apply_desktop_settings_ready=0
 theme_apply_job_log_dir=""
 theme_apply_job_failed=0
 theme_apply_preserve_job_logs=0
 theme_apply_quiet=false
 theme_apply_generation=""
 theme_apply_started_ms=""
+declare -gA theme_apply_desktop_settings=()
 declare -ga theme_apply_job_pids=()
 declare -gA theme_apply_job_name_by_pid=()
 declare -gA theme_apply_job_requirement_by_pid=()
@@ -100,10 +101,10 @@ theme_apply_cleanup() {
   return "${exit_code}"
 }
 
-theme_apply_prepare_desktop_state() {
-  [[ "${theme_apply_desktop_state_prepared}" -eq 1 ]] && return 0
-  theme_desktop_prepare_state || return 1
-  theme_apply_desktop_state_prepared=1
+theme_apply_prepare_desktop_settings() {
+  [[ "${theme_apply_desktop_settings_ready}" -eq 1 ]] && return 0
+  theme_desktop_prepare_settings_into theme_apply_desktop_settings || return 1
+  theme_apply_desktop_settings_ready=1
 }
 
 theme_apply_commit_theme_metadata() {
@@ -113,7 +114,7 @@ theme_apply_commit_theme_metadata() {
   local converter="${HYPR_LIB_DIR}/util/hypr-to-lua.py"
 
   [[ -n "${staged_file}" && -f "${staged_file}" ]] || return 0
-  mkdir -p "$(dirname "${live_file}")" || return 1
+  mkdir -p "${live_file%/*}" || return 1
 
   if [[ -f "${live_file}" ]] && cmp -s "${staged_file}" "${live_file}"; then
     rm -f -- "${staged_file}" || return 1
@@ -176,7 +177,7 @@ theme_apply_next_generation() {
   state_set "theme_apply_generation" "${next_generation}" "staterc" || return 1
   theme_apply_generation="${next_generation}"
   export HYPR_THEME_APPLY_GENERATION="${theme_apply_generation}"
-  theme_apply_cancel_previous_phase_d_jobs
+  theme_apply_cancel_previous_background_jobs
 }
 
 theme_apply_generation_is_current() {
@@ -392,8 +393,8 @@ theme_apply_run_color_sync() {
 }
 
 theme_apply_job_desktop() {
-  theme_apply_prepare_desktop_state || return 1
-  theme_desktop_write_dconf_content
+  theme_apply_prepare_desktop_settings || return 1
+  theme_desktop_write_dconf_content theme_apply_desktop_settings
 }
 
 theme_apply_job_dunst() {
@@ -407,12 +408,12 @@ trap 'theme_apply_cleanup "$?"' EXIT
 
 if [[ "${1:-}" == "--theme-envelope" ]]; then
   shift
-  theme_apply_run_envelope_cli "$@"
+  theme_apply_run_background_updates_cli "$@"
   exit $?
 fi
 
 theme_apply_usage() {
-  printf '%s\n' "Usage: $(basename "$0") [--quiet] [--regen|--force-regenerate] [--no-cache]"
+  printf '%s\n' "Usage: hyprshell theme/theme.apply [--quiet] [--regen|--force-regenerate] [--no-cache]"
 }
 
 quiet=false
@@ -449,8 +450,8 @@ else
   wallpaper_path="$(theme_apply_resolve_current_wallpaper)" || exit 1
 fi
 
-theme_apply_timed_call "generation" theme_apply_next_generation || exit 1
 theme_apply_timed_call "lock" theme_apply_acquire_update_lock || exit 1
+theme_apply_timed_call "generation" theme_apply_next_generation || exit 1
 theme_apply_timed_call "metadata_commit" theme_apply_commit_theme_metadata || exit 1
 theme_apply_timed_call "color_sync" theme_apply_run_color_sync "${wallpaper_path}" || exit 1
 theme_apply_prepare_job_log_dir || exit 1
@@ -460,7 +461,7 @@ theme_apply_start_job "${theme_apply_job_log_dir}" "desktop" required theme_appl
 theme_apply_start_job "${theme_apply_job_log_dir}" "terminal" required theme_apply_job_terminal || exit 1
 theme_apply_start_job "${theme_apply_job_log_dir}" "dunst" best_effort theme_apply_job_dunst || true
 theme_apply_wait_jobs "${theme_apply_job_log_dir}" || theme_apply_required_rc=$?
-theme_apply_timed_call "envelope_launch" theme_apply_start_envelope || true
+theme_apply_timed_call "envelope_launch" theme_apply_start_background_updates || true
 [[ -z "${theme_apply_required_rc:-}" ]] || exit "${theme_apply_required_rc}"
 theme_apply_release_update_lock
 theme_apply_notify_wallpaper_detached || true

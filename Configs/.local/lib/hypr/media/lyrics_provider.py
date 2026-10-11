@@ -2,43 +2,48 @@
 from __future__ import annotations
 
 import sys
+import os
 from collections.abc import Callable
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
 from lyrics_cache import lyrics_miss_cache, miss_cache_key
-from lyrics_provider_common import (
+from lyrics_text import (
     ProviderFetcher,
     ProviderResult,
-    _env_bool,
-    _extract_lrc_tag,
-    _is_placeholder_artist,
-    _similarity,
-    _split_artists,
+    extract_lrc_tag,
+    is_placeholder_artist,
+    text_similarity,
+    split_artists,
 )
-from lyrics_provider_fetchers import (
-    fetch_lyrics_genius,
-    fetch_lyrics_lrclib,
-    fetch_lyrics_lyricsovh,
-    fetch_lyrics_simpmusic,
-    fetch_lyrics_youtube,
-)
+from lyrics_genius import fetch_lyrics_genius
+from lyrics_lrclib import fetch_lyrics_lrclib
+from lyrics_ovh import fetch_lyrics_lyricsovh
+from lyrics_simpmusic import fetch_lyrics_simpmusic
+from lyrics_youtube import fetch_lyrics_youtube
 
 SONG_MATCH_THRESHOLD = 0.72
 ARTIST_MATCH_THRESHOLD = 0.68
 MIN_SUBSTRING_ARTIST_LENGTH = 4
 MAX_PROVIDER_WORKERS = 4
 
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _is_candidate_valid(requested_artist: str, requested_title: str, result: ProviderResult) -> bool:
     lyrics = str(result.get("lyrics") or "")
-    result_artist = str(result.get("artist") or _extract_lrc_tag(lyrics, "ar") or "")
-    result_title = str(result.get("title") or _extract_lrc_tag(lyrics, "ti") or "")
+    result_artist = str(result.get("artist") or extract_lrc_tag(lyrics, "ar") or "")
+    result_title = str(result.get("title") or extract_lrc_tag(lyrics, "ti") or "")
 
     if not result_title:
         result_title = requested_title
     if not result_artist:
         result_artist = requested_artist
 
-    title_score = _similarity(requested_title, result_title)
+    title_score = text_similarity(requested_title, result_title)
     if title_score < SONG_MATCH_THRESHOLD:
         print(
             f"  [validate] Rejected by title score {title_score:.2f}: '{result_title}'",
@@ -46,9 +51,9 @@ def _is_candidate_valid(requested_artist: str, requested_title: str, result: Pro
         )
         return False
 
-    requested_artists = _split_artists(requested_artist)
-    result_artists = _split_artists(result_artist)
-    if _is_placeholder_artist(requested_artist):
+    requested_artists = split_artists(requested_artist)
+    result_artists = split_artists(result_artist)
+    if is_placeholder_artist(requested_artist):
         return True
     if not requested_artists or not result_artists:
         return True
@@ -56,7 +61,7 @@ def _is_candidate_valid(requested_artist: str, requested_title: str, result: Pro
     result_artist_full = " ".join(result_artists)
     artist_ok = False
     for req_artist in requested_artists:
-        if any(_similarity(req_artist, got_artist) >= ARTIST_MATCH_THRESHOLD for got_artist in result_artists):
+        if any(text_similarity(req_artist, got_artist) >= ARTIST_MATCH_THRESHOLD for got_artist in result_artists):
             artist_ok = True
             break
         if len(req_artist) >= MIN_SUBSTRING_ARTIST_LENGTH and req_artist in result_artist_full:

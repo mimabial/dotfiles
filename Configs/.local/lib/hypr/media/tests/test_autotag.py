@@ -13,36 +13,18 @@ MEDIA_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(MEDIA_DIR))
 
 import autotag
-from autotag import (
-    CACHE_MISS_TTL,
-    CACHE_SUCCESS_TTL,
-    DEEZER_COOLDOWN,
-    RateLimiter,
-    ResolutionCache,
-    Unidentified,
-    album_context,
-    candidate_agrees,
-    derive_candidates,
-    drop_redundant_feat,
-    first_artist_fallbacks,
-    filename_credit_loss,
-    from_acoustid,
-    from_itunes,
-    from_musicbrainz,
-    match_score,
-    missing_credit_names,
-    prepare_metadata,
-    recovered_youtube_artist,
-    Resolver,
-    restore_youtube_credit_tags,
-    search_variants,
-    split_featured_title,
-    youtube_credit_metadata,
-)
+from autotag_cache import (CACHE_MISS_TTL, CACHE_SUCCESS_TTL, ResolutionCache)
+from autotag_catalogs import (DEEZER_COOLDOWN, RateLimiter, from_acoustid, from_itunes, from_musicbrainz)
+from autotag import (ScannedAudioFile, restore_youtube_credit_tags)
+from autotag_models import (Unidentified)
+from autotag_identity import (album_context, candidate_agrees, derive_candidates, drop_redundant_feat, first_artist_fallbacks, match_score, missing_credit_names, search_variants, split_featured_title)
+from autotag_youtube_credits import (filename_credit_loss, recovered_youtube_artist, youtube_credit_metadata)
+from autotag_tag_io import (prepare_metadata)
+from autotag_resolver import (Resolver)
 
 
 class AlbumMatchingTests(unittest.TestCase):
-    @patch("autotag.http_get")
+    @patch("autotag_catalogs.http_get")
     def test_itunes_prefers_requested_album_over_single(self, http_get):
         http_get.return_value.json.return_value = {
             "results": [
@@ -79,7 +61,7 @@ class AlbumMatchingTests(unittest.TestCase):
         self.assertEqual(result["tracknumber"], "7/9")
         self.assertIn("/album/", result["artwork_url"])
 
-    @patch("autotag.http_get")
+    @patch("autotag_catalogs.http_get")
     def test_itunes_rejects_unrelated_dj_mix_artwork(self, http_get):
         http_get.return_value.json.return_value = {
             "results": [
@@ -114,7 +96,7 @@ class AlbumMatchingTests(unittest.TestCase):
         self.assertEqual(album, "DIYILEM & BAZARHOFF GENIUS")
         self.assertTrue(key)
 
-    @patch("autotag.from_itunes")
+    @patch("autotag_resolver.from_itunes")
     def test_delisted_single_uses_reissue_without_mixing_release_tags(self, itunes):
         def result(_artist, _title, _limiter, _threshold, album=""):
             if album:
@@ -191,7 +173,7 @@ class ResolutionCacheTests(unittest.TestCase):
         self.assertEqual(count_before, 0)
         self.assertEqual(count_after, 1)
 
-    @patch("autotag.from_itunes")
+    @patch("autotag_resolver.from_itunes")
     def test_reuses_success_without_calling_provider_again(self, from_itunes):
         from_itunes.return_value = {"artist": "Main", "title": "Song"}
         tags = {"artist": ["Main"], "title": ["Song"]}
@@ -228,7 +210,7 @@ class ResolutionCacheTests(unittest.TestCase):
         self.assertEqual(from_itunes.call_count, 1)
         self.assertEqual(cache.hits, 1)
 
-    @patch("autotag.from_itunes", side_effect=Unidentified("no itunes match"))
+    @patch("autotag_resolver.from_itunes", side_effect=Unidentified("no itunes match"))
     def test_reuses_catalog_miss_without_calling_provider_again(self, from_itunes):
         tags = {"artist": ["Main"], "title": ["Missing Song"]}
 
@@ -265,7 +247,7 @@ class ResolutionCacheTests(unittest.TestCase):
         self.assertEqual(from_itunes.call_count, 1)
         self.assertEqual(cache.hits, 1)
 
-    @patch("autotag.from_itunes")
+    @patch("autotag_resolver.from_itunes")
     def test_changed_file_invalidates_cached_resolution(self, from_itunes):
         from_itunes.return_value = {"artist": "Main", "title": "Song"}
         tags = {"artist": ["Main"], "title": ["Song"]}
@@ -301,7 +283,7 @@ class ResolutionCacheTests(unittest.TestCase):
 
         self.assertEqual(from_itunes.call_count, 2)
 
-    @patch("autotag.from_itunes")
+    @patch("autotag_resolver.from_itunes")
     def test_refresh_bypasses_cached_resolution(self, from_itunes):
         from_itunes.return_value = {"artist": "Main", "title": "Song"}
         tags = {"artist": ["Main"], "title": ["Song"]}
@@ -339,8 +321,8 @@ class ResolutionCacheTests(unittest.TestCase):
 
 
 class AcoustIDTests(unittest.TestCase):
-    @patch("autotag.http_get")
-    @patch("autotag.fingerprint", return_value=(180, "fingerprint"))
+    @patch("autotag_catalogs.http_get")
+    @patch("autotag_catalogs.fingerprint", return_value=(180, "fingerprint"))
     def test_requests_space_separated_metadata(self, _fingerprint, http_get):
         http_get.return_value.json.return_value = {"status": "ok", "results": []}
 
@@ -352,8 +334,8 @@ class AcoustIDTests(unittest.TestCase):
             "recordings releasegroups compress",
         )
 
-    @patch("autotag.http_get")
-    @patch("autotag.fingerprint", return_value=(180, "fingerprint"))
+    @patch("autotag_catalogs.http_get")
+    @patch("autotag_catalogs.fingerprint", return_value=(180, "fingerprint"))
     def test_selects_recording_that_agrees_with_local_identity(
         self, _fingerprint, http_get
     ):
@@ -387,8 +369,8 @@ class AcoustIDTests(unittest.TestCase):
         self.assertEqual(result["artist"], "Main, Guest")
         self.assertEqual(result["title"], "Song")
 
-    @patch("autotag.http_get")
-    @patch("autotag.fingerprint", return_value=(180, "fingerprint"))
+    @patch("autotag_catalogs.http_get")
+    @patch("autotag_catalogs.fingerprint", return_value=(180, "fingerprint"))
     def test_rejects_unrelated_recording_even_at_high_fingerprint_score(
         self, _fingerprint, http_get
     ):
@@ -511,8 +493,8 @@ class CandidateTierTests(unittest.TestCase):
             min_similarity=0.6,
         )
 
-    @patch("autotag.from_deezer")
-    @patch("autotag.from_itunes")
+    @patch("autotag_resolver.from_deezer")
+    @patch("autotag_resolver.from_itunes")
     def test_all_providers_try_full_credit_before_first_artist(
         self, from_itunes, from_deezer
     ):
@@ -560,8 +542,8 @@ class CandidateTierTests(unittest.TestCase):
             ],
         )
 
-    @patch("autotag.from_deezer")
-    @patch("autotag.from_itunes", side_effect=Unidentified("no itunes match"))
+    @patch("autotag_resolver.from_deezer")
+    @patch("autotag_resolver.from_itunes", side_effect=Unidentified("no itunes match"))
     def test_exact_later_provider_beats_first_artist_fallback(
         self, from_itunes, from_deezer
     ):
@@ -590,8 +572,8 @@ class CandidateTierTests(unittest.TestCase):
         from_itunes.assert_called_once()
         from_deezer.assert_called_once()
 
-    @patch("autotag.from_deezer")
-    @patch("autotag.from_itunes")
+    @patch("autotag_resolver.from_deezer")
+    @patch("autotag_resolver.from_itunes")
     def test_stronger_later_result_wins_in_first_artist_tier(
         self, from_itunes, from_deezer
     ):
@@ -749,11 +731,11 @@ class FeatureCreditOutputTests(unittest.TestCase):
 
 class YouTubeCreditMetadataTests(unittest.TestCase):
     @patch(
-        "autotag.ytdlp_auth_args",
+        "autotag_youtube_credits.ytdlp_auth_args",
         return_value=["--cookies-from-browser", "firefox"],
     )
-    @patch("autotag.shutil.which", return_value="/usr/bin/yt-dlp")
-    @patch("autotag.subprocess.run")
+    @patch("autotag_youtube_credits.shutil.which", return_value="/usr/bin/yt-dlp")
+    @patch("autotag_youtube_credits.child_process.run")
     def test_reads_and_deduplicates_structured_artists(
         self,
         run,
@@ -808,7 +790,7 @@ class YouTubeCreditRecoveryTests(unittest.TestCase):
             ["Zlatan", "Chley"],
         )
 
-    @patch("autotag.youtube_credit_metadata")
+    @patch("autotag_youtube_credits.youtube_credit_metadata")
     def test_verifies_purl_and_returns_complete_artist(self, metadata):
         metadata.return_value = {
             "artist": "Didi B, Zlatan, Chley",
@@ -820,7 +802,7 @@ class YouTubeCreditRecoveryTests(unittest.TestCase):
             "Didi B, Zlatan, Chley",
         )
 
-    @patch("autotag.youtube_credit_metadata")
+    @patch("autotag_youtube_credits.youtube_credit_metadata")
     def test_rejects_mismatched_purl_title(self, metadata):
         metadata.return_value = {
             "artist": "Didi B, Zlatan, Chley",
@@ -841,7 +823,7 @@ class YouTubeCreditRecoveryTests(unittest.TestCase):
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             return_code = restore_youtube_credit_tags(
-                [(self.path, Path("/music"))],
+                [ScannedAudioFile(self.path, Path("/music"))],
                 dry_run=True,
             )
 
@@ -860,7 +842,7 @@ class YouTubeCreditRecoveryTests(unittest.TestCase):
         read_tags.return_value = self.tags
 
         return_code = restore_youtube_credit_tags(
-            [(self.path, Path("/music"))],
+            [ScannedAudioFile(self.path, Path("/music"))],
             dry_run=False,
         )
 
@@ -874,15 +856,15 @@ class YouTubeCreditRecoveryTests(unittest.TestCase):
 
     @patch("autotag.acoustid_key")
     @patch("autotag.restore_youtube_credit_tags", return_value=0)
-    @patch("autotag.collect")
+    @patch("autotag.collect_audio_files")
     def test_cli_mode_bypasses_catalog_lookup(
         self,
-        collect,
+        collect_audio_files,
         restore_credit_tags,
         acoustid_key,
     ):
-        files = [(self.path, Path("/music"))]
-        collect.return_value = files
+        files = [ScannedAudioFile(self.path, Path("/music"))]
+        collect_audio_files.return_value = files
         with patch.object(
             sys,
             "argv",
@@ -901,16 +883,16 @@ class YouTubeCreditRecoveryTests(unittest.TestCase):
     @patch("autotag.music_library_dir", return_value=Path("/configured/music"))
     @patch("autotag.acoustid_key")
     @patch("autotag.restore_youtube_credit_tags", return_value=0)
-    @patch("autotag.collect")
+    @patch("autotag.collect_audio_files")
     def test_cli_defaults_to_configured_music_library(
         self,
-        collect,
+        collect_audio_files,
         restore_credit_tags,
         acoustid_key,
         _music_library_dir,
     ):
-        files = [(self.path, Path("/configured/music"))]
-        collect.return_value = files
+        files = [ScannedAudioFile(self.path, Path("/configured/music"))]
+        collect_audio_files.return_value = files
         with patch.object(
             sys,
             "argv",
@@ -919,7 +901,7 @@ class YouTubeCreditRecoveryTests(unittest.TestCase):
             return_code = autotag.main()
 
         self.assertEqual(return_code, 0)
-        collect.assert_called_once_with(
+        collect_audio_files.assert_called_once_with(
             ["/configured/music"],
             set(autotag.SUPPORTED),
         )
@@ -928,7 +910,7 @@ class YouTubeCreditRecoveryTests(unittest.TestCase):
 
 
 class MusicBrainzFeatureTests(unittest.TestCase):
-    @patch("autotag.mb_search")
+    @patch("autotag_catalogs.mb_search")
     def test_skips_solo_recording_before_featured_recording(self, mb_search):
         mb_search.return_value = [
             {

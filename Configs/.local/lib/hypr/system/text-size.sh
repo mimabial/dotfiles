@@ -58,10 +58,11 @@ factor_for() {
 # Qt ignores the GTK factor.
 set_qt_fonts() {
   local -a font_entries=()
+  local -A desktop_font_settings=()
   hypr_runtime_require system
   source "${HYPR_LIB_DIR}/theme/lib/desktop.sync.bash"
-  theme_desktop_resolve_base_values
-  theme_desktop_kde_font_entries font_entries
+  theme_desktop_resolve_base_values_into desktop_font_settings "${selected_color_source:-theme}"
+  theme_desktop_kde_font_entries desktop_font_settings font_entries
   theme_desktop_ini_write_batch "${XDG_CONFIG_HOME:-$HOME/.config}/kdeglobals" "${font_entries[@]}"
   theme_desktop_notify_kde_fonts_changed
 }
@@ -118,7 +119,7 @@ apply() {
 
   # Publish before waiting so every waiter applies the newest requested value.
   state_set TEXT_SIZE "${requested}"
-  lock_file="$(hypr_runtime_subdir hypr)/text-size.lock"
+  lock_file="$(hypr_ensure_runtime_subdir hypr)/text-size.lock"
   exec {lock_fd}>"${lock_file}"
   flock -w 10 "${lock_fd}" || {
     printf 'text-size: timed out waiting for another update\n' >&2

@@ -13,7 +13,11 @@ mkdir -p "${state_dir}" || exit 1
 exec {lock_fd}>"${state_dir}/gamemode-hook.lock" || exit 1
 flock "${lock_fd}" || exit 1
 
-workflow_set() {
+read_current_workflow() {
+  state_get HYPR_WORKFLOW default 2>/dev/null || printf 'default\n'
+}
+
+set_gamemode_workflow() {
   local output=""
   if ! output="$(HYPR_WORKFLOW_UNLOCK=1 "${workflows_script}" --set "$1" 2>&1)"; then
     print_log -sec "gamemode" -err "workflow" "${output:-failed to set $1}"
@@ -23,22 +27,22 @@ workflow_set() {
 
 enter_gaming_workflow() {
   local current_workflow
-  current_workflow="$(state_get HYPR_WORKFLOW default 2>/dev/null || printf 'default\n')"
+  current_workflow="$(read_current_workflow)"
   if [[ "${current_workflow}" == gaming ]]; then
     [[ -s "${previous_workflow_file}" ]] || printf 'default\n' >"${previous_workflow_file}"
     return
   fi
   printf '%s\n' "${current_workflow}" >"${previous_workflow_file}"
-  workflow_set gaming
+  set_gamemode_workflow gaming
 }
 
 restore_previous_workflow() {
   local current_workflow previous_workflow=default
-  current_workflow="$(state_get HYPR_WORKFLOW default 2>/dev/null || printf 'default\n')"
+  current_workflow="$(read_current_workflow)"
   if [[ "${current_workflow}" == gaming ]]; then
     [[ ! -s "${previous_workflow_file}" ]] || read -r previous_workflow <"${previous_workflow_file}"
     [[ -n "${previous_workflow}" ]] || previous_workflow=default
-    workflow_set "${previous_workflow}" || return
+    set_gamemode_workflow "${previous_workflow}" || return
   fi
   rm -f "${previous_workflow_file}"
 }

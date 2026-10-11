@@ -15,7 +15,7 @@ warn_startup() {
   declare -F print_log >/dev/null 2>&1 && print_log -sec "auto-theme" -warn "startup" "$1"
 }
 
-if [[ "$(hypr_init_system)" == "other" ]]; then
+if [[ "$(hypr_detect_init_system)" == "other" ]]; then
   warn_startup "no supported service manager (systemd/runit) available"
   exit 0
 fi

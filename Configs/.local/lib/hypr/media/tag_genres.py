@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 from pathlib import Path
 
@@ -20,7 +21,7 @@ def track_key(path: Path) -> tuple:
         raw = existing(read_tags(path), "tracknumber").split("/")[0].strip()
     except (MutagenError, OSError):
         raw = ""
-    return (int(raw) if raw.isdigit() else 9999, path.name.lower())
+    return (int(raw) if raw.isdigit() else math.inf, path.name.lower())
 
 
 def set_genre(path: Path, genre: str) -> None:

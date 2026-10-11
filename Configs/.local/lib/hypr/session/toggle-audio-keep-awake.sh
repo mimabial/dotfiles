@@ -8,16 +8,14 @@ source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 hypr_help_guard "Usage: hyprshell session/toggle-audio-keep-awake
 Toggle keeping the system awake while audio is playing." "$@"
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=/dev/null
-source "${script_dir}/idle.state.bash"
+source "${BASH_SOURCE[0]%/*}/idle/toggle.bash"
 
-idle_toggle_state \
-  idle_audio_enabled \
-  idle_set_audio \
-  0 \
-  "audio-speakers-symbolic" \
-  "Audio keep awake disabled" \
-  1 \
-  "audio-speakers-symbolic" \
-  "Audio keep awake enabled"
+declare -A keep_awake_setting=(
+  [enabled_fn]="idle_audio_enabled"
+  [setter_fn]="idle_set_audio"
+  [disabled_icon]="audio-speakers-symbolic"
+  [enabled_icon]="audio-speakers-symbolic"
+  [disabled_summary]="Audio keep awake disabled"
+  [enabled_summary]="Audio keep awake enabled"
+)
+idle_toggle_setting keep_awake_setting

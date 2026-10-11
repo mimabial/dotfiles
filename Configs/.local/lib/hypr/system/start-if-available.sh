@@ -9,11 +9,11 @@ hypr_help_guard "Usage: hyprshell system/start-if-available <state-key> <command
 Run argv only when <state-key> is not disabled and <command> exists." "$@"
 
 normalize_mode() {
-  case "${1:-auto}" in
-    0 | false | FALSE | no | NO | off | OFF | disabled | DISABLED | never | NEVER)
+  case "${1,,}" in
+    0 | false | no | off | disabled | never)
       printf '%s\n' off
       ;;
-    1 | true | TRUE | yes | YES | on | ON | force | FORCE | always | ALWAYS)
+    1 | true | yes | on | force | always)
       printf '%s\n' on
       ;;
     *)

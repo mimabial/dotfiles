@@ -2,11 +2,11 @@
 set -uo pipefail
 
 played_color="${1:-ffffff}" remaining_color="${2:-ffffff}" progress_cells=10
-progress_cache="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr/hyprlock-progress"
+progress_cache="${XDG_RUNTIME_DIR:-/run/user/${UID}}/hypr/hyprlock-progress"
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/session/hyprlock.media.bash"
-player="$(mpris_default_player)"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/session/hyprlock/media.bash"
+player="$(mpris_selected_player)"
 [[ -n "${player}" ]] || { rm -f "${progress_cache}"; exit 0; }
 IFS=';' read -r status position length track < <(playerctl -p "${player}" metadata \
   --format '{{status}};{{position}};{{mpris:length}};{{mpris:trackid}}' 2>/dev/null)
@@ -16,7 +16,7 @@ if [[ ! "${status:-}" =~ ^(Playing|Paused)$ || ! "${position:-}" =~ ^[0-9]+$ || 
 fi
 
 # Spotify reports a frozen position; while it stays frozen, count wall time instead.
-now_microseconds="$(date +%s%6N)" reported_position="${position}"
+now_microseconds="${EPOCHREALTIME//[!0-9]/}" reported_position="${position}"
 read -r last_track last_reported_position last_displayed_position last_update_microseconds 2>/dev/null <"${progress_cache}" || true
 if [[ "${track}" == "${last_track:-}" && "${reported_position}" == "${last_reported_position:-}" ]]; then
   position="${last_displayed_position}"
@@ -37,5 +37,4 @@ else
   fill_progress_cells tail $((progress_cells - done_cells))
   progress_markup="<span foreground=\"#${played_color}\">${head}</span><span foreground=\"#${remaining_color}\">⦿</span><span foreground=\"#${remaining_color}\" alpha=\"25%\">${tail}</span>"
 fi
-format_mpris_timestamp() { printf '%d:%02d' $(($1 / 60000000)) $(($1 / 1000000 % 60)); }
-printf '%s %s / %s\n' "${progress_markup}" "$(format_mpris_timestamp "${position}")" "$(format_mpris_timestamp "${length}")"
+printf '%s %s / %s\n' "${progress_markup}" "$(format_mpris_length "${position}")" "$(format_mpris_length "${length}")"

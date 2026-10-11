@@ -4,8 +4,13 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from pyutils.xdg_base_dirs import xdg_state_home
 
 from gi.repository import GLib
 
@@ -46,7 +51,7 @@ PROPERTY_BY_ACTION = {
 def active_player_state_path() -> Path:
     if os.environ.get("HYPR_STATE_HOME"):
         return Path(os.environ["HYPR_STATE_HOME"]) / "mediaplayer.json"
-    xdg_state = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+    xdg_state = xdg_state_home()
     return xdg_state / "hypr" / "mediaplayer.json"
 
 

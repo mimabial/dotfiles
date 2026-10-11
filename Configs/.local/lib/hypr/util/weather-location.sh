@@ -29,5 +29,5 @@ case "${1:-}" in
     ;;
 esac
 
-rm -f "${HOME}/.cache/wttr/weather_data.json"
-WEATHER_LOCATION="$(state_get WEATHER_LOCATION)" hyprshell weather --force >/dev/null 2>&1 || true
+PYTHONPATH="${HYPR_LIB_DIR}/util" python3 -c 'from weather_data.cache import invalidate_weather_cache; invalidate_weather_cache()'
+WEATHER_LOCATION="$(state_get WEATHER_LOCATION)" python3 "${HYPR_LIB_DIR}/util/weather-status.py" --force >/dev/null 2>&1 || true

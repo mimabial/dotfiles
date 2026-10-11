@@ -27,7 +27,7 @@ locked_marker='onLockLocked called'
 hypr_user_pgrep -x hyprlock >/dev/null 2>&1 && locked_marker+='|onLockFinished called'
 hypr_lock_password_managers {close_fd}>&-
 hyprlock --immediate-render --no-fade-in {close_fd}>&- >"${log}" 2>&1 &
-exec {lock_output}< <(exec tail -n +1 -f --pid="$!" "${log}")
+exec {lock_output}< <(exec tail -n +1 -f "${log}")
 lock_output_reader=$!
 timeout "${LOCK_CONFIRM_TIMEOUT_S}" grep -qEm1 "${locked_marker}" <&"${lock_output}" && locked=1 || locked=0
 kill "${lock_output_reader}" 2>/dev/null || true

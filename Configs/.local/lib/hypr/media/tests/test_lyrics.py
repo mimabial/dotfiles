@@ -15,8 +15,11 @@ sys.path.insert(0, str(MEDIA_DIR))
 
 import fetch_album_lyrics
 import fetch_track_lyrics
-import lyrics_provider_fetchers
-from lyrics_provider_fetchers import fetch_lyrics_simpmusic, get_genius_token
+import lyrics_genius
+import lyrics_simpmusic
+import lyrics_youtube
+from lyrics_simpmusic import fetch_lyrics_simpmusic
+from lyrics_genius import get_genius_token
 from fetch_album_lyrics import (
     LrcState,
     ProcessResult,
@@ -408,12 +411,12 @@ class LyricsMissCacheTests(unittest.TestCase):
 
 class SimpMusicCooldownTests(unittest.TestCase):
     def setUp(self):
-        lyrics_provider_fetchers._SIMPMUSIC_COOLDOWN_UNTIL = 0.0
-        lyrics_provider_fetchers._SIMPMUSIC_NOTICE_UNTIL = 0.0
+        lyrics_simpmusic._SIMPMUSIC_COOLDOWN_UNTIL = 0.0
+        lyrics_simpmusic._SIMPMUSIC_NOTICE_UNTIL = 0.0
 
     def tearDown(self):
-        lyrics_provider_fetchers._SIMPMUSIC_COOLDOWN_UNTIL = 0.0
-        lyrics_provider_fetchers._SIMPMUSIC_NOTICE_UNTIL = 0.0
+        lyrics_simpmusic._SIMPMUSIC_COOLDOWN_UNTIL = 0.0
+        lyrics_simpmusic._SIMPMUSIC_NOTICE_UNTIL = 0.0
 
     def test_first_search_429_starts_one_hour_cooldown(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -423,11 +426,11 @@ class SimpMusicCooldownTests(unittest.TestCase):
 
             with (
                 patch(
-                    "lyrics_provider_fetchers.lyrics_miss_cache",
+                    "lyrics_simpmusic.lyrics_miss_cache",
                     return_value=cache,
                 ),
                 patch(
-                    "lyrics_provider_fetchers.http_get",
+                    "lyrics_simpmusic.http_get",
                     return_value=response,
                 ) as http_get,
             ):
@@ -463,11 +466,11 @@ class SimpMusicCooldownTests(unittest.TestCase):
             self.addCleanup(cache.close)
             with (
                 patch(
-                    "lyrics_provider_fetchers.lyrics_miss_cache",
+                    "lyrics_simpmusic.lyrics_miss_cache",
                     return_value=cache,
                 ),
                 patch(
-                    "lyrics_provider_fetchers.http_get",
+                    "lyrics_simpmusic.http_get",
                     side_effect=[search_response, details_response],
                 ) as http_get,
             ):
@@ -504,13 +507,13 @@ class YTMusicLyricsTests(unittest.TestCase):
         }
 
         with (
-            patch("lyrics_provider_fetchers.HAS_YTMUSIC", True),
+            patch("lyrics_youtube.HAS_YTMUSIC", True),
             patch(
-                "lyrics_provider_fetchers.get_ytmusic_client",
+                "lyrics_youtube.get_ytmusic_client",
                 return_value=client,
             ),
         ):
-            result = lyrics_provider_fetchers.fetch_lyrics_youtube(
+            result = lyrics_youtube.fetch_lyrics_youtube(
                 "Artist",
                 "Song",
             )
@@ -527,25 +530,25 @@ class YTMusicLyricsTests(unittest.TestCase):
 
 class GeniusTokenTests(unittest.TestCase):
     @unittest.skipUnless(
-        lyrics_provider_fetchers.HAS_GENIUS,
+        lyrics_genius.HAS_GENIUS,
         "lyricsgenius is not installed",
     )
     def test_installed_genius_client_initializes(self):
-        lyrics_provider_fetchers._GENIUS_CLIENT = None
+        lyrics_genius._GENIUS_CLIENT = None
         self.addCleanup(
             setattr,
-            lyrics_provider_fetchers,
+            lyrics_genius,
             "_GENIUS_CLIENT",
             None,
         )
 
         with patch(
-            "lyrics_provider_fetchers.get_genius_token",
+            "lyrics_genius.get_genius_token",
             return_value="test-token",
         ):
-            client = lyrics_provider_fetchers.get_genius_client()
+            client = lyrics_genius.get_genius_client()
 
-        self.assertIsInstance(client, lyrics_provider_fetchers.Genius)
+        self.assertIsInstance(client, lyrics_genius.Genius)
 
     def test_reads_private_env_file_without_executing_shell_code(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -618,18 +621,18 @@ class GeniusSplitTunnelTests(unittest.TestCase):
 
         with (
             patch(
-                "lyrics_provider_fetchers.shutil.which",
+                "lyrics_genius.shutil.which",
                 return_value="/usr/bin/mullvad-exclude",
             ),
             patch(
-                "lyrics_provider_fetchers.subprocess.run",
+                "lyrics_genius.child_process.run",
                 return_value=completed,
             ) as run,
             patch(
-                "lyrics_provider_fetchers._fetch_lyrics_genius_direct"
+                "lyrics_genius._fetch_lyrics_genius_direct"
             ) as direct_fetch,
         ):
-            result = lyrics_provider_fetchers.fetch_lyrics_genius(
+            result = lyrics_genius.fetch_lyrics_genius(
                 "Artist",
                 "Song",
             )
@@ -644,13 +647,13 @@ class GeniusSplitTunnelTests(unittest.TestCase):
     def test_provider_fetches_directly_without_mullvad(self):
         worker_result = {"lyrics": "lyrics"}
         with (
-            patch("lyrics_provider_fetchers.shutil.which", return_value=None),
+            patch("lyrics_genius.shutil.which", return_value=None),
             patch(
-                "lyrics_provider_fetchers._fetch_lyrics_genius_direct",
+                "lyrics_genius._fetch_lyrics_genius_direct",
                 return_value=worker_result,
             ) as direct_fetch,
         ):
-            result = lyrics_provider_fetchers.fetch_lyrics_genius(
+            result = lyrics_genius.fetch_lyrics_genius(
                 "Artist",
                 "Song",
             )
@@ -666,12 +669,12 @@ class GeniusSplitTunnelTests(unittest.TestCase):
         output = io.StringIO()
         with (
             patch(
-                "lyrics_provider_fetchers._fetch_lyrics_genius_direct",
+                "lyrics_genius._fetch_lyrics_genius_direct",
                 return_value=worker_result,
             ),
             contextlib.redirect_stdout(output),
         ):
-            return_code = lyrics_provider_fetchers.main(
+            return_code = lyrics_genius.main(
                 ["--genius-worker", "Artist", "Song"]
             )
 

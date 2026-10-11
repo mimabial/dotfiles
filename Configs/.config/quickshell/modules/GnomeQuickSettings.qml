@@ -95,7 +95,7 @@ BarButton {
         spacing: Style.sm
         Icon { visible: Privacy.screen.length > 0; name: "screen-shared"; color: root.shell.role("warning", root.shell.foreground) }
         Icon { visible: Privacy.camera.length > 0; name: "camera-web"; context: "devices"; color: root.shell.role("warning", root.shell.foreground) }
-        Icon { visible: Privacy.microphone.length > 0; name: "microphone-sensitivity-high"; color: root.shell.role("warning", root.shell.foreground) }
+        Icon { visible: Privacy.microphone.length > 0; name: StatusSymbols.volume(root.source, !!root.source?.audio?.muted, "microphone-sensitivity"); color: root.shell.role("warning", root.shell.foreground) }
         Icon { visible: Privacy.location; name: "location-services-active" }
         Icon { visible: root.nightLight; name: "night-light" }
         Icon { visible: root.vpn.state === "connected"; name: "network-vpn" }
@@ -210,7 +210,7 @@ BarButton {
             Column {
                 width: parent.width; spacing: Style.sm
                 Level { width: parent.width; title: "Sound"; iconName: StatusSymbols.volume(root.sink, muted); canMute: !!root.sink?.audio; muted: !!root.sink?.audio?.muted; value: root.sink?.audio?.volume ?? 0; maximum: root.shell.volumeLimit; submenu: "sound"; onMuteRequested: root.sink.audio.muted = !root.sink.audio.muted; onChanged: value => { if (root.sink?.audio) root.sink.audio.volume = value }; available: !!root.sink?.audio }
-                Level { width: parent.width; title: "Microphone"; iconName: muted ? "microphone-sensitivity-muted" : "microphone-sensitivity-high"; visible: Privacy.microphone.length > 0; canMute: !!root.source?.audio; muted: !!root.source?.audio?.muted; value: root.source?.audio?.volume ?? 0; available: !!root.source?.audio; submenu: "microphone"; onMuteRequested: root.source.audio.muted = !root.source.audio.muted; onChanged: value => { if (root.source?.audio) root.source.audio.volume = value } }
+                Level { width: parent.width; title: "Microphone"; iconName: StatusSymbols.volume(root.source, muted, "microphone-sensitivity"); visible: Privacy.microphone.length > 0; canMute: !!root.source?.audio; muted: !!root.source?.audio?.muted; value: root.source?.audio?.volume ?? 0; available: !!root.source?.audio; submenu: "microphone"; onMuteRequested: root.source.audio.muted = !root.source.audio.muted; onChanged: value => { if (root.source?.audio) root.source.audio.volume = value } }
                 Level { width: parent.width; title: "Brightness"; iconName: "display-brightness"; visible: Backlight.device !== ""; value: Backlight.percent / 100; onReleased: value => root.shell.run(["brightnessctl", "--device", Backlight.device, "set", Math.round(value * 100) + "%"], Backlight.refresh) }
             }
             GridLayout {

@@ -6,7 +6,7 @@ hypr_help_guard "Usage: hyprshell launch/browser [--private] [browser-args...]
 Launch the default web browser; --private maps to its private/incognito flag." "$@"
 
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/desktop-entry.exec.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/applications/desktop-exec.bash"
 
 default_browser="$(xdg-settings get default-web-browser)"
 desktop_entry_exec_resolve "${default_browser}" || exit 1
@@ -27,4 +27,4 @@ done
 
 [[ -z "${DESKTOP_ENTRY_WORKDIR}" ]] || cd "${DESKTOP_ENTRY_WORKDIR}" || exit 1
 
-exec setsid uwsm-app -- "${DESKTOP_ENTRY_ARGV[@]}" "${launch_args[@]}"
+exec "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/app2unit.sh" -- "${DESKTOP_ENTRY_ARGV[@]}" "${launch_args[@]}"

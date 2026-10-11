@@ -32,6 +32,8 @@ import "visualizers/plasma.js" as VisPlasma
 import "visualizers/osc_warp.js" as VisOscWarp
 import "visualizers/crt_scanline.js" as VisCRTScanline
 import "visualizers/cyber_tunnel.js" as VisCyberTunnel
+import "visualizers/red_sector.js" as VisRedSector
+import "visualizers/yinyang.js" as VisYinYang
 import "visualizers/background.js" as VisBackground
 import "visualizers/helpers.js" as VisTheme
 
@@ -51,6 +53,7 @@ Item {
   readonly property bool lyricsTimed: lyricsLines.some(line => line.time >= 0)
 
   property real beatDropPulse: 0.0
+  property bool peaksMoving: false
   property real _bassAvg: 0.0
   property double _lastDropTime: 0
   property double _lastBeatTime: 0
@@ -186,13 +189,15 @@ Item {
     "mosaic": VisMosaic.render, "scatter": VisScatter.render,
     "butterfly": VisButterfly.render, "plasma": VisPlasma.render,
     "osc_warp": VisOscWarp.render, "crt_scanline": VisCRTScanline.render,
-    "cyber_tunnel": VisCyberTunnel.render
+    "cyber_tunnel": VisCyberTunnel.render, "red_sector": VisRedSector.render,
+    "yinyang": VisYinYang.render
   })
 
   // Mirrors the Go drivers' OnEnter: a renderer that must rebuild its state on every
   // visit exports onEnter(state) and is listed here.
   readonly property var _enterHooks: ({ "mosaic": VisMosaic.onEnter, "peaks": VisPeaks.onEnter,
-                                      "classic_led": VisClassicLED.onEnter })
+                                      "classic_led": VisClassicLED.onEnter,
+                                      "red_sector": VisRedSector.onEnter, "yinyang": VisYinYang.onEnter })
 
   readonly property var _modeLabels: ({
     "bars": "Bars", "bricks": "Bricks", "classic_led": "Classic LED",
@@ -207,7 +212,7 @@ Item {
     "mosaic": "Mosaic", "scatter": "Scatter",
     "butterfly": "Butterfly", "plasma": "Liquid Plasma",
     "osc_warp": "Oscilloscope Warp", "crt_scanline": "CRT Radar Scope",
-    "cyber_tunnel": "3D Cyber Tunnel"
+    "cyber_tunnel": "3D Cyber Tunnel", "red_sector": "Red Sector", "yinyang": "Yin Yang"
   })
 
   // dim is foreground at 55% alpha, and helpers.js reads RGB only. Flatten it against
@@ -239,7 +244,7 @@ Item {
   function visPayload(w, h) {
     var count = 24, gap = 3
     return {
-      bands: root.controller.visBands, bandsDb: root.controller.visBandsDb, bandEdges: root.controller.visBandEdges,
+      bands: root.controller.visBands, bandsFine: root.controller.visBandsFine, bandsDb: root.controller.visBandsDb, bandEdges: root.controller.visBandEdges,
       rawBands: root.controller.visBandsRaw, bandsStereo: root.controller.visBandsStereo,
       wave: root.controller.visWave, waveStereo: root.controller.visWaveStereo, stereo: root.controller.visStereo,
       analysis: root.controller.visAnalysis, frame: root.controller.visFrame,
@@ -553,6 +558,14 @@ Item {
             var payload = root.visPayload(w, h)
             var fn = root._renderers[root.controller.visMode]
             if (fn) fn(ctx, payload)
+            root.peaksMoving = root.controller.visMode === "peaks" && VisPeaks.animating(root.controller._visState)
+          }
+
+          Timer {
+            interval: VisPeaks.frameInterval(visCanvas.height)
+            repeat: true
+            running: root.controller.visMode === "peaks" && root.controller.open && (root.controller.isPlaying || root.peaksMoving)
+            onTriggered: visCanvas.requestPaint()
           }
         }
 

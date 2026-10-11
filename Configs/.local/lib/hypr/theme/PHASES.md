@@ -16,7 +16,7 @@ theme_apply_commit_theme_metadata  promote staged theme metadata and generate na
 theme_apply_run_color_sync         hypr-theme: active palette + renderers
 theme_apply_start_job (4x)         wallpaper, desktop (dconf sink), kitty, dunst
 theme_apply_wait_jobs              block on all foreground jobs
-theme_apply_start_envelope         fork phase D after wallpaper submission
+theme_apply_start_background_updates         fork phase D after wallpaper submission
 ```
 
 Metadata is committed before the color sync so that `theme.lua` is already on
@@ -33,7 +33,7 @@ backends is left to phase D's `runtime_desktop` job, which reaches the same
 hash differs from `portal_dconf_hash` in state. The main wait is here; the user sees their desktop restyled once
 `theme_apply_wait_jobs` returns.
 
-## Phase D — detached envelope (lib/apply.phase_d.bash)
+## Phase D — detached envelope (lib/apply.background.bash)
 
 Runs in `hyprshell-theme-${gen}.service`, scoped to `background.slice`,
 with reduced CPU/IO weight. Survives the foreground exiting. Each job
@@ -41,19 +41,19 @@ short-circuits via `theme_apply_generation_is_current` if the persisted
 generation has moved on, so a newer foreground apply implicitly cancels
 the current envelope's remaining work.
 
-Phase-D work is best-effort. Eight jobs run in parallel: `secondary_updates`,
+Phase-D work is best-effort. Eight jobs run in parallel: `shaders`,
 `static_desktop`, `tmux`, `rmpc`, `nvim`, `runtime_desktop`,
 `backend_wallpaper_links`, and `wallpaper_thumbs`. The envelope also resumes
 wallpaper maintenance and, after the job barrier, runs
-`theme_apply_phase_d_quickshell_icon_sync`. Application files are generated
+`theme_apply_refresh_quickshell_icon_theme`. Application files are generated
 earlier by `hypr-theme`'s renderer scan.
 
 `hyprlock_background` is deliberately not a job here — the wallpaper resume in
 the same envelope handles it; running both raced on the wallpaper symlink.
 
-**Phase D does not require systemd.** `theme_apply_start_envelope` prefers the
+**Phase D does not require systemd.** `theme_apply_start_background_updates` prefers the
 unit — it checks `XDG_RUNTIME_DIR`, `systemd-run`, `systemctl`, and a reachable
-user manager — and falls back to `theme_apply_start_envelope_detached`, which
+user manager — and falls back to `theme_apply_start_detached_background_updates`, which
 runs the same envelope under `setsid` (behind `ionice -c 3` / `nice` in place of
 the unit's CPU/IO weights) when that check fails or `systemd-run` itself
 refuses. Only a host with neither systemd nor `setsid` skips phase D.
@@ -62,9 +62,9 @@ refuses. Only a host with neither systemd nor `setsid` skips phase D.
 
 `theme_apply_next_generation` increments and persists the generation
 *before* anything else. It also calls
-`theme_apply_cancel_previous_phase_d_jobs`, which reads each stale
+`theme_apply_cancel_previous_background_jobs`, which reads each stale
 generation's handle file and passes it to
-`theme_apply_cancel_phase_d_handle`. A handle is either a systemd unit name
+`theme_apply_cancel_background_handle`. A handle is either a systemd unit name
 (stop the unit, SIGKILL the cgroup) or `pid:<pid>` from a detached envelope
 (SIGTERM the process group — `setsid` made that pid its own session leader,
 so the jobs and the wallpaper child go with it). The detached envelope writes
@@ -82,19 +82,17 @@ detached envelope in the window before its handle file exists.
 
 ## Re-entry: `theme.apply.sh --theme-envelope`
 
-`theme_apply_start_envelope` forks `bash theme.apply.sh --theme-envelope
+`theme_apply_start_background_updates` forks `bash theme.apply.sh --theme-envelope
 --generation N --log-dir DIR --unit-file FILE`, plus `--detached` on the
 setsid path. That subprocess re-runs the entrypoint top-to-bottom, sources
-`lib/apply.phase_d.bash`, and calls `theme_apply_run_envelope_cli` through
+`lib/apply.background.bash`, and calls `theme_apply_run_background_updates_cli` through
 the `--theme-envelope` dispatch:
 
 1. parses the envelope args, sets `theme_apply_generation`, and on
    `--detached` writes `pid:$$` to the handle file
-2. calls `theme_apply_phase_d_bootstrap` — sources `color.finalize.bash`
-   for the secondary_updates job
-3. forks wallpaper resume into the same cgroup
-4. runs the eight phase-D jobs via `theme_apply_phase_d_run_jobs`
-5. prunes old phase-D log directories (keep `HYPR_THEME_PHASE_D_LOG_KEEP`,
+2. forks wallpaper resume into the same cgroup
+3. runs the eight phase-D jobs via `theme_apply_run_background_jobs`
+4. prunes old phase-D log directories (keep `HYPR_THEME_PHASE_D_LOG_KEEP`,
    default 20)
 
 ## State the phases agree on
@@ -112,7 +110,7 @@ the `--theme-envelope` dispatch:
 - `theme.apply.sh` — phase A orchestration, lock + metadata, the 4
   foreground jobs, shared primitives (timing, generation counter, job
   pool, wallpaper display, restart/start helpers, desktop-state prep)
-- `lib/apply.phase_d.bash` — envelope start, envelope CLI
+- `lib/apply.background.bash` — envelope start, envelope CLI
   re-entry, phase-D bootstrap, the eight phase-D jobs, phase-D-only helpers
   (sync_nvim_theme, enqueue_wallpaper_thumbs, sync_backend_wallpaper_links,
-  sync_runtime_desktop_state, run_static_desktop_sync, envelope_launch_wallpaper)
+  sync_runtime_desktop_state, run_static_desktop_sync, background_resume_wallpaper)

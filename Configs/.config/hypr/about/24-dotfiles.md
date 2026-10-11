@@ -41,25 +41,25 @@ There is a second manifest with a similar job and a completely different scope:
 
 `~/.local/lib/hypr/service/refresh.manifest.psv` describes the **refresh
 domains** — which managed files can be restored from stock defaults, and how.
-`show-managed-split.sh` reads that one.
+`list-managed-domains.sh` reads that one.
 
 `dotfiles-sync.conf` describes what gets **mirrored into the repository**.
 
 They do not overlap, and neither knows about the other. If
-`show-managed-split.sh` says "no manifest entries matched", that means the path
-is not a refresh domain. It says nothing at all about whether the file is in your
+`list-managed-domains.sh` says "no manifest entries matched", that means the supplied domain
+name has no manifest entries. It says nothing at all about whether the file is in your
 dotfiles.
 
 ```bash
-hyprshell service/show-managed-split.sh <path>   # is it managed/restorable?
+hyprshell service/list-managed-domains.sh [domain...]
 dotfiles-sync --list | grep <path>               # is it mirrored?
 ```
 
 ## Restoring a managed file
 
 ```bash
-hyprshell service/config.sh --mode restore <relative-path>
-hyprshell service/managed.sh --mode restore hypr-config
+hyprshell service/apply-config.sh --mode restore <relative-path>
+hyprshell service/apply-managed-domains.sh --mode restore hypr-config
 ```
 
 The first restores one file from `~/.local/share/hypr/default/`. The second

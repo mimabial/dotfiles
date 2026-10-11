@@ -3,7 +3,7 @@ set -euo pipefail
 
 hypr_lib="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}"
 # shellcheck source=/dev/null
-source "${hypr_lib}/capture/capture.select.bash"
+source "${hypr_lib}/capture/lib/selection.bash"
 
 usage() {
   cat <<USAGE
@@ -46,7 +46,7 @@ if ! command -v zbarimg >/dev/null 2>&1; then
   exit 1
 fi
 
-selection="$(capture_select_geometry "" -d)" || exit 0
+selection="$(capture_select_geometry frozen "" -d)" || exit 0
 [[ -n "${selection}" ]] || exit 0
 
 # Decode QR codes only. Leaving the other symbologies enabled lets dense screen

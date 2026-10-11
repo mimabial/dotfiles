@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-run_detached() {
+wallpaper_run_detached() {
   (
     for fd in /proc/self/fd/*; do fd=${fd##*/}; ((fd <= 2)) || exec {fd}>&-; done
     "$@"
   ) &
 }
 
-run_low_prio() {
+wallpaper_run_low_priority() {
   local nice_level="${WALLPAPER_NICE_LEVEL:-10}"
   [[ "${nice_level}" =~ ^-?[0-9]+$ ]] || nice_level=10
 
@@ -51,17 +51,12 @@ wallpaper_extensions_regex() {
 
 wallpaper_hashmap_cache_key() {
   local -a wall_sources=("$@")
-  local -a supported_files=()
-  local hash_cmd="${HYPR_HASH_COMMAND:-sha1sum}"
+  local -a supported_extensions=()
 
   [[ ${#wall_sources[@]} -gt 0 ]] || return 1
-  wallpaper_supported_files_array supported_files
+  wallpaper_supported_extensions_into supported_extensions
 
-  if ! command -v "${hash_cmd}" >/dev/null 2>&1; then
-    hash_cmd="sha1sum"
-  fi
-
-  printf '%s\n' "${wall_sources[@]}" "${supported_files[@]}" | "${hash_cmd}" | awk '{print $1}'
+  printf '%s\n' "${wall_sources[@]}" "${supported_extensions[@]}" | "${HYPR_HASH_COMMAND}" | awk '{print $1}'
 }
 
 wallpaper_hashmap_cache_file() {
@@ -77,59 +72,10 @@ wallpaper_catalog_json_file() {
 }
 
 wallpaper_theme_sources() {
+  local theme_source_dir=""
   wallpaper_source_paths=()
   [[ -d "${HYPR_THEME_DIR}" ]] || return 1
 
-  if [[ -d "${HYPR_THEME_DIR}/wallpapers" ]]; then
-    wallpaper_source_paths=("${HYPR_THEME_DIR}/wallpapers")
-  elif [[ -d "${HYPR_THEME_DIR}/wallpaper" ]]; then
-    wallpaper_source_paths=("${HYPR_THEME_DIR}/wallpaper")
-  else
-    wallpaper_source_paths=("${HYPR_THEME_DIR}")
-  fi
-
-  wallpaper_source_paths+=("${WALLPAPER_CUSTOM_PATHS[@]}")
-}
-
-wallpaper_queue_script() {
-  printf '%s\n' "${HYPR_LIB_DIR}/wallpaper/wallcache.daemon.sh"
-}
-
-wallpaper_cache_script() {
-  printf '%s\n' "${HYPR_LIB_DIR}/wallpaper/wallpaper.cache.sh"
-}
-
-wallpaper_enqueue_cache_jobs() {
-  local run_in_background=0
-  if [[ "${1:-}" == "--background" ]]; then
-    run_in_background=1
-    shift
-  fi
-
-  [[ $# -gt 0 ]] || return 1
-
-  local queue_script=""
-  local cache_script=""
-  queue_script="$(wallpaper_queue_script)"
-  cache_script="$(wallpaper_cache_script)"
-
-  if [[ -x "${queue_script}" ]]; then
-    if [[ "${run_in_background}" -eq 1 ]]; then
-      run_detached run_low_prio "${queue_script}" --enqueue "$@" &>/dev/null
-    else
-      run_low_prio "${queue_script}" --enqueue "$@" &>/dev/null
-    fi
-    return 0
-  fi
-
-  if [[ -x "${cache_script}" ]]; then
-    if [[ "${run_in_background}" -eq 1 ]]; then
-      run_detached run_low_prio "${cache_script}" "$@" &>/dev/null
-    else
-      run_low_prio "${cache_script}" "$@" &>/dev/null
-    fi
-    return 0
-  fi
-
-  return 1
+  wallpaper_theme_source_dir_into theme_source_dir "${HYPR_THEME_DIR}"
+  wallpaper_source_paths=("${theme_source_dir}" "${WALLPAPER_CUSTOM_PATHS[@]}")
 }

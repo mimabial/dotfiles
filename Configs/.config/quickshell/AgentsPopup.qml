@@ -39,11 +39,11 @@ PopupCard {
             : usageSummary(provider) || String(provider.usageStatusText || provider.tierLabel || "")) : ""
     readonly property var limits: provider && provider.limits ? provider.limits : []
     readonly property var days: provider && provider.recentDays ? provider.recentDays : []
-    readonly property real recentTotal: days.reduce((total, day) => total + (Number(day.messageCount) || 0), 0)
+    readonly property real recentTotal: days.reduce((total, day) => total + (Number(day.tokenCount) || 0), 0)
     readonly property real providerWeekTotal: providerUsage.reduce((total, entry) => total + (Number(entry.tokensWeek) || 0), 0)
     readonly property real busiestDay: {
         let peak = 0
-        for (const day of days) peak = Math.max(peak, Number(day.messageCount) || 0)
+        for (const day of days) peak = Math.max(peak, Number(day.tokenCount) || 0)
         return peak
     }
     readonly property var models: {
@@ -255,7 +255,7 @@ PopupCard {
                 id: recentChart
                 width: agentsColumn.width; height: Style.px(72)
                 antialiasing: true
-                readonly property var values: root.days.map(day => Number(day.messageCount) || 0)
+                readonly property var values: root.days.map(day => Number(day.tokenCount) || 0)
                 readonly property color lineColor: root.shell.foreground
                 readonly property color peakColor: root.shell.role("act_br", root.shell.accent)
                 onValuesChanged: requestPaint()
@@ -316,7 +316,7 @@ PopupCard {
                         }
                         Text {
                             width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
-                            text: root.compact(modelData.messageCount)
+                            text: root.compact(modelData.tokenCount)
                             color: root.shell.alpha(root.shell.foreground, today ? .9 : .55)
                             font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: today
                         }

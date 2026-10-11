@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 import ctypes
 import os
-import select
 import struct
-import sys
-import threading
 from pathlib import Path
 
 
@@ -24,134 +21,61 @@ class InotifyPathWatcher:
         | IN_CREATE
         | IN_DELETE
     )
-    HEADER_SIZE = struct.calcsize("iIII")
+    HEADER_FORMAT = "iIII"
+    HEADER_SIZE = struct.calcsize(HEADER_FORMAT)
+    READ_SIZE = 4096
 
-    def __init__(self, on_change):
-        self.on_change = on_change
+    def __init__(self):
         self.fd = None
-        self.libc = None
-        self._stop_event = threading.Event()
-        self._thread = None
-        self._lock = threading.Lock()
         self._targets_by_dir: dict[str, set[str]] = {}
         self._watches: dict[int, str] = {}
 
     def start(self, paths: list[Path]) -> bool:
         try:
-            self.libc = ctypes.CDLL("libc.so.6", use_errno=True)
-            self.libc.inotify_init.restype = ctypes.c_int
-            self.libc.inotify_add_watch.argtypes = [
-                ctypes.c_int,
-                ctypes.c_char_p,
-                ctypes.c_uint32,
-            ]
-            self.libc.inotify_add_watch.restype = ctypes.c_int
-            self.libc.inotify_rm_watch.argtypes = [ctypes.c_int, ctypes.c_int]
-            self.libc.inotify_rm_watch.restype = ctypes.c_int
-            self.fd = self.libc.inotify_init()
-            if self.fd < 0:
-                self.fd = None
-                return False
-        except Exception:
-            self.fd = None
+            libc = ctypes.CDLL("libc.so.6", use_errno=True)
+            libc.inotify_init1.argtypes = [ctypes.c_int]
+            libc.inotify_init1.restype = ctypes.c_int
+            libc.inotify_add_watch.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_uint32]
+            libc.inotify_add_watch.restype = ctypes.c_int
+            fd = libc.inotify_init1(os.O_NONBLOCK | os.O_CLOEXEC)
+        except (OSError, AttributeError):
             return False
+        if fd < 0:
+            return False
+        self.fd = fd
 
-        self._configure(paths)
-        self._thread = threading.Thread(target=self._run, daemon=True)
-        self._thread.start()
-        return True
-
-    def _configure(self, paths: list[Path]):
-        targets: dict[str, set[str]] = {}
         for path in paths:
-            parent = path.parent
             try:
-                parent.mkdir(parents=True, exist_ok=True)
-            except Exception:
+                path.parent.mkdir(parents=True, exist_ok=True)
+            except OSError:
                 continue
-            targets.setdefault(str(parent), set()).add(path.name)
+            self._targets_by_dir.setdefault(str(path.parent), set()).add(path.name)
 
-        with self._lock:
-            self._targets_by_dir = targets
-            self._reset_watches_locked()
-
-    def _reset_watches_locked(self):
-        if self.fd is None or self.libc is None:
-            return
-
-        for wd in list(self._watches.keys()):
-            try:
-                self.libc.inotify_rm_watch(self.fd, wd)
-            except Exception:
-                pass
-        self._watches.clear()
-
-        for dir_path in sorted(self._targets_by_dir.keys()):
-            try:
-                wd = self.libc.inotify_add_watch(
-                    self.fd,
-                    dir_path.encode(),
-                    self.EVENT_MASK,
-                )
-            except Exception:
-                wd = -1
+        for dir_path in sorted(self._targets_by_dir):
+            wd = libc.inotify_add_watch(fd, dir_path.encode(), self.EVENT_MASK)
             if wd >= 0:
                 self._watches[wd] = dir_path
+        return True
 
-    def _run(self):
-        while not self._stop_event.is_set():
-            if self.fd is None:
-                break
+    def read_changed_paths(self) -> list[Path]:
+        changed: list[Path] = []
+        while True:
             try:
-                ready, _, _ = select.select([self.fd], [], [], 1.0)
-            except Exception:
-                break
+                data = os.read(self.fd, self.READ_SIZE)
+            except BlockingIOError:
+                return changed
 
-            if not ready:
-                continue
+            offset = 0
+            while offset + self.HEADER_SIZE <= len(data):
+                wd, _mask, _cookie, name_len = struct.unpack_from(self.HEADER_FORMAT, data, offset)
+                offset += self.HEADER_SIZE
+                name = data[offset : offset + name_len].split(b"\0", 1)[0].decode("utf-8", errors="ignore")
+                offset += name_len
+                dir_path = self._watches.get(wd)
+                if name and dir_path and name in self._targets_by_dir[dir_path]:
+                    changed.append(Path(dir_path) / name)
 
-            try:
-                data = os.read(self.fd, 4096)
-            except Exception:
-                continue
-
-            i = 0
-            while i + self.HEADER_SIZE <= len(data):
-                wd, _mask, _cookie, name_len = struct.unpack_from("iIII", data, i)
-                i += self.HEADER_SIZE
-                raw_name = data[i : i + name_len]
-                i += name_len
-                if name_len <= 0:
-                    continue
-
-                name = raw_name.split(b"\0", 1)[0].decode("utf-8", errors="ignore")
-                if not name:
-                    continue
-
-                with self._lock:
-                    dir_path = self._watches.get(wd)
-                    if not dir_path:
-                        continue
-                    if name not in self._targets_by_dir.get(dir_path, set()):
-                        continue
-                    changed_path = Path(dir_path) / name
-
-                try:
-                    self.on_change(changed_path)
-                except Exception as exc:
-                    print(
-                        f"Warning: auto-theme watcher callback failed for {changed_path}: {exc}",
-                        file=sys.stderr,
-                    )
-
-    def stop(self):
-        self._stop_event.set()
+    def close(self):
         if self.fd is not None:
-            try:
-                os.close(self.fd)
-            except Exception:
-                pass
+            os.close(self.fd)
             self.fd = None
-        if self._thread is not None:
-            self._thread.join(timeout=1.0)
-        self._thread = None

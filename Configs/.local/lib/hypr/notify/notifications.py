@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 
 import json
-import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from pyutils import child_process
+from pyutils.xdg_base_dirs import xdg_state_home
 
 import gi
 
@@ -15,7 +19,7 @@ from gi.repository import Gio, GLib
 # notify/archive.sh owns this format; the state is read straight off the files so
 # each dunst event does not fork a shell just to compare timestamps.
 ARCHIVE_DIR = (
-    Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+    xdg_state_home()
     / "hypr"
     / "notifications"
 )
@@ -26,21 +30,14 @@ EMIT_COALESCE_MS = 120
 DUNST_PATH = "/org/freedesktop/Notifications"
 DUNST_IFACE = "org.dunstproject.cmd0"
 PROPS_IFACE = "org.freedesktop.DBus.Properties"
+CATEGORIES_WITH_BAR_ICON = frozenset(
+    {"email", "chat", "warning", "error", "network", "battery", "update", "music", "volume"}
+)
 
 try:
     BUS = Gio.bus_get_sync(Gio.BusType.SESSION, None)
 except GLib.Error:
     BUS = None
-
-
-def _run_dunstctl(command):
-    return subprocess.run(
-        command,
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=2,
-    ).stdout.strip()
 
 
 def _status_error():
@@ -55,12 +52,12 @@ def _call_dunst_dbus(iface, method, params=None):
     ).unpack()[0]
 
 
-def _get_paused():
+def read_dunst_pause_state():
     return bool(_call_dunst_dbus(PROPS_IFACE, "Get", GLib.Variant("(ss)", (DUNST_IFACE, "paused"))))
 
 
 # the panel lists the archive, not dunst's history, so the icon follows it too
-def _archive_state():
+def read_archive_counts_and_latest_category():
     try:
         seen = int((ARCHIVE_DIR / "seen").read_text().strip() or 0)
     except (OSError, ValueError):
@@ -83,35 +80,34 @@ def _archive_state():
     return total, unread, category
 
 
-def get_dunst_status():
+def notification_indicator_status():
     if BUS is None:
         return _status_error()
 
     try:
-        paused = _get_paused()
+        paused = read_dunst_pause_state()
     except (GLib.Error, TypeError, ValueError):
         return _status_error()
 
-    total, unread, category = _archive_state()
-    category_map = {
-        "email": "email-notification",
-        "chat": "chat-notification",
-        "warning": "warning-notification",
-        "error": "error-notification",
-        "network": "network-notification",
-        "battery": "battery-notification",
-        "update": "update-notification",
-        "music": "music-notification",
-        "volume": "volume-notification",
-    }
-
-    alt = category_map.get(category.lower(), "notification") if total else "none"
+    total, unread, category = read_archive_counts_and_latest_category()
+    category = category.lower()
+    if not total:
+        alt = "none"
+    elif category in CATEGORIES_WITH_BAR_ICON:
+        alt = f"{category}-notification"
+    else:
+        alt = "notification"
 
     return {"text": "", "alt": alt, "class": alt, "paused": paused, "unread": unread}
 
 
 def toggle_dnd():
-    _run_dunstctl(["dunstctl", "set-paused", "toggle"])
+    child_process.run(
+        ["dunstctl", "set-paused", "toggle"],
+        check=True,
+        capture_output=True,
+        timeout=DUNST_CALL_TIMEOUT_MS / 1000,
+    )
     if shutil.which("quickshell"):
         subprocess.run(
             ["quickshell", "ipc", "call", "indicators", "refresh", "dnd"],
@@ -123,7 +119,7 @@ def toggle_dnd():
 
 # dunst marks every counter it exposes emits-change, and dunst's own script rule
 # rewrites the archive on each notification, so the badge can follow events.
-def watch():
+def watch_notification_indicator():
     loop = GLib.MainLoop()
     pending = 0
 
@@ -131,7 +127,7 @@ def watch():
         nonlocal pending
         pending = 0
         try:
-            sys.stdout.write(json.dumps(get_dunst_status()) + "\n")
+            sys.stdout.write(json.dumps(notification_indicator_status()) + "\n")
             sys.stdout.flush()
         except OSError:
             loop.quit()
@@ -163,9 +159,9 @@ def main():
         toggle_dnd()
         return
     if sys.argv[1:] == ["--watch"]:
-        watch()
+        watch_notification_indicator()
         return
-    status = get_dunst_status()
+    status = notification_indicator_status()
     sys.stdout.write(json.dumps(status) + "\n")
     sys.stdout.flush()
 

@@ -1,17 +1,33 @@
 {
   "panel": "horizontal",
   "style": "horizontal",
+  "mediaHistoryLocalOnly": true,
   "left": [
     {
       "id": "workspaces",
       "props": {
         "compactStyle": false,
-        "activeOnly": false,
-        "showAll": true,
-        "numerals": "hindi"
+        "activeOnly": true,
+        "showAll": false,
+        "numerals": "roman"
       }
     },
-    "systemstats",
+    "systemstats"
+  ],
+  "centerAnchor": "datetime",
+  "center": [
+    "submap",
+    "caffeine",
+    "datetime",
+    {
+      "id": "updates",
+      "props": {
+        "hideWhenCurrent": false
+      }
+    },
+    "weather"
+  ],
+  "right": [
     {
       "id": "mediaplayer",
       "props": {
@@ -33,37 +49,13 @@
         "cavaGain": 1,
         "cavaSmoothing": 77
       }
-    }
-  ],
-  "centerAnchor": "datetime",
-  "center": [
-    "submap",
-    "caffeine",
-    "datetime",
-    {
-      "id": "updates",
-      "props": {
-        "hideWhenCurrent": false
-      }
     },
-    "weather"
-  ],
-  "right": [
     "tray",
-    "wallpaper",
     "volume",
-    {
-      "id": "removable",
-      "props": {
-        "showBadge": true
-      }
-    },
-    "powerprofile",
-    "hyprsunset",
+    "microphone",
     "privacy",
     "display",
     "vpn",
-    "microphone",
     "wifi",
     {
       "id": "bluetooth",
@@ -71,7 +63,13 @@
         "showReadout": true
       }
     },
-    "tasks",
+    {
+      "id": "removable",
+      "props": {
+        "showBadge": true
+      }
+    },
+    "powerprofile",
     {
       "id": "notifications",
       "props": {
@@ -82,8 +80,6 @@
   "tray": [
     "barlayout",
     "bitwarden",
-    "workflows",
-    "windowlayout",
     {
       "id": "agents",
       "trayPosition": {
@@ -118,9 +114,20 @@
     },
     {
       "id": "github",
+      "props": {
+        "keepVisible": true
+      },
       "trayPosition": {
         "section": "right",
         "index": 10,
+        "stringEntry": true
+      }
+    },
+    {
+      "id": "terminal",
+      "trayPosition": {
+        "section": "right",
+        "index": 4,
         "stringEntry": true
       }
     },
@@ -149,10 +156,26 @@
       }
     },
     {
-      "id": "terminal",
+      "id": "hyprsunset",
       "trayPosition": {
         "section": "right",
-        "index": 4,
+        "index": 6,
+        "stringEntry": true
+      }
+    },
+    {
+      "id": "wallpaper",
+      "trayPosition": {
+        "section": "right",
+        "index": 21,
+        "stringEntry": true
+      }
+    },
+    {
+      "id": "tasks",
+      "trayPosition": {
+        "section": "right",
+        "index": 20,
         "stringEntry": true
       }
     }

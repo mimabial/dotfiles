@@ -6,16 +6,16 @@ Watches the quickshell config and regenerates ~/.cache/hypr/quickshell/style-map
 
   --once  regenerate and exit" "$@"
 
-CONFIG="${XDG_CONFIG_HOME:-${HOME}/.config}/quickshell"
+QUICKSHELL_CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/quickshell"
 
-generate() { python3 "${HYPR_LIB_DIR}/quickshell/style-map.py"; }
+regenerate_style_maps() { python3 "${HYPR_LIB_DIR}/quickshell/style-map.py"; }
 
-generate
+regenerate_style_maps
 [[ "${1:-}" == --once ]] && exit 0
 
 inotifywait -mq -e close_write,moved_to,delete --include '\.(json|qml)$' \
-    "${CONFIG}/layouts" "${CONFIG}/styles" "${CONFIG}" "${CONFIG}/modules" |
+    "${QUICKSHELL_CONFIG_DIR}/layouts" "${QUICKSHELL_CONFIG_DIR}/styles" "${QUICKSHELL_CONFIG_DIR}" "${QUICKSHELL_CONFIG_DIR}/modules" |
     while read -r _; do
         while read -r -t 0 && read -r _; do :; done
-        generate
+        regenerate_style_maps
     done

@@ -39,7 +39,7 @@ esac || { echo 'Drive identity changed; rescan before trying again' >&2; exit 1;
 if [[ "$action" == trash ]]; then
   mountpoint="$(lsblk -dn -o MOUNTPOINT "$device" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
   [[ -n "$mountpoint" ]] || { echo 'Mount the volume before emptying its trash' >&2; exit 1; }
-  trash="$mountpoint/.Trash-$(id -u)"
+  trash="$mountpoint/.Trash-${UID}"
   [[ -d "$trash" && ! -L "$trash" ]] || exit 0
   for directory in "$trash/files" "$trash/info"; do
     [[ -d "$directory" && ! -L "$directory" ]] || continue

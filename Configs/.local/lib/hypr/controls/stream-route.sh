@@ -2,6 +2,8 @@
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
+# shellcheck source=/dev/null
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/controls/lib/audio-streams.bash" || exit 1
 
 direction=${1:-}
 stream=${2:-}
@@ -46,6 +48,6 @@ if [[ $mode == override ]]; then
   hypr_daemon_call pw-metadata -n default -- "$stream_id" target.object "$target" Spa:Id >/dev/null || exit 1
   hypr_daemon_call pw-metadata -n default -- "$stream_id" target.node "$target_id" Spa:Id >/dev/null || exit 1
 else
-  hypr_daemon_call pw-metadata -n default -- "$stream_id" target.object -1 Spa:Id >/dev/null || exit 1
-  hypr_daemon_call pw-metadata -n default -- "$stream_id" target.node -1 Spa:Id >/dev/null || exit 1
+  hypr_daemon_call pw-metadata -n default -- "$stream_id" target.object "$PIPEWIRE_FOLLOW_DEFAULT_TARGET" Spa:Id >/dev/null || exit 1
+  hypr_daemon_call pw-metadata -n default -- "$stream_id" target.node "$PIPEWIRE_FOLLOW_DEFAULT_TARGET" Spa:Id >/dev/null || exit 1
 fi

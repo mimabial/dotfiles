@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import Qt5Compat.GraphicalEffects as Effects
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
@@ -374,13 +375,19 @@ Item {
             }
         }
     }
+    component TrayImage: IconImage {
+        anchors.centerIn: parent
+        implicitWidth: root.scaledIcon; implicitHeight: root.scaledIcon
+        layer.enabled: root.box.iconColor !== undefined
+        layer.effect: Effects.ColorOverlay { color: root.shell.styleColor(root.box.iconColor, root.shell.foreground) }
+    }
     component TrayIcon: Item {
         id: trayIcon
         required property var trayItem
         readonly property string iconId: root.iconId(trayItem)
         readonly property string trayKey: root.iconKey(trayItem)
         signal droppedOutside(point position)
-        IconImage { anchors.centerIn: parent; width: root.scaledIcon; height: root.scaledIcon; source: trayIcon.trayItem.icon }
+        TrayImage { source: trayIcon.trayItem.icon }
         MouseArea {
             id: pointer
             anchors.fill: parent
@@ -413,7 +420,7 @@ Item {
                 width: root.scaledIcon + 10; height: width; radius: 4
                 color: root.shell.alpha(root.shell.background, .94)
                 border.color: root.shell.accent; visible: iconDrag.active
-                IconImage { anchors.centerIn: parent; implicitWidth: root.scaledIcon; implicitHeight: root.scaledIcon; source: trayIcon.trayItem.icon }
+                TrayImage { source: trayIcon.trayItem.icon }
             }
         }
         BarTooltip { anchorItem: trayIcon; shell: root.shell; text: root.tooltipText(trayIcon.trayItem); textFormat: Text.StyledText; hovered: pointer.containsMouse }
