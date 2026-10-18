@@ -1,16 +1,16 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 import "Ui"
 
 Item {
   id: root
 
   property string page: "layout"
-  property color foreground: Color.foreground
-  property color background: Color.background
-  property color accent: Color.accent
-  property string fontFamily: Style.font.family
+  property color foreground: Commons.Color.foreground
+  property color background: Commons.Color.background
+  property color accent: Commons.Color.accent
+  property string fontFamily: Commons.Style.font.family
 
   signal closeRequested()
 
@@ -88,27 +88,27 @@ Item {
 
   BorderSurface {
     anchors.centerIn: parent
-    width: Math.min(parent.width - Style.space(48), Style.space(650))
-    implicitHeight: helpContent.implicitHeight + Style.space(30)
+    width: Math.min(parent.width - Commons.Style.space(48), Commons.Style.space(650))
+    implicitHeight: helpContent.implicitHeight + Commons.Style.space(30)
     color: root.background
-    borderSpec: Border.controlSpec("focus", root.foreground, root.accent)
-    radius: Style.cornerRadius
+    borderSpec: Commons.Border.controlSpec("focus", root.foreground, root.accent)
+    radius: Commons.Style.cornerRadius
 
     Column {
       id: helpContent
       anchors.left: parent.left
       anchors.right: parent.right
       anchors.verticalCenter: parent.verticalCenter
-      anchors.leftMargin: Style.space(18)
-      anchors.rightMargin: Style.space(18)
-      spacing: Style.space(13)
+      anchors.leftMargin: Commons.Style.space(18)
+      anchors.rightMargin: Commons.Style.space(18)
+      spacing: Commons.Style.space(13)
 
       Text {
         textFormat: Text.PlainText
         text: "Keys"
         color: root.foreground
         font.family: root.fontFamily
-        font.pixelSize: Style.font.subtitle
+        font.pixelSize: Commons.Style.font.subtitle
         font.bold: true
       }
 
@@ -119,14 +119,14 @@ Item {
           id: bindingGroup
           required property var modelData
           width: helpContent.width
-          spacing: Style.space(4)
+          spacing: Commons.Style.space(4)
 
           Text {
             textFormat: Text.PlainText
             text: String(parent.modelData.title || "")
             color: root.accent
             font.family: root.fontFamily
-            font.pixelSize: Style.font.body
+            font.pixelSize: Commons.Style.font.body
             font.bold: true
           }
 
@@ -136,25 +136,25 @@ Item {
             Row {
               required property var modelData
               width: parent.width
-              spacing: Style.space(14)
+              spacing: Commons.Style.space(14)
 
               Text {
                 textFormat: Text.PlainText
-                width: Style.space(150)
+                width: Commons.Style.space(150)
                 text: String(parent.modelData.keys || "")
                 color: root.foreground
                 font.family: root.fontFamily
-                font.pixelSize: Style.font.bodySmall
+                font.pixelSize: Commons.Style.font.bodySmall
                 font.bold: true
               }
 
               Text {
                 textFormat: Text.PlainText
-                width: parent.width - Style.space(164)
+                width: parent.width - Commons.Style.space(164)
                 text: String(parent.modelData.action || "")
                 color: root.foreground
                 font.family: root.fontFamily
-                font.pixelSize: Style.font.bodySmall
+                font.pixelSize: Commons.Style.font.bodySmall
                 elide: Text.ElideRight
               }
             }
@@ -167,7 +167,7 @@ Item {
         text: "Any key closes this."
         color: Qt.darker(root.foreground, 1.5)
         font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
+        font.pixelSize: Commons.Style.font.caption
       }
     }
   }

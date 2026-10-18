@@ -11,8 +11,10 @@ Column {
     required property PopupCard card
     spacing: Style.md
 
-    // IR sensors offer only greyscale; QML cannot name QVideoFrameFormat, so 24 and 25 are Format_Y8 and Format_Y16
-    readonly property var greyscaleFormats: [24, 25]
+    readonly property var greyscalePixelFormats: ({Y8: 24, Y16: 25})
+    readonly property var greyscaleFormats: Object.values(greyscalePixelFormats)
+    readonly property int exposureTicksPerMillisecond: 10
+    readonly property int arcSecondsPerDegree: 3600
     readonly property var inputs: devices.videoInputs.filter(input => input.videoFormats.some(format => !greyscaleFormats.includes(format.pixelFormat)))
     readonly property var input: inputs.find(input => String(input.id) === shell.store.webcamDevice)
         || inputs.find(input => input.isDefault) || inputs[0] || null
@@ -22,21 +24,19 @@ Column {
     property string probedDevice: ""
     property string error: ""
 
-    // section names, their order and the renamed labels follow the original plugin
     readonly property var sections: ["EXPOSURE", "IMAGE", "COLOR", "FOCUS", "FRAMING", "ADVANCED"]
     readonly property var labels: ({auto_exposure: "Exposure mode", exposure_auto: "Exposure mode",
         exposure_dynamic_framerate: "Dynamic frame rate", exposure_auto_priority: "Dynamic frame rate",
         white_balance_automatic: "Automatic white balance", white_balance_temperature: "Color temperature",
         power_line_frequency: "Anti-flicker", focus_auto: "Autofocus"})
 
-    onDeviceChanged: { controls = []; pendingWrites = {}; probe() }
+    onDeviceChanged: { controls = []; pendingWrites = {}; readAndApplyControls() }
 
-    function write(name, value) {
+    function writeControl(name, value) {
         pendingWrites = Object.assign({}, pendingWrites, {[name]: value})
-        probe()
+        readAndApplyControls()
     }
-    // v4l2-ctl applies --set-ctrl before listing, so one run writes and reads back new values and flags
-    function probe() {
+    function readAndApplyControls() {
         if (v4l2.running || !device) return
         const writes = Object.entries(pendingWrites).map(([name, value]) => name + "=" + value)
         v4l2.command = ["v4l2-ctl", "-d", device, "--list-ctrls-menus"].concat(writes.length ? ["--set-ctrl", writes.join(",")] : [])
@@ -44,17 +44,17 @@ Column {
         probedDevice = device
         v4l2.running = true
     }
-    function parse(text) {
+    function parseControls(text) {
         const controls = []
         for (const line of text.split("\n")) {
             const control = line.match(/^\s*(\w+) 0x\w+ \((\w+)\)\s*:\s*(.*)$/)
             const option = line.match(/^\t+(-?\w+): (.*)$/)
-            if (control) controls.push(Object.assign(describe(control[1], control[2], control[3]), {index: controls.length}))
+            if (control) controls.push(Object.assign(describeControl(control[1], control[2], control[3]), {index: controls.length}))
             else if (option && controls.length) controls[controls.length - 1].options.push({value: option[1], label: option[2]})
         }
         return controls.sort((a, b) => a.rank - b.rank || a.index - b.index)
     }
-    function describe(name, type, details) {
+    function describeControl(name, type, details) {
         const [fields, flags = ""] = details.split(/\s*flags=/)
         const field = key => (fields.match(new RegExp("\\b" + key + "=(\\S+)")) || [])[1]
         const rank = sectionRank(name)
@@ -87,13 +87,12 @@ Column {
         if (control.kind === "value") return control.flags.includes("has-payload") ? "Complex V4L2 payload; displayed read-only." : "Reported read-only by the device."
         return ""
     }
-    // V4L2 units: exposure in 100 µs, pan and tilt in arc seconds
-    function format(control, value) {
+    function formatControlValue(control, value) {
         const option = control.options.find(option => option.value === String(value))
         if (option) return option.label
-        if (/^exposure_(time_)?absolute$/.test(control.name)) return value / 10 + " ms"
+        if (/^exposure_(time_)?absolute$/.test(control.name)) return value / exposureTicksPerMillisecond + " ms"
         if (control.name === "white_balance_temperature") return value + " K"
-        if (/^(pan|tilt)_absolute$/.test(control.name)) return Math.round(value / 3600) + "°"
+        if (/^(pan|tilt)_absolute$/.test(control.name)) return Math.round(value / arcSecondsPerDegree) + "°"
         return String(value)
     }
 
@@ -102,10 +101,9 @@ Column {
     CaptureSession { camera: camera; videoOutput: preview }
     Process {
         id: v4l2
-        // a rejected write still lists; stdout is empty only when v4l2-ctl refused the whole command
-        stdout: StdioCollector { onStreamFinished: if (text && root.probedDevice === root.device) root.controls = root.parse(text) }
+        stdout: StdioCollector { onStreamFinished: if (text && root.probedDevice === root.device) root.controls = root.parseControls(text) }
         stderr: StdioCollector { onStreamFinished: root.error = text.trim() }
-        onExited: if (root.probedDevice !== root.device || Object.keys(root.pendingWrites).length) root.probe()
+        onExited: if (root.probedDevice !== root.device || Object.keys(root.pendingWrites).length) root.readAndApplyControls()
     }
 
     Rectangle {
@@ -133,7 +131,7 @@ Column {
         Text {
             anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
             text: "\u{f0450}"; color: root.shell.foreground; font.family: root.shell.iconGlyphFont; font.pixelSize: Style.title
-            MouseArea { anchors.fill: parent; anchors.margins: -Style.sm; cursorShape: Qt.PointingHandCursor; onClicked: root.probe() }
+            MouseArea { anchors.fill: parent; anchors.margins: -Style.sm; cursorShape: Qt.PointingHandCursor; onClicked: root.readAndApplyControls() }
         }
     }
     PopupSection { visible: root.inputs.length > 0; shell: root.shell; text: "CAPTURE DEVICE" }
@@ -175,11 +173,11 @@ Column {
                     PopupSlider {
                         property real dragged: Number(sliderRow.modelData.value)
                         width: parent.width; shell: root.shell
-                        label: sliderRow.modelData.label; valueText: root.format(sliderRow.modelData, Math.round(dragged))
+                        label: sliderRow.modelData.label; valueText: root.formatControlValue(sliderRow.modelData, Math.round(dragged))
                         minimum: sliderRow.modelData.min; maximum: sliderRow.modelData.max; step: sliderRow.modelData.step; value: Number(sliderRow.modelData.value)
                         onChanged: value => dragged = value
-                        onReleased: value => root.write(sliderRow.modelData.name, Math.round(value))
-                        MouseArea { width: parent.width; height: parent.height - Style.sliderHeight; onDoubleClicked: root.write(sliderRow.modelData.name, sliderRow.modelData.def) }
+                        onReleased: value => root.writeControl(sliderRow.modelData.name, Math.round(value))
+                        MouseArea { width: parent.width; height: parent.height - Style.sliderHeight; onDoubleClicked: root.writeControl(sliderRow.modelData.name, sliderRow.modelData.def) }
                     }
                 }
             }
@@ -201,7 +199,7 @@ Column {
                             id: toggleSwitch
                             anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX; anchors.verticalCenter: parent.verticalCenter
                             shell: root.shell; checked: toggleRow.modelData.value === "1"
-                            onToggled: root.write(toggleRow.modelData.name, checked ? 0 : 1)
+                            onToggled: root.writeControl(toggleRow.modelData.name, checked ? 0 : 1)
                         }
                     }
                 }
@@ -214,7 +212,7 @@ Column {
                     PopupSelect {
                         width: parent.width; shell: root.shell; choices: menuRow.modelData.options
                         selectedIndex: menuRow.modelData.options.findIndex(option => option.value === menuRow.modelData.value)
-                        onActivated: index => root.write(menuRow.modelData.name, menuRow.modelData.options[index].value)
+                        onActivated: index => root.writeControl(menuRow.modelData.name, menuRow.modelData.options[index].value)
                     }
                 }
             }
@@ -222,21 +220,21 @@ Column {
                 roleValue: "field"
                 CameraControl {
                     id: fieldRow
-                    ControlLabel { text: fieldRow.modelData.label + " · " + root.format(fieldRow.modelData, fieldRow.modelData.value) }
-                    PopupField { width: parent.width; shell: root.shell; text: fieldRow.modelData.value; onAccepted: root.write(fieldRow.modelData.name, text) }
+                    ControlLabel { text: fieldRow.modelData.label + " · " + root.formatControlValue(fieldRow.modelData, fieldRow.modelData.value) }
+                    PopupField { width: parent.width; shell: root.shell; text: fieldRow.modelData.value; onAccepted: root.writeControl(fieldRow.modelData.name, text) }
                 }
             }
             DelegateChoice {
                 roleValue: "action"
                 CameraControl {
                     id: actionRow
-                    PopupRow { width: parent.width; shell: root.shell; title: actionRow.modelData.label; value: "Run"; onClicked: root.write(actionRow.modelData.name, 1) }
+                    PopupRow { width: parent.width; shell: root.shell; title: actionRow.modelData.label; value: "Run"; onClicked: root.writeControl(actionRow.modelData.name, 1) }
                 }
             }
             DelegateChoice {
                 CameraControl {
                     id: valueRow
-                    PopupRow { width: parent.width; shell: root.shell; interactive: false; title: valueRow.modelData.label; value: root.format(valueRow.modelData, valueRow.modelData.value) }
+                    PopupRow { width: parent.width; shell: root.shell; interactive: false; title: valueRow.modelData.label; value: root.formatControlValue(valueRow.modelData, valueRow.modelData.value) }
                 }
             }
         }

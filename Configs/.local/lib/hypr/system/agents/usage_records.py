@@ -93,8 +93,10 @@ class UsageTotals:
     self.total_prompts = 0
     self.today_prompts = 0
     self.today_total_tokens = 0
+    self.cost_days: dict[str, dict[str, list[dict[str, Any]]]] = {}
+    self.cost_start = date_string(dt.date.today() - dt.timedelta(days=ROLLING_MONTH_DAYS - 1))
 
-  def add_tokens(self, day: str, session: str, model: str, values: tuple[int, int, int, int], prompt_count: int = 1) -> None:
+  def add_tokens(self, day: str, session: str, model: str, values: tuple[int, int, int, int], prompt_count: int = 1, reported_cost: float = 0, pricing: dict[str, Any] | None = None) -> None:
     total = sum(values)
     if total <= 0:
       return
@@ -104,6 +106,11 @@ class UsageTotals:
     bucket = self.token_totals_by_model.setdefault(model, empty_token_totals())
     for key, value in zip(bucket, values, strict=True):
       bucket[key] += value
+    if self.cost_start <= day <= self.today and not session.startswith("opencode:"):
+      cost = dict(zip(bucket, values, strict=True), **(pricing or {}))
+      if reported_cost > 0 and math.isfinite(reported_cost):
+        cost["reportedCostUsd"] = reported_cost
+      self.cost_days.setdefault(day, {}).setdefault(model, []).append(cost)
     if day in self.recent:
       self.recent[day]["tokenCount"] += total
     if day == self.today:
@@ -124,6 +131,7 @@ class UsageTotals:
       "totalSessions": len(self.sessions),
       "activeDays": len(self.active_days),
       "activeDates": sorted(self.active_days),
+      "costDays": self.cost_days,
     }
 
 
@@ -143,6 +151,13 @@ def merge_stats(base: dict[str, Any], extra: dict[str, Any]) -> dict[str, Any]:
     for field, count in (bucket or {}).items():
       target[field] = rounded_token_count(target.get(field)) + rounded_token_count(count)
   merged["modelUsage"] = usage
+
+  cost_days = {day: {model: list(rows) for model, rows in models.items()} for day, models in (base.get("costDays") or {}).items()}
+  for day, models in (extra.get("costDays") or {}).items():
+    target = cost_days.setdefault(day, {})
+    for model, rows in models.items():
+      target.setdefault(model, []).extend(rows)
+  merged["costDays"] = cost_days
 
   by_date: dict[str, int] = {}
   for source in (base.get("recentDays") or [], extra.get("recentDays") or []):

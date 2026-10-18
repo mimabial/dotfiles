@@ -1,0 +1,25 @@
+$HOME/.config/kitty/theme.conf
+
+background #fdf6ee
+foreground #22211d
+cursor #22211d
+cursor_text_color #fdf6ee
+selection_foreground #fdf6ee
+selection_background #85b34c
+
+color0 #7a6550
+color1 #df2b0d
+color2 #29472a
+color3 #8a6c3e
+color4 #5e8e28
+color5 #28473f
+color6 #3d6b52
+color7 #24201d
+color8 #a09080
+color9 #e03c20
+color10 #1b2e1c
+color11 #6b5237
+color12 #496c1e
+color13 #28463c
+color14 #4a6b4d
+color15 #22211d

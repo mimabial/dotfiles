@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "DockModel.js" as DockModel
 
@@ -13,16 +13,16 @@ BorderSurface {
   readonly property var group: dock.activeAppGroupData
   readonly property var appIds: group ? DockModel.toArray(group.apps) : []
   readonly property int columns: Math.min(4, Math.max(2, appIds.length <= 4 ? 2 : appIds.length <= 9 ? 3 : 4))
-  readonly property real cellWidth: Style.space(64)
-  readonly property real cellHeight: Style.space(70)
+  readonly property real cellWidth: Commons.Style.space(64)
+  readonly property real cellHeight: Commons.Style.space(70)
 
   visible: dock.activeAppGroupId !== "" && dock.dockVisible
   z: dock.popoverZ
-  color: Util.alpha(Color.menu.background, Style.popupSurfaceOpacity)
-  borderSpec: Border.surfaceSpec("menu", "border", Util.alpha(Color.menu.border, Style.popupBorderOpacity), 1)
-  radius: Style.cornerRadius
-  padding: Style.space(6)
-  width: Math.max(Style.space(180), columns * cellWidth + (columns - 1) * Style.space(6))
+  color: Commons.Util.alpha(Commons.Style.popupTinted(Commons.Color.menu.background), Commons.Style.popupSurfaceOpacity)
+  borderSpec: Commons.Border.surfaceSpec("menu", "border", Commons.Util.alpha(Commons.Style.popupBorder(Commons.Color.menu.border), Commons.Style.popupBorderOpacity), 1)
+  radius: Commons.Style.cornerRadius
+  padding: Commons.Style.space(6)
+  width: Math.max(Commons.Style.space(180), columns * cellWidth + (columns - 1) * Commons.Style.space(6))
     + contentLeftInset + contentRightInset
   height: content.implicitHeight + contentTopInset + contentBottomInset
   x: dock.panelX(width, dock.activeAppGroupAnchor)
@@ -43,7 +43,7 @@ BorderSurface {
 
   Column {
     id: content
-    spacing: Style.space(6)
+    spacing: Commons.Style.space(6)
     anchors {
       left: parent.left; right: parent.right; top: parent.top
       leftMargin: popup.contentLeftInset; rightMargin: popup.contentRightInset; topMargin: popup.contentTopInset
@@ -51,7 +51,7 @@ BorderSurface {
 
     Item {
       width: parent.width
-      height: Style.space(26)
+      height: Commons.Style.space(26)
 
       Text {
         id: title
@@ -59,22 +59,22 @@ BorderSurface {
         anchors.verticalCenter: parent.verticalCenter
         text: popup.group ? String(popup.group.name || "Applications") : "Applications"
         textFormat: Text.PlainText
-        color: Color.menu.text
-        font.family: Style.font.family
-        font.pixelSize: Style.font.body
+        color: Commons.Color.menu.text
+        font.family: Commons.Style.font.family
+        font.pixelSize: Commons.Style.font.body
         font.bold: true
       }
 
       Text {
         visible: title.visible
         anchors.left: title.right
-        anchors.leftMargin: Style.space(6)
+        anchors.leftMargin: Commons.Style.space(6)
         anchors.verticalCenter: parent.verticalCenter
         text: "(" + popup.appIds.length + ")"
         textFormat: Text.PlainText
-        color: Util.alpha(Color.menu.text, 0.5)
-        font.family: Style.font.family
-        font.pixelSize: Style.font.caption
+        color: Commons.Util.alpha(Commons.Color.menu.text, 0.5)
+        font.family: Commons.Style.font.family
+        font.pixelSize: Commons.Style.font.caption
       }
 
       MouseArea {
@@ -87,18 +87,18 @@ BorderSurface {
       Rectangle {
         visible: popup.dock.appGroupEditing
         anchors.fill: parent
-        radius: Style.cornerRadius
-        color: Util.alpha(Color.menu.text, 0.06)
-        border.color: Color.accent
+        radius: Commons.Style.cornerRadius
+        color: Commons.Util.alpha(Commons.Color.menu.text, 0.06)
+        border.color: Commons.Color.accent
         border.width: 1
 
         TextInput {
           id: nameInput
           anchors.fill: parent
-          anchors.margins: Style.space(4)
-          color: Color.menu.text
-          font.family: Style.font.family
-          font.pixelSize: Style.font.body
+          anchors.margins: Commons.Style.space(4)
+          color: Commons.Color.menu.text
+          font.family: Commons.Style.font.family
+          font.pixelSize: Commons.Style.font.body
           verticalAlignment: TextInput.AlignVCenter
           selectByMouse: true
           onAccepted: popup.finishRename()
@@ -109,7 +109,7 @@ BorderSurface {
 
     Grid {
       columns: popup.columns
-      spacing: Style.space(6)
+      spacing: Commons.Style.space(6)
       anchors.horizontalCenter: parent.horizontalCenter
 
       Repeater {
@@ -131,17 +131,17 @@ BorderSurface {
 
           Rectangle {
             anchors.fill: parent
-            radius: Style.cornerRadius
-            color: area.containsMouse || cell.cursored ? Util.alpha(Color.menu.text, 0.08) : "transparent"
+            radius: Commons.Style.cornerRadius
+            color: area.containsMouse || cell.cursored ? Commons.Util.alpha(Commons.Color.menu.text, 0.08) : "transparent"
           }
 
           Column {
             anchors.centerIn: parent
-            width: parent.width - Style.space(8)
-            spacing: Style.space(4)
+            width: parent.width - Commons.Style.space(8)
+            spacing: Commons.Style.space(4)
             Image {
               anchors.horizontalCenter: parent.horizontalCenter
-              width: Style.space(36)
+              width: Commons.Style.space(36)
               height: width
               source: popup.dock.appLibrary.iconSource(cell.entry ? cell.entry.icon : cell.appId)
               sourceSize: Qt.size(width * 2, height * 2)
@@ -154,9 +154,9 @@ BorderSurface {
               width: parent.width
               text: cell.entry ? popup.dock.appLibrary.entryName(cell.entry) : cell.appId
               textFormat: Text.PlainText
-              color: Color.menu.text
-              font.family: Style.font.family
-              font.pixelSize: Math.max(9, Style.font.caption - 1)
+              color: Commons.Color.menu.text
+              font.family: Commons.Style.font.family
+              font.pixelSize: Math.max(9, Commons.Style.font.caption - 1)
               horizontalAlignment: Text.AlignHCenter
               elide: Text.ElideRight
             }
@@ -216,9 +216,9 @@ BorderSurface {
       width: parent.width
       text: popup.dock.appGroupEditing ? "Enter rename · Esc cancel" : "↑↓ move · Enter open · F2 · Esc"
       wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter
-      fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Style.font.caption - 2)
-      color: Util.alpha(Color.menu.text, .55)
-      font.family: Style.font.family; font.pixelSize: Style.font.caption
+      fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Commons.Style.font.caption - 2)
+      color: Commons.Util.alpha(Commons.Color.menu.text, .55)
+      font.family: Commons.Style.font.family; font.pixelSize: Commons.Style.font.caption
     }
   }
 }

@@ -1,18 +1,18 @@
 .pragma library
-.import "helpers.js" as H
+.import "helpers.js" as VisualizerHelpers
 
-function render(ctx, d) {
-  var bands = d.bands || []
-  var w = d.width, h = d.height, frame = d.frame || 0
-  var isPlaying = d.playing
-  var beatDrop = d.beatDrop || 0
-  var midY = h / 2.0
+function render(canvas, frameData) {
+  var bands = frameData.bands || []
+  var width = frameData.width, height = frameData.height, frame = frameData.frame || 0
+  var isPlaying = frameData.playing
+  var beatDrop = frameData.beatDrop || 0
+  var midY = height / 2.0
 
   var numPills = 56
-  var resampled = H.resampleBandsLinear(bands, numPills)
+  var resampled = VisualizerHelpers.resampleBandsLinear(bands, numPills)
 
   var margin = 6
-  var totalDrawW = w - margin * 2
+  var totalDrawW = width - margin * 2
   var gap = 2.4
   var pillW = Math.max(2.4, (totalDrawW - (numPills - 1) * gap) / numPills)
   var actualW = numPills * pillW + (numPills - 1) * gap
@@ -26,18 +26,18 @@ function render(ctx, d) {
     var energy = isPlaying ? (resampled[i] || 0) : 0.0
     var kick = (i >= 2 && i <= 12) ? (beatDrop * 0.22) : 0.0
 
-    var pillH = Math.max(pillW, ((shapeVal * 0.38) + (energy * 0.64) + kick) * (h * 0.86))
+    var pillH = Math.max(pillW, ((shapeVal * 0.38) + (energy * 0.64) + kick) * (height * 0.86))
     var py = midY - (pillH / 2.0)
     var r = pillW / 2.0
 
-    var grad = ctx.createLinearGradient(0, py, 0, py + pillH)
-    grad.addColorStop(0, H.rgba(d.foreground, 0.98))
-    grad.addColorStop(0.25, H.mixColor(d.accent, d.foreground, 0.35, 0.95))
-    grad.addColorStop(1, H.rgba(d.accent, 0.88))
-    ctx.fillStyle = grad
+    var gradient = canvas.createLinearGradient(0, py, 0, py + pillH)
+    gradient.addColorStop(0, VisualizerHelpers.rgba(frameData.foreground, 0.98))
+    gradient.addColorStop(0.25, VisualizerHelpers.mixColor(frameData.accent, frameData.foreground, 0.35, 0.95))
+    gradient.addColorStop(1, VisualizerHelpers.rgba(frameData.accent, 0.88))
+    canvas.fillStyle = gradient
 
-    ctx.beginPath()
-    H.roundedRect(ctx, px, py, pillW, pillH, r)
-    ctx.fill()
+    canvas.beginPath()
+    VisualizerHelpers.roundedRect(canvas, px, py, pillW, pillH, r)
+    canvas.fill()
   }
 }

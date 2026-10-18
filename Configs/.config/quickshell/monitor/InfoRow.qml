@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
 Item {
   id: infoRow
@@ -18,11 +18,11 @@ Item {
     id: infoLabel
     anchors.left: parent.left
     anchors.verticalCenter: parent.verticalCenter
-    width: Math.min(parent.width * 0.34, Style.space(105))
+    width: Math.min(parent.width * 0.34, Commons.Style.space(105))
     text: infoRow.label
     color: infoRow.controller.dim
     font.family: infoRow.controller.fontFamily
-    font.pixelSize: Style.font.bodySmall
+    font.pixelSize: Commons.Style.font.bodySmall
     elide: Text.ElideRight
   }
 
@@ -30,13 +30,13 @@ Item {
     textFormat: Text.PlainText
     id: infoValue
     anchors.left: infoLabel.right
-    anchors.leftMargin: Style.space(8)
+    anchors.leftMargin: Commons.Style.space(8)
     anchors.right: parent.right
     anchors.verticalCenter: parent.verticalCenter
     text: infoRow.value
-    color: infoRow.valueAccent ? Color.accent : infoRow.controller.foreground
+    color: infoRow.valueAccent ? Commons.Color.accent : infoRow.controller.foreground
     font.family: infoRow.controller.fontFamily
-    font.pixelSize: Style.font.bodySmall
+    font.pixelSize: Commons.Style.font.bodySmall
     font.bold: infoRow.valueAccent || infoRow.valueBold
     elide: Text.ElideRight
   }

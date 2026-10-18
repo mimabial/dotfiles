@@ -18,6 +18,9 @@ So `Super + Shift + 2` sends a window to workspace 2 and takes you along;
 left; `Super + Shift + Left` moves the window left. Once you have the pattern you
 can guess most of the config.
 
+Alt with arrows resizes; the numbered app shortcuts below also have specific
+Alt actions.
+
 Function keys, XF86 media keys, mouse buttons and `Print` are a hardware class and
 sit outside the convention.
 
@@ -42,22 +45,27 @@ xkbcli how-to-type --layout fr '<char>'
 | key | action |
 | --- | ------ |
 | `Super + Return` | terminal, in the current directory |
-| `Super + Shift + Return` | the alternate terminal, same directory |
-| `Super + E` | summon the file manager |
-| `Super + Shift + E` | move window to the file manager's special workspace |
-| `Super + Alt + E` | file manager in the current directory |
-| `Super + B` | summon the browser |
-| `Super + Shift + B` | move window to the browser's special workspace |
-| `Super + Alt + B` | private browser |
+| `Super + Shift + Return` | tmux session, in the current directory |
+| `Super + 6` | summon Signal |
+| `Super + 9` | summon the file manager |
+| `Super + Shift + 9` | move window to the file manager's special workspace |
+| `Super + Alt + 9` | file manager in the current directory |
+| `Super + 8` | summon the browser |
+| `Super + Shift + 8` | move window to the browser's special workspace |
+| `Super + Alt + 8` | private browser |
 | `Super + C` | editor |
 | `Super + D` | application finder |
 | `Super + Shift + D` | window switcher |
+| `Super + Ctrl + D` | focus the dock |
 | `Super + A` | Exposé window overview |
+| `Super + Shift + A` | Exposé windows of the current app |
 | `Super + Space` | the menu |
+| `Super + Shift + Space` | Start menu |
+| `Ctrl + F2` | focus the menu bar |
+| `Super + S` | Spotlight search |
 | `Super + V` | clipboard history |
-| `Super + Shift + V` | clipboard history, in rofi |
 
-`Super + E` and `Super + B` *summon* rather than launch. Each gets its own named
+`Super + 6`, `9`, and `8` *summon* Signal, the file manager, and the browser. Each gets its own named
 special workspace, so the first press spawns it there and reveals it, the next
 press focuses it wherever it is — pulling it back out of a hidden workspace if
 it went there — and pressing again while it is showing hides it. One key, and the
@@ -69,13 +77,16 @@ app is either in front of you or out of the way.
 | --- | ------ |
 | `Super + Arrow` | focus; in niri, Up/Down switches workspaces |
 | `Super + Shift + Arrow` | move window |
+| `Super + Alt + Arrow` | resize window |
 | `Alt + Tab` | cycle to next window and reveal it |
 | `Alt + Shift + Tab` | cycle backward |
 | `Super + Q` | close the focused panel or window |
 | `Super + Shift + Q` | force kill |
 | `Alt + F4` | close |
 | `Super + F` | fullscreen |
+| `Super + Shift + F` | floating |
 | `Super + M` | maximize |
+| `Super + Shift + M` | minimize to the dock |
 | `Super + P` | pin |
 | `Super + G` | group |
 | `Super + Z` / `Super + LMB` | move window |
@@ -87,9 +98,9 @@ app is either in front of you or out of the way.
 
 | key | action |
 | --- | ------ |
-| `Super + 1`…`0` | go to workspace 1–10 |
-| `Super + Shift + <n>` | move window there and follow |
-| `Super + Alt + <n>` | move window there, stay put |
+| `Super + 1`…`5`, `Super + 7` | go to that numbered workspace |
+| `Super + Shift + 1`…`7` | move window to that numbered workspace and follow |
+| `Super + Alt + 1`…`7` | move window there, stay put |
 | `Super + Tab` | next existing workspace |
 | `Super + Shift + Tab` | previous existing workspace |
 | `Super + scroll` | walk existing workspaces |
@@ -98,9 +109,13 @@ app is either in front of you or out of the way.
 | `Super + Ctrl + Down` | nearest empty workspace |
 | `Super + Shift + Ctrl + Left/Right` | take the window with you |
 | `Super + Shift + Alt + Arrow` | move the workspace to another monitor |
-| `Super + S` | toggle scratchpad |
-| `Super + Shift + S` | move window to scratchpad |
-| `Super + Alt + S` | move it there silently |
+| `Super + 0` | toggle scratchpad |
+| `Super + Shift + 0` | move window to scratchpad |
+| `Super + Alt + 0` | move it there silently |
+
+The remaining number keys summon apps as listed above. In window mode
+(`Super + W`), bare `1`…`0` always reach regular workspaces 1–10; Shift sends
+the window there and follows, and Alt sends it without following.
 
 ## Hardware
 
@@ -113,11 +128,15 @@ app is either in front of you or out of the way.
 | `XF86MonBrightness…` | screen brightness |
 | `XF86Audio Play/Next/Prev` | media transport |
 | `Print` | screenshot all monitors |
+| `Shift + Print` | smart screenshot |
+| `XF86TouchpadToggle` | toggle touchpads |
 | `Super + K` | switch keyboard layout |
 
 `Super + K` and the audio and media keys are marked `locked`, so they keep
 working on the lock screen. That is also why they cannot move into a submap — you
-cannot reach a submap leader while locked. Closing the lid locks and suspends.
+cannot reach a submap leader while locked. Closing the lid uses the action
+configured in the power popup; without automatic power management it locks and
+suspends.
 
 ## The eight submaps
 
@@ -136,31 +155,36 @@ leave the submap. `Escape` leaves without acting.
 | `Super + H` | hints — live cheatsheets |
 | `Super + U` | utilities — display, audio, toggles |
 
-Every action leaves its submap first. The four theming arrows are the exception:
-they stay active and repeat so you can quickly audition themes and wallpapers.
+One-shot actions leave their submap first. Theming arrows, window layout cycling,
+and utility zoom stay active and repeat; Escape leaves them.
 
 ### Theming — `Super + T`
 
 `T` select theme · `Shift + T` reapply · `Left`/`Right` previous/next theme ·
 `W` select wallpaper · `Up`/`Down` previous/next wallpaper · `M` color mode ·
 `B` select bar layout · `C` / `Shift + C` cycle bar layout · `Shift + B` reload
-the bar · `H` toggle the bar · `F` select font · `Shift + F` install a Nerd Font ·
-`L` launcher style · `R` rofi theme · `V` look and feel
+the bar · `H` toggle the bar · `Shift + H` floating bar · `F` select font ·
+`Shift + F` install a Nerd Font · `L` launcher style · `R` rofi theme ·
+`V` Settings · `A` animation preset · `S` shader · `K` lock layout
 
 ### Open — `Super + O`
 
-`F` file finder · `V` Bitwarden · `S` Signal · `G` Gimp · `E` Elisa ·
-`M` Mullvad VPN · `Q` qBittorrent · `L` game launcher · `Shift + L` Lutris
+`F` file finder · `B` bookmarks · `T` tray · `V` Bitwarden vault ·
+`Shift + V` Bitwarden desktop · `S` Signal · `W` LibreOffice Writer ·
+`G` Gimp · `E` Elisa · `M` Mullvad VPN · `Q` qBittorrent · `L` game launcher ·
+`Shift + L` Lutris
 
 ### Terminal — `Super + J`
 
 `T` dropdown terminal · `A` Agent Hub · `H` htop · `N` nvtop · `U` dua ·
-`R` rmpc · `V` wiremix · `B` bluetui · `W` impala · `D` display layout
+`R` rmpc · `V` wiremix · `B` bluetui · `W` impala · `D` display layout ·
+`C` calculator · `L` Settings
 
 ### Capture — `Super + R`
 
-`S` smart screenshot · `A` all monitors · `R` toggle screen recording ·
-`W` toggle webcam recording · `X` stop recording · `C` color picker ·
+`S` smart screenshot · `A` all monitors · `R` toggle focused-monitor recording
+with desktop audio · `W` toggle webcam recording with desktop audio ·
+`X` stop recording · `C` color picker ·
 `O` extract text · `Q` decode a QR code
 
 ### Insert — `Super + I`
@@ -169,18 +193,19 @@ the bar · `H` toggle the bar · `F` select font · `Shift + F` install a Nerd F
 
 ### Hints — `Super + H`
 
-`H` Hyprland · `K` kitty · `T` tmux
+`H` Hyprland · `K` kitty · `T` tmux · `W` focused window details
 
 ### Utilities — `Super + U`
 
 `L` lock the screen · `W` select workflow · `O` audio output · `S` / `Shift + S` cycle monitor scale ·
 `D` toggle the laptop display · `M` toggle mirroring · `N` toggle nightlight ·
-`A` keep awake · `Q` close all windows
+`A` keep awake · `Q` close all windows · `Z` zoom in · `Shift + Z` zoom out
 
 ### Window — `Super + W`
 
 Arrows focus, `Shift + Arrow` moves, `Ctrl + Arrow` resizes.
-`F` float · `M` maximize · `G` group · `P` pin · `T` cycle the global layout.
+`F` float · `M` maximize · `G` group · `P` pin · `T` / `Shift + T` cycle
+the global layout forward/backward · `U` select layout.
 Workspace keys work here too.
 
 Then the per-layout keys, which only fire in the layout they belong to:
@@ -188,7 +213,8 @@ Then the per-layout keys, which only fire in the layout they belong to:
 - **Dwindle** — `S` toggle split, `Shift + S` swap split, `R` rotate,
   `Shift + R` move to root, `D` / `Shift + D` shrink and grow the split
 - **Scrolling** — `H` / `L` previous and next column, `Shift + H` / `Shift + L`
-  swap columns, `E` / `Shift + E` shrink and grow, `X` expand, `I` fit into view,
+  swap columns, `C` / `Shift + C` focus previous and next column,
+  `E` / `Shift + E` shrink and grow, `X` expand, `I` fit into view,
   `B` consume, `Shift + B` expel, `V` promote
 - **Master** — `W` focus master, `Shift + W` swap with master, `A` /
   `Shift + A` add and remove a master, `N` / `Shift + N` focus next and previous,

@@ -1,10 +1,8 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import Quickshell
 import Quickshell.Io
 
-// Replaces the XDG portal's ScreenCast dialog: the target and audio choices
-// are made here, then recording starts through screenrecord.sh's no-portal
-// paths (--smart / --window / --region / --output).
 PopupCard {
     id: root
     popupName: "screenrecord"
@@ -12,6 +10,7 @@ PopupCard {
     contentHeight: recordColumn.implicitHeight + padding * 2
 
     property var report: ({})
+    property bool statusRefreshPending: false
     readonly property bool recording: String(report.class || "") === "recording"
 
     property string target: "smart"
@@ -26,7 +25,10 @@ PopupCard {
         {id: "output", icon: "\u{f0379}", label: "Display", detail: "The whole screen"}
     ]
 
-    function refresh() { if (!statusProc.running) statusProc.running = true }
+    function refresh() {
+        if (statusProcess.running) statusRefreshPending = true
+        else statusProcess.running = true
+    }
     function persist() {
         store.setText(JSON.stringify({
             target: target, desktopAudio: desktopAudio, micAudio: micAudio, webcam: webcam
@@ -44,14 +46,28 @@ PopupCard {
 
     onOpenChanged: if (open) refresh()
 
-    property Process statusProc: Process {
-        command: ["hyprshell", "screenrecord", "--status"]
+    property Process statusProcess: Process {
+        command: ["bash", root.shell.home + "/.local/lib/hypr/capture/screenrecord.sh", "--status"]
+        onRunningChanged: if (!running && root.statusRefreshPending) {
+            root.statusRefreshPending = false
+            root.refresh()
+        }
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             try { root.report = JSON.parse(text) || ({}) }
             catch (error) { root.report = ({}) }
         } }
     }
-    property Timer poll: Timer { interval: 3000; running: root.open; repeat: true; onTriggered: root.refresh() }
+    Connections {
+        target: root.shell
+        function onIndicatorRefreshSerialChanged() {
+            if (root.open && ["all", "screenrecord"].includes(root.shell.indicatorRefreshTarget)) root.refresh()
+        }
+    }
+    Process {
+        command: ["pidwait", "--euid", Quickshell.env("USER"), "--full", "^gpu-screen-recorder($| )"]
+        running: root.open && root.recording
+        onRunningChanged: if (!running && root.open) root.refresh()
+    }
 
     property FileView store: FileView {
         path: root.shell.home + "/.local/state/quickshell/screenrecord.json"

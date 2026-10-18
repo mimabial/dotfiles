@@ -250,15 +250,14 @@ bind(mod, "RIGHT", "[Window Management|Focus] focus right", hl.dsp.focus({ direc
 bind(mod, "UP", "[Window Management|Focus] focus up or previous workspace in niri", niri_or(hl.dsp.focus({ workspace = "r-1" }), hl.dsp.focus({ direction = "up" })))
 bind(mod, "DOWN", "[Window Management|Focus] focus down or next workspace in niri", niri_or(hl.dsp.focus({ workspace = "r+1" }), hl.dsp.focus({ direction = "down" })))
 
-local function cycle_window(options)
-	return function()
-		hl.dispatch(hl.dsp.window.cycle_next(options))
-		hl.dispatch(hl.dsp.window.bring_to_top())
-	end
+bind("ALT", "TAB", "[Window Management|Windows] focus next window", hl.dsp.event("altscape:next"))
+bind("ALT SHIFT", "TAB", "[Window Management|Windows] focus previous window", hl.dsp.event("altscape:prev"))
+for _, modifiers in ipairs({"ALT", "ALT SHIFT"}) do
+    for _, key in ipairs({"ALT_L", "ALT_R"}) do
+        bind(modifiers, key, HIDDEN_MARKER .. "Windows end window cycle " .. modifiers .. " " .. key, hl.dsp.event("altscape:release"), { release = true })
+    end
 end
-
-bind("ALT", "TAB", "[Window Management|Focus] cycle next and reveal", cycle_window())
-bind("ALT SHIFT", "TAB", "[Window Management|Focus] cycle previous and reveal", cycle_window({ next = false }))
+bind(mod .. " ALT SHIFT", "S", "[Launcher|Menus] Alt+Tab settings", hl.dsp.event("altscape:settings"))
 
 local WINDOW_STEP_PX = 30
 local WINDOW_STEPS = {
@@ -782,7 +781,7 @@ submap_leader("capture", mod, "R", function()
 	submap_exec("Q", "[Capture] decode qr code", "hyprshell capture/qr")
 	submap_exec("C", "[Capture] color picker", "pkill -x rofi || hyprshell rofi/color-picker.sh")
 	submap_exec("R", "[Capture] toggle monitor recording", "hyprshell screenrecord --toggle --audio --output")
-	submap_exec("W", "[Capture] toggle webcam recording", "hyprshell screenrecord --toggle --audio --webcam")
+	submap_exec("W", "[Capture] toggle webcam recording", "hyprshell screenrecord --toggle --audio --with-webcam")
 	submap_exec("X", "[Capture] stop recording", "hyprshell screenrecord --quit")
 end)
 

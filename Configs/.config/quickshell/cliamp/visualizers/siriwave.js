@@ -1,102 +1,96 @@
 .pragma library
-.import "helpers.js" as H
+.import "helpers.js" as VisualizerHelpers
 
-function render(ctx, d) {
-  var bands = d.bands || []
-  var w = d.width, h = d.height
-  var isPlaying = d.playing
-  var midY = h / 2.0
+function render(canvas, frameData) {
+  var bands = frameData.bands || []
+  var width = frameData.width, height = frameData.height
+  var isPlaying = frameData.playing
+  var midY = height / 2.0
 
-  var bass = H.bandAvg(bands, 0, 5)
-  var mids = H.bandAvg(bands, 5, 14)
-  var highs = H.bandAvg(bands, 14, 24)
+  var bass = VisualizerHelpers.bandAvg(bands, 0, 5)
+  var mids = VisualizerHelpers.bandAvg(bands, 5, 14)
+  var highs = VisualizerHelpers.bandAvg(bands, 14, 24)
   var totalEnergy = bass * 0.5 + mids * 0.35 + highs * 0.15
-  var beatDrop = d.beatDrop || 0
+  var beatDrop = frameData.beatDrop || 0
 
   if (!isPlaying || totalEnergy < 0.005) {
-    ctx.strokeStyle = H.rgba(d.dim, 0.35)
-    ctx.lineWidth = 1.0
-    ctx.beginPath()
-    ctx.moveTo(0, midY)
-    ctx.lineTo(w, midY)
-    ctx.stroke()
+    canvas.strokeStyle = VisualizerHelpers.rgba(frameData.dim, 0.35)
+    canvas.lineWidth = 1.0
+    canvas.beginPath()
+    canvas.moveTo(0, midY)
+    canvas.lineTo(width, midY)
+    canvas.stroke()
     return
   }
 
-  var maxSafeAmp = h * 0.36
-  var bassAmp = Math.min(maxSafeAmp, (h * 0.08) + (bass * (h * 0.24)) + (beatDrop * (h * 0.08)))
-  var midsAmp = Math.min(maxSafeAmp * 0.9, (h * 0.06) + (mids * (h * 0.22)))
-  var highsAmp = Math.min(maxSafeAmp * 0.8, (h * 0.05) + (highs * (h * 0.20)))
+  var maxSafeAmp = height * 0.36
+  var bassAmp = Math.min(maxSafeAmp, (height * 0.08) + (bass * (height * 0.24)) + (beatDrop * (height * 0.08)))
+  var midsAmp = Math.min(maxSafeAmp * 0.9, (height * 0.06) + (mids * (height * 0.22)))
+  var highsAmp = Math.min(maxSafeAmp * 0.8, (height * 0.05) + (highs * (height * 0.20)))
 
-  // Integrate the phase instead of frame * speed. speed changes with the audio every
-  // paint, and frame never resets, so that product jumps by frame * dspeed -- a rotation
-  // proportional to uptime. Rate is rad/s: the old per-frame value * 23.4 ticks/s.
-  var st = d.state, now = Date.now()
-  if (st.siriPhase === undefined) { st.siriPhase = 0; st.siriLast = now }
-  var dt = Math.min(0.12, Math.max(0.001, (now - st.siriLast) / 1000))
-  st.siriLast = now
-  st.siriPhase += (0.820 + totalEnergy * 0.820) * dt
-  var phase = st.siriPhase
+  var animationState = frameData.state, now = Date.now()
+  if (animationState.siriPhase === undefined) { animationState.siriPhase = 0; animationState.siriLast = now }
+  var elapsedSeconds = Math.min(0.12, Math.max(0.001, (now - animationState.siriLast) / 1000))
+  animationState.siriLast = now
+  animationState.siriPhase += (0.820 + totalEnergy * 0.820) * elapsedSeconds
+  var phase = animationState.siriPhase
 
-  // Apple Global Attenuation Formula: (4 / (4 + x^4))^4 on x in [-2, 2]
   function globalAttenuation(x) {
     var x2 = x * x
     var x4 = x2 * x2
     return Math.pow(4.0 / (4.0 + x4), 4.0)
   }
 
-  // Bass, mids and highs take three adjacent hues from the theme's own palette
-  // (pink / accent / blue) rather than rotations synthesised off the accent.
-  var pal = d.colors || []
+  var palette = frameData.colors || []
   var ribbons = [
-    { from: pal[1] || d.accent, to: d.foreground, mix: 0.10, alpha: 0.55, freq: 1.15, speed: 1.0,  phaseOff: 0.0, amp: bassAmp },
-    { from: d.accent,           to: d.foreground, mix: 0.15, alpha: 0.50, freq: 1.65, speed: -1.2, phaseOff: 1.4, amp: midsAmp },
-    { from: pal[4] || d.dim,    to: d.foreground, mix: 0.10, alpha: 0.45, freq: 2.15, speed: 1.5,  phaseOff: 2.8, amp: highsAmp }
+    { from: palette[1] || frameData.accent, to: frameData.foreground, mix: 0.10, alpha: 0.55, freq: 1.15, speed: 1.0,  phaseOff: 0.0, amp: bassAmp },
+    { from: frameData.accent,           to: frameData.foreground, mix: 0.15, alpha: 0.50, freq: 1.65, speed: -1.2, phaseOff: 1.4, amp: midsAmp },
+    { from: palette[4] || frameData.dim,    to: frameData.foreground, mix: 0.10, alpha: 0.45, freq: 2.15, speed: 1.5,  phaseOff: 2.8, amp: highsAmp }
   ]
 
   for (var c = 0; c < ribbons.length; c++) {
     var rb = ribbons[c]
     var curPhase = phase * rb.speed + rb.phaseOff
 
-    var grad = ctx.createLinearGradient(0, midY - rb.amp, 0, midY + rb.amp * 0.5)
-    grad.addColorStop(0, H.mixColor(rb.from, rb.to, rb.mix, rb.alpha))
-    grad.addColorStop(1, H.mixColor(rb.from, rb.to, rb.mix, 0.02))
+    var gradient = canvas.createLinearGradient(0, midY - rb.amp, 0, midY + rb.amp * 0.5)
+    gradient.addColorStop(0, VisualizerHelpers.mixColor(rb.from, rb.to, rb.mix, rb.alpha))
+    gradient.addColorStop(1, VisualizerHelpers.mixColor(rb.from, rb.to, rb.mix, 0.02))
 
-    ctx.fillStyle = grad
-    ctx.beginPath()
-    ctx.moveTo(0, midY)
+    canvas.fillStyle = gradient
+    canvas.beginPath()
+    canvas.moveTo(0, midY)
 
-    for (var i = 0; i <= w; i += 2) {
-      var xNorm = (i / w) * 4.0 - 2.0 // Domain [-2, 2]
+    for (var i = 0; i <= width; i += 2) {
+      var xNorm = (i / width) * 4.0 - 2.0  
       var att = globalAttenuation(xNorm)
       var disp = Math.sin(xNorm * rb.freq * Math.PI + curPhase) * rb.amp * att
-      ctx.lineTo(i, midY - disp)
+      canvas.lineTo(i, midY - disp)
     }
 
-    for (var j = w; j >= 0; j -= 2) {
-      var xNormB = (j / w) * 4.0 - 2.0
+    for (var j = width; j >= 0; j -= 2) {
+      var xNormB = (j / width) * 4.0 - 2.0
       var attB = globalAttenuation(xNormB)
       var dispB = Math.sin(xNormB * rb.freq * Math.PI + curPhase) * (rb.amp * 0.28) * attB
-      ctx.lineTo(j, midY + dispB)
+      canvas.lineTo(j, midY + dispB)
     }
 
-    ctx.closePath()
-    ctx.fill()
+    canvas.closePath()
+    canvas.fill()
   }
 
-  ctx.strokeStyle = H.rgba(d.foreground, 0.95)
-  ctx.lineWidth = 2.0
-  ctx.beginPath()
+  canvas.strokeStyle = VisualizerHelpers.rgba(frameData.foreground, 0.95)
+  canvas.lineWidth = 2.0
+  canvas.beginPath()
 
-  var crestAmp = Math.min(maxSafeAmp, (h * 0.08) + (totalEnergy * (h * 0.25)) + (beatDrop * (h * 0.06)))
-  for (var k = 0; k <= w; k += 2) {
-    var xk = (k / w) * 4.0 - 2.0
+  var crestAmp = Math.min(maxSafeAmp, (height * 0.08) + (totalEnergy * (height * 0.25)) + (beatDrop * (height * 0.06)))
+  for (var k = 0; k <= width; k += 2) {
+    var xk = (k / width) * 4.0 - 2.0
     var attK = globalAttenuation(xk)
     var yDisp = Math.sin(xk * 1.35 * Math.PI + phase) * crestAmp * attK
     var yPos = midY - yDisp
 
-    if (k === 0) ctx.moveTo(k, yPos)
-    else ctx.lineTo(k, yPos)
+    if (k === 0) canvas.moveTo(k, yPos)
+    else canvas.lineTo(k, yPos)
   }
-  ctx.stroke()
+  canvas.stroke()
 }

@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell.Io
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 import "visualizers/bars.js" as VisBars
@@ -42,11 +42,11 @@ Item {
   required property var controller
 
   width: parent ? parent.width : 0
-  implicitHeight: hud.implicitHeight + Style.space(12)
+  implicitHeight: hud.implicitHeight + Commons.Style.space(12)
 
   property bool lyricsVisible: false
   property var lyricsLines: []
-  property int lyricsCurrentIdx: -1
+  property int currentLyricsIndex: -1
   property string lyricsTrackKey: ""
   property bool lyricsFollowing: true
   property bool lyricsLoading: false
@@ -54,9 +54,9 @@ Item {
 
   property real beatDropPulse: 0.0
   property bool peaksMoving: false
-  property real _bassAvg: 0.0
-  property double _lastDropTime: 0
-  property double _lastBeatTime: 0
+  property real bassAverage: 0.0
+  property double lastBeatDropEpochMs: 0
+  property double lastBeatSampleEpochMs: 0
   readonly property var scrubberShape: makeScrubberShape(root.controller
     ? root.controller.currentUrl + "\0" + root.controller.currentArtist + "\0" + root.controller.currentTrack : "")
 
@@ -71,34 +71,32 @@ Item {
     return values
   }
 
-  // Time constants are in seconds and applied against measured dt, so the detector
-  // behaves the same whether the spectrum arrives at 23 or 47 frames per second.
-  readonly property real _bassTau: 0.263
-  readonly property real _pulseTau: 0.334
+  readonly property real bassSmoothingSeconds: 0.263
+  readonly property real beatPulseDecaySeconds: 0.334
+  readonly property real beatDropMinimumBass: 0.30
+  readonly property real beatDropMinimumRise: 0.15
+  readonly property int beatDropCooldownMs: 260
 
   function updateBeatDrop() {
     var bands = root.controller ? root.controller.visBandsRaw : null
     if (!bands || bands.length < 3 || !root.controller.isPlaying) {
       beatDropPulse = 0.0
-      _lastBeatTime = 0
+      lastBeatSampleEpochMs = 0
       return
     }
     var now = Date.now()
-    var dt = _lastBeatTime > 0 ? Math.min(0.2, (now - _lastBeatTime) / 1000.0) : 0.043
-    _lastBeatTime = now
+    var dt = lastBeatSampleEpochMs > 0 ? Math.min(0.2, (now - lastBeatSampleEpochMs) / 1000.0) : 0.043
+    lastBeatSampleEpochMs = now
 
     var subBass = (bands[0] + bands[1] + bands[2]) / 3.0
-    var avg = _bassAvg + (subBass - _bassAvg) * (1.0 - Math.exp(-dt / _bassTau))
-    _bassAvg = avg
+    var avg = bassAverage + (subBass - bassAverage) * (1.0 - Math.exp(-dt / bassSmoothingSeconds))
+    bassAverage = avg
     var delta = subBass - avg
-    // Tuned against 30s of live capture at 108 BPM: delta 0.15 is what puts the median
-    // inter-onset interval at exactly one beat. subBass is only a quiet-passage gate --
-    // it never binds on loud material, so it sits low to stay useful on quiet tracks.
-    if (subBass > 0.30 && delta > 0.15 && (now - _lastDropTime) > 260) {
+    if (subBass > beatDropMinimumBass && delta > beatDropMinimumRise && (now - lastBeatDropEpochMs) > beatDropCooldownMs) {
       beatDropPulse = 1.0
-      _lastDropTime = now
+      lastBeatDropEpochMs = now
     } else {
-      beatDropPulse = Math.max(0.0, beatDropPulse * Math.exp(-dt / _pulseTau) - 0.47 * dt)
+      beatDropPulse = Math.max(0.0, beatDropPulse * Math.exp(-dt / beatPulseDecaySeconds) - 0.47 * dt)
     }
   }
 
@@ -117,13 +115,13 @@ Item {
 
   function fetchLyrics(refresh) {
     lyricsLines = []
-    lyricsCurrentIdx = -1
+    currentLyricsIndex = -1
     lyricsTrackKey = lyricsKey()
     lyricsFollowing = true
     lyricsLoading = true
-    lyricsProc.running = false
-    lyricsProc.command = ["python3", Qt.resolvedUrl("cliamp_ctl.py").toString().replace("file://", ""), "lyrics", root.controller.currentTrack, root.controller.currentArtist, root.controller.currentUrl].concat(refresh ? ["--refresh"] : [])
-    lyricsProc.running = true
+    lyricsProcess.running = false
+    lyricsProcess.command = ["python3", Qt.resolvedUrl("cliamp_ctl.py").toString().replace("file://", ""), "lyrics", root.controller.currentTrack, root.controller.currentArtist, root.controller.currentUrl].concat(refresh ? ["--refresh"] : [])
+    lyricsProcess.running = true
   }
 
   function parseLyrics(raw) {
@@ -133,7 +131,7 @@ Item {
     }
     var lines = []
     var rawLines = raw.split("\n")
-    var timeRe = /\[(\d{1,3}):(\d{1,2}(?:\.\d+)?)\]/g
+    var timestampPattern = /\[(\d{1,3}):(\d{1,2}(?:\.\d+)?)\]/g
     for (var i = 0; i < rawLines.length; i++) {
       var l = rawLines[i].trim()
       if (!l) continue
@@ -141,12 +139,12 @@ Item {
       var match
       var times = []
       var textStart = 0
-      timeRe.lastIndex = 0
-      while ((match = timeRe.exec(l)) !== null) {
+      timestampPattern.lastIndex = 0
+      while ((match = timestampPattern.exec(l)) !== null) {
         var min = parseInt(match[1])
         var sec = parseFloat(match[2])
         times.push(min * 60 + sec)
-        textStart = timeRe.lastIndex
+        textStart = timestampPattern.lastIndex
       }
       var lineText = l.slice(textStart).trim()
       if (times.length > 0) {
@@ -171,10 +169,10 @@ Item {
       if (lyricsLines[middle].time <= time) low = middle + 1
       else high = middle
     }
-    lyricsCurrentIdx = low > 0 && lyricsLines[low - 1].time >= 0 ? low - 1 : -1
+    currentLyricsIndex = low > 0 && lyricsLines[low - 1].time >= 0 ? low - 1 : -1
   }
 
-  readonly property var _renderers: ({
+  readonly property var visualizerRenderers: ({
     "bars": VisBars.render, "bricks": VisBricks.render,
     "classic_led": VisClassicLED.render,
     "peaks": VisPeaks.render, "stereo": VisStereo.render,
@@ -193,13 +191,11 @@ Item {
     "yinyang": VisYinYang.render
   })
 
-  // Mirrors the Go drivers' OnEnter: a renderer that must rebuild its state on every
-  // visit exports onEnter(state) and is listed here.
-  readonly property var _enterHooks: ({ "mosaic": VisMosaic.onEnter, "peaks": VisPeaks.onEnter,
+  readonly property var visualizerEntryHooks: ({ "mosaic": VisMosaic.onEnter, "peaks": VisPeaks.onEnter,
                                       "classic_led": VisClassicLED.onEnter,
                                       "red_sector": VisRedSector.onEnter, "yinyang": VisYinYang.onEnter })
 
-  readonly property var _modeLabels: ({
+  readonly property var visualizerLabels: ({
     "bars": "Bars", "bricks": "Bricks", "classic_led": "Classic LED",
     "peaks": "Peaks", "stereo": "Stereo", "correlation": "Correlation", "ascii": "Ascii",
     "wave": "Wave", "sine": "Sine Wave", "mirror": "Mirror",
@@ -215,16 +211,11 @@ Item {
     "cyber_tunnel": "3D Cyber Tunnel", "red_sector": "Red Sector", "yinyang": "Yin Yang"
   })
 
-  // dim is foreground at 55% alpha, and helpers.js reads RGB only. Flatten it against
-  // the surface here or dim and foreground reach the visualizers as the same colour,
-  // which collapses specColor's ramp into a palindrome.
-  readonly property color visDim: root.controller ? Qt.rgba(
+  readonly property color opaqueVisualizerDim: root.controller ? Qt.rgba(
     root.controller.surface.r + (root.controller.dim.r - root.controller.surface.r) * root.controller.dim.a,
     root.controller.surface.g + (root.controller.dim.g - root.controller.surface.g) * root.controller.dim.a,
     root.controller.surface.b + (root.controller.dim.b - root.controller.surface.b) * root.controller.dim.a, 1.0) : "#808080"
 
-  // The theme's own 16 terminal colours. Real designer-picked hues beat anything
-  // synthesised from the accent, and they retrack the palette like every other role.
   readonly property var visColors: {
     if (!root.controller) return []
     var out = []
@@ -232,8 +223,6 @@ Item {
     return out
   }
 
-  // The nebula composites as one flattened layer: its blobs stack inside nebulaCanvas,
-  // then this scales the finished result. Applied per blob it would not bound the overlaps.
   readonly property real nebulaOpacity: 0.95
 
   function requestPaint() {
@@ -248,53 +237,53 @@ Item {
       rawBands: root.controller.visBandsRaw, bandsStereo: root.controller.visBandsStereo,
       wave: root.controller.visWave, waveStereo: root.controller.visWaveStereo, stereo: root.controller.visStereo,
       analysis: root.controller.visAnalysis, frame: root.controller.visFrame,
-      playing: root.controller.isPlaying, width: w, height: h, S: 2,
+      playing: root.controller.isPlaying, width: w, height: h, S: 2, fontSize: Commons.Style.font.caption,
       count: count, barW: Math.floor((w - (count - 1) * gap) / count), gap: gap,
-      accent: root.controller.dynamicAccent, foreground: root.controller.foreground, success: root.controller.success, dim: root.visDim,
+      accent: root.controller.dynamicAccent, foreground: root.controller.foreground, success: root.controller.success, dim: root.opaqueVisualizerDim,
       surface: root.controller.surface, colors: root.visColors,
       beatDrop: root.beatDropPulse, backgroundPulse: root.controller.visBackgroundPulse,
       progress: root.controller.progress,
-      state: root.controller._visState
+      state: root.controller.visualizerState
     }
   }
 
   BorderSurface {
     id: hud
     width: parent.width
-    implicitHeight: col.implicitHeight + Style.space(12)
-    radius: Style.cornerRadius
+    implicitHeight: col.implicitHeight + Commons.Style.space(12)
+    radius: Commons.Style.cornerRadius
     color: "transparent"
-    borderSpec: Border.none()
+    borderSpec: Commons.Border.none()
 
     Column {
       id: col
-      width: parent.width - Style.space(16)
+      width: parent.width - Commons.Style.space(16)
       anchors.centerIn: parent
-      spacing: Style.space(6)
+      spacing: Commons.Style.space(6)
 
       Item {
         width: parent.width
-        implicitHeight: Style.space(18)
+        implicitHeight: Commons.Style.space(18)
 
         Row {
           anchors.left: parent.left
           anchors.verticalCenter: parent.verticalCenter
-          spacing: Style.space(8)
+          spacing: Commons.Style.space(8)
 
           Row {
-            spacing: Style.space(4)
+            spacing: Commons.Style.space(4)
             anchors.verticalCenter: parent.verticalCenter
 
             Rectangle {
-              width: Style.space(6); height: Style.space(6); radius: width / 2
+              width: Commons.Style.space(6); height: Commons.Style.space(6); radius: width / 2
               color: root.controller.isPlaying ? root.controller.success : (root.controller.isRunning ? root.controller.warning : root.controller.urgent)
               anchors.verticalCenter: parent.verticalCenter
             }
 
             Text {
               text: "CLIAMP"
-              color: Color.accent
-              font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption
+              color: Commons.Color.accent
+              font.family: root.controller.fontFamily; font.pixelSize: Commons.Style.font.caption
               font.bold: true; font.letterSpacing: 1
             }
           }
@@ -303,7 +292,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: root.controller.timeCurrent + " / " + root.controller.timeTotal
             color: root.controller.isPlaying ? root.controller.success : root.controller.dim
-            font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption; font.bold: true
+            font.family: root.controller.fontFamily; font.pixelSize: Commons.Style.font.caption; font.bold: true
           }
         }
 
@@ -311,8 +300,8 @@ Item {
           id: lyricsIcon
           anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
           text: "\uf10d"
-          color: root.lyricsVisible ? Color.accent : (lyricsMouse.containsMouse ? Color.accent : root.controller.dim)
-          font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption
+          color: root.lyricsVisible ? Commons.Color.accent : (lyricsMouse.containsMouse ? Commons.Color.accent : root.controller.dim)
+          font.family: root.controller.fontFamily; font.pixelSize: Commons.Style.font.caption
           MouseArea {
             id: lyricsMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
             onClicked: root.toggleLyrics()
@@ -320,19 +309,19 @@ Item {
           Text {
             visible: lyricsMouse.containsMouse; z: 9999
             anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.top; anchors.bottomMargin: Style.space(2)
-            text: "Lyrics"; color: Color.accent
-            font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption * 0.7
+            anchors.bottom: parent.top; anchors.bottomMargin: Commons.Style.space(2)
+            text: "Lyrics"; color: Commons.Color.accent
+            font.family: root.controller.fontFamily; font.pixelSize: Commons.Style.font.caption * 0.7
           }
         }
 
         Text {
           id: speedIcon
-          anchors.right: lyricsIcon.left; anchors.rightMargin: Style.space(6)
+          anchors.right: lyricsIcon.left; anchors.rightMargin: Commons.Style.space(6)
           anchors.verticalCenter: parent.verticalCenter
           text: root.controller.playbackSpeed !== 1.0 ? root.controller.playbackSpeed + "x" : "\uf04e"
-          color: root.controller.playbackSpeed !== 1.0 ? Color.accent : (speedMouse.containsMouse ? Color.accent : root.controller.dim)
-          font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption * 0.8; font.bold: root.controller.playbackSpeed !== 1.0
+          color: root.controller.playbackSpeed !== 1.0 ? Commons.Color.accent : (speedMouse.containsMouse ? Commons.Color.accent : root.controller.dim)
+          font.family: root.controller.fontFamily; font.pixelSize: Commons.Style.font.caption * 0.8; font.bold: root.controller.playbackSpeed !== 1.0
           MouseArea {
             id: speedMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
             onClicked: root.controller.cycleSpeed()
@@ -340,19 +329,19 @@ Item {
           Text {
             visible: speedMouse.containsMouse; z: 9999
             anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.top; anchors.bottomMargin: Style.space(2)
-            text: "Speed"; color: Color.accent
-            font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption * 0.7
+            anchors.bottom: parent.top; anchors.bottomMargin: Commons.Style.space(2)
+            text: "Speed"; color: Commons.Color.accent
+            font.family: root.controller.fontFamily; font.pixelSize: Commons.Style.font.caption * 0.7
           }
         }
 
         Text {
           id: eqIcon
-          anchors.right: speedIcon.left; anchors.rightMargin: Style.space(6)
+          anchors.right: speedIcon.left; anchors.rightMargin: Commons.Style.space(6)
           anchors.verticalCenter: parent.verticalCenter
           text: (root.controller.eqText && root.controller.eqText !== "Flat") ? root.controller.eqText : "EQ"
-          color: (root.controller.eqText && root.controller.eqText !== "Flat") || root.controller.eqPickerOpen ? Color.accent : (eqMouse.containsMouse ? Color.accent : root.controller.dim)
-          font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption * 0.8; font.bold: (root.controller.eqText && root.controller.eqText !== "Flat") || root.controller.eqPickerOpen
+          color: (root.controller.eqText && root.controller.eqText !== "Flat") || root.controller.eqPickerOpen ? Commons.Color.accent : (eqMouse.containsMouse ? Commons.Color.accent : root.controller.dim)
+          font.family: root.controller.fontFamily; font.pixelSize: Commons.Style.font.caption * 0.8; font.bold: (root.controller.eqText && root.controller.eqText !== "Flat") || root.controller.eqPickerOpen
           MouseArea {
             id: eqMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
             onClicked: root.controller.showPane(root.controller.eqPickerOpen ? "" : "eq")
@@ -360,22 +349,22 @@ Item {
           Text {
             visible: eqMouse.containsMouse; z: 9999
             anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.top; anchors.bottomMargin: Style.space(2)
-            text: "EQ: " + (root.controller.eqText || "Flat"); color: Color.accent
-            font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption * 0.7
+            anchors.bottom: parent.top; anchors.bottomMargin: Commons.Style.space(2)
+            text: "EQ: " + (root.controller.eqText || "Flat"); color: Commons.Color.accent
+            font.family: root.controller.fontFamily; font.pixelSize: Commons.Style.font.caption * 0.7
           }
         }
       }
 
       Row {
         width: parent.width
-        spacing: Style.space(8)
+        spacing: Commons.Style.space(8)
 
         BorderSurface {
-          width: Style.space(36); height: Style.space(36)
-          radius: Style.cornerRadius
+          width: Commons.Style.space(36); height: Commons.Style.space(36)
+          radius: Commons.Style.cornerRadius
           color: root.controller.surface
-          borderSpec: Border.flat(root.controller.isPlaying ? root.controller.shell.alpha(root.controller.dynamicAccent, 0.5) : root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.25), 1)
+          borderSpec: Commons.Border.flat(root.controller.isPlaying ? root.controller.shell.alpha(root.controller.dynamicAccent, 0.5) : root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.25), 1)
           anchors.verticalCenter: parent.verticalCenter
 
           Image {
@@ -391,14 +380,14 @@ Item {
             visible: root.controller.artPath === ""
             text: "\uf001"
             color: root.controller.dynamicAccent
-            font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption
+            font.family: root.controller.fontFamily; font.pixelSize: Commons.Style.font.caption
           }
         }
 
         Column {
-          width: parent.width - Style.space(46)
+          width: parent.width - Commons.Style.space(46)
           anchors.verticalCenter: parent.verticalCenter
-          spacing: Style.space(2)
+          spacing: Commons.Style.space(2)
 
           Item {
             id: titleClip
@@ -414,10 +403,10 @@ Item {
             Item {
               id: titleScroller
               height: parent.height
-              width: titleText1.implicitWidth + (titleText1.implicitWidth > titleClip.width ? Style.space(40) + titleText2.implicitWidth : 0)
+              width: titleText1.implicitWidth + (titleText1.implicitWidth > titleClip.width ? Commons.Style.space(40) + titleText2.implicitWidth : 0)
 
               readonly property bool needsScroll: titleText1.implicitWidth > titleClip.width
-              readonly property real loopDistance: titleText1.implicitWidth + Style.space(40)
+              readonly property real loopDistance: titleText1.implicitWidth + Commons.Style.space(40)
 
               NumberAnimation on x {
                 running: titleScroller.needsScroll && root.controller.isPlaying
@@ -428,14 +417,14 @@ Item {
               }
 
               Row {
-                spacing: Style.space(40)
+                spacing: Commons.Style.space(40)
 
                 Text {
                   id: titleText1
                   textFormat: Text.PlainText
                   text: titleClip.fullTitle
                   color: root.controller.isPlaying ? root.controller.dynamicAccent : root.controller.foreground
-                  font.family: root.controller.fontFamily; font.pixelSize: Style.font.bodySmall
+                  font.family: root.controller.fontFamily; font.pixelSize: Commons.Style.font.bodySmall
                   font.bold: true
                 }
 
@@ -445,7 +434,7 @@ Item {
                   textFormat: Text.PlainText
                   text: titleClip.fullTitle
                   color: root.controller.isPlaying ? root.controller.dynamicAccent : root.controller.foreground
-                  font.family: root.controller.fontFamily; font.pixelSize: Style.font.bodySmall
+                  font.family: root.controller.fontFamily; font.pixelSize: Commons.Style.font.bodySmall
                   font.bold: true
                 }
               }
@@ -463,10 +452,10 @@ Item {
             Item {
               id: artistScroller
               height: parent.height
-              width: artistText1.implicitWidth + (artistText1.implicitWidth > artistClip.width ? Style.space(40) + artistText2.implicitWidth : 0)
+              width: artistText1.implicitWidth + (artistText1.implicitWidth > artistClip.width ? Commons.Style.space(40) + artistText2.implicitWidth : 0)
 
               readonly property bool needsScroll: artistText1.implicitWidth > artistClip.width
-              readonly property real loopDistance: artistText1.implicitWidth + Style.space(40)
+              readonly property real loopDistance: artistText1.implicitWidth + Commons.Style.space(40)
 
               NumberAnimation on x {
                 running: artistScroller.needsScroll && root.controller.isPlaying
@@ -477,14 +466,14 @@ Item {
               }
 
               Row {
-                spacing: Style.space(40)
+                spacing: Commons.Style.space(40)
 
                 Text {
                   id: artistText1
                   textFormat: Text.PlainText
                   text: root.controller ? root.controller.currentArtist : ""
                   color: root.controller.dim
-                  font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption
+                  font.family: root.controller.fontFamily; font.pixelSize: Commons.Style.font.caption
                 }
 
                 Text {
@@ -493,7 +482,7 @@ Item {
                   textFormat: Text.PlainText
                   text: root.controller ? root.controller.currentArtist : ""
                   color: root.controller.dim
-                  font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption
+                  font.family: root.controller.fontFamily; font.pixelSize: Commons.Style.font.caption
                 }
               }
 
@@ -505,16 +494,16 @@ Item {
 
       BorderSurface {
         width: parent.width
-        height: Style.space(52)
-        radius: Style.cornerRadius
+        height: Commons.Style.space(52)
+        radius: Commons.Style.cornerRadius
         clip: true
         color: root.controller.surface
-        borderSpec: Border.flat(root.controller.isPlaying ? root.controller.shell.alpha(root.controller.dynamicAccent, 0.7) : root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.3), 1)
+        borderSpec: Commons.Border.flat(root.controller.isPlaying ? root.controller.shell.alpha(root.controller.dynamicAccent, 0.7) : root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.3), 1)
 
         Canvas {
           id: nebulaCanvas
           anchors.fill: parent
-          anchors.margins: Style.space(3)
+          anchors.margins: Commons.Style.space(3)
           z: 3
           visible: root.controller.visBackground
           opacity: root.nebulaOpacity
@@ -531,7 +520,7 @@ Item {
         Canvas {
           id: visCanvas
           anchors.fill: parent
-          anchors.margins: Style.space(3)
+          anchors.margins: Commons.Style.space(3)
           z: 4
 
           Connections {
@@ -543,8 +532,8 @@ Item {
             function onSurfaceChanged() { root.requestPaint() }
             function onVisBackgroundPulseChanged() { root.requestPaint() }
             function onVisModeChanged() {
-              var hook = root._enterHooks[root.controller.visMode]
-              if (hook) hook(root.controller._visState)
+              var hook = root.visualizerEntryHooks[root.controller.visMode]
+              if (hook) hook(root.controller.visualizerState)
               visCanvas.requestPaint()
             }
           }
@@ -556,9 +545,9 @@ Item {
             ctx.clearRect(0, 0, w, h)
 
             var payload = root.visPayload(w, h)
-            var fn = root._renderers[root.controller.visMode]
+            var fn = root.visualizerRenderers[root.controller.visMode]
             if (fn) fn(ctx, payload)
-            root.peaksMoving = root.controller.visMode === "peaks" && VisPeaks.animating(root.controller._visState)
+            root.peaksMoving = root.controller.visMode === "peaks" && VisPeaks.animating(root.controller.visualizerState)
           }
 
           Timer {
@@ -585,19 +574,19 @@ Item {
 
         Rectangle {
           anchors.right: parent.right; anchors.bottom: parent.bottom
-          anchors.margins: Style.space(3)
-          width: modeText.implicitWidth + Style.space(10); height: Style.space(16)
-          radius: Style.cornerRadius
-          color: root.controller.visPickerOpen ? Color.menu.selectedBackground
+          anchors.margins: Commons.Style.space(3)
+          width: modeText.implicitWidth + Commons.Style.space(10); height: Commons.Style.space(16)
+          radius: Commons.Style.cornerRadius
+          color: root.controller.visPickerOpen ? Commons.Color.menu.selectedBackground
             : (modeMouse.containsMouse ? root.controller.shell.hoverFill(1) : root.controller.shell.alpha(root.controller.surface, 0.75))
 
           Text {
             id: modeText
             anchors.centerIn: parent
-            text: (root._modeLabels[root.controller.visMode] || root.controller.visMode) + " ▾"
-            color: root.controller.visPickerOpen ? Color.menu.selectedText
-              : (modeMouse.containsMouse ? root.controller.shell.role("hvr_fg", Color.accent) : root.controller.shell.alpha(root.controller.foreground, 0.8))
-            font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption * 0.75; font.bold: true
+            text: (root.visualizerLabels[root.controller.visMode] || root.controller.visMode) + " ▾"
+            color: root.controller.visPickerOpen ? Commons.Color.menu.selectedText
+              : (modeMouse.containsMouse ? root.controller.shell.role("hvr_fg", Commons.Color.accent) : root.controller.shell.alpha(root.controller.foreground, 0.8))
+            font.family: root.controller.fontFamily; font.pixelSize: Commons.Style.font.caption * 0.75; font.bold: true
           }
 
           MouseArea {
@@ -610,13 +599,13 @@ Item {
       Item {
         id: seekBar
         width: parent.width
-        implicitHeight: Style.space(18)
+        implicitHeight: Commons.Style.space(18)
         property int hoverSecs: -1
 
         Canvas {
           id: waveScrubberCanvas
           anchors.fill: parent
-          anchors.margins: Style.space(1)
+          anchors.margins: Commons.Style.space(1)
           property var shape: root.scrubberShape
           property bool randomShape: !!(root.controller && root.controller.randomizeProgressShape)
           onShapeChanged: requestPaint()
@@ -679,14 +668,14 @@ Item {
             var m = Math.floor(s / 60), sec = s % 60
             return m + ":" + (sec < 10 ? "0" + sec : sec)
           }
-          color: root.controller.foreground; font.family: root.controller.fontFamily; font.pixelSize: Style.font.caption; font.bold: true
+          color: root.controller.foreground; font.family: root.controller.fontFamily; font.pixelSize: Commons.Style.font.caption; font.bold: true
           x: Math.max(0, Math.min(parent.width - width, seekMouse.mouseX - width / 2))
           y: -height - 4
 
           Rectangle {
             z: -1; anchors.fill: parent; anchors.margins: -2
-            radius: Style.space(2); color: root.controller.surface
-            border.color: Color.accent; border.width: 1
+            radius: Commons.Style.space(2); color: root.controller.surface
+            border.color: Commons.Color.accent; border.width: 1
           }
         }
 
@@ -708,7 +697,7 @@ Item {
   }
 
   Process {
-    id: lyricsProc
+    id: lyricsProcess
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {

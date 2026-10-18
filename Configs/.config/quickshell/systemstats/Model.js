@@ -1,7 +1,5 @@
 .pragma library
-
-// Pure helpers shared by the service, bar readouts, and panel pages.
-// No state lives here — everything is a function of its arguments.
+.import "../Units.js" as Units
 
 var MODULES = [
   { id: "cpu",     icon: "󰻠", short: "CPU", label: "CPU",     page: "CpuPage.qml",     graph: true,  ring: true },
@@ -134,6 +132,10 @@ var PANEL_SECTIONS = {
 }
 
 var PANEL_CHOICES = {}
+
+var DETAIL_NONE = 0
+var DETAIL_TOP_PROCESSES = 1
+var DETAIL_ALL_PROCESSES = 2
 
 var REFRESH_STOPS_SECONDS = [0.1, 0.2, 0.5, 1, 2, 5, 10]
 var MIN_REFRESH_SECONDS = 0.1
@@ -399,26 +401,8 @@ function num(v, fallback) {
   return isFinite(n) ? n : (fallback === undefined ? 0 : fallback)
 }
 
-var BYTE_UNITS = ["B", "KB", "MB", "GB", "TB", "PB"]
-
-function bytesParts(bytes) {
-  var scaled = Number(bytes)
-  if (!isFinite(scaled) || scaled < 0) scaled = 0
-  var unitIndex = 0
-  while (scaled >= 1024 && unitIndex < BYTE_UNITS.length - 1) { scaled /= 1024; unitIndex++ }
-  var text
-  if (unitIndex <= 1 || scaled >= 100) text = String(Math.round(scaled))
-  else text = scaled.toFixed(1)
-  return { value: text, unit: BYTE_UNITS[unitIndex] }
-}
-
-function bytesText(bytes) {
-  var parts = bytesParts(bytes)
-  return parts.value + " " + parts.unit
-}
-
 function rateParts(bytesPerSecond) {
-  var parts = bytesParts(bytesPerSecond)
+  var parts = Units.bytesParts(bytesPerSecond)
   return { value: parts.value, unit: parts.unit + "/s" }
 }
 
@@ -426,13 +410,13 @@ function rateParts(bytesPerSecond) {
 function compactRate(bytesPerSecond) {
   var rate = Number(bytesPerSecond)
   if (!isFinite(rate) || rate < 1024 / 2) return "0"
-  var parts = bytesParts(rate)
+  var parts = Units.bytesParts(rate)
   return parts.value + parts.unit.charAt(0)
 }
 
 // "1.2 / 24 GB" — drop the unit from the first number when both share it.
 function pairText(first, second) {
-  var firstParts = bytesParts(first), secondParts = bytesParts(second)
+  var firstParts = Units.bytesParts(first), secondParts = Units.bytesParts(second)
   if (firstParts.unit === secondParts.unit) return firstParts.value + " / " + secondParts.value + " " + secondParts.unit
   return firstParts.value + " " + firstParts.unit + " / " + secondParts.value + " " + secondParts.unit
 }
@@ -466,17 +450,6 @@ function freqText(mhz) {
   var megahertz = Number(mhz)
   if (!isFinite(megahertz) || megahertz <= 0) return ""
   return megahertz >= 1000 ? (megahertz / 1000).toFixed(2) + " GHz" : Math.round(megahertz) + " MHz"
-}
-
-function uptimeText(seconds) {
-  var total = Math.max(0, Math.floor(Number(seconds) || 0))
-  var days = Math.floor(total / 86400)
-  var hours = Math.floor((total % 86400) / 3600)
-  var minutes = Math.floor((total % 3600) / 60)
-  if (days > 0) return days + "d " + hours + "h"
-  if (hours > 0) return hours + "h " + minutes + "m"
-  if (minutes > 0) return minutes + "m"
-  return "<1m"
 }
 
 function clockText(minutes) {

@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
-import qs.Commons
+import qs.Commons as Commons
 import "Ui"
 import "Model.js" as Model
 
@@ -17,7 +17,7 @@ Panel {
   property bool serviceActionPending: false
   property bool serviceTargetManaged: false
   property string serviceAction: ""
-  property bool connectionGrace: false
+  property bool connectionPending: false
   readonly property bool backendConnected: backendRuntime.socket.connected
   property var document: Model.emptyDocument()
   property bool documentReady: false
@@ -69,7 +69,7 @@ Panel {
   property string pendingBrightnessConnector: ""
   readonly property var textSizes: [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
   property int pendingTextSize: -1
-  readonly property int effectiveTextSize: pendingTextSize < 0 ? Style.textSize : pendingTextSize
+  readonly property int effectiveTextSize: pendingTextSize < 0 ? Commons.Style.textSize : pendingTextSize
   readonly property int textSizeIndex: Math.max(0, root.textSizes.indexOf(effectiveTextSize))
 
   readonly property var monitorSummaries: document && document.monitors instanceof Array ? document.monitors : []
@@ -140,8 +140,6 @@ Panel {
   readonly property bool daemonOutdated: root.backendConnected
     && root.documentReady
     && Model.daemonNeedsRestart(root.backendVersion, root.document ? root.document.version : "")
-  // Every actionable row in one list, so their cursor positions cannot drift
-  // apart from what is on screen.
   readonly property var actionRows: {
     var rows = []
     if (root.serviceBroken)
@@ -164,10 +162,12 @@ Panel {
   readonly property bool serviceBroken: serviceStateKnown
     && serviceEnabled
     && !backendConnected
-    && !connectionGrace
+    && !connectionPending
     && !serviceActionPending
   readonly property string runtimeDir: String(Quickshell.env("XDG_RUNTIME_DIR") || "")
   readonly property string socketPath: root.runtimeDir + "/hyprmoncfgd.sock"
+  readonly property string monitorProfileHelper: root.shell.home + "/.local/lib/hypr/system/monitor-profile.sh"
+  readonly property string monitorBrightnessHelper: root.shell.home + "/.local/lib/hypr/system/monitor-brightness.sh"
   readonly property var previewCoordinator: {
     return root.shell ? root.shell.monitorPreviewCoordinator : null
   }
@@ -175,9 +175,7 @@ Panel {
   readonly property color dim: Qt.darker(foreground, 1.5)
   readonly property color urgent: shell.urgent
   readonly property real unmanagedOpacity: 0.45
-  // NumberField is backed by a QML int. Keep only that technical boundary;
-  // workspace planning itself has no product-level maximum.
-  readonly property int workspaceValueMaximum: 2147483647
+  readonly property int qmlIntegerMaximum: 2147483647
   readonly property string fontFamily: shell.fontFamily
   readonly property var selectedOutput: Model.outputByKey(root.draftProfile, root.selectedOutputKey)
   readonly property var selectedOutputMetadata: Model.editorMetadata(root.editorDocument.displays, root.selectedOutputKey)
@@ -202,7 +200,11 @@ Panel {
   readonly property int manualWorkspaceTargetCount: Model.manualWorkspaceTargetKeys(root.draftProfile).length
   readonly property string workspaceStrategy: String(((root.draftProfile || {}).workspaces || {}).strategy || "manual")
   readonly property bool workspaceGroupSizeApplicable: root.workspaceStrategy === "sequential"
-  readonly property int workspaceListKeyboardStart: root.workspaceGroupSizeApplicable ? 4 : 3
+  readonly property int workspaceEnabledRow: 0
+  readonly property int workspaceStrategyRow: 1
+  readonly property int workspaceCountRow: 2
+  readonly property int workspaceGroupSizeRow: 3
+  readonly property int workspaceListKeyboardStart: root.workspaceGroupSizeApplicable ? root.workspaceGroupSizeRow + 1 : root.workspaceGroupSizeRow
   readonly property string selectedWorkspaceDisplayKey: {
     var index = root.workspaceKeyboardIndex - root.workspaceListKeyboardStart
     if (index < 0) return ""
@@ -264,17 +266,10 @@ Panel {
   onBrightnessConnectorChanged: {
     root.brightnessAvailable = false
     root.brightnessLoading = root.brightnessConnector !== ""
-    if (root.opened) brightnessRuntime.selectionTimer.restart()
+    if (root.opened) root.refreshBrightness()
   }
 
-  function open() {
-    root.showPopup()
-    root.cursorActive = false
-    root.cursorIndex = 0
-    root.checkBackend()
-    root.checkServiceState()
-    if (root.backendConnected) root.requestEditorState()
-  }
+  function open() { root.showPopup() }
 
   function openFromHotkey() { root.open() }
   function close() {
@@ -316,20 +311,14 @@ Panel {
     root.brightnessReadQueued = false
     root.brightnessReadConnector = connector
     if (!root.brightnessAvailable) root.brightnessLoading = true
-    brightnessRuntime.readProcess.command = ["hyprshell", "system/monitor-brightness", "--monitor", connector]
+    brightnessRuntime.readProcess.command = [root.monitorBrightnessHelper, "--monitor", connector]
     brightnessRuntime.readProcess.running = true
-  }
-
-  function previewBrightness(value) {
-    if (root.brightnessConnector === "" || !root.brightnessAvailable) return
-    root.brightnessPercent = Model.clampBrightness(value)
-    brightnessRuntime.setDebounce.restart()
   }
 
   function setTextSize(index) {
     var bounded = Math.max(0, Math.min(root.textSizes.length - 1, Math.round(index)))
     var size = root.textSizes[bounded]
-    root.pendingTextSize = size === Style.textSize ? -1 : size
+    root.pendingTextSize = size === Commons.Style.textSize ? -1 : size
     shell.run(["hyprshell", "system/text-size", String(size)])
   }
 
@@ -337,21 +326,21 @@ Panel {
     if (connector === "") return
     root.brightnessSetConnector = connector
     brightnessRuntime.setProcess.command = [
-      "hyprshell", "system/monitor-brightness", "--no-osd", "--monitor", connector, percent + "%"
+      root.monitorBrightnessHelper, "--no-osd", "--monitor", connector, percent + "%"
     ]
     brightnessRuntime.setProcess.running = true
   }
 
   function setBrightness(value) {
-    brightnessRuntime.setDebounce.stop()
     var connector = root.brightnessConnector
     if (connector === "" || !root.brightnessAvailable) return
     var percent = Model.clampBrightness(value)
+    if (percent === root.brightnessPercent) return
     root.brightnessPercent = percent
     root.pendingBrightnessPercent = percent
     root.pendingBrightnessConnector = connector
 
-    if (brightnessRuntime.setProcess.running) {
+    if (brightnessRuntime.readProcess.running || brightnessRuntime.setProcess.running) {
       root.brightnessSetQueued = true
       return
     }
@@ -361,43 +350,47 @@ Panel {
   }
 
   function checkBackend() {
-    if (backendRuntime.whichProcess.running) return
-    backendRuntime.whichProcess.command = [
-      "sh", "-c", "command -v hyprmoncfg >/dev/null 2>&1 && hyprmoncfg version"
-    ]
-    backendRuntime.whichProcess.running = true
+    if (backendRuntime.versionProcess.running) return
+    backendRuntime.versionProcess.command = ["hyprmoncfg", "version"]
+    backendRuntime.versionProcess.running = true
   }
 
   function checkServiceState() {
-    if (backendRuntime.serviceProcess.running || backendRuntime.enabledProcess.running
-        || backendRuntime.activeProcess.running) return
-    backendRuntime.enabledProcess.command = ["hyprshell", "system/monitor-profile", "service-enabled"]
-    backendRuntime.enabledProcess.running = true
+    if (backendRuntime.serviceActionProcess.running || backendRuntime.managementCheckProcess.running
+        || backendRuntime.daemonCheckProcess.running) {
+      backendRuntime.serviceCheckQueued = true
+      return
+    }
+    backendRuntime.serviceCheckQueued = false
+    backendRuntime.managementCheckProcess.command = [root.monitorProfileHelper, "service-enabled"]
+    backendRuntime.managementCheckProcess.running = true
   }
 
   function setManaged(enabled) {
-    if (backendRuntime.serviceProcess.running || root.serviceActionPending) return
+    if (backendRuntime.serviceActionProcess.running || root.serviceActionPending) return
     root.lastError = ""
     root.serviceActionPending = true
     root.serviceTargetManaged = enabled === true
     root.serviceAction = enabled === true ? "enable" : "disable"
-    backendRuntime.serviceProcess.command = ["hyprshell", "system/monitor-profile", enabled === true ? "manage" : "unmanage"]
-    backendRuntime.serviceProcess.running = true
+    backendRuntime.serviceActionProcess.command = [root.monitorProfileHelper, enabled === true ? "manage" : "unmanage"]
+    backendRuntime.serviceActionProcess.running = true
   }
 
   function restartService() {
-    if (backendRuntime.serviceProcess.running || root.serviceActionPending) return
+    if (backendRuntime.serviceActionProcess.running || root.serviceActionPending) return
     root.lastError = ""
     root.serviceActionPending = true
     root.serviceTargetManaged = true
     root.serviceAction = "restart"
-    backendRuntime.serviceProcess.command = ["hyprshell", "system/monitor-profile", "restart"]
-    backendRuntime.serviceProcess.running = true
+    backendRuntime.serviceActionProcess.command = [root.monitorProfileHelper, "restart"]
+    backendRuntime.serviceActionProcess.running = true
   }
 
   function connectBackend() {
-    if (backendRuntime.socket.connected || root.socketPath === "/hyprmoncfgd.sock") return
+    if (backendRuntime.socket.connected || root.connectionPending || root.socketPath === "/hyprmoncfgd.sock") return
     if (!root.serviceEnabled && !root.serviceActive && !(root.serviceActionPending && root.serviceTargetManaged)) return
+    if (root.previewCoordinator && !root.previewCoordinator.connected) return
+    root.connectionPending = true
     backendRuntime.socket.connected = true
   }
 
@@ -492,7 +485,7 @@ Panel {
 
   function setWorkspaceCount(value) {
     var settings = Model.clone((root.draftProfile || {}).workspaces || {}) || {}
-    var maximum = Math.floor(root.bounded(Number(value || 1), 1, root.workspaceValueMaximum))
+    var maximum = Math.floor(root.bounded(Number(value || 1), 1, root.qmlIntegerMaximum))
     if (String(settings.strategy || "") === "manual") {
       root.editWorkspaces({
         max_workspaces: maximum,
@@ -734,18 +727,18 @@ Panel {
     if (!root.managedChecked || root.editPending || root.previewTransaction !== "") return
     var settings = Model.clone((root.draftProfile || {}).workspaces || {}) || {}
     var index = root.workspaceKeyboardIndex
-    if (index === 0) root.editWorkspaces({ enabled: !settings.enabled })
-    else if (index === 1) root.changeWorkspaceStrategy(
+    if (index === root.workspaceEnabledRow) root.editWorkspaces({ enabled: !settings.enabled })
+    else if (index === root.workspaceStrategyRow) root.changeWorkspaceStrategy(
       Model.cycleOptionValue(["manual", "sequential", "interleave"],
         String(settings.strategy || "manual"), delta))
-    else if (index === 2) root.setWorkspaceCount(
+    else if (index === root.workspaceCountRow) root.setWorkspaceCount(
       (String(settings.strategy || "") === "manual"
         ? Model.manualWorkspaceCount(settings)
         : Number(settings.max_workspaces || Model.DEFAULT_MAX_WORKSPACES)) + delta)
-    else if (index === 3 && root.workspaceGroupSizeApplicable) {
+    else if (index === root.workspaceGroupSizeRow && root.workspaceGroupSizeApplicable) {
       root.editWorkspaces({
         group_size: Math.floor(root.bounded(Number(settings.group_size || Model.DEFAULT_GROUP_SIZE) + delta,
-          1, root.workspaceValueMaximum))
+          1, root.qmlIntegerMaximum))
       })
     }
     else {
@@ -1030,7 +1023,7 @@ Panel {
     root.previewDeadline = ""
     root.previewSeconds = 0
     root.previewPending = false
-    previewTimer.stop()
+    previewCountdownClock.stop()
     if (reload) root.requestEditorState()
   }
 
@@ -1051,9 +1044,15 @@ Panel {
       if (root.serviceTargetManaged === !unmanaged) {
         root.serviceActionPending = false
         root.serviceAction = ""
-        backendRuntime.serviceConfirmationTimer.stop()
+        backendRuntime.serviceActionDeadline.stop()
       }
     }
+  }
+
+  function ensurePreviewVisible() {
+    if (root.previewTransaction !== "" && !root.opened
+        && (!root.previewCoordinator || !root.previewCoordinator.connected || root.previewCoordinator.yieldingToPanel))
+      root.showPopup()
   }
 
   function syncDaemonPreview(pending) {
@@ -1069,11 +1068,8 @@ Panel {
         root.selectedSavedProfileName = root.profileChoice
       }
       root.updatePreviewClock()
-      previewTimer.start()
-      if ((!root.previewCoordinator || !root.previewCoordinator.connected
-          || root.previewCoordinator.yieldingToPanel)
-          && !root.opened && !previewRecoveryTimer.running)
-        previewRecoveryTimer.start()
+      previewCountdownClock.start()
+      root.ensurePreviewVisible()
       return
     }
     if (root.previewTransaction !== "" && !root.previewPending) root.clearPreview(false)
@@ -1132,7 +1128,7 @@ Panel {
       root.previewDeadline = String(transaction.deadline || "")
       root.previewPending = false
       root.updatePreviewClock()
-      previewTimer.start()
+      previewCountdownClock.start()
     } else if (method === "commit" || method === "revert") {
       root.clearPreview(true)
     } else if (method === "set_profile_auto") {
@@ -1169,8 +1165,6 @@ Panel {
   }
 
   Component.onCompleted: {
-    Style.shell = root.shell
-    Color.shell = root.shell
     root.checkBackend()
   }
   onActivePageChanged: {
@@ -1180,7 +1174,8 @@ Panel {
 
   Connections {
     target: root.previewCoordinator
-    ignoreUnknownSignals: true
+    function onConnectedChanged() { root.ensurePreviewVisible() }
+    function onYieldingToPanelChanged() { root.ensurePreviewVisible() }
     function onRequestFinished(success, message) {
       root.previewPending = false
       if (!success && String(message || "") !== "") root.lastError = String(message)
@@ -1188,9 +1183,9 @@ Panel {
   }
 
   Connections {
-    target: Style
+    target: Commons.Style
     function onTextSizeChanged() {
-      if (Style.textSize === root.pendingTextSize) root.pendingTextSize = -1
+      if (Commons.Style.textSize === root.pendingTextSize) root.pendingTextSize = -1
     }
   }
 
@@ -1200,14 +1195,12 @@ Panel {
       root.cursorActive = false
       root.keyboardLayoutPane = "canvas"
       root.keyboardInspectorField = "enabled"
-      root.workspaceKeyboardIndex = 0
+      root.workspaceKeyboardIndex = root.workspaceEnabledRow
       root.checkBackend()
-      root.checkServiceState()
       if (root.backendConnected) root.requestEditorState()
-      brightnessRuntime.selectionTimer.restart()
-    } else {
-      brightnessRuntime.setDebounce.stop()
+      root.refreshBrightness()
     }
+    root.ensurePreviewVisible()
   }
 
   DisplayBackend { id: backendRuntime; controller: root }
@@ -1216,29 +1209,10 @@ Panel {
 
 
   Timer {
-    id: previewTimer
+    id: previewCountdownClock
     interval: 250
     repeat: true
     onTriggered: root.updatePreviewClock()
-  }
-
-  // A preview may outlive its popup after outputs change; keep its confirmation visible.
-  Timer {
-    id: previewRecoveryTimer
-    property int attempts: 0
-    readonly property int maxAttempts: 20
-    interval: 150
-    repeat: true
-    onRunningChanged: if (running) attempts = 0
-    onTriggered: {
-      attempts++
-      if (root.previewTransaction === "" || root.opened) {
-        stop()
-        return
-      }
-      root.showPopup()
-      if (attempts >= maxAttempts) stop()
-    }
   }
 
   DisplayView { id: displayView; controller: root }

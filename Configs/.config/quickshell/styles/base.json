@@ -18,32 +18,40 @@
     "margin": [0.0, 0.0, 0.0, 0.0],
     "padding": [0.0, 6.0, 0.0, 0.0]
   },
+  "altscape": { "symbol": { "󰕰": "actions/view-grid" } },
   "agents": {
-    "color": ["fg", 1.0]
+    "color": ["fg", 1.0],
+    "symbol": "apps/org.gnome.Robots",
+    "badges": {
+      "󱚞": { "text": "!", "color": ["warning", 1.0] },
+      "󱚢": { "text": "×", "color": ["error", 1.0] }
+    }
   },
-
   "caffeine": {
-    "color": ["fg", 0.5]
+    "color": ["fg", 0.5],
+    "symbol": {
+      "󰅶": "status/caffeine-cup-full",
+      "󰎆": "devices/audio-headphones",
+      "󰊴": "devices/input-gaming",
+      "󰊓": "actions/view-fullscreen",
+      "󰛊": "status/caffeine-cup-empty"
+    }
   },
-
   "menu": {
     "fontWeight": 700,
     "color": ["alt_fg", 1.0]
   },
-
   "submap": {
-    "fontWeight": 700
+    "fontWeight": 700,
+    "symbol": "devices/input-keyboard"
   },
-
   "updates": {
-    "color": ["fg", 0.5]
+    "color": ["fg", 0.5],
+    "symbol": "actions/view-refresh"
   },
-
   "weather": {
     "iconColor": ["fg", 1.0],
-    "hover": { "iconColor": ["hvr_fg", 1.0] },
-    "iconPadRight": 5.0,
-    "valuePadLeft": 5.0
+    "hover": { "iconColor": ["hvr_fg", 1.0] }
   },
   "weather.minmax": {
     "color": ["fg", 0.5],
@@ -60,39 +68,199 @@
   "weather.rain": { "color": ["fg", 0.5] },
   "weather.wind": { "color": ["fg", 0.5] },
   "weather.humidity": { "color": ["fg", 0.5] },
-
   "workflows": {
-    "backgroundColor": ["bg", 0.1]
+    "backgroundColor": ["bg", 0.1],
+    "symbol": {
+      "󰘮": "actions/view-grid",
+      "": "actions/view-dual",
+      "󰕭": "actions/view-column",
+      "󰐨": "actions/view-presentation",
+      "󰀵": "apps/preferences-desktop-wallpaper",
+      "": "actions/view-layout",
+      "󰽏": "actions/view-layout",
+      "": "devices/input-gaming",
+      "": "status/power-profile-power-saver"
+    }
   },
-
   "volume.headphone": {
     "fontSize": 12.0
   },
   "microphone": {
-    "fontWeight": 700
+    "fontWeight": 700,
+    "symbol": "status/microphone-sensitivity-high"
   },
   "microphone.muted": {
-    "fontWeight": 700
+    "fontWeight": 700,
+    "symbol": "status/microphone-sensitivity-muted"
   },
-
-  "wallpaper": { "badgeColor": "accent" },
+  "wallpaper": { "badgeColor": "accent", "symbol": "apps/preferences-desktop-wallpaper" },
   "bluetooth, tasks, notifications, removable, microphone": {
-    "badgeColor": ["accent", 0.5],
+    "badgeColor": ["accent", 1.0],
     "badgeSize": 7.0
   },
   "bluetooth.off": {
-    "padding": [0.0, -2.0, 0.0, 2.0]
+    "padding": [0.0, -2.0, 0.0, 2.0],
+    "symbol": "status/bluetooth-disabled"
   },
-
   "tray": {
     "backgroundColor": ["alt_bg", 0.1],
     "iconSize": 13,
     "margin": [3, 6, 3, 6],
-    "padding": [0, 6, 0, 6]
+    "padding": [0, 6, 0, 6],
+    "iconColor": ["fg", 1.0]
   },
   "tray.chevron": {
     "fontWeight": 700,
     "color": ["fg", 0.5],
-    "hover": { "color": ["hvr_fg", 1.0] }
+    "hover": { "color": ["hvr_fg", 1.0] },
+    "symbol": { "": "actions/pan-down", "": "actions/pan-up" }
+  },
+  "vpn": {
+    "symbol": {
+      "󰳌": "status/network-vpn",
+      "󱆣": "status/network-vpn-acquiring",
+      "󱦛": "status/network-vpn-disconnected",
+      "󰻍": "status/network-error",
+      "󰒙": "status/network-offline",
+      "󰩠": "status/dialog-error"
+    }
+  },
+  "wifi": { "symbol": "status/network-wireless-connected" },
+  "systemstats.cpu": { "symbol": "devices/cpu" },
+  "systemstats.gpu": { "symbol": "devices/gpu" },
+  "systemstats.memory": { "symbol": "devices/media-memory" },
+  "systemstats.network": { "symbol": "devices/network-wired" },
+  "systemstats.disks": { "symbol": "devices/drive-harddisk" },
+  "volume": { "symbol": "status/audio-volume-high" },
+  "volume.muted": { "symbol": "status/audio-volume-muted" },
+  "display": { "symbol": "status/display-brightness" },
+  "bluetooth": { "symbol": "status/bluetooth-active" },
+  "bluetooth.on": { "symbol": "status/bluetooth-disconnected" },
+  "powerprofile": { "symbol": "status/power-profile-balanced" },
+  "powerprofile.performance": { "symbol": "status/power-profile-performance" },
+  "powerprofile.power-saver": { "symbol": "status/power-profile-power-saver" },
+  "tasks": { "symbol": "apps/task-list" },
+  "printers": {
+    "symbol": {
+      "󱞆": "devices/printer",
+      "󱊖": "status/printer-printing",
+      "󰐬": "status/printer-error"
+    }
+  },
+  "powerbutton": { "symbol": "actions/system-shutdown" },
+  "screenshot": { "symbol": "devices/camera-photo" },
+  "webcam": { "symbol": "devices/camera-web" },
+  "terminal": { "symbol": "apps/utilities-terminal" },
+  "converter": { "symbol": "apps/accessories-calculator" },
+  "sudoku": { "symbol": "apps/sudoku-app" },
+  "colorpicker": { "symbol": "actions/color-picker" },
+  "colormode": { "symbol": "actions/color-palette" },
+  "hyprsunset": { "symbol": { "󱩌": "status/night-light", "󱩍": "status/night-light-disabled" } },
+  "privacy": { "symbol": { "󱒃": "status/screen-shared", "󰍬": "devices/camera-video" } },
+  "removable": {
+    "symbol": {
+      "󱊟": "devices/drive-harddisk-usb",
+      "󰑹": "devices/media-memory-sd",
+      "󰋊": "devices/drive-harddisk",
+      "󰦧": "devices/phone",
+      "󰄀": "devices/camera-photo",
+      "󰀨": "status/dialog-warning"
+    }
+  },
+  "bitwarden": {
+    "symbol": {
+      "󰟵": "actions/object-unlocked",
+      "󱍝": "actions/object-locked",
+      "󰘎": "status/security-low"
+    }
+  },
+  "window-layout": {
+    "symbol": {
+      "󰕴": "actions/view-grid",
+      "󱂩": "actions/view-sidebar",
+      "󰮳": "actions/view-column",
+      "󰁌": "actions/view-fullscreen"
+    }
+  },
+  "barlayout-button": {
+    "symbol": {
+      "": "actions/view-top-pane",
+      "": "actions/view-bottom-pane",
+      "": "actions/view-layout"
+    }
+  },
+  "github": {
+    "symbol": "apps/github-desktop",
+    "badges": {
+      "": { "text": "×", "color": ["error", 1.0] },
+      "": { "text": "!", "color": ["warning", 1.0] },
+      "": { "text": "!", "color": ["warning", 1.0] },
+      "": { "text": "•", "color": ["accent", 1.0] }
+    }
+  },
+  "notifications": {
+    "symbol": {
+      "󰍡": "status/notification",
+      "󰍩": "status/notification",
+      "󱋲": "status/notification",
+      "󰍦": "status/notification",
+      "󱜺": "status/notification",
+      "󰍢": "status/notification",
+      "󱧌": "status/notification",
+      "󱖩": "status/notification",
+      "󰛱": "status/notification",
+      "󰍤": "status/notification",
+      "󱧎": "status/notification",
+      "󰍥": "status/notifications-disabled",
+      "󰍪": "status/notifications-disabled",
+      "󱋳": "status/notifications-disabled",
+      "󱅰": "status/notifications-disabled",
+      "󱜻": "status/notifications-disabled",
+      "󰨄": "status/notifications-disabled",
+      "󱧍": "status/notifications-disabled",
+      "󱖪": "status/notifications-disabled",
+      "󱅲": "status/notifications-disabled",
+      "󱅬": "status/notifications-disabled",
+      "󱧏": "status/notifications-disabled"
+    }
+  },
+  "systemstats.sensors": {
+    "symbol": {
+      "󰻠": "devices/cpu",
+      "󰢮": "devices/gpu",
+      "󰔏": "status/temperature",
+      "󰈐": "devices/fan"
+    }
+  },
+  "systemstats.battery": {
+    "symbol": {
+      "󰂎": "status/battery-level-0",
+      "󰁺": "status/battery-level-10",
+      "󰁻": "status/battery-level-20",
+      "󰁼": "status/battery-level-30",
+      "󰁽": "status/battery-level-40",
+      "󰁾": "status/battery-level-50",
+      "󰁿": "status/battery-level-60",
+      "󰂀": "status/battery-level-70",
+      "󰂁": "status/battery-level-80",
+      "󰂂": "status/battery-level-90",
+      "󰁹": "status/battery-level-100",
+      "󰂄": "status/battery-good-charging"
+    }
+  },
+  "bluetooth.card": {
+    "cardPadding": 10,
+    "badgeSize": 34,
+    "hiddenOpacity": 0.55,
+    "eyeIdleOpacity": 0.4,
+    "cardFill": ["fg", 0.04],
+    "cardHoverFill": ["fg", 0.07],
+    "cardBorder": ["fg", 0.08],
+    "badgeFill": ["fg", 0.08]
+  },
+  "bluetooth.card.connected": {
+    "cardFill": ["accent", 0.09],
+    "cardHoverFill": ["accent", 0.14],
+    "cardBorder": ["accent", 0.35]
   }
 }

@@ -1,5 +1,6 @@
 pragma Singleton
 import QtQuick
+import "." as Commons
 
 QtObject {
     function widths(value) {
@@ -21,7 +22,7 @@ QtObject {
     function controlSpec(state, foreground, accent, urgent) {
         const focused = ["focus", "focused", "selected"].includes(state)
         const color = focused ? (accent || foreground)
-                              : Color.alpha(foreground || Color.foreground, 0.4)
+                              : Commons.Color.alpha(foreground || Commons.Color.foreground, 0.4)
         return flat(color, 1)
     }
 

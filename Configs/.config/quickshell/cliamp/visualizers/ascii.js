@@ -1,11 +1,9 @@
-// Port of cliamp vis_ascii.go.
 .pragma library
-.import "helpers.js" as H
+.import "helpers.js" as VisualizerHelpers
 
 var BAR_W = 1
 var BAR_GAP = 1
 
-// shadeBlock: fractional fill within a row, quartered.
 function shadeBlock(level, rowBottom, rowTop) {
   if (level >= rowTop) return "█"
   if (level > rowBottom) {
@@ -17,37 +15,37 @@ function shadeBlock(level, rowBottom, rowTop) {
   return ""
 }
 
-function render(ctx, d) {
-  var w = d.width, h = d.height
+function render(canvas, frameData) {
+  var width = frameData.width, height = frameData.height
 
   var charW = 6
   var charH = 10
-  var numCols = Math.floor(w / charW)
-  var numRows = Math.floor(h / charH)
+  var numCols = Math.floor(width / charW)
+  var numRows = Math.floor(height / charH)
   if (numCols < 1 || numRows < 1) return
 
   var activeCols = Math.max(1, Math.floor((numCols + BAR_GAP) / (BAR_W + BAR_GAP)))
-  var cols = H.resampleBandsLinear(d.bands, activeCols)
-  var tiers = H.playerTiers(d)
+  var cols = VisualizerHelpers.resampleBandsLinear(frameData.bands, activeCols)
+  var tiers = VisualizerHelpers.playerTiers(frameData)
   var stepPx = charW * (BAR_W + BAR_GAP)
 
-  ctx.save()
-  ctx.font = "bold 10px monospace"
-  ctx.textAlign = "center"
-  ctx.textBaseline = "middle"
+  canvas.save()
+  canvas.font = "bold 10px monospace"
+  canvas.textAlign = "center"
+  canvas.textBaseline = "middle"
 
   for (var row = 0; row < numRows; row++) {
     var rowBottom = (numRows - 1 - row) / numRows
     var rowTop = (numRows - row) / numRows
     var cy = row * charH + charH / 2
-    ctx.fillStyle = tiers[H.specTag(rowBottom)]
+    canvas.fillStyle = tiers[VisualizerHelpers.specTag(rowBottom)]
 
     for (var c = 0; c < activeCols; c++) {
       var glyph = shadeBlock(cols[c] || 0, rowBottom, rowTop)
       if (glyph === "") continue
-      ctx.fillText(glyph, c * stepPx + charW / 2, cy)
+      canvas.fillText(glyph, c * stepPx + charW / 2, cy)
     }
   }
 
-  ctx.restore()
+  canvas.restore()
 }

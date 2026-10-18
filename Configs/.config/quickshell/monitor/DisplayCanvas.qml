@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 import "Ui"
 import "Model.js" as Model
 
@@ -20,23 +20,23 @@ BorderSurface {
   property bool detailed: true
   property bool framed: true
   property bool markDisconnected: false
-  property color foreground: Color.foreground
+  property color foreground: Commons.Color.foreground
   property color dim: Qt.darker(foreground, 1.5)
-  property color accent: Color.accent
-  property string fontFamily: Style.font.family
+  property color accent: Commons.Color.accent
+  property string fontFamily: Commons.Style.font.family
 
   signal outputSelected(string key)
   signal outputMoved(string key, int x, int y, int snapDistance)
 
   readonly property var displays: Model.profileLayoutDisplays(profile, editorDisplays)
   readonly property var bounds: Model.layoutBounds(displays)
-  readonly property var metrics: Model.layoutMetrics(bounds, canvas.width, canvas.height, Style.space(8))
+  readonly property var metrics: Model.layoutMetrics(bounds, canvas.width, canvas.height, Commons.Style.space(8))
   readonly property string hiddenDisplays: Model.hiddenProfileDisplays(profile)
 
-  implicitHeight: Style.space(205)
+  implicitHeight: Commons.Style.space(205)
   color: framed ? Qt.rgba(foreground.r, foreground.g, foreground.b, 0.025) : "transparent"
-  borderSpec: framed ? Border.controlSpec("normal", foreground, accent) : Border.none()
-  radius: framed ? Style.cornerRadius : 0
+  borderSpec: framed ? Commons.Border.controlSpec("normal", foreground, accent) : Commons.Border.none()
+  radius: framed ? Commons.Style.cornerRadius : 0
 
   Text {
     textFormat: Text.PlainText
@@ -45,13 +45,13 @@ BorderSurface {
     anchors.left: parent.left
     anchors.right: parent.right
     anchors.top: parent.top
-    anchors.leftMargin: Style.space(10)
-    anchors.rightMargin: Style.space(10)
-    anchors.topMargin: Style.space(7)
+    anchors.leftMargin: Commons.Style.space(10)
+    anchors.rightMargin: Commons.Style.space(10)
+    anchors.topMargin: Commons.Style.space(7)
     text: root.hiddenDisplays
     color: root.dim
     font.family: root.fontFamily
-    font.pixelSize: Style.font.caption
+    font.pixelSize: Commons.Style.font.caption
     elide: Text.ElideRight
   }
 
@@ -61,8 +61,8 @@ BorderSurface {
     anchors.right: parent.right
     anchors.top: hiddenLabel.visible ? hiddenLabel.bottom : parent.top
     anchors.bottom: parent.bottom
-    anchors.margins: Style.space(8)
-    anchors.topMargin: hiddenLabel.visible ? Style.space(5) : Style.space(8)
+    anchors.margins: Commons.Style.space(8)
+    anchors.topMargin: hiddenLabel.visible ? Commons.Style.space(5) : Commons.Style.space(8)
 
     Repeater {
       model: 8
@@ -92,35 +92,35 @@ BorderSurface {
       Rectangle {
         id: card
         required property var modelData
-        readonly property var previewRect: Model.layoutRect(modelData, root.bounds, canvas.width, canvas.height, Style.space(8))
+        readonly property var previewRect: Model.layoutRect(modelData, root.bounds, canvas.width, canvas.height, Commons.Style.space(8))
         property real dragOffsetX: 0
         property real dragOffsetY: 0
         readonly property bool selected: String(modelData.key || "") === root.selectedKey
         readonly property string workspaceText: Model.workspaceText(root.workspacePlan, modelData.key)
         readonly property bool disconnected: root.markDisconnected && modelData.connected === false
-        readonly property int fullDetailHeight: Style.space(workspaceText !== ""
+        readonly property int fullDetailHeight: Commons.Style.space(workspaceText !== ""
           ? (disconnected ? 110 : 98)
           : (disconnected ? 98 : 86))
-        readonly property bool compact: width < Style.space(155) || height < fullDetailHeight
-        readonly property bool hasModelRoom: root.detailed && height >= Style.space(56)
+        readonly property bool compact: width < Commons.Style.space(155) || height < fullDetailHeight
+        readonly property bool hasModelRoom: root.detailed && height >= Commons.Style.space(56)
 
         x: previewRect.x + dragOffsetX
         y: previewRect.y + dragOffsetY
         width: previewRect.width
         height: previewRect.height
-        radius: Math.min(Style.cornerRadius, Style.space(5))
+        radius: Math.min(Commons.Style.cornerRadius, Commons.Style.space(5))
         color: selected
-          ? Style.selectedFillFor(root.foreground, root.accent)
+          ? Commons.Style.selectedFillFor(root.foreground, root.accent)
           : Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.045)
-        border.width: selected ? Math.max(1, Style.normalBorderWidth) : 1
+        border.width: selected ? Math.max(1, Commons.Style.normalBorderWidth) : 1
         border.color: selected ? root.accent : Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.55)
 
         Behavior on color { ColorAnimation { duration: 100 } }
 
         Column {
           anchors.centerIn: parent
-          width: Math.max(0, parent.width - Style.space(10))
-          spacing: Style.space(1)
+          width: Math.max(0, parent.width - Commons.Style.space(10))
+          spacing: Commons.Style.space(1)
 
           Text {
             textFormat: Text.PlainText
@@ -128,7 +128,7 @@ BorderSurface {
             text: String(card.modelData.name || "Display")
             color: root.foreground
             font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
+            font.pixelSize: Commons.Style.font.caption
             font.bold: true
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
@@ -141,7 +141,7 @@ BorderSurface {
             text: Model.displayModelLabel(card.modelData, false)
             color: root.dim
             font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
+            font.pixelSize: Commons.Style.font.caption
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
           }
@@ -153,7 +153,7 @@ BorderSurface {
             text: "not connected"
             color: root.dim
             font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
+            font.pixelSize: Commons.Style.font.caption
             font.italic: true
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
@@ -166,7 +166,7 @@ BorderSurface {
             text: String(card.modelData.mode || "")
             color: root.dim
             font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
+            font.pixelSize: Commons.Style.font.caption
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
           }
@@ -178,7 +178,7 @@ BorderSurface {
             text: Model.displayScaleLayoutLabel(card.modelData)
             color: root.dim
             font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
+            font.pixelSize: Commons.Style.font.caption
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
           }
@@ -190,7 +190,7 @@ BorderSurface {
             text: "pos " + Number(card.modelData.x || 0) + "," + Number(card.modelData.y || 0)
             color: root.dim
             font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
+            font.pixelSize: Commons.Style.font.caption
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
           }
@@ -204,7 +204,7 @@ BorderSurface {
               ? Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.78)
               : root.accent
             font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
+            font.pixelSize: Commons.Style.font.caption
             font.bold: root.emphasis !== "layout"
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
@@ -241,7 +241,7 @@ BorderSurface {
             var deltaX = point.x - pointerStartX
             var deltaY = point.y - pointerStartY
             if (!dragStarted) {
-              var threshold = Style.space(6)
+              var threshold = Commons.Style.space(6)
               if (deltaX * deltaX + deltaY * deltaY < threshold * threshold) return
               dragStarted = true
             }
@@ -257,7 +257,7 @@ BorderSurface {
             var scale = Math.max(0.0001, Number(root.metrics.scale || 1))
             var nextX = Math.round(Number(card.modelData.x || 0) + card.dragOffsetX / scale)
             var nextY = Math.round(Number(card.modelData.y || 0) + card.dragOffsetY / scale)
-            var snap = Math.max(1, Math.round(Style.space(12) / scale))
+            var snap = Math.max(1, Math.round(Commons.Style.space(12) / scale))
             card.dragOffsetX = 0
             card.dragOffsetY = 0
             dragStarted = false
@@ -279,7 +279,7 @@ BorderSurface {
       text: "No enabled displays"
       color: root.dim
       font.family: root.fontFamily
-      font.pixelSize: Style.font.body
+      font.pixelSize: Commons.Style.font.body
     }
   }
 }

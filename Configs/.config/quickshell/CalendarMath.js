@@ -1,6 +1,8 @@
 .pragma library
 
-var MS_PER_DAY = 24 * 60 * 60 * 1000
+var MS_PER_MINUTE = 60 * 1000
+var MS_PER_HOUR = 60 * MS_PER_MINUTE
+var MS_PER_DAY = 24 * MS_PER_HOUR
 
 function isoDay(date) { return Qt.formatDate(date, "yyyy-MM-dd") }
 function fromIsoDay(value) { return new Date(String(value) + "T12:00:00") }

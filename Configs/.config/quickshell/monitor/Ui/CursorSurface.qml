@@ -1,5 +1,5 @@
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
 // Derive visuals from `hasCursor`/`current`, never a local `containsMouse`, so
 // keyboard and pointer navigation cannot paint two highlights.
@@ -11,21 +11,21 @@ BorderSurface {
   property bool outline: false
   property bool bordered: false
 
-  property color foreground: Color.foreground
-  property color accent: Color.accent
-  property color fill: Style.hoverFillFor(foreground, accent)
-  property color currentFill: Style.selectedFillFor(foreground, accent)
+  property color foreground: Commons.Color.foreground
+  property color accent: Commons.Color.accent
+  property color fill: Commons.Style.hoverFillFor(foreground, accent)
+  property color currentFill: Commons.Style.selectedFillFor(foreground, accent)
 
-  radius: Style.cornerRadius
+  radius: Commons.Style.cornerRadius
 
   color: hasCursor ? fill : (current ? currentFill : "transparent")
   borderSpec: root.hasCursor
-    ? Border.controlSpec("hover-cursor", root.foreground, root.accent)
+    ? Commons.Border.controlSpec("hover-cursor", root.foreground, root.accent)
     : (root.current
-      ? Border.controlSpec("selected", root.foreground, root.accent)
+      ? Commons.Border.controlSpec("selected", root.foreground, root.accent)
       : (root.bordered
-        ? Border.controlSpec("normal", root.foreground, root.accent)
-        : Border.none()))
+        ? Commons.Border.controlSpec("normal", root.foreground, root.accent)
+        : Commons.Border.none()))
 
   Behavior on color {
     ColorAnimation { duration: 60 }

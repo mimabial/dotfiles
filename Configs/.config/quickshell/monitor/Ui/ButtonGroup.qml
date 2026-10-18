@@ -1,29 +1,27 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
-// Single-tab-stop selector for strings or {value, label, icon?, tooltip?}.
-// `cursorIndex` lets panels drive the highlight without taking focus.
 Row {
   id: root
 
   property var options: []
   property string value: ""
-  property color foreground: Color.foreground
-  property color background: Color.background
-  property color accent: Color.accent
-  property string fontFamily: Style.font.family
-  property real fontSize: Style.font.body
+  property color foreground: Commons.Color.foreground
+  property color background: Commons.Color.background
+  property color accent: Commons.Color.accent
+  property string fontFamily: Commons.Style.font.family
+  property real fontSize: Commons.Style.font.body
   property bool focusable: true
 
   property int cursorIndex: -1
 
-  property int _focusedIndex: -1
+  property int focusedOptionIndex: -1
 
   signal changed(string value)
   signal hovered(int index, bool isHovered)
 
-  spacing: Style.spacing.md
+  spacing: Commons.Style.spacing.md
 
   activeFocusOnTab: focusable
 
@@ -47,16 +45,16 @@ Row {
   }
 
   function activateFocused() {
-    if (_focusedIndex < 0 || _focusedIndex >= options.length) return
-    root.changed(optionValue(options[_focusedIndex]))
+    if (focusedOptionIndex < 0 || focusedOptionIndex >= options.length) return
+    root.changed(optionValue(options[focusedOptionIndex]))
   }
 
   onActiveFocusChanged: {
     if (activeFocus) {
       var idx = selectedOptionIndex()
-      _focusedIndex = idx < 0 ? 0 : idx
+      focusedOptionIndex = idx < 0 ? 0 : idx
     } else {
-      _focusedIndex = -1
+      focusedOptionIndex = -1
     }
   }
 
@@ -64,13 +62,13 @@ Row {
   Keys.onPressed: function(event) {
     if (event.key === Qt.Key_Left || event.key === Qt.Key_H
         || event.text === "h") {
-      _focusedIndex = Math.max(0, (_focusedIndex < 0 ? 0 : _focusedIndex) - 1)
+      focusedOptionIndex = Math.max(0, (focusedOptionIndex < 0 ? 0 : focusedOptionIndex) - 1)
       event.accepted = true
     } else if (event.key === Qt.Key_Right || event.key === Qt.Key_L
         || event.text === "l") {
       var max = options.length - 1
-      var next = (_focusedIndex < 0 ? 0 : _focusedIndex) + 1
-      _focusedIndex = Math.min(max, next)
+      var next = (focusedOptionIndex < 0 ? 0 : focusedOptionIndex) + 1
+      focusedOptionIndex = Math.min(max, next)
       event.accepted = true
     } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter
         || event.key === Qt.Key_Space) {
@@ -90,7 +88,7 @@ Row {
       tooltipText: root.optionTooltip(modelData)
       selected: root.optionValue(modelData) === root.value
       hasCursor: root.cursorIndex === index
-        || (root.activeFocus && root._focusedIndex === index)
+        || (root.activeFocus && root.focusedOptionIndex === index)
       bordered: true
       foreground: root.foreground
       background: root.background

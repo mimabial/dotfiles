@@ -79,6 +79,11 @@ entry {
     placeholder-color:           @separator;
 }
 
+textbox-prompt-colon, textbox-prompt-label {
+    horizontal-align:            0.5;
+    vertical-align:              0.5;
+}
+
 textbox-prompt-colon {
     expand:                      false;
     border:                      2px;
@@ -88,11 +93,6 @@ textbox-prompt-colon {
     background-color:            transparent;
     text-color:                  @foreground;
     str:                         "";
-}
-
-textbox-prompt-colon, textbox-prompt-label {
-    horizontal-align:            0.5;
-    vertical-align:              0.5;
 }
 
 textbox-prompt-label {

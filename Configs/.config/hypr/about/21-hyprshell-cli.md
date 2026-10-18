@@ -1,7 +1,8 @@
 # The hyprshell CLI
 
-`hyprshell` is the front door to 320 scripts and 242 runnable targets. Type it
-with no arguments and it lists every one of them.
+`hyprshell` is the front door to 250 runnable targets. The library contains
+422 Bash and Python files, including helpers and tests. Type it with no arguments
+and it lists every target.
 
 ```bash
 hyprshell theme.switch.sh -s "Tokyo Night"   # switch theme
@@ -19,18 +20,22 @@ Its own subcommands:
 | command | does |
 | ------- | ---- |
 | `list` | every target |
-| `reload` / `-r` | reload the Hyprland environment |
+| `reload` / `-r` | update Python packages, wallpaper caches and reapply the theme |
 | `init` | print the init script to `eval` |
 | `completions bash\|zsh` | shell completions |
 | `pyinit` | set up the managed Python virtualenv |
 | `version` | version information |
 | `release-notes` | what changed |
+| `resolve <target>` | print the target's script path |
+| `--list-script` | target names only |
+| `--list-script-path` | all Bash and Python script paths |
 
 ## Running a script directly
 
 The dispatcher forks roughly 49 subshells to resolve a target. That is fine for
-interactive use and completely unacceptable in a polling loop — a bar module that
-calls `hyprshell` once a second is spending most of its life in bash startup.
+interactive use. Repeated work should wait on events and execute the script
+directly; calling `hyprshell` from a timer or polling loop repeats that startup
+cost every time.
 
 For anything on a hot path, execute the script directly and source the runtime
 yourself:
@@ -45,12 +50,11 @@ is everything the helpers expect.
 For an interactive shell, `eval "$(hyprshell init)"` does the same thing and gives
 you the helper functions.
 
-## Every script answers --help
+## Discovering commands and help
 
-There are three sanctioned help forms in this config and no script gets a fourth.
-`--help` prints to **stdout** and exits **0** — not stderr, not exit 2. That is a
-convention rather than an accident, and it is what lets the menu, the completions
-and this manual all trust that asking a script what it does is safe.
+`hyprshell list` separates documented commands from targets without help text,
+which are mostly pipeline hooks. Read those scripts before running them.
+User-facing commands should print `--help` to stdout and exit 0.
 
 ```bash
 hyprshell capture/screenrecord --help
@@ -63,8 +67,8 @@ free.
 
 ## The categories
 
-Twenty-nine directories under `~/.local/lib/hypr/`, each one a domain:
-`bluetooth` `bookmarks` `calendar` `capture` `controls` `core` `fonts` `gaming`
+Thirty directories under `~/.local/lib/hypr/`, each one a domain:
+`bluetooth` `bookmarks` `calendar` `capture` `clipboard` `controls` `core` `fonts` `gaming`
 `install` `keybinds` `launch` `media` `notify` `pyutils` `quickshell` `render`
 `rofi` `runtime` `service` `session` `setup` `shell` `sysinfo` `system` `theme`
 `util` `vm` `wallpaper` `window`.

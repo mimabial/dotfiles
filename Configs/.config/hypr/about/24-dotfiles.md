@@ -26,6 +26,7 @@ kinds:
 ```
 dir|.config/hypr|monitors.lua,gpu.lua,themes/theme.lua,themes/colors.lua
 host|.config/hypr/monitors.lua|
+file|.config/glow/glow.yml|
 ```
 
 `dir|` mirrors a directory with an exclusion list — that is where generated files
@@ -45,7 +46,7 @@ domains** — which managed files can be restored from stock defaults, and how.
 
 `dotfiles-sync.conf` describes what gets **mirrored into the repository**.
 
-They do not overlap, and neither knows about the other. If
+They serve different purposes. If
 `list-managed-domains.sh` says "no manifest entries matched", that means the supplied domain
 name has no manifest entries. It says nothing at all about whether the file is in your
 dotfiles.

@@ -48,7 +48,7 @@ Singleton {
     property string _stdin: ""
     property var _pendingHooks: ({})
 
-    readonly property bool busy: actionProc.running
+    readonly property bool busy: actionProcess.running
     readonly property int deviceCount: devices.length
     readonly property int mountedCount: devices.reduce((count, device) => count + device.mountedCount, 0)
     readonly property string supportHint: Model.supportHint(support)
@@ -68,11 +68,11 @@ Singleton {
 
     property bool rescanQueued: false
     function rescan() {
-        if (lsblkProc.running || gioProc.running) { rescanQueued = true; return }
-        lsblkProc.running = true; gioProc.running = true
-        if (!mountsProc.running) mountsProc.running = true
-        if (!supportProc.running) supportProc.running = true
-        if (watchClosely && !networkProc.running) networkProc.running = true
+        if (lsblkProcess.running || gioProcess.running) { rescanQueued = true; return }
+        lsblkProcess.running = true; gioProcess.running = true
+        if (!mountsProcess.running) mountsProcess.running = true
+        if (!supportProcess.running) supportProcess.running = true
+        if (watchClosely && !networkProcess.running) networkProcess.running = true
     }
     function rescanIfQueued() { if (rescanQueued) { rescanQueued = false; Qt.callLater(rescan) } }
     function deviceByPath(path) { return devices.find(device => device.path === String(path)) || null }
@@ -180,11 +180,11 @@ Singleton {
 
     function sampleActivity() {
         const visible = devices.concat(watchClosely && store.showSystem ? systemDevices.filter(device => device.tran) : [])
-        if (statsProc.running || visible.length === 0) return
+        if (statsProcess.running || visible.length === 0) return
         const command = ["head", "-v", "-n", "1"]
         for (const device of visible) command.push("/sys/block/" + device.name + "/stat")
-        statsProc.command = command
-        statsProc.running = true
+        statsProcess.command = command
+        statsProcess.running = true
     }
 
     function applyStats(raw) {
@@ -240,9 +240,9 @@ Singleton {
         lastError = ""; actionStatus = ""; blockers = []; blockedFsPath = ""
         _stderr = ""; _stdout = ""; _successMessage = successMessage; _stdin = stdin || ""
         busyPath = path; busyAction = action
-        actionProc.command = command
-        actionProc.stdinEnabled = true
-        actionProc.running = true
+        actionProcess.command = command
+        actionProcess.stdinEnabled = true
+        actionProcess.running = true
         return true
     }
 
@@ -379,10 +379,10 @@ Singleton {
     }
 
     function probeBlockers(paths) {
-        if (!paths.length || blockersProc.running) return
+        if (!paths.length || blockersProcess.running) return
         const command = ["bash", "-c", "pids=$(fuser -m \"$@\" 2>/dev/null); [ -n \"$pids\" ] && ps -o pid=,comm= -p $pids || true", "removable-drives"]
         for (let i = 0; i < paths.length; ++i) command.push(paths[i])
-        blockersProc.command = command; blockersProc.running = true
+        blockersProcess.command = command; blockersProcess.running = true
     }
 
     function forceUnmountBlocked() { const volume = volumeByPath(blockedFsPath); if (volume) unmount(volume, true) }
@@ -402,13 +402,13 @@ Singleton {
     }
     function probeHealth(device) {
         if (!device) return
-        if (healthProc.running) return
+        if (healthProcess.running) return
         _healthChecked = Object.assign({}, _healthChecked, {[healthKey(device)]: Date.now()})
-        healthProc.command = [helper, "health", device.path, device.serial]
-        healthProc.running = true
+        healthProcess.command = [helper, "health", device.path, device.serial]
+        healthProcess.running = true
     }
     function autoProbeHealth() {
-        if ((!watchClosely && !healthAlertsEnabled) || healthProc.running) return
+        if ((!watchClosely && !healthAlertsEnabled) || healthProcess.running) return
         const interval = watchClosely ? 60000 : 300000
         const device = devices.concat(store.showSystem || healthAlertsEnabled ? systemDevices : []).find(item =>
             item.tran && Date.now() - (_healthChecked[healthKey(item)] || 0) > interval)
@@ -455,26 +455,26 @@ Singleton {
     }
 
     Process {
-        id: lsblkProc
+        id: lsblkProcess
         command: ["lsblk", "-J", "-b", "-o", "NAME,PATH,LABEL,PARTLABEL,FSTYPE,SIZE,FSSIZE,FSAVAIL,FSUSED,MOUNTPOINT,MOUNTPOINTS,RM,HOTPLUG,TYPE,TRAN,VENDOR,MODEL,UUID,SERIAL"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.applySnapshot(text) }
         onExited: code => { if (code !== 0) root.lastError = "lsblk failed"; root.rescanIfQueued() }
     }
-    Process { id: statsProc; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.applyStats(text) } }
-    Process { id: mountsProc; command: ["cat", "/proc/mounts"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.mountFlags = Model.parseMountFlags(text) } }
-    Process { id: networkProc; command: ["findmnt", "-J", "-l", "-o", "TARGET,SOURCE,FSTYPE,OPTIONS"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.networkShares = Model.parseNetworkMounts(text) } }
+    Process { id: statsProcess; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.applyStats(text) } }
+    Process { id: mountsProcess; command: ["cat", "/proc/mounts"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.mountFlags = Model.parseMountFlags(text) } }
+    Process { id: networkProcess; command: ["findmnt", "-J", "-l", "-o", "TARGET,SOURCE,FSTYPE,OPTIONS"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.networkShares = Model.parseNetworkMounts(text) } }
     Process {
-        id: healthProc
+        id: healthProcess
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             const device = root.devices.concat(root.systemDevices).find(item =>
-                item.path === healthProc.command[2] && item.serial === healthProc.command[3])
+                item.path === healthProcess.command[2] && item.serial === healthProcess.command[3])
             if (device) root.recordHealth(device, Model.parseHealth(text))
             Qt.callLater(root.autoProbeHealth)
         } }
     }
-    Process { id: blockersProc; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.blockers = Model.parseBlockers(text) } }
+    Process { id: blockersProcess; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.blockers = Model.parseBlockers(text) } }
     Process {
-        id: actionProc
+        id: actionProcess
         stdinEnabled: true
         onStarted: { if (root._stdin) write(root._stdin); root._stdin = ""; stdinEnabled = false }
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root._stdout = text }
@@ -505,17 +505,17 @@ Singleton {
         }
     }
     Process {
-        id: gioProc; command: ["gio", "mount", "-li"]; onExited: root.rescanIfQueued()
+        id: gioProcess; command: ["gio", "mount", "-li"]; onExited: root.rescanIfQueued()
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.portables = Model.parseGioMounts(text) }
     }
     Process { command: ["gio", "mount", "-o"]; running: true; stdout: SplitParser { onRead: root.rescan() } }
     Process {
-        id: supportProc
+        id: supportProcess
         command: ["bash", Quickshell.env("HOME") + "/.local/lib/hypr/system/removable.sh", "--probe-support"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.support = Model.parseSupport(text) }
     }
     Process {
-        id: monitorProc
+        id: monitorProcess
         command: ["stdbuf", "-oL", "udevadm", "monitor", "--udev", "--subsystem-match=block", "--subsystem-match=usb"]
         running: true
         stdout: SplitParser { onRead: line => { if (/(add|remove|change|bind|unbind)/.test(String(line))) root.rescan() } }
@@ -540,7 +540,7 @@ Singleton {
         onLoadFailed: root.store = Model.parseStore("")
     }
 
-    Timer { id: monitorRestart; interval: 3000; onTriggered: if (!monitorProc.running) monitorProc.running = true }
+    Timer { id: monitorRestart; interval: 3000; onTriggered: if (!monitorProcess.running) monitorProcess.running = true }
     Timer { interval: 1000; running: root.devices.length > 0 || root.watchClosely && root.store.showSystem && root.systemDevices.length > 0; repeat: true; triggeredOnStart: true; onTriggered: root.sampleActivity() }
     Timer { interval: 8000; running: root.watchClosely; repeat: true; onTriggered: root.rescan() }
     Timer { interval: 60000; running: root.watchClosely || root.healthAlertsEnabled; repeat: true; onTriggered: root.autoProbeHealth() }

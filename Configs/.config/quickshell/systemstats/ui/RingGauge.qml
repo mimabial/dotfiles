@@ -1,29 +1,26 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
-// Ring gauge with a figure in the middle. Either a single `value` (0..1) in
-// `color`, or `segments` — an ordered list of {value, color} slices drawn
-// clockwise from twelve o'clock with a surface gap between them.
 Item {
   id: root
 
-  property real size: Style.space(76)
-  property real thickness: Style.space(5)
+  property real size: Commons.Style.space(76)
+  property real thickness: Commons.Style.space(5)
   property real value: -1
-  property color color: Color.accent
+  property color color: Commons.Color.accent
   property var segments: []
-  property color foreground: Color.popups.text
+  property color foreground: Commons.Color.popups.text
   property color valueColor: foreground
-  property color trackColor: Util.alpha(foreground, 0.10)
-  property string fontFamily: Style.font.family
+  property color trackColor: Commons.Util.alpha(foreground, 0.10)
+  property string fontFamily: Commons.Style.font.family
   property string topText: ""
   property string valueText: ""
   property string unitText: ""
   property string labelText: ""
   property string subText: ""
-  property real valueSize: Style.font.display
+  property real valueSize: Commons.Style.font.display
   property real gapPx: 2
   property real animatedValue: Math.max(0, Math.min(1, value))
 
@@ -94,7 +91,7 @@ Item {
   Column {
     anchors.centerIn: parent
     spacing: 0
-    width: root.size - root.thickness * 2 - Style.space(6)
+    width: root.size - root.thickness * 2 - Commons.Style.space(6)
 
     Text {
       textFormat: Text.PlainText
@@ -103,9 +100,9 @@ Item {
       horizontalAlignment: Text.AlignHCenter
       text: root.topText
       color: root.foreground
-      opacity: Style.mutedTextAlpha
+      opacity: Commons.Style.mutedTextAlpha
       font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
+      font.pixelSize: Commons.Style.font.caption
       font.bold: true
       font.letterSpacing: 0.8
       elide: Text.ElideRight
@@ -123,7 +120,7 @@ Item {
         foreground: root.valueColor
         fontFamily: root.fontFamily
         valueSize: root.valueSize
-        unitSize: Style.font.bodySmall
+        unitSize: Commons.Style.font.bodySmall
         bold: true
       }
     }
@@ -135,9 +132,9 @@ Item {
       horizontalAlignment: Text.AlignHCenter
       text: root.labelText
       color: root.foreground
-      opacity: Style.mutedTextAlpha
+      opacity: Commons.Style.mutedTextAlpha
       font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
+      font.pixelSize: Commons.Style.font.caption
       font.bold: true
       font.letterSpacing: 1
       font.capitalization: Font.AllUppercase
@@ -151,9 +148,9 @@ Item {
       horizontalAlignment: Text.AlignHCenter
       text: root.subText
       color: root.foreground
-      opacity: Style.mutedTextAlpha
+      opacity: Commons.Style.mutedTextAlpha
       font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
+      font.pixelSize: Commons.Style.font.caption
       elide: Text.ElideRight
     }
   }

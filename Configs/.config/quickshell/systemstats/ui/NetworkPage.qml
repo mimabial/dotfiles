@@ -2,9 +2,10 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "../Model.js" as Model
+import "../../Units.js" as Units
 
 Column {
   id: root
@@ -15,16 +16,16 @@ Column {
   property int historyRange: 0
   property string temperatureUnit: "Celsius"
   property bool publicIpEnabled: true
-  property color foreground: Color.popups.text
-  property string fontFamily: Style.font.family
+  property color foreground: Commons.Color.popups.text
+  property string fontFamily: Commons.Style.font.family
 
   function flag(key) { return Model.flag(settings, key) }
   property string copiedValue: ""
 
   readonly property var snap: service ? service.snapshot : ({})
   readonly property var hist: service ? Model.peakHistoryView(service.history, service.historyHour, service.historyDay, historyRange) : Model.emptyHistory()
-  readonly property color s1: service ? service.series1 : Color.accent
-  readonly property color s2: service ? service.series2 : Color.accent
+  readonly property color s1: service ? service.series1 : Commons.Color.accent
+  readonly property color s2: service ? service.series2 : Commons.Color.accent
 
   readonly property var net: snap.net || ({})
   readonly property var connections: Array.isArray(net.procs) ? net.procs : []
@@ -73,7 +74,7 @@ Column {
   onPublicIpEnabledChanged: lookupPublicIp()
 
   width: parent ? parent.width : implicitWidth
-  spacing: Style.space(10)
+  spacing: Commons.Style.space(10)
 
   Card {
     foreground: root.foreground
@@ -103,7 +104,7 @@ Column {
     MirrorGraph {
       id: graph
       width: parent.width
-      height: Style.space(72)
+      height: Commons.Style.space(72)
       barWidth: Model.historyBarWidth(width, root.historyRange)
       showGaps: root.historyRange > 0
       up: root.hist.netTx || []
@@ -111,7 +112,7 @@ Column {
       upColor: root.s2
       downColor: root.s1
       minimumCeiling: Model.NETWORK_SCALE_FLOOR
-      midlineColor: Util.alpha(root.foreground, 0.18)
+      midlineColor: Commons.Util.alpha(root.foreground, 0.18)
     }
 
     Legend {
@@ -127,16 +128,16 @@ Column {
   Card {
     visible: root.flag("showInterfaces") || root.flag("showTotals")
     foreground: root.foreground
-    spacing: Style.space(4)
+    spacing: Commons.Style.space(4)
 
     Text {
       textFormat: Text.PlainText
       visible: root.flag("showInterfaces") && root.shownIfaces.length === 0
       text: "No network interfaces"
       color: root.foreground
-      opacity: Style.mutedTextAlpha
+      opacity: Commons.Style.mutedTextAlpha
       font.family: root.fontFamily
-      font.pixelSize: Style.font.bodySmall
+      font.pixelSize: Commons.Style.font.bodySmall
     }
 
     Repeater {
@@ -154,7 +155,7 @@ Column {
           : modelData.name
 
         width: parent.width
-        height: Style.space(26)
+        height: Commons.Style.space(26)
         opacity: modelData.up ? 1 : 0.5
 
         Text {
@@ -165,20 +166,20 @@ Column {
           text: Model.ifaceIcon(row.modelData)
           color: root.foreground
           font.family: root.fontFamily
-          font.pixelSize: Style.font.icon
+          font.pixelSize: Commons.Style.font.icon
         }
 
         Text {
           anchors.left: icon.right
-          anchors.leftMargin: Style.space(10)
+          anchors.leftMargin: Commons.Style.space(10)
           anchors.right: state.left
-          anchors.rightMargin: Style.space(8)
+          anchors.rightMargin: Commons.Style.space(8)
           anchors.verticalCenter: parent.verticalCenter
           textFormat: Text.PlainText
           text: row.name + (row.modelData.wireless && row.modelData.ssid ? "  " + row.modelData.name : "")
           color: root.foreground
           font.family: root.fontFamily
-          font.pixelSize: Style.font.body
+          font.pixelSize: Commons.Style.font.body
           font.bold: row.modelData.default === true
           elide: Text.ElideRight
         }
@@ -190,9 +191,9 @@ Column {
           anchors.verticalCenter: parent.verticalCenter
           text: row.status + (row.modelData.wireless && isFinite(Number(row.modelData.dbm)) ? " · " + row.modelData.dbm + " dBm" : "")
           color: root.foreground
-          opacity: Style.mutedTextAlpha
+          opacity: Commons.Style.mutedTextAlpha
           font.family: root.fontFamily
-          font.pixelSize: Style.font.bodySmall
+          font.pixelSize: Commons.Style.font.bodySmall
         }
       }
     }
@@ -206,8 +207,8 @@ Column {
       visible: !!root.primary && root.flag("showTotals")
       label: "Received"
       detail: "since boot"
-      value: root.primary ? Model.bytesParts(root.primary.rxTotal).value : ""
-      unit: root.primary ? Model.bytesParts(root.primary.rxTotal).unit : ""
+      value: root.primary ? Units.bytesParts(root.primary.rxTotal).value : ""
+      unit: root.primary ? Units.bytesParts(root.primary.rxTotal).unit : ""
       boldValue: false
       foreground: root.foreground
       fontFamily: root.fontFamily
@@ -217,8 +218,8 @@ Column {
       visible: !!root.primary && root.flag("showTotals")
       label: "Sent"
       detail: "since boot"
-      value: root.primary ? Model.bytesParts(root.primary.txTotal).value : ""
-      unit: root.primary ? Model.bytesParts(root.primary.txTotal).unit : ""
+      value: root.primary ? Units.bytesParts(root.primary.txTotal).value : ""
+      unit: root.primary ? Units.bytesParts(root.primary.txTotal).unit : ""
       boldValue: false
       foreground: root.foreground
       fontFamily: root.fontFamily
@@ -228,7 +229,7 @@ Column {
   Card {
     visible: root.publicIpEnabled
     foreground: root.foreground
-    spacing: Style.space(4)
+    spacing: Commons.Style.space(4)
 
     SectionTitle { text: "Public IP address"; fontFamily: root.fontFamily }
 
@@ -241,7 +242,7 @@ Column {
   Card {
     visible: root.flag("showAddresses")
     foreground: root.foreground
-    spacing: Style.space(4)
+    spacing: Commons.Style.space(4)
 
     SectionTitle {
       text: "IP addresses" + (root.primary ? " · " + root.primary.name : "")
@@ -253,9 +254,9 @@ Column {
       visible: root.addresses.length === 0
       text: "No address assigned"
       color: root.foreground
-      opacity: Style.mutedTextAlpha
+      opacity: Commons.Style.mutedTextAlpha
       font.family: root.fontFamily
-      font.pixelSize: Style.font.bodySmall
+      font.pixelSize: Commons.Style.font.bodySmall
     }
 
     Repeater {
@@ -283,7 +284,7 @@ Column {
         { key: "rx", kind: "rate", title: "Down" },
         { key: "tx", kind: "rate", title: "Up" }
       ]
-      columnWidth: Style.space(70)
+      columnWidth: Commons.Style.space(70)
       emptyText: root.net.procs === null || root.net.procs === undefined ? "Measuring…" : "No traffic"
       foreground: root.foreground
       fontFamily: root.fontFamily
@@ -298,27 +299,27 @@ Column {
     readonly property bool copied: root.copiedValue !== "" && root.copiedValue === value
 
     width: parent ? parent.width : implicitWidth
-    height: Style.space(22)
+    height: Commons.Style.space(22)
 
     Rectangle {
       anchors.fill: parent
-      anchors.leftMargin: -Style.space(6)
-      anchors.rightMargin: -Style.space(6)
-      radius: Style.cornerRadius
-      color: mouse.containsMouse && addr.value !== "" ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
+      anchors.leftMargin: -Commons.Style.space(6)
+      anchors.rightMargin: -Commons.Style.space(6)
+      radius: Commons.Style.cornerRadius
+      color: mouse.containsMouse && addr.value !== "" ? Commons.Style.hoverFillFor(root.foreground, Commons.Color.accent) : "transparent"
     }
 
     Text {
       textFormat: Text.PlainText
       anchors.left: parent.left
       anchors.right: hint.left
-      anchors.rightMargin: Style.space(8)
+      anchors.rightMargin: Commons.Style.space(8)
       anchors.verticalCenter: parent.verticalCenter
       text: addr.value !== "" ? addr.value : addr.placeholder
       color: root.foreground
       opacity: addr.value !== "" ? 0.92 : 0.45
       font.family: root.fontFamily
-      font.pixelSize: Style.font.body
+      font.pixelSize: Commons.Style.font.body
       elide: Text.ElideMiddle
     }
 
@@ -332,7 +333,7 @@ Column {
       color: root.foreground
       opacity: addr.copied ? 0.9 : 0.5
       font.family: root.fontFamily
-      font.pixelSize: addr.copied ? Style.font.caption : Style.font.icon
+      font.pixelSize: addr.copied ? Commons.Style.font.caption : Commons.Style.font.icon
     }
 
     MouseArea {

@@ -1,10 +1,12 @@
 var activityWeeks = 26
 var topCount = 3
-// iCalendar runs 1 (highest) to 9; 5 is the middle and 0 means unset.
 var PRIORITY_BANDS = ["none", "low", "medium", "high"]
+var ICALENDAR_PRIORITY = { highest: 1, highLast: 4, normal: 5, lowFirst: 6 }
 function priorityBand(priority) {
     const value = Number(priority || 0)
-    return value >= 1 && value <= 4 ? 3 : value === 5 ? 2 : value >= 6 ? 1 : 0
+    const band = value >= ICALENDAR_PRIORITY.highest && value <= ICALENDAR_PRIORITY.highLast ? "high"
+        : value === ICALENDAR_PRIORITY.normal ? "medium" : value >= ICALENDAR_PRIORITY.lowFirst ? "low" : "none"
+    return PRIORITY_BANDS.indexOf(band)
 }
 var scopes = ["open", "all", "done", "due", "rec", "today", "later", "overdue"]
 

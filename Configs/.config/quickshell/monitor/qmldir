@@ -2,6 +2,7 @@ module qs.monitor
 BrightnessControl 1.0 BrightnessControl.qml
 DisplayCanvas 1.0 DisplayCanvas.qml
 DisplayBackend 1.0 DisplayBackend.qml
+DisplayDaemonSocket 1.0 DisplayDaemonSocket.qml
 DisplayBrightnessBackend 1.0 DisplayBrightnessBackend.qml
 EditorPane 1.0 EditorPane.qml
 DisplayPanel 1.0 DisplayPanel.qml

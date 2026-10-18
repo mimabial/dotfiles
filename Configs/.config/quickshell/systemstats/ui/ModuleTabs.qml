@@ -1,14 +1,9 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 import "../Model.js" as Model
 
-// Segmented switcher across the top of the panel, in two rows: one equal slot
-// per tab, Settings included, each named in full. The panel sizes itself to
-// `spelledWidth` so the names always fit. The active slot is filled;
-// nothing moves when you switch. Abbreviations belong to the bar, where
-// height is scarce, not here.
 Item {
   id: root
 
@@ -16,8 +11,8 @@ Item {
   property string settingsTab: ""
   property string current: ""
   property int cursorIndex: -1
-  property color foreground: Color.popups.text
-  property string fontFamily: Style.font.family
+  property color foreground: Commons.Color.popups.text
+  property string fontFamily: Commons.Style.font.family
 
   signal activated(string id)
   signal hovered(int index, bool isHovered)
@@ -28,11 +23,10 @@ Item {
   readonly property int rows: Math.min(slots, 2)
   readonly property int columns: Math.ceil(slots / 2)
   readonly property real slotWidth: columns > 0 ? width / columns : width
-  readonly property real pillHeight: Style.space(28)
-  readonly property real rowGap: Style.space(4)
-  readonly property real labelSize: Style.font.caption
+  readonly property real pillHeight: Commons.Style.space(28)
+  readonly property real rowGap: Commons.Style.space(4)
+  readonly property real labelSize: Commons.Style.font.caption
 
-  // The longest name decides the slot width, Settings included.
   readonly property string longestFull: {
     var best = hasSettings ? Model.moduleDef(settingsTab).label : ""
     for (var i = 0; i < count; i++) {
@@ -41,8 +35,7 @@ Item {
     }
     return best
   }
-  readonly property real spelledSlot: Math.ceil(fullMetrics.advanceWidth) + Style.space(14)
-  // Width at which every tab can be named in full; the panel asks for it.
+  readonly property real spelledSlot: Math.ceil(fullMetrics.advanceWidth) + Commons.Style.space(14)
   readonly property real spelledWidth: spelledSlot * columns
 
   TextMetrics {
@@ -76,14 +69,14 @@ Item {
 
       Rectangle {
         anchors.centerIn: parent
-        width: Math.max(Style.space(24), root.slotWidth - Style.space(4))
+        width: Math.max(Commons.Style.space(24), root.slotWidth - Commons.Style.space(4))
         height: root.pillHeight
-        radius: Style.cornerRadius
+        radius: Commons.Style.cornerRadius
         color: slot.active
-          ? Style.selectedFillFor(root.foreground, Color.accent)
-          : (slot.hot ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent")
+          ? Commons.Style.selectedFillFor(root.foreground, Commons.Color.accent)
+          : (slot.hot ? Commons.Style.hoverFillFor(root.foreground, Commons.Color.accent) : "transparent")
         border.width: slot.active ? 1 : 0
-        border.color: Util.alpha(root.foreground, 0.12)
+        border.color: Commons.Util.alpha(root.foreground, 0.12)
 
         Behavior on color { ColorAnimation { duration: 90 } }
       }
@@ -92,7 +85,7 @@ Item {
         anchors.centerIn: parent
         textFormat: Text.PlainText
         text: slot.def.label
-        width: Math.min(implicitWidth, root.slotWidth - Style.space(8))
+        width: Math.min(implicitWidth, root.slotWidth - Commons.Style.space(8))
         horizontalAlignment: Text.AlignHCenter
         elide: Text.ElideRight
         color: root.foreground

@@ -11,9 +11,9 @@ BarButton {
             && !group.source.isStream && !String(group.source.name).endsWith(".monitor"))).length
     readonly property bool live: source && !source.audio.muted
     css: live ? "microphone" : "microphone.muted"
-    symbol: root.styledSymbol ? StatusSymbols.volume(root.source, !root.live, "microphone-sensitivity") : ""
+    symbol: root.styledSymbol && root.live ? StatusSymbols.volume(root.source, false, "microphone-sensitivity") : ""
     text: !root.source || root.source.audio.muted ? "" : ""
-    badgeText: recordingCount > 0 ? countGlyph(recordingCount) : ""
+    badgeText: recordingCount > 0 ? root.countText(recordingCount) : ""
     smoothTextColor: false
     textColor: recordingCount ? shell.alpha(shell.role("error", shell.foreground), .25 + blink.phase * .75) : shell.foreground
     tooltip: !root.source ? "No input device"

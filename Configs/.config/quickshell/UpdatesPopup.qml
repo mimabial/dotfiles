@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import "Units.js" as Units
 
 PopupCard {
     id: root
@@ -32,9 +33,8 @@ PopupCard {
     function ago(epoch) {
         const minutes = Math.round((shell.clock.date.getTime() / 1000 - Number(epoch)) / 60)
         if (!(Number(epoch) > 0)) return ""
-        if (minutes >= 1440) return Math.floor(minutes / 1440) + "d ago"
-        if (minutes >= 60) return Math.floor(minutes / 60) + "h ago"
-        return minutes < 1 ? "just now" : minutes + "m ago"
+        const elapsed = Units.largestUnitText(minutes * Units.SECONDS_PER_MINUTE)
+        return elapsed ? elapsed + " ago" : "just now"
     }
 
     Column {

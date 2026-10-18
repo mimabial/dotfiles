@@ -1,7 +1,6 @@
 import QtQuick
 import Quickshell
 
-// Desktop-entry access for the dock, resolved locally instead of through `shell`.
 QtObject {
     id: root
 

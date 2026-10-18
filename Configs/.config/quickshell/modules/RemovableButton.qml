@@ -10,7 +10,7 @@ BarButton {
     css: "removable"
     visible: Removable.store.alwaysShow !== false || Removable.present
     text: Removable.barGlyph
-    badgeText: showBadge && Removable.deviceCount ? countGlyph(Removable.deviceCount) : ""
+    badgeText: showBadge && Removable.deviceCount ? root.countText(Removable.deviceCount) : ""
     active: Removable.anyBusy
     onClicked: button => button === Qt.RightButton ? Removable.rescan()
         : button === Qt.MiddleButton ? Removable.openFirstMounted()

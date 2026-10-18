@@ -2,8 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 
-// Top level of the rofi menu.d tree (menutree --dump-json). Submenu rows open
-// cascading StartMenuFlyout windows chained off openSubId/openRow.
 Column {
     id: root
     required property var shell
@@ -12,8 +10,7 @@ Column {
     property string openSubId: ""
     property Item openRow: null
     signal action(string target)
-    // what the menu wants if nothing constrains it, so the card can size to it
-    readonly property int contentHeight: menuHeader.height + root.spacing + menuList.contentHeight
+    readonly property int unconstrainedHeight: menuHeader.height + root.spacing + menuList.contentHeight
     readonly property bool hovered: paneHover.hovered
     readonly property bool overflowing: menuList.contentHeight > menuList.height
     spacing: Style.sm

@@ -10,7 +10,7 @@ Item {
   property string ipcTarget: ""
   property bool manageIpc: true
   readonly property bool opened: shell && shell.popupName === popupName
-  function showPopup() { if (root.shell) root.shell.togglePopup(root.popupName) }
+  function showPopup() { if (root.shell && !root.opened) root.shell.togglePopup(root.popupName) }
   function hidePopup() { if (root.shell && root.opened) root.shell.closePopup() }
   function open() { root.showPopup() }
   function close() { root.hidePopup() }

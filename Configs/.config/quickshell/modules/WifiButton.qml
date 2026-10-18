@@ -8,6 +8,8 @@ BarButton {
     id: root
     property bool popupsAllowed: true
     property string popupName: "network"
+    property string settingsPopupName: popupName
+    property string qrPopupName: "wifiqr"
     readonly property var connectedNetwork: {
         for (const device of Networking.devices.values)
             if (device.type === DeviceType.Wifi)
@@ -23,6 +25,6 @@ BarButton {
     onClicked: button => button === Qt.RightButton
         ? Networking.wifiEnabled = !Networking.wifiEnabled
         : root.shell.togglePopup(root.popupName)
-    NetworkPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }
-    WifiQrPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }
+    NetworkPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: root.settingsPopupName; qrPopupName: root.qrPopupName }
+    WifiQrPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: root.qrPopupName }
 }

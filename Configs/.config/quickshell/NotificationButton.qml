@@ -7,12 +7,9 @@ ScriptButton {
     icons: paused ? outlineIcons : filledIcons
     css: "notifications"
     tooltip: ""
-    // dunst signals every counter it exposes and rewrites the archive on each
-    // notification, so one subscriber replaces the poll. interval is now only
-    // how fast a dead helper gets respawned
     readonly property string script: shell.home + "/.local/lib/hypr/notify/notifications.py"
     command: [root.script, "--watch"]
-    polling: false; streaming: true; interval: 5000
+    polling: false; streaming: true
     property bool popupEnabled: true
     property bool activeOnly: false
     property bool showBadge: true
@@ -20,10 +17,8 @@ ScriptButton {
     symbol: themed ? paused ? "notifications-disabled" : "notification" : ""
     readonly property bool paused: output.paused === true
     readonly property int unread: output.unread || 0
-    badgeText: showBadge && unread > 0 ? countGlyph(unread) : ""
+    badgeText: showBadge && unread > 0 ? root.countText(unread) : ""
     visible: activeOnly ? paused : text !== ""
-    // opening the panel moves the watermark, so re-read rather than waiting out
-    // the poll to notice the badge should be gone
     refreshKey: shell.popupName === "notifications"
     onClicked: button => {
         if (button !== Qt.RightButton) {

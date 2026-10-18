@@ -1,9 +1,10 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui as Ui
 import "../Model.js" as Model
+import "../../Units.js" as Units
 
 Column {
   id: root
@@ -14,17 +15,17 @@ Column {
   property int historyRange: 0
   property string temperatureUnit: "Celsius"
   property bool publicIpEnabled: true
-  property color foreground: Color.popups.text
-  property string fontFamily: Style.font.family
+  property color foreground: Commons.Color.popups.text
+  property string fontFamily: Commons.Style.font.family
 
   function flag(key) { return Model.flag(settings, key) }
 
   readonly property var snap: service ? service.snapshot : ({})
   readonly property var hist: service ? Model.peakHistoryView(service.history, service.historyHour, service.historyDay, historyRange) : Model.emptyHistory()
-  readonly property color s1: service ? service.series1 : Color.accent
-  readonly property color s2: service ? service.series2 : Color.accent
-  readonly property color warn: service ? service.warn : Color.urgent
-  readonly property color danger: service ? service.danger : Color.urgent
+  readonly property color s1: service ? service.series1 : Commons.Color.accent
+  readonly property color s2: service ? service.series2 : Commons.Color.accent
+  readonly property color warn: service ? service.warn : Commons.Color.urgent
+  readonly property color danger: service ? service.danger : Commons.Color.urgent
 
   readonly property var disks: snap.disks || ({})
   readonly property var volumes: Array.isArray(disks.volumes) ? disks.volumes : []
@@ -46,7 +47,7 @@ Column {
 
   function openVolume(mount) {
     if (!mount) return
-    Util.execArgv(["xdg-open", String(mount)])
+    Commons.Util.execArgv(["xdg-open", String(mount)])
     if (host && typeof host.close === "function") host.close()
   }
 
@@ -55,7 +56,7 @@ Column {
   }
 
   width: parent ? parent.width : implicitWidth
-  spacing: Style.space(10)
+  spacing: Commons.Style.space(10)
 
   Card {
     visible: root.diskOptions.length > 1
@@ -75,7 +76,7 @@ Column {
         selected: active
         bordered: true
         foreground: root.foreground
-        accent: Color.accent
+        accent: Commons.Color.accent
         fontFamily: root.fontFamily
         onClicked: if (!active) root.selectDisk(String(option.value))
       }
@@ -85,7 +86,7 @@ Column {
   Card {
     visible: root.flag("showVolumes")
     foreground: root.foreground
-    spacing: Style.space(4)
+    spacing: Commons.Style.space(4)
 
     SectionTitle { text: "Volumes · open in files"; fontFamily: root.fontFamily }
 
@@ -94,9 +95,9 @@ Column {
       visible: root.volumes.length === 0
       text: "No mounted volumes"
       color: root.foreground
-      opacity: Style.mutedTextAlpha
+      opacity: Commons.Style.mutedTextAlpha
       font.family: root.fontFamily
-      font.pixelSize: Style.font.bodySmall
+      font.pixelSize: Commons.Style.font.bodySmall
     }
 
     Repeater {
@@ -111,14 +112,14 @@ Column {
           ? Model.tempText(modelData.temp, root.temperatureUnit) : ""
 
         width: parent.width
-        height: Style.space(34)
+        height: Commons.Style.space(34)
 
         MiniRing {
           id: ring
           anchors.left: parent.left
           anchors.verticalCenter: parent.verticalCenter
-          size: Style.space(24)
-          thickness: Style.spaceReal(3)
+          size: Commons.Style.space(24)
+          thickness: Commons.Style.spaceReal(3)
           value: row.fraction
           color: row.fraction >= Model.DISK_DANGER ? root.danger : (row.fraction >= Model.DISK_WARN ? root.warn : root.s1)
           foreground: root.foreground
@@ -129,17 +130,17 @@ Column {
           anchors.centerIn: ring
           text: Math.round(row.fraction * 100)
           color: root.foreground
-          opacity: Style.secondaryTextAlpha
+          opacity: Commons.Style.secondaryTextAlpha
           font.family: root.fontFamily
-          font.pixelSize: Math.max(7, Style.font.caption - 2)
+          font.pixelSize: Math.max(7, Commons.Style.font.caption - 2)
           font.bold: true
         }
 
         Column {
           anchors.left: ring.right
-          anchors.leftMargin: Style.space(10)
+          anchors.leftMargin: Commons.Style.space(10)
           anchors.right: trailing.left
-          anchors.rightMargin: Style.space(8)
+          anchors.rightMargin: Commons.Style.space(8)
           anchors.verticalCenter: parent.verticalCenter
           spacing: 0
 
@@ -149,7 +150,7 @@ Column {
             text: Model.volumeName(row.modelData.mount)
             color: root.foreground
             font.family: root.fontFamily
-            font.pixelSize: Style.font.body
+            font.pixelSize: Commons.Style.font.body
             font.bold: true
             elide: Text.ElideRight
           }
@@ -157,11 +158,11 @@ Column {
           Text {
             textFormat: Text.PlainText
             width: parent.width
-            text: Model.bytesText(row.modelData.avail) + " available"
+            text: Units.bytesText(row.modelData.avail) + " available"
             color: root.foreground
-            opacity: Style.mutedTextAlpha
+            opacity: Commons.Style.mutedTextAlpha
             font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
+            font.pixelSize: Commons.Style.font.caption
             elide: Text.ElideRight
           }
         }
@@ -174,8 +175,8 @@ Column {
 
           Measure {
             anchors.right: parent.right
-            value: Model.bytesParts(row.modelData.size).value
-            unit: Model.bytesParts(row.modelData.size).unit
+            value: Units.bytesParts(row.modelData.size).value
+            unit: Units.bytesParts(row.modelData.size).unit
             foreground: root.foreground
             fontFamily: root.fontFamily
             bold: false
@@ -187,9 +188,9 @@ Column {
             anchors.right: parent.right
             text: [row.modelData.fstype, row.tempText].filter(function(v) { return !!v }).join(" · ")
             color: root.foreground
-            opacity: Style.faintTextAlpha
+            opacity: Commons.Style.faintTextAlpha
             font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
+            font.pixelSize: Commons.Style.font.caption
           }
         }
 
@@ -203,11 +204,11 @@ Column {
 
         Rectangle {
           anchors.fill: parent
-          anchors.leftMargin: -Style.space(6)
-          anchors.rightMargin: -Style.space(6)
+          anchors.leftMargin: -Commons.Style.space(6)
+          anchors.rightMargin: -Commons.Style.space(6)
           z: -1
-          radius: Style.cornerRadius
-          color: hover.containsMouse ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
+          radius: Commons.Style.cornerRadius
+          color: hover.containsMouse ? Commons.Style.hoverFillFor(root.foreground, Commons.Color.accent) : "transparent"
         }
 
       }
@@ -250,7 +251,7 @@ Column {
     MirrorGraph {
       id: graph
       width: parent.width
-      height: Style.space(72)
+      height: Commons.Style.space(72)
       barWidth: Model.historyBarWidth(width, root.historyRange)
       showGaps: root.historyRange > 0
       up: root.readHistory
@@ -258,7 +259,7 @@ Column {
       upColor: root.s2
       downColor: root.s1
       minimumCeiling: Model.DISK_SCALE_FLOOR
-      midlineColor: Util.alpha(root.foreground, 0.18)
+      midlineColor: Commons.Util.alpha(root.foreground, 0.18)
     }
 
     Legend {
@@ -285,7 +286,7 @@ Column {
         { key: "read", kind: "rate", title: "Read" },
         { key: "write", kind: "rate", title: "Write" }
       ]
-      columnWidth: Style.space(70)
+      columnWidth: Commons.Style.space(70)
       emptyText: root.procs ? "No disk activity" : "Measuring…"
       foreground: root.foreground
       fontFamily: root.fontFamily

@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 import "Ui"
 
 CursorSurface {
@@ -14,7 +14,7 @@ CursorSurface {
 
   hasCursor: actionRow.controller.cursorActive && actionRow.controller.cursorIndex === rowIndex
   foreground: actionRow.controller.foreground
-  implicitHeight: actionContent.implicitHeight + Style.spacing.rowPaddingX
+  implicitHeight: actionContent.implicitHeight + Commons.Style.spacing.rowPaddingX
 
   MouseArea {
     anchors.fill: parent
@@ -33,9 +33,9 @@ CursorSurface {
     anchors.left: parent.left
     anchors.right: parent.right
     anchors.verticalCenter: parent.verticalCenter
-    anchors.leftMargin: Style.space(12)
-    anchors.rightMargin: Style.space(12)
-    spacing: Style.space(12)
+    anchors.leftMargin: Commons.Style.space(12)
+    anchors.rightMargin: Commons.Style.space(12)
+    spacing: Commons.Style.space(12)
 
     Text {
       textFormat: Text.PlainText
@@ -43,13 +43,13 @@ CursorSurface {
       text: actionRow.icon
       color: actionRow.enabled ? actionRow.controller.foreground : actionRow.controller.dim
       font.family: actionRow.controller.fontFamily
-      font.pixelSize: Style.font.icon
+      font.pixelSize: Commons.Style.font.icon
     }
 
     Column {
       width: parent.width - parent.children[0].width - parent.spacing
       anchors.verticalCenter: parent.verticalCenter
-      spacing: Style.space(2)
+      spacing: Commons.Style.space(2)
 
       Text {
         textFormat: Text.PlainText
@@ -57,7 +57,7 @@ CursorSurface {
         text: actionRow.title
         color: actionRow.enabled ? actionRow.controller.foreground : actionRow.controller.dim
         font.family: actionRow.controller.fontFamily
-        font.pixelSize: Style.font.body
+        font.pixelSize: Commons.Style.font.body
         font.bold: true
         elide: Text.ElideRight
       }
@@ -68,7 +68,7 @@ CursorSurface {
         text: actionRow.subtitle
         color: actionRow.controller.dim
         font.family: actionRow.controller.fontFamily
-        font.pixelSize: Style.font.bodySmall
+        font.pixelSize: Commons.Style.font.bodySmall
         elide: Text.ElideRight
       }
     }

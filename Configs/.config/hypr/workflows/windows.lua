@@ -1,0 +1,10 @@
+local runtime = require("runtime")
+local vars = require("vars")
+
+runtime.load(vars.get("XDG_DATA_HOME") .. "/hypr/workflows/windows.lua")
+vars.set("WORKFLOW_ICON", "󰽏")
+vars.set("WORKFLOW_DESCRIPTION", "Windows 11 theme and winbar")
+vars.set("WORKFLOW_QUICKSHELL_LAYOUT", "winbar")
+local layout = vars.get("WORKFLOW_LAYOUT_OVERRIDE", "")
+runtime.config("general.layout", layout ~= "" and layout ~= "floating" and layout or "dwindle")
+require("floating_windows").setup()

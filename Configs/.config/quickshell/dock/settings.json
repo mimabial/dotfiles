@@ -15,7 +15,7 @@
   "itemSpacing": 8,
   "showUrgentHint": true,
   "urgentSound": true,
-  "urgentSoundName": "bell",
+  "urgentSoundName": "message-new-instant",
   "revealDelay": 160,
   "tooltipDelay": 450,
   "appGroups": [],
@@ -30,8 +30,8 @@
   "iconSize": 36,
   "recentApps": [
     "xdg-desktop-portal-gtk",
-    "chromium",
-    "dropdown-terminal"
+    "org.qbittorrent.qBittorrent",
+    "net.lutris.Lutris"
   ],
   "showRecents": true,
   "showIndicators": true

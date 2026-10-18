@@ -9,8 +9,8 @@ Item {
   required property int index
   readonly property var popup: view.popup
   readonly property var player: view.player
-  readonly property bool isCurrent: index === player.lyricsCurrentIdx
-  readonly property bool isPast: player.lyricsCurrentIdx >= 0 && index < player.lyricsCurrentIdx
+  readonly property bool isCurrent: index === player.currentLyricsIndex
+  readonly property bool isPast: player.currentLyricsIndex >= 0 && index < player.currentLyricsIndex
 
   width: view.width
   implicitHeight: lyricText.implicitHeight + Commons.Style.space(4)

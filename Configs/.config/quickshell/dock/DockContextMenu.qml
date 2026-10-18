@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "DockModel.js" as DockModel
 import "../Opacity.js" as Opacity
@@ -17,13 +17,28 @@ BorderSurface {
   component MenuDivider: DockMenuDivider { menuWidth: contextMenu.rowWidth }
   visible: contextMenu.dock.contextAppId !== ""
   z: contextMenu.dock.popoverZ
-  color: Util.alpha(Color.menu.background, Style.popupSurfaceOpacity)
-  borderSpec: Border.surfaceSpec("menu", "border",
-    Util.alpha(Color.menu.border, Style.popupBorderOpacity), 1)
-  radius: Style.cornerRadius
-  padding: Style.space(4)
+  color: Commons.Util.alpha(Commons.Style.popupTinted(Commons.Color.menu.background), Commons.Style.popupSurfaceOpacity)
+  borderSpec: Commons.Border.surfaceSpec("menu", "border",
+    Commons.Util.alpha(Commons.Style.popupBorder(Commons.Color.menu.border), Commons.Style.popupBorderOpacity), 1)
+  radius: Commons.Style.cornerRadius
+  padding: Commons.Style.space(4)
 
   HoverHandler { id: menuHover }
+
+  readonly property var iconSizeChoices: [
+    { label: "Small", size: 28 },
+    { label: "Medium", size: 36 },
+    { label: "Large", size: 44 },
+    { label: "Extra Large", size: 52 }
+  ]
+  readonly property var spacingChoices: [
+    { label: "Compact", spacing: 2 },
+    { label: "Normal", spacing: 4 },
+    { label: "Relaxed", spacing: 8 }
+  ]
+  readonly property var nearestSpacingChoice: spacingChoices.reduce(function (nearest, choice) {
+    return Math.abs(choice.spacing - contextMenu.dock.itemSpacing) < Math.abs(nearest.spacing - contextMenu.dock.itemSpacing) ? choice : nearest
+  })
 
   readonly property real rowWidth: contextMenu.dock.contextAppId !== ""
     ? contextMenu.dock.menuContentWidth(menuColumn)
@@ -41,7 +56,7 @@ BorderSurface {
 
   Column {
     id: menuColumn
-    spacing: Style.space(2)
+    spacing: Commons.Style.space(2)
 
     anchors.left: parent.left
     anchors.leftMargin: contextMenu.contentLeftInset
@@ -53,11 +68,11 @@ BorderSurface {
     anchors.bottomMargin: contextMenu.contentBottomInset
 
     Column {
-      spacing: Style.space(1)
+      spacing: Commons.Style.space(1)
       visible: contextMenu.dock.contextAppId === "__dock_settings__"
 
       Column {
-        spacing: Style.space(2)
+        spacing: Commons.Style.space(2)
         visible: contextMenu.dock.settingsSubmenu === ""
 
         ContextRow {
@@ -103,18 +118,18 @@ BorderSurface {
       }
 
       Column {
-        spacing: Style.space(1)
+        spacing: Commons.Style.space(1)
         visible: contextMenu.dock.settingsSubmenu === "app_groups"
 
         ContextRow {
           text: "‹ Back"
-          textColor: Color.bar.active
+          textColor: Commons.Color.bar.active
           onTriggered: contextMenu.dock.settingsSubmenu = ""
         }
         ContextRow { text: "App Groups"; isHeader: true }
         ContextRow {
           text: "+ Group Running Apps"
-          textColor: Color.bar.active
+          textColor: Commons.Color.bar.active
           onTriggered: {
             contextMenu.dock.createAppGroupFromRunning()
             contextMenu.dock.closeContext()
@@ -135,12 +150,12 @@ BorderSurface {
       }
 
       Column {
-        spacing: Style.space(1)
+        spacing: Commons.Style.space(1)
         visible: contextMenu.dock.settingsSubmenu === "folders"
 
         ContextRow {
           text: "‹ Back"
-          textColor: Color.bar.active
+          textColor: Commons.Color.bar.active
           onTriggered: contextMenu.dock.settingsSubmenu = ""
         }
 
@@ -158,7 +173,7 @@ BorderSurface {
 
         ContextRow {
           text: "+ Add Custom Folder..."
-          textColor: Color.bar.active
+          textColor: Commons.Color.bar.active
           onTriggered: {
             contextMenu.dock.pickCustomFolder()
             contextMenu.dock.closeContext()
@@ -211,12 +226,12 @@ BorderSurface {
       }
 
       Column {
-        spacing: Style.space(1)
+        spacing: Commons.Style.space(1)
         visible: contextMenu.dock.settingsSubmenu === "folder_color"
 
         ContextRow {
           text: "‹ Back"
-          textColor: Color.bar.active
+          textColor: Commons.Color.bar.active
           onTriggered: contextMenu.dock.settingsSubmenu = "folders"
         }
 
@@ -248,15 +263,15 @@ BorderSurface {
 
         Item {
           readonly property bool isMenuContent: true
-          implicitWidth: Math.max(220, 2 * Style.space(24) + Style.space(4) + Style.space(16))
-          implicitHeight: Style.space(24) + Style.space(8)
+          implicitWidth: Math.max(220, 2 * Commons.Style.space(24) + Commons.Style.space(4) + Commons.Style.space(16))
+          implicitHeight: Commons.Style.space(24) + Commons.Style.space(8)
           width: contextMenu.rowWidth > 0 ? contextMenu.rowWidth : implicitWidth
           height: implicitHeight
 
           Grid {
             anchors.centerIn: parent
             columns: 2
-            spacing: Style.space(4)
+            spacing: Commons.Style.space(4)
 
             readonly property var colorPresets: [
               { id: "white", name: "White", color: "#ffffff" },
@@ -268,21 +283,21 @@ BorderSurface {
               delegate: Rectangle {
                 id: fColorSwatch
                 required property var modelData
-                width: Style.space(24)
-                height: Style.space(24)
-                radius: Style.space(4)
+                width: Commons.Style.space(24)
+                height: Commons.Style.space(24)
+                radius: Commons.Style.space(4)
                 color: modelData.color
                 border.color: contextMenu.dock.folderColor === modelData.id
-                  ? Color.bar.active
-                  : Util.alpha(Color.menu.border, 0.8)
+                  ? Commons.Color.bar.active
+                  : Commons.Util.alpha(Commons.Color.menu.border, 0.8)
                 border.width: contextMenu.dock.folderColor === modelData.id ? 2 : 1
 
                 Rectangle {
                   visible: contextMenu.dock.folderColor === fColorSwatch.modelData.id
                   anchors.centerIn: parent
-                  width: Style.space(8)
-                  height: Style.space(8)
-                  radius: Style.space(4)
+                  width: Commons.Style.space(8)
+                  height: Commons.Style.space(8)
+                  radius: Commons.Style.space(4)
                   color: fColorSwatch.modelData.id === "white" ? "#111111" : "#ffffff"
                 }
 
@@ -299,12 +314,12 @@ BorderSurface {
       }
 
       Column {
-        spacing: Style.space(1)
+        spacing: Commons.Style.space(1)
         visible: contextMenu.dock.settingsSubmenu === "position"
 
         ContextRow {
           text: "‹ Back"
-          textColor: Color.bar.active
+          textColor: Commons.Color.bar.active
           onTriggered: contextMenu.dock.settingsSubmenu = ""
         }
 
@@ -327,12 +342,12 @@ BorderSurface {
       }
 
       Column {
-        spacing: Style.space(1)
+        spacing: Commons.Style.space(1)
         visible: contextMenu.dock.settingsSubmenu === "appearance"
 
         ContextRow {
           text: "‹ Back"
-          textColor: Color.bar.active
+          textColor: Commons.Color.bar.active
           onTriggered: contextMenu.dock.settingsSubmenu = ""
         }
 
@@ -356,12 +371,12 @@ BorderSurface {
       }
 
       Column {
-        spacing: Style.space(1)
+        spacing: Commons.Style.space(1)
         visible: contextMenu.dock.settingsSubmenu === "behavior"
 
         ContextRow {
           text: "‹ Back"
-          textColor: Color.bar.active
+          textColor: Commons.Color.bar.active
           onTriggered: contextMenu.dock.settingsSubmenu = ""
         }
 
@@ -396,12 +411,12 @@ BorderSurface {
       }
 
       Column {
-        spacing: Style.space(1)
+        spacing: Commons.Style.space(1)
         visible: contextMenu.dock.settingsSubmenu === "effects"
 
         ContextRow {
           text: "‹ Back"
-          textColor: Color.bar.active
+          textColor: Commons.Color.bar.active
           onTriggered: contextMenu.dock.settingsSubmenu = ""
         }
 
@@ -471,12 +486,12 @@ BorderSurface {
       }
 
       Column {
-        spacing: Style.space(1)
+        spacing: Commons.Style.space(1)
         visible: contextMenu.dock.settingsSubmenu === "hover"
 
         ContextRow {
           text: "‹ Back"
-          textColor: Color.bar.active
+          textColor: Commons.Color.bar.active
           onTriggered: contextMenu.dock.settingsSubmenu = "effects"
         }
 
@@ -526,12 +541,12 @@ BorderSurface {
       }
 
       Column {
-        spacing: Style.space(1)
+        spacing: Commons.Style.space(1)
         visible: contextMenu.dock.settingsSubmenu === "size_spacing"
 
         ContextRow {
           text: "‹ Back"
-          textColor: Color.bar.active
+          textColor: Commons.Color.bar.active
           onTriggered: contextMenu.dock.settingsSubmenu = ""
         }
 
@@ -546,18 +561,18 @@ BorderSurface {
         }
 
         ContextRow {
-          text: "Spacing: " + (contextMenu.dock.itemSpacing <= 2 ? "Compact" : (contextMenu.dock.itemSpacing <= 5 ? "Normal" : "Relaxed")) + " ›"
+          text: "Spacing: " + contextMenu.nearestSpacingChoice.label + " ›"
           onTriggered: contextMenu.dock.settingsSubmenu = "spacing"
         }
       }
 
       Column {
-        spacing: Style.space(1)
+        spacing: Commons.Style.space(1)
         visible: contextMenu.dock.settingsSubmenu === "autohide"
 
         ContextRow {
           text: "‹ Back"
-          textColor: Color.bar.active
+          textColor: Commons.Color.bar.active
           onTriggered: contextMenu.dock.settingsSubmenu = "behavior"
         }
 
@@ -586,12 +601,12 @@ BorderSurface {
       }
 
       Column {
-        spacing: Style.space(1)
+        spacing: Commons.Style.space(1)
         visible: contextMenu.dock.settingsSubmenu === "minimize"
 
         ContextRow {
           text: "‹ Back"
-          textColor: Color.bar.active
+          textColor: Commons.Color.bar.active
           onTriggered: contextMenu.dock.settingsSubmenu = "behavior"
         }
 
@@ -629,12 +644,12 @@ BorderSurface {
       }
 
       Column {
-        spacing: Style.space(1)
+        spacing: Commons.Style.space(1)
         visible: contextMenu.dock.settingsSubmenu === "urgent_sound"
 
         ContextRow {
           text: "‹ Back"
-          textColor: Color.bar.active
+          textColor: Commons.Color.bar.active
           onTriggered: contextMenu.dock.settingsSubmenu = "behavior"
         }
 
@@ -693,12 +708,12 @@ BorderSurface {
       }
 
       Column {
-        spacing: Style.space(1)
+        spacing: Commons.Style.space(1)
         visible: contextMenu.dock.settingsSubmenu === "opacity"
 
         ContextRow {
           text: "‹ Back"
-          textColor: Color.bar.active
+          textColor: Commons.Color.bar.active
           onTriggered: contextMenu.dock.settingsSubmenu = "appearance"
         }
 
@@ -725,12 +740,12 @@ BorderSurface {
       }
 
       Column {
-        spacing: Style.space(1)
+        spacing: Commons.Style.space(1)
         visible: contextMenu.dock.settingsSubmenu === "size"
 
         ContextRow {
           text: "‹ Back"
-          textColor: Color.bar.active
+          textColor: Commons.Color.bar.active
           onTriggered: contextMenu.dock.settingsSubmenu = "size_spacing"
         }
 
@@ -739,38 +754,25 @@ BorderSurface {
           isHeader: true
         }
 
-        ContextRow {
-          text: "Small (28px)"
-          checked: contextMenu.dock.configuredIconSize === 28
-          onTriggered: contextMenu.dock.setIconSize(28)
-        }
-
-        ContextRow {
-          text: "Medium (36px)"
-          checked: contextMenu.dock.configuredIconSize === 36 || (contextMenu.dock.configuredIconSize === 0 && contextMenu.dock.iconSize === 36)
-          onTriggered: contextMenu.dock.setIconSize(36)
-        }
-
-        ContextRow {
-          text: "Large (44px)"
-          checked: contextMenu.dock.configuredIconSize === 44
-          onTriggered: contextMenu.dock.setIconSize(44)
-        }
-
-        ContextRow {
-          text: "Extra Large (52px)"
-          checked: contextMenu.dock.configuredIconSize === 52
-          onTriggered: contextMenu.dock.setIconSize(52)
+        Repeater {
+          model: contextMenu.iconSizeChoices
+          ContextRow {
+            required property var modelData
+            text: modelData.label + " (" + modelData.size + "px)"
+            checked: contextMenu.dock.configuredIconSize === modelData.size
+              || (contextMenu.dock.configuredIconSize === 0 && contextMenu.dock.iconSize === modelData.size)
+            onTriggered: contextMenu.dock.setIconSize(modelData.size)
+          }
         }
       }
 
       Column {
-        spacing: Style.space(1)
+        spacing: Commons.Style.space(1)
         visible: contextMenu.dock.settingsSubmenu === "spacing"
 
         ContextRow {
           text: "‹ Back"
-          textColor: Color.bar.active
+          textColor: Commons.Color.bar.active
           onTriggered: contextMenu.dock.settingsSubmenu = "size_spacing"
         }
 
@@ -779,28 +781,20 @@ BorderSurface {
           isHeader: true
         }
 
-        ContextRow {
-          text: "Compact"
-          checked: contextMenu.dock.itemSpacing === 2
-          onTriggered: contextMenu.dock.setItemSpacing(2)
-        }
-
-        ContextRow {
-          text: "Normal"
-          checked: contextMenu.dock.itemSpacing === 4
-          onTriggered: contextMenu.dock.setItemSpacing(4)
-        }
-
-        ContextRow {
-          text: "Relaxed"
-          checked: contextMenu.dock.itemSpacing === 8
-          onTriggered: contextMenu.dock.setItemSpacing(8)
+        Repeater {
+          model: contextMenu.spacingChoices
+          ContextRow {
+            required property var modelData
+            text: modelData.label
+            checked: contextMenu.dock.itemSpacing === modelData.spacing
+            onTriggered: contextMenu.dock.setItemSpacing(modelData.spacing)
+          }
         }
       }
     }
 
     Column {
-      spacing: Style.space(2)
+      spacing: Commons.Style.space(2)
       visible: contextMenu.dock.contextAppId === "__folder_context__"
 
       ContextRow {
@@ -811,7 +805,7 @@ BorderSurface {
       ContextRow {
         text: "Open in File Manager"
         onTriggered: {
-          Util.execDetached("uwsm-app -- xdg-open " + Util.shellQuote(contextMenu.dock.contextFolderPath.replace(/^~/, Quickshell.env("HOME"))))
+          Commons.Util.execDetached("uwsm-app -- xdg-open " + Commons.Util.shellQuote(contextMenu.dock.contextFolderPath.replace(/^~/, Quickshell.env("HOME"))))
           contextMenu.dock.closeContext()
         }
       }
@@ -819,7 +813,7 @@ BorderSurface {
       ContextRow {
         text: "Open in Terminal"
         onTriggered: {
-          Util.execDetached("uwsm-app -- xdg-terminal-exec --dir=" + Util.shellQuote(contextMenu.dock.contextFolderPath.replace(/^~/, Quickshell.env("HOME"))))
+          Commons.Util.execDetached("uwsm-app -- xdg-terminal-exec --dir=" + Commons.Util.shellQuote(contextMenu.dock.contextFolderPath.replace(/^~/, Quickshell.env("HOME"))))
           contextMenu.dock.closeContext()
         }
       }
@@ -837,7 +831,7 @@ BorderSurface {
     }
 
     Column {
-      spacing: Style.space(2)
+      spacing: Commons.Style.space(2)
       visible: contextMenu.dock.contextAppId === "__trash_context__"
 
       ContextRow {
@@ -860,14 +854,14 @@ BorderSurface {
         danger: true
         disabled: !contextMenu.dock.trashFull
         onTriggered: {
-          Util.execDetached("gio trash --empty")
+          Commons.Util.execDetached("gio trash --empty")
           contextMenu.dock.closeContext()
         }
       }
     }
 
     Column {
-      spacing: Style.space(2)
+      spacing: Commons.Style.space(2)
       visible: contextMenu.dock.contextAppId === "__tile_context__"
 
       ContextRow {
@@ -914,7 +908,7 @@ BorderSurface {
     }
 
     Column {
-      spacing: Style.space(2)
+      spacing: Commons.Style.space(2)
       visible: contextMenu.dock.contextAppId === "__app_group_context__"
 
       ContextRow {
@@ -952,14 +946,14 @@ BorderSurface {
 
       Column {
         id: appContextMenuColumn
-        spacing: Style.space(2)
+        spacing: Commons.Style.space(2)
         width: contextMenu.rowWidth > 0 ? contextMenu.rowWidth : implicitWidth
 
         property int selectedWindowIdx: -1
 
         Column {
           id: windowListSection
-          spacing: Style.space(1)
+          spacing: Commons.Style.space(1)
           visible: contextMenu.dock.contextWindowList.length > 0
 
           ContextRow {
@@ -994,7 +988,7 @@ BorderSurface {
         }
 
         Column {
-          spacing: Style.space(1)
+          spacing: Commons.Style.space(1)
           visible: contextMenu.dock.contextDesktopActions.length > 0
 
           Repeater {
@@ -1122,9 +1116,9 @@ BorderSurface {
     Text {
       width: parent.width; text: "↑↓ move · Enter select · ←/Esc back"
       wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter
-      fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Style.font.caption - 2)
-      color: Util.alpha(Color.menu.text, .55)
-      font.family: Style.font.family; font.pixelSize: Style.font.caption
+      fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Commons.Style.font.caption - 2)
+      color: Commons.Util.alpha(Commons.Color.menu.text, .55)
+      font.family: Commons.Style.font.family; font.pixelSize: Commons.Style.font.caption
     }
   }
 }

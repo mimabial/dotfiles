@@ -1,6 +1,6 @@
 # Backgrounds
 
-There are 428 wallpapers, bundled with the 48 theme packs. Switching a theme
+There are 511 wallpapers, bundled with the 57 theme packs. Switching a theme
 switches the wallpaper set; the picker only ever shows you the ones that belong
 to the theme you are on.
 
@@ -30,7 +30,7 @@ script still gets its own `<backend>.png` link in the current-wallpaper director
 the lock screen gets its own copy at its own size:
 
 ```bash
-hyprshell wallpaper --backend hyprlock ...
+hyprshell wallpaper link --backend hyprlock
 ```
 
 ## Colors from the wallpaper

@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+wallpaper_outputs="${2:-}"
 wallpaper_path="${1:-"${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/wallpaper/current}/wall.set"}"
 
 
 # shellcheck disable=SC1090
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/lock_paths.bash"
+
+if [[ -n "${wallpaper_outputs}" ]]; then
+  exec {wallpaper_switch_fd}>"$(hypr_lock_path_ensure_parent wallpaper_switch)"
+  flock "${wallpaper_switch_fd}"
+fi
 
 AWWW_LOCK="$(hypr_lock_path_ensure_parent wallpaper_awww)"
 exec {awww_lock_fd}>"${AWWW_LOCK}"
@@ -111,6 +117,12 @@ awww_image_command=("${wallpaper_client_cmd}" img "${image_path}"
   --transition-fps "${wallpaper_transition_fps}"
   --invert-y
   --transition-pos "${cursor_position}")
+[[ -z "${wallpaper_outputs}" ]] || awww_image_command+=(--outputs "${wallpaper_outputs}")
+
+wallpaper_awww_apply() {
+  "${awww_image_command[@]}" || return
+  [[ -n "${wallpaper_outputs}" ]] || quickshell ipc call wallpaper backendChanged >/dev/null 2>&1 || true
+}
 
 # Run synchronously whenever the caller is using wait-lock semantics.
 # That keeps backend submits ordered with the global wallpaper lock, so
@@ -118,7 +130,7 @@ awww_image_command=("${wallpaper_client_cmd}" img "${image_path}"
 if [[ "${WALLPAPER_SET_FLAG:-}" == "start" \
   || "${WALLPAPER_SYNC_APPLY:-0}" == "1" \
   || "${WALLPAPER_WAIT_FOR_LOCK:-0}" == "1" ]]; then
-  "${awww_image_command[@]}"
+  wallpaper_awww_apply
 else
-  ( "${awww_image_command[@]}" || print_log -sec "${wallpaper_backend_log}" -err "failed to set wallpaper" ) &
+  ( wallpaper_awww_apply || print_log -sec "${wallpaper_backend_log}" -err "failed to set wallpaper" ) &
 fi

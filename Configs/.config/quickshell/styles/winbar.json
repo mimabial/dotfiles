@@ -39,7 +39,7 @@
   },
   "weather": {
     "justify": "left",
-    "leadingIconSize": 20.0,
+    "symbolSize": 20.0,
     "leadingIconGap": 8.0,
     "iconColor": ["c3", 1.0],
     "hover": { "iconColor": ["fg", 1.0] },
@@ -52,10 +52,11 @@
     "badgeColor": ["fg", 1.0],
     "badgeBackgroundColor": null,
     "badgeBorderRadius": null,
-    "badgeSize": 7.0,
-    "badgeFontWeight": 700,
+    "badgeVerticalAlignment": "center",
+    "badgeSize": 8.0,
+    "badgeFontWeight": 800,
     "badgeOffsetX": -8.0,
-    "badgeOffsetY": 20.0
+    "badgeOffsetY": -8.0
   },
   "menu": {
     "iconBox": 14.0,
@@ -127,5 +128,6 @@
     "tray.chevron": {
       "iconBox": 5.5
     }
-  }
+  },
+  "microphone.muted": { "symbol": "status/audio-input-microphone-muted" }
 }

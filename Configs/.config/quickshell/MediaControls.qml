@@ -18,40 +18,40 @@ QtObject {
       return
     }
     controls.controller.playbackState = (controls.controller.playbackState === "playing") ? "paused" : "playing"
-    controls.controller.runCmd(["toggle"])
+    controls.controller.enqueuePlaybackCommand(["toggle"])
   }
   function play() {
     const player = controls.controller.mprisPlayer
     if (player) { if (player.canPlay) player.play(); controls.media.select(player); controls.controller.syncMpris(); return }
     controls.controller.playbackState = "playing"
-    controls.controller.runCmd(["play"])
+    controls.controller.enqueuePlaybackCommand(["play"])
   }
   function pause() {
     const player = controls.controller.mprisPlayer
     if (player) { if (player.canPause) player.pause(); controls.media.select(player); controls.controller.syncMpris(); return }
     controls.controller.playbackState = "paused"
-    controls.controller.runCmd(["pause"])
+    controls.controller.enqueuePlaybackCommand(["pause"])
   }
   function stop() {
     const player = controls.controller.mprisPlayer
     if (player) { if (player.canControl) player.stop(); controls.media.select(player); controls.controller.syncMpris(); return }
     controls.controller.playbackState = "stopped"
-    controls.controller.runCmd(["stop"])
+    controls.controller.enqueuePlaybackCommand(["stop"])
   }
   function nextTrack() {
     const player = controls.controller.mprisPlayer
     if (player) { if (player.canGoNext) player.next(); controls.media.select(player); return }
-    controls.controller.runCmd(["next"])
+    controls.controller.enqueuePlaybackCommand(["next"])
   }
   function prevTrack() {
     const player = controls.controller.mprisPlayer
     if (player) { if (player.canGoPrevious) player.previous(); controls.media.select(player); return }
-    controls.controller.runCmd(["prev"])
+    controls.controller.enqueuePlaybackCommand(["prev"])
   }
   function toggleShuffle() {
     const player = controls.controller.mprisPlayer
     if (player) { if (player.shuffleSupported) player.shuffle = !player.shuffle; return }
-    controls.controller.runCmd(["shuffle"])
+    controls.controller.enqueuePlaybackCommand(["shuffle"])
   }
   function cycleRepeat() {
     const player = controls.controller.mprisPlayer
@@ -61,7 +61,7 @@ QtObject {
           ? MprisLoopState.Playlist : MprisLoopState.None
       return
     }
-    controls.controller.runCmd(["repeat"])
+    controls.controller.enqueuePlaybackCommand(["repeat"])
   }
   
   function adjustVolume(delta) {
@@ -72,15 +72,15 @@ QtObject {
     controls.controller.volumePct = pct
     const player = controls.controller.mprisPlayer
     if (player) { if (player.volumeSupported) player.volume = pct / 100; return }
-    controls.controller.liveCmd(["volume_pct", String(pct)])
+    controls.controller.replaceLivePlaybackCommand(["volume_pct", String(pct)])
   }
   
   function toggleMute() {
     if (controls.controller.volumePct > 0) {
-      controls.controller._preMuteVol = controls.controller.volumePct
+      controls.controller.volumeBeforeMute = controls.controller.volumePct
       setVolume(0)
     } else {
-      var target = (controls.controller._preMuteVol && controls.controller._preMuteVol > 0) ? controls.controller._preMuteVol : controls.defaultVolume
+      var target = (controls.controller.volumeBeforeMute && controls.controller.volumeBeforeMute > 0) ? controls.controller.volumeBeforeMute : controls.defaultVolume
       setVolume(target)
     }
   }
@@ -94,7 +94,7 @@ QtObject {
       }
       return
     }
-    controls.controller.liveCmd(["seek", String(sec)])
+    controls.controller.replaceLivePlaybackCommand(["seek", String(sec)])
   }
   function cycleSpeed() {
     var speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
@@ -105,6 +105,6 @@ QtObject {
     controls.controller.playbackSpeed = next
     const player = controls.controller.mprisPlayer
     if (player) { player.rate = Math.max(player.minRate, Math.min(player.maxRate, next)); return }
-    controls.controller.runCmd(["speed", String(next)])
+    controls.controller.enqueuePlaybackCommand(["speed", String(next)])
   }
 }

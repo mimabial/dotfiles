@@ -1,24 +1,6 @@
-// Not a mode: Player.qml paints this into its own Canvas below the visualizer and applies
-// a single opacity to the flattened result. Scaling each blob instead (globalAlpha) still
-// scales them one draw at a time, so the overlaps would keep stacking.
 .pragma library
-.import "helpers.js" as H
+.import "helpers.js" as VisualizerHelpers
 
-// Blobs take their hue straight from the theme's terminal palette rather than from
-// anything synthesised, and three rules keep the result a nebula rather than mud:
-//
-// 1. Ordered by cx along a coherent slice of the palette (success -> c2 -> teal ->
-//    accent -> blue), so horizontally adjacent blobs are adjacent in hue and blend into
-//    one sweep. Picking colours from around the whole wheel puts clashes side by side.
-// 2. Lightness is a bounded step away from the player's own surface, in whichever
-//    direction has headroom. A fixed lightness leaves the contrast against the surface
-//    uncontrolled -- 0.38 is a +0.22 step over a #2C2525 surface but a -0.57 step under
-//    a near-white one, which is why the wash landed far heavier on light themes.
-// 3. The accent is the one blob that is not a palette slot -- it tracks album art and
-//    can land anywhere on the wheel, in the middle of that ordered slice -- so its hue
-//    is pulled toward its two neighbours before use.
-//
-// color is an index into d.colors; -1 means accent and -2 means success.
 var BLOBS = [
   { cx: 0.15, cy: 0.35, rx: 0.30, ry: 0.70, color: -2, weight: 0.85, drift: 1.0 },
   { cx: 0.30, cy: 0.70, rx: 0.22, ry: 0.55, color: 2,  weight: 0.80, drift: -1.1 },
@@ -27,12 +9,7 @@ var BLOBS = [
   { cx: 0.85, cy: 0.60, rx: 0.28, ry: 0.65, color: 4,  weight: 0.85, drift: -0.7 }
 ]
 
-// Lightness distance from the surface at weight 1. Tuned so the four palette blobs land
-// within 0.01 of the fixed values this replaced on a dark theme; the accent core is
-// deliberately lower than its old 0.50.
 var MAX_DELTA = 0.42
-// Decorative fills never want a palette colour at full chroma, and less of it still when
-// the surface leaves little lightness headroom to separate them from it.
 var SAT_CAP = 0.82
 var ACCENT_PULL = 0.15
 var ALPHA = 0.50
@@ -42,71 +19,64 @@ function shortestHueRotation(from, to) {
   return ((to - from + 540) % 360) - 180
 }
 
-function tint(color, surfaceL, weight) {
-  var src = H.hsl(color)
-  var up = 1 - surfaceL
-  var room = Math.max(up, surfaceL)
+function tint(color, surfaceLightness, weight) {
+  var src = VisualizerHelpers.hsl(color)
+  var up = 1 - surfaceLightness
+  var room = Math.max(up, surfaceLightness)
   var delta = Math.min(MAX_DELTA * weight, room * 0.85)
-  var target = surfaceL + (up >= surfaceL ? delta : -delta)
+  var target = surfaceLightness + (up >= surfaceLightness ? delta : -delta)
   var reach = delta / MAX_DELTA
-  return H.hueShift(color, 0, Math.min(src.s, SAT_CAP * (0.55 + 0.45 * reach)), target)
+  return VisualizerHelpers.hueShift(color, 0, Math.min(src.s, SAT_CAP * (0.55 + 0.45 * reach)), target)
 }
 
-function accentTint(accent, palette, surfaceL, weight) {
-  var src = H.hsl(accent)
+function accentTint(accent, palette, surfaceLightness, weight) {
+  var src = VisualizerHelpers.hsl(accent)
   var left = palette[6], right = palette[4]
-  if (src.s === 0 || !left || !right) return tint(accent, surfaceL, weight)
-  var lh = H.hsl(left).h
-  var mid = lh + shortestHueRotation(lh, H.hsl(right).h) / 2
-  return tint(H.hueShift(accent, shortestHueRotation(src.h, mid) * ACCENT_PULL), surfaceL, weight)
+  if (src.s === 0 || !left || !right) return tint(accent, surfaceLightness, weight)
+  var lh = VisualizerHelpers.hsl(left).h
+  var mid = lh + shortestHueRotation(lh, VisualizerHelpers.hsl(right).h) / 2
+  return tint(VisualizerHelpers.hueShift(accent, shortestHueRotation(src.h, mid) * ACCENT_PULL), surfaceLightness, weight)
 }
 
-function render(ctx, d) {
-  if (!d.playing) return
+function render(canvas, frameData) {
+  if (!frameData.playing) return
 
-  var w = d.width, h = d.height
-  var t = d.frame * 0.02
-  var beat = d.beatDrop || 0
-  var bass = H.bandAvg(d.bands || [], 0, 5)
-  var palette = d.colors || []
-  var surfaceL = H.hsl(d.surface).l
+  var width = frameData.width, height = frameData.height
+  var t = frameData.frame * 0.02
+  var beat = frameData.beatDrop || 0
+  var bass = VisualizerHelpers.bandAvg(frameData.bands || [], 0, 5)
+  var palette = frameData.colors || []
+  var surfaceLightness = VisualizerHelpers.hsl(frameData.surface).l
 
-  // Omaramp's alpha pulse is optional; movement and swelling remain audio-reactive either way.
   var swell = 1.25 + bass * 0.25 + beat * 0.20
   var sway = 1.0 + bass * 0.5 + beat * 0.4
-  var alpha = d.backgroundPulse ? Math.min(0.85, 0.45 + beat * 0.25 + bass * 0.15) : ALPHA
-  var midAlpha = d.backgroundPulse ? alpha * 0.35 : MID_ALPHA
+  var alpha = frameData.backgroundPulse ? Math.min(0.85, 0.45 + beat * 0.25 + bass * 0.15) : ALPHA
+  var midAlpha = frameData.backgroundPulse ? alpha * 0.35 : MID_ALPHA
 
   for (var i = 0; i < BLOBS.length; i++) {
-    var bl = BLOBS[i]
-    var core = bl.color === -2
-      ? tint(d.success || d.accent, surfaceL, bl.weight)
-      : bl.color >= 0 && palette[bl.color]
-        ? tint(palette[bl.color], surfaceL, bl.weight)
-        : accentTint(d.accent, palette, surfaceL, bl.weight)
+    var blob = BLOBS[i]
+    var core = blob.color === -2
+      ? tint(frameData.success || frameData.accent, surfaceLightness, blob.weight)
+      : blob.color >= 0 && palette[blob.color]
+        ? tint(palette[blob.color], surfaceLightness, blob.weight)
+        : accentTint(frameData.accent, palette, surfaceLightness, blob.weight)
 
-    var rx = bl.rx * w * swell
-    var ry = bl.ry * h * swell
+    var rx = blob.rx * width * swell
+    var ry = blob.ry * height * swell
     if (rx <= 0 || ry <= 0) continue
 
-    var bx = (bl.cx + Math.sin(t * bl.drift + i * 1.5) * 0.06 * sway) * w
-    var by = (bl.cy + Math.cos(t * bl.drift * 0.8 + i * 2.0) * 0.08 * sway) * h
+    var centerX = (blob.cx + Math.sin(t * blob.drift + i * 1.5) * 0.06 * sway) * width
+    var centerY = (blob.cy + Math.cos(t * blob.drift * 0.8 + i * 2.0) * 0.08 * sway) * height
 
-    // A unit-circle gradient under a scale transform, so rx and ry describe an ellipse
-    // instead of collapsing into whichever of the two is larger. The fill covers the
-    // blob's bounding box rather than the whole canvas, which is not a speed win here:
-    // measured at 500x61 the transform costs more than the saved area, ~0.12ms/frame
-    // against ~0.10 for a full-canvas circle. Both are noise against the frame tick.
-    ctx.save()
-    ctx.translate(bx, by)
-    ctx.scale(rx, ry)
-    var grad = ctx.createRadialGradient(0, 0, 0, 0, 0, 1)
-    grad.addColorStop(0, H.rgba(core, alpha))
-    // Midpoint sinks toward the surface so blobs stay readable behind the visualizer.
-    grad.addColorStop(0.6, H.mixColor(core, d.surface, 0.25, midAlpha))
-    grad.addColorStop(1, H.rgba(core, 0))
-    ctx.fillStyle = grad
-    ctx.fillRect(-1, -1, 2, 2)
-    ctx.restore()
+    canvas.save()
+    canvas.translate(centerX, centerY)
+    canvas.scale(rx, ry)
+    var gradient = canvas.createRadialGradient(0, 0, 0, 0, 0, 1)
+    gradient.addColorStop(0, VisualizerHelpers.rgba(core, alpha))
+    gradient.addColorStop(0.6, VisualizerHelpers.mixColor(core, frameData.surface, 0.25, midAlpha))
+    gradient.addColorStop(1, VisualizerHelpers.rgba(core, 0))
+    canvas.fillStyle = gradient
+    canvas.fillRect(-1, -1, 2, 2)
+    canvas.restore()
   }
 }

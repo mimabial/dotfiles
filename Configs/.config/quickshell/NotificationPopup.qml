@@ -3,8 +3,6 @@ import QtQuick
 import QtQuick.Controls
 import "CalendarMath.js" as CalendarMath
 
-// The notification centre: dunst's live state on top, and under it the archive
-// that notify/archive keeps, which outlives dunst's 20-entry ring.
 PopupCard {
     id: root
     popupName: "notifications"

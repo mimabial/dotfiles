@@ -1,13 +1,13 @@
 # The menu
 
-`Super + Space` opens a rofi tree of 233 entries across 50 menus. It is the
+`Super + Space` opens a rofi tree of 302 entries across 58 menus. It is the
 safety net: anything you can reach with a key you can also reach here, so when
 you cannot remember a chord you have not lost the feature.
 
 The top level:
 
 **Search All** · **AI** · **Tools** · **Apps** · **Bookmarks** · **Gaming** ·
-**Media** · **Learn** · **Trigger** · **Style** · **Setup** · **Install** ·
+**Media** · **Learn** · **Insert** · **Capture** · **Toggle** · **Style** · **Setup** · **Install** ·
 **Remove** · **Maintenance** · **About** · **System**
 
 Escape backs out one level. Type to filter.
@@ -21,15 +21,17 @@ under.
 
 ## What's under there
 
-**Trigger** is the verbs — screenshot, screen recording with per-source audio
-choices, insert pickers, sharing, and a Toggle submenu for nightlight, keep
-awake, mirroring, the laptop display and workspace layout.
+**Insert** holds emoji, glyph and box-drawing pickers. **Capture** holds
+screenshots, recording with per-source audio choices, the color picker and QR
+decoder. **Toggle** handles nightlight, keep awake, mirroring, the laptop display
+and workspace layout.
 
-**Style** is everything visual that is not a theme: bar layout, dock appearance,
-Exposé settings and hot corner, launcher style.
+**Style** covers themes, wallpaper, palette source and mode, bar layout and
+appearance, dock, Exposé, animations, shaders, lock layout, workflows, fonts and
+launcher style.
 
-**Setup** is the defaults — terminal, browser, editor, agent — plus monitors and
-security.
+**Setup** is the defaults — terminal, browser, editor, agent — plus language,
+audio, networking, Bluetooth, power profiles, monitors, security and keybindings.
 
 **Install** and **Remove** wrap the package manager with curated groups:
 development environments, JavaScript, PHP, Elixir, AI tooling, gaming.
@@ -54,8 +56,9 @@ hyprshell menutree --menu-id trigger_screenshot
 ```
 
 It matches loosely — `theme`, `wallpaper`, `power`, `bookmark` and friends all
-resolve to the right place. `--action <id>` runs a single action headless, and
-`--dump-json` prints the whole registered tree without opening rofi at all, which
+resolve to the right place. `--action <id>` runs one action directly; dynamic
+actions can still open rofi. `--dump-json`
+prints the whole registered tree without opening rofi at all, which
 is the fastest way to see what is actually registered.
 
 ## Adding an entry

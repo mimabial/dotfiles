@@ -1,17 +1,15 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
-// iStat-style vertical label: the letters of a short name stacked one per
-// row, small and bold, so "CPU" reads at a glance without a glyph.
 Item {
   id: root
 
   property string text: ""
-  property color color: Color.foreground
-  property string fontFamily: Style.font.family
-  property real letterSize: Style.spaceReal(10)
+  property color color: Commons.Color.foreground
+  property string fontFamily: Commons.Style.font.family
+  property real letterSize: Commons.Style.spaceReal(10)
   // Rows are spaced by cap height, not line height: these are all capitals,
   // which fill about three quarters of the em box, so packing the rows that
   // tightly lets the letters be large (and therefore thick-stemmed) inside a

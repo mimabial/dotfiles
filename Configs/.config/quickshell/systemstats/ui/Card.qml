@@ -1,22 +1,22 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
 Rectangle {
   id: root
 
-  property color foreground: Color.popups.text
-  property real padding: Style.space(12)
-  property real spacing: Style.space(8)
+  property color foreground: Commons.Color.popups.text
+  property real padding: Commons.Style.space(12)
+  property real spacing: Commons.Style.space(8)
   default property alias content: column.data
 
   width: parent ? parent.width : implicitWidth
   implicitHeight: column.implicitHeight + padding * 2
-  radius: Style.cornerRadius
-  color: Util.alpha(foreground, 0.035)
+  radius: Commons.Style.cornerRadius
+  color: Commons.Util.alpha(foreground, 0.035)
   border.width: 1
-  border.color: Util.alpha(foreground, 0.09)
+  border.color: Commons.Util.alpha(foreground, 0.09)
 
   Column {
     id: column

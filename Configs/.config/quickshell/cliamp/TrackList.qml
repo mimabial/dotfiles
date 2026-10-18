@@ -1,9 +1,10 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import ".." as Shell
+import "../Units.js" as Units
 
 Column {
   id: root
@@ -14,16 +15,16 @@ Column {
   property int focusedQueueIndex: -1
 
   width: parent ? parent.width : 0
-  spacing: Style.space(6)
+  spacing: Commons.Style.space(6)
 
   component Placeholder: Text {
     width: parent.width
-    height: Style.space(40)
+    height: Commons.Style.space(40)
     horizontalAlignment: Text.AlignHCenter
     verticalAlignment: Text.AlignVCenter
     color: root.controller.dim
     font.family: root.controller.fontFamily
-    font.pixelSize: Style.font.caption
+    font.pixelSize: Commons.Style.font.caption
   }
 
   component ListHeader: Item {
@@ -47,13 +48,13 @@ Column {
       id: label
       anchors.left: header.backable ? backButton.right : parent.left
       anchors.right: actionRow.left
-      anchors.leftMargin: Style.spacing.sm
+      anchors.leftMargin: Commons.Style.spacing.sm
       anchors.verticalCenter: parent.verticalCenter
       textFormat: Text.PlainText
       elide: Text.ElideMiddle
-      color: Color.accent
+      color: Commons.Color.accent
       font.family: root.controller.fontFamily
-      font.pixelSize: Style.font.caption
+      font.pixelSize: Commons.Style.font.caption
       font.bold: true
     }
     Row {
@@ -118,16 +119,16 @@ Column {
   BorderSurface {
     id: searchBox
     width: parent.width
-    implicitHeight: Style.space(26)
-    radius: Style.cornerRadius
-    color: Color.popups.background
-    borderSpec: Border.controlSpec(urlInput.activeFocus ? "focused" : "normal", root.controller.foreground, Color.accent)
+    implicitHeight: Commons.Style.space(26)
+    radius: Commons.Style.cornerRadius
+    color: Commons.Color.popups.background
+    borderSpec: Commons.Border.controlSpec(urlInput.activeFocus ? "focused" : "normal", root.controller.foreground, Commons.Color.accent)
     clip: true
 
     Item {
       anchors.fill: parent
-      anchors.leftMargin: Style.space(6)
-      anchors.rightMargin: Style.space(6)
+      anchors.leftMargin: Commons.Style.space(6)
+      anchors.rightMargin: Commons.Style.space(6)
 
       PanelActionButton {
         id: searchAction
@@ -135,7 +136,7 @@ Column {
         anchors.verticalCenter: parent.verticalCenter
         iconText: root.controller.isSearching ? "\uf110" : "\uf002"
         tooltipText: "Search"
-        foreground: root.controller.foreground; hoverColor: Color.accent; fontFamily: root.controller.fontFamily
+        foreground: root.controller.foreground; hoverColor: Commons.Color.accent; fontFamily: root.controller.fontFamily
         enabled: root.controller.urlInputText.trim().length > 0 && !root.controller.isSearching
         onClicked: root.controller.searchTracks(root.controller.urlInputText)
       }
@@ -143,15 +144,15 @@ Column {
       TextInput {
         id: urlInput
         anchors.left: searchAction.right
-        anchors.leftMargin: Style.space(2)
+        anchors.leftMargin: Commons.Style.space(2)
         anchors.right: clearBtn.visible ? clearBtn.left : parent.right
-        anchors.rightMargin: clearBtn.visible ? Style.space(4) : 0
+        anchors.rightMargin: clearBtn.visible ? Commons.Style.space(4) : 0
         anchors.verticalCenter: parent.verticalCenter
         text: root.controller.urlInputText
         onTextChanged: root.controller.urlInputText = text
         color: root.controller.foreground
         font.family: root.controller.fontFamily
-        font.pixelSize: Style.font.caption
+        font.pixelSize: Commons.Style.font.caption
         selectByMouse: true
         clip: true
         onAccepted: root.controller.searchTracks(text)
@@ -161,7 +162,7 @@ Column {
           text: "Search songs, artists, or paste URL..."
           color: root.controller.dim
           font.family: root.controller.fontFamily
-          font.pixelSize: Style.font.caption
+          font.pixelSize: Commons.Style.font.caption
           anchors.verticalCenter: parent.verticalCenter
           anchors.left: parent.left
           elide: Text.ElideRight
@@ -174,9 +175,9 @@ Column {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         text: "\uf00d"
-        color: clearMouse.containsMouse ? Color.accent : root.controller.dim
+        color: clearMouse.containsMouse ? Commons.Color.accent : root.controller.dim
         font.family: root.controller.fontFamily
-        font.pixelSize: Style.font.caption
+        font.pixelSize: Commons.Style.font.caption
 
         MouseArea {
           id: clearMouse
@@ -196,7 +197,7 @@ Column {
 
     Row {
       id: tabRow
-      spacing: Style.spacing.sm
+      spacing: Commons.Style.spacing.sm
 
       Repeater {
         model: ["search", "recents", "queue", "playlists", "files", "sources"]
@@ -225,7 +226,7 @@ Column {
   Flickable {
     id: trackViewport
     width: parent.width
-    implicitHeight: Style.space(168)
+    implicitHeight: Commons.Style.space(168)
     // hidden only while there is a row to scroll to, so a stuck flag cannot blank the panel
     opacity: root.controller.selectedTab === "queue" && root.queueFocusPending && root.currentQueueIndex() >= 0 ? 0 : 1
     contentWidth: width
@@ -237,7 +238,7 @@ Column {
     Column {
       id: listCol
       width: parent.width
-      spacing: Style.space(3)
+      spacing: Commons.Style.space(3)
 
       Placeholder {
         visible: root.controller.selectedTab === "sources" && root.controller.media.sourcePlayers.length === 0
@@ -293,11 +294,11 @@ Column {
           spacing: listCol.spacing
 
           Text {
-            leftPadding: Style.spacing.sm
+            leftPadding: Commons.Style.spacing.sm
             text: hGroup.modelData.label
-            color: Color.accent
+            color: Commons.Color.accent
             font.family: root.controller.fontFamily
-            font.pixelSize: Style.font.caption * 0.8
+            font.pixelSize: Commons.Style.font.caption * 0.8
             font.bold: true
           }
           Repeater {
@@ -305,7 +306,7 @@ Column {
             delegate: TrackRow {
               controller: root.controller
               url: modelData.path || ""
-              meta: modelData.duration_secs ? root.controller.media.time(modelData.duration_secs) : ""
+              meta: modelData.duration_secs ? Units.clockText(modelData.duration_secs) : ""
             }
           }
         }

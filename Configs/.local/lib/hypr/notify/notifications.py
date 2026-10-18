@@ -26,7 +26,6 @@ ARCHIVE_DIR = (
 
 DUNST_DEST = "org.freedesktop.Notifications"
 DUNST_CALL_TIMEOUT_MS = 2000
-EMIT_COALESCE_MS = 120
 DUNST_PATH = "/org/freedesktop/Notifications"
 DUNST_IFACE = "org.dunstproject.cmd0"
 PROPS_IFACE = "org.freedesktop.DBus.Properties"
@@ -137,7 +136,7 @@ def watch_notification_indicator():
     def schedule(*_):
         nonlocal pending
         if not pending:
-            pending = GLib.timeout_add(EMIT_COALESCE_MS, emit)
+            pending = GLib.idle_add(emit)
 
     if BUS is not None:
         BUS.signal_subscribe(

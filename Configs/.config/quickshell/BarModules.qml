@@ -24,11 +24,11 @@ Item {
     }
     readonly property var registry: ({
         "menu": mod_menu, "taskbar": mod_taskbar, "workspaces": mod_workspaces, "submap": mod_submap,
-        "tray": mod_tray,
+        "tray": mod_tray, "altscape": mod_altscape,
         "mediaplayer": mod_media, "datetime": mod_datetime,
         "weather": catalog.winbar ? mod_winbar_weather : mod_weather,
         "systemstats": mod_systemstats, "agents": mod_agents,
-        "wifi": mod_wifi, "bluetooth": mod_bluetooth, "vpn": mod_vpn,
+        "wifi": mod_wifi, "bluetooth": mod_bluetooth, "quickshare": mod_quickshare, "vpn": mod_vpn,
         "printers": mod_printers, "removable": mod_removable, "volume": mod_volume, "microphone": mod_microphone,
         "display": mod_display, "updates": mod_updates, "notifications": mod_notifications, "tasks": mod_tasks,
         "wallpaper": mod_wallpaper, "colormode": mod_colormode, "barlayout": mod_barlayout, "windowlayout": mod_windowlayout, "workflows": mod_workflows,
@@ -54,6 +54,8 @@ Item {
     Component { id: mod_systemstats; SystemStats { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_agents; AgentsButton { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_wifi; WifiButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_altscape; AltscapeButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_quickshare; QuickShareButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_bluetooth; BluetoothButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_vpn; VpnButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_printers; PrintersButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }

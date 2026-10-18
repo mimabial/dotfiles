@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import qs as ShellUi
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "../Model.js" as Model
 
@@ -14,8 +14,8 @@ Column {
   property var settings: ({})
   property string temperatureUnit: "Celsius"
   property bool publicIpEnabled: true
-  property color foreground: Color.popups.text
-  property string fontFamily: Style.font.family
+  property color foreground: Commons.Color.popups.text
+  property string fontFamily: Commons.Style.font.family
 
   readonly property bool hasGpu: !!(service && service.hasGpu)
   readonly property bool hasBattery: !!(service && service.hasBattery)
@@ -88,10 +88,10 @@ Column {
   }
 
   width: parent ? parent.width : implicitWidth
-  spacing: Style.space(10)
+  spacing: Commons.Style.space(10)
   Card {
     foreground: root.foreground
-    spacing: Style.space(6)
+    spacing: Commons.Style.space(6)
 
     SectionTitle { text: "Bar"; fontFamily: root.fontFamily }
 
@@ -100,9 +100,9 @@ Column {
       width: parent.width
       text: "Readouts shown in the bar, in this order. Each can show a mini graph, a figure, or both."
       color: root.foreground
-      opacity: Style.mutedTextAlpha
+      opacity: Commons.Style.mutedTextAlpha
       font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
+      font.pixelSize: Commons.Style.font.caption
       wrapMode: Text.WordWrap
     }
 
@@ -118,12 +118,12 @@ Column {
         readonly property bool moduleEnabled: position !== -1
 
         width: parent.width
-        spacing: Style.space(4)
-        topPadding: Style.space(4)
+        spacing: Commons.Style.space(4)
+        topPadding: Commons.Style.space(4)
 
         Item {
           width: parent.width
-          height: Style.space(26)
+          height: Commons.Style.space(26)
 
           ShellUi.ToggleSwitch {
             id: moduleSwitch
@@ -137,15 +137,15 @@ Column {
           Text {
             textFormat: Text.PlainText
             anchors.left: moduleSwitch.right
-            anchors.leftMargin: Style.space(12)
+            anchors.leftMargin: Commons.Style.space(12)
             anchors.right: reorder.left
-            anchors.rightMargin: Style.space(8)
+            anchors.rightMargin: Commons.Style.space(8)
             anchors.verticalCenter: parent.verticalCenter
             text: moduleRow.def.label
             color: root.foreground
             opacity: moduleRow.moduleEnabled ? 1 : 0.5
             font.family: root.fontFamily
-            font.pixelSize: Style.font.body
+            font.pixelSize: Commons.Style.font.body
             font.bold: moduleRow.moduleEnabled
             elide: Text.ElideRight
           }
@@ -154,7 +154,7 @@ Column {
             id: reorder
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            spacing: Style.space(2)
+            spacing: Commons.Style.space(2)
             visible: moduleRow.moduleEnabled
 
             PanelActionButton {
@@ -162,7 +162,7 @@ Column {
               enabled: moduleRow.position > 0
               foreground: root.foreground
               fontFamily: root.fontFamily
-              size: Style.space(22)
+              size: Commons.Style.space(22)
               onClicked: root.set("modules", Model.moveInList(root.barModules, moduleRow.moduleId, -1).join(","))
             }
 
@@ -171,7 +171,7 @@ Column {
               enabled: moduleRow.position < root.barModules.length - 1
               foreground: root.foreground
               fontFamily: root.fontFamily
-              size: Style.space(22)
+              size: Commons.Style.space(22)
               onClicked: root.set("modules", Model.moveInList(root.barModules, moduleRow.moduleId, 1).join(","))
             }
           }
@@ -179,7 +179,7 @@ Column {
 
         ChoiceMenu {
           visible: moduleRow.moduleEnabled && (moduleRow.def.graph === true || moduleRow.def.ring === true)
-          x: Style.space(12) + moduleSwitch.width + Style.space(12)
+          x: Commons.Style.space(12) + moduleSwitch.width + Commons.Style.space(12)
           width: parent.width - x
           label: "Look"
           options: Model.styleOptions(moduleRow.moduleId)
@@ -189,7 +189,7 @@ Column {
 
         ChoiceMenu {
           visible: moduleRow.moduleEnabled && moduleRow.moduleId === "disks"
-          x: Style.space(12) + moduleSwitch.width + Style.space(12)
+          x: Commons.Style.space(12) + moduleSwitch.width + Commons.Style.space(12)
           width: parent.width - x
           label: "Source"
           options: root.diskOptions
@@ -199,7 +199,7 @@ Column {
 
         Column {
           visible: moduleRow.moduleEnabled && moduleRow.moduleId === "sensors"
-          x: Style.space(12) + moduleSwitch.width + Style.space(12)
+          x: Commons.Style.space(12) + moduleSwitch.width + Commons.Style.space(12)
           width: parent.width - x
           spacing: 0
 
@@ -220,7 +220,7 @@ Column {
   }
   Card {
     foreground: root.foreground
-    spacing: Style.space(6)
+    spacing: Commons.Style.space(6)
 
     SectionTitle { text: "Panel"; fontFamily: root.fontFamily }
 
@@ -229,9 +229,9 @@ Column {
       width: parent.width
       text: "Tabs shown in the panel and the sections on each page."
       color: root.foreground
-      opacity: Style.mutedTextAlpha
+      opacity: Commons.Style.mutedTextAlpha
       font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
+      font.pixelSize: Commons.Style.font.caption
       wrapMode: Text.WordWrap
     }
 
@@ -249,7 +249,7 @@ Column {
 
         width: parent.width
         spacing: 0
-        topPadding: Style.space(4)
+        topPadding: Commons.Style.space(4)
 
         FlagRow {
           label: pageRow.def.label
@@ -264,7 +264,7 @@ Column {
           delegate: FlagRow {
             required property int index
             readonly property var section: pageRow.sections[index] || ({})
-            indent: Style.space(26)
+            indent: Commons.Style.space(26)
             label: String(section.label || "")
             checked: Model.flag(root.settings, String(section.key || ""))
             onToggled: root.set(String(section.key || ""), !checked)
@@ -277,7 +277,7 @@ Column {
           delegate: ChoiceRow {
             required property int index
             readonly property var choice: pageRow.choices[index] || ({})
-            indent: Style.space(26)
+            indent: Commons.Style.space(26)
             label: String(choice.label || "")
             options: choice.options || []
             value: String(Model.settingValue(root.settings, String(choice.key || "")))
@@ -297,7 +297,7 @@ Column {
   }
   Card {
     foreground: root.foreground
-    spacing: Style.space(6)
+    spacing: Commons.Style.space(6)
 
     SectionTitle { text: "General"; fontFamily: root.fontFamily }
 
@@ -352,9 +352,9 @@ Column {
       textFormat: Text.PlainText
       wrapMode: Text.WordWrap
       color: root.foreground
-      opacity: Style.mutedTextAlpha
+      opacity: Commons.Style.mutedTextAlpha
       font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
+      font.pixelSize: Commons.Style.font.caption
     }
 
     StepperRow {
@@ -369,7 +369,7 @@ Column {
 
     Item {
       width: parent.width
-      height: resetButton.implicitHeight + Style.space(4)
+      height: resetButton.implicitHeight + Commons.Style.space(4)
 
       Button {
         id: resetButton
@@ -401,14 +401,14 @@ Column {
       return 0
     }
 
-    spacing: Style.space(3)
+    spacing: Commons.Style.space(3)
 
     Text {
       text: menu.label
       color: root.foreground
-      opacity: Style.mutedTextAlpha
+      opacity: Commons.Style.mutedTextAlpha
       font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
+      font.pixelSize: Commons.Style.font.caption
       font.bold: true
     }
 
@@ -436,20 +436,20 @@ Column {
     signal toggled()
 
     width: parent ? parent.width : implicitWidth
-    height: Style.space(26)
+    height: Commons.Style.space(26)
 
     Text {
       textFormat: Text.PlainText
       anchors.left: parent.left
       anchors.leftMargin: flagRow.indent
       anchors.right: flagSwitch.left
-      anchors.rightMargin: Style.space(10)
+      anchors.rightMargin: Commons.Style.space(10)
       anchors.verticalCenter: parent.verticalCenter
       text: flagRow.label
       color: root.foreground
       opacity: flagRow.checked ? 0.9 : 0.6
       font.family: root.fontFamily
-      font.pixelSize: Style.font.body
+      font.pixelSize: Commons.Style.font.body
       font.bold: flagRow.bold
       elide: Text.ElideRight
     }
@@ -465,7 +465,7 @@ Column {
 
     MouseArea {
       anchors.fill: parent
-      anchors.rightMargin: flagSwitch.width + Style.space(10)
+      anchors.rightMargin: flagSwitch.width + Commons.Style.space(10)
       cursorShape: Qt.PointingHandCursor
       onClicked: flagRow.toggled()
     }
@@ -482,19 +482,19 @@ Column {
     signal changed(string value)
 
     width: parent ? parent.width : implicitWidth
-    height: Math.max(Style.space(30), chips.implicitHeight + Style.space(4))
+    height: Math.max(Commons.Style.space(30), chips.implicitHeight + Commons.Style.space(4))
 
     Text {
       textFormat: Text.PlainText
       anchors.left: parent.left
       anchors.leftMargin: choiceRow.indent
       anchors.right: chips.left
-      anchors.rightMargin: Style.space(10)
+      anchors.rightMargin: Commons.Style.space(10)
       anchors.verticalCenter: parent.verticalCenter
       text: choiceRow.label
       color: root.foreground
       font.family: root.fontFamily
-      font.pixelSize: Style.font.body
+      font.pixelSize: Commons.Style.font.body
       elide: Text.ElideRight
     }
 
@@ -502,7 +502,7 @@ Column {
       id: chips
       anchors.right: parent.right
       anchors.verticalCenter: parent.verticalCenter
-      spacing: Style.space(4)
+      spacing: Commons.Style.space(4)
 
       Repeater {
         model: choiceRow.options
@@ -513,7 +513,7 @@ Column {
           bordered: true
           foreground: root.foreground
           fontFamily: root.fontFamily
-          fontSize: Style.font.caption
+          fontSize: Commons.Style.font.caption
           onClicked: choiceRow.changed(String(modelData.value || modelData))
         }
       }
@@ -529,7 +529,6 @@ Column {
     property real minimum: 0
     property real maximum: 100
     property real step: 1
-    // When set, the value walks these stops instead of min/max/step.
     property var stops: []
 
     readonly property bool stepped: Array.isArray(stops) && stops.length > 0
@@ -551,18 +550,18 @@ Column {
     }
 
     width: parent ? parent.width : implicitWidth
-    height: Style.space(26)
+    height: Commons.Style.space(26)
 
     Text {
       textFormat: Text.PlainText
       anchors.left: parent.left
       anchors.right: controls.left
-      anchors.rightMargin: Style.space(10)
+      anchors.rightMargin: Commons.Style.space(10)
       anchors.verticalCenter: parent.verticalCenter
       text: stepper.label
       color: root.foreground
       font.family: root.fontFamily
-      font.pixelSize: Style.font.body
+      font.pixelSize: Commons.Style.font.body
       elide: Text.ElideRight
     }
 
@@ -570,20 +569,20 @@ Column {
       id: controls
       anchors.right: parent.right
       anchors.verticalCenter: parent.verticalCenter
-      spacing: Style.space(4)
+      spacing: Commons.Style.space(4)
 
       PanelActionButton {
         iconText: "󰍴"
         enabled: stepper.canDecrease
         foreground: root.foreground
         fontFamily: root.fontFamily
-        size: Style.space(22)
+        size: Commons.Style.space(22)
         onClicked: stepper.nudge(-1)
       }
 
       Item {
-        width: Style.space(84)
-        height: Style.space(22)
+        width: Commons.Style.space(84)
+        height: Commons.Style.space(22)
 
         Measure {
           anchors.centerIn: parent
@@ -599,7 +598,7 @@ Column {
         enabled: stepper.canIncrease
         foreground: root.foreground
         fontFamily: root.fontFamily
-        size: Style.space(22)
+        size: Commons.Style.space(22)
         onClicked: stepper.nudge(1)
       }
     }

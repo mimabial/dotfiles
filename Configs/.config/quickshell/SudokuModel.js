@@ -4,21 +4,26 @@ var STATUS_READY = "ready"
 var STATUS_PLAYING = "playing"
 var STATUS_WON = "won"
 var DIFFICULTIES = { easy: 40, medium: 32, hard: 26 }
+var SIDE = 9
+var BOX_SIDE = 3
+var CELLS = SIDE * SIDE
+var ALL_DIGITS_MASK = (1 << SIDE) - 1
 
 var PEERS = (function () {
     var out = []
-    for (var cell = 0; cell < 81; cell++) {
-        var row = Math.floor(cell / 9), col = cell % 9
-        var boxRow = Math.floor(row / 3) * 3, boxCol = Math.floor(col / 3) * 3, peers = []
-        for (var i = 0; i < 9; i++) {
-            var candidates = [row * 9 + i, i * 9 + col, (boxRow + Math.floor(i / 3)) * 9 + boxCol + i % 3]
-            for (var j = 0; j < 3; j++) if (candidates[j] !== cell && peers.indexOf(candidates[j]) < 0) peers.push(candidates[j])
+    for (var cell = 0; cell < CELLS; cell++) {
+        var row = Math.floor(cell / SIDE), col = cell % SIDE
+        var boxRow = Math.floor(row / BOX_SIDE) * BOX_SIDE, boxCol = Math.floor(col / BOX_SIDE) * BOX_SIDE, peers = []
+        for (var i = 0; i < SIDE; i++) {
+            var candidates = [row * SIDE + i, i * SIDE + col, (boxRow + Math.floor(i / BOX_SIDE)) * SIDE + boxCol + i % BOX_SIDE]
+            for (var j = 0; j < candidates.length; j++) if (candidates[j] !== cell && peers.indexOf(candidates[j]) < 0) peers.push(candidates[j])
         }
         out.push(peers)
     }
     return out
 })()
 
+function range(count) { return Array.from({length: count}, function (_, i) { return i }) }
 function random(randomFn) {
     var value = randomFn ? Number(randomFn()) : Math.random()
     return Math.max(0, Math.min(.999999999, isFinite(value) ? value : 0))
@@ -32,51 +37,50 @@ function shuffled(values, randomFn) {
     return out
 }
 function generateSolvedGrid(randomFn) {
-    var groups = [0, 1, 2], bands = shuffled(groups, randomFn), stacks = shuffled(groups, randomFn)
-    var rows = [], cols = [], digits = shuffled([1,2,3,4,5,6,7,8,9], randomFn), grid = []
-    for (var b = 0; b < 3; b++) {
+    var groups = range(BOX_SIDE), bands = shuffled(groups, randomFn), stacks = shuffled(groups, randomFn)
+    var rows = [], cols = [], digits = shuffled(range(SIDE).map(function (i) { return i + 1 }), randomFn), grid = []
+    for (var b = 0; b < BOX_SIDE; b++) {
         var inner = shuffled(groups, randomFn)
-        for (var r = 0; r < 3; r++) rows.push(bands[b] * 3 + inner[r])
+        for (var r = 0; r < BOX_SIDE; r++) rows.push(bands[b] * BOX_SIDE + inner[r])
     }
-    for (var s = 0; s < 3; s++) {
+    for (var s = 0; s < BOX_SIDE; s++) {
         var within = shuffled(groups, randomFn)
-        for (var c = 0; c < 3; c++) cols.push(stacks[s] * 3 + within[c])
+        for (var c = 0; c < BOX_SIDE; c++) cols.push(stacks[s] * BOX_SIDE + within[c])
     }
-    for (var y = 0; y < 9; y++) for (var x = 0; x < 9; x++)
-        grid.push(digits[(rows[y] * 3 + Math.floor(rows[y] / 3) + cols[x]) % 9])
+    for (var y = 0; y < SIDE; y++) for (var x = 0; x < SIDE; x++)
+        grid.push(digits[(rows[y] * BOX_SIDE + Math.floor(rows[y] / BOX_SIDE) + cols[x]) % SIDE])
     return grid
 }
 
-// Candidate bitmasks plus minimum-remaining-values search; stops at limit.
 function countSolutions(grid, limit) {
-    var rowMask = [0,0,0,0,0,0,0,0,0], colMask = rowMask.slice(), boxMask = rowMask.slice()
+    var rowMask = Array(SIDE).fill(0), colMask = rowMask.slice(), boxMask = rowMask.slice()
     var empty = [], used = []
-    for (var i = 0; i < 81; i++) {
-        var digit = grid[i], row = Math.floor(i / 9), col = i % 9, box = Math.floor(row / 3) * 3 + Math.floor(col / 3)
+    for (var i = 0; i < CELLS; i++) {
+        var digit = grid[i], row = Math.floor(i / SIDE), col = i % SIDE, box = Math.floor(row / BOX_SIDE) * BOX_SIDE + Math.floor(col / BOX_SIDE)
         if (!digit) empty.push(i)
         else { var bit = 1 << digit - 1; rowMask[row] |= bit; colMask[col] |= bit; boxMask[box] |= bit }
     }
     function solve(remaining, found) {
         if (found >= limit) return found
         if (!remaining) return found + 1
-        var best = -1, bestMask = 0, fewest = 10
+        var best = -1, bestMask = 0, fewest = SIDE + 1
         for (var slot = 0; slot < empty.length; slot++) {
             if (used[slot]) continue
-            var index = empty[slot], rr = Math.floor(index / 9), cc = index % 9
-            var bb = Math.floor(rr / 3) * 3 + Math.floor(cc / 3)
-            var mask = ~(rowMask[rr] | colMask[cc] | boxMask[bb]) & 0x1ff, count = 0, scan = mask
+            var index = empty[slot], row = Math.floor(index / SIDE), col = index % SIDE
+            var box = Math.floor(row / BOX_SIDE) * BOX_SIDE + Math.floor(col / BOX_SIDE)
+            var mask = ~(rowMask[row] | colMask[col] | boxMask[box]) & ALL_DIGITS_MASK, count = 0, scan = mask
             while (scan) { scan &= scan - 1; count++ }
             if (!count) return found
             if (count < fewest) { best = slot; bestMask = mask; fewest = count; if (count === 1) break }
         }
         used[best] = true
-        var index = empty[best], rr = Math.floor(index / 9), cc = index % 9
-        var bb = Math.floor(rr / 3) * 3 + Math.floor(cc / 3)
+        var index = empty[best], row = Math.floor(index / SIDE), col = index % SIDE
+        var box = Math.floor(row / BOX_SIDE) * BOX_SIDE + Math.floor(col / BOX_SIDE)
         while (bestMask) {
             var bit = bestMask & -bestMask
-            rowMask[rr] |= bit; colMask[cc] |= bit; boxMask[bb] |= bit
+            rowMask[row] |= bit; colMask[col] |= bit; boxMask[box] |= bit
             found = solve(remaining - 1, found)
-            rowMask[rr] ^= bit; colMask[cc] ^= bit; boxMask[bb] ^= bit; bestMask ^= bit
+            rowMask[row] ^= bit; colMask[col] ^= bit; boxMask[box] ^= bit; bestMask ^= bit
             if (found >= limit) break
         }
         used[best] = false
@@ -85,15 +89,16 @@ function countSolutions(grid, limit) {
     return solve(empty.length, 0)
 }
 
+function hasUniqueSolution(grid) { return countSolutions(grid, 2) === 1 }
 function generate(target, randomFn) {
     var result
     do {
         var solution = generateSolvedGrid(randomFn), puzzle = solution.slice()
-        var order = shuffled(Array.from({length: 81}, function (_, i) { return i }), randomFn), clues = 81
-        for (var i = 0; i < 81 && clues > target; i++) {
+        var order = shuffled(range(CELLS), randomFn), clues = CELLS
+        for (var i = 0; i < CELLS && clues > target; i++) {
             var index = order[i], saved = puzzle[index]
             puzzle[index] = 0
-            if (countSolutions(puzzle, 2) !== 1) puzzle[index] = saved; else clues--
+            if (!hasUniqueSolution(puzzle)) puzzle[index] = saved; else clues--
         }
         result = { puzzle: puzzle, solution: solution, clues: clues }
     } while (result.clues > target)
@@ -103,7 +108,7 @@ function create(key, randomFn) {
     key = DIFFICULTIES[key] ? key : "easy"
     var made = generate(DIFFICULTIES[key], randomFn)
     return { difficulty: key, clueCount: made.clues, solution: made.solution, givens: made.puzzle,
-        entries: Array(81).fill(0), notes: Array(81).fill(0), selected: 40,
+        entries: Array(CELLS).fill(0), notes: Array(CELLS).fill(0), selected: Math.floor(CELLS / 2),
         pencilMode: false, mistakes: 0, status: STATUS_READY, elapsed: 0 }
 }
 function clone(state) {
@@ -113,26 +118,26 @@ function clone(state) {
         status: state.status, elapsed: state.elapsed }
 }
 function select(state, index) {
-    if (index < 0 || index > 80) return state
+    if (index < 0 || index >= CELLS) return state
     var next = clone(state); next.selected = index; return next
 }
 function moveSelection(state, dx, dy) {
-    var row = Math.floor(state.selected / 9), col = state.selected % 9, next = clone(state)
-    next.selected = ((row + dy + 9) % 9) * 9 + (col + dx + 9) % 9
+    var row = Math.floor(state.selected / SIDE), col = state.selected % SIDE, next = clone(state)
+    next.selected = ((row + dy + SIDE) % SIDE) * SIDE + (col + dx + SIDE) % SIDE
     return next
 }
 function hasNote(mask, digit) { return (mask & 1 << digit - 1) !== 0 }
 function togglePencil(state) { var next = clone(state); next.pencilMode = !next.pencilMode; return next }
 function erase(state, index) {
-    if (state.status === STATUS_WON || index < 0 || index > 80 || state.givens[index]) return state
+    if (state.status === STATUS_WON || index < 0 || index >= CELLS || state.givens[index]) return state
     var next = clone(state); next.entries[index] = 0; next.notes[index] = 0; return next
 }
 function isBoardComplete(state) {
-    for (var i = 0; i < 81; i++) if (!state.givens[i] && state.entries[i] !== state.solution[i]) return false
+    for (var i = 0; i < CELLS; i++) if (!state.givens[i] && state.entries[i] !== state.solution[i]) return false
     return true
 }
 function applyDigit(state, index, digit) {
-    if (state.status === STATUS_WON || index < 0 || index > 80 || digit < 1 || digit > 9 || state.givens[index]) return state
+    if (state.status === STATUS_WON || index < 0 || index >= CELLS || digit < 1 || digit > SIDE || state.givens[index]) return state
     var next = clone(state); next.selected = index
     if (next.pencilMode) { next.notes[index] ^= 1 << digit - 1; return next }
     if (next.entries[index] === digit) { next.entries[index] = 0; return next }

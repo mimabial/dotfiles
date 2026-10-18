@@ -70,3 +70,17 @@ workflow_emit_bar_status() {
   workflow_load_active
   printf '{"text": "%s", "class": "custom-workflows"}\n' "${active_workflow_icon}"
 }
+workflows_user_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/workflows"
+workflows_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/workflows"
+workflows_state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/workflows.lua"
+
+
+workflow_write_config() {
+  hypr_visual_preset_write_lua "${workflows_state_file}" \
+    --load "${active_workflow_path}" \
+    "WORKFLOW=${active_workflow_name}" \
+    "WORKFLOW_ICON=${active_workflow_icon}" \
+    "WORKFLOW_DESCRIPTION=${active_workflow_description}" \
+    "WORKFLOW_PATH=${active_workflow_path}" \
+    "WORKFLOW_LAYOUT_OVERRIDE=$(state_get WORKFLOW_LAYOUT_OVERRIDE)"
+}

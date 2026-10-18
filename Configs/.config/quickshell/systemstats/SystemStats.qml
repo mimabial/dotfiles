@@ -4,7 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell.Io
 import qs
-import qs.Commons
+import qs.Commons as Commons
 import "Model.js" as Model
 import "ui" as UI
 
@@ -30,7 +30,7 @@ Item {
   readonly property real bottomInset: box.margin[2] + box.padding[2]
   readonly property real leftInset: box.margin[3] + box.padding[3]
   readonly property var monitorCommands: ({ gpu: "nvtop", disks: "dua i " + shell.home })
-  readonly property int barSize: Style.bar.sizeHorizontal
+  readonly property int barSize: Commons.Style.bar.sizeHorizontal
   readonly property int graphWidth: Math.round(Model.clamp(Model.settingValue(settings, "graphWidth"), 16, 120))
   readonly property string temperatureUnit: String(Model.settingValue(settings, "temperatureUnit")).toLowerCase() === "fahrenheit" ? "Fahrenheit" : "Celsius"
   readonly property bool colorTemperatureIcons: Model.flag(settings, "colorTemperatureIcons")
@@ -51,7 +51,7 @@ Item {
     return value === "icon" || value === "none" ? value : "text"
   }
   readonly property bool opened: panel.open
-  implicitWidth: inlineReadouts.width + leftInset + rightInset + Style.space(2)
+  implicitWidth: inlineReadouts.width + leftInset + rightInset + Commons.Style.space(2)
   implicitHeight: barSize + topInset + bottomInset
 
   function mergeSettings(value) {
@@ -110,7 +110,7 @@ Item {
 
   function scrollBy(steps) {
     var limit = Math.max(0, scrollArea.contentHeight - scrollArea.height)
-    scrollArea.contentY = Math.max(0, Math.min(limit, scrollArea.contentY + steps * Style.space(48)))
+    scrollArea.contentY = Math.max(0, Math.min(limit, scrollArea.contentY + steps * Commons.Style.space(48)))
   }
 
   function setProcessesExpanded(value) {
@@ -227,8 +227,8 @@ Item {
     keyboardHint: "←→ tabs · ↑↓ scroll · 1–" + root.moduleTabs.length + " tab" + (root.processesSearchable ? " · / search" : "") + " · Esc"
     popupEnabled: root.popupsAllowed
     wantsKeyboard: true
-    contentWidth: Math.max(Style.space(420), Math.ceil(tabs.spelledWidth) + padding * 2)
-    contentHeight: Style.space(680)
+    contentWidth: Math.max(Commons.Style.space(420), Math.ceil(tabs.spelledWidth) + padding * 2)
+    contentHeight: Commons.Style.space(680)
 
     function handleKey(event) { return root.handleKey(event) || defaultKey(event) }
 
@@ -252,20 +252,20 @@ Item {
       anchors.right: parent.right
       readonly property string message: !root.service.ready ? "Starting the sampler…" : root.service.samplerError ? "Sampler: " + root.service.samplerError : ""
       visible: message !== ""
-      height: visible ? implicitHeight + Style.space(10) : 0
+      height: visible ? implicitHeight + Commons.Style.space(10) : 0
       verticalAlignment: Text.AlignBottom
       text: message
       color: root.shell.foreground
-      opacity: Style.mutedTextAlpha
+      opacity: Commons.Style.mutedTextAlpha
       font.family: root.shell.fontFamily
-      font.pixelSize: Style.font.bodySmall
+      font.pixelSize: Commons.Style.font.bodySmall
       wrapMode: Text.WordWrap
     }
 
     Flickable {
       id: scrollArea
       anchors.top: statusLine.bottom
-      anchors.topMargin: Style.space(10)
+      anchors.topMargin: Commons.Style.space(10)
       anchors.left: parent.left
       anchors.right: parent.right
       anchors.bottom: parent.bottom
@@ -295,8 +295,6 @@ Item {
   }
 
   Component.onCompleted: {
-    Color.shell = root.shell
-    Style.shell = root.shell
     pushSettings()
     service.registerInstance(root)
   }

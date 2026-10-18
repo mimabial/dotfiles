@@ -71,11 +71,6 @@ Singleton {
             || firstMatching(false, false) || firstMatching(false, true) || null
     }
 
-    function time(seconds) {
-        const total = Math.max(0, Math.floor(seconds)), h = Math.floor(total / 3600), m = Math.floor(total % 3600 / 60), s = total % 60
-        const pad = value => String(value).padStart(2, "0")
-        return h ? h + ":" + pad(m) + ":" + pad(s) : m + ":" + pad(s)
-    }
     function select(player) {
         const key = playerKey(player)
         if (key && key !== selectedPlayer) { selectedPlayer = key; selection.setText(JSON.stringify({ player: key, updated_at: Date.now() / 1000 }) + "\n") }

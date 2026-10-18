@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
 Column {
   id: root
@@ -9,8 +9,8 @@ Column {
   property string value: ""
   property string unit: ""
   property string label: ""
-  property color foreground: Color.popups.text
-  property string fontFamily: Style.font.family
+  property color foreground: Commons.Color.popups.text
+  property string fontFamily: Commons.Style.font.family
   property int align: Text.AlignHCenter
 
   spacing: 0
@@ -28,8 +28,8 @@ Column {
       unit: root.unit
       foreground: root.foreground
       fontFamily: root.fontFamily
-      valueSize: Style.font.heading
-      unitSize: Style.font.bodySmall
+      valueSize: Commons.Style.font.heading
+      unitSize: Commons.Style.font.bodySmall
     }
   }
 
@@ -39,9 +39,9 @@ Column {
     horizontalAlignment: root.align
     text: root.label
     color: root.foreground
-    opacity: Style.mutedTextAlpha
+    opacity: Commons.Style.mutedTextAlpha
     font.family: root.fontFamily
-    font.pixelSize: Style.font.caption
+    font.pixelSize: Commons.Style.font.caption
     elide: Text.ElideRight
   }
 }

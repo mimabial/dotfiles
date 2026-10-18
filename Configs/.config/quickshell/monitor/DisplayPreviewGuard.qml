@@ -4,19 +4,16 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
-import qs.Commons
+import qs.Commons as Commons
 import "Ui"
 import "Model.js" as Model
 
-// Display previews can rebuild every per-monitor bar instance. Keep the
-// safety decision in a shell-level service so the confirmation is already on
-// screen before that happens and survives the topology change.
 Item {
   id: root
 
   property var shell: null
   readonly property string runtimeDir: String(Quickshell.env("XDG_RUNTIME_DIR") || "")
-  readonly property string socketPath: root.runtimeDir + "/hyprmoncfgd.sock"
+  readonly property string socketPath: backendSocket.path
   readonly property bool connected: backendSocket.connected
 
   property int requestSequence: 0
@@ -50,6 +47,7 @@ Item {
     return screens.length > 0 ? String(screens[0].name || "") : ""
   }
 
+  signal backendChanged()
   signal requestFinished(bool success, string message)
 
   function displayError(message, fallback) {
@@ -280,16 +278,10 @@ Item {
     }
   }
 
-  Component.onCompleted: {
-    Style.shell = root.shell
-    Color.shell = root.shell
-    backendSocket.connected = root.socketPath !== "/hyprmoncfgd.sock"
-  }
-
-  Socket {
+  DisplayDaemonSocket {
     id: backendSocket
-    path: root.socketPath
-    connected: false
+    runtimeDir: root.runtimeDir
+    onDirectoryChanged: root.backendChanged()
     parser: SplitParser {
       splitMarker: "\n"
       onRead: function(line) { root.handleMessage(line) }
@@ -304,15 +296,6 @@ Item {
         if (shouldYield) root.yieldToPanel()
       }
     }
-    onError: function(error) { backendSocket.connected = false }
-  }
-
-  Timer {
-    id: socketReconnectTimer
-    interval: 750
-    repeat: true
-    running: root.socketPath !== "/hyprmoncfgd.sock" && !backendSocket.connected
-    onTriggered: backendSocket.connected = true
   }
 
   Timer {
@@ -343,12 +326,8 @@ Item {
 
       function restoreInputFocus() {
         if (!guardWindow.ownsDialog || !guardWindow.backingWindowVisible) return
-        guardWindow.focusPrimed = false
-        focusPrimeTimer.restart()
-        Qt.callLater(function() {
-          if (guardWindow.ownsDialog && guardWindow.backingWindowVisible)
-            keyCatcher.forceActiveFocus()
-        })
+        guardWindow.focusPrimed = keyCatcher.Window.active
+        keyCatcher.forceActiveFocus()
       }
 
       screen: modelData
@@ -368,26 +347,10 @@ Item {
 
       onBackingWindowVisibleChanged: {
         if (backingWindowVisible) guardWindow.restoreInputFocus()
-        else {
-          focusPrimeTimer.stop()
-          focusPrimed = false
-        }
+        else focusPrimed = false
       }
       onOwnsDialogChanged: guardWindow.restoreInputFocus()
       Component.onCompleted: guardWindow.restoreInputFocus()
-
-      Timer {
-        id: focusPrimeTimer
-        interval: 75
-        onTriggered: {
-          if (!guardWindow.ownsDialog || !guardWindow.backingWindowVisible) return
-          guardWindow.focusPrimed = true
-          Qt.callLater(function() {
-            if (guardWindow.ownsDialog && guardWindow.backingWindowVisible)
-              keyCatcher.forceActiveFocus()
-          })
-        }
-      }
 
       ScreenMoveRemap {
         id: remapGuard
@@ -396,11 +359,9 @@ Item {
 
       Rectangle {
         anchors.fill: parent
-        color: Util.alpha(Color.background, 0.72)
+        color: Commons.Util.alpha(Commons.Color.background, 0.72)
       }
 
-      // Consume every pointer press while the layout is awaiting a decision.
-      // Outside clicks must not dismiss the only confirmation surface.
       MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.AllButtons
@@ -410,13 +371,13 @@ Item {
       BorderSurface {
         id: dialog
         visible: guardWindow.ownsDialog
-        width: Math.min(parent.width - Style.space(32), Style.space(460))
-        height: Style.space(188)
+        width: Math.min(parent.width - Commons.Style.space(32), Commons.Style.space(460))
+        height: Commons.Style.space(188)
         anchors.centerIn: parent
-        color: Color.background
-        borderSpec: Border.surfaceSpec("popups", "border", Color.accent, Math.max(1, Style.space(2)))
-        radius: Style.cornerRadius
-        padding: Style.space(20)
+        color: Commons.Color.background
+        borderSpec: Commons.Border.surfaceSpec("popups", "border", Commons.Color.accent, Math.max(1, Commons.Style.space(2)))
+        radius: Commons.Style.cornerRadius
+        padding: Commons.Style.space(20)
 
         MouseArea { anchors.fill: parent; onClicked: function(mouse) { mouse.accepted = true } }
 
@@ -428,6 +389,10 @@ Item {
           anchors.bottomMargin: dialog.contentBottomInset
           anchors.leftMargin: dialog.contentLeftInset
           focus: guardWindow.ownsDialog
+          Window.onActiveChanged: {
+            if (Window.active && guardWindow.ownsDialog && guardWindow.backingWindowVisible)
+              guardWindow.focusPrimed = true
+          }
 
           Keys.priority: Keys.BeforeItem
           Keys.onPressed: function(event) {
@@ -451,7 +416,7 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            spacing: Style.space(7)
+            spacing: Commons.Style.space(7)
 
             Text {
               textFormat: Text.PlainText
@@ -462,9 +427,9 @@ Item {
                   ? "Couldn’t preview this layout"
                   : (root.saveOnCommit ? "Keep and save this layout?"
                     : (root.draftApply ? "Keep this layout?" : "Keep this profile?")))
-              color: root.stage === "error" ? Color.urgent : Color.foreground
-              font.family: Style.font.family
-              font.pixelSize: Style.font.heading
+              color: root.stage === "error" ? Commons.Color.urgent : Commons.Color.foreground
+              font.family: Commons.Style.font.family
+              font.pixelSize: Commons.Style.font.heading
               font.bold: true
               wrapMode: Text.WordWrap
             }
@@ -479,10 +444,10 @@ Item {
                   : (root.actionError !== ""
                     ? root.actionError
                     : root.profileName + " · " + root.seconds + " seconds before the previous layout returns"))
-              color: root.stage === "error" || root.actionError !== "" ? Color.urgent : Color.foreground
-              opacity: Style.secondaryTextAlpha
-              font.family: Style.font.family
-              font.pixelSize: Style.font.body
+              color: root.stage === "error" || root.actionError !== "" ? Commons.Color.urgent : Commons.Color.foreground
+              opacity: Commons.Style.secondaryTextAlpha
+              font.family: Commons.Style.font.family
+              font.pixelSize: Commons.Style.font.body
               wrapMode: Text.WordWrap
             }
           }
@@ -491,14 +456,14 @@ Item {
             visible: root.stage === "confirm"
             anchors.right: parent.right
             anchors.bottom: parent.bottom
-            spacing: Style.space(10)
+            spacing: Commons.Style.space(10)
 
             Button {
               text: root.actionPending ? "Working…" : "Revert"
               bordered: true
               enabled: !root.actionPending
-              foreground: Color.foreground
-              fontFamily: Style.font.family
+              foreground: Commons.Color.foreground
+              fontFamily: Commons.Style.font.family
               onClicked: root.revert()
             }
 
@@ -507,8 +472,8 @@ Item {
               selected: true
               bordered: true
               enabled: !root.actionPending
-              foreground: Color.foreground
-              fontFamily: Style.font.family
+              foreground: Commons.Color.foreground
+              fontFamily: Commons.Style.font.family
               onClicked: root.keep()
             }
           }
@@ -519,8 +484,8 @@ Item {
             anchors.bottom: parent.bottom
             text: "Close"
             bordered: true
-            foreground: Color.foreground
-            fontFamily: Style.font.family
+            foreground: Commons.Color.foreground
+            fontFamily: Commons.Style.font.family
             onClicked: root.clear()
           }
         }

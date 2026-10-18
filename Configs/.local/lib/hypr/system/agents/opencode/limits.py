@@ -30,7 +30,7 @@ def go_limits():
         try:
             limits.append({
                 "label": label,
-                "percent": max(0, min(1, float(window["percent"]) / 100)),
+                "usageFraction": max(0, min(1, float(window["percent"]) / 100)),
                 "resetsAt": str(window.get("resetsAt") or ""),
                 "limitDollars": float(window.get("limitDollars") or 0),
             })

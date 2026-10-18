@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import ".." as Shell
-import qs.Commons
+import qs.Commons as Commons
 import "Ui"
 import "Model.js" as Model
 
@@ -39,10 +39,10 @@ KeyboardPanel {
   open: panel.controller.opened
   centerOnBar: false
   focusTarget: keyCatcher
-  readonly property int hintHeight: Style.space(24)
-  contentWidth: panel.fittedContentWidth(Style.space(panel.controller.expanded ? 1120 : 430))
+  readonly property int hintHeight: Commons.Style.space(24)
+  contentWidth: panel.fittedContentWidth(Commons.Style.space(panel.controller.expanded ? 1120 : 430))
   contentHeight: panel.controller.expanded
-    ? panel.fittedContentHeight(Style.space(780) + hintHeight)
+    ? panel.fittedContentHeight(Commons.Style.space(780) + hintHeight)
     : panel.fittedContentHeight(compactColumn.implicitHeight + hintHeight)
 
   Item {
@@ -52,79 +52,79 @@ KeyboardPanel {
     Shortcut {
       sequence: "Shift+Left"
       enabled: panel.controller.opened && panel.controller.expanded && panel.controller.activePage === "layout"
-        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.blocked
+        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.inlineEditorActive
       onActivated: panel.controller.nudgeSelectedOutput(-10, 0)
     }
     Shortcut {
       sequence: "Shift+Right"
       enabled: panel.controller.opened && panel.controller.expanded && panel.controller.activePage === "layout"
-        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.blocked
+        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.inlineEditorActive
       onActivated: panel.controller.nudgeSelectedOutput(10, 0)
     }
     Shortcut {
       sequence: "Shift+Up"
       enabled: panel.controller.opened && panel.controller.expanded && panel.controller.activePage === "layout"
-        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.blocked
+        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.inlineEditorActive
       onActivated: panel.controller.nudgeSelectedOutput(0, -10)
     }
     Shortcut {
       sequence: "Shift+Down"
       enabled: panel.controller.opened && panel.controller.expanded && panel.controller.activePage === "layout"
-        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.blocked
+        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.inlineEditorActive
       onActivated: panel.controller.nudgeSelectedOutput(0, 10)
     }
     Shortcut {
       sequence: "Ctrl+Left"
       enabled: panel.controller.opened && panel.controller.expanded && panel.controller.activePage === "layout"
-        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.blocked
+        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.inlineEditorActive
       onActivated: panel.controller.nudgeSelectedOutput(-1, 0)
     }
     Shortcut {
       sequence: "Ctrl+Right"
       enabled: panel.controller.opened && panel.controller.expanded && panel.controller.activePage === "layout"
-        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.blocked
+        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.inlineEditorActive
       onActivated: panel.controller.nudgeSelectedOutput(1, 0)
     }
     Shortcut {
       sequence: "Ctrl+Up"
       enabled: panel.controller.opened && panel.controller.expanded && panel.controller.activePage === "layout"
-        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.blocked
+        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.inlineEditorActive
       onActivated: panel.controller.nudgeSelectedOutput(0, -1)
     }
     Shortcut {
       sequence: "Ctrl+Down"
       enabled: panel.controller.opened && panel.controller.expanded && panel.controller.activePage === "layout"
-        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.blocked
+        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.inlineEditorActive
       onActivated: panel.controller.nudgeSelectedOutput(0, 1)
     }
     Shortcut {
       sequence: "Alt+Left"
       enabled: panel.controller.opened && panel.controller.expanded && panel.controller.activePage === "layout"
-        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.blocked
+        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.inlineEditorActive
       onActivated: panel.controller.snapSelectedOutput("left")
     }
     Shortcut {
       sequence: "Alt+Right"
       enabled: panel.controller.opened && panel.controller.expanded && panel.controller.activePage === "layout"
-        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.blocked
+        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.inlineEditorActive
       onActivated: panel.controller.snapSelectedOutput("right")
     }
     Shortcut {
       sequence: "Alt+Up"
       enabled: panel.controller.opened && panel.controller.expanded && panel.controller.activePage === "layout"
-        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.blocked
+        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.inlineEditorActive
       onActivated: panel.controller.snapSelectedOutput("up")
     }
     Shortcut {
       sequence: "Alt+Down"
       enabled: panel.controller.opened && panel.controller.expanded && panel.controller.activePage === "layout"
-        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.blocked
+        && panel.controller.keyboardLayoutPane === "canvas" && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.inlineEditorActive
       onActivated: panel.controller.snapSelectedOutput("down")
     }
     Shortcut {
       sequence: "L"
       enabled: panel.controller.opened && panel.controller.expanded && panel.controller.activePage === "profiles"
-        && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.blocked
+        && !panel.controller.keyboardHelpOpen && !panel.controller.execEditing && !keyCatcher.inlineEditorActive
       onActivated: panel.controller.loadSelectedSavedProfile()
     }
   }
@@ -133,7 +133,7 @@ KeyboardPanel {
     id: keyCatcher
     anchors.fill: parent
     property bool returnPressed: false
-    blocked: panel.controller.execEditing
+    inlineEditorActive: panel.controller.execEditing
       || profileNameInput.activeFocus
       || positionXField.field.activeFocus || positionYField.field.activeFocus
       || workspaceCountField.field.activeFocus || workspaceGroupSizeField.field.activeFocus
@@ -170,7 +170,7 @@ KeyboardPanel {
       id: compactColumn
       visible: !panel.controller.expanded
       width: parent.width
-      spacing: Style.space(14)
+      spacing: Commons.Style.space(14)
 
       Item {
         width: parent.width
@@ -184,7 +184,7 @@ KeyboardPanel {
             ? panel.controller.brightnessName(panel.controller.brightnessPercent) : "fixed brightness"
           anchors.left: parent.left
           anchors.right: compactExpandButton.left
-          anchors.rightMargin: Style.space(10)
+          anchors.rightMargin: Commons.Style.space(10)
           anchors.verticalCenter: parent.verticalCenter
         }
 
@@ -197,7 +197,7 @@ KeyboardPanel {
           bordered: true
           foreground: panel.controller.foreground
           fontFamily: panel.controller.fontFamily
-          fontSize: Style.font.caption
+          fontSize: Commons.Style.font.caption
           onClicked: panel.controller.expanded = true
         }
       }
@@ -209,13 +209,13 @@ KeyboardPanel {
         text: panel.controller.lastError
         color: panel.controller.urgent
         font.family: panel.controller.fontFamily
-        font.pixelSize: Style.font.bodySmall
+        font.pixelSize: Commons.Style.font.bodySmall
         wrapMode: Text.WordWrap
       }
 
       Column {
         width: parent.width
-        spacing: Style.space(14)
+        spacing: Commons.Style.space(14)
 
         PanelSeparator { foreground: panel.controller.foreground }
 
@@ -230,15 +230,15 @@ KeyboardPanel {
           loading: panel.controller.brightnessLoading
           foreground: panel.controller.foreground
           dim: panel.controller.dim
-          accent: Color.accent
+          accent: Commons.Color.accent
           fontFamily: panel.controller.fontFamily
-          onPreviewed: function(value) { panel.controller.previewBrightness(value) }
+          onPreviewed: function(value) { panel.controller.setBrightness(value) }
           onCommitted: function(value) { panel.controller.setBrightness(value) }
         }
 
         Column {
           width: parent.width
-          spacing: Style.space(6)
+          spacing: Commons.Style.space(6)
 
           Item {
             width: parent.width
@@ -259,7 +259,7 @@ KeyboardPanel {
               text: panel.controller.effectiveTextSize + " px"
               color: panel.controller.foreground
               font.family: panel.controller.fontFamily
-              font.pixelSize: Style.font.bodySmall
+              font.pixelSize: Commons.Style.font.bodySmall
               font.bold: true
             }
           }
@@ -279,7 +279,7 @@ KeyboardPanel {
 
         Column {
           width: parent.width
-          spacing: Style.space(6)
+          spacing: Commons.Style.space(6)
 
           PanelSectionHeader {
             text: "MONITOR MANAGEMENT"
@@ -327,13 +327,13 @@ KeyboardPanel {
 
         EditorPane {
           width: parent.width
-          height: Style.space(250)
+          height: Commons.Style.space(250)
           title: "Monitor Layout"
           meta: panel.controller.monitorCount + (panel.controller.monitorCount === 1 ? " display" : " displays")
           active: true
           foreground: panel.controller.foreground
           dim: panel.controller.dim
-          accent: Color.accent
+          accent: Commons.Color.accent
           fontFamily: panel.controller.fontFamily
           opacity: panel.controller.managedChecked ? 1.0 : panel.controller.unmanagedOpacity
 
@@ -351,7 +351,7 @@ KeyboardPanel {
             framed: false
             foreground: panel.controller.foreground
             dim: panel.controller.dim
-            accent: Color.accent
+            accent: Commons.Color.accent
             fontFamily: panel.controller.fontFamily
             onOutputSelected: function(key) { panel.controller.selectedOutputKey = key }
             onOutputMoved: function(key, x, y, snapDistance) {
@@ -363,10 +363,10 @@ KeyboardPanel {
         BorderSurface {
           visible: panel.controller.draftDirty || panel.controller.previewTransaction !== ""
           width: parent.width
-          implicitHeight: compactDraftActions.implicitHeight + Style.space(16)
-          color: Style.selectedFillFor(panel.controller.foreground, Color.accent)
-          borderSpec: Border.controlSpec("selected", panel.controller.foreground, Color.accent)
-          radius: Style.cornerRadius
+          implicitHeight: compactDraftActions.implicitHeight + Commons.Style.space(16)
+          color: Commons.Style.selectedFillFor(panel.controller.foreground, Commons.Color.accent)
+          borderSpec: Commons.Border.controlSpec("selected", panel.controller.foreground, Commons.Color.accent)
+          radius: Commons.Style.cornerRadius
           opacity: panel.controller.managedChecked ? 1.0 : panel.controller.unmanagedOpacity
 
           Row {
@@ -374,14 +374,14 @@ KeyboardPanel {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            anchors.leftMargin: Style.space(10)
-            anchors.rightMargin: Style.space(10)
-            spacing: Style.space(7)
+            anchors.leftMargin: Commons.Style.space(10)
+            anchors.rightMargin: Commons.Style.space(10)
+            spacing: Commons.Style.space(7)
 
             Column {
               width: parent.width - compactDiscardDraft.width - compactApplyDraft.width - parent.spacing * 2
               anchors.verticalCenter: parent.verticalCenter
-              spacing: Style.space(1)
+              spacing: Commons.Style.space(1)
 
               Text {
                 textFormat: Text.PlainText
@@ -391,7 +391,7 @@ KeyboardPanel {
                   : (panel.controller.editPending ? "Checking layout…" : "Layout changed")
                 color: panel.controller.foreground
                 font.family: panel.controller.fontFamily
-                font.pixelSize: Style.font.bodySmall
+                font.pixelSize: Commons.Style.font.bodySmall
                 font.bold: true
                 elide: Text.ElideRight
               }
@@ -403,7 +403,7 @@ KeyboardPanel {
                 text: panel.controller.previewSeconds + " seconds to decide"
                 color: panel.controller.dim
                 font.family: panel.controller.fontFamily
-                font.pixelSize: Style.font.caption
+                font.pixelSize: Commons.Style.font.caption
                 elide: Text.ElideRight
               }
             }
@@ -417,9 +417,9 @@ KeyboardPanel {
                 : (!panel.controller.editorLoading && !panel.controller.editPending)
               foreground: panel.controller.foreground
               fontFamily: panel.controller.fontFamily
-              fontSize: Style.font.caption
-              horizontalPadding: Style.space(8)
-              verticalPadding: Style.space(4)
+              fontSize: Commons.Style.font.caption
+              horizontalPadding: Commons.Style.space(8)
+              verticalPadding: Commons.Style.space(4)
               onClicked: {
                 if (panel.controller.previewTransaction !== "") panel.controller.revertPreview()
                 else panel.controller.requestEditorState()
@@ -437,9 +437,9 @@ KeyboardPanel {
                 && panel.controller.managedChecked
               foreground: panel.controller.foreground
               fontFamily: panel.controller.fontFamily
-              fontSize: Style.font.caption
-              horizontalPadding: Style.space(8)
-              verticalPadding: Style.space(4)
+              fontSize: Commons.Style.font.caption
+              horizontalPadding: Commons.Style.space(8)
+              verticalPadding: Commons.Style.space(4)
               onClicked: {
                 if (panel.controller.previewTransaction !== "") panel.controller.keepPreview()
                 else if (panel.controller.sourceProfile !== "") panel.controller.previewDraft()
@@ -453,7 +453,7 @@ KeyboardPanel {
 
         Column {
           width: parent.width
-          spacing: Style.space(6)
+          spacing: Commons.Style.space(6)
           opacity: panel.controller.managedChecked ? 1.0 : panel.controller.unmanagedOpacity
 
           PanelSectionHeader {
@@ -465,8 +465,8 @@ KeyboardPanel {
           Row {
             id: compactProfileStatus
             width: parent.width
-            height: compactProfileText.implicitHeight + Style.space(8)
-            spacing: Style.space(12)
+            height: compactProfileText.implicitHeight + Commons.Style.space(8)
+            spacing: Commons.Style.space(12)
 
             Text {
               textFormat: Text.PlainText
@@ -474,14 +474,14 @@ KeyboardPanel {
               text: panel.controller.monitorCount > 1 ? "󰍺" : "󰍹"
               color: panel.controller.foreground
               font.family: panel.controller.fontFamily
-              font.pixelSize: Style.font.icon
+              font.pixelSize: Commons.Style.font.icon
             }
 
             Column {
               id: compactProfileText
               width: parent.width - parent.children[0].width - parent.spacing
               anchors.verticalCenter: parent.verticalCenter
-              spacing: Style.space(1)
+              spacing: Commons.Style.space(1)
 
               Text {
                 textFormat: Text.PlainText
@@ -489,7 +489,7 @@ KeyboardPanel {
                 text: panel.controller.profileStatusTitle
                 color: panel.controller.foreground
                 font.family: panel.controller.fontFamily
-                font.pixelSize: Style.font.body
+                font.pixelSize: Commons.Style.font.body
                 font.bold: true
                 elide: Text.ElideRight
               }
@@ -500,7 +500,7 @@ KeyboardPanel {
                 text: panel.controller.profileStatusSubtitle
                 color: panel.controller.dim
                 font.family: panel.controller.fontFamily
-                font.pixelSize: Style.font.bodySmall
+                font.pixelSize: Commons.Style.font.bodySmall
                 elide: Text.ElideRight
               }
             }
@@ -547,12 +547,12 @@ KeyboardPanel {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        height: Style.space(38)
+        height: Commons.Style.space(38)
 
         Row {
           anchors.left: parent.left
           anchors.verticalCenter: parent.verticalCenter
-          spacing: Style.space(2)
+          spacing: Commons.Style.space(2)
 
           Repeater {
             model: panel.controller.pageOptions
@@ -563,9 +563,9 @@ KeyboardPanel {
               selected: String(modelData.value || "") === panel.controller.activePage
               foreground: panel.controller.foreground
               fontFamily: panel.controller.fontFamily
-              fontSize: Style.font.caption
-              horizontalPadding: Style.space(7)
-              verticalPadding: Style.space(3)
+              fontSize: Commons.Style.font.caption
+              horizontalPadding: Commons.Style.space(7)
+              verticalPadding: Commons.Style.space(3)
               onClicked: panel.controller.activePage = String(modelData.value || "layout")
             }
           }
@@ -574,7 +574,7 @@ KeyboardPanel {
         Row {
           anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter
-          spacing: Style.space(10)
+          spacing: Commons.Style.space(10)
 
           Text {
             textFormat: Text.PlainText
@@ -584,7 +584,7 @@ KeyboardPanel {
                 : (panel.controller.profileAutomatic ? " · automatic" : " · pinned"))
             color: panel.controller.dim
             font.family: panel.controller.fontFamily
-            font.pixelSize: Style.font.body
+            font.pixelSize: Commons.Style.font.body
             elide: Text.ElideRight
           }
 
@@ -594,15 +594,15 @@ KeyboardPanel {
             bordered: true
             foreground: panel.controller.foreground
             fontFamily: panel.controller.fontFamily
-            fontSize: Style.font.caption
+            fontSize: Commons.Style.font.caption
             implicitWidth: keyboardHelpButtonContent.implicitWidth
-              + horizontalPadding * 2 + Style.normalBorderWidth * 2
+              + horizontalPadding * 2 + Commons.Style.normalBorderWidth * 2
             implicitHeight: compactButton.implicitHeight
 
             Row {
               id: keyboardHelpButtonContent
               anchors.centerIn: parent
-              spacing: Style.space(4)
+              spacing: Commons.Style.space(4)
 
               Text {
                 textFormat: Text.PlainText
@@ -611,7 +611,7 @@ KeyboardPanel {
                 text: "?"
                 color: panel.controller.foreground
                 font.family: panel.controller.fontFamily
-                font.pixelSize: Style.font.caption
+                font.pixelSize: Commons.Style.font.caption
               }
 
               Text {
@@ -620,7 +620,7 @@ KeyboardPanel {
                 text: "Keys"
                 color: panel.controller.foreground
                 font.family: panel.controller.fontFamily
-                font.pixelSize: Style.font.caption
+                font.pixelSize: Commons.Style.font.caption
               }
             }
 
@@ -634,7 +634,7 @@ KeyboardPanel {
             bordered: true
             foreground: panel.controller.foreground
             fontFamily: panel.controller.fontFamily
-            fontSize: Style.font.caption
+            fontSize: Commons.Style.font.caption
             onClicked: panel.controller.expanded = false
           }
         }
@@ -654,22 +654,22 @@ KeyboardPanel {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: editorNav.bottom
-        anchors.topMargin: Style.space(8)
-        height: Style.space(58)
-        color: Style.selectedFillFor(panel.controller.foreground, Color.accent)
-        borderSpec: Border.controlSpec("selected", panel.controller.foreground, Color.accent)
-        radius: Style.cornerRadius
+        anchors.topMargin: Commons.Style.space(8)
+        height: Commons.Style.space(58)
+        color: Commons.Style.selectedFillFor(panel.controller.foreground, Commons.Color.accent)
+        borderSpec: Commons.Border.controlSpec("selected", panel.controller.foreground, Commons.Color.accent)
+        radius: Commons.Style.cornerRadius
 
         Row {
           anchors.fill: parent
-          anchors.leftMargin: Style.space(12)
-          anchors.rightMargin: Style.space(12)
-          spacing: Style.space(10)
+          anchors.leftMargin: Commons.Style.space(12)
+          anchors.rightMargin: Commons.Style.space(12)
+          spacing: Commons.Style.space(10)
 
           Column {
             width: parent.width - keepExpandedPreview.width - revertExpandedPreview.width - parent.spacing * 2
             anchors.verticalCenter: parent.verticalCenter
-            spacing: Style.space(1)
+            spacing: Commons.Style.space(1)
 
             Text {
               textFormat: Text.PlainText
@@ -677,7 +677,7 @@ KeyboardPanel {
               text: "Keep this layout?"
               color: panel.controller.foreground
               font.family: panel.controller.fontFamily
-              font.pixelSize: Style.font.body
+              font.pixelSize: Commons.Style.font.body
               font.bold: true
             }
 
@@ -687,7 +687,7 @@ KeyboardPanel {
               text: panel.controller.previewSeconds + " seconds before the previous layout returns"
               color: panel.controller.dim
               font.family: panel.controller.fontFamily
-              font.pixelSize: Style.font.caption
+              font.pixelSize: Commons.Style.font.caption
             }
           }
 
@@ -722,8 +722,8 @@ KeyboardPanel {
         anchors.right: parent.right
         anchors.top: previewBanner.visible ? previewBanner.bottom : editorNav.bottom
         anchors.bottom: editorFooter.top
-        anchors.topMargin: Style.space(10)
-        anchors.bottomMargin: Style.space(10)
+        anchors.topMargin: Commons.Style.space(10)
+        anchors.bottomMargin: Commons.Style.space(10)
 
         Item {
           visible: panel.controller.activePage === "layout"
@@ -740,7 +740,7 @@ KeyboardPanel {
             active: panel.controller.keyboardLayoutPane === "canvas"
             foreground: panel.controller.foreground
             dim: panel.controller.dim
-            accent: Color.accent
+            accent: Commons.Color.accent
             fontFamily: panel.controller.fontFamily
             opacity: panel.controller.managedChecked ? 1.0 : panel.controller.unmanagedOpacity
 
@@ -758,7 +758,7 @@ KeyboardPanel {
               framed: false
               foreground: panel.controller.foreground
               dim: panel.controller.dim
-              accent: Color.accent
+              accent: Commons.Color.accent
               fontFamily: panel.controller.fontFamily
               onOutputSelected: function(key) { panel.controller.selectedOutputKey = key }
               onOutputMoved: function(key, x, y, snapDistance) {
@@ -769,27 +769,27 @@ KeyboardPanel {
 
           Column {
             anchors.left: layoutPane.right
-            anchors.leftMargin: Style.space(10)
+            anchors.leftMargin: Commons.Style.space(10)
             anchors.right: parent.right
             anchors.top: parent.top
             anchors.bottom: parent.bottom
-            spacing: Style.space(10)
+            spacing: Commons.Style.space(10)
 
             EditorPane {
               id: inspectorPane
               width: parent.width
-              height: Style.space(185)
+              height: Commons.Style.space(185)
               title: "Info"
               meta: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.name || "") : ""
               foreground: panel.controller.foreground
               dim: panel.controller.dim
-              accent: Color.accent
+              accent: Commons.Color.accent
               fontFamily: panel.controller.fontFamily
               opacity: panel.controller.managedChecked ? 1.0 : panel.controller.unmanagedOpacity
 
               Column {
                 anchors.fill: parent
-                spacing: Style.space(3)
+                spacing: Commons.Style.space(3)
 
                 InfoRow {
                   controller: panel.controller
@@ -841,12 +841,12 @@ KeyboardPanel {
 
             EditorPane {
               width: parent.width
-              height: parent.height - Style.space(195)
+              height: parent.height - Commons.Style.space(195)
               title: "Display  -  Color"
               active: panel.controller.keyboardLayoutPane !== "canvas"
               foreground: panel.controller.foreground
               dim: panel.controller.dim
-              accent: Color.accent
+              accent: Commons.Color.accent
               fontFamily: panel.controller.fontFamily
 
               ButtonGroup {
@@ -857,9 +857,9 @@ KeyboardPanel {
                 value: panel.controller.inspectorPage
                 foreground: panel.controller.foreground
                 background: panel.controller.shell.background
-                accent: Color.accent
+                accent: Commons.Color.accent
                 fontFamily: panel.controller.fontFamily
-                fontSize: Style.font.caption
+                fontSize: Commons.Style.font.caption
                 onChanged: function(value) {
                   panel.controller.inspectorPage = value
                   panel.controller.keyboardLayoutPane = value
@@ -871,8 +871,8 @@ KeyboardPanel {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: inspectorTabs.bottom
-                anchors.topMargin: Style.space(9)
-                spacing: Style.space(9)
+                anchors.topMargin: Commons.Style.space(9)
+                spacing: Commons.Style.space(9)
 
                 BrightnessControl {
                   visible: panel.controller.brightnessConnector !== ""
@@ -885,9 +885,9 @@ KeyboardPanel {
                   loading: panel.controller.brightnessLoading
                   foreground: panel.controller.foreground
                   dim: panel.controller.dim
-                  accent: Color.accent
+                  accent: Commons.Color.accent
                   fontFamily: panel.controller.fontFamily
-                  onPreviewed: function(value) { panel.controller.previewBrightness(value) }
+                  onPreviewed: function(value) { panel.controller.setBrightness(value) }
                   onCommitted: function(value) { panel.controller.setBrightness(value) }
                 }
 
@@ -915,7 +915,7 @@ KeyboardPanel {
                 Grid {
                   width: parent.width
                   columns: 2
-                  spacing: Style.space(8)
+                  spacing: Commons.Style.space(8)
                   enabled: panel.controller.managedChecked
                   opacity: panel.controller.managedChecked ? 1.0 : panel.controller.unmanagedOpacity
                   readonly property real cellWidth: (width - spacing) / 2
@@ -1040,15 +1040,15 @@ KeyboardPanel {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: inspectorTabs.bottom
-                anchors.topMargin: Style.space(9)
-                spacing: Style.space(8)
+                anchors.topMargin: Commons.Style.space(9)
+                spacing: Commons.Style.space(8)
                 enabled: panel.controller.managedChecked
                 opacity: panel.controller.managedChecked ? 1.0 : panel.controller.unmanagedOpacity
 
                 Grid {
                   width: parent.width
                   columns: 2
-                  spacing: Style.space(7)
+                  spacing: Commons.Style.space(7)
                   readonly property real cellWidth: (width - spacing) / 2
 
                   PanelDropdown {
@@ -1226,7 +1226,7 @@ KeyboardPanel {
 
                 Column {
                   width: parent.width
-                  spacing: Style.space(4)
+                  spacing: Commons.Style.space(4)
 
                   PanelSectionHeader {
                     text: "ICC PROFILE"
@@ -1271,12 +1271,12 @@ KeyboardPanel {
             active: true
             foreground: panel.controller.foreground
             dim: panel.controller.dim
-            accent: Color.accent
+            accent: Commons.Color.accent
             fontFamily: panel.controller.fontFamily
 
             Column {
               anchors.fill: parent
-              spacing: Style.space(6)
+              spacing: Commons.Style.space(6)
 
               Toggle {
                 width: parent.width
@@ -1298,25 +1298,25 @@ KeyboardPanel {
 
               Row {
                 width: parent.width
-                height: Style.space(22)
+                height: Commons.Style.space(22)
 
                 Text {
                   textFormat: Text.PlainText
-                  width: parent.width - Style.space(58)
+                  width: parent.width - Commons.Style.space(58)
                   text: "PROFILE"
                   color: panel.controller.dim
                   font.family: panel.controller.fontFamily
-                  font.pixelSize: Style.font.caption
+                  font.pixelSize: Commons.Style.font.caption
                   font.bold: true
                 }
 
                 Text {
                   textFormat: Text.PlainText
-                  width: Style.space(58)
+                  width: Commons.Style.space(58)
                   text: "MATCH"
                   color: panel.controller.dim
                   font.family: panel.controller.fontFamily
-                  font.pixelSize: Style.font.caption
+                  font.pixelSize: Commons.Style.font.caption
                   font.bold: true
                   horizontalAlignment: Text.AlignRight
                 }
@@ -1329,27 +1329,27 @@ KeyboardPanel {
                   id: profileRow
                   required property var modelData
                   width: parent.width
-                  height: Style.space(32)
+                  height: Commons.Style.space(32)
                   readonly property bool selected: String(modelData.name || "") === panel.controller.selectedSavedProfileName
                   color: selected
-                    ? Style.selectedFillFor(panel.controller.foreground, Color.accent)
+                    ? Commons.Style.selectedFillFor(panel.controller.foreground, Commons.Color.accent)
                     : "transparent"
-                  borderSpec: selected ? Border.controlSpec("selected", panel.controller.foreground, Color.accent) : Border.none()
-                  radius: Style.cornerRadius
+                  borderSpec: selected ? Commons.Border.controlSpec("selected", panel.controller.foreground, Commons.Color.accent) : Commons.Border.none()
+                  radius: Commons.Style.cornerRadius
 
                   Row {
                     anchors.fill: parent
-                    anchors.leftMargin: Style.space(7)
-                    anchors.rightMargin: Style.space(7)
+                    anchors.leftMargin: Commons.Style.space(7)
+                    anchors.rightMargin: Commons.Style.space(7)
 
                     Text {
                       textFormat: Text.PlainText
                       anchors.verticalCenter: parent.verticalCenter
-                      width: parent.width - profileMatchText.width - Style.space(8)
+                      width: parent.width - profileMatchText.width - Commons.Style.space(8)
                       text: (profileRow.modelData.active ? "›  " : "   ") + String(profileRow.modelData.name || "Profile")
                       color: profileRow.modelData.active || profileRow.selected ? panel.controller.foreground : panel.controller.dim
                       font.family: panel.controller.fontFamily
-                      font.pixelSize: Style.font.bodySmall
+                      font.pixelSize: Commons.Style.font.bodySmall
                       font.bold: profileRow.modelData.active
                       elide: Text.ElideRight
                     }
@@ -1359,9 +1359,9 @@ KeyboardPanel {
                       id: profileMatchText
                       anchors.verticalCenter: parent.verticalCenter
                       text: Number(profileRow.modelData.match_score || 0) > 0 ? String(profileRow.modelData.match_score) : "—"
-                      color: profileRow.modelData.recommended ? Color.accent : panel.controller.dim
+                      color: profileRow.modelData.recommended ? Commons.Color.accent : panel.controller.dim
                       font.family: panel.controller.fontFamily
-                      font.pixelSize: Style.font.bodySmall
+                      font.pixelSize: Commons.Style.font.bodySmall
                       font.bold: profileRow.modelData.recommended
                     }
                   }
@@ -1383,27 +1383,27 @@ KeyboardPanel {
 
           Column {
             anchors.left: profileListPane.right
-            anchors.leftMargin: Style.space(10)
+            anchors.leftMargin: Commons.Style.space(10)
             anchors.right: parent.right
             anchors.top: parent.top
             anchors.bottom: parent.bottom
-            spacing: Style.space(10)
+            spacing: Commons.Style.space(10)
 
             EditorPane {
               id: profileDetailsPane
               width: parent.width
-              height: Math.min(parent.height - Style.space(180),
-                Math.max(Style.space(190), Style.space(38 + panel.controller.selectedSavedDetailRowCount * 18)))
+              height: Math.min(parent.height - Commons.Style.space(180),
+                Math.max(Commons.Style.space(190), Commons.Style.space(38 + panel.controller.selectedSavedDetailRowCount * 18)))
               title: "Profile Details"
               meta: panel.controller.selectedSavedSummary && panel.controller.selectedSavedSummary.active ? "Active" : ""
               foreground: panel.controller.foreground
               dim: panel.controller.dim
-              accent: Color.accent
+              accent: Commons.Color.accent
               fontFamily: panel.controller.fontFamily
 
               Column {
                 anchors.fill: parent
-                spacing: Style.space(4)
+                spacing: Commons.Style.space(4)
 
                 InfoRow {
                   controller: panel.controller
@@ -1491,7 +1491,7 @@ KeyboardPanel {
               meta: panel.controller.selectedSavedProfileName
               foreground: panel.controller.foreground
               dim: panel.controller.dim
-              accent: Color.accent
+              accent: Commons.Color.accent
               fontFamily: panel.controller.fontFamily
 
               DisplayCanvas {
@@ -1507,7 +1507,7 @@ KeyboardPanel {
                 markDisconnected: true
                 foreground: panel.controller.foreground
                 dim: panel.controller.dim
-                accent: Color.accent
+                accent: Commons.Color.accent
                 fontFamily: panel.controller.fontFamily
               }
             }
@@ -1530,12 +1530,12 @@ KeyboardPanel {
             active: true
             foreground: panel.controller.foreground
             dim: panel.controller.dim
-            accent: Color.accent
+            accent: Commons.Color.accent
             fontFamily: panel.controller.fontFamily
 
             Column {
               anchors.fill: parent
-              spacing: Style.space(12)
+              spacing: Commons.Style.space(12)
 
               Toggle {
                 id: workspaceEnabledToggle
@@ -1545,7 +1545,7 @@ KeyboardPanel {
                 checked: !!((panel.controller.draftProfile || {}).workspaces || {}).enabled
                 enabled: panel.controller.editorReady && !panel.controller.editPending
                 hasCursor: panel.controller.expanded && panel.controller.activePage === "workspaces"
-                  && panel.controller.workspaceKeyboardIndex === 0
+                  && panel.controller.workspaceKeyboardIndex === panel.controller.workspaceEnabledRow
                 foreground: panel.controller.foreground
                 fontFamily: panel.controller.fontFamily
                 onClicked: panel.controller.editWorkspaces({ enabled: !checked })
@@ -1566,7 +1566,7 @@ KeyboardPanel {
                 value: String(((panel.controller.draftProfile || {}).workspaces || {}).strategy || "manual")
                 enabled: panel.controller.editorReady && !panel.controller.editPending
                 hasCursor: panel.controller.expanded && panel.controller.activePage === "workspaces"
-                  && panel.controller.workspaceKeyboardIndex === 1
+                  && panel.controller.workspaceKeyboardIndex === panel.controller.workspaceStrategyRow
                 foreground: panel.controller.foreground
                 fontFamily: panel.controller.fontFamily
                 onChanged: function(value) { panel.controller.changeWorkspaceStrategy(value) }
@@ -1574,7 +1574,7 @@ KeyboardPanel {
 
               Row {
                 width: parent.width
-                spacing: Style.space(10)
+                spacing: Commons.Style.space(10)
 
                 NumberField {
                   id: workspaceCountField
@@ -1583,13 +1583,13 @@ KeyboardPanel {
                   fieldWidth: width
                   label: "WORKSPACES"
                   from: 1
-                  to: panel.controller.workspaceValueMaximum
+                  to: panel.controller.qmlIntegerMaximum
                   value: String(((panel.controller.draftProfile || {}).workspaces || {}).strategy || "") === "manual"
                     ? Model.manualWorkspaceCount((panel.controller.draftProfile || {}).workspaces || {})
                     : Number(((panel.controller.draftProfile || {}).workspaces || {}).max_workspaces || Model.DEFAULT_MAX_WORKSPACES)
                   enabled: !panel.controller.editPending
                   hasCursor: panel.controller.expanded && panel.controller.activePage === "workspaces"
-                    && panel.controller.workspaceKeyboardIndex === 2
+                    && panel.controller.workspaceKeyboardIndex === panel.controller.workspaceCountRow
                   foreground: panel.controller.foreground
                   fontFamily: panel.controller.fontFamily
                   onModified: function(value) {
@@ -1607,12 +1607,12 @@ KeyboardPanel {
                   fieldWidth: width
                   label: "GROUP SIZE"
                   from: 1
-                  to: panel.controller.workspaceValueMaximum
-                  value: Number(((panel.controller.draftProfile || {}).workspaces || {}).group_size || 3)
+                  to: panel.controller.qmlIntegerMaximum
+                  value: Number(((panel.controller.draftProfile || {}).workspaces || {}).group_size || Model.DEFAULT_GROUP_SIZE)
                   enabled: !panel.controller.editPending
                     && String(((panel.controller.draftProfile || {}).workspaces || {}).strategy || "") === "sequential"
                   hasCursor: panel.controller.expanded && panel.controller.activePage === "workspaces"
-                    && panel.controller.workspaceKeyboardIndex === 3
+                    && panel.controller.workspaceKeyboardIndex === panel.controller.workspaceGroupSizeRow
                   foreground: panel.controller.foreground
                   fontFamily: panel.controller.fontFamily
                   onModified: function(value) {
@@ -1641,22 +1641,22 @@ KeyboardPanel {
                   required property var modelData
                   required property int index
                   width: parent.width
-                  height: Style.space(42)
+                  height: Commons.Style.space(42)
                   readonly property bool hasKeyboardCursor: panel.controller.expanded
                     && panel.controller.activePage === "workspaces"
                     && panel.controller.workspaceKeyboardIndex === panel.controller.workspaceListKeyboardStart + index
                   color: hasKeyboardCursor
-                    ? Style.selectedFillFor(panel.controller.foreground, Color.accent)
+                    ? Commons.Style.selectedFillFor(panel.controller.foreground, Commons.Color.accent)
                     : Qt.rgba(panel.controller.foreground.r, panel.controller.foreground.g, panel.controller.foreground.b, 0.025)
-                  borderSpec: Border.controlSpec(hasKeyboardCursor ? "focus" : "normal",
-                    panel.controller.foreground, Color.accent)
-                  radius: Style.cornerRadius
+                  borderSpec: Commons.Border.controlSpec(hasKeyboardCursor ? "focus" : "normal",
+                    panel.controller.foreground, Commons.Color.accent)
+                  radius: Commons.Style.cornerRadius
 
                   Row {
                     anchors.fill: parent
-                    anchors.leftMargin: Style.space(10)
-                    anchors.rightMargin: Style.space(6)
-                    spacing: Style.space(6)
+                    anchors.leftMargin: Commons.Style.space(10)
+                    anchors.rightMargin: Commons.Style.space(6)
+                    spacing: Commons.Style.space(6)
 
                     Text {
                       textFormat: Text.PlainText
@@ -1665,7 +1665,7 @@ KeyboardPanel {
                       text: (orderRow.index + 1) + ".  " + Model.outputDisplayLabel(panel.controller.draftProfile, String(orderRow.modelData))
                       color: panel.controller.foreground
                       font.family: panel.controller.fontFamily
-                      font.pixelSize: Style.font.body
+                      font.pixelSize: Commons.Style.font.body
                       elide: Text.ElideRight
                     }
 
@@ -1699,9 +1699,9 @@ KeyboardPanel {
                 id: manualAssignmentList
                 visible: String(((panel.controller.draftProfile || {}).workspaces || {}).strategy || "") === "manual"
                 width: parent.width
-                height: visible ? Math.max(Style.space(90), parent.height - y) : 0
+                height: visible ? Math.max(Commons.Style.space(90), parent.height - y) : 0
                 clip: true
-                spacing: Style.space(6)
+                spacing: Commons.Style.space(6)
                 boundsBehavior: Flickable.StopAtBounds
                 model: visible ? panel.controller.manualWorkspaceRows : []
                 currentIndex: panel.controller.workspaceKeyboardIndex >= panel.controller.workspaceListKeyboardStart
@@ -1716,33 +1716,33 @@ KeyboardPanel {
                   required property var modelData
                   required property int index
                   width: manualAssignmentList.width - (manualScrollBar.visible
-                    ? manualScrollBar.width + Style.space(4) : 0)
-                  height: Style.space(42)
+                    ? manualScrollBar.width + Commons.Style.space(4) : 0)
+                  height: Commons.Style.space(42)
                   readonly property bool hasKeyboardCursor: panel.controller.expanded
                     && panel.controller.activePage === "workspaces"
                     && panel.controller.workspaceKeyboardIndex === panel.controller.workspaceListKeyboardStart + index
                   color: hasKeyboardCursor
-                    ? Style.selectedFillFor(panel.controller.foreground, Color.accent)
+                    ? Commons.Style.selectedFillFor(panel.controller.foreground, Commons.Color.accent)
                     : Qt.rgba(panel.controller.foreground.r, panel.controller.foreground.g, panel.controller.foreground.b, 0.025)
-                  borderSpec: Border.controlSpec(hasKeyboardCursor ? "focus" : "normal",
-                    panel.controller.foreground, Color.accent)
-                  radius: Style.cornerRadius
+                  borderSpec: Commons.Border.controlSpec(hasKeyboardCursor ? "focus" : "normal",
+                    panel.controller.foreground, Commons.Color.accent)
+                  radius: Commons.Style.cornerRadius
 
                   Row {
                     anchors.fill: parent
-                    anchors.leftMargin: Style.space(10)
-                    anchors.rightMargin: Style.space(6)
-                    spacing: Style.space(6)
+                    anchors.leftMargin: Commons.Style.space(10)
+                    anchors.rightMargin: Commons.Style.space(6)
+                    spacing: Commons.Style.space(6)
 
                     Text {
                       id: manualWorkspaceLabel
                       textFormat: Text.PlainText
                       anchors.verticalCenter: parent.verticalCenter
-                      width: Style.space(82)
+                      width: Commons.Style.space(82)
                       text: "Workspace " + String(manualRow.modelData.workspace || "?")
                       color: panel.controller.dim
                       font.family: panel.controller.fontFamily
-                      font.pixelSize: Style.font.bodySmall
+                      font.pixelSize: Commons.Style.font.bodySmall
                       elide: Text.ElideRight
                     }
 
@@ -1754,7 +1754,7 @@ KeyboardPanel {
                       text: String(manualRow.modelData.display_name || "Display")
                       color: panel.controller.foreground
                       font.family: panel.controller.fontFamily
-                      font.pixelSize: Style.font.body
+                      font.pixelSize: Commons.Style.font.body
                       font.bold: panel.controller.expanded && panel.controller.activePage === "workspaces"
                         && panel.controller.workspaceKeyboardIndex === panel.controller.workspaceListKeyboardStart + manualRow.index
                       elide: Text.ElideRight
@@ -1789,25 +1789,25 @@ KeyboardPanel {
 
           Column {
             anchors.left: workspaceSettingsPane.right
-            anchors.leftMargin: Style.space(10)
+            anchors.leftMargin: Commons.Style.space(10)
             anchors.right: parent.right
             anchors.top: parent.top
             anchors.bottom: parent.bottom
-            spacing: Style.space(10)
+            spacing: Commons.Style.space(10)
 
             EditorPane {
               width: parent.width
-              height: Style.space(145)
+              height: Commons.Style.space(145)
               title: "Workspace Plan"
               meta: ((panel.controller.draftProfile || {}).workspaces || {}).enabled ? "" : "preview only"
               foreground: panel.controller.foreground
               dim: panel.controller.dim
-              accent: Color.accent
+              accent: Commons.Color.accent
               fontFamily: panel.controller.fontFamily
 
               Column {
                 anchors.fill: parent
-                spacing: Style.space(5)
+                spacing: Commons.Style.space(5)
 
                 Repeater {
                   model: panel.controller.workspaceRows
@@ -1827,18 +1827,18 @@ KeyboardPanel {
                   text: "No workspace rules configured"
                   color: panel.controller.dim
                   font.family: panel.controller.fontFamily
-                  font.pixelSize: Style.font.body
+                  font.pixelSize: Commons.Style.font.body
                 }
               }
             }
 
             EditorPane {
               width: parent.width
-              height: parent.height - Style.space(155)
+              height: parent.height - Commons.Style.space(155)
               title: "Monitor Layout"
               foreground: panel.controller.foreground
               dim: panel.controller.dim
-              accent: Color.accent
+              accent: Commons.Color.accent
               fontFamily: panel.controller.fontFamily
 
               DisplayCanvas {
@@ -1853,7 +1853,7 @@ KeyboardPanel {
                 framed: false
                 foreground: panel.controller.foreground
                 dim: panel.controller.dim
-                accent: Color.accent
+                accent: Commons.Color.accent
                 fontFamily: panel.controller.fontFamily
               }
             }
@@ -1866,27 +1866,27 @@ KeyboardPanel {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        height: Style.space(58)
+        height: Commons.Style.space(58)
         color: Qt.rgba(panel.controller.foreground.r, panel.controller.foreground.g, panel.controller.foreground.b, 0.025)
-        borderSpec: Border.controlSpec(panel.controller.draftDirty || panel.controller.creatingProfile ? "selected" : "normal", panel.controller.foreground, Color.accent)
-        radius: Style.cornerRadius
+        borderSpec: Commons.Border.controlSpec(panel.controller.draftDirty || panel.controller.creatingProfile ? "selected" : "normal", panel.controller.foreground, Commons.Color.accent)
+        radius: Commons.Style.cornerRadius
         opacity: panel.controller.managedChecked ? 1.0 : panel.controller.unmanagedOpacity
 
         Row {
           anchors.fill: parent
-          anchors.leftMargin: Style.space(12)
-          anchors.rightMargin: Style.space(12)
-          spacing: Style.space(9)
+          anchors.leftMargin: Commons.Style.space(12)
+          anchors.rightMargin: Commons.Style.space(12)
+          spacing: Commons.Style.space(9)
 
           Column {
-            width: Math.max(Style.space(180), parent.width
+            width: Math.max(Commons.Style.space(180), parent.width
               - (activateFooterButton.visible ? activateFooterButton.width + parent.spacing : 0)
               - (discardDraftButton.visible ? discardDraftButton.width + parent.spacing : 0)
               - (saveDraftButton.visible ? saveDraftButton.width + parent.spacing : 0)
               - (profileNameInput.visible ? profileNameInput.width + parent.spacing : 0)
               - parent.spacing)
             anchors.verticalCenter: parent.verticalCenter
-            spacing: Style.space(1)
+            spacing: Commons.Style.space(1)
 
             Text {
               textFormat: Text.PlainText
@@ -1902,7 +1902,7 @@ KeyboardPanel {
                     : "Editing " + panel.controller.profileStatusTitle)))
               color: panel.controller.lastError !== "" ? panel.controller.urgent : panel.controller.foreground
               font.family: panel.controller.fontFamily
-              font.pixelSize: Style.font.body
+              font.pixelSize: Commons.Style.font.body
               font.bold: panel.controller.draftDirty
               elide: Text.ElideRight
             }
@@ -1919,7 +1919,7 @@ KeyboardPanel {
                   : "Changes are previewed safely before they can be saved."))
               color: panel.controller.dim
               font.family: panel.controller.fontFamily
-              font.pixelSize: Style.font.caption
+              font.pixelSize: Commons.Style.font.caption
               elide: Text.ElideRight
             }
           }
@@ -1928,7 +1928,7 @@ KeyboardPanel {
             id: profileNameInput
             visible: panel.controller.creatingProfile || (panel.controller.draftDirty && panel.controller.sourceProfile === "")
             anchors.verticalCenter: parent.verticalCenter
-            width: Style.space(190)
+            width: Commons.Style.space(190)
             text: panel.controller.saveName
             placeholderText: panel.controller.creatingProfile ? "Name this display setup" : "New profile name"
             foreground: panel.controller.foreground
@@ -1990,7 +1990,7 @@ KeyboardPanel {
       page: panel.controller.activePage
       foreground: panel.controller.foreground
       background: panel.controller.shell.background
-      accent: Color.accent
+      accent: Commons.Color.accent
       fontFamily: panel.controller.fontFamily
       onCloseRequested: panel.controller.keyboardHelpOpen = false
     }
@@ -2012,27 +2012,27 @@ KeyboardPanel {
 
       BorderSurface {
         anchors.centerIn: parent
-        width: Math.min(parent.width - Style.space(48), Style.space(660))
-        height: execContent.implicitHeight + Style.space(30)
+        width: Math.min(parent.width - Commons.Style.space(48), Commons.Style.space(660))
+        height: execContent.implicitHeight + Commons.Style.space(30)
         color: panel.controller.shell.background
-        borderSpec: Border.controlSpec("focus", panel.controller.foreground, Color.accent)
-        radius: Style.cornerRadius
+        borderSpec: Commons.Border.controlSpec("focus", panel.controller.foreground, Commons.Color.accent)
+        radius: Commons.Style.cornerRadius
 
         Column {
           id: execContent
           anchors.left: parent.left
           anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter
-          anchors.leftMargin: Style.space(18)
-          anchors.rightMargin: Style.space(18)
-          spacing: Style.space(10)
+          anchors.leftMargin: Commons.Style.space(18)
+          anchors.rightMargin: Commons.Style.space(18)
+          spacing: Commons.Style.space(10)
 
           Text {
             textFormat: Text.PlainText
             text: "Edit Exec for " + panel.controller.selectedSavedProfileName
             color: panel.controller.foreground
             font.family: panel.controller.fontFamily
-            font.pixelSize: Style.font.subtitle
+            font.pixelSize: Commons.Style.font.subtitle
             font.bold: true
           }
 
@@ -2057,7 +2057,7 @@ KeyboardPanel {
             text: "Enter saves. Leave empty to clear. Esc discards."
             color: panel.controller.dim
             font.family: panel.controller.fontFamily
-            font.pixelSize: Style.font.caption
+            font.pixelSize: Commons.Style.font.caption
           }
         }
       }
@@ -2067,8 +2067,8 @@ KeyboardPanel {
     width: parent.width; anchors.bottom: parent.bottom
     text: "Tab move · Arrows adjust · Enter select · ? keys · Esc"
     wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter
-    fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Style.font.caption - 2)
+    fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Commons.Style.font.caption - 2)
     color: panel.controller.dim
-    font.family: panel.controller.fontFamily; font.pixelSize: Style.font.caption
+    font.family: panel.controller.fontFamily; font.pixelSize: Commons.Style.font.caption
   }
 }

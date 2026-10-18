@@ -1,6 +1,7 @@
 # Keyboard layouts
 
-This machine runs two layouts, `us` and `fr`. `Super + K` switches between them,
+This machine runs two layouts, `us` with the `altgr-intl` variant and `fr`.
+`Super + K` switches between them,
 and it works on the lock screen — which is not a detail, since typing a password
 in the wrong layout is exactly when you need to switch.
 
@@ -43,7 +44,6 @@ is invisible, which makes it the kind of bug you rediscover every six months.
 
 ## The indicator
 
-The bar has a language module showing the active layout, so you can tell at a
-glance which one you are in before you start typing. On the `winbar` and `top`
-layouts it sits on the right; add `language` to any other layout's JSON if you
-want it there too.
+`winbar` shows the active layout through `language`; `macos` and `gnome` use
+`language-menu`. They sit on the right. To show it on top and bottom, add
+`language` to `layouts/shared/horizontal.json`.

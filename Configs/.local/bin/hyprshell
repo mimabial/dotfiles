@@ -33,32 +33,35 @@ hyprshell_prepend_path() {
 
 hyprshell_prepend_path "${BIN_DIR}" "${HYPR_LIB_DIR}"
 
-HYPR_SCRIPTS_PATH="${HYPR_SCRIPTS_PATH:-${LIB_DIR}/hypr}"
+HYPRSHELL_LIB_DIR="${HYPR_LIB_DIR}/shell/lib"
 
-export BIN_DIR LIB_DIR PATH HYPR_SCRIPTS_PATH
+export BIN_DIR LIB_DIR PATH
+
+hyprshell_is_sourced() {
+  [[ "${BASH_SOURCE[0]}" != "${0}" ]]
+}
 
 hyprshell_load_venv_helpers() {
   declare -F hyprshell_ensure_and_activate_python_environment >/dev/null 2>&1 && return 0
   # shellcheck source=/dev/null
-  source "${LIB_DIR}/hypr/shell/lib/hyprshell.venv.bash"
+  source "${HYPRSHELL_LIB_DIR}/hyprshell.venv.bash"
 }
 
 hyprshell_load_completion_helpers() {
   declare -F hyprshell_print_completions >/dev/null 2>&1 && return 0
   # shellcheck source=/dev/null
-  source "${LIB_DIR}/hypr/shell/lib/hyprshell.completion.bash"
+  source "${HYPRSHELL_LIB_DIR}/hyprshell.completion.bash"
 }
 
-if [[ "${BASH_SOURCE[0]}" == "${0}" && "${1:-}" == "app" ]]; then
-  export PATH="${HYPR_SCRIPTS_PATH}:${PATH}"
+if ! hyprshell_is_sourced && [[ "${1:-}" == "app" ]]; then
   shift
   exec "${HYPR_LIB_DIR}/system/app2unit.sh" "$@"
 fi
 
 for hyprshell_lib in \
-  "${LIB_DIR}/hypr/shell/lib/hyprshell.discovery.bash" \
-  "${LIB_DIR}/hypr/shell/lib/hyprshell.dispatch.bash" \
-  "${LIB_DIR}/hypr/shell/lib/hyprshell.commands.bash"; do
+  "${HYPRSHELL_LIB_DIR}/hyprshell.discovery.bash" \
+  "${HYPRSHELL_LIB_DIR}/hyprshell.dispatch.bash" \
+  "${HYPRSHELL_LIB_DIR}/hyprshell.commands.bash"; do
   if [[ ! -r "${hyprshell_lib}" ]]; then
     printf 'Error: missing lib %s\n' "${hyprshell_lib}" >&2
     exit 1
@@ -67,7 +70,7 @@ for hyprshell_lib in \
   source "${hyprshell_lib}" || exit 1
 done
 
-if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+if hyprshell_is_sourced; then
   hyprshell_load_venv_helpers || return 1
   hyprshell_load_completion_helpers || return 1
   if ! hypr_runtime_load_shell_environment; then

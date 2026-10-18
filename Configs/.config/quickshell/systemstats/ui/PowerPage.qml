@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 import "../Model.js" as Model
 
 Column {
@@ -12,8 +12,8 @@ Column {
   property var settings: ({})
   property string temperatureUnit: "Celsius"
   property bool publicIpEnabled: true
-  property color foreground: Color.popups.text
-  property string fontFamily: Style.font.family
+  property color foreground: Commons.Color.popups.text
+  property string fontFamily: Commons.Style.font.family
   property int historyRange: 0
 
   readonly property var snap: service ? service.snapshot : ({})
@@ -26,13 +26,13 @@ Column {
   readonly property var day: service ? service.powerDay : ({ cpu: [], gpu: [] })
   readonly property var cpuSeries: historyRange === 2 ? day.cpu : historyRange === 1 ? hour.cpu : fine.cpu
   readonly property var gpuSeries: historyRange === 2 ? day.gpu : historyRange === 1 ? hour.gpu : fine.gpu
-  readonly property color s1: service ? service.series1 : Color.accent
-  readonly property color s2: service ? service.series2 : Color.accent
+  readonly property color s1: service ? service.series1 : Commons.Color.accent
+  readonly property color s2: service ? service.series2 : Commons.Color.accent
 
   function hasWatts(value) { return value !== null && value !== undefined && isFinite(Number(value)) && Number(value) >= 0 }
   function watts(value) { return hasWatts(value) ? Number(value).toFixed(1) : "—" }
   function wattsLabel(value) { return hasWatts(value) ? watts(value) + " W" : "—" }
-  function wh(value) { return Number(value) >= 0.05 ? Number(value).toFixed(1) : "—" }
+  function wattHoursText(value) { return Number(value) >= 0.05 ? Number(value).toFixed(1) : "—" }
   function raplLabel(name) {
     var label = String(name || "")
     if (/^package/.test(label)) return "CPU " + label.replace("-", " ")
@@ -44,7 +44,7 @@ Column {
   }
 
   width: parent ? parent.width : implicitWidth
-  spacing: Style.space(10)
+  spacing: Commons.Style.space(10)
 
   Card {
     foreground: root.foreground
@@ -70,9 +70,9 @@ Column {
       width: parent.width
       text: "CPU energy counters are restricted by the kernel; CPU package draw is unavailable."
       color: root.foreground
-      opacity: Style.mutedTextAlpha
+      opacity: Commons.Style.mutedTextAlpha
       font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
+      font.pixelSize: Commons.Style.font.caption
       wrapMode: Text.WordWrap
     }
 
@@ -104,9 +104,9 @@ Column {
       width: parent.width
       text: "No power sensors are available on this machine."
       color: root.foreground
-      opacity: Style.mutedTextAlpha
+      opacity: Commons.Style.mutedTextAlpha
       font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
+      font.pixelSize: Commons.Style.font.caption
     }
   }
 
@@ -118,23 +118,23 @@ Column {
     SectionTitle { text: "CPU package · session peak " + root.wattsLabel(root.service ? root.service.peakCpuPower : null); fontFamily: root.fontFamily }
     HistoryGraph {
       width: parent.width
-      height: Style.space(56)
+      height: Commons.Style.space(56)
       barWidth: Model.historyBarWidth(width, root.historyRange)
       showGaps: root.historyRange > 0
       series: [root.cpuSeries || []]
       colors: [root.s1]
-      baselineColor: Util.alpha(root.foreground, 0.14)
+      baselineColor: Commons.Util.alpha(root.foreground, 0.14)
     }
 
     SectionTitle { text: "GPU (selected) · session peak " + root.wattsLabel(root.service ? root.service.peakGpuPower : null); fontFamily: root.fontFamily }
     HistoryGraph {
       width: parent.width
-      height: Style.space(56)
+      height: Commons.Style.space(56)
       barWidth: Model.historyBarWidth(width, root.historyRange)
       showGaps: root.historyRange > 0
       series: [root.gpuSeries || []]
       colors: [root.s2]
-      baselineColor: Util.alpha(root.foreground, 0.14)
+      baselineColor: Commons.Util.alpha(root.foreground, 0.14)
     }
   }
 
@@ -142,16 +142,16 @@ Column {
     foreground: root.foreground
 
     CardHeader { title: "Session energy"; foreground: root.foreground; fontFamily: root.fontFamily }
-    StatRow { label: "CPU package"; value: root.wh(root.service ? root.service.cpuEnergyWh : 0); unit: value === "—" ? "" : "Wh"; foreground: root.foreground; fontFamily: root.fontFamily }
-    StatRow { label: "GPU (selected)"; value: root.wh(root.service ? root.service.gpuEnergyWh : 0); unit: value === "—" ? "" : "Wh"; foreground: root.foreground; fontFamily: root.fontFamily }
+    StatRow { label: "CPU package"; value: root.wattHoursText(root.service ? root.service.cpuEnergyWh : 0); unit: value === "—" ? "" : "Wh"; foreground: root.foreground; fontFamily: root.fontFamily }
+    StatRow { label: "GPU (selected)"; value: root.wattHoursText(root.service ? root.service.gpuEnergyWh : 0); unit: value === "—" ? "" : "Wh"; foreground: root.foreground; fontFamily: root.fontFamily }
 
     Text {
       width: parent.width
       text: "Energy since the shell started, integrated from measured draw. Sources can overlap and are not summed."
       color: root.foreground
-      opacity: Style.mutedTextAlpha
+      opacity: Commons.Style.mutedTextAlpha
       font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
+      font.pixelSize: Commons.Style.font.caption
       wrapMode: Text.WordWrap
     }
   }

@@ -48,8 +48,8 @@ BorderSurface {
         visible: root.tooltipText !== "" && mouse.containsMouse
         text: root.tooltipText; delay: 400; padding: Commons.Style.space(6)
         background: Rectangle {
-            color: Commons.Color.popups.background; radius: Commons.Style.cornerRadius
-            border.color: Commons.Color.popups.border
+            color: Commons.Style.popupTinted(Commons.Color.popups.background); radius: Commons.Style.cornerRadius
+            border.color: Commons.Style.popupBorder(Commons.Color.popups.border)
         }
         contentItem: Text {
             text: root.tooltipText; color: Commons.Color.popups.text

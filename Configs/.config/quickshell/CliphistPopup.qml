@@ -19,8 +19,6 @@ PopupCard {
     readonly property int expandedPreviewLines: 16
     property bool previewExpanded: false
 
-    // the preview pane shows the whole entry, so anything token-shaped is masked
-    // in both places. the entry still copies normally — only the display is withheld
     readonly property var secretRules: [
         { re: /\bghp_[A-Za-z0-9]{20,}/, label: "GitHub token" },
         { re: /\bgh[ousr]_[A-Za-z0-9]{20,}/, label: "GitHub token" },
@@ -48,7 +46,6 @@ PopupCard {
         return needle === "" ? source : source.filter(entry => entry.text.toLowerCase().indexOf(needle) >= 0)
     }
 
-    // mouse and keyboard drive the same cursor, so one row is ever focused
     readonly property var previewRow: {
         const index = Math.max(0, cursorIndex)
         return index < rows.length ? rows[index] : null
@@ -63,11 +60,9 @@ PopupCard {
     onPreviewImageKeyChanged: {
         previewImagePath = ""
         if (previewImageKey !== "")
-            imageProc.exec([shell.home + "/.local/lib/hypr/clipboard/cliphist.sh", "--panel-image", previewImageKey])
+            imageProcess.exec([shell.home + "/.local/lib/hypr/clipboard/cliphist.sh", "--panel-image", previewImageKey])
     }
 
-    // the search box can never hold focus (the bar owns it), so typing is routed
-    // through the field's text, which stays the single source of truth
     function handleKey(event) {
         if (wipeDialog.opened) return wipeDialog.handleKey(event)
         if (event.key === Qt.Key_Delete && searchField.text === "" && rows.length > 0) {
@@ -80,21 +75,19 @@ PopupCard {
         if (event.text && event.text.length === 1 && event.text >= " ") { searchField.text += event.text; return true }
         return defaultKey(event)
     }
-    function refresh() { if (!listProc.running) listProc.running = true }
-    function act(args, close) {
-        if (close) shell.closePopup()
-        shell.run(["hyprshell", "cliphist"].concat(args), root.refresh)
-    }
-    function copyRow(row) { act([row.favorite ? "--panel-fav-copy" : "--panel-copy", String(row.key)], true) }
+    function refresh() { if (!listProcess.running) listProcess.running = true }
+    function act(args) { shell.run(["hyprshell", "cliphist"].concat(args), root.refresh) }
+    function actAndClose(args) { shell.closePopup(); act(args) }
+    function copyRow(row) { actAndClose([row.favorite ? "--panel-fav-copy" : "--panel-copy", String(row.key)]) }
     function deleteRow(row) {
         const key = String(row.key)
         if (row.favorite) favorites = favorites.filter(entry => String(entry.index) !== key)
         else entries = entries.filter(entry => String(entry.id) !== key)
-        act([row.favorite ? "--panel-fav-remove" : "--panel-delete", key], false)
+        act([row.favorite ? "--panel-fav-remove" : "--panel-delete", key])
     }
     function pinRow(row) {
         if (row.favorite) return deleteRow(row)
-        act(["--panel-fav-add", String(row.key)], false)
+        act(["--panel-fav-add", String(row.key)])
     }
 
     onOpenChanged: {
@@ -103,8 +96,7 @@ PopupCard {
         searchField.forceActiveFocus()
     }
 
-
-    property Process listProc: Process {
+    property Process listProcess: Process {
         command: ["hyprshell", "cliphist", "--panel-json"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             try {
@@ -114,7 +106,7 @@ PopupCard {
             } catch (error) { root.entries = []; root.favorites = [] }
         } }
     }
-    property Process imageProc: Process {
+    property Process imageProcess: Process {
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.previewImagePath = text.trim() }
     }
 
@@ -158,8 +150,6 @@ PopupCard {
                 Keys.onUpPressed: root.moveCursor(-1)
                 Keys.onReturnPressed: if (root.rows.length > 0) root.copyRow(root.rows[Math.max(0, root.cursorIndex)])
                 Keys.onEnterPressed: if (root.rows.length > 0) root.copyRow(root.rows[Math.max(0, root.cursorIndex)])
-                // Delete only reaches the list once the filter box is empty, so
-                // backspacing a search never eats an entry by accident
                 Keys.onPressed: event => {
                     if (event.key === Qt.Key_E && (event.modifiers & Qt.ControlModifier)) {
                         root.previewExpanded = !root.previewExpanded
@@ -201,13 +191,10 @@ PopupCard {
                 id: row
                 required property var modelData
                 required property int index
-                // modelData is briefly undefined while the view recycles rows,
-                // so every binding reads these instead
                 readonly property bool isFavorite: modelData ? modelData.favorite === true : false
                 readonly property bool isImage: modelData ? modelData.image === true : false
                 readonly property string bodyText: modelData ? String(modelData.text || "") : ""
                 readonly property string secret: root.secretKind(bodyText)
-                // keeps PopupCard's up/down cursor working over these rows
                 readonly property bool navigable: true
                 property bool cursored: false
                 signal clicked(int button)
@@ -225,8 +212,6 @@ PopupCard {
                     id: rowArea
                     anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: root.copyRow(row.modelData)
-                    // movement, not entry: a list that re-filters or scrolls under a
-                    // still pointer must not steal the cursor from the keyboard
                     onPositionChanged: root.cursorIndex = row.index
                 }
                 Text {
@@ -261,14 +246,14 @@ PopupCard {
                         visible: row.isImage
                         glyph: "\u{f113d}"
                         hint: "Extract text (OCR)"
-                        onClicked: root.act(["--scan-image", String(row.modelData.key)], true)
+                        onClicked: root.actAndClose(["--scan-image", String(row.modelData.key)])
                     }
                     PopupIconButton {
                         shell: root.shell; keyboardEnabled: false
                         visible: row.isImage
                         glyph: "\u{f0432}"
                         hint: "Decode QR code"
-                        onClicked: root.act(["--scan-qr", String(row.modelData.key)], true)
+                        onClicked: root.actAndClose(["--scan-qr", String(row.modelData.key)])
                     }
                     PopupIconButton {
                         shell: root.shell; keyboardEnabled: false
@@ -290,8 +275,6 @@ PopupCard {
             id: previewBlock
             visible: root.rows.length > 0
             width: parent.width; spacing: Style.sm
-            // fixed height: a pane that grew with each entry would resize
-            // the list under the cursor as you move down it
             property real paneHeight: lineProbe.implicitHeight * (root.previewExpanded ? root.expandedPreviewLines : root.previewLines)
             Behavior on paneHeight { NumberAnimation { duration: Style.duration(120); easing.type: Easing.OutCubic } }
             PopupSeparator { shell: root.shell }
@@ -349,7 +332,7 @@ PopupCard {
         onCanceled: opened = false
         onConfirmed: {
             opened = false
-            root.act(["--wipe"], false)
+            root.act(["--wipe"])
         }
     }
 }

@@ -68,22 +68,6 @@ upgrade_release_idle() {
   idle_notify_manager || true
 }
 
-upgrade_review_orphans() {
-  local -a orphans=()
-  local reply=""
-
-  mapfile -t orphans < <(pacman -Qtdq 2>/dev/null || true)
-  ((${#orphans[@]})) || return 0
-
-  printf '\nOrphaned packages (%s):\n' "${#orphans[@]}"
-  printf '  %s\n' "${orphans[@]}"
-  [[ -t 0 ]] || return 0
-
-  read -r -p "Remove them? [y/N] " reply || reply=""
-  [[ "${reply}" =~ ^[Yy] ]] || return 0
-  "${HYPR_LIB_DIR}/system/package-manager.sh" remove-orphans
-}
-
 upgrade_review_news() {
   local news="" reply=""
 
@@ -181,26 +165,10 @@ upgrade_run() {
     all | pacman)
       upgrade_prune_package_cache
       upgrade_refresh_keyring
-      if [[ "${update_source}" == all && -n "${update_aur_helper}" ]]; then
-        "${update_aur_helper}" -Syu
-      else
-        sudo pacman -Syu
-      fi
-      if [[ "${update_source}" == all ]] && pkg_installed flatpak; then
-        flatpak update
-      fi
-      ;;
-    aur)
-      [[ -n "${update_aur_helper}" ]] || { echo "No AUR helper found." >&2; return 1; }
-      "${update_aur_helper}" -Sua
-      ;;
-    flatpak)
-      command -v flatpak >/dev/null || { echo "Flatpak is not installed." >&2; return 1; }
-      flatpak update
       ;;
   esac
 
-  [[ "${update_source}" == flatpak ]] || upgrade_review_orphans
+  "${HYPR_LIB_DIR}/system/package-manager.sh" --pm "${update_aur_helper:-pacman}" upgrade "${update_source}" || return
   upgrade_refresh_report
   [[ "${update_source}" == flatpak ]] || upgrade_prompt_restart
 }

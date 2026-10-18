@@ -23,11 +23,16 @@ convention every other script here follows.
 Use `[[ ... ]]`, quote your paths, prefer absolute paths for config and state,
 and keep functions small enough to reuse.
 
-## Comments explain why
+## Names carry the meaning
 
-Not what. The code already says what it does. A comment earns its place by
-recording the reason a line is the way it is — the constraint, the bug it works
-around, the thing that will look wrong to the next person and isn't.
+Use clear names and small functions rather than comments or docstrings. Keep
+changes lean, reuse existing helpers, and derive sizes and values from their
+source instead of tuning literals.
+
+Wait for events instead of sleeping or polling: `hypr_wait_for` consumes socket2
+events, `hypr_wait_for_path` waits for a file event, and `pidwait` waits for a
+process. A timeout is a failure deadline. Route services through `hypr_svc_user`
+rather than adding `systemctl` calls.
 
 ## State goes through the helpers
 
@@ -56,6 +61,10 @@ hyprctl eval 'hl.config({general = {border_size = 2}})'
 
 `hl.dsp` and `hl.dsp.window` are tables — enumerate them rather than guessing
 dispatcher names.
+
+Window dispatchers take `window =`, never `selector =`. An unknown key can be
+ignored while the action falls back to the focused window and still returns `ok`.
+Use an explicit window address when focus could change between calls.
 
 Reading a value back, watch the field: `hyprctl getoption -j` signals type by
 which key it emits — `int`, `float`, `bool`, `str`, or `css` for four-edge values

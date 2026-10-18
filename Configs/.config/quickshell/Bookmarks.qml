@@ -47,11 +47,6 @@ Item {
 
   readonly property int maxQuickAddOutputCharacters: 512 * 1024
 
-  onShellChanged: {
-    Commons.Style.shell = root.shell
-    Commons.Color.shell = root.shell
-  }
-
   readonly property var keywordAction:
     root.opened && root.viewMode === "bookmarks"
       ? BookmarkModel.keywordAction(store.bookmarks, root.query)

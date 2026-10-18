@@ -13,7 +13,7 @@ Two terminals are configured, and both are themed by the pipeline.
 
 `Super + J` then `T` gives you a dropdown terminal — it comes down over whatever
 you are working on and goes away again. It has its own special workspace,
-`special:dropdown`, separate from the general scratchpad on `Super + S`, so
+`special:dropdown`, separate from the general scratchpad on `Super + 0`, so
 neither one can bury the other.
 
 ## TUIs get their own launcher
@@ -22,7 +22,8 @@ neither one can bury the other.
 floating window sized for it:
 
 `H` htop · `N` nvtop · `U` dua · `R` rmpc · `V` wiremix · `B` bluetui ·
-`W` impala · `D` display layout · `A` the Agent Hub
+`W` impala · `D` display layout · `A` the Agent Hub · `C` calculator ·
+`L` desktop Settings
 
 These do not open in a tiled window and fight your layout. They are launched
 through `launch/tui.sh` under a `tui` window profile with an `org.tui.*` app-id,

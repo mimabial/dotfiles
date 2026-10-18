@@ -105,7 +105,7 @@ SAVEHIST=10000
 setopt INC_APPEND_HISTORY HIST_FCNTL_LOCK
 export HISTFILE ZSH_AUTOSUGGEST_STRATEGY HISTSIZE SAVEHIST
 
-PM_COMMAND=(hyprshell pm)
+PM_COMMAND=("$HOME/.local/lib/hypr/system/package-manager.sh")
 
 if [[ $ZSH_NO_PLUGINS != 1 ]]; then
   if [[ $ZSH_DEFER == 1 ]]; then
@@ -130,8 +130,8 @@ alias cl='clear' \
   in='__package_manager install' \
   un='__package_manager remove' \
   up='__package_manager upgrade' \
-  pl='__package_manager search installed' \
-  pa='__package_manager search all' \
+  pl='__package_manager list installed' \
+  pa='__package_manager list all' \
   vc='vscodium' \
   vi='nvim' \
   ..='cd ..' \

@@ -44,11 +44,13 @@ PopupCard {
     readonly property string batteryObjectPath: laptopBattery ? "/org/freedesktop/UPower/devices/battery_" + laptopBattery.nativePath : ""
     readonly property color accentColor: shell.role("act_br", shell.accent)
     readonly property int thresholdEnd: sysfsEnd
+    readonly property int fullChargePercent: 99
+    readonly property real idleChargeRateWatts: 0.2
     readonly property string thresholdText: sysfsStart > 0 && sysfsStart < thresholdEnd
         ? sysfsStart + "–" + thresholdEnd + "%" : thresholdEnd > 0 ? thresholdEnd + "%" : "Unavailable"
     readonly property bool discharging: UPower.onBattery
-    readonly property bool thresholdActive: hasBattery && !discharging && thresholdEnd > 0 && thresholdEnd < 99
-        && Math.round(battery.percentage * 100) >= thresholdEnd && Math.abs(battery.changeRate) <= 0.2
+    readonly property bool thresholdActive: hasBattery && !discharging && thresholdEnd > 0 && thresholdEnd < fullChargePercent
+        && Math.round(battery.percentage * 100) >= thresholdEnd && Math.abs(battery.changeRate) <= idleChargeRateWatts
     readonly property bool full: hasBattery && battery.state === UPowerDeviceState.FullyCharged && !thresholdActive
     readonly property string batteryStatus: !hasBattery ? "NO BATTERY DETECTED" : thresholdActive ? "CHARGE LIMIT REACHED"
         : full ? "FULLY CHARGED" : discharging ? "ON BATTERY" : "CHARGING"

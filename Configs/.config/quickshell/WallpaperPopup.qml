@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 
-// The state and the rotation live in the Wallpaper singleton.
 PopupCard {
     id: root
     popupName: "wallpaper"
@@ -49,12 +48,22 @@ PopupCard {
 
         PopupHero { shell: root.shell; title: "Wallpaper"; status: Wallpaper.nextText() }
 
+        PopupToggleRow {
+            width: parent.width; shell: root.shell
+            icon: "󰝥"
+            title: "Per workspace wallpapers"
+            detail: Wallpaper.perWorkspace ? "Each workspace keeps its own wallpaper" : "One wallpaper for every workspace"
+            checked: Wallpaper.perWorkspace
+            enabled: !Wallpaper.busy
+            onToggled: Wallpaper.setScope(Wallpaper.perWorkspace ? "global" : "workspace")
+        }
+
         PopupSeparator { shell: root.shell }
 
         Column {
             width: parent.width; spacing: Style.sm
             PopupSection {
-                shell: root.shell; text: "WALLPAPERS"
+                shell: root.shell; text: Wallpaper.perWorkspace ? "WORKSPACE " + Wallpaper.workspaceName : "WALLPAPERS"
                 value: root.hoverName !== "" ? root.hoverName
                     : Wallpaper.entries.length + (Wallpaper.themeName ? " · " + Wallpaper.themeName : "")
             }
@@ -81,11 +90,12 @@ PopupCard {
                         delegate: Rectangle {
                             id: cell
                             required property var modelData
-                            readonly property bool navigable: true
+                            readonly property bool navigable: !Wallpaper.busy
+                            enabled: !Wallpaper.busy
                             property bool cursored: false
                             signal clicked(int button)
                             onClicked: Wallpaper.setWallpaper(modelData.path)
-                            readonly property bool isCurrent: Wallpaper.current === modelData.path
+                            readonly property bool isCurrent: Wallpaper.selectedWallpaper === modelData.path
                             // the thumbnail cache can lag a freshly added wallpaper;
                             // fall back to the full image rather than an empty cell
                             property bool thumbFailed: false
@@ -96,8 +106,6 @@ PopupCard {
 
                             Image {
                                 anchors.fill: parent
-                                // decode only while the panel is open, at thumbnail size,
-                                // and drop the pixmap on close
                                 source: root.open ? Wallpaper.fileUrl(cell.thumbFailed ? cell.modelData.path : cell.modelData.thumb) : ""
                                 sourceSize: Qt.size(240, 240)
                                 fillMode: Image.PreserveAspectCrop
@@ -113,7 +121,6 @@ PopupCard {
                                     cell.isCurrent ? 0 : cellMouse.containsMouse ? .1 : .35)
                                 Behavior on color { ColorAnimation { duration: Style.hoverDuration } }
                             }
-                            // drawn over the image so it cannot be hidden by it
                             Rectangle {
                                 anchors.fill: parent; radius: parent.radius; color: "transparent"
                                 border.width: cell.isCurrent ? 2 : 1
@@ -149,9 +156,10 @@ PopupCard {
 
         Column {
             width: parent.width; spacing: Style.sm
-            PopupSection { shell: root.shell; text: "SCHEDULE" }
+            PopupSection { shell: root.shell; text: Wallpaper.perWorkspace ? "WORKSPACE" : "SCHEDULE" }
 
             PopupToggleRow {
+                visible: !Wallpaper.perWorkspace
                 width: parent.width; shell: root.shell
                 icon: Wallpaper.enabled ? "󰑖" : "󰑗"
                 title: "Automatic switching"
@@ -161,6 +169,7 @@ PopupCard {
             }
 
             PopupSlider {
+                visible: !Wallpaper.perWorkspace
                 width: parent.width
                 shell: root.shell
                 label: "Interval"
@@ -178,6 +187,7 @@ PopupCard {
             }
 
             Row {
+                visible: !Wallpaper.perWorkspace
                 width: parent.width; spacing: Style.sm
                 Repeater {
                     model: [{value: "sequential", label: "Sequential", icon: "󰒬"},
@@ -194,7 +204,7 @@ PopupCard {
 
             PopupRow {
                 width: parent.width; shell: root.shell
-                icon: Wallpaper.busy ? "󰔟" : "󰑐"; title: Wallpaper.busy ? "Applying…" : "Apply next wallpaper now"
+                icon: Wallpaper.busy ? "󰔟" : "󰑐"; title: Wallpaper.busy ? "Applying…" : Wallpaper.perWorkspace ? "Next wallpaper for this workspace" : "Apply next wallpaper now"
                 enabled: !Wallpaper.busy
                 onClicked: Wallpaper.applyNext()
             }
@@ -211,7 +221,9 @@ PopupCard {
 
             Text {
                 width: parent.width
-                text: "Picking a wallpaper here restarts the interval, so manual choices and "
+                text: Wallpaper.perWorkspace
+                    ? "Each workspace starts with a different wallpaper from this theme. Choices are remembered until the theme changes. Timed rotation is paused."
+                    : "Picking a wallpaper here restarts the interval, so manual choices and "
                     + "scheduled changes share one rotation. "
                     + (Wallpaper.shuffle ? "Shuffle plays every wallpaper once before repeating."
                         : "Sequential advances by one wallpaper each interval.")

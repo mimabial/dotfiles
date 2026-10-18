@@ -12,13 +12,15 @@ import json
 import sys
 import time
 
-NATIVE_CACHE_VERSION = 1
+NATIVE_CACHE_VERSION = 3
 
 def parse_native_codex_file(path, mtime):
   """Carries no today/recent logic, so the result stays valid across midnight and
   can be reused until the file itself changes."""
   days = {}
   current_model = "codex"
+  service_tier = None
+  previous_usage = None
   with path.open(errors="replace") as handle:
     for raw in handle:
       try:
@@ -28,6 +30,7 @@ def parse_native_codex_file(path, mtime):
       if entry.get("type") == "turn_context":
         payload = entry.get("payload") or {}
         current_model = session_model_name(payload.get("model") or payload.get("model_slug") or current_model)
+        service_tier = payload.get("service_tier")
         continue
       payload = entry.get("payload") or entry
       if entry.get("type") == "response_item" and isinstance(payload, dict):
@@ -39,6 +42,12 @@ def parse_native_codex_file(path, mtime):
       info = payload.get("info") or {}
       # total_token_usage is cumulative; last_token_usage is per turn.
       usage = info.get("last_token_usage") or {}
+      cumulative = info.get("total_token_usage")
+      if isinstance(cumulative, dict):
+        signature = (usage, cumulative)
+        if signature == previous_usage:
+          continue
+        previous_usage = signature
       cache_read = integer_token_count(usage.get("cached_input_tokens"))
       cache_write = integer_token_count(usage.get("cache_write_input_tokens"))
       # Cached input is already included in input_tokens.
@@ -47,12 +56,10 @@ def parse_native_codex_file(path, mtime):
       if not (input_tokens or output_tokens or cache_read or cache_write):
         continue
       day = local_date_from_timestamp(entry.get("timestamp") or mtime)
-      bucket = days.setdefault(day, {}).setdefault(current_model, [0, 0, 0, 0, 0])
-      bucket[0] += input_tokens
-      bucket[1] += output_tokens
-      bucket[2] += cache_read
-      bucket[3] += cache_write
-      bucket[4] += 1
+      days.setdefault(day, {}).setdefault(current_model, []).append([
+        input_tokens, output_tokens, cache_read, cache_write,
+        {"service_tier": info.get("service_tier") or payload.get("service_tier") or service_tier},
+      ])
   return days
 
 
@@ -61,10 +68,9 @@ def merge_native_days(totals, session_key, days):
   for day, models in (days or {}).items():
     if not isinstance(models, dict):
       continue
-    for model, counts in models.items():
-      if not isinstance(counts, list) or len(counts) != 5:
-        continue
-      totals.add_tokens(day, session_key, model, tuple(integer_token_count(value) for value in counts[:4]), integer_token_count(counts[4]))
+    for model, rows in models.items():
+      for counts in rows:
+        totals.add_tokens(day, session_key, model, tuple(integer_token_count(value) for value in counts[:4]), pricing=counts[4])
 
 
 def native_cache_file(codex_home):

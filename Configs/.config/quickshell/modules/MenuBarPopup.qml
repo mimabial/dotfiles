@@ -117,8 +117,8 @@ PopupCard {
         Timer { id: remap; interval: 0; onTriggered: flyout.shownBranch = flyout.branch }
         Rectangle {
             anchors.fill: parent
-            color: flyout.menu.shell.alpha(flyout.menu.background, flyout.menu.surfaceOpacity)
-            border.color: flyout.menu.shell.alpha(flyout.menu.borderColor, flyout.menu.borderOpacity)
+            color: flyout.menu.shell.alpha(Commons.Style.popupTinted(flyout.menu.background), flyout.menu.surfaceOpacity)
+            border.color: flyout.menu.shell.alpha(Commons.Style.popupBorder(flyout.menu.borderColor), flyout.menu.borderOpacity)
             border.width: flyout.menu.shell.borderWidth
             radius: flyout.menu.shell.rounding
             Entries {

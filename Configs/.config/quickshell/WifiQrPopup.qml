@@ -24,18 +24,18 @@ PopupCard {
         password = ""; revealing = false; rows = []; ssid = ""; iface = ""; security = ""; error = ""
         passwordRevision++; passwordPending = false
         if (open) {
-            if (qrProc.running) refreshPending = true
-            else qrProc.running = true
+            if (qrProcess.running) refreshPending = true
+            else qrProcess.running = true
         } else {
             refreshPending = false
-            qrProc.running = false
-            passwordProc.running = false
+            qrProcess.running = false
+            passwordProcess.running = false
         }
     }
     function togglePassword() {
         revealing = !revealing
         passwordRevision++
-        if (!revealing) { password = ""; passwordProc.running = false }
+        if (!revealing) { password = ""; passwordProcess.running = false }
         else {
             error = ""
             readPassword()
@@ -43,10 +43,10 @@ PopupCard {
     }
     function readPassword() {
         if (!open || !revealing) return
-        if (passwordProc.running) { passwordPending = true; passwordProc.running = false; return }
+        if (passwordProcess.running) { passwordPending = true; passwordProcess.running = false; return }
         passwordReader.revision = passwordRevision
-        passwordProc.command = [shell.home + "/.local/lib/hypr/system/network-qr.sh", "--password", iface]
-        passwordProc.running = true
+        passwordProcess.command = [shell.home + "/.local/lib/hypr/system/network-qr.sh", "--password", iface]
+        passwordProcess.running = true
     }
 
     function load(raw) {
@@ -58,19 +58,18 @@ PopupCard {
             security = fields[2]
             ssid = fields.slice(3).join("\t")
         }
-        // A ragged matrix would render a code that cannot scan — drop it instead.
         const square = lines.length > 0 && lines.every(line => line.length === lines.length)
         rows = square ? lines : []
         if (!square) error = "Could not read the network credentials"
     }
 
-    property Process qrProc: Process {
+    property Process qrProcess: Process {
         command: [root.shell.home + "/.local/lib/hypr/system/network-qr.sh"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.load(text) }
         stderr: StdioCollector { waitForEnd: true; onStreamFinished: if (text && root.open && !root.refreshPending) root.error = String(text).trim() }
-        onExited: if (root.refreshPending) { root.refreshPending = false; if (root.open) Qt.callLater(() => root.qrProc.running = true) }
+        onExited: if (root.refreshPending) { root.refreshPending = false; if (root.open) Qt.callLater(() => root.qrProcess.running = true) }
     }
-    property Process passwordProc: Process {
+    property Process passwordProcess: Process {
         id: passwordReader
         property int revision: 0
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: if (root.open && root.revealing && root.passwordRevision === passwordReader.revision) root.password = String(text) }
@@ -112,7 +111,7 @@ PopupCard {
             font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
         }
         PopupRow { visible: root.rows.length > 0 && root.security === "WPA"; width: parent.width; shell: root.shell; title: root.revealing ? "Hide password" : "Reveal password"; onClicked: root.togglePassword() }
-        Text { visible: root.revealing; width: parent.width; text: root.passwordProc.running ? "Reading password…" : root.password; textFormat: Text.PlainText; wrapMode: Text.WrapAnywhere; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+        Text { visible: root.revealing; width: parent.width; text: root.passwordProcess.running ? "Reading password…" : root.password; textFormat: Text.PlainText; wrapMode: Text.WrapAnywhere; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
         Text { visible: root.rows.length > 0 && root.error !== ""; width: parent.width; text: root.error; textFormat: Text.PlainText; wrapMode: Text.Wrap; color: root.shell.urgent; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
     }
 }

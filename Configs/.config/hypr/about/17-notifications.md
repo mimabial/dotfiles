@@ -14,6 +14,7 @@ From the shell:
 ```bash
 hyprshell notify/archive list [LIMIT]   # newest first, JSON, default 200
 hyprshell notify/archive unread         # count since the panel was last opened
+hyprshell notify/archive snapshot
 hyprshell notify/archive remove KEY
 hyprshell notify/archive clear
 hyprshell notify/archive prune
@@ -25,12 +26,15 @@ Retention is configured in `staterc` rather than in dunst:
 | --- | ------- |
 | `NOTIFY_KEEP_DAYS` | 30 |
 | `NOTIFY_MAX_ITEMS` | 1000 |
-| `NOTIFY_ARCHIVE_SKIP_APPS` | — |
-| `NOTIFY_ARCHIVE_SKIP_TAGS` | — |
+| `NOTIFY_ARCHIVE_SKIP_APPS` | `Claude Code` |
+| `NOTIFY_ARCHIVE_SKIP_TAGS` | `submap-hint` |
 
 The two skip lists are `|`-separated, and they are what you want for the chatty
 ones. Volume and brightness notifications fire every time you touch a key; there
 is no reason to keep 400 of them.
+
+Commands return JSON. `snapshot` returns the entries, unread count and seen
+timestamp together; `seen` reads or updates when the panel was last opened.
 
 ## dunstrc is generated
 

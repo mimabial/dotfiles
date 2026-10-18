@@ -2,7 +2,9 @@
   "panel": "winbar",
   "edge": "bottom",
   "mediaHistoryLocalOnly": true,
-  "left": ["weather"],
+  "left": [
+    "weather"
+  ],
   "center": [
     {
       "id": "menu",
@@ -20,10 +22,11 @@
     }
   ],
   "tray": [
+    "powerbutton",
     "display",
+    "bluetooth",
     "webcam",
     "bitwarden",
-    "vpn",
     "printers",
     {
       "id": "removable",
@@ -41,7 +44,14 @@
     "hyprsunset",
     "github",
     "sudoku",
-    "powerbutton"
+    {
+      "id": "altscape",
+      "trayPosition": {
+        "section": "right",
+        "index": 7,
+        "stringEntry": true
+      }
+    }
   ],
   "right": [
     "tray",

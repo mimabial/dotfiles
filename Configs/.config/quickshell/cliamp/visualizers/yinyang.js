@@ -1,6 +1,5 @@
-// Port of cliamp vis_yinyang.go.
 .pragma library
-.import "helpers.js" as H
+.import "helpers.js" as VisualizerHelpers
 
 var JOINTS = 13
 var SEG = 1.5
@@ -71,8 +70,8 @@ function newKoi(offset, phase) {
   }
 }
 
-function newGrid(w, h) {
-  return { w: w | 0, h: h | 0, lap: 0, px: new Int8Array(w * h) }
+function newGrid(width, height) {
+  return { w: width | 0, h: height | 0, lap: 0, px: new Int8Array(width * height) }
 }
 
 function copyPoints(points) {
@@ -97,17 +96,17 @@ function toAngle(yy, dist) {
   return dist * yy.size * 2 * Math.PI / yy.trackLen
 }
 
-function layout(yy, w, h) {
-  yy.w = w
-  yy.h = h
-  yy.cx = w / 2
-  yy.cy = h / 2
-  yy.strip = w > h * 3
+function layout(yy, width, height) {
+  yy.w = width
+  yy.h = height
+  yy.cx = width / 2
+  yy.cy = height / 2
+  yy.strip = width > height * 3
   if (yy.strip) {
-    yy.size = Math.min(h * 0.84 / (2 * HALF_BODY), w / 80)
-    yy.radius = Math.min(h * 0.3, yy.size * 4.5)
+    yy.size = Math.min(height * 0.84 / (2 * HALF_BODY), width / 80)
+    yy.radius = Math.min(height * 0.3, yy.size * 4.5)
     var hidden = SEG * (JOINTS - 1) + NOSE + TAIL_FIN
-    yy.lap = Math.round(w + hidden * yy.size)
+    yy.lap = Math.round(width + hidden * yy.size)
     yy.waves = Math.max(1, Math.round(yy.lap / (55 * yy.size)))
     yy.pad = 0
     var wave = yy.lap / yy.waves
@@ -119,12 +118,12 @@ function layout(yy, w, h) {
     }
     yy.trackLen = yy.waves * yy.waveArc[ARC_STEPS]
   } else {
-    var m = Math.min(w, h, 160)
+    var m = Math.min(width, height, 160)
     yy.radius = m * 0.36
     yy.lap = 2 * Math.PI * yy.radius
     yy.trackLen = yy.lap
     yy.pad = m * 0.17
-    yy.size = Math.min(m * 0.34 * 1.35 / 18, (w / 2 - yy.radius) / HALF_BODY, (h / 2 - yy.radius) / HALF_BODY)
+    yy.size = Math.min(m * 0.34 * 1.35 / 18, (width / 2 - yy.radius) / HALF_BODY, (height / 2 - yy.radius) / HALF_BODY)
   }
   yy.koi = [newKoi(0, 0), newKoi(Math.PI, 1.5)]
   if (yy.strip) {
@@ -136,7 +135,7 @@ function layout(yy, w, h) {
     koi.prevJoints = copyPoints(koi.joints)
   })
   yy.swirls = []
-  yy.pixels = new Int8Array(w * h)
+  yy.pixels = new Int8Array(width * height)
 }
 
 function lineUp(yy, koi) {
@@ -383,24 +382,24 @@ function drawSprite(size, koi, pat) {
   return { grid: grid, opaque: opaquePixels(grid), hx: hx, hy: hy, x: ox, y: oy, flicked: koi.flick > 0 }
 }
 
-function closeGaps(px, w, body) {
-  var h = (px.length / w) | 0, water = WATER
+function closeGaps(px, width, body) {
+  var h = (px.length / width) | 0, water = WATER
   for (var y = 0; y < h; y++) {
-    for (var x = 0; x < w; x++) {
-      var i = y * w + x
-      if (px[i] === water && ((x > 0 && x < w - 1 && px[i - 1] !== water && px[i + 1] !== water)
-          || (y > 0 && y < h - 1 && px[i - w] !== water && px[i + w] !== water)))
+    for (var x = 0; x < width; x++) {
+      var i = y * width + x
+      if (px[i] === water && ((x > 0 && x < width - 1 && px[i - 1] !== water && px[i + 1] !== water)
+          || (y > 0 && y < h - 1 && px[i - width] !== water && px[i + width] !== water)))
         px[i] = body
     }
   }
 }
 
-function addStripEyes(px, w, hx, hy, body) {
-  var h = (px.length / w) | 0, ex = hx + 1
+function addStripEyes(px, width, hx, hy, body) {
+  var h = (px.length / width) | 0, ex = hx + 1
   for (var e = hy; e > 1; e--) {
-    if (ex < w && hy + e < h && px[(hy - e) * w + ex] === body && px[(hy + e) * w + ex] === body) {
-      px[(hy - e + 1) * w + ex] = WATER
-      px[(hy + e - 1) * w + ex] = WATER
+    if (ex < width && hy + e < h && px[(hy - e) * width + ex] === body && px[(hy + e) * width + ex] === body) {
+      px[(hy - e + 1) * width + ex] = WATER
+      px[(hy + e - 1) * width + ex] = WATER
       return
     }
   }
@@ -489,7 +488,7 @@ function draw(yy) {
   var grid = { w: yy.w, h: yy.h, lap: yy.strip ? yy.lap : 0, px: yy.pixels }
   grid.px.fill(WATER)
   yy.swirls.forEach(function (swirl) { drawSwirl(grid, yy.size, swirl) })
-  var ahead = H.cliampTickFraction(yy.clock)
+  var ahead = VisualizerHelpers.cliampTickFraction(yy.clock)
   yy.koi.forEach(function (koi, index) {
     var shown = Object.assign({}, koi, {
       joints: koi.joints.map(function (p, j) {
@@ -505,21 +504,21 @@ function draw(yy) {
 }
 
 function tagColors(d) {
-  var tiers = H.specTiers(d)
-  return [null, H.rgba(d.dim, 1), tiers[0], tiers[2], H.rgba(d.foreground, 1), tiers[1]]
+  var tiers = VisualizerHelpers.specTiers(d)
+  return [null, VisualizerHelpers.rgba(d.dim, 1), tiers[0], tiers[2], VisualizerHelpers.rgba(d.foreground, 1), tiers[1]]
 }
 
-function render(ctx, d) {
-  var w = Math.floor(d.width), h = Math.floor(d.height)
+function render(canvas, frameData) {
+  var w = Math.floor(frameData.width), h = Math.floor(frameData.height)
   if (w <= 0 || h <= 0) return
 
-  var s = d.state
-  if (!s.yinYang) s.yinYang = newDriver()
-  var yy = s.yinYang
+  var animationState = frameData.state
+  if (!animationState.yinYang) animationState.yinYang = newDriver()
+  var yy = animationState.yinYang
   if (w !== yy.w || h !== yy.h) layout(yy, w, h)
-  var ticks = H.cliampTicks(yy.clock)
-  var bands = H.cliampBands(d.bands, d.bandEdges)
-  for (var tick = 0; tick < ticks; tick++) advance(yy, bands, d.playing)
+  var ticks = VisualizerHelpers.cliampTicks(yy.clock)
+  var bands = VisualizerHelpers.cliampBands(frameData.bands, frameData.bandEdges)
+  for (var tick = 0; tick < ticks; tick++) advance(yy, bands, frameData.playing)
   draw(yy)
-  H.paintTagGrid(ctx, yy.pixels, w, h, tagColors(d))
+  VisualizerHelpers.paintTagGrid(canvas, yy.pixels, w, h, tagColors(frameData))
 }

@@ -3,7 +3,8 @@ set -euo pipefail
 
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
-DAEMON_SCRIPT="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/theme/auto_theme.py"
+HYPR_LIB_DIR="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}"
+DAEMON_SCRIPT="${HYPR_LIB_DIR}/theme/auto_theme.py"
 AUTO_THEME_SERVICE="auto-theme"
 
 resolve_auto_theme_python() {
@@ -52,12 +53,25 @@ run_daemon() {
 load_service_api() {
   declare -F hypr_svc_user >/dev/null 2>&1 && return
   # shellcheck source=/dev/null
-  source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
+  source "${HYPR_LIB_DIR}/runtime/init.bash"
 }
 
 service_call() {
   load_service_api
   hypr_svc_user "$1" "${AUTO_THEME_SERVICE}"
+}
+
+signal_daemon_or_run_once() {
+  local signal="$1" run_once_flag="$2" action="$3"
+
+  load_service_api
+  if hypr_svc_user is-active "${AUTO_THEME_SERVICE}"; then
+    hypr_svc_user_signal "${AUTO_THEME_SERVICE}" "${signal}"
+    printf '%s signal sent to daemon\n' "${action^}"
+  else
+    printf 'Daemon not running, applying %s once...\n' "${action}"
+    run_daemon "${run_once_flag}"
+  fi
 }
 
 main() {
@@ -71,22 +85,10 @@ main() {
       run_daemon --status
       ;;
     toggle)
-      if service_call is-active; then
-        hypr_svc_user_signal "${AUTO_THEME_SERVICE}" USR1
-        printf '%s\n' "Toggle signal sent to daemon"
-      else
-        printf '%s\n' "Daemon not running, applying toggle once..."
-        run_daemon --toggle
-      fi
+      signal_daemon_or_run_once USR1 --toggle toggle
       ;;
     refresh)
-      if service_call is-active; then
-        hypr_svc_user_signal "${AUTO_THEME_SERVICE}" USR2
-        printf '%s\n' "Refresh signal sent to daemon"
-      else
-        printf '%s\n' "Daemon not running, applying refresh once..."
-        run_daemon --once
-      fi
+      signal_daemon_or_run_once USR2 --once refresh
       ;;
     once)
       run_daemon --once

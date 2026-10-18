@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
 Item {
   id: root
@@ -12,18 +12,18 @@ Item {
   property string unit: ""
   property color dot: "transparent"
   property bool showDot: dot.a > 0
-  property color foreground: Color.popups.text
+  property color foreground: Commons.Color.popups.text
   property color valueColor: foreground
-  property string fontFamily: Style.font.family
+  property string fontFamily: Commons.Style.font.family
   property real labelOpacity: 0.85
   property bool boldValue: true
   property real ringValue: -1
-  property color ringColor: Color.accent
-  property real rowHeight: Style.space(20)
+  property color ringColor: Commons.Color.accent
+  property real rowHeight: Commons.Style.space(20)
 
-  readonly property real dotInset: showDot ? Style.space(8) + Style.space(7) : 0
-  readonly property real detailInset: detailText.visible ? detailText.implicitWidth + Style.space(7) : 0
-  readonly property real labelBudget: Math.max(0, width - right.width - Style.space(10) - dotInset - detailInset)
+  readonly property real dotInset: showDot ? Commons.Style.space(8) + Commons.Style.space(7) : 0
+  readonly property real detailInset: detailText.visible ? detailText.implicitWidth + Commons.Style.space(7) : 0
+  readonly property real labelBudget: Math.max(0, width - readout.width - Commons.Style.space(10) - dotInset - detailInset)
 
   width: parent ? parent.width : implicitWidth
   implicitHeight: Math.max(rowHeight, labelText.implicitHeight)
@@ -34,7 +34,7 @@ Item {
     visible: root.showDot
     anchors.left: parent.left
     anchors.verticalCenter: parent.verticalCenter
-    width: Style.space(8)
+    width: Commons.Style.space(8)
     height: width
     radius: width / 2
     color: root.dot
@@ -51,7 +51,7 @@ Item {
     color: root.foreground
     opacity: root.labelOpacity
     font.family: root.fontFamily
-    font.pixelSize: Style.font.body
+    font.pixelSize: Commons.Style.font.body
     elide: Text.ElideRight
   }
 
@@ -60,20 +60,20 @@ Item {
     textFormat: Text.PlainText
     visible: root.detail !== ""
     anchors.left: labelText.right
-    anchors.leftMargin: Style.space(7)
+    anchors.leftMargin: Commons.Style.space(7)
     anchors.verticalCenter: parent.verticalCenter
     text: root.detail
     color: root.foreground
-    opacity: Style.faintTextAlpha
+    opacity: Commons.Style.faintTextAlpha
     font.family: root.fontFamily
-    font.pixelSize: Style.font.caption
+    font.pixelSize: Commons.Style.font.caption
   }
 
   Row {
-    id: right
+    id: readout
     anchors.right: parent.right
     anchors.verticalCenter: parent.verticalCenter
-    spacing: Style.space(8)
+    spacing: Commons.Style.space(8)
 
     Measure {
       value: root.value
@@ -89,8 +89,8 @@ Item {
       value: root.ringValue
       color: root.ringColor
       foreground: root.foreground
-      size: Style.space(14)
-      thickness: Style.spaceReal(2.2)
+      size: Commons.Style.space(14)
+      thickness: Commons.Style.spaceReal(2.2)
       anchors.verticalCenter: parent.verticalCenter
     }
   }

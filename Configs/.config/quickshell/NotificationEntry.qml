@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import "Units.js" as Units
 
 // Given explicit properties rather than a modelData of its own, so the popup owns the shape of an entry and this owns its look.
 Rectangle {
@@ -48,11 +49,8 @@ Rectangle {
     readonly property string when: {
         if (timestamp <= 0) return ""
         const seconds = Math.max(0, Math.floor((now - timestamp) / 1000))
-        if (seconds < 60) return "now"
-        if (seconds < 3600) return Math.floor(seconds / 60) + "m"
-        if (seconds < 86400) return Math.floor(seconds / 3600) + "h"
-        if (seconds < 604800) return Math.floor(seconds / 86400) + "d"
-        return Qt.formatDateTime(new Date(timestamp), "MMM d")
+        if (seconds >= 7 * Units.SECONDS_PER_DAY) return Qt.formatDateTime(new Date(timestamp), "MMM d")
+        return Units.largestUnitText(seconds) || "now"
     }
 
     // paths reach QML as plain absolute paths; a space or a '#' in one would

@@ -61,8 +61,8 @@ PopupWindow {
         Keys.onPressed: event => {
             if (root.shell.popupCard) event.accepted = root.shell.popupCard.handleKey(event)
         }
-        color: root.shell.alpha(root.shell.role("bg", "#0c1021"), Style.popupSurfaceOpacity)
-        border.color: root.shell.alpha(root.shell.role("alt_br", root.shell.foreground), .45)
+        color: root.shell.alpha(Style.popupTinted(root.shell.role("bg", "#0c1021")), Style.popupSurfaceOpacity)
+        border.color: root.shell.alpha(Style.popupBorder(root.shell.role("alt_br", root.shell.foreground)), .45)
         border.width: 1
         radius: root.shell.rounding
 

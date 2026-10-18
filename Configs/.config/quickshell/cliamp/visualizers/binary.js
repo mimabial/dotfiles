@@ -1,83 +1,63 @@
-// A slow loudness envelope sets density and scroll
-// rate, bands set per-column activity, beats nudge the stream forward a row. Glyphs are
-// written once when a row is created and never revisited, so the stream scrolls instead
-// of boiling in place.
 .pragma library
-.import "helpers.js" as H
+.import "helpers.js" as VisualizerHelpers
 
-function makeRow(rng, cols, colEnergy, density, hot) {
-  var chars = "", levels = new Array(cols)
-  for (var c = 0; c < cols; c++) {
-    var energy = colEnergy[c] || 0
-    levels[c] = energy
-    chars += H.lcgRand01(rng) < (density * 0.30 + energy * 0.55) ? "1" : "0"
-  }
-  return { chars: chars, levels: levels, hot: hot }
+var HASH_WORD = 0x100000000, HASH_HALF_WORD = 0x10000, HASH_BUCKETS = 10000
+var HASH_MULTIPLIER_LOW = 0x7197344b, HASH_MULTIPLIER_HIGH = 0x45d9f3b3
+var LINE_HEIGHT = 1.25
+
+function bitHash(band, row, col) {
+  var value = band * 7919 + row * 6271 + col * 3037 + Math.floor((row * 3 + col) / 3) * 104729
+  var high = Math.floor(value / HASH_WORD) >>> 0, low = value >>> 0
+  low = (low ^ (low >>> 16) ^ (high << 16)) >>> 0
+  high = (high ^ (high >>> 16)) >>> 0
+  var lower = low & (HASH_HALF_WORD - 1), upper = low >>> 16
+  var product = lower * (HASH_MULTIPLIER_LOW & (HASH_HALF_WORD - 1))
+  var cross = (product >>> 16) + upper * (HASH_MULTIPLIER_LOW & (HASH_HALF_WORD - 1)) + lower * (HASH_MULTIPLIER_LOW >>> 16)
+  high = (Math.imul(high, HASH_MULTIPLIER_LOW) + Math.imul(low, HASH_MULTIPLIER_HIGH)
+    + upper * (HASH_MULTIPLIER_LOW >>> 16) + Math.floor(cross / HASH_HALF_WORD)) >>> 0
+  low = Math.imul(low, HASH_MULTIPLIER_LOW) >>> 0
+  low = (low ^ (low >>> 16) ^ (high << 16)) >>> 0
+  high = (high ^ (high >>> 16)) >>> 0
+  return ((high * (HASH_WORD % HASH_BUCKETS) + low) % HASH_BUCKETS) / HASH_BUCKETS
 }
 
-function render(ctx, d) {
-  var w = d.width, h = d.height
-  var charW = 6, charH = 9
-  var cols = Math.floor(w / charW), rows = Math.floor(h / charH)
-  if (cols < 1 || rows < 1) return
+function render(canvas, frameData) {
+  var width = frameData.width, height = frameData.height, fontSize = frameData.fontSize
+  if (width <= 0 || height <= 0 || fontSize <= 0) return
 
-  var st = d.state.binaryStream
-  if (!st || st.cols !== cols || st.rows !== rows) {
-    st = d.state.binaryStream = { cols: cols, rows: rows, grid: new Array(rows), head: 0,
-                                  offset: 0, frame: d.frame, density: 0, beat: 0,
-                                  rng: { v: 0x2545f491 } }
-    var quiet = new Array(cols)
-    for (var q = 0; q < cols; q++) quiet[q] = 0
-    for (var r = 0; r < rows; r++) st.grid[r] = makeRow(st.rng, cols, quiet, 0, false)
-  }
+  canvas.save()
+  canvas.font = fontSize + "px monospace"
+  canvas.textAlign = "center"
+  canvas.textBaseline = "middle"
+  var charW = canvas.measureText("0").width, charH = fontSize * LINE_HEIGHT
+  var cols = Math.floor(width / charW), rows = Math.floor(height / charH)
+  if (cols < 1 || rows < 1) { canvas.restore(); return }
 
-  // d.frame advances once per 42.7 ms render tick and stalls while paused, so a frame
-  // delta is elapsed wall-clock time and a paused stream holds its last state.
-  var elapsed = Math.max(0, Math.min(8, d.frame - st.frame)) * 0.0427
-  st.frame = d.frame
+  var animationState = frameData.state.binary
+  if (!animationState) animationState = frameData.state.binary = { clock: {}, frame: 0 }
+  var ticks = VisualizerHelpers.cliampTicks(animationState.clock)
+  if (frameData.playing) animationState.frame += ticks
 
-  var bands = d.playing ? (d.bands || []) : []
-  var loud = Math.min(1, H.bandAvg(bands, 0, bands.length) * 1.6)
-  st.density += (loud - st.density) * (1 - Math.exp(-elapsed / 0.6))
+  var bands = VisualizerHelpers.cliampBands(frameData.playing ? frameData.bands : [], frameData.bandEdges)
+  var tiers = VisualizerHelpers.specTiers(frameData)
+  var visible = Math.min(bands.length, cols), gaps = Math.min(visible - 1, cols - visible)
+  var bandCols = cols - gaps, base = Math.floor(bandCols / visible), extra = bandCols % visible
+  var offsetX = (width - cols * charW) / 2, offsetY = (height - rows * charH) / 2
 
-  var colEnergy = H.resampleBandsLinear(bands, cols)
-  if (!colEnergy.length) {
-    colEnergy = new Array(cols)
-    for (var e = 0; e < cols; e++) colEnergy[e] = 0
-  }
-
-  var beat = d.beatDrop || 0
-  var kick = beat > 0.55 && st.beat <= 0.55
-  st.beat = beat
-
-  // Beats nudge a free-running scroll rather than clocking it: the detector gates on
-  // 20-47 Hz, so advancing only on beats would freeze the stream on thin material.
-  st.offset += (d.playing ? elapsed * (4.2 + st.density * 10.5) : 0) + (kick ? 1 : 0)
-  var steps = Math.floor(st.offset)
-  st.offset -= steps
-  var advances = Math.min(rows, steps)
-  for (var a = 0; a < advances; a++) {
-    st.head = (st.head + rows - 1) % rows
-    st.grid[st.head] = makeRow(st.rng, cols, colEnergy, st.density, kick && a === advances - 1)
-  }
-
-  ctx.fillStyle = H.rgba(d.surface, 0.2)
-  ctx.fillRect(0, 0, w, h)
-  ctx.font = "8px monospace"
-  ctx.textBaseline = "top"
-
-  for (var i = 0; i < rows; i++) {
-    var row = st.grid[(st.head + i) % rows]
-    var fade = 1 - i / rows
-    var strong = H.rgba(d.accent, 0.40 + 0.55 * fade)
-    var weak = H.rgba(d.accent, 0.20 + 0.28 * fade)
-    var cold = H.rgba(d.dim, 0.32 * fade)
-    var crest = i === 0 && row.hot ? H.rgba(d.foreground, 0.95 * Math.max(beat, 0.4)) : ""
-    var y = i * charH
-    for (var c = 0; c < cols; c++) {
-      var on = row.chars.charAt(c) === "1"
-      ctx.fillStyle = !on ? cold : crest ? crest : row.levels[c] > 0.35 ? strong : weak
-      ctx.fillText(on ? "1" : "0", c * charW, y)
+  for (var b = 0, col = 0; b < visible; b++) {
+    var energy = bands[b], bandWidth = base + (b < extra ? 1 : 0)
+    var speed = Math.max(1, 4 - Math.floor(energy * 3))
+    var scroll = Math.floor(animationState.frame / speed)
+    for (var row = 0; row < rows; row++) {
+      for (var c = 0; c < bandWidth; c++) {
+        var one = bitHash(b, row + scroll, col + c) < energy * 0.6 + 0.15
+        var tag = one && energy > 0.4 ? 2 : one || energy > 0.3 ? 1 : 0
+        canvas.fillStyle = tiers[tag]
+        canvas.fillText(one ? "1" : "0", offsetX + (col + c + 0.5) * charW, offsetY + (row + 0.5) * charH)
+      }
     }
+    col += bandWidth
+    if (b < visible - 1 && Math.floor((b + 1) * gaps / (visible - 1)) > Math.floor(b * gaps / (visible - 1))) col++
   }
+  canvas.restore()
 }

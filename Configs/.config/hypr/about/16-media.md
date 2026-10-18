@@ -25,8 +25,13 @@ machine:
 hyprshell media/fftab-bridge/install.sh
 ```
 
-The session starts the bridge for you; `media/fftab-bridge/ensure` is what runs
-at login.
+Install the signed extension from `media/fftab-bridge/extension/web-ext-artifacts/`
+in Firefox and disable `media.hardwaremediakeys.enabled` in `about:config`, so
+Firefox's built-in MPRIS player does not duplicate the tabs.
+
+`media/fftab-bridge/ensure` checks the setup at login and refreshes the
+machine-specific manifest when needed. Firefox launches the native host through
+the extension.
 
 ## Lyrics
 

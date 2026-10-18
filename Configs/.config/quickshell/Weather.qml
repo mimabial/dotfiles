@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "CalendarMath.js" as CalendarMath
 
 Singleton {
     id: root
@@ -10,14 +11,13 @@ Singleton {
 
     readonly property int likelyRainChance: 70
     readonly property int rainLookaheadHours: 3
-    readonly property int hourMs: 3600000
     property bool rainNoticeSent: false
     readonly property var likelyRainHour: {
         const now = Date.now()
         for (const day of data.weather ?? [])
             for (const hour of day.hourly ?? []) {
                 const start = Date.parse(hour.time)
-                if (start + hourMs > now && start < now + rainLookaheadHours * hourMs && Number(hour.chanceofrain) >= likelyRainChance)
+                if (start + CalendarMath.MS_PER_HOUR > now && start < now + rainLookaheadHours * CalendarMath.MS_PER_HOUR && Number(hour.chanceofrain) >= likelyRainChance)
                     return hour
             }
         return null
@@ -41,7 +41,7 @@ Singleton {
         return /^en[_-]US($|[_.-])/.test(locale) || /^en[_-]LR($|[_.-])/.test(locale) || /^my($|[_.-])/.test(locale)
     }
 
-    function refresh() { if (!process.running) process.running = true }
+    function refresh() { if (!forecastProcess.running) forecastProcess.running = true }
     function readouts() { return Array.isArray(prefs.readouts) ? prefs.readouts : ["temp"] }
     function savePrefs(changes) {
         prefs = Object.assign({}, prefs, changes)
@@ -70,7 +70,7 @@ Singleton {
         }
     }
     Process {
-        id: process
+        id: forecastProcess
         command: ["hyprshell", "weather", "--alt"]
         stdout: SplitParser { onRead: line => {
             try { root.output = JSON.parse(line) }
@@ -78,5 +78,5 @@ Singleton {
         } }
         onExited: cache.reload()
     }
-    Timer { interval: 600000; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
+    Timer { interval: 10 * CalendarMath.MS_PER_MINUTE; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
 }

@@ -8,8 +8,11 @@ import Quickshell.Hyprland
 import Quickshell.Wayland
 import Quickshell.Services.UPower
 import qs.systemstats
+import qs.Commons as Commons
+import "altscape" as Altscape
 import "ClockFormats.js" as ClockFormats
 import "Opacity.js" as Opacity
+import "Units.js" as Units
 
 ShellRoot {
     id: shellRoot
@@ -17,6 +20,7 @@ ShellRoot {
     property string lockviewScreen: ""
     property string sessionMenuScreen: ""
     property string workflow: "default"
+    property string workflowLayoutOverride: ""
     property string themeName: ""
     property string layoutName: "top"
     property string sunsetEnabled: ""
@@ -44,6 +48,7 @@ ShellRoot {
     property string dragKey: ""
     property var barLayout: ({})
     property var layoutData: ({})
+    property string layoutSaveError: ""
     readonly property var barSections: ["left", "center", "right", "tray"]
     function moduleIds(sections) {
         const entries = sections.reduce((allEntries, section) =>
@@ -51,7 +56,6 @@ ShellRoot {
         return entries.map(entry => typeof entry === "string" ? entry : String(entry.id || ""))
     }
     readonly property var barModules: moduleIds(barSections)
-    // the tray's modules exist only while its flyout is open
     property bool trayOpen: false
     signal trayToggleRequested
     readonly property var liveModules: moduleIds(trayOpen ? barSections : barSections.filter(section => section !== "tray"))
@@ -97,15 +101,23 @@ ShellRoot {
         }
         return assignedInstances
     }
+    function editableBarLayout() {
+        return JSON.parse(layoutData.extends ? sharedLayoutFile.text() : JSON.stringify(layoutData))
+    }
     function saveMovedBarLayout(layout) {
         const output = JSON.stringify(layout, null, 2) + "\n"
-        if (layoutData.extends) { loadSharedLayout(output); sharedLayoutFile.setText(output) }
-        else { layoutData = layout; barLayout = layout; layoutFile.setText(output) }
+        layoutSaveError = ""
+        if (layoutData.extends) sharedLayoutFile.setText(output)
+        else layoutFile.setText(output)
+        if (layoutSaveError) return layoutSaveError
+        if (layoutData.extends) loadSharedLayout(output)
+        else { layoutData = layout; setBarLayout(layout) }
+        return ""
     }
     function moveBarModule(sourceKey, destinationSection, targetKey, afterTarget, restorePosition) {
         if (!barModules.includes("tray") || !barSections.includes(destinationSection) || targetKey === sourceKey) return
         const source = parseTrayKey(sourceKey)
-        const editableLayout = JSON.parse(layoutData.extends ? sharedLayoutFile.text() : JSON.stringify(layoutData))
+        const editableLayout = editableBarLayout()
         const sourceIndex = (editableLayout[source.section] || []).findIndex(entry => trayKey(source.section, entry) === sourceKey)
         if (sourceIndex < 0 && !source.entryId.startsWith("icon:")) return
         let movingEntry = sourceIndex < 0 ? source.entryId : editableLayout[source.section].splice(sourceIndex, 1)[0]
@@ -133,7 +145,7 @@ ShellRoot {
             insertionIndex = Math.max(0, Math.min(destinationEntries.length, position.index - hiddenPositions.filter(saved => saved.index < position.index).length))
         destinationEntries.splice(insertionIndex, 0, movingEntry)
         ensureUniqueTrayInstances(editableLayout)
-        saveMovedBarLayout(editableLayout)
+        return saveMovedBarLayout(editableLayout)
     }
     function toggleTrayIcon(id) {
         prefs.trayHidden = JSON.stringify(trayHidden.includes(id) ? trayHidden.filter(item => item !== id) : trayHidden.concat(id))
@@ -157,6 +169,8 @@ ShellRoot {
     readonly property var activeEntries: timerItems.filter(item => Number(item.epoch) > timerNow).sort((a, b) => a.epoch - b.epoch)
     readonly property var activeTimers: activeEntries.filter(item => item.kind === "timer")
     readonly property alias clockwork: clockworkState
+    readonly property alias quickshare: quickshareService
+    readonly property alias altscape: altscapeService
     readonly property alias bitwarden: bitwardenVault
     readonly property alias systemStats: systemStatsService
     readonly property var wallpaper: Wallpaper
@@ -174,57 +188,46 @@ ShellRoot {
     property var hyprVarLayers: ({})
     readonly property var hyprVarLoadOrder: ["vars", "userVars", "theme", "userfonts", "userprefs"]
     readonly property string fontFamily: style.box("shell").fontFamily ?? hyprVar("BAR_FONT", "JetBrainsMono Nerd Font")
-    // a theme font carrying no Nerd Font glyphs needs a companion face for icons,
-    // or they resolve through fontconfig to whatever proportional face it picks.
-    // The companion must match the theme font's cell width (Monoid and Miracode
-    // are both 0.667em). Any font not listed keeps the default.
     readonly property var iconFonts: ({
         "Miracode": "Monoid Nerd Font"
     })
-    // a patched theme font already has the glyphs, and its own Mono twin matches
-    // the text's drawing style; the pinned face is only for fonts that ship neither
     readonly property string iconFont: hyprVar("BAR_ICON_FONT", "") || iconFonts[fontFamily]
         || (Qt.fontFamilies().includes(fontFamily + " Mono") ? fontFamily : "CaskaydiaCove Nerd Font")
     readonly property string terminal: hyprVar("TERMINAL", "alacritty")
-    // Nerd Font ships double-width icon glyphs with a single-cell advance, and Qt
-    // centres on the advance, so the ink hangs off to the right. The Mono faces
-    // squeeze them into one cell, making ink and advance agree.
     readonly property string iconGlyphFont: {
         const mono = iconFont + " Mono"
         return Qt.fontFamilies().includes(mono) ? mono : iconFont
     }
-    // A Mono face sizes its icons to the cell while text is sized by cap height,
-    // and the two are unrelated in every font, so swapping the theme font changes
-    // how large the icons read beside it. Measuring beats tabulating: the median
-    // of these five glyphs tracks the median of the whole icon set to within
-    // 0.002em on every face installed here, so the ratio needs no per-font entry.
-    TextMetrics { id: capProbe; font.family: shellRoot.fontFamily; font.pixelSize: 200; text: "M" }
-    TextMetrics { id: inkProbe0; font.family: shellRoot.iconGlyphFont; font.pixelSize: 200; text: "" }
-    TextMetrics { id: inkProbe1; font.family: shellRoot.iconGlyphFont; font.pixelSize: 200; text: "" }
-    TextMetrics { id: inkProbe2; font.family: shellRoot.iconGlyphFont; font.pixelSize: 200; text: "" }
-    TextMetrics { id: inkProbe3; font.family: shellRoot.iconGlyphFont; font.pixelSize: 200; text: "" }
-    TextMetrics { id: inkProbe4; font.family: shellRoot.iconGlyphFont; font.pixelSize: 200; text: "" }
+    readonly property int fontMeasurementPixels: 200
+    TextMetrics { id: textCapMetrics; font.family: shellRoot.fontFamily; font.pixelSize: shellRoot.fontMeasurementPixels; text: "M" }
+    TextMetrics { id: clockGlyphMetrics; font.family: shellRoot.iconGlyphFont; font.pixelSize: shellRoot.fontMeasurementPixels; text: "" }
+    TextMetrics { id: musicGlyphMetrics; font.family: shellRoot.iconGlyphFont; font.pixelSize: shellRoot.fontMeasurementPixels; text: "" }
+    TextMetrics { id: settingsGlyphMetrics; font.family: shellRoot.iconGlyphFont; font.pixelSize: shellRoot.fontMeasurementPixels; text: "" }
+    TextMetrics { id: homeGlyphMetrics; font.family: shellRoot.iconGlyphFont; font.pixelSize: shellRoot.fontMeasurementPixels; text: "" }
+    TextMetrics { id: folderGlyphMetrics; font.family: shellRoot.iconGlyphFont; font.pixelSize: shellRoot.fontMeasurementPixels; text: "" }
     readonly property real iconCapRatio: {
-        const cap = capProbe.tightBoundingRect.height
-        const ink = [inkProbe0, inkProbe1, inkProbe2, inkProbe3, inkProbe4]
+        const cap = textCapMetrics.tightBoundingRect.height
+        const ink = [clockGlyphMetrics, musicGlyphMetrics, settingsGlyphMetrics, homeGlyphMetrics, folderGlyphMetrics]
             .map(probe => probe.tightBoundingRect.height).filter(height => height > 0).sort((a, b) => a - b)
         return cap > 0 && ink.length ? cap / ink[Math.floor(ink.length / 2)] : 1
     }
-    // Ink equal to cap height reads as a smaller icon: a letter carries the eye on
-    // its stems, a pictogram spreads the same height over a box. Taste, not
-    // measurement — the one number here meant to be tuned by eye.
     property real iconOpticalBoost: 1.20
     readonly property real iconFontScale: iconCapRatio * iconOpticalBoost
     readonly property real rounding: style.box("shell").rounding === undefined ? style.radius : Style.px(style.box("shell").rounding)
-    // unscaled: the card's frame has to read as the same weight as the frames on
-    // the windows behind it, and Hyprland draws those in raw pixels
     readonly property real borderWidth: style.overrides.shell?.borderWidth ?? style.border
     property real windowBorderWidth: style.border
+    property real windowRounding: 0
+    property color windowActiveBorder: "transparent"
+    property color windowInactiveBorder: "transparent"
+    readonly property var windowDecoration: ({width: windowBorderWidth, rounding: windowRounding, active: windowActiveBorder, inactive: windowInactiveBorder})
     readonly property real moduleRadius: mode === "winbar" ? 0 : rounding
     readonly property string barEdge: String((barLayout.panel === "winbar" && prefs.winbarEdge) || barLayout.edge || "top")
     property real barFloatGap: Style.popupGap
     readonly property real barOpacity: style.box("shell").barOpacity ?? (prefs.barOpacity >= 0 ? prefs.barOpacity : workflow === "powersaver" || workflow === "gnome" ? 1 : workflow === "windows" ? .5 : .4)
     readonly property bool barBlur: style.box("shell").barBlur ?? prefs.barBlur
+    Binding { target: Style; property: "popupSurfaceOpacity"; value: shellRoot.style.box("popup").surfaceOpacity ?? (shellRoot.prefs.popupOpacity >= 0 ? shellRoot.prefs.popupOpacity : Style.defaultPopupSurfaceOpacity) }
+    Binding { target: Style; property: "popupTint"; value: shellRoot.alpha(shellRoot.accent, shellRoot.prefs.popupTint) }
+    Binding { target: Style; property: "popupBorderOverride"; value: shellRoot.prefs.popupAccentBorder ? shellRoot.accent : "transparent" }
     readonly property color barColor: styleColor(style.box("bar." + barEdge).backgroundColor, alpha(background, barOpacity))
     property SystemClock clock: SystemClock { precision: SystemClock.Minutes }
     readonly property alias store: persistent
@@ -244,6 +247,9 @@ ShellRoot {
             property bool barBlur: true
             property real barOpacity: -1
             property bool barFloating: false
+            property real popupOpacity: -1
+            property real popupTint: 0
+            property bool popupAccentBorder: false
             property bool winbarAutoHide: false
             property string winbarCombine: "always"
             property bool winbarSmall: false
@@ -285,6 +291,8 @@ ShellRoot {
     }
 
     ClockworkState { id: clockworkState; shell: shellRoot }
+    QuickShare { id: quickshareService; shell: shellRoot }
+    Altscape.Service { id: altscapeService; shell: shellRoot }
     Bitwarden { id: bitwardenVault; shell: shellRoot }
     SystemStatsService { id: systemStatsService; shell: shellRoot }
 
@@ -306,9 +314,6 @@ ShellRoot {
         exposeConfig = next
         exposeSettingsFile.setText(JSON.stringify(next, null, 2) + "\n")
     }
-    // true while a bar is priming keyboard focus for a freshly opened panel;
-    // the focus grab clears during that transition and must not be read as a
-    // click outside
     property bool focusPriming: false
     property var popupCard: null
     function switchPopup(direction) {
@@ -352,7 +357,6 @@ ShellRoot {
         powerProfileRestore.command = ["hyprshell", "system/powerprofiles", "--restore"]
         powerProfileRestore.running = true
     }
-    // PipeWire exposes PulseAudio's cubic scalar: dB = 60 log10(volume).
     function volumeToDb(value) { return 60 * Math.log10(value) }
     function dbToVolume(value) { return Math.pow(10, value / 60) }
     function setVolumeLimit(value, persist) {
@@ -369,12 +373,10 @@ ShellRoot {
             setVolumeLimit(volumeLimit, true)
         } catch (error) {}
     }
-    function duration(seconds) { const minutes = Math.round(seconds / 60); return minutes > 59 ? Math.floor(minutes / 60) + "h " + minutes % 60 + "m" : minutes + "m" }
+    function duration(seconds) { return Units.spanText(Math.round(seconds / Units.SECONDS_PER_MINUTE) * Units.SECONDS_PER_MINUTE) || "0m" }
     function profileName(profile) { return PowerProfile.toString(profile).replace(/([a-z])([A-Z])/g, "$1 $2") }
     function loadTimers(raw) { try { timerItems = JSON.parse(raw) || [] } catch (error) { timerItems = [] } }
     function refreshTimers() { timerStateFile.reload() }
-    // a popup opened by name (keybind, menutree) centers on the screen; a click
-    // on a bar module keeps its popup anchored to the button it came from
     property string popupCenteredName: ""
     function togglePopup(name, centered) { popupCenteredName = centered === true ? name : ""; popupName = popupName === name ? "" : name }
     function closePopup() { popupName = "" }
@@ -414,6 +416,9 @@ ShellRoot {
                 const gap = parseFloat(String(data.css || "").trim().split(/\s+/)[0])
                 if (isFinite(gap)) barFloatGap = Math.max(0, gap)
             } else if (data.option === "general:border_size" && typeof data.int === "number") windowBorderWidth = data.int
+            else if (data.option === "decoration:rounding" && typeof data.int === "number") windowRounding = data.int
+            else if (data.option === "general:col.active_border") windowActiveBorder = "#" + data.gradient.split(" ")[0]
+            else if (data.option === "general:col.inactive_border") windowInactiveBorder = "#" + data.gradient.split(" ")[0]
             else if (data.option === "general:layout" && typeof data.str === "string") windowLayout = data.str
         } catch (error) {}
     }
@@ -447,6 +452,7 @@ ShellRoot {
         const text = String(raw)
         const value = (key, fallback) => (text.match(new RegExp(`(?:^|\n)${key}=["']?([^"'\n]+)`))?.[1] ?? fallback).trim()
         workflow = value("HYPR_WORKFLOW", "default")
+        workflowLayoutOverride = value("WORKFLOW_LAYOUT_OVERRIDE", "")
         themeName = value("HYPR_THEME", "")
         layoutName = value("QUICKSHELL_LAYOUT_NAME", "top")
         sunsetEnabled = value("HYPRSUNSET_ENABLED", "")
@@ -469,8 +475,6 @@ ShellRoot {
         return Qt.rgba(parseInt(hex.slice(0, 2), 16) / 255, parseInt(hex.slice(2, 4), 16) / 255, parseInt(hex.slice(4, 6), 16) / 255, hex.length > 6 ? parseInt(hex.slice(6, 8), 16) / 255 : 1)
     }
     function role(name, fallback) { return color(palette[name] || fallback) }
-    // one hover recipe for every popup surface; `strength` scales the Style base
-    // so an emphasised row stays a ratio of the plain one instead of a literal
     function hoverFill(strength) { return alpha(role("hvr_bg", accent), Style.hoverFillAlpha * (strength === undefined ? 1 : strength)) }
     function hoverEdge(strength) { return alpha(role("hvr_br", foreground), Style.hoverBorderAlpha * (strength === undefined ? 1 : strength)) }
     function selectedFill() { return alpha(role("act_bg", accent), Style.selectedFillAlpha) }
@@ -505,8 +509,8 @@ ShellRoot {
         onFileChanged: reload()
     }
     FileView { path: Quickshell.env("XDG_RUNTIME_DIR") + "/hypr/caffeine-windows"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadCaffeineWindowState(text()); onFileChanged: reload() }
-    FileView { id: layoutFile; path: shellRoot.home + "/.config/quickshell/layouts/" + shellRoot.layoutName + ".json"; watchChanges: true; atomicWrites: true; blockWrites: true; printErrors: false; onPathChanged: reload(); onLoaded: shellRoot.loadBarLayout(text()); onFileChanged: reload() }
-    FileView { id: sharedLayoutFile; path: shellRoot.layoutData.extends ? shellRoot.home + "/.config/quickshell/layouts/shared/" + shellRoot.layoutData.extends + ".json" : ""; watchChanges: true; atomicWrites: true; blockWrites: true; printErrors: false; onLoaded: shellRoot.loadSharedLayout(text()); onFileChanged: reload() }
+    FileView { id: layoutFile; path: shellRoot.home + "/.config/quickshell/layouts/" + shellRoot.layoutName + ".json"; watchChanges: true; atomicWrites: true; blockWrites: true; printErrors: false; onPathChanged: reload(); onLoaded: shellRoot.loadBarLayout(text()); onFileChanged: reload(); onSaveFailed: error => shellRoot.layoutSaveError = FileViewError.toString(error) }
+    FileView { id: sharedLayoutFile; path: shellRoot.layoutData.extends ? shellRoot.home + "/.config/quickshell/layouts/shared/" + shellRoot.layoutData.extends + ".json" : ""; watchChanges: true; atomicWrites: true; blockWrites: true; printErrors: false; onLoaded: shellRoot.loadSharedLayout(text()); onFileChanged: reload(); onSaveFailed: error => shellRoot.layoutSaveError = FileViewError.toString(error) }
     FileView { id: varsFile; path: shellRoot.home + "/.local/share/hypr/vars.lua"; watchChanges: true; onLoaded: shellRoot.loadHyprVars("vars", text()); onFileChanged: reload() }
     FileView { id: userVarsFile; path: shellRoot.home + "/.config/hypr/vars.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadHyprVars("userVars", text()); onFileChanged: reload() }
     FileView { id: themeVarsFile; path: shellRoot.home + "/.config/hypr/themes/theme.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadHyprVars("theme", text()); onFileChanged: reload() }
@@ -519,7 +523,7 @@ ShellRoot {
     Timer { id: timeVisibilityWrite; interval: 0; running: true; onTriggered: timeVisibilityFile.setText(shellRoot.timeVisibility) }
     Timer { interval: 1000; repeat: true; running: shellRoot.activeEntries.length > 0; triggeredOnStart: true; onTriggered: shellRoot.timerNowMs = Date.now() }
     Process { id: volumeRangeProbe; command: [shellRoot.home + "/.local/lib/hypr/controls/volume-control.sh", "--limits"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadVolumeRange(text) } }
-    Process { id: windowMetricsProbe; command: ["hyprctl", "-j", "--batch", "getoption general:layout ; getoption general:gaps_out ; getoption general:border_size"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadWindowMetrics(text) } }
+    Process { id: windowMetricsProbe; command: ["hyprctl", "-j", "--batch", "getoption general:layout ; getoption general:gaps_out ; getoption general:border_size ; getoption decoration:rounding ; getoption general:col.active_border ; getoption general:col.inactive_border"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadWindowMetrics(text) } }
     Process { id: pausedProbe; command: ["dunstctl", "is-paused"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.notificationsPaused = text.trim() === "true" } }
     Process {
         id: powerProfileRestore
@@ -532,24 +536,22 @@ ShellRoot {
     }
     Process { command: [shellRoot.home + "/.local/lib/hypr/calendar/alarm-timer.sh", "restore"]; running: true }
     ReloadToast { shell: shellRoot }
-    AltGrHints { shell: shellRoot }
-    // The three heaviest subtrees in the config and none of them is on screen at
-    // startup. Loading by url keeps their compile off the path to the first bar,
-    // and setSource passes shell as an initial property because each wires the
-    // Commons singletons from its own Component.onCompleted — a later assignment
-    // would let them publish a null shell first.
+    LazyLoader {
+        active: shellRoot.workflow !== "gaming"
+        AltGrHints { shell: shellRoot }
+    }
     Loader {
         id: overviewLoader
+        active: shellRoot.workflow !== "gaming"
         asynchronous: true
         Component.onCompleted: overviewLoader.setSource(Qt.resolvedUrl("expose/Overview.qml"), { shell: shellRoot })
     }
     Loader {
         id: dockLoader
+        active: shellRoot.workflow !== "gaming"
         asynchronous: true
         Component.onCompleted: dockLoader.setSource(Qt.resolvedUrl("dock/Dock.qml"), { shell: shellRoot })
     }
-    // The guard adopts any preview the display daemon reports, including one it
-    // did not start, so it must end up loaded rather than wait for a first use.
     Loader {
         id: monitorPreviewGuardLoader
         asynchronous: true
@@ -573,7 +575,16 @@ ShellRoot {
     onUserHiddenChanged: if (userHidden) barRevealed = false
     onBarShownChanged: if (!barShown) closePopup()
     onTimeVisibilityChanged: timeVisibilityWrite.restart()
-    Component.onCompleted: { restorePowerProfile(); refreshWindowMetrics() }
+    Component.onCompleted: {
+        Commons.Style.shell = shellRoot
+        Commons.Color.shell = shellRoot
+        restorePowerProfile()
+        refreshWindowMetrics()
+    }
+    Component.onDestruction: {
+        Commons.Style.shell = null
+        Commons.Color.shell = null
+    }
 
     Connections {
         target: UPower
@@ -592,8 +603,6 @@ ShellRoot {
         function hide(): void { shellRoot.userHidden = true }
         function refresh(): void { shellRoot.refresh() }
         function reload(): void { Quickshell.reload(false) }
-        // the soft reload keeps live instances, so it misses a changed vars.lua
-        // value or a re-evaluated font.family; this is the one to verify against
         function reloadHard(): void { Quickshell.reload(true) }
         function popup(name: string): void { shellRoot.togglePopup(name, true) }
         function tray(): void { shellRoot.trayToggleRequested() }

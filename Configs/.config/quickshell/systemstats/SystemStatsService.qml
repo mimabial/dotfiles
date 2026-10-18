@@ -3,8 +3,8 @@ import Quickshell
 import Quickshell.Io
 import qs
 import "Model.js" as Model
+import "../Units.js" as Units
 
-// One sampler process per shell, shared by every bar instance on every monitor.
 Item {
   id: root
 
@@ -23,7 +23,7 @@ Item {
   property real intervalSeconds: 1
   property int detailRefs: 0
   property int fullRefs: 0
-  property int sentDetail: 0
+  property int sentDetail: Model.DETAIL_NONE
   property string focusPage: ""
   property int restartCount: 0
   property var instances: []
@@ -299,7 +299,7 @@ Item {
     if (data.battery && data.battery.present && data.battery.percent !== null && data.battery.percent !== undefined)
       lines.push("Battery " + Math.round(data.battery.percent) + "%")
     if (Array.isArray(procs.cpu) && procs.cpu.length) lines.push("Top CPU: " + procs.cpu[0].name + " " + Math.round(procs.cpu[0].cpu) + "%")
-    if (Array.isArray(procs.mem) && procs.mem.length) lines.push("Top memory: " + procs.mem[0].name + " " + Model.bytesText(procs.mem[0].mem))
+    if (Array.isArray(procs.mem) && procs.mem.length) lines.push("Top memory: " + procs.mem[0].name + " " + Units.bytesText(procs.mem[0].mem))
     if (drive) lines.push("Drive: " + drive.title + " · " + drive.health.text + (drive.health.temperature ? " · " + drive.health.temperature : ""))
     return lines
   }
@@ -410,10 +410,8 @@ Item {
     if (sampler.running) sampler.write(text + "\n")
   }
 
-  // Detail level: 0 nothing, 1 top processes, 2 every process. Open panels
-  // hold a detail reference; an expanded process list holds a full one.
   function syncDetail() {
-    var level = detailRefs > 0 ? (fullRefs > 0 ? 2 : 1) : 0
+    var level = detailRefs > 0 ? (fullRefs > 0 ? Model.DETAIL_ALL_PROCESSES : Model.DETAIL_TOP_PROCESSES) : Model.DETAIL_NONE
     if (level === sentDetail) return
     sentDetail = level
     send("detail " + level)
@@ -436,8 +434,6 @@ Item {
   property real publicIpStamp: 0
   property bool publicIpPending: false
 
-  // At most one lookup every ten minutes unless forced (the r key / IPC).
-  // A request made before the sampler is up is held until it starts.
   function requestPublicIp(force) {
     var now = Date.now()
     if (!force && now - publicIpStamp < root.publicIpMinIntervalMs) return
@@ -574,7 +570,7 @@ Item {
     // Expected diagnostics travel in the bounded JSON stream. Leaving stderr
     // unbound makes Quickshell close that channel instead of buffering it.
     onStarted: {
-      if (root.sentDetail > 0) root.send("detail " + root.sentDetail)
+      if (root.sentDetail !== Model.DETAIL_NONE) root.send("detail " + root.sentDetail)
       if (root.focusPage) root.send("focus " + root.focusPage)
       if (root.publicIpPending) { root.publicIpPending = false; root.send("pubip") }
       if (Math.abs(root.intervalSeconds - 1) > 0.001) root.send("interval " + root.intervalSeconds)
@@ -594,7 +590,6 @@ Item {
     onTriggered: if (!root.destroying && !sampler.running) sampler.running = true
   }
 
-  // A healthy sampler that has streamed for a while resets the backoff.
   Timer {
     id: backoffResetTimer
     interval: 60 * 1000

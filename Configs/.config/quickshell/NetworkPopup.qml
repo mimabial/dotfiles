@@ -3,10 +3,12 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell.Io
 import Quickshell.Networking
+import "Units.js" as Units
 
 PopupCard {
     id: root
     popupName: "network"
+    property string qrPopupName: "wifiqr"
     contentWidth: Style.px(440)
     contentHeight: networkColumn.implicitHeight + padding * 2
     keyboardHint: "↑↓/Tab move · Enter select · R refresh · Ctrl+Tab panel · Esc"
@@ -47,9 +49,9 @@ PopupCard {
             String(status.uuid), String(status.profileIface || status.iface), value, servers || ""])
     }
     function refreshSettings() {
-        if (!open || !status.uuid || settingsProc.running) return
-        settingsProc.command = [shell.home + "/.local/lib/hypr/system/network-settings.py", "status", String(status.uuid), String(status.profileIface || status.iface)]
-        settingsProc.running = true
+        if (!open || !status.uuid || settingsProcess.running) return
+        settingsProcess.command = [shell.home + "/.local/lib/hypr/system/network-settings.py", "status", String(status.uuid), String(status.profileIface || status.iface)]
+        settingsProcess.running = true
     }
     function promptPassword(network) {
         pendingNetwork = network
@@ -111,19 +113,11 @@ PopupCard {
         return root.active.name || "connected"
     }
     function pingText(key) { const ms = (root.status.ping || ({}))[key]; return ms === null || ms === undefined ? "" : ms + " ms" }
-    // split by family, not by index: resolv.conf order is whatever was pushed
     function dnsFor(v6) { return (root.status.dns || []).filter(entry => String(entry).includes(":") === v6).join(", ") }
     function refreshStatus() {
         if (!open) return
-        if (statusProc.running) { statusPending = true; return }
-        statusProc.running = true
-    }
-    function bytes(value) {
-        const n = Number(value) || 0
-        if (n >= 1024 * 1024 * 1024) return (n / 1024 / 1024 / 1024).toFixed(1) + " GB"
-        if (n >= 1024 * 1024) return (n / 1024 / 1024).toFixed(1) + " MB"
-        if (n >= 1024) return (n / 1024).toFixed(1) + " KB"
-        return Math.round(n) + " B"
+        if (statusProcess.running) { statusPending = true; return }
+        statusProcess.running = true
     }
     function handleKey(event) {
         if (event.key === Qt.Key_R) { refreshStatus(); refreshSettings(); return true }
@@ -137,7 +131,7 @@ PopupCard {
         else {
             if (statsHeld) { shell.systemStats.releaseDetail(); statsHeld = false }
             statusPending = false
-            if (speedProc.running) speedProc.running = false
+            if (speedProcess.running) speedProcess.running = false
         }
     }
     Component.onDestruction: if (statsHeld && shell.systemStats) shell.systemStats.releaseDetail()
@@ -161,7 +155,7 @@ PopupCard {
         }
     }
 
-    property Process statusProc: Process {
+    property Process statusProcess: Process {
         command: ["bash", root.shell.home + "/.local/lib/hypr/system/network-status.sh"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             try {
@@ -179,7 +173,7 @@ PopupCard {
         running: root.open
         stdout: SplitParser { onRead: root.refreshStatus() }
     }
-    property Process settingsProc: Process {
+    property Process settingsProcess: Process {
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             try { root.connectionSettings = JSON.parse(text); if (!customDns.activeFocus) customDns.text = root.connectionSettings.dnsServers }
             catch (error) { root.actionError = "Could not read connection settings." }
@@ -195,13 +189,11 @@ PopupCard {
             root.refreshStatus()
         }
     }
-    property Process speedProc: Process {
+    property Process speedProcess: Process {
         command: [root.shell.home + "/.local/lib/hypr/system/network-speedtest.py"]
         stdout: SplitParser { onRead: data => { try { root.speedResult = JSON.parse(data) } catch (error) {} } }
     }
 
-    // paired left/right so conjugate readings sit on one line; a cell keeps its
-    // place and reads "—" when empty, or the pairing shifts as probes land
     component InfoDuo: Row {
         id: duo
         property string label1: ""; property string value1: ""
@@ -227,7 +219,7 @@ PopupCard {
                 active: Networking.wifiEnabled
                 onClicked: Networking.wifiEnabled = !Networking.wifiEnabled
             }
-            PopupIconButton { id: qrAction; shell: root.shell; implicitHeight: wifiRow.implicitHeight; glyph: "󰐲"; hint: "Show QR code"; onClicked: root.shell.togglePopup("wifiqr") }
+            PopupIconButton { id: qrAction; shell: root.shell; implicitHeight: wifiRow.implicitHeight; glyph: "󰐲"; hint: "Show QR code"; onClicked: root.shell.togglePopup(root.qrPopupName) }
         }
         PopupRow { visible: root.portal; width: parent.width; shell: root.shell; icon: "󰖟"; title: "Open captive portal"; detail: "Sign in to access the internet"; onClicked: { root.shell.closePopup(); root.shell.run(["xdg-open", "http://ping.archlinux.org/nm-check.txt"]) } }
         Text { visible: root.actionError !== ""; width: parent.width; text: root.actionError; textFormat: Text.PlainText; wrapMode: Text.Wrap; color: root.shell.urgent; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
@@ -235,8 +227,6 @@ PopupCard {
             visible: root.active !== null || !!root.status.address
             width: parent.width; spacing: Style.sm
             PopupSeparator { shell: root.shell }
-            // the switch rides on the header line: at header scale it reads as a
-            // modifier for the whole section rather than another reading
             Item {
                 width: parent.width
                 implicitHeight: Math.max(connectionHeader.implicitHeight, autoRow.implicitHeight)
@@ -259,8 +249,6 @@ PopupCard {
                     ToggleSwitch {
                         shell: root.shell
                         checked: root.status.autoconnect === true
-                        // PopupSection's topPadding pushes its glyphs below its box
-                        // centre; offset so the switch centres on the text, not the box
                         anchors.verticalCenter: autoLabel.verticalCenter
                         anchors.verticalCenterOffset: Math.round(autoLabel.topPadding / 2)
                         onToggled: root.setAutoconnect(!root.status.autoconnect)
@@ -275,8 +263,8 @@ PopupCard {
             }
             InfoDuo { label1: "Router ping"; value1: root.pingText("router"); label2: "Internet ping"; value2: root.pingText("internet") }
             InfoDuo { label1: "Band"; value1: String(root.status.band || ""); label2: "Connectivity"; value2: Networking.canCheckConnectivity ? ({[NetworkConnectivity.Full]: "Full", [NetworkConnectivity.Limited]: "Limited", [NetworkConnectivity.Portal]: "Captive portal", [NetworkConnectivity.None]: "None"})[Networking.connectivity] || "" : "" }
-            InfoDuo { label1: "Downloaded"; value1: root.bytes(root.traffic?.rxTotal ?? root.status.rx); label2: "Uploaded"; value2: root.bytes(root.traffic?.txTotal ?? root.status.tx) }
-            InfoDuo { label1: "Receiving"; value1: root.traffic ? root.bytes(root.traffic.rx) + "/s" : ""; label2: "Sending"; value2: root.traffic ? root.bytes(root.traffic.tx) + "/s" : "" }
+            InfoDuo { label1: "Downloaded"; value1: Units.bytesText(root.traffic?.rxTotal ?? root.status.rx); label2: "Uploaded"; value2: Units.bytesText(root.traffic?.txTotal ?? root.status.tx) }
+            InfoDuo { label1: "Receiving"; value1: root.traffic ? Units.bytesText(root.traffic.rx) + "/s" : ""; label2: "Sending"; value2: root.traffic ? Units.bytesText(root.traffic.tx) + "/s" : "" }
             InfoDuo { label1: "Packet loss"; value1: root.status.packetLoss == null ? "" : root.status.packetLoss + "%"; label2: "Traffic interface"; value2: String(root.status.iface || "") }
             InfoDuo { label1: "Connection interface"; value1: String(root.status.profileIface || ""); label2: "Link speed"; value2: root.linkTraffic?.speed > 0 ? root.linkTraffic.speed + " Mb/s" : "" }
             InfoDuo { visible: value1 !== "" || value2 !== ""; label1: "DNS"; value1: root.dnsFor(false); label2: "DNS IPv6"; value2: root.dnsFor(true) }
@@ -299,7 +287,7 @@ PopupCard {
         Column {
             visible: !!root.status.iface
             width: parent.width; spacing: Style.sm
-            PopupRow { width: parent.width; shell: root.shell; icon: "󰓅"; title: root.speedProc.running ? "Cancel speed test" : "Run speed test"; detail: root.speedProc.running ? "Measuring " + root.speedResult.phase : "Download and upload · Cloudflare"; onClicked: { if (root.speedProc.running) root.speedProc.running = false; else { root.speedResult = ({}); root.speedProc.running = true } } }
+            PopupRow { width: parent.width; shell: root.shell; icon: "󰓅"; title: root.speedProcess.running ? "Cancel speed test" : "Run speed test"; detail: root.speedProcess.running ? "Measuring " + root.speedResult.phase : "Download and upload · Cloudflare"; onClicked: { if (root.speedProcess.running) root.speedProcess.running = false; else { root.speedResult = ({}); root.speedProcess.running = true } } }
             InfoDuo { visible: root.speedResult.download != null || root.speedResult.upload != null; label1: "Download"; value1: root.speedResult.download == null ? "" : root.speedResult.download + " Mbps"; label2: "Upload"; value2: root.speedResult.upload == null ? "" : root.speedResult.upload + " Mbps" }
             Text { visible: !!root.speedResult.error; width: parent.width; text: String(root.speedResult.error || ""); wrapMode: Text.Wrap; color: root.shell.urgent; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
         }

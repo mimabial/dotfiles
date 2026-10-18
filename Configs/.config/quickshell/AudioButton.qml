@@ -7,25 +7,18 @@ BarButton {
     readonly property var sink: Pipewire.defaultAudioSink
     property bool popupEnabled: true
     property string popupName: "audio"
+    property string settingsPopupName: popupName
     property bool framed: true
     readonly property bool muted: root.sink ? root.sink.audio.muted : false
     css: "volume" + (root.muted ? ".muted" : "")
     symbol: root.styledSymbol ? StatusSymbols.volume(root.sink, root.muted) : ""
-    // must measure the face BarButton draws with, or the nudge corrects an ink
-    // overhang the drawn glyph does not have
-    TextMetrics { id: iconMetrics; font.family: root.usesIconFont ? root.shell.iconGlyphFont : root.shell.fontFamily; font.pixelSize: root.renderedFontSize; font.weight: root.fontWeight; text: root.text }
-    textOffsetX: fitsIconBox ? inkOffsetX : iconMetrics.advanceWidth / 2 - iconMetrics.tightBoundingRect.x - iconMetrics.tightBoundingRect.width / 2
+    TextMetrics { id: drawnGlyphMetrics; font.family: root.usesIconFont ? root.shell.iconGlyphFont : root.shell.fontFamily; font.pixelSize: root.renderedFontSize; font.weight: root.fontWeight; text: root.text }
+    textOffsetX: fitsIconBox ? inkOffsetX : drawnGlyphMetrics.advanceWidth / 2 - drawnGlyphMetrics.tightBoundingRect.x - drawnGlyphMetrics.tightBoundingRect.width / 2
     backgroundColor: framed ? root.styleColor("backgroundColor") : "transparent"
-    // pulseaudio format-icons, in their declared order: a matching port wins
-    // over the volume ramp, mute wins over both. The selection keys off the
-    // active port name; quickshell's pipewire API exposes no port, so this
-    // matches the node properties that carry the same words
     readonly property var portIcons: [
         ["headphone", "󱡏"], ["hands-free", "󱡏"], ["headset", "󱡏"],
         ["phone", "󰏲"], ["portable", "󰏲"], ["car", "󰄋"]
     ]
-    // the active port is the only thing that tracks the analog jack, and
-    // pipewire does not expose it — it has to come from pulse directly
     readonly property string activePort: AudioPorts.port(root.sink ? root.sink.name : "")
     function clampVolume() { if (sink && sink.audio && sink.audio.volume > shell.volumeLimit) sink.audio.volume = shell.volumeLimit }
     function volumeAction(action) { shell.run(["hyprshell", "volume-control.sh", "-o", action]) }
@@ -33,15 +26,13 @@ BarButton {
     onActivePortChanged: shell.refreshVolumeRange()
 
     readonly property string portKey: {
-        const props = root.sink ? root.sink.properties : null
+        const sinkProperties = root.sink ? root.sink.properties : null
         const port = root.activePort.toLowerCase()
-        // exact on the properties: "audio-card-analog" contains "car".
-        // substring on the port: "analog-output-headphones"
-        const factor = props ? String(props["device.form_factor"] || "").toLowerCase() : ""
-        const iconName = props ? String(props["device.icon-name"] || "").toLowerCase() : ""
+        const formFactor = sinkProperties ? String(sinkProperties["device.form_factor"] || "").toLowerCase() : ""
+        const iconName = sinkProperties ? String(sinkProperties["device.icon-name"] || "").toLowerCase() : ""
         for (let i = 0; i < portIcons.length; ++i) {
             const key = portIcons[i][0]
-            if (port.includes(key) || factor === key
+            if (port.includes(key) || formFactor === key
                 || iconName === "audio-" + key || iconName === "audio-" + key + "s")
                 return key
         }
@@ -61,5 +52,5 @@ BarButton {
     PwObjectTracker { objects: [root.sink].filter(x => x) }
     Connections { target: root.sink ? root.sink.audio : null; function onVolumeChanged() { root.clampVolume() } }
     Connections { target: root.shell; function onVolumeLimitChanged() { root.clampVolume() } }
-    AudioPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }
+    AudioPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: root.settingsPopupName }
 }

@@ -33,7 +33,7 @@ PopupCard {
     readonly property int fixedContentHeight: (browseOnly ? 0 : searchHeader.height + layoutColumn.spacing) + padding * 2
     readonly property int availableContentHeight: root.maxHeight - root.fixedContentHeight
     readonly property int desiredBrowseHeight: Math.max(placesColumn.implicitHeight + paneSeparator.height
-        + Style.sm * 2 + menuPane.contentHeight, applicationList.y + Style.popupRowHeight)
+        + Style.sm * 2 + menuPane.unconstrainedHeight, applicationList.y + Style.popupRowHeight)
 
     // What Hyprland leaves a tiled window on this monitor, so the card lines up
     // with the windows behind it instead of picking a size of its own. The

@@ -1,0 +1,53 @@
+$HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
+
+$ICON_THEME = Tela-green-light
+$COLOR_SCHEME = prefer-light
+$NVIM_SCHEME = hypr
+$NVIM_BACKGROUND = light
+$NVIM_TRANSPARENCY = false
+$CURSOR_THEME = Colloid-cursors
+$CURSOR_SIZE = 30
+$FONT = CommitMono Nerd Font
+$BAR_FONT = CommitMono Nerd Font
+$MENU_FONT = CommitMono Nerd Font
+$MONOSPACE_FONT = CommitMono Nerd Font
+$TERMINAL_FONT = CommitMono Nerd Font
+$NOTIFICATION_FONT = CommitMono Nerd Font Mono
+
+general {
+    col.active_border = rgba(151515ee) rgba(5e6650ee) 45deg
+    col.inactive_border = rgba(51573b66)
+    gaps_in = 2
+    gaps_out = 2
+    border_size = 2
+    layout = dwindle
+    resize_on_border = true
+}
+
+group {
+    col.border_active = rgba(151515ee) rgba(5e6650ee) 45deg
+    col.border_inactive = rgba(51573b66)
+    col.border_locked_active = rgba(151515ee) rgba(5e6650ee) 45deg
+    col.border_locked_inactive = rgba(51573b66)
+}
+
+decoration {
+    rounding = 0
+
+      shadow {
+      enabled = yes
+      render_power = 3
+      range = 16
+      color = rgba(00000052)
+      color_inactive = rgba(00000028)
+    }
+
+    blur {
+        enabled = yes
+        size = 6
+        passes = 4
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
+}

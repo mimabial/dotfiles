@@ -57,9 +57,7 @@ function deviceLists(devices) {
     return groups
 }
 
-// Delegates keep primitives so a discovery removal cannot leave a dangling
-// BlueZ QObject behind while Quickshell is still incubating the row.
-function deviceRow(device) {
+function deviceSnapshot(device) {
     if (!device) return null
     return {
         address: device.address || "", dbusPath: device.dbusPath || "",
@@ -72,6 +70,99 @@ function deviceRow(device) {
         battery: device.battery !== undefined ? device.battery : 0,
         pairing: !!device.pairing
     }
+}
+
+function monitorKey(device) {
+    return String(device.key || device.id || "")
+}
+
+function monitorKindIcon(kind) {
+    return ({mouse: "󰍽", trackball: "󰍽", keyboard: "󰌌", numpad: "󰎠", touchpad: "󰟸",
+        headset: "󰋋", speaker: "󰓃", presenter: "󰐯", remote: "󰑔", gamepad: "󰊴", joystick: "󰊴",
+        tablet: "󰏪", pen: "󰏪", phone: "󰏲", wearable: "󰖉", camera: "󰄀"})[kind] || "󰗊"
+}
+
+function connectionName(connection) {
+    return ({bluetooth: "Bluetooth", usb: "USB", wireless: "Wireless", unifying: "Unifying",
+        bolt: "Bolt", nano: "Nano", lightspeed: "Lightspeed"})[connection] || String(connection || "")
+}
+
+function connectionIcon(connection) {
+    return connection === "dongle" ? "󰕓" : connection === "bluetooth" ? "󰂯" : connection === "usb" ? "󰌘" : "󰖩"
+}
+
+function monitorBattery(device, hardware) {
+    var value = (hardware.batteries || {})[normalizedAddress(device.address)] || null
+    return device.batteryAvailable ? Object.assign({level: "", charging: false, status: "unknown", external_power: false},
+        value, {percent: Math.round(device.battery * 100)}) : value
+}
+
+function monitoringDevices(devices, rows, hardware) {
+    var known = {}, seen = {}, result = []
+    toArray(rows).forEach(function(row) { known[normalizedAddress(row.address)] = row })
+    toArray(devices).forEach(function(device) {
+        var address = normalizedAddress(device.address || String(device.key || "").replace(/^(bt:|up:)/, ""))
+        var row = known[address]
+        var value = Object.assign({}, device, {
+            address: row ? row.address : device.address || "",
+            dbusPath: row ? row.dbusPath : "", connected: !!device.online,
+            icon: row ? row.icon : device.kind
+        })
+        if (!value.battery && row) value.battery = monitorBattery(row, hardware)
+        result.push(value)
+        if (address) seen[address] = true
+    })
+    toArray(rows).forEach(function(row) {
+        var address = normalizedAddress(row.address)
+        if (seen[address]) return
+        var kind = ({"audio-headset": "headset", "audio-headphones": "headset", "audio-card": "speaker",
+            "input-keyboard": "keyboard", "input-mouse": "mouse", "input-tablet": "tablet",
+            "input-gaming": "gamepad", phone: "phone", "camera-video": "camera", "camera-photo": "camera"})[row.icon] || "device"
+        result.push(Object.assign({}, row, {id: "bt-" + address.toUpperCase(), key: "bt:" + String(row.address).toUpperCase(),
+            kind: kind, online: row.connected, connection: "bluetooth", receiver: null, slot: null,
+            adapter: String(row.dbusPath || "").split("/").slice(-2)[0], battery: monitorBattery(row, hardware)}))
+    })
+    return result
+}
+
+function connectionLinks(adapters, devices, hardware, receivers) {
+    var rows = toArray(devices)
+    var links = toArray(receivers).map(function(receiver) {
+        var mine = rows.filter(function(device) { return device.receiver === receiver.id })
+        var paired = toArray(receiver.devices).length
+        return {id: receiver.id, type: "dongle", label: receiver.name || connectionName(receiver.family),
+            detail: paired + " paired · " + (receiver.max_devices - paired) + " free slots", enabled: true,
+            online: mine.filter(function(device) { return device.connected }).length, devices: mine}
+    })
+    links = links.concat(toArray(adapters).map(function(adapter) {
+        var id = String(adapter.dbusPath || "").split("/").pop()
+        var meta = (hardware.adapters || {})[id] || {}
+        var mine = rows.filter(function(device) {
+            return !device.receiver && (String(device.dbusPath || "").slice(0, String(device.dbusPath || "").lastIndexOf("/")) === adapter.dbusPath
+                || device.connection === "bluetooth" && device.adapter === id)
+        })
+        return {id: id, type: "bluetooth",
+            label: meta.kind === "builtin" ? "Built-in Bluetooth" : meta.kind === "usb" ? "USB Bluetooth" : "Bluetooth adapter",
+            detail: [id, meta.vendor].filter(Boolean).join(" · "), kind: meta.kind || "", enabled: !!adapter.enabled,
+            online: mine.filter(function(device) { return device.connected }).length, devices: mine}
+    }))
+    for (const connection of ["usb", "wireless"]) {
+        var mine = rows.filter(function(device) { return !device.receiver && device.connection === connection })
+        if (mine.length) links.push({id: connection, type: connection, label: connectionName(connection), detail: "",
+            enabled: true, online: mine.filter(function(device) { return device.connected }).length, devices: mine})
+    }
+    return links
+}
+
+function batteryText(battery) {
+    if (!battery) return ""
+    return battery.percent !== null && battery.percent !== undefined ? battery.percent + "%" : battery.label || battery.level || ""
+}
+
+function connectionBattery(device, hardware) {
+    if (!device.connected) return ""
+    var battery = device.battery && typeof device.battery === "object" ? device.battery : monitorBattery(device, hardware)
+    return battery ? (battery.charging ? "󰂄 " : "") + batteryText(battery) : ""
 }
 
 function cloneMap(values) {

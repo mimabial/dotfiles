@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
 Item {
   id: workspaceInfoRow
@@ -17,11 +17,11 @@ Item {
     id: workspaceLabel
     anchors.left: parent.left
     anchors.verticalCenter: parent.verticalCenter
-    width: Math.min(parent.width * 0.34, Style.space(105))
+    width: Math.min(parent.width * 0.34, Commons.Style.space(105))
     text: workspaceInfoRow.label
     color: workspaceInfoRow.controller.dim
     font.family: workspaceInfoRow.controller.fontFamily
-    font.pixelSize: Style.font.bodySmall
+    font.pixelSize: Commons.Style.font.bodySmall
     elide: Text.ElideRight
   }
 
@@ -31,9 +31,9 @@ Item {
     anchors.right: parent.right
     anchors.verticalCenter: parent.verticalCenter
     text: workspaceInfoRow.workspaces
-    color: Color.accent
+    color: Commons.Color.accent
     font.family: workspaceInfoRow.controller.fontFamily
-    font.pixelSize: Style.font.bodySmall
+    font.pixelSize: Commons.Style.font.bodySmall
     font.bold: true
   }
 
@@ -41,14 +41,14 @@ Item {
     textFormat: Text.PlainText
     id: workspaceDisplay
     anchors.left: workspaceLabel.right
-    anchors.leftMargin: Style.space(8)
+    anchors.leftMargin: Commons.Style.space(8)
     anchors.right: workspaceValues.left
-    anchors.rightMargin: Style.space(12)
+    anchors.rightMargin: Commons.Style.space(12)
     anchors.verticalCenter: parent.verticalCenter
     text: workspaceInfoRow.displayName
     color: workspaceInfoRow.controller.foreground
     font.family: workspaceInfoRow.controller.fontFamily
-    font.pixelSize: Style.font.bodySmall
+    font.pixelSize: Commons.Style.font.bodySmall
     elide: Text.ElideRight
   }
 }

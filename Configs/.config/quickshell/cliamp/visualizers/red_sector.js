@@ -1,6 +1,5 @@
-// Port of cliamp vis_red_sector.go.
 .pragma library
-.import "helpers.js" as H
+.import "helpers.js" as VisualizerHelpers
 
 var BARS = 5
 var HALF_WIDTH = 0.26
@@ -153,7 +152,7 @@ function drawBars(grid, rs, frame) {
   var scale = fit(grid, frame, view)
   for (var bar = 0; bar < BARS; bar++) {
     var baseX = (bar - (BARS - 1) / 2) * PITCH
-    var tag = TAG_LOW + H.specTag((rs.heights[bar] - MIN_HEIGHT) / (MAX_HEIGHT - MIN_HEIGHT))
+    var tag = TAG_LOW + VisualizerHelpers.specTag((rs.heights[bar] - MIN_HEIGHT) / (MAX_HEIGHT - MIN_HEIGHT))
     var corners = []
     for (var c = 0; c < 8; c++) {
       var corner = place(baseX + CORNER_X[c] * HALF_WIDTH, CORNER_TOP[c] ? GROUND_Y + rs.heights[bar] : GROUND_Y,
@@ -171,28 +170,28 @@ function drawBars(grid, rs, frame) {
 }
 
 function tagColors(d) {
-  var spectrum = H.playerSpectrum(d)
-  var quiet = spectrum.map(function (color) { return H.mixColor(color, "#000000", 1 - STAR_DIM, 1) })
-  return [null, H.rgba(d.dim, 1)].concat(quiet, H.playerTiers(d))
+  var spectrum = VisualizerHelpers.playerSpectrum(d)
+  var quiet = spectrum.map(function (color) { return VisualizerHelpers.mixColor(color, "#000000", 1 - STAR_DIM, 1) })
+  return [null, VisualizerHelpers.rgba(d.dim, 1)].concat(quiet, VisualizerHelpers.playerTiers(d))
 }
 
-function render(ctx, d) {
-  var cols = Math.floor(d.width), rows = Math.floor(d.height)
+function render(canvas, frameData) {
+  var cols = Math.floor(frameData.width), rows = Math.floor(frameData.height)
   if (rows < MIN_DOT_ROWS || cols < MIN_DOT_COLS) return
 
-  var s = d.state
-  if (!s.redSector) s.redSector = newDriver()
-  var rs = s.redSector
-  var ticks = H.cliampTicks(rs.clock)
-  var bands = H.cliampBands(d.bands, d.bandEdges)
+  var animationState = frameData.state
+  if (!animationState.redSector) animationState.redSector = newDriver()
+  var rs = animationState.redSector
+  var ticks = VisualizerHelpers.cliampTicks(rs.clock)
+  var bands = VisualizerHelpers.cliampBands(frameData.bands, frameData.bandEdges)
   for (var tick = 0; tick < ticks; tick++) advance(rs, bands)
   rs.frame += ticks
 
   if (!rs.dots || rs.dots.length !== rows * cols) rs.dots = new Int8Array(rows * cols)
   else rs.dots.fill(0)
   var grid = { tags: rs.dots, cols: cols, rows: rows }
-  var frame = rs.frame + H.cliampTickFraction(rs.clock)
+  var frame = rs.frame + VisualizerHelpers.cliampTickFraction(rs.clock)
   drawStars(grid, frame)
   drawBars(grid, rs, frame)
-  H.paintTagGrid(ctx, grid.tags, cols, rows, tagColors(d))
+  VisualizerHelpers.paintTagGrid(canvas, grid.tags, cols, rows, tagColors(frameData))
 }

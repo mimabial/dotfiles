@@ -7,13 +7,14 @@ BluetoothButton {
     id: root
     readonly property var paired: Bluetooth.devices.values.filter(device => device.paired || device.bonded || device.trusted)
     popupName: "bluetooth-menu"
+    settingsPopupName: popupName + "-settings"
     symbol: power === "off" ? "bluetooth-disabled" : "bluetooth-active"
     function deviceIcon(device) {
         const kind = String(device.icon)
         return kind.includes("audio") ? "󰋋" : kind.includes("mouse") ? "󰍽" : kind.includes("keyboard") ? "󰌌" : kind.includes("phone") ? "󰏲" : "󰂯"
     }
     MacCard {
-        anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: "bluetooth-menu"; settings: "Bluetooth"; settingsPopup: "bluetooth"
+        anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: root.popupName; settings: "Bluetooth"; settingsPopup: root.settingsPopupName
         PopupToggleRow { width: parent.width; shell: root.shell; title: "Bluetooth"; checked: root.power !== "off"; onToggled: root.shell.run(["hyprshell", "bluetooth/power", "toggle"]) }
         Repeater {
             model: root.power === "off" ? [] : root.paired

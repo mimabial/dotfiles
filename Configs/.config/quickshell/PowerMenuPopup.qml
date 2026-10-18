@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Ui
+import "Units.js" as Units
 
 PopupCard {
     id: root
@@ -33,9 +34,8 @@ PopupCard {
     readonly property string sessionText: [status.user && status.host ? status.user + "@" + status.host : status.user, uptime(status.uptime)].filter(Boolean).join(" · ")
 
     function uptime(seconds) {
-        const total = Math.max(0, Math.floor(Number(seconds) || 0)), days = Math.floor(total / 86400)
-        const hours = Math.floor(total % 86400 / 3600), minutes = Math.floor(total % 3600 / 60)
-        return days ? "up " + days + "d " + hours + "h" : hours ? "up " + hours + "h " + minutes + "m" : minutes ? "up " + minutes + "m" : ""
+        const span = Units.spanText(seconds)
+        return span ? "up " + span : ""
     }
     function loadStatus(raw) { try { status = JSON.parse(raw) } catch (error) {} }
     function run(action) { shell.closePopup(); shell.run(action.command) }
@@ -51,8 +51,8 @@ PopupCard {
         if (event.key === Qt.Key_Space) { activateCursor(); return true }
         return defaultKey(event)
     }
-    onOpenChanged: if (open && !statusProc.running) statusProc.running = true
-    Component.onCompleted: statusProc.running = true
+    onOpenChanged: if (open && !statusProcess.running) statusProcess.running = true
+    Component.onCompleted: statusProcess.running = true
 
     component ActionRow: PopupRow {
         required property var action
@@ -92,7 +92,7 @@ PopupCard {
     }
 
     Process {
-        id: statusProc
+        id: statusProcess
         command: [root.helper, "status"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.loadStatus(text) }
     }

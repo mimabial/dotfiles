@@ -3,6 +3,8 @@
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles/Configs}"
 HOST_PROFILE_STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/host-profile"
 SYNC_MANIFEST_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/dotfiles-sync.conf"
+RSYNC_ITEMIZED_DELETE='*deleting   '
+RSYNC_ITEMIZED_NEW_FILE='>f+++++++++ '
 
 host_profile_is_valid() {
   [[ "${1:-}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]

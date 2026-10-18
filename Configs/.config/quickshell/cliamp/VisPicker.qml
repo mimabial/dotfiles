@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 BorderSurface {
@@ -56,33 +56,33 @@ BorderSurface {
   }
 
   width: parent ? parent.width : 0
-  implicitHeight: Style.space(200)
-  radius: Style.cornerRadius
+  implicitHeight: Commons.Style.space(200)
+  radius: Commons.Style.cornerRadius
   color: "transparent"
-  borderSpec: Border.none()
+  borderSpec: Commons.Border.none()
 
   Column {
     anchors.fill: parent
-    anchors.margins: Style.space(8)
-    spacing: Style.space(6)
+    anchors.margins: Commons.Style.space(8)
+    spacing: Commons.Style.space(6)
 
     Row {
       width: parent.width
-      spacing: Style.space(6)
+      spacing: Commons.Style.space(6)
 
       Text {
         anchors.verticalCenter: parent.verticalCenter
         text: "\uf0d0"
-        color: Color.accent; font.family: root.controller ? root.controller.fontFamily : "sans-serif"; font.pixelSize: Style.font.caption
+        color: Commons.Color.accent; font.family: root.controller ? root.controller.fontFamily : "sans-serif"; font.pixelSize: Commons.Style.font.caption
       }
 
       Text {
-        width: parent.width - Style.space(54) - bgToggle.width - pulseToggle.width - Style.space(6)
+        width: parent.width - Commons.Style.space(54) - bgToggle.width - pulseToggle.width - Commons.Style.space(6)
         anchors.verticalCenter: parent.verticalCenter
         text: "Visualizer Styles (" + root.allModes.length + ")"
-        color: root.controller ? root.controller.foreground : Color.foreground
+        color: root.controller ? root.controller.foreground : Commons.Color.foreground
         font.family: root.controller ? root.controller.fontFamily : "sans-serif"
-        font.pixelSize: Style.font.caption; font.bold: true
+        font.pixelSize: Commons.Style.font.caption; font.bold: true
       }
 
       Rectangle {
@@ -92,22 +92,22 @@ BorderSurface {
         function activateKeyboard() { if (root.controller) root.controller.setVisBackground(!root.controller.visBackground) }
         readonly property bool active: root.controller ? root.controller.visBackground : false
         anchors.verticalCenter: parent.verticalCenter
-        width: bgLabel.implicitWidth + Style.space(10); height: Style.space(17)
-        radius: Style.space(4)
-        color: active ? Color.menu.selectedBackground
-          : (bgMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Color.menu.selectedBackground) : "transparent")
+        width: bgLabel.implicitWidth + Commons.Style.space(10); height: Commons.Style.space(17)
+        radius: Commons.Style.space(4)
+        color: active ? Commons.Color.menu.selectedBackground
+          : (bgMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Commons.Color.menu.selectedBackground) : "transparent")
         border.width: 1
-        border.color: active || cursored ? Color.menu.selectedBorder
-          : (root.controller ? root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.25) : Color.popups.border)
+        border.color: active || cursored ? Commons.Color.menu.selectedBorder
+          : (root.controller ? root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.25) : Commons.Color.popups.border)
 
         Text {
           id: bgLabel
           anchors.centerIn: parent
           text: "\uf043 BG"
-          color: bgToggle.active ? Color.menu.selectedText
-            : (bgMouse.containsMouse ? Color.accent : (root.controller ? root.controller.dim : Color.foreground))
+          color: bgToggle.active ? Commons.Color.menu.selectedText
+            : (bgMouse.containsMouse ? Commons.Color.accent : (root.controller ? root.controller.dim : Commons.Color.foreground))
           font.family: root.controller ? root.controller.fontFamily : "sans-serif"
-          font.pixelSize: Style.font.caption * 0.8
+          font.pixelSize: Commons.Style.font.caption * 0.8
           font.bold: bgToggle.active
         }
 
@@ -125,22 +125,22 @@ BorderSurface {
         function activateKeyboard() { if (root.controller) root.controller.setVisBackgroundPulse(!root.controller.visBackgroundPulse) }
         readonly property bool active: root.controller ? root.controller.visBackgroundPulse : false
         anchors.verticalCenter: parent.verticalCenter
-        width: pulseLabel.implicitWidth + Style.space(10); height: Style.space(17)
-        radius: Style.space(4)
-        color: active ? Color.menu.selectedBackground
-          : (pulseMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Color.menu.selectedBackground) : "transparent")
+        width: pulseLabel.implicitWidth + Commons.Style.space(10); height: Commons.Style.space(17)
+        radius: Commons.Style.space(4)
+        color: active ? Commons.Color.menu.selectedBackground
+          : (pulseMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Commons.Color.menu.selectedBackground) : "transparent")
         border.width: 1
-        border.color: active || cursored ? Color.menu.selectedBorder
-          : (root.controller ? root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.25) : Color.popups.border)
+        border.color: active || cursored ? Commons.Color.menu.selectedBorder
+          : (root.controller ? root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.25) : Commons.Color.popups.border)
 
         Text {
           id: pulseLabel
           anchors.centerIn: parent
           text: "\uf0e7 PULSE"
-          color: pulseToggle.active ? Color.menu.selectedText
-            : (pulseMouse.containsMouse ? Color.accent : (root.controller ? root.controller.dim : Color.foreground))
+          color: pulseToggle.active ? Commons.Color.menu.selectedText
+            : (pulseMouse.containsMouse ? Commons.Color.accent : (root.controller ? root.controller.dim : Commons.Color.foreground))
           font.family: root.controller ? root.controller.fontFamily : "sans-serif"
-          font.pixelSize: Style.font.caption * 0.8
+          font.pixelSize: Commons.Style.font.caption * 0.8
           font.bold: pulseToggle.active
         }
 
@@ -154,8 +154,8 @@ BorderSurface {
       Text {
         anchors.verticalCenter: parent.verticalCenter
         text: "\uf00d"
-        color: closePickerMouse.containsMouse ? Color.accent : (root.controller ? root.controller.dim : Color.foreground)
-        font.family: root.controller ? root.controller.fontFamily : "sans-serif"; font.pixelSize: Style.font.caption
+        color: closePickerMouse.containsMouse ? Commons.Color.accent : (root.controller ? root.controller.dim : Commons.Color.foreground)
+        font.family: root.controller ? root.controller.fontFamily : "sans-serif"; font.pixelSize: Commons.Style.font.caption
         MouseArea {
           id: closePickerMouse
           anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true
@@ -166,7 +166,7 @@ BorderSurface {
 
     Row {
       width: parent.width
-      spacing: Style.space(4)
+      spacing: Commons.Style.space(4)
 
       Repeater {
         model: [
@@ -184,20 +184,20 @@ BorderSurface {
           property bool cursored: false
           function activateKeyboard() { root.selectedCategory = modelData.id }
           readonly property bool isSelected: root.selectedCategory === modelData.id
-          width: tabLabel.implicitWidth + Style.space(10); height: Style.space(18)
-          radius: Style.space(9)
-          color: isSelected ? Color.menu.selectedBackground
-            : (tabMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Color.menu.selectedBackground) : "transparent")
+          width: tabLabel.implicitWidth + Commons.Style.space(10); height: Commons.Style.space(18)
+          radius: Commons.Style.space(9)
+          color: isSelected ? Commons.Color.menu.selectedBackground
+            : (tabMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Commons.Color.menu.selectedBackground) : "transparent")
           border.width: cursored ? 1 : 0
-          border.color: Color.menu.selectedBorder
+          border.color: Commons.Color.menu.selectedBorder
 
           Text {
             id: tabLabel
             anchors.centerIn: parent
             text: tabPill.modelData.label
-            color: tabPill.isSelected ? Color.menu.selectedText : (root.controller ? root.controller.foreground : Color.foreground)
+            color: tabPill.isSelected ? Commons.Color.menu.selectedText : (root.controller ? root.controller.foreground : Commons.Color.foreground)
             font.family: root.controller ? root.controller.fontFamily : "sans-serif"
-            font.pixelSize: Style.font.caption * 0.85
+            font.pixelSize: Commons.Style.font.caption * 0.85
             font.bold: tabPill.isSelected
           }
 
@@ -211,7 +211,7 @@ BorderSurface {
 
     Flickable {
       width: parent.width
-      height: parent.height - Style.space(46)
+      height: parent.height - Commons.Style.space(46)
       contentWidth: width; contentHeight: flowGrid.implicitHeight
       clip: true; boundsBehavior: Flickable.StopAtBounds
       ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
@@ -219,7 +219,7 @@ BorderSurface {
       Flow {
         id: flowGrid
         width: parent.width
-        spacing: Style.space(4)
+        spacing: Commons.Style.space(4)
 
         Repeater {
           model: root.filteredModes
@@ -230,37 +230,37 @@ BorderSurface {
             property bool cursored: false
             function activateKeyboard() { if (root.controller) root.controller.setVisMode(modelData.id) }
             readonly property bool isActive: root.controller && root.controller.visMode === modelData.id
-            width: chipContent.implicitWidth + Style.space(12)
-            height: Style.space(22)
-            radius: Style.space(4)
-            color: isActive ? Color.menu.selectedBackground
-              : (chipMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Color.menu.selectedBackground)
-                : (root.controller ? root.controller.shell.alpha(root.controller.surface, 0.8) : Color.popups.background))
+            width: chipContent.implicitWidth + Commons.Style.space(12)
+            height: Commons.Style.space(22)
+            radius: Commons.Style.space(4)
+            color: isActive ? Commons.Color.menu.selectedBackground
+              : (chipMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Commons.Color.menu.selectedBackground)
+                : (root.controller ? root.controller.shell.alpha(root.controller.surface, 0.8) : Commons.Color.popups.background))
             border.width: 1
-            border.color: isActive || cursored ? Color.menu.selectedBorder
-              : (chipMouse.containsMouse ? Color.menu.selectedBorder
-                : (root.controller ? root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.25) : Color.popups.border))
+            border.color: isActive || cursored ? Commons.Color.menu.selectedBorder
+              : (chipMouse.containsMouse ? Commons.Color.menu.selectedBorder
+                : (root.controller ? root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.25) : Commons.Color.popups.border))
 
             Row {
               id: chipContent
               anchors.centerIn: parent
-              spacing: Style.space(4)
+              spacing: Commons.Style.space(4)
 
               Text {
                 text: chip.modelData.icon
-                color: chip.isActive ? Color.menu.selectedText
-                  : (chipMouse.containsMouse ? Color.accent : (root.controller ? root.controller.dim : Color.foreground))
+                color: chip.isActive ? Commons.Color.menu.selectedText
+                  : (chipMouse.containsMouse ? Commons.Color.accent : (root.controller ? root.controller.dim : Commons.Color.foreground))
                 font.family: root.controller ? root.controller.fontFamily : "sans-serif"
-                font.pixelSize: Style.font.caption * 0.8
+                font.pixelSize: Commons.Style.font.caption * 0.8
                 anchors.verticalCenter: parent.verticalCenter
               }
 
               Text {
                 text: chip.modelData.name
-                color: chip.isActive ? Color.menu.selectedText
-                  : (chipMouse.containsMouse ? Color.accent : (root.controller ? root.controller.foreground : Color.foreground))
+                color: chip.isActive ? Commons.Color.menu.selectedText
+                  : (chipMouse.containsMouse ? Commons.Color.accent : (root.controller ? root.controller.foreground : Commons.Color.foreground))
                 font.family: root.controller ? root.controller.fontFamily : "sans-serif"
-                font.pixelSize: Style.font.caption * 0.85
+                font.pixelSize: Commons.Style.font.caption * 0.85
                 font.bold: chip.isActive
                 anchors.verticalCenter: parent.verticalCenter
               }

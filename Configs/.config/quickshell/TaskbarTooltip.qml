@@ -26,22 +26,21 @@ PopupWindow {
 
     function updateVisibility() {
         ready = false
-        if (hovered && !blocked && appName !== "") dwell.restart()
-        else dwell.stop()
+        if (hovered && !blocked && appName !== "") hoverDwellTimer.restart()
+        else hoverDwellTimer.stop()
     }
     function showNow() {
-        if (hovered && !blocked && appName !== "") { dwell.stop(); ready = true }
+        if (hovered && !blocked && appName !== "") { hoverDwellTimer.stop(); ready = true }
     }
     onHoveredChanged: updateVisibility()
     onBlockedChanged: updateVisibility()
     onAppNameChanged: updateVisibility()
     visible: ready && hovered && !blocked && appName !== ""
     color: "transparent"
-    // PopupWindow sizes are integers; keep the antialiased border inside the surface.
     implicitWidth: Math.ceil(bubble.width) + 1
     implicitHeight: Math.ceil(bubble.height) + 1
 
-    Timer { id: dwell; interval: root.delay; onTriggered: root.ready = true }
+    Timer { id: hoverDwellTimer; interval: root.delay; onTriggered: root.ready = true }
     anchor {
         window: root.anchorWindow
         adjustment: PopupAdjustment.Slide
@@ -64,8 +63,8 @@ PopupWindow {
     }
     BorderSurface {
         id: bubble
-        color: Commons.Util.alpha(Commons.Color.tooltip.background, Commons.Style.popupSurfaceOpacity)
-        borderSpec: Commons.Border.surfaceSpec("tooltip", "border", Commons.Color.tooltip.border, 1)
+        color: Commons.Util.alpha(Commons.Style.popupTinted(Commons.Color.tooltip.background), Commons.Style.popupSurfaceOpacity)
+        borderSpec: Commons.Border.surfaceSpec("tooltip", "border", Commons.Style.popupBorder(Commons.Color.tooltip.border), 1)
         radius: Commons.Style.cornerRadius
         padding: Commons.Style.space(6)
         width: content.implicitWidth + contentLeftInset + contentRightInset

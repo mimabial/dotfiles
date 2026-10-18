@@ -7,11 +7,11 @@ Rectangle {
     required property var shell
     property color background: root.shell.role("bg", "#0c1021")
     property color borderColor: root.shell.role("alt_br", root.shell.foreground)
-    property real surfaceOpacity: root.shell.style.box("popup").surfaceOpacity ?? Commons.Style.popupSurfaceOpacity
+    property real surfaceOpacity: Commons.Style.popupSurfaceOpacity
     property real borderOpacity: root.shell.style.box("popup").borderOpacity ?? Commons.Style.popupBorderOpacity
 
-    color: root.shell.alpha(root.background, root.surfaceOpacity)
-    border.color: root.shell.alpha(root.borderColor, root.borderOpacity)
+    color: root.shell.alpha(Commons.Style.popupTinted(root.background), root.surfaceOpacity)
+    border.color: root.shell.alpha(Commons.Style.popupBorder(root.borderColor), root.borderOpacity)
     border.width: root.shell.borderWidth
     radius: root.shell.rounding
 }

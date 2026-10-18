@@ -1,6 +1,5 @@
-// Port of cliamp vis_classic_peak.go.
 .pragma library
-.import "helpers.js" as H
+.import "helpers.js" as VisualizerHelpers
 
 var GRAVITY = 9.5
 var LAUNCH_BASE = 0.8
@@ -30,7 +29,7 @@ function powerToLevel(power, dbFloor) {
 }
 
 function bandsForCols(bands, cols, dbFloor) {
-  if (cols >= bands.length) return H.resampleBandsLinear(bands, cols)
+  if (cols >= bands.length) return VisualizerHelpers.resampleBandsLinear(bands, cols)
   var bandsPerCol = bands.length / cols
   var out = new Array(cols)
   for (var col = 0; col < cols; col++) {
@@ -56,8 +55,8 @@ function animating(state) {
   return false
 }
 
-function step(current, target, dt) {
-  return current + (target - current) * (1 - Math.exp(-(target > current ? RISE_RATE : FALL_RATE) * dt))
+function step(current, target, elapsedSeconds) {
+  return current + (target - current) * (1 - Math.exp(-(target > current ? RISE_RATE : FALL_RATE) * elapsedSeconds))
 }
 
 function onEnter(state) {
@@ -68,31 +67,28 @@ function onEnter(state) {
   state.peakLast = 0
 }
 
-function render(ctx, d) {
-  var w = d.width, h = d.height
+function render(canvas, frameData) {
+  var width = frameData.width, height = frameData.height
   var charW = 6
-  var bars = colsForWidth(Math.floor(w / charW))
-  var levels = bandsForCols(d.bandsFine, bars, d.analysis.db_floor)
-  if (!levels.length || h < 1) return
-  var s = d.state
-  if (!s.peakBar || s.peakBar.length !== bars) {
-    s.peakBar = levels.slice()
-    s.peakPos = levels.slice()
-    s.peakVel = new Array(bars).fill(0)
-    s.peakHold = new Array(bars).fill(0)
-    s.peakLast = 0
+  var bars = colsForWidth(Math.floor(width / charW))
+  var levels = bandsForCols(frameData.bandsFine, bars, frameData.analysis.db_floor)
+  if (!levels.length || height < 1) return
+  var animationState = frameData.state
+  if (!animationState.peakBar || animationState.peakBar.length !== bars) {
+    animationState.peakBar = levels.slice()
+    animationState.peakPos = levels.slice()
+    animationState.peakVel = new Array(bars).fill(0)
+    animationState.peakHold = new Array(bars).fill(0)
+    animationState.peakLast = 0
   }
-  var barPos = s.peakBar, peakPos = s.peakPos, peakVel = s.peakVel, peakHold = s.peakHold
+  var barPos = animationState.peakBar, peakPos = animationState.peakPos, peakVel = animationState.peakVel, peakHold = animationState.peakHold
 
-  // Go integrates against wall-clock elapsed time, clamping a long gap (pause, sleep,
-  // stalled frame) down to a single frame rather than one huge step.
   var now = Date.now()
-  var dt = s.peakLast > 0 ? (now - s.peakLast) / 1000.0 : FALLBACK_DT
-  if (dt <= 0 || dt > 10 * FALLBACK_DT) dt = FALLBACK_DT
-  s.peakLast = now
+  var elapsedSeconds = animationState.peakLast > 0 ? (now - animationState.peakLast) / 1000.0 : FALLBACK_DT
+  if (elapsedSeconds <= 0 || elapsedSeconds > 10 * FALLBACK_DT) elapsedSeconds = FALLBACK_DT
+  animationState.peakLast = now
 
   var i
-  // sync: a landed cap relaunches when the band rises past it.
   for (i = 0; i < bars; i++) {
     if (peakVel[i] === 0 && peakPos[i] <= barPos[i] + EPSILON && levels[i] > peakPos[i]) {
       peakVel[i] = Math.min(LAUNCH_MAX, LAUNCH_BASE + LAUNCH_GAIN * (levels[i] - peakPos[i]))
@@ -101,18 +97,17 @@ function render(ctx, d) {
     }
   }
 
-  // advance: ease the body toward the band, then integrate the cap.
   for (i = 0; i < bars; i++) {
-    barPos[i] = step(barPos[i], levels[i], dt)
+    barPos[i] = step(barPos[i], levels[i], elapsedSeconds)
 
     if (peakHold[i] > 0) {
-      peakHold[i] = Math.max(0, peakHold[i] - dt)
+      peakHold[i] = Math.max(0, peakHold[i] - elapsedSeconds)
       if (peakHold[i] > 0) continue
     }
 
     var prevVel = peakVel[i]
-    peakPos[i] += peakVel[i] * dt
-    peakVel[i] -= GRAVITY * dt
+    peakPos[i] += peakVel[i] * elapsedSeconds
+    peakVel[i] -= GRAVITY * elapsedSeconds
     if (peakPos[i] > MAX_HEIGHT) peakPos[i] = MAX_HEIGHT
 
     if (prevVel > 0 && peakVel[i] <= 0 && peakPos[i] > barPos[i] + EPSILON) {
@@ -127,25 +122,22 @@ function render(ctx, d) {
     }
   }
 
-  var tiers = H.playerTiers(d)
+  var tiers = VisualizerHelpers.playerTiers(frameData)
   var barPx = charW * BAR_CHARS
   var stepPx = charW * (BAR_CHARS + BAR_GAP_CHARS)
 
-  // Rows outer, bars inner: the tier depends only on the row, so every bar shares one
-  // fillStyle assignment per row instead of one per bar.
-  for (var y = 0; y < h; y++) {
-    ctx.fillStyle = tiers[H.specTag(y / h)]
+  for (var y = 0; y < height; y++) {
+    canvas.fillStyle = tiers[VisualizerHelpers.specTag(y / height)]
     for (var b = 0; b < bars; b++) {
-      if (barPos[b] * h > y) ctx.fillRect(b * stepPx, h - 1 - y, barPx, 1)
+      if (barPos[b] * height > y) canvas.fillRect(b * stepPx, height - 1 - y, barPx, 1)
     }
   }
 
-  // A cap only shows once it clears the body by half a rendering unit.
-  var minGap = Math.max(EPSILON, 0.5 / h)
+  var minGap = Math.max(EPSILON, 0.5 / height)
   for (var c = 0; c < bars; c++) {
     if (peakPos[c] <= barPos[c] + minGap) continue
     var capNorm = Math.min(MAX_HEIGHT, peakPos[c])
-    ctx.fillStyle = tiers[H.specTag(capNorm)]
-    ctx.fillRect(c * stepPx, Math.max(0, Math.min(h - 2, h - Math.round(capNorm * h))), barPx, 2)
+    canvas.fillStyle = tiers[VisualizerHelpers.specTag(capNorm)]
+    canvas.fillRect(c * stepPx, Math.max(0, Math.min(height - 2, height - Math.round(capNorm * height))), barPx, 2)
   }
 }

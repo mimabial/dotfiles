@@ -29,9 +29,16 @@ caffeine cancels the timer. The popup keeps these rules in
 
 `Super + U` then `A` toggles keep-awake when you need none of that to happen.
 
+The idle manager also pauses hypridle while audio is playing when audio
+keep-awake is enabled, and for fullscreen windows or games when fullscreen
+keep-awake is enabled. It reacts to activity events and restarts hypridle when
+the inhibition ends.
+
 ## Lock screen layouts
 
 Three, and they are proper layouts rather than color variations:
+
+`Super + T` then `K` opens the lockscreen explorer to select and preview them.
 
 **default** — clock, date, user, password field.
 
@@ -47,10 +54,9 @@ backend, and the palette is written to `~/.config/hypr/hyprlock/colors.conf` by
 
 ## Nothing here assumes systemd
 
-hypridle currently runs as a user unit on this machine, but the config does not
-depend on that. Session actions — lock, suspend, logout — dispatch through
-helpers that detect the init system, because this desktop is expected to move to
-runit and none of it should need rewriting when it does.
+The idle manager uses `hypr_svc_user` for its supervisor and hypridle. Under
+runit it launches hypridle directly. Session actions — lock, suspend, logout —
+also dispatch through helpers that detect the init system.
 
 `hyprlock.conf` and `hypridle.conf` are hyprlang, not Lua. They are separate
 daemons with their own config format, and neither reloads on save — restart them

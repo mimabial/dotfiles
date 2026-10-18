@@ -161,8 +161,6 @@ PopupCard {
         return [shell.alpha(shell.foreground, .45), shell.role("info", shell.foreground), shell.role("warning", shell.foreground),
             shell.role("error", shell.foreground)][priorityIndex(item)]
     }
-    // todoman writes a date-only DUE as local midnight and a timed one at its
-    // actual time, so midnight is what separates the two.
     function hasTime(item) {
         const due = dueMillis(item)
         if (due < 0) return false
@@ -341,7 +339,6 @@ PopupCard {
                     continue
                 }
             }
-            // "25 sep" and "sep 25", this year unless that is already past
             const dayFirst = word.match(/^(\d{1,2})$/)
             const monthIndex = monthNames.indexOf(next.slice(0, 3))
             if (dayFirst && monthIndex >= 0) {
@@ -381,19 +378,17 @@ PopupCard {
     function dateFromIsoDay(iso) { return new Date(String(iso) + "T12:00:00") }
 
     function refresh() {
-        readProc.running = false
-        readProc.command = ["hyprshell", "calendar/agenda", "--todos-all"]
-        readProc.running = true
+        readProcess.running = false
+        readProcess.command = ["hyprshell", "calendar/agenda", "--todos-all"]
+        readProcess.running = true
     }
-    // every mutation re-reads the whole set, completed included, or a task
-    // that was just ticked off would vanish instead of moving to DONE
     function run(args, laterSummary) {
         pendingDelete = ""
         editingId = ""
-        readProc.running = false
+        readProcess.running = false
         laterAdd = laterSummary ? { summary: laterSummary, keys: todos.map(taskKey) } : null
-        readProc.command = ["hyprshell", "calendar/agenda"].concat(args).concat(["--todos-all"])
-        readProc.running = true
+        readProcess.command = ["hyprshell", "calendar/agenda"].concat(args).concat(["--todos-all"])
+        readProcess.running = true
     }
     function complete(item) { run(["--todo-done", String(item.id)]) }
     function reopen(item) { run(["--todo-open", String(item.id)]) }
@@ -533,7 +528,7 @@ PopupCard {
         leaveAdd()
     }
 
-    property Process readProc: Process {
+    property Process readProcess: Process {
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             let payload = ({})
             try { payload = JSON.parse(text) || ({}) } catch (error) { payload = ({}) }
@@ -571,8 +566,8 @@ PopupCard {
         }
         onFileChanged: reload()
     }
-    property Timer poll: Timer {
-        interval: 120000; running: root.open; repeat: true
+    property Timer taskPollTimer: Timer {
+        interval: 2 * CalendarMath.MS_PER_MINUTE; running: root.open; repeat: true
         onTriggered: root.refresh()
     }
 
@@ -1150,7 +1145,7 @@ PopupCard {
                                 color: taskRow.done ? root.shell.faintText
                                     : root.shell.foreground
                                 font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
-                                font.bold: !taskRow.done && root.priorityIndex(taskRow.modelData) === 3
+                                font.bold: !taskRow.done && root.priorityIndex(taskRow.modelData) === root.highestPriority
                                 font.strikeout: taskRow.done
                             }
                             Text {

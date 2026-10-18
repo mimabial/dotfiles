@@ -18,8 +18,8 @@ PopupCard {
     readonly property int best: difficulty === "hard" ? shell.store.sudokuBestHard
         : difficulty === "medium" ? shell.store.sudokuBestMedium : shell.store.sudokuBestEasy
     readonly property var digitCounts: {
-        const counts = [0,0,0,0,0,0,0,0,0]
-        for (let i = 0; i < 81; i++) {
+        const counts = Array(Game.SIDE).fill(0)
+        for (let i = 0; i < Game.CELLS; i++) {
             if (game.givens[i]) counts[game.givens[i] - 1]++
             if (game.entries[i]) counts[game.entries[i] - 1]++
         }
@@ -127,14 +127,14 @@ PopupCard {
             id: board
             readonly property int cellSize: Style.px(36)
             anchors.horizontalCenter: parent.horizontalCenter
-            width: cellSize * 9; height: width; radius: root.shell.rounding; clip: true
+            width: cellSize * Game.SIDE; height: width; radius: root.shell.rounding; clip: true
             color: root.shell.alpha(root.shell.foreground, .035)
             border.width: 2; border.color: root.shell.alpha(root.shell.foreground, .42)
 
             Grid {
-                anchors.fill: parent; columns: 9; rows: 9
+                anchors.fill: parent; columns: Game.SIDE; rows: Game.SIDE
                 Repeater {
-                    model: 81
+                    model: Game.CELLS
                     Item {
                         id: cell
                         required property int index
@@ -160,13 +160,13 @@ PopupCard {
                             active: cell.entry === 0 && root.game.notes[cell.index] !== 0
                             sourceComponent: Component {
                                 Grid {
-                                    anchors.fill: parent; anchors.margins: 2; columns: 3; rows: 3
+                                    anchors.fill: parent; anchors.margins: 2; columns: Game.BOX_SIDE; rows: Game.BOX_SIDE
                                     Repeater {
-                                        model: 9
+                                        model: Game.SIDE
                                         Item {
                                             id: note
                                             required property int index
-                                            width: parent.width / 3; height: parent.height / 3
+                                            width: parent.width / Game.BOX_SIDE; height: parent.height / Game.BOX_SIDE
                                             visible: Game.hasNote(root.game.notes[cell.index], index + 1)
                                             Text { anchors.centerIn: parent; text: note.index + 1; color: root.shell.faintText; font.family: root.shell.fontFamily; font.pixelSize: Math.max(6, board.cellSize * .24) }
                                         }
@@ -189,11 +189,11 @@ PopupCard {
                 }
             }
             Repeater {
-                model: [3, 6]
+                model: [Game.BOX_SIDE, 2 * Game.BOX_SIDE]
                 Rectangle { required property int modelData; z: 2; x: modelData * board.cellSize - 1; width: 2; height: board.height; color: root.shell.alpha(root.shell.foreground, .45) }
             }
             Repeater {
-                model: [3, 6]
+                model: [Game.BOX_SIDE, 2 * Game.BOX_SIDE]
                 Rectangle { required property int modelData; z: 2; y: modelData * board.cellSize - 1; width: board.width; height: 2; color: root.shell.alpha(root.shell.foreground, .45) }
             }
             Rectangle {
@@ -208,12 +208,12 @@ PopupCard {
             id: keypad
             anchors.horizontalCenter: parent.horizontalCenter; columns: 5; spacing: Style.sm
             Repeater {
-                model: 9
+                model: Game.SIDE
                 GameButton {
                     required property int index
                     readonly property int digit: index + 1
                     width: Style.controlHeight; text: digit; selected: root.activeDigit === digit
-                    opacity: root.digitCounts[index] === 9 ? .35 : 1
+                    opacity: root.digitCounts[index] === Game.SIDE ? .35 : 1
                     onClicked: root.playDigit(digit)
                 }
             }

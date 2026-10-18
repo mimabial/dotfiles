@@ -12,9 +12,11 @@ WifiButton {
             .sort((a, b) => b.connected - a.connected || b.signalStrength - a.signalStrength).slice(0, 8) : []
     }
     popupName: "wifi-menu"
+    settingsPopupName: popupName + "-settings"
+    qrPopupName: popupName + "-qr"
     symbol: StatusSymbols.wifi(Networking.wifiEnabled, connectedNetwork)
     MacCard {
-        anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: "wifi-menu"; settings: "Wi-Fi"; settingsPopup: "network"
+        anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: root.popupName; settings: "Wi-Fi"; settingsPopup: root.settingsPopupName
         PopupToggleRow { width: parent.width; shell: root.shell; title: "Wi-Fi"; checked: Networking.wifiEnabled; onToggled: Networking.wifiEnabled = !Networking.wifiEnabled }
         Repeater {
             model: Networking.wifiEnabled ? root.networks : []
@@ -24,7 +26,7 @@ WifiButton {
                 width: parent.width; shell: root.shell; title: modelData.name; value: open ? "" : "󰌾"
                 icon: StatusSymbols.level(modelData.signalStrength, ["󰤟", "󰤢", "󰤥", "󰤨"])
                 iconColor: modelData.connected ? root.shell.accent : root.shell.alpha(root.shell.foreground, .55)
-                onClicked: modelData.connected ? modelData.disconnect() : modelData.known || open ? modelData.connect() : root.shell.togglePopup("network")
+                onClicked: modelData.connected ? modelData.disconnect() : modelData.known || open ? modelData.connect() : root.shell.togglePopup(root.settingsPopupName)
             }
         }
     }

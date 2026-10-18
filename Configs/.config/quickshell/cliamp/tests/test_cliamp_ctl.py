@@ -114,6 +114,48 @@ class CliampTests(unittest.TestCase):
             cliamp.save_now_playing("Sins For U", "", "https://www.youtube.com/watch?v=f9l5Z5Vu_c0")
             self.assertEqual(json.loads(Path(cliamp.NOW_PLAYING_PATH).read_text())["artist"], "")
 
+    def test_cover_completion_keeps_success_and_reaps_timed_out_workers(self):
+        launch_process = cliamp.subprocess.Popen
+        workers = []
+        extraction_deadline_seconds = 0.5
+
+        def extract(command, **options):
+            track = Path(command[command.index("-i") + 1]).stem
+            destination = command[-1]
+            program = "import signal; signal.pause()" if track == "blocked" else (
+                "import sys; from pathlib import Path; Path(sys.argv[1]).write_bytes(b'cover'); "
+                + ("sys.exit(1)" if track == "failed" else "sys.exit(0)"))
+            worker = launch_process([sys.executable, "-c", program, destination], **options)
+            workers.append(worker)
+            return worker
+
+        with TemporaryDirectory() as directory:
+            tracks = [{"url": str(Path(directory) / (name + ".opus"))} for name in ("blocked", "finished", "failed")]
+            for track in tracks:
+                Path(track["url"]).touch()
+            with patch.object(cliamp, "COVER_CACHE_DIR", str(Path(directory) / "covers")), \
+                    patch.object(cliamp.shutil, "which", return_value="ffmpeg"), \
+                    patch.object(cliamp.subprocess, "Popen", side_effect=extract), \
+                    patch.object(cliamp.time, "sleep", side_effect=AssertionError("Cover extraction must wait for process exits")):
+                self.assertIs(cliamp.attach_covers(tracks, budget_seconds=extraction_deadline_seconds), tracks)
+                self.assertEqual(tracks[0]["thumb"], "")
+                self.assertTrue(Path(tracks[1]["thumb"]).is_file())
+                self.assertEqual(tracks[2]["thumb"], "")
+                self.assertFalse(Path(cliamp.embedded_cover_cache_path(tracks[2]["url"])).exists())
+            self.assertTrue(all(worker.returncode is not None for worker in workers))
+            self.assertLess(workers[0].returncode, 0)
+
+    def test_cached_covers_do_not_launch_extractors(self):
+        with TemporaryDirectory() as directory, patch.object(cliamp, "COVER_CACHE_DIR", directory):
+            track = {"url": str(Path(directory) / "track.opus")}
+            Path(track["url"]).touch()
+            cover = Path(cliamp.embedded_cover_cache_path(track["url"]))
+            cover.write_bytes(b"cover")
+            with patch.object(cliamp.shutil, "which", return_value="ffmpeg"), patch.object(cliamp.subprocess, "Popen") as launch:
+                cliamp.attach_covers([track])
+            self.assertEqual(track["thumb"], str(cover))
+            launch.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

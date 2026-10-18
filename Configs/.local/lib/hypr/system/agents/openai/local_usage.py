@@ -24,7 +24,7 @@ def scan_cache_paths():
 
 def read_cached_stats(cache_file, max_age_seconds):
   cached = read_fresh_cached_json(cache_file, max_age_seconds)
-  if not isinstance(cached, dict) or cached.get("schemaVersion") != 1:
+  if not isinstance(cached, dict) or cached.get("schemaVersion") != 2:
     return None
   if cached.get("scanDate") != local_date_string():
     return None
@@ -38,7 +38,7 @@ def read_cached_stats(cache_file, max_age_seconds):
 
 def write_cached_stats(cache_file, stats):
   try:
-    write_cached_json(cache_file, {"schemaVersion": 1, "scanDate": local_date_string(), "stats": stats})
+    write_cached_json(cache_file, {"schemaVersion": 2, "scanDate": local_date_string(), "stats": stats})
   except Exception as exc:
     print(f"agent-usage-codex: could not write usage cache ({exc})", file=sys.stderr)
 

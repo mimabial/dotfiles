@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "DockModel.js" as DockModel
 
@@ -16,9 +16,6 @@ Item {
   property bool running: false
   property int windows: 0
   property var windowList: []
-  // Every window the app owns, parked ones included. They are drawn hollow
-  // and labelled [minimized], and the wheel only moves the selection — it is
-  // the click that restores, via focusWindowByAddress.
   readonly property var tooltipWindows: windowList || []
   property bool active: false
   property bool pinned: false
@@ -36,8 +33,6 @@ Item {
     else item.activateRequested(item.appId)
   }
 
-  // Only the wave lets a slot grow; zoom keeps the layout still and simply
-  // draws its icon larger. Growth is always along the main axis.
   readonly property real slotMain: item.dock.iconSlot * (item.dock.waveHover ? item.magnifyScale : 1)
   width: item.slotMain
   height: item.dock.iconSlot
@@ -84,7 +79,6 @@ Item {
     return false
   }
 
-  // Where a left click would take you, when that is somewhere else.
   readonly property string workspaceHint: {
     if (!item.running || item.minimized || item.onFocusedWorkspace) return ""
     var ws = (item.windowList && item.windowList.length > 0) ? item.windowList[0].workspaceName : ""
@@ -109,8 +103,6 @@ Item {
     return item.tooltipSuffix !== "" ? item.name + " " + item.tooltipSuffix : item.name
   }
 
-  // The pulse carries both attention states: urgency, and a launch in
-  // progress, where it breathes under the bounce.
   property real pulse: 1.0
   readonly property bool pulsing: item.urgent || item.starting
   onPulsingChanged: if (!item.pulsing) item.pulse = 1.0
@@ -133,14 +125,11 @@ Item {
   SequentialAnimation on bounceOffset {
     running: item.bouncing
     loops: Animation.Infinite
-    NumberAnimation { from: 0; to: -Style.space(13); duration: 260; easing.type: Easing.OutQuad }
-    NumberAnimation { from: -Style.space(13); to: 0; duration: 260; easing.type: Easing.OutBounce }
+    NumberAnimation { from: 0; to: -Commons.Style.space(13); duration: 260; easing.type: Easing.OutQuad }
+    NumberAnimation { from: -Commons.Style.space(13); to: 0; duration: 260; easing.type: Easing.OutBounce }
     PauseAnimation { duration: item.urgent ? 380 : 220 }
   }
 
-  // The icon carries every state on its own: it grows on hover, dips on
-  // press, bounces while starting. No plate, no frame — the only chrome in
-  // the slot is the running indicator underneath.
   Item {
     id: iconBox
     anchors.fill: parent
@@ -170,7 +159,6 @@ Item {
       mipmap: true
       smooth: true
 
-      // Sized off the icon, so it grows with magnification like the icon does.
       Rectangle {
         id: badge
         readonly property int count: item.dock.badgeCountFor(item.appId)
@@ -182,14 +170,14 @@ Item {
         height: Math.round(iconImg.height * 0.4)
         width: Math.max(badge.height, badgeLabel.implicitWidth + badge.height / 2)
         radius: badge.height / 2
-        color: Color.urgent
+        color: Commons.Color.urgent
 
         Text {
           id: badgeLabel
           anchors.centerIn: parent
           text: String(badge.count)
-          color: Color.bar.background
-          font.family: Style.font.family
+          color: Commons.Color.bar.background
+          font.family: Commons.Style.font.family
           font.pixelSize: Math.round(badge.height * 0.75)
           font.bold: true
         }
@@ -221,11 +209,10 @@ Item {
   readonly property int totalWindowCount: (item.windowList && item.windowList.length > 0) ? item.windowList.length : (item.running ? 1 : 0)
   readonly property int denseDotThreshold: 5
   readonly property int maxVisibleDots: totalWindowCount > denseDotThreshold ? denseDotThreshold - 1 : Math.min(totalWindowCount, denseDotThreshold)
-  readonly property real dynamicDotSize: totalWindowCount >= denseDotThreshold ? Style.space(4) : item.dock.indicatorHeight
-  readonly property real dynamicActiveWidth: totalWindowCount >= denseDotThreshold ? Style.space(9) : Style.space(12)
-  readonly property real dynamicSpacing: totalWindowCount >= denseDotThreshold ? Style.space(2) : Style.space(3)
+  readonly property real dynamicDotSize: totalWindowCount >= denseDotThreshold ? Commons.Style.space(4) : item.dock.indicatorHeight
+  readonly property real dynamicActiveWidth: totalWindowCount >= denseDotThreshold ? Commons.Style.space(9) : Commons.Style.space(12)
+  readonly property real dynamicSpacing: totalWindowCount >= denseDotThreshold ? Commons.Style.space(2) : Commons.Style.space(3)
 
-  // In the card's floor padding, never scaled with the icon.
   Grid {
     id: indicatorRow
     columns: Math.max(1, indicatorRow.visibleChildren.length)
@@ -244,19 +231,19 @@ Item {
         readonly property bool winActive: !winMinimized && (winObj ? item.isWinActive(winObj) : (index === 0 && item.isFocused))
 
         width: winActive ? item.dynamicActiveWidth : item.dynamicDotSize
-        height: winActive ? Style.space(4) : item.dynamicDotSize
+        height: winActive ? Commons.Style.space(4) : item.dynamicDotSize
         radius: Math.min(width, height) / 2
 
         color: winActive
-          ? Color.bar.active
+          ? Commons.Color.bar.active
           : (winMinimized
               ? "transparent"
-              : (item.urgent ? Color.urgent : Util.alpha(Color.bar.text, 0.88)))
+              : (item.urgent ? Commons.Color.urgent : Commons.Util.alpha(Commons.Color.bar.text, 0.88)))
 
         border.color: winActive
           ? Qt.rgba(0, 0, 0, 0.45)
           : (winMinimized
-              ? (item.urgent ? Color.urgent : Util.alpha(Color.bar.text, 0.88))
+              ? (item.urgent ? Commons.Color.urgent : Commons.Util.alpha(Commons.Color.bar.text, 0.88))
               : Qt.rgba(0, 0, 0, 0.45))
 
         border.width: winMinimized ? 1.5 : 1
@@ -279,10 +266,10 @@ Item {
       Rectangle {
         id: overflowPill
         anchors.centerIn: parent
-        width: overflowText.implicitWidth + Style.space(4)
-        height: Style.space(5)
+        width: overflowText.implicitWidth + Commons.Style.space(4)
+        height: Commons.Style.space(5)
         radius: height / 2
-        color: Util.alpha(Color.bar.text, 0.20)
+        color: Commons.Util.alpha(Commons.Color.bar.text, 0.20)
         border.color: Qt.rgba(0, 0, 0, 0.35)
         border.width: 1
 
@@ -291,9 +278,9 @@ Item {
           anchors.centerIn: parent
           text: "+" + (item.totalWindowCount - item.maxVisibleDots)
           textFormat: Text.PlainText
-          color: Color.bar.text
-          font.family: Style.font.family
-          font.pixelSize: Math.max(7, Style.font.caption - 4)
+          color: Commons.Color.bar.text
+          font.family: Commons.Style.font.family
+          font.pixelSize: Math.max(7, Commons.Style.font.caption - 4)
           font.bold: true
         }
       }
@@ -422,12 +409,12 @@ Item {
       && item.name !== "" && item.dock.showTooltips && item.dock.contextAppId === ""
     visible: itemTooltip.shown && itemTooltip.wanted
     z: item.dock.tooltipZ
-    color: Util.alpha(Color.tooltip.background, Style.popupSurfaceOpacity)
-    borderSpec: Border.surfaceSpec("tooltip", "border", Color.tooltip.border, 1)
-    radius: Style.cornerRadius
-    padding: Style.space(6)
+    color: Commons.Util.alpha(Commons.Style.popupTinted(Commons.Color.tooltip.background), Commons.Style.popupSurfaceOpacity)
+    borderSpec: Commons.Border.surfaceSpec("tooltip", "border", Commons.Style.popupBorder(Commons.Color.tooltip.border), 1)
+    radius: Commons.Style.cornerRadius
+    padding: Commons.Style.space(6)
     x: (item.width - width) / 2
-    y: item.dock.tipY(item.height, height, Style.space(10))
+    y: item.dock.tipY(item.height, height, Commons.Style.space(10))
     width: tooltipContent.implicitWidth + contentLeftInset + contentRightInset
     height: tooltipContent.implicitHeight + contentTopInset + contentBottomInset
 

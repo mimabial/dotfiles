@@ -6,6 +6,7 @@ set -euo pipefail
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/dotfiles/manifest.bash"
 
 RESTORE_ONLY_HOST_DIR=".system"
+ALWAYS_EXCLUDED_PATTERNS=(.git __pycache__ .ruff_cache .pytest_cache '*.pyc' node_modules .cache lazy-lock.json)
 SYNC_MODE="apply"
 ACTIVE_HOST_PROFILE=""
 declare -a SYNC_MANIFEST_RECORDS=()
@@ -41,7 +42,7 @@ NC='\033[0m'
 log_info() { printf '%b[INFO]%b %s\n' "${BLUE}" "${NC}" "$1"; }
 log_success() { printf '%b[OK]%b %s\n' "${GREEN}" "${NC}" "$1"; }
 log_warn() { printf '%b[WARN]%b %s\n' "${YELLOW}" "${NC}" "$1"; }
-log_error() { printf '%b[ERROR]%b %s\n' "${RED}" "${NC}" "$1"; }
+log_error() { printf '%b[ERROR]%b %s\n' "${RED}" "${NC}" "$1" >&2; }
 
 path_is_within_root() {
   local path="$1"
@@ -134,7 +135,7 @@ run_rsync_transfer() {
 
   rsync_args+=(--itemize-changes)
   if ! transfer_output_ref=$(rsync "${rsync_args[@]}" 2>&1); then
-    log_error "${action} failed for $name" >&2
+    log_error "${action} failed for $name"
     printf '%s\n' "$transfer_output_ref" >&2
     return 1
   fi
@@ -154,7 +155,7 @@ remove_destination() {
   [[ "${SYNC_MODE}" == "list" ]] || path_exists "${dest}" || return 0
   case "${SYNC_MODE}" in
     list) echo "PLAN ABSENT ${dest}" ;;
-    dry-run) emit_preview_result "${name}" "*deleting   ${dest#"${DOTFILES_DIR}/"}" ;;
+    dry-run) emit_preview_result "${name}" "${RSYNC_ITEMIZED_DELETE}${dest#"${DOTFILES_DIR}/"}" ;;
     apply) rm -rf -- "${dest}"; log_success "Removed ${name}" ;;
   esac
 }
@@ -234,11 +235,9 @@ plan_copy_path() {
 sync_directory_path() {
   local src="$1" dest="$2" name="$3" exclude_pattern transfer_output=""
   shift 3
-  local -a rsync_args=(-a --mkpath --delete --delete-excluded \
-    --exclude='.git' --exclude='__pycache__' --exclude='.ruff_cache' --exclude='.pytest_cache' --exclude='*.pyc' \
-    --exclude='node_modules' --exclude='.cache' --exclude='lazy-lock.json')
+  local -a rsync_args=(-a --mkpath --delete --delete-excluded)
 
-  for exclude_pattern in "$@"; do
+  for exclude_pattern in "${ALWAYS_EXCLUDED_PATTERNS[@]}" "$@"; do
     rsync_args+=(--exclude="${exclude_pattern}")
   done
   run_rsync_transfer transfer_output "$name" "${rsync_args[@]}" "$src"/ "$dest"/ || return
@@ -255,7 +254,7 @@ sync_file_path() {
 
   if [[ -d "$dest" && ! -L "$dest" ]]; then
     if [[ "${SYNC_MODE}" == "dry-run" ]]; then
-      emit_preview_result "$name" $'*deleting   '"$(basename "$dest")"$'\n>f+++++++++ '"$(basename "$dest")"
+      emit_preview_result "$name" "${RSYNC_ITEMIZED_DELETE}${dest##*/}"$'\n'"${RSYNC_ITEMIZED_NEW_FILE}${dest##*/}"
       return
     fi
     rm -rf -- "$dest"

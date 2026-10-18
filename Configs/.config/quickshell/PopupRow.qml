@@ -25,7 +25,6 @@ Rectangle {
     // a row with nothing to click should not light up or take the keyboard cursor
     property bool interactive: true
     property real rightInset: 0
-    // marks the row for PopupCard's keyboard cursor, and shows where it sits
     readonly property bool navigable: interactive && enabled
     readonly property bool hovered: mouse.containsMouse
     readonly property bool valueHovered: valueClickable && valueText.visible && hovered
@@ -33,14 +32,13 @@ Rectangle {
     property bool cursored: false
     readonly property bool highlighted: cursored || (!shell.popupCard?.open && hovered)
     property bool selected: false
-    // for rows that are a bare label, with no icon or value to align against
     property bool centerTitle: false
     // pills after the title: [{text, color}]
     property var badges: []
     signal clicked(int button)
     signal valueClicked()
     implicitHeight: Math.max(Style.popupRowHeight, Math.max(textColumn.implicitHeight, iconImage.visible ? root.iconSize : 0) + Style.controlPaddingY * 2)
-    readonly property color highlight: !hoverBorder && hovered ? "transparent"
+    readonly property color highlight: !hoverBorder ? "transparent"
         : selected ? shell.hoverEdge(.85)
         : active ? shell.selectedEdge()
         : highlighted ? shell.hoverEdge(.85)
@@ -70,7 +68,6 @@ Rectangle {
                     clip: true
                     readonly property real overflow: Math.max(0, titleText.implicitWidth - width)
                     readonly property int scrollDuration: Math.max(600, overflow * 34)
-                    // elide is what the row shows at rest; hovering reads the rest of it
                     readonly property bool scrolling: root.hovered && overflow > 0 && !Style.reduceMotion
                     onScrollingChanged: if (!scrolling) titleText.x = 0
                     Text {

@@ -1,24 +1,22 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
-// Items are {color, label, value, unit}; each takes an equal share of
-// the width with its figure pushed to the right edge of that share.
 Item {
   id: root
 
   property var items: []
-  property color foreground: Color.popups.text
-  property string fontFamily: Style.font.family
+  property color foreground: Commons.Color.popups.text
+  property string fontFamily: Commons.Style.font.family
 
   width: parent ? parent.width : implicitWidth
-  implicitHeight: Style.space(18)
+  implicitHeight: Commons.Style.space(18)
   height: implicitHeight
 
   Row {
     anchors.fill: parent
-    spacing: Style.space(12)
+    spacing: Commons.Style.space(12)
 
     Repeater {
       model: root.items.length
@@ -28,18 +26,18 @@ Item {
         required property int index
         readonly property var modelData: root.items[index] || ({})
         readonly property int count: Math.max(1, root.items.length)
-        width: (root.width - Style.space(12) * (count - 1)) / count
+        width: (root.width - Commons.Style.space(12) * (count - 1)) / count
         height: root.height
 
         Row {
           anchors.left: parent.left
           anchors.verticalCenter: parent.verticalCenter
-          spacing: Style.space(6)
-          width: Math.min(implicitWidth, parent.width - figure.width - Style.space(6))
+          spacing: Commons.Style.space(6)
+          width: Math.min(implicitWidth, parent.width - figure.width - Commons.Style.space(6))
           clip: true
 
           Rectangle {
-            width: Style.space(8)
+            width: Commons.Style.space(8)
             height: width
             radius: width / 2
             color: entry.modelData.color || root.foreground
@@ -50,9 +48,9 @@ Item {
             textFormat: Text.PlainText
             text: entry.modelData.label || ""
             color: root.foreground
-            opacity: Style.secondaryTextAlpha
+            opacity: Commons.Style.secondaryTextAlpha
             font.family: root.fontFamily
-            font.pixelSize: Style.font.bodySmall
+            font.pixelSize: Commons.Style.font.bodySmall
             anchors.verticalCenter: parent.verticalCenter
             elide: Text.ElideRight
           }
@@ -66,8 +64,8 @@ Item {
           unit: entry.modelData.unit || ""
           foreground: root.foreground
           fontFamily: root.fontFamily
-          valueSize: Style.font.bodySmall
-          unitSize: Style.font.caption
+          valueSize: Commons.Style.font.bodySmall
+          unitSize: Commons.Style.font.caption
         }
       }
     }

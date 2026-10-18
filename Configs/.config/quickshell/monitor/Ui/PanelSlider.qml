@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
 Item {
   id: root
@@ -11,32 +11,26 @@ Item {
   property real maximum: 1
   property real step: 0.05
   property bool integer: false
-  property color trackColor: shell ? Style.selectedFillFor(shell.foreground, Color.accent) : "#333"
-  property color fillColor: shell ? shell.foreground : Color.foreground
-  property color knobColor: shell ? shell.foreground : Color.foreground
+  property color trackColor: shell ? Commons.Style.selectedFillFor(shell.foreground, Commons.Color.accent) : "#333"
+  property color fillColor: shell ? shell.foreground : Commons.Color.foreground
+  property color knobColor: shell ? shell.foreground : Commons.Color.foreground
   property bool dragging: false
-  property real trackHeight: Math.max(4, Math.round(Style.spacing.controlHeight * 0.11))
-  property real knobSize: Math.max(14, Math.round(Style.spacing.controlHeight * 0.38))
+  property real trackHeight: Math.max(4, Math.round(Commons.Style.spacing.controlHeight * 0.11))
+  property real knobSize: Math.max(14, Math.round(Commons.Style.spacing.controlHeight * 0.38))
   property real liveValue: value
 
-  // macOS-style notches. When > 1, that many evenly-spaced tick marks are cut
-  // into the track (drawn in the panel background color, so only the part
-  // crossing the track shows). Purely visual — snapping is the caller's job via
-  // `integer`/`step` or an index-based value. Default 0 leaves the track plain.
   property int tickCount: 0
-  property color tickColor: shell ? shell.background : Color.background
+  property color tickColor: shell ? shell.background : Commons.Color.background
 
   onValueChanged: if (!dragging) liveValue = value
 
   signal moved(real value)
   signal released(real value)
 
-  // Right-click is a secondary action on the whole track — audio uses it to
-  // mute the channel the slider belongs to. Dragging stays left-button only.
   signal rightClicked()
 
-  implicitWidth: Style.space(200)
-  implicitHeight: Math.max(Style.space(22), knobSize + Style.spacing.md)
+  implicitWidth: Commons.Style.space(200)
+  implicitHeight: Math.max(Commons.Style.space(22), knobSize + Commons.Style.spacing.md)
 
   readonly property real range: Math.max(0.0001, maximum - minimum)
   readonly property real progress: Math.max(0, Math.min(1, (liveValue - minimum) / range))
@@ -71,8 +65,8 @@ Item {
     model: root.tickCount > 1 ? root.tickCount : 0
     Rectangle {
       required property int index
-      width: Math.max(1, Style.space(2))
-      height: root.trackHeight + Style.space(4)
+      width: Math.max(1, Commons.Style.space(2))
+      height: root.trackHeight + Commons.Style.space(4)
       radius: 1
       color: root.tickColor
       anchors.verticalCenter: track.verticalCenter
@@ -87,7 +81,7 @@ Item {
     height: root.knobSize
     radius: root.knobSize / 2
     color: root.knobColor
-    borderSpec: Border.flat(root.shell ? root.shell.background : "#101315", Math.max(1, Style.space(2)))
+    borderSpec: Commons.Border.flat(root.shell ? root.shell.background : "#101315", Math.max(1, Commons.Style.space(2)))
     anchors.verticalCenter: track.verticalCenter
     x: Math.max(0, Math.min(track.width - width, track.width * root.progress - width / 2))
     scale: root.hoveredOrDragging ? 1.15 : 1.0

@@ -86,7 +86,6 @@ validate_geometry() {
       return 1
     }
   done
-  geometry_options[profile]=""
 }
 
 load_window_lib() {
@@ -99,6 +98,7 @@ apply_geometry_profile() {
   local -n geometry_options="$1"
   local profile_name="" resolved_width="" resolved_height=""
 
+  [[ -z "${geometry_options[width]}${geometry_options[height]}" ]] || return 0
   case "${geometry_options[profile]}" in
     "")
       return 0
@@ -123,22 +123,22 @@ resolve_percentages() {
   local -n geometry_options="$1"
   [[ "${geometry_options[width]}" == *% || "${geometry_options[height]}" == *% ]] || return 0
 
-  local padded_width padded_height remaining_geometry
+  local usable_x usable_y usable_width usable_height
 
   load_window_lib launch_monitor_usable_geometry || return 1
-  IFS=$'\t' read -r padded_width padded_height remaining_geometry \
+  IFS=$'\t' read -r usable_x usable_y usable_width usable_height \
     <<<"$(launch_monitor_usable_geometry)" || return 1
 
-  [[ "${padded_width}" =~ ^[0-9]+$ && "${padded_height}" =~ ^[0-9]+$ ]] || {
+  [[ "${usable_width}" =~ ^[0-9]+$ && "${usable_height}" =~ ^[0-9]+$ ]] || {
     printf 'Cannot determine usable monitor area for percentage geometry\n' >&2
     return 1
   }
 
   if [[ "${geometry_options[width]}" == *% ]]; then
-    geometry_options[width]=$((${geometry_options[width]%\%} * padded_width / 100))
+    geometry_options[width]=$((${geometry_options[width]%\%} * usable_width / 100))
   fi
   if [[ "${geometry_options[height]}" == *% ]]; then
-    geometry_options[height]=$((${geometry_options[height]%\%} * padded_height / 100))
+    geometry_options[height]=$((${geometry_options[height]%\%} * usable_height / 100))
   fi
 }
 

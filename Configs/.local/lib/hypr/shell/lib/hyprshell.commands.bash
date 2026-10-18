@@ -16,8 +16,7 @@ hyprshell_print_init_environment() {
   printf 'BIN_DIR=%q\n' "${BIN_DIR}"
   printf 'LIB_DIR=%q\n' "${LIB_DIR}"
   printf 'PATH=%q\n' "${PATH}"
-  printf 'HYPR_SCRIPTS_PATH=%q\n' "${HYPR_SCRIPTS_PATH:-}"
-  printf 'export BIN_DIR LIB_DIR PATH HYPR_SCRIPTS_PATH HYPR_SHELL_INIT\n'
+  printf 'export BIN_DIR LIB_DIR PATH HYPR_SHELL_INIT\n'
 
   cat <<'EOT'
 # shellcheck source=/dev/null

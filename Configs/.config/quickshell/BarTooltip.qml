@@ -14,9 +14,8 @@ PopupWindow {
 
     property bool dismissed: false
 
-    // clicking a module acts on it; the label has served its purpose
     function dismiss() { dismissed = true; update() }
-    function update() { ready = false; if (hovered && text && !dismissed) timer.restart(); else timer.stop() }
+    function update() { ready = false; if (hovered && text && !dismissed) hoverDwellTimer.restart(); else hoverDwellTimer.stop() }
     onHoveredChanged: { if (!hovered) dismissed = false; update() }
     onTextChanged: update()
     visible: ready && hovered && text !== ""
@@ -24,7 +23,7 @@ PopupWindow {
     implicitWidth: label.width + 16
     implicitHeight: label.implicitHeight + 10
 
-    Timer { id: timer; interval: Style.tooltipDelay; onTriggered: root.ready = true }
+    Timer { id: hoverDwellTimer; interval: Style.tooltipDelay; onTriggered: root.ready = true }
     anchor {
         window: root.anchorWindow
         adjustment: PopupAdjustment.Slide
@@ -42,8 +41,8 @@ PopupWindow {
     }
     Rectangle {
         anchors.fill: parent; radius: root.shell.rounding
-        color: root.shell.alpha(root.shell.background, Style.popupSurfaceOpacity)
-        border.color: root.shell.alpha(root.shell.role("br", root.shell.foreground), .45)
+        color: root.shell.alpha(Style.popupTinted(root.shell.background), Style.popupSurfaceOpacity)
+        border.color: root.shell.alpha(Style.popupBorder(root.shell.role("br", root.shell.foreground)), .45)
         Text {
             id: label; anchors.centerIn: parent; width: Math.min(340, implicitWidth)
             color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall

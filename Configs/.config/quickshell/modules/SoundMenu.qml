@@ -12,6 +12,7 @@ AudioButton {
     readonly property var devices: Pipewire.nodes.values.filter(node => node?.audio && !node.isStream)
     readonly property var inputs: devices.filter(node => !node.isSink)
     popupName: "sound-menu"; popupEnabled: popupsAllowed
+    settingsPopupName: popupName + "-settings"
     text: !sink ? "󰖁" : muted ? mutedPortIcon || "󰝟" : portIcon && !zeroVolume ? portIcon
         : (sink.audio?.volume ?? 0) < .34 ? "󰕿" : sink.audio.volume < .67 ? "󰖀" : "󰕾"
     symbolContext: ["headphone", "headset", "hands-free"].includes(portKey) && !muted ? "devices" : "status"
@@ -25,7 +26,7 @@ AudioButton {
         iconColor: modelData === current ? root.shell.accent : root.shell.alpha(root.shell.foreground, .55)
     }
     MacCard {
-        anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: "sound-menu"; settings: "Sound"; settingsPopup: "audio"
+        anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: root.popupName; settings: "Sound"; settingsPopup: root.settingsPopupName
         Column {
             width: parent.width; spacing: Style.xs; visible: root.mediaCard
             PopupRow {

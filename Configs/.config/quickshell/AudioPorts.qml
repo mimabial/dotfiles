@@ -8,6 +8,7 @@ Singleton {
     property var sinks: []
     property bool refreshPending: false
     property var processEnvironment: ({ LC_ALL: "C" })
+    signal cardsChanged()
     function port(name) { const sink = sinks.find(sink => sink.name === name); return sink ? String(sink.active_port || "") : "" }
     function refresh() {
         if (probe.running) refreshPending = true
@@ -17,8 +18,11 @@ Singleton {
         command: ["pactl", "subscribe"]
         environment: root.processEnvironment
         running: Pipewire.ready
-        onStarted: root.refresh()
-        stdout: SplitParser { onRead: line => { if (/on (sink|card|server) #/.test(line)) root.refresh() } }
+        onStarted: { root.refresh(); root.cardsChanged() }
+        stdout: SplitParser { onRead: line => {
+            if (/on (sink|card|server) #/.test(line)) root.refresh()
+            if (/on (card|server) #/.test(line)) root.cardsChanged()
+        } }
     }
     Process {
         id: probe

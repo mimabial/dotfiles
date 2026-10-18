@@ -1,11 +1,19 @@
 # Look and feel
 
-`Super + T` then `V` opens a terminal UI for every visual key a theme sets: gaps,
+`Super + T` then `V`, or `Super + J` then `L`, opens the desktop Settings TUI.
+Its visual pages cover every visual key a theme sets: gaps,
 border width, rounding, opacity, dimming, blur, shadow, glow, animations, group
 bars, cursor theme and size, and whichever knobs the active layout engine has.
 
 It has live preview. Change a value and the compositor changes under it, so you
 tune by looking rather than by editing Lua and reloading.
+
+The same window has pages for theme, bar, keyboard, displays, workspaces,
+audio, network, Bluetooth, power, Compose sequences and keybindings. From the shell:
+
+```bash
+hyprshell window/settings
+```
 
 ## Per-theme memory
 
@@ -24,9 +32,9 @@ refuses.
 directories. The panel gives you a row that dispatches into those pipelines
 rather than inventing a fourth preset system of its own.
 
-**Input, gestures, layer rules, per-monitor settings.** The catalogue stops at
-visual look and feel. Those live in `userprefs.lua` and `monitors.lua`, where you
-can read them.
+**Input, gestures, layer rules, per-monitor settings.** The visual catalogue
+stops at look and feel. The other Settings pages use their owning helpers;
+hand-written rules live in `userprefs.lua`, `gestures.lua` and `monitors.lua`.
 
 ## Where it lands
 

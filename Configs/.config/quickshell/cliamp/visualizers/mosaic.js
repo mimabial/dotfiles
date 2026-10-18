@@ -1,12 +1,10 @@
-// Port of cliamp vis_mosaic.go.
 .pragma library
-.import "helpers.js" as H
+.import "helpers.js" as VisualizerHelpers
 
 var CELL_CHARS = 2
 var CELL_GAP_CHARS = 1
 var DECAY = 0.88
 
-// Discrete brightness tiers. tier -1 renders as spaces so unlit tiles vanish.
 var LEVELS = [
   { glyph: " ", tier: -1 },
   { glyph: "░", tier: 0 },
@@ -32,8 +30,6 @@ function tileCount(panelWidth) {
   return Math.floor((panelWidth + CELL_GAP_CHARS) / (CELL_CHARS + CELL_GAP_CHARS))
 }
 
-// Each cell is wired to a band biased by its row (top treble, bottom bass) with a
-// small jitter, and to a threshold in [0.04, 0.78] so lit density rises with loudness.
 function ensureGrid(s, rows, tiles, bandCount) {
   if (s.mosaicRows === rows && s.mosaicTiles === tiles && s.mosaicCells
       && s.mosaicCells.length === rows * tiles) return
@@ -46,39 +42,36 @@ function ensureGrid(s, rows, tiles, bandCount) {
     var baseBand = rows > 1 ? Math.floor((rows - 1 - r) * (bandCount - 1) / (rows - 1))
                             : Math.floor(bandCount / 2)
     for (var c = 0; c < tiles; c++) {
-      var jitter = (H.lcgRng(rng) >>> 16) % 5 - 2
+      var jitter = (VisualizerHelpers.lcgRng(rng) >>> 16) % 5 - 2
       var band = Math.max(0, Math.min(bandCount - 1, baseBand + jitter))
       s.mosaicCells[r * tiles + c] = {
         bandIdx: band,
-        threshold: 0.04 + H.lcgRand01(rng) * 0.74,
+        threshold: 0.04 + VisualizerHelpers.lcgRand01(rng) * 0.74,
         value: 0
       }
     }
   }
 }
 
-// vis_mosaic.go OnEnter. ensureGrid reseeds from a fixed constant, so the rebuilt
-// grid is identical — what dropping it actually buys is tile intensities back at
-// zero, so entering the mode fades up from dark instead of resuming mid-bright.
 function onEnter(state) {
   state.mosaicCells = null
   state.mosaicRows = 0
   state.mosaicTiles = 0
 }
 
-function render(ctx, d) {
-  var bands = d.bands, w = d.width, h = d.height
+function render(canvas, frameData) {
+  var bands = frameData.bands, width = frameData.width, height = frameData.height
 
   var charW = 6
   var charH = 10
-  var numCols = Math.floor(w / charW)
-  var numRows = Math.floor(h / charH)
+  var numCols = Math.floor(width / charW)
+  var numRows = Math.floor(height / charH)
   var tiles = tileCount(numCols)
   if (numRows < 1 || tiles < 1) return
 
-  var s = d.state
-  ensureGrid(s, numRows, tiles, bands.length || 24)
-  var cells = s.mosaicCells
+  var animationState = frameData.state
+  ensureGrid(animationState, numRows, tiles, bands.length || 24)
+  var cells = animationState.mosaicCells
 
   for (var i = 0; i < cells.length; i++) {
     var cell = cells[i]
@@ -91,24 +84,24 @@ function render(ctx, d) {
     if (cell.value < 0.001) cell.value = 0
   }
 
-  var tone = H.playerTiers(d)
+  var tone = VisualizerHelpers.playerTiers(frameData)
 
-  ctx.save()
-  ctx.font = "bold 10px monospace"
-  ctx.textAlign = "center"
-  ctx.textBaseline = "middle"
+  canvas.save()
+  canvas.font = "bold 10px monospace"
+  canvas.textAlign = "center"
+  canvas.textBaseline = "middle"
 
   for (var r = 0; r < numRows; r++) {
     var cy = r * charH + charH / 2
     for (var t = 0; t < tiles; t++) {
       var lvl = levelFor(cells[r * tiles + t].value)
       if (lvl.tier < 0) continue
-      ctx.fillStyle = tone[lvl.tier]
+      canvas.fillStyle = tone[lvl.tier]
       for (var k = 0; k < CELL_CHARS; k++) {
-        ctx.fillText(lvl.glyph, (t * (CELL_CHARS + CELL_GAP_CHARS) + k) * charW + charW / 2, cy)
+        canvas.fillText(lvl.glyph, (t * (CELL_CHARS + CELL_GAP_CHARS) + k) * charW + charW / 2, cy)
       }
     }
   }
 
-  ctx.restore()
+  canvas.restore()
 }

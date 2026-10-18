@@ -80,7 +80,7 @@ def limit_window(window):
   reset = window.get("resetsAt")
   return {
     "label": label,
-    "percent": float(used) / 100.0,
+    "usageFraction": float(used) / 100.0,
     "resetsAt": datetime.fromtimestamp(integer_token_count(reset), timezone.utc).isoformat() if reset else "",
   }
 

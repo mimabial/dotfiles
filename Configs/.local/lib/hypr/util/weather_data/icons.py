@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from functools import cache
 from pathlib import Path
 
@@ -11,9 +12,24 @@ def weather_icons():
         return {"default": "󰖐"}
 
 
-def weather_icon(weather_code):
+def weather_icon(weather_code, is_day=None):
     codes = weather_icons()
-    return codes.get(str(weather_code), codes.get("default", "󰖐"))
+    icon = codes.get(str(weather_code), codes.get("default", "󰖐"))
+    return codes.get("night", {}).get(str(weather_code), icon) if is_day == 0 else icon
+
+
+def condition_is_day(condition, astronomy):
+    if condition.get("is_day") is not None:
+        return condition["is_day"]
+    stamp = condition.get("localObsDateTime", condition.get("time", ""))
+    try:
+        clock = (datetime.fromisoformat(stamp) if "T" in stamp
+                 else datetime.strptime(stamp, "%Y-%m-%d %I:%M %p")).time()
+        sunrise = datetime.strptime(astronomy["sunrise"], "%I:%M %p").time()
+        sunset = datetime.strptime(astronomy["sunset"], "%I:%M %p").time()
+        return sunrise <= clock < sunset
+    except (KeyError, TypeError, ValueError):
+        return None
 
 
 def annotate_day_icons(weather):
@@ -25,10 +41,11 @@ def annotate_day_icons(weather):
             code = midday.get("weatherCode")
         if code:
             day["icon"] = weather_icon(code)
+        astronomy = (day.get("astronomy") or [{}])[0]
         for hour in hours:
-            if hour.get("weatherCode"):
-                hour["icon"] = weather_icon(hour["weatherCode"])
             stamp = str(hour.get("time", ""))
             if stamp.isdigit():
                 hour["time"] = f"{day.get('date')}T{int(stamp) // 100:02d}:{int(stamp) % 100:02d}"
+            if hour.get("weatherCode"):
+                hour["icon"] = weather_icon(hour["weatherCode"], condition_is_day(hour, astronomy))
     return weather

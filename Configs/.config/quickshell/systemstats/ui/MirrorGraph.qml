@@ -1,25 +1,22 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
-// Bidirectional bar history for send/receive and read/write: `up` grows
-// from the midline upward, `down` grows from it downward, both on one
-// shared scale so the eye can compare them.
 Canvas {
   id: root
 
   property var up: []
   property var down: []
-  property color upColor: Color.accent
-  property color downColor: Color.accent
+  property color upColor: Commons.Color.accent
+  property color downColor: Commons.Color.accent
   property real minimumCeiling: 10 * 1024  // keeps an idle link from looking busy
   property real headroom: 1.08
   property int barWidth: 2
   property int gap: 1
-  property color midlineColor: Util.alpha(Color.popups.text, 0.18)
+  property color midlineColor: Commons.Util.alpha(Commons.Color.popups.text, 0.18)
   property bool showGaps: false
-  property color gapColor: Util.alpha(Color.popups.text, 0.5)
+  property color gapColor: Commons.Util.alpha(Commons.Color.popups.text, 0.5)
 
   readonly property int pitch: Math.max(1, barWidth + gap)
   readonly property int capacity: Math.max(1, Math.floor((width + gap) / pitch))

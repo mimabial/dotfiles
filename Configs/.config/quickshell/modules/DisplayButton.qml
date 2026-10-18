@@ -6,6 +6,7 @@ BarButton {
     id: root
     property bool popupEnabled: true
     property string popupName: "monitor"
+    property string settingsPopupName: popupName
     opensPopup: true
     css: "display"
     text: Backlight.icon
@@ -28,14 +29,14 @@ BarButton {
         active: displayPanelLoader.everOpened
         asynchronous: true
         visible: false
-        Component.onCompleted: if (root.shell.popupName === "monitor") displayPanelLoader.everOpened = true
+        Component.onCompleted: if (root.popupEnabled && root.shell.popupName === root.settingsPopupName) displayPanelLoader.everOpened = true
         onActiveChanged: if (displayPanelLoader.active && String(displayPanelLoader.source) === "")
             displayPanelLoader.setSource(Qt.resolvedUrl("../monitor/DisplayPanel.qml"),
-                { anchorItem: root, shell: root.shell })
+                { anchorItem: root, shell: root.shell, popupName: root.settingsPopupName })
         Connections {
             target: root.shell
             function onPopupNameChanged() {
-                if (root.shell.popupName === "monitor") displayPanelLoader.everOpened = true
+                if (root.popupEnabled && root.shell.popupName === root.settingsPopupName) displayPanelLoader.everOpened = true
             }
         }
     }

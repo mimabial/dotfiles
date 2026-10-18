@@ -1,12 +1,12 @@
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
 Text {
   id: root
 
-  property color foreground: Color.foreground
-  property string fontFamily: Style.font.family
-  property real fontSize: Style.font.caption
+  property color foreground: Commons.Color.foreground
+  property string fontFamily: Commons.Style.font.family
+  property real fontSize: Commons.Style.font.caption
 
   color: Qt.darker(foreground, 1.4)
   font.family: fontFamily

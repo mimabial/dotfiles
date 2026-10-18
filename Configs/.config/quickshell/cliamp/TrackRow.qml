@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
 MediaRow {
   id: row
@@ -47,16 +47,16 @@ MediaRow {
     controller: row.controller
     enabled: !row.queued || row.removable
     text: row.queued ? "\uf00d" : "\uea60"
-    hot: row.queued ? row.controller.urgent : Color.accent
+    hot: row.queued ? row.controller.urgent : Commons.Color.accent
     onActivated: row.queued ? row.dequeue() : row.enqueue()
   }
   Text {
     visible: row.loading
     anchors.verticalCenter: parent.verticalCenter
     text: "\uf110"
-    color: Color.accent
+    color: Commons.Color.accent
     font.family: row.controller.fontFamily
-    font.pixelSize: Style.font.caption
+    font.pixelSize: Commons.Style.font.caption
     RotationAnimator on rotation { running: row.loading; from: 0; to: 360; duration: 1000; loops: Animation.Infinite }
   }
   RowGlyph {

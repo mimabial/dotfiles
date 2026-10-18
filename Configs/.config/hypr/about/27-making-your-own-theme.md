@@ -41,9 +41,10 @@ kvantum-shell = "pill"
 
 That is enough. Everything else in the desktop is derived from it.
 
-`kvantum-shell` picks the Qt widget shell — `flat`, `materia` or `pill`. A theme
-pack carries no Kvantum assets of its own; it names a shell, and the shell is
-recolored from the palette at apply time. Leave it out and you get `flat`.
+`kvantum-shell` selects the Qt color mapping — `flat`, `materia` or `pill`.
+`render/qtct.py` reads that shell's `shell.kvconfig` and `shell.map` under
+`~/.config/hypr/kvantum/shells/` and renders KDE color roles. Qt apps use the KDE
+platform theme with Breeze. Leave the key out and you get `flat`.
 
 ## Per-app overrides
 
@@ -59,9 +60,12 @@ The roles are the ones the bar's `role()` function reads — `bg`, `fg`, `br`,
 `accent`, the `act_*` / `alt_*` / `hvr_*` families, `c0` through `c15`, and
 `info` / `warning` / `error` / `success`.
 
-Use these when the derived default is wrong for one app specifically. A missing
-or unparseable override falls back to the derived defaults rather than failing
-the render, so you can experiment without breaking the switch.
+The bar's background and foreground use `bg` and `fg`; `background` and
+`foreground` do not replace those roles.
+
+Use these when the derived default is wrong for one app specifically. Missing
+overrides use derived defaults. Quickshell falls back when its override is
+malformed; other app overrides must be valid in their own syntax.
 
 ## Wallpapers
 

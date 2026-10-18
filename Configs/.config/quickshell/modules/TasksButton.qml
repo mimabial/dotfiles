@@ -11,22 +11,19 @@ BarButton {
     property int dueCount: 0
     property bool showBadge: true
     property bool notifyOnDue: true
-    // ids already announced, so a task is not re-notified every scan
     property var notified: ({})
 
     css: "tasks"
     text: ""
     tooltip: ""
     active: root.shell.popupName === "tasks"
-    badgeText: showBadge && dueCount > 0 ? countGlyph(dueCount) : ""
+    badgeText: showBadge && dueCount > 0 ? root.countText(dueCount) : ""
     onClicked: { root.loaded = true; root.shell.togglePopup("tasks") }
 
-    // hyprshell forks a shell per call, so the polling path runs the helper
-    // directly
     readonly property string helper: root.shell.home + "/.local/lib/hypr/calendar/agenda.sh"
 
     Process {
-        id: countProc
+        id: countProcess
         command: ["bash", root.helper, "--todos"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             let payload = ({})
@@ -45,9 +42,6 @@ BarButton {
         } }
     }
 
-    // A task is announced once its due moment has passed. Undated tasks and
-    // ones already past when first seen are recorded silently, so enabling
-    // this does not dump a backlog of notifications.
     function announce(todos, now) {
         const seen = ({})
         for (const item of todos) {
@@ -63,14 +57,12 @@ BarButton {
                 root.shell.run(["notify-send", "-a", "Tasks", "-i", "task-due",
                     "Task due", String(item.summary || "")])
         }
-        // forget ids that no longer exist so the file cannot grow forever
         const kept = ({})
         for (const id in root.notified) if (seen[id] === true) kept[id] = true
         root.notified = kept
         root.store.setText(JSON.stringify({ notified: root.notified }))
         root.primed = true
     }
-    // the first scan of a session only records; it never notifies
     property bool primed: false
     property bool settingsLoaded: false
 
@@ -89,7 +81,7 @@ BarButton {
         onLoadFailed: root.settingsLoaded = true
     }
 
-    function refresh() { if (!countProc.running) countProc.running = true }
+    function refresh() { if (!countProcess.running) countProcess.running = true }
     Timer { interval: 60000; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
 
     Connections {

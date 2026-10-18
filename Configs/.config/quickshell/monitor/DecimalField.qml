@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
-import qs.Commons
+import qs.Commons as Commons
 import "Ui"
 
 Column {
@@ -15,7 +15,7 @@ Column {
   property alias input: decimalInput
   signal modified(real value)
 
-  spacing: Style.space(4)
+  spacing: Commons.Style.space(4)
 
   function formatted() {
     var number = Number(decimalField.value || 0)

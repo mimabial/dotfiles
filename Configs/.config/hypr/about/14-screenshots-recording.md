@@ -1,6 +1,7 @@
 # Screenshots and recording
 
-`Super + R` is the capture submap. `Print` on its own takes everything.
+`Super + R` is the capture submap. `Print` on its own takes everything;
+`Shift + Print` uses smart selection.
 
 ## Screenshots
 
@@ -39,18 +40,21 @@ SCREENSHOT_OCR_LANGS="eng+fra" hyprshell capture/screenshot.sh ocr
 
 ## Recording
 
-`Super + R` then `R` toggles screen recording, `W` toggles it with a webcam
-overlay, and `X` stops it. Toggling matters — you do not want to be hunting for a
+`Super + R` then `R` toggles recording of the focused monitor with desktop
+audio. `W` toggles recording through the portal picker with a webcam overlay
+and desktop audio, and `X` stops it.
+Toggling matters — you do not want to be hunting for a
 stop button while recording the hunt.
 
 The script takes a lot more:
 
 ```bash
-hyprshell capture/screenrecord --toggle
+hyprshell capture/screenrecord --toggle --audio --output
 hyprshell capture/screenrecord --region --with-microphone-audio
 hyprshell capture/screenrecord --window --with-desktop-audio
 hyprshell capture/screenrecord --output --resolution=1920x1080
 hyprshell capture/screenrecord --with-webcam --webcam-device=/dev/video2
+hyprshell capture/screenrecord --quit
 ```
 
 `--start` goes through the desktop portal picker. `--window`, `--region`,
@@ -60,7 +64,7 @@ which is faster and does not flash a dialog into your recording.
 `--status` prints bar JSON, which is how the bar knows to show a recording
 indicator.
 
-The menu has all of this under **Trigger > Screenrecord**, including the audio
+The menu has all of this under **Capture > Screenrecord**, including the audio
 variants as their own submenus.
 
 ## The rest of the submap

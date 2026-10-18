@@ -1,20 +1,5 @@
 #!/usr/bin/env bash
 
-hyprshell_script_roots_into() {
-  local -n roots_ref="$1"
-  local search_path="${2:-${HYPR_SCRIPTS_PATH:-${LIB_DIR}/hypr}}" directory
-  local -a directories=()
-  local -A seen_directories=()
-  IFS=':' read -ra directories <<<"${search_path}"
-  roots_ref=()
-  for directory in "${directories[@]}"; do
-    [[ -n "${directory}" && -z "${seen_directories[${directory}]:-}" ]] || continue
-    seen_directories["${directory}"]=1
-    [[ -d "${directory}" ]] && roots_ref+=("${directory}")
-  done
-  return 0
-}
-
 hyprshell_is_internal_script() {
   case "$1" in
     core/* | runtime/* | pyutils/* | shell/*) return 0 ;;
@@ -29,29 +14,24 @@ hyprshell_is_internal_script() {
 }
 
 hyprshell_print_entrypoint_records() {
-  local -n roots_ref="$1"
-  local directory relative_path script_path
-  for directory in "${roots_ref[@]}"; do
-    while IFS=$'\t' read -r relative_path script_path; do
-      hyprshell_is_internal_script "${relative_path}" && continue
-      # Python: list entrypoints only, not import-only modules.
-      if [[ "${script_path}" == *.py && ! -x "${script_path}" ]]; then
-        grep -qs '__name__ == .__main__.' "${script_path}" || continue
-      fi
-      printf '%s\t%s\n' "${relative_path}" "${script_path}"
-    done < <(find -L "${directory}" -maxdepth 2 -type f \
-      \( -name '*.sh' -o -name '*.py' \) -printf '%P\t%p\n' 2>/dev/null)
-  done
+  local relative_path script_path
+  while IFS=$'\t' read -r relative_path script_path; do
+    hyprshell_is_internal_script "${relative_path}" && continue
+    # Python: list entrypoints only, not import-only modules.
+    if [[ "${script_path}" == *.py && ! -x "${script_path}" ]]; then
+      grep -qs '__name__ == .__main__.' "${script_path}" || continue
+    fi
+    printf '%s\t%s\n' "${relative_path}" "${script_path}"
+  done < <(find -L "${HYPR_LIB_DIR}" -maxdepth 2 -type f \
+    \( -name '*.sh' -o -name '*.py' \) -printf '%P\t%p\n' 2>/dev/null)
 }
 
 hyprshell_print_script_names() {
-  local -a script_roots=()
   local -A relative_paths=()
   local relative_path script_path
-  hyprshell_script_roots_into script_roots
   while IFS=$'\t' read -r relative_path script_path; do
     relative_paths["${relative_path}"]=1
-  done < <(hyprshell_print_entrypoint_records script_roots)
+  done < <(hyprshell_print_entrypoint_records)
   ((${#relative_paths[@]})) || return 0
   while IFS= read -r relative_path; do
     relative_path="${relative_path%.sh}"
@@ -60,7 +40,7 @@ hyprshell_print_script_names() {
 }
 
 hyprshell_print_script_paths() {
-  find -L "${LIB_DIR}/hypr" \
+  find -L "${HYPR_LIB_DIR}" \
     -path '*/__pycache__' -prune -o \
     -type f \( -name '*.sh' -o -name '*.py' \) -print
 }
@@ -112,15 +92,14 @@ hyprshell_extract_script_summaries() {
 }
 
 hyprshell_print_described_scripts() {
-  local -a script_roots=() command_names=() script_paths=() pipeline_hooks=()
+  local -a command_names=() script_paths=() pipeline_hooks=()
   local -A summaries=()
   local relative_path="" script_path="" summary_text="" index
 
-  hyprshell_script_roots_into script_roots
   while IFS=$'\t' read -r relative_path script_path; do
     command_names+=("${relative_path%.*}")
     script_paths+=("${script_path}")
-  done < <(hyprshell_print_entrypoint_records script_roots | sort -u)
+  done < <(hyprshell_print_entrypoint_records | sort -u)
   [[ ${#script_paths[@]} -gt 0 ]] || return 0
 
   while IFS=$'\t' read -r script_path summary_text; do

@@ -1,5 +1,5 @@
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
 Item {
   id: separator
@@ -10,6 +10,6 @@ Item {
     anchors.centerIn: parent
     width: separator.dock.separatorWidth
     height: separator.dock.iconSize * 0.7
-    color: Util.alpha(Color.bar.text, 0.25)
+    color: Commons.Util.alpha(Commons.Color.bar.text, 0.25)
   }
 }

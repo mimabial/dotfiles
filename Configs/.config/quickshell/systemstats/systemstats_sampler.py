@@ -1,17 +1,4 @@
 #!/usr/bin/python3
-"""Emits one JSON object per line on stdout at a fixed interval. Reads procfs and
-sysfs directly (no psutil) so the only dependency is a Python 3 interpreter.
-
-Control lines on stdin:
-    detail 0|1|2    0 = none, 1 = top processes, 2 = every process
-    focus <page>    page the panel shows; "network" adds per-process traffic
-    interval <sec>  change the sampling interval (0.1 - 30)
-    gpu             reload the selected GPU
-    pubip           refresh the public IP address in the background
-
-Cheap counters follow the interval; anything that walks many files
-(processes, sensors, battery, socket mapping) runs at most once a second.
-"""
 
 from __future__ import annotations
 
@@ -49,6 +36,9 @@ PROCESS_SCAN_LIMIT = 16_384
 FD_SCAN_LIMIT = 4096
 SOCKET_SCAN_LIMIT = 16_384
 PROC_FILE_LIMIT = 64 * 1024
+DETAIL_NONE = 0
+DETAIL_TOP_PROCESSES = 1
+DETAIL_ALL_PROCESSES = 2
 PATH_TEXT_LIMIT = 4096
 FIELD_TEXT_LIMIT = 64
 SSID_TEXT_LIMIT = 128
@@ -83,15 +73,13 @@ def encode_payload(payload: dict) -> bytes:
 
 
 def bounded_text(value: str, limit: int = EXTERNAL_TEXT_LIMIT) -> str:
-    """Return at most limit UTF-8 bytes without splitting a character."""
     encoded = value.encode("utf-8", "replace")
     if len(encoded) <= limit:
         return value
     return encoded[:limit].decode("utf-8", "ignore")
 
 
-def list_dir(path: str, limit: int = DIRECTORY_ENTRY_LIMIT) -> list[str]:
-    """Return sorted names, or nothing when a directory exceeds its bound."""
+def bounded_directory_names(path: str, limit: int = DIRECTORY_ENTRY_LIMIT) -> list[str]:
     names: list[str] = []
     try:
         with os.scandir(path) as entries:
@@ -106,7 +94,7 @@ def list_dir(path: str, limit: int = DIRECTORY_ENTRY_LIMIT) -> list[str]:
 
 
 def fd_targets(pid: str):
-    for fd in list_dir(f"/proc/{pid}/fd", FD_SCAN_LIMIT):
+    for fd in bounded_directory_names(f"/proc/{pid}/fd", FD_SCAN_LIMIT):
         try:
             yield fd, os.readlink(f"/proc/{pid}/fd/{fd}")
         except OSError:
@@ -155,8 +143,7 @@ def read_float(path: str, default: float | None = None) -> float | None:
         return default
 
 
-def command_path(program: str) -> str | None:
-    """Resolve optional helpers from protected system directories, not PATH."""
+def trusted_helper_path(program: str) -> str | None:
     if not program or "/" in program:
         return None
     for directory in TOOL_DIRS:
@@ -176,7 +163,7 @@ def kill_process_group(proc: subprocess.Popen) -> None:
 def run(cmd: list[str], timeout: float = 2.0) -> str:
     if not cmd:
         return ""
-    executable = command_path(cmd[0])
+    executable = trusted_helper_path(cmd[0])
     if executable is None:
         return ""
     try:
@@ -220,7 +207,6 @@ def run(cmd: list[str], timeout: float = 2.0) -> str:
                 output.extend(chunk)
             if not exited and proc.poll() is not None:
                 exited = True
-                # A descendant must not retain the captured pipe indefinitely.
                 kill_process_group(proc)
         return output.decode("utf-8")
     except (OSError, UnicodeDecodeError, subprocess.SubprocessError):
@@ -318,12 +304,12 @@ class CpuSampler:
 
     def _find_temp_source(self) -> str | None:
         found: dict[str, str] = {}
-        for hw in list_dir("/sys/class/hwmon"):
+        for hw in bounded_directory_names("/sys/class/hwmon"):
             base = f"/sys/class/hwmon/{hw}"
             name = read_text(f"{base}/name")
             if not name:
                 continue
-            for entry in list_dir(base):
+            for entry in bounded_directory_names(base):
                 if not (entry.startswith("temp") and entry.endswith("_input")):
                     continue
                 label = read_text(f"{base}/{entry[:-6]}_label").lower()
@@ -341,8 +327,7 @@ class CpuSampler:
                 return found[pref]
         if "labelled" in found:
             return found["labelled"]
-        # Thermal zones as a last resort (ARM boards, laptops without hwmon labels).
-        for zone in list_dir("/sys/class/thermal"):
+        for zone in bounded_directory_names("/sys/class/thermal"):
             if not zone.startswith("thermal_zone"):
                 continue
             ztype = read_text(f"/sys/class/thermal/{zone}/type").lower()
@@ -424,12 +409,11 @@ class CpuSampler:
 
 
 class RaplSampler:
-    """Turn RAPL energy counter deltas into watts without elevated privileges."""
 
     def __init__(self, base: str = "/sys/class/powercap") -> None:
         self.base = base
         self.previous: dict[str, int] = {}
-        self.domains = [entry for entry in list_dir(base)
+        self.domains = [entry for entry in bounded_directory_names(base)
                         if re.fullmatch(r"intel-rapl:\d+(?::\d+)?", entry)]
 
     def sample(self, elapsed: float) -> dict:
@@ -459,8 +443,6 @@ class RaplSampler:
 
 
 class GpuSampler:
-    """Sample every GPU from sysfs; nvidia-smi runs only while NVIDIA is selected,
-    since each query wakes a runtime-suspended dGPU."""
 
     QUERY = (
         "name,utilization.gpu,memory.used,memory.total,temperature.gpu,"
@@ -484,7 +466,7 @@ class GpuSampler:
 
     def _detect(self) -> None:
         drm = "/sys/class/drm"
-        for card in list_dir(drm):
+        for card in bounded_directory_names(drm):
             if not re.fullmatch(r"card\d+", card):
                 continue
             device = f"{drm}/{card}/device"
@@ -497,7 +479,7 @@ class GpuSampler:
         for kind, device in self.devices.items():
             self.slots[kind] = os.path.basename(os.path.realpath(device))
             self.names[kind] = self._pci_name(self.slots[kind]) or kind.upper()
-            for hw in list_dir(f"{device}/hwmon"):
+            for hw in bounded_directory_names(f"{device}/hwmon"):
                 self.hwmons[kind] = f"{device}/hwmon/{hw}"
                 break
         self._sync_nvidia()
@@ -523,7 +505,7 @@ class GpuSampler:
 
     def _start_nvidia(self) -> None:
         try:
-            executable = command_path("nvidia-smi")
+            executable = trusted_helper_path("nvidia-smi")
             if executable is None:
                 raise FileNotFoundError("nvidia-smi")
             self.proc = subprocess.Popen(
@@ -580,7 +562,7 @@ class GpuSampler:
         if not hwmon:
             return None
         chosen = None
-        for entry in list_dir(hwmon):
+        for entry in bounded_directory_names(hwmon):
             if entry.startswith(prefix) and entry.endswith("_input"):
                 label = read_text(f"{hwmon}/{entry[:-6]}_label").lower()
                 if label in labels or chosen is None:
@@ -593,7 +575,7 @@ class GpuSampler:
 
     def _drm_fdinfos(self) -> list[str]:
         fds = {}
-        for pid in filter(str.isdigit, list_dir("/proc", PROCESS_SCAN_LIMIT)):
+        for pid in filter(str.isdigit, bounded_directory_names("/proc", PROCESS_SCAN_LIMIT)):
             try:
                 fd_count = os.stat(f"/proc/{pid}/fd").st_size
             except OSError:
@@ -698,7 +680,7 @@ def sample_memory() -> dict:
     apps = max(0, total - free - buffers - cached)
     zram_orig = 0
     zram_compr = 0
-    for dev in list_dir("/sys/block"):
+    for dev in bounded_directory_names("/sys/block"):
         if dev.startswith("zram"):
             fields = read_text(f"/sys/block/{dev}/mm_stat").split()
             if len(fields) >= 3:
@@ -742,23 +724,22 @@ class DiskSampler:
         base = "/sys/class/hwmon"
         if not os.path.isdir(base):
             return
-        for hw in list_dir(base):
+        for hw in bounded_directory_names(base):
             name = read_text(f"{base}/{hw}/name")
             if name not in ("nvme", "drivetemp"):
                 continue
             device = f"{base}/{hw}/device"
             block = None
             try:
-                for entry in list_dir(device):
+                for entry in bounded_directory_names(device):
                     if re.fullmatch(r"(nvme\d+n\d+|sd[a-z]+)", entry):
                         block = entry
                         break
                 if block is None and os.path.isdir(f"{device}/block"):
-                    block = next(iter(list_dir(f"{device}/block")), None)
+                    block = next(iter(bounded_directory_names(f"{device}/block")), None)
                 if block is None and os.path.isdir(f"{device}/nvme"):
-                    # nvme hwmon sits on the controller; its namespaces live one level deeper.
                     ctrl = os.path.basename(os.path.realpath(device))
-                    for entry in list_dir("/sys/block"):
+                    for entry in bounded_directory_names("/sys/block"):
                         if entry.startswith(ctrl):
                             block = entry
                             break
@@ -766,7 +747,7 @@ class DiskSampler:
                 continue
             if block is None:
                 ctrl = os.path.basename(os.path.realpath(device))
-                for entry in list_dir("/sys/block"):
+                for entry in bounded_directory_names("/sys/block"):
                     if entry.startswith(ctrl):
                         block = entry
                         break
@@ -774,14 +755,13 @@ class DiskSampler:
                 self.drive_temps[block] = f"{base}/{hw}/temp1_input"
 
     @staticmethod
-    def _parent_disk(device: str) -> str:
-        """Map /dev/nvme0n1p2 or /dev/mapper/root to its whole-disk name."""
+    def whole_disk_name(device: str) -> str:
         real = os.path.realpath(device)
         name = os.path.basename(real)
         for _ in range(MAX_DEVICE_STACK_DEPTH):
             slaves = f"/sys/block/{name}/slaves"
             if os.path.isdir(slaves):
-                entries = list_dir(slaves)
+                entries = bounded_directory_names(slaves)
                 if entries:
                     name = entries[0]
                     continue
@@ -791,8 +771,7 @@ class DiskSampler:
         match = re.match(r"(nvme\d+n\d+)p\d+$", name) or re.match(r"(mmcblk\d+)p\d+$", name) or re.match(r"([a-z]+)\d+$", name)
         if match and os.path.isdir(f"/sys/block/{match.group(1)}"):
             return match.group(1)
-        # Partition directories live under their parent in sysfs.
-        for disk in list_dir("/sys/block"):
+        for disk in bounded_directory_names("/sys/block"):
             if os.path.isdir(f"/sys/block/{disk}/{name}"):
                 return disk
         return name
@@ -825,7 +804,7 @@ class DiskSampler:
                 continue
             if existing is None and len(volumes) >= VOLUME_LIMIT:
                 continue
-            disk = self._parent_disk(device)
+            disk = self.whole_disk_name(device)
             model = bounded_text(
                 read_text(f"/sys/block/{disk}/device/model")
                 or read_text(f"/sys/block/{disk}/device/name")
@@ -918,7 +897,7 @@ class NetworkSampler:
 
     def _refresh_addresses(self) -> None:
         self.addr_cache = {}
-        if not command_path("ip"):
+        if not trusted_helper_path("ip"):
             return
         try:
             data = json.loads(run(["ip", "-j", "addr"]) or "[]")
@@ -940,7 +919,7 @@ class NetworkSampler:
 
     def _refresh_wifi(self, ifaces: list[str]) -> None:
         self.wifi_cache = {}
-        if not command_path("iw"):
+        if not trusted_helper_path("iw"):
             return
         for name in ifaces:
             info: dict = {}
@@ -1067,7 +1046,7 @@ class SensorSampler:
         if not os.path.isdir(base):
             self.chips = []
             return
-        for hw in sorted(list_dir(base), key=lambda h: int(h[5:]) if h[5:].isdigit() else 0):
+        for hw in sorted(bounded_directory_names(base), key=lambda h: int(h[5:]) if h[5:].isdigit() else 0):
             if remaining == 0:
                 break
             path = f"{base}/{hw}"
@@ -1075,7 +1054,7 @@ class SensorSampler:
             if not name:
                 continue
             temps, fans = [], []
-            for entry in list_dir(path):
+            for entry in bounded_directory_names(path):
                 if len(temps) + len(fans) >= remaining:
                     break
                 if entry.startswith("temp") and entry.endswith("_input"):
@@ -1105,9 +1084,7 @@ class SensorSampler:
             chips.append({"name": name, "path": path, "temps": temps, "fans": fans,
                           "device_id": device_id,
                           "labelled": any(t["label"] for t in temps) or any(f["label"] for f in fans)})
-        # Some boards expose the same super-IO chip twice (vendor + generic driver).
-        # Keep the labelled instance; drop unlabelled duplicates.
-        self.chips = self._dedupe(chips)
+        self.chips = self.deduplicate_sensor_channels(chips)
         self.gpu_temp_path = None
         for chip in self.chips:
             if chip["name"] in GPU_TEMP_HWMON and chip["temps"]:
@@ -1123,13 +1100,7 @@ class SensorSampler:
     def _score(chip: dict) -> int:
         return sum(2 for f in chip["fans"] if f["label"]) + sum(1 for t in chip["temps"] if t["label"])
 
-    def _dedupe(self, chips: list[dict]) -> list[dict]:
-        """Some boards register the same super-IO chip under two drivers.
-
-        A board chip is one physical device, so keep only the better-labelled
-        copy of each name. Everything else (one hwmon per DIMM, per drive, per
-        GPU) is kept as is.
-        """
+    def deduplicate_sensor_channels(self, chips: list[dict]) -> list[dict]:
         kept: list[dict] = []
         for chip in chips:
             duplicate = None
@@ -1223,7 +1194,7 @@ def sample_battery() -> dict | None:
     system = None
     peripherals = []
     ac_online = None
-    for entry in list_dir(base):
+    for entry in bounded_directory_names(base):
         path = f"{base}/{entry}"
         ptype = read_text(f"{path}/type")
         if ptype in ("Mains", "USB", "USB_PD", "USB_C"):
@@ -1299,7 +1270,6 @@ def sample_battery() -> dict | None:
 
 
 def display_name(pid: int, comm: str) -> str:
-    """A readable name: the kernel's 15-char comm, or the executable's basename."""
     if len(comm) < KERNEL_COMM_LENGTH:
         return bounded_text(comm)
     cmdline = read_text(f"/proc/{pid}/cmdline").split("\0")[0]
@@ -1327,7 +1297,7 @@ class ProcessSampler:
         current: dict[int, tuple[int, int, int, int]] = {}
         by_name: dict[str, dict] = {}
         names: dict[int, str] = {}
-        for entry in list_dir("/proc", PROCESS_SCAN_LIMIT):
+        for entry in bounded_directory_names("/proc", PROCESS_SCAN_LIMIT):
             if not entry.isdigit():
                 continue
             pid = int(entry)
@@ -1413,15 +1383,6 @@ class ProcessSampler:
         return result
 
     def network_usage(self, full: bool = False) -> list[dict]:
-        """Network traffic per process, without root.
-
-        The kernel keeps cumulative bytes_sent / bytes_received on every TCP
-        socket and hands them to any user through socket diagnostics
-        (`ss -ti`); differencing them per socket between calls gives real
-        per-process rates. Sockets are tied to processes through
-        /proc/<pid>/fd (own processes) or named after their cgroup (system
-        services). UDP, and so QUIC, carries no such counters.
-        """
         sockets: dict[str, dict] = {}
         current: dict | None = None
         for line in run(["ss", "-tineH"]).splitlines():
@@ -1454,7 +1415,7 @@ class ProcessSampler:
             return []
 
         owner: dict[str, tuple[int, str]] = {}
-        for entry in list_dir("/proc", PROCESS_SCAN_LIMIT):
+        for entry in bounded_directory_names("/proc", PROCESS_SCAN_LIMIT):
             if not entry.isdigit():
                 continue
             pid = int(entry)
@@ -1501,7 +1462,6 @@ class ProcessSampler:
 
 
 def cgroup_label(cgroup: str) -> str:
-    """Label for a socket whose owner we cannot inspect, from its cgroup."""
     last = cgroup.rsplit("/", 1)[-1].replace("\\x2d", "-")
     if not last:
         return "other"
@@ -1521,7 +1481,7 @@ def cgroup_label(cgroup: str) -> str:
 class Controller:
     def __init__(self, interval: float) -> None:
         self.interval = interval
-        self.detail = 0
+        self.detail = DETAIL_NONE
         self.focus = ""
         self.lock = threading.Lock()
         self.public_ip_requested = False
@@ -1535,7 +1495,7 @@ class Controller:
                 continue
             with self.lock:
                 if parts[0] == "detail" and len(parts) > 1:
-                    self.detail = 2 if parts[1] in ("2", "full", "all") else (1 if parts[1] in ("1", "true", "on") else 0)
+                    self.detail = DETAIL_ALL_PROCESSES if parts[1] in ("2", "full", "all") else (DETAIL_TOP_PROCESSES if parts[1] in ("1", "true", "on") else DETAIL_NONE)
                 elif parts[0] == "focus" and len(parts) > 1:
                     self.focus = parts[1]
                 elif parts[0] == "interval" and len(parts) > 1:
@@ -1563,7 +1523,7 @@ def main() -> int:
             interval = float(args[args.index("--interval") + 1])
         except (IndexError, ValueError):
             pass
-    detail_flag = 2 if "--full" in args else (1 if "--detail" in args else 0)
+    detail_flag = DETAIL_ALL_PROCESSES if "--full" in args else (DETAIL_TOP_PROCESSES if "--detail" in args else DETAIL_NONE)
     once = "--once" in args
 
     controller = Controller(interval)
@@ -1586,12 +1546,11 @@ def main() -> int:
 
     last = time.monotonic()
     seq = 0
-    # Prime the delta-based samplers so the first emitted line already has rates.
     cpu.sample()
     disks.sample(1.0, time.time())
-    net.sample(1.0, time.time(), controller.detail > 0)
-    if controller.detail:
-        procs.sample(1.0, controller.detail >= 2)
+    net.sample(1.0, time.time(), controller.detail != DETAIL_NONE)
+    if controller.detail != DETAIL_NONE:
+        procs.sample(1.0, controller.detail == DETAIL_ALL_PROCESSES)
     time.sleep(min(interval, 1.0) if not once else 0.5)
 
     last_slow: float | None = None
@@ -1624,19 +1583,19 @@ def main() -> int:
         if slow_due:
             try:
                 sensors_cache = sensors.sample(now)
-            except Exception as error:  # noqa: BLE001 - keep streaming on any sampler failure
+            except Exception as error:  
                 sensors_cache = None
                 payload["errors"].append(f"sensors: {error}")
             try:
                 battery_cache = sample_battery()
-            except Exception as error:  # noqa: BLE001
+            except Exception as error:  
                 battery_cache = None
                 payload["errors"].append(f"battery: {error}")
-            if detail:
+            if detail != DETAIL_NONE:
                 since = elapsed if last_procs is None else max(0.05, now_mono - last_procs)
                 try:
-                    procs_cache = procs.sample(since, detail >= 2)
-                except Exception as error:  # noqa: BLE001
+                    procs_cache = procs.sample(since, detail == DETAIL_ALL_PROCESSES)
+                except Exception as error:  
                     procs_cache = None
                     payload["errors"].append(f"procs: {error}")
                 last_procs = now_mono
@@ -1645,10 +1604,10 @@ def main() -> int:
                 procs_cache = None
                 last_procs = None
             connections_cache = None
-            if detail and focus == "network":
+            if detail != DETAIL_NONE and focus == "network":
                 try:
-                    connections_cache = procs.network_usage(detail >= 2)
-                except Exception as error:  # noqa: BLE001
+                    connections_cache = procs.network_usage(detail == DETAIL_ALL_PROCESSES)
+                except Exception as error:  
                     payload["errors"].append(f"connections: {error}")
             last_slow = now_mono
         for key, fn in (
@@ -1657,11 +1616,11 @@ def main() -> int:
             ("gpu", lambda: gpu.sample(slow_due)),
             ("mem", sample_memory),
             ("disks", lambda: disks.sample(elapsed, now)),
-            ("net", lambda: net.sample(elapsed, now, detail > 0)),
+            ("net", lambda: net.sample(elapsed, now, detail != DETAIL_NONE)),
         ):
             try:
                 payload[key] = fn()
-            except Exception as error:  # noqa: BLE001
+            except Exception as error:  
                 payload[key] = None
                 payload["errors"].append(f"{key}: {error}")
         if isinstance(payload.get("net"), dict):

@@ -1,22 +1,19 @@
-// Port of cliamp vis_scatter.go.
 .pragma library
-.import "helpers.js" as H
+.import "helpers.js" as VisualizerHelpers
 
-// Rows outer, bands inner: the colour and the gravity bias depend only on the row, so
-// each is computed once per row instead of once per dot.
-function render(ctx, d) {
-  var bands = d.bands, h = d.height, count = d.count, barW = d.barW, gap = d.gap, S = 2
-  var ramp = H.playerTierRamp(d, h)
-  for (var sy = 0; sy < h; sy += S) {
-    ctx.fillStyle = ramp[h - 1 - sy]
-    var gravity = 0.5 + 0.5 * sy / h
+function render(canvas, frameData) {
+  var bands = frameData.bands, height = frameData.height, count = frameData.count, barW = frameData.barW, gap = frameData.gap, S = 2
+  var ramp = VisualizerHelpers.playerTierRamp(frameData, height)
+  for (var sy = 0; sy < height; sy += S) {
+    canvas.fillStyle = ramp[height - 1 - sy]
+    var gravity = 0.5 + 0.5 * sy / height
     for (var sp = 0; sp < count; sp++) {
-      var val = d.playing ? (bands[sp] || 0) : 0
+      var val = frameData.playing ? (bands[sp] || 0) : 0
       var threshold = val * val * gravity
       var spX = sp * (barW + gap)
       for (var sx = 0; sx < barW; sx += S) {
-        if (H.scatterHash(sp, Math.floor(sy / S), Math.floor(sx / S), d.frame) < threshold) {
-          ctx.fillRect(spX + sx, sy, S, S)
+        if (VisualizerHelpers.scatterHash(sp, Math.floor(sy / S), Math.floor(sx / S), frameData.frame) < threshold) {
+          canvas.fillRect(spX + sx, sy, S, S)
         }
       }
     }

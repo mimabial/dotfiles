@@ -20,8 +20,6 @@ PopupCard {
     readonly property date today: root.shell.clock.date
     property date visibleMonth: new Date(today.getFullYear(), today.getMonth(), 1)
 
-    // Locale.Sunday === 0. The locale decides unless overridden; en_US says
-    // Sunday, which is not what everyone wants.
     property int weekStartOverride: -1
     readonly property int weekStart: weekStartOverride >= 0 ? weekStartOverride : Qt.locale().firstDayOfWeek
 
@@ -106,11 +104,12 @@ PopupCard {
     property var locationSearchResults: []
     property string locationQuery: ""
     property int locationSelectionIndex: 0
+    property string activeLocationQuery: ""
     property bool locationSuggestionsDismissed: false
     onLocationQueryChanged: {
         locationSelectionIndex = 0
         locationSuggestionsDismissed = false
-        locationSearchDebounce.restart()
+        Qt.callLater(root.searchLocations)
     }
     readonly property var locationSuggestions: {
         const typed = String(locationQuery)
@@ -128,25 +127,24 @@ PopupCard {
         }
         return out.slice(0, 6)
     }
-    property Timer locationSearchDebounce: Timer {
-        interval: 350
-        onTriggered: {
-            if (root.locationQuery.length < root.minLocationQuery) {
-                root.locationSearchResults = []
-                return
-            }
-            root.locationSearchProcess.running = false
-            root.locationSearchProcess.command = ["hyprshell", "calendar/places", root.locationQuery]
-            root.locationSearchProcess.running = true
+    function searchLocations() {
+        if (root.locationQuery.length < root.minLocationQuery) {
+            root.locationSearchResults = []
+            return
         }
+        if (root.locationSearchProcess.running) return
+        root.activeLocationQuery = root.locationQuery
+        root.locationSearchProcess.command = [root.shell.home + "/.local/lib/hypr/calendar/places.sh", root.locationQuery]
+        root.locationSearchProcess.running = true
     }
     property Process locationSearchProcess: Process {
+        onRunningChanged: if (!running && root.activeLocationQuery !== root.locationQuery) Qt.callLater(root.searchLocations)
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
+            if (root.activeLocationQuery !== root.locationQuery) return
             try { root.locationSearchResults = JSON.parse(text) || [] } catch (error) { root.locationSearchResults = [] }
         } }
     }
     function clearLocationSearch() {
-        locationSearchDebounce.stop()
         locationSearchProcess.running = false
         locationSearchResults = []
         locationQuery = ""
@@ -222,7 +220,6 @@ PopupCard {
         persist()
     }
     property bool eventEditorOpen: false
-    // khal's own vocabulary, so the form maps straight onto the CLI
     readonly property var alarmChoices: [
         { label: "None", value: "" }, { label: "Start", value: "0m" },
         { label: "10m", value: "10m" }, { label: "1h", value: "1h" },
@@ -247,7 +244,6 @@ PopupCard {
     signal saveRequested()
     property string editedEventUid: ""
     property var draftValues: ({})
-    // khal writes alarms as an ISO duration; map back to the chip values
     function alarmValueForTrigger(trigger) {
         const map = { "-PT0S": "0m", "PT0S": "0m", "-PT10M": "10m", "-PT1H": "1h", "-P1D": "1d" }
         return map[String(trigger)] || ""
@@ -271,7 +267,6 @@ PopupCard {
             try { payload = JSON.parse(text) || ({}) } catch (error) { payload = ({}) }
             if (payload.error) { root.eventEditorError = String(payload.error); return }
             const lastDay = CalendarMath.rawDate(payload.endRaw)
-            // an all-day DTEND is exclusive, so step it back for display
             const endDay = payload.allDay === true ? CalendarMath.previousDay(lastDay) : lastDay
             const values = {
                 title: String(payload.title || ""),
@@ -535,7 +530,6 @@ PopupCard {
         Item {
             width: parent.width; height: monthGrid.implicitHeight
 
-            // beside the day rows only, so it does not cut the header band
             Rectangle {
                 x: root.weekNumberColumnWidth + 2
                 y: 18 + monthGrid.spacing
@@ -590,7 +584,6 @@ PopupCard {
 
                     width: isWeek ? root.weekNumberColumnWidth : root.dayCellWidth
                     height: Style.px(31); radius: root.shell.rounding
-                    // the foreground reads against this background; hvr_bg does not
                     color: current ? root.shell.selectedFill()
                         : hovered ? root.shell.alpha(root.shell.foreground, .12) : "transparent"
                     border.color: current ? root.shell.selectedEdge()

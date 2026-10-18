@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import Quickshell.Io
+import "CalendarMath.js" as CalendarMath
 
 PopupCard {
     id: root
@@ -11,11 +12,10 @@ PopupCard {
     contentHeight: weatherColumn.implicitHeight + 32
     readonly property var conditions: Weather.data.current_condition ? Weather.data.current_condition[0] : ({})
     readonly property var days: Weather.data.weather ? Weather.data.weather.slice(0, 7) : []
-    // -1 = the rolling next-12-hours view; otherwise the day whose card was clicked
     property int selectedDay: -1
     readonly property var hours: {
         if (selectedDay >= 0 && selectedDay < days.length) return days[selectedDay].hourly || []
-        const upcoming = [], cutoff = Date.now() - 3600000
+        const upcoming = [], cutoff = Date.now() - CalendarMath.MS_PER_HOUR
         for (const day of days) for (const hour of day.hourly || [])
             if (new Date(hour.time).getTime() >= cutoff) upcoming.push(hour)
         return upcoming.slice(0, 12)
@@ -25,7 +25,6 @@ PopupCard {
         : Qt.formatDate(new Date(days[selectedDay].date + "T12:00:00"), "ddd").toUpperCase()
     property string forecastView: "hourly"
     readonly property var cards: forecastView === "hourly" ? hours : days
-    // the keyboard cursor over the strip; -1 until an arrow key claims one
     property int cardIndex: -1
     function showHours(day) {
         selectedDay = day
@@ -34,7 +33,6 @@ PopupCard {
         forecast.positionViewAtBeginning()
     }
     function showDays() {
-        // coming back out of a day, land the cursor on the day we drilled into
         const from = selectedDay
         selectedDay = -1
         forecastView = "daily"
@@ -52,8 +50,6 @@ PopupCard {
         cardIndex = Math.max(0, Math.min(cards.length - 1, index))
         forecast.positionViewAtIndex(cardIndex, ListView.Contain)
     }
-    // DAILY is the parent level and HOURLY the child, so Down drills into the
-    // selected day and Up backs out of whichever hourly view is showing
     function drillIn() {
         if (forecastView !== "daily") return false
         showHours(cardIndex < 0 ? 0 : cardIndex)
@@ -67,7 +63,6 @@ PopupCard {
 
     function handleKey(event) {
         if (event.key === Qt.Key_Escape && searching) { cityField.text = ""; searching = false; return true }
-        // the city field owns the keyboard while the search is up
         if (searching) return false
         switch (event.key) {
         case Qt.Key_Left:
@@ -76,8 +71,6 @@ PopupCard {
         case Qt.Key_L:      moveCard(1); return true
         case Qt.Key_Home:   moveCardTo(0); return true
         case Qt.Key_End:    moveCardTo(cards.length - 1); return true
-        // no Tab binding: Qt's focus navigation escapes the popup's focus grab,
-        // which closes the card out from under the keypress
         case Qt.Key_Down:
         case Qt.Key_J:      return drillIn()
         case Qt.Key_Return:
@@ -89,12 +82,10 @@ PopupCard {
         case Qt.Key_M:      weatherColumn.expanded = !weatherColumn.expanded; return true
         case Qt.Key_S:
         case Qt.Key_Slash:  openSearch(); return true
-        // back out of a pinned day before the popup itself closes
         case Qt.Key_Escape: if (selectedDay >= 0) { showDays(); return true } break
         }
         return defaultKey(event)
     }
-    // the producer reports both unit systems, so switching needs no refetch
     readonly property bool imperial: Weather.imperial
     readonly property string degrees: imperial ? "\u00b0F" : "\u00b0C"
     readonly property string windUnit: imperial ? " mph" : " km/h"
@@ -127,84 +118,78 @@ PopupCard {
     }
 
     property bool searching: false
-    // empty when the location is auto-detected; the pinned city otherwise
-    property string override: ""
+    property string pinnedCity: ""
 
     property var suggestions: []
-    // keyboard cursor over the results; new results always reselect the first
     property int suggestionIndex: 0
     onSuggestionsChanged: suggestionIndex = 0
     function moveSuggestion(step) {
         if (!suggestions.length) return
         suggestionIndex = Math.max(0, Math.min(suggestions.length - 1, suggestionIndex + step))
     }
-    // set when Enter arrived before the search returned
-    property bool pendingAccept: false
+    property bool acceptPendingCityResults: false
+    property string pendingCityQuery: ""
+    property string activeCityQuery: ""
+    onSearchingChanged: if (!searching) { pendingCityQuery = ""; acceptPendingCityResults = false }
 
-    function readOverride() { if (!overrideProc.running) overrideProc.running = true }
-    // the previous results stay up until the new ones land — clearing here made
-    // the list blink shut and reopen on every keystroke
+    function readPinnedCity() { if (!pinnedCityProcess.running) pinnedCityProcess.running = true }
     function searchCities(query) {
-        if (query.trim() === "") { suggestions = []; return }
-        searchProc.command = ["hyprshell", "weather", "--search", query.trim()]
-        searchProc.running = true
+        pendingCityQuery = query.trim()
+        if (pendingCityQuery === "") suggestions = []
+        startCitySearch()
+    }
+    function startCitySearch() {
+        if (citySearchProcess.running || pendingCityQuery === "") return
+        activeCityQuery = pendingCityQuery
+        citySearchProcess.command = [root.shell.home + "/.local/lib/hypr/util/weather-status.py", "--search", pendingCityQuery]
+        citySearchProcess.running = true
     }
     function pick(place) {
         const label = place.name + (place.country ? ", " + place.country : "")
         shell.run(["hyprshell", "util/weather-location", "--pin",
-                   place.latitude + "," + place.longitude, label], root.readOverride)
+                   place.latitude + "," + place.longitude, label], root.readPinnedCity)
         suggestions = []
         cityField.text = ""
         searching = false
     }
 
-    property Process searchProc: Process {
+    property Process citySearchProcess: Process {
+        onRunningChanged: if (!running && root.activeCityQuery !== root.pendingCityQuery) Qt.callLater(root.startCitySearch)
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
+            if (!root.searching || root.activeCityQuery !== root.pendingCityQuery) return
             try { root.suggestions = JSON.parse(text) || [] }
             catch (error) { root.suggestions = [] }
-            if (root.pendingAccept) {
-                root.pendingAccept = false
+            if (root.acceptPendingCityResults) {
+                root.acceptPendingCityResults = false
                 if (root.suggestions.length > 0) root.pick(root.suggestions[0])
                 else { root.cityFieldText(""); root.searching = false }
             }
         } }
     }
     function cityFieldText(value) { cityField.text = value }
-    // typing shouldn't fire a request per keystroke, and a keystroke landing mid
-    // request would be dropped: Process ignores a new command while it runs
-    property Timer searchDebounce: Timer {
-        interval: 200
-        onTriggered: if (root.searchProc.running) restart(); else root.searchCities(cityField.text)
-    }
-    // the override stores what was typed; show the name the provider resolved
     function cityName() {
         const area = Weather.data.nearest_area
-        return area && area.length ? value(area[0].areaName, override) : override
+        return area && area.length ? value(area[0].areaName, pinnedCity) : pinnedCity
     }
     function openSearch() {
         searching = true
-        // a pinned city is offered back for editing, selected so typing replaces it
-        cityField.text = override === "" ? "" : cityName()
+        cityField.text = pinnedCity === "" ? "" : cityName()
         cityField.forceActiveFocus()
-        if (override !== "") cityField.selectAll()
+        if (pinnedCity !== "") cityField.selectAll()
     }
 
-    // the reading itself comes from the Weather singleton's file watch; this
-    // only needs to learn whether a city is pinned
     onOpenChanged: {
-        if (open) readOverride()
+        if (open) readPinnedCity()
         else { searching = false; settingsOpen = false; cityField.text = ""; selectedDay = -1; cardIndex = -1; forecastView = "hourly" }
     }
 
-    property Process overrideProc: Process {
+    property Process pinnedCityProcess: Process {
         command: ["hyprshell", "util/weather-location"]
-        stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.override = String(text).trim() }
+        stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.pinnedCity = String(text).trim() }
     }
 
     function setLocation(name) {
-        shell.run(["hyprshell", "util/weather-location", name], root.readOverride)
-        // the singleton watches the cache file, so it picks the new place up
-        // on its own once the fetch lands
+        shell.run(["hyprshell", "util/weather-location", name], root.readPinnedCity)
     }
 
     function value(list, fallback) { return list && list.length ? list[0].value : fallback }
@@ -222,8 +207,6 @@ PopupCard {
         }
     }
 
-    // sits under the content, and only while searching: a click that no control
-    // handles lands here and closes the field
     MouseArea {
         anchors.fill: parent
         enabled: root.searching
@@ -302,13 +285,11 @@ PopupCard {
                         color: root.shell.foreground
                         font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                         background: null
-                        onTextChanged: if (root.searching) { root.pendingAccept = false; root.searchDebounce.restart() }
+                        onTextChanged: if (root.searching) { root.acceptPendingCityResults = false; root.searchCities(text) }
                         onAccepted: {
                             if (text === "") { root.setLocation("--clear"); root.searching = false }
-                            else if (root.suggestions.length > 0) root.pick(root.suggestions[root.suggestionIndex])
-                            // typed and hit Enter before the debounce fired:
-                            // run the search now and take the first result
-                            else { root.pendingAccept = true; root.searchCities(text) }
+                            else if (!root.citySearchProcess.running && root.activeCityQuery === text.trim() && root.suggestions.length > 0) root.pick(root.suggestions[root.suggestionIndex])
+                            else { root.acceptPendingCityResults = true; root.searchCities(text) }
                         }
                         Keys.onDownPressed: root.moveSuggestion(1)
                         Keys.onUpPressed: root.moveSuggestion(-1)
@@ -334,8 +315,6 @@ PopupCard {
                 }
             }
         }
-        // everything is one block now: the four that matter stay visible and
-        // the rest unfold in two columns
         property bool expanded: false
         readonly property var metrics: [
             ["MAX|MIN", root.today.maxtempC ? root.temp(root.today, "maxtemp") + "\u00b0 | " + root.temp(root.today, "mintemp") + "\u00b0" : "--"],
@@ -363,7 +342,6 @@ PopupCard {
                         id: readoutSwitch
                         shell: root.shell; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
                         checked: readoutRow.position >= 0
-                        // the bar needs one readout left to click the popup open
                         enabled: !checked || root.shownReadouts.length > 1
                         onToggled: root.toggleReadout(readoutRow.modelData)
                     }
@@ -425,8 +403,6 @@ PopupCard {
             ListView {
                 id: forecast
                 anchors.fill: parent
-                // the arrows keep their own gutters, so a click near an edge picks
-                // the arrow rather than the card that would otherwise sit under it
                 anchors.leftMargin: Style.px(15); anchors.rightMargin: Style.px(15)
                 orientation: ListView.Horizontal
                 model: root.cards

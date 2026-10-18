@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "CalendarMath.js" as CalendarMath
 
 BarButton {
     id: root
@@ -11,7 +12,7 @@ BarButton {
         let highest = 0
         for (const record of records)
             for (const limit of (record.limits || []))
-                highest = Math.max(highest, Number(limit.percent) || 0)
+                highest = Math.max(highest, Number(limit.usageFraction) || 0)
         return highest
     }
     readonly property bool alarming: highestUsage >= panel.alarmUsage
@@ -30,7 +31,7 @@ BarButton {
             const observedAt = Number(record.limitsObservedAt)
             if (!isFinite(observedAt) || observedAt <= 0 || now - observedAt > panel.staleAfterMs) continue
             for (const limit of (record.limits || [])) {
-                const usage = Number(limit.percent), resetAt = Date.parse(limit.resetsAt)
+                const usage = Number(limit.usageFraction), resetAt = Date.parse(limit.resetsAt)
                 if (!isFinite(usage) || usage < 0 || isFinite(resetAt) && resetAt <= now) continue
                 shell.run(["hyprshell", "system/agent-limit-alert", String(record.id),
                     String(record.name || record.id), String(limit.label || "Limit"),
@@ -40,15 +41,13 @@ BarButton {
     }
 
     function refresh(force) {
-        if (collect.running) return
-        collect.command = force
+        if (usageCollector.running) return
+        usageCollector.command = force
             ? ["hyprshell", "system/agent-usage", "--write", "--force"]
             : ["hyprshell", "system/agent-usage", "--write"]
-        collect.running = true
+        usageCollector.running = true
     }
 
-    // Display half: paint from the cache immediately, and repaint when the
-    // producer rewrites it. Never blocks on a collector.
     FileView {
         path: Quickshell.env("HOME") + "/.cache/hypr/agents/usage.json"
         watchChanges: true
@@ -59,9 +58,8 @@ BarButton {
             catch (error) { root.records = [] }
         }
     }
-    // Producer half: a ~20s scan, run detached from anything the UI waits on.
-    Process { id: collect; command: ["hyprshell", "system/agent-usage", "--write"] }
-    Timer { interval: 900000; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
+    Process { id: usageCollector; command: ["hyprshell", "system/agent-usage", "--write"] }
+    Timer { interval: 15 * CalendarMath.MS_PER_MINUTE; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
 
     AgentsPopup {
         id: panel

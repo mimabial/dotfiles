@@ -1,17 +1,17 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
 Item {
   id: root
 
   property real value: 0
-  property color color: Color.accent
-  property color foreground: Color.popups.text
-  property color trackColor: Util.alpha(foreground, 0.12)
-  property real size: Style.space(16)
-  property real thickness: Style.spaceReal(2.4)
+  property color color: Commons.Color.accent
+  property color foreground: Commons.Color.popups.text
+  property color trackColor: Commons.Util.alpha(foreground, 0.12)
+  property real size: Commons.Style.space(16)
+  property real thickness: Commons.Style.spaceReal(2.4)
   property real animatedValue: Math.max(0, Math.min(1, value))
 
   Behavior on animatedValue {

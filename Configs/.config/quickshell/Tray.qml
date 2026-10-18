@@ -50,10 +50,6 @@ Item {
         }
         return entries
     }
-    readonly property var barWidgets: [].concat(...shell.barSections.map(section => (shell.barLayout[section] || []).map(entry =>
-        ({ key: shell.trayKey(section, entry), id: typeof entry === "string" ? entry : String(entry.id || ""), onBar: section !== "tray" }))))
-        .filter(widget => !["tray", "taskbar", "spacer"].includes(widget.id) && !widget.id.startsWith("icon:"))
-        .sort((a, b) => a.id.localeCompare(b.id) || a.key.localeCompare(b.key))
     function iconId(item) { return String(item.id || "") }
     function iconKey(item) { return shell.trayKey("tray", "icon:" + iconId(item)) }
     function setPinned(id, pinned) { if (shell.trayPinned.includes(id) !== pinned) shell.toggleTrayPin(id) }
@@ -67,6 +63,7 @@ Item {
         return keys[keys.indexOf(key) + 1] || ""
     }
     function ownsPopup() {
+        if (!shell.popupCard?.open) return false
         for (let item = shell.popupCard?.anchorItem; item; item = item.parent)
             if (item === root || item === overflowGrid) return true
         return false
@@ -163,7 +160,7 @@ Item {
             backgroundColor: root.expanded && box.open ? shell.styleColor(box.open.backgroundColor, "transparent") : styleColor("backgroundColor")
             Layout.fillHeight: true
             onClicked: button => {
-                if (button === Qt.RightButton && root.popupsAllowed) root.shell.togglePopup("tray-manage")
+                if (button === Qt.RightButton && root.popupsAllowed) root.shell.togglePopup("bar-organizer")
                 else if (button === Qt.LeftButton) root.toggleFlyout()
             }
             DragHandler {
@@ -286,8 +283,8 @@ Item {
             y: overflow.onTop ? overflow.height - height : 0
             width: overflowGrid.width + 2 * Style.lg; height: overflowGrid.height + 2 * Style.lg
             radius: root.shell.rounding
-            color: root.shell.alpha(root.shell.background, Style.popupSurfaceOpacity)
-            border.color: root.shell.alpha(root.shell.role("alt_br", root.shell.foreground), Style.popupBorderOpacity)
+            color: root.shell.alpha(Style.popupTinted(root.shell.background), Style.popupSurfaceOpacity)
+            border.color: root.shell.alpha(Style.popupBorder(root.shell.role("alt_br", root.shell.foreground)), Style.popupBorderOpacity)
             border.width: root.shell.borderWidth
             Grid {
                 id: overflowGrid
@@ -432,8 +429,9 @@ Item {
         label: root.menuLabel
         popupEnabled: root.popupsAllowed
     }
-    TrayManagePopup {
-        shell: root.shell; anchorItem: root; popupEnabled: root.popupsAllowed; icons: root.icons; widgets: root.barWidgets
+    BarOrganizerPopup {
+        shell: root.shell; anchorItem: chevron; popupEnabled: root.popupsAllowed; icons: root.icons; registry: root.registry
+        defaultSection: root.host.sectionName
         onRestoreWidget: key => root.shell.moveBarModule(key, root.host.sectionName, root.host.moduleKey, true, true)
         onHideWidget: key => root.shell.moveBarModule(key, "tray", "", false)
     }

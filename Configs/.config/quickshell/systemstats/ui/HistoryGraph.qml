@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
 // Bars are snapped to device pixels so 1px marks stay crisp on fractional scales.
 Canvas {
@@ -16,8 +16,8 @@ Canvas {
   property int gap: 1
   property bool showBaseline: true
   property bool showGaps: false
-  property color baselineColor: Util.alpha(Color.popups.text, 0.14)
-  property color gapColor: Util.alpha(Color.popups.text, 0.5)
+  property color baselineColor: Commons.Util.alpha(Commons.Color.popups.text, 0.14)
+  property color gapColor: Commons.Util.alpha(Commons.Color.popups.text, 0.5)
 
   readonly property int pitch: Math.max(1, barWidth + gap)
   readonly property int capacity: Math.max(1, Math.floor((width + gap) / pitch))
@@ -75,7 +75,7 @@ Canvas {
         var top = snap(y - h)
         var bottom = snap(y)
         if (bottom - top < 1 / dpr) top = bottom - 1 / dpr
-        ctx.fillStyle = root.colors[c] || Color.accent
+        ctx.fillStyle = root.colors[c] || Commons.Color.accent
         ctx.fillRect(snap(x), top, Math.max(1 / dpr, snap(root.barWidth)), bottom - top)
         y -= h
       }

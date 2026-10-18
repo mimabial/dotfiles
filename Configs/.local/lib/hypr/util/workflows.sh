@@ -7,9 +7,6 @@ hypr_runtime_require state || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR}/window/lib/visual-presets.bash"
 
-workflows_user_dir="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}/workflows"
-workflows_shared_dir="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}/workflows"
-workflows_state_file="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/workflows.lua"
 workflow_previous_name="$(state_get "HYPR_WORKFLOW" "default")"
 
 source "${BASH_SOURCE[0]%/*}/workflows/catalog.bash"
@@ -53,6 +50,20 @@ while true; do
         exit 1
       fi
       workflow_locked "${workflow_name}" && exit 1
+      exec {workflow_lock_fd}>"$(hypr_lock_path_ensure_parent workflow)"
+      flock "${workflow_lock_fd}"
+      trap 'flock -u "${workflow_lock_fd}"' EXIT
+      workflow_previous_name="$(state_get HYPR_WORKFLOW default)"
+      workflow_previous_layout_changed="$(state_get WORKFLOW_LAYOUT_CHANGED)"
+      workflow_previous_theme_override="$(state_get WORKFLOW_THEME_OVERRIDE)"
+      export HYPR_WORKFLOW_TRANSITION=1
+      source "${BASH_SOURCE[0]%/*}/workflows/windows.bash"
+      if [[ "${workflow_name}" == windows && "${workflow_previous_name}" != windows ]]; then windows_enter || exit 1; fi
+      if [[ "${workflow_name}" != "${workflow_previous_name}" && "${workflow_name}" != gaming && "${workflow_previous_name}" != gaming ]]; then
+        state_set WORKFLOW_LAYOUT_OVERRIDE "" staterc
+        state_set WORKFLOW_LAYOUT_CHANGED "" staterc
+        state_set WORKFLOW_THEME_OVERRIDE "" staterc
+      fi
       state_set "HYPR_WORKFLOW" "${workflow_name}" "staterc"
       source "${BASH_SOURCE[0]%/*}/workflows/bar-layout.bash"
       # shellcheck source=/dev/null

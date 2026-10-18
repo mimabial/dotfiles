@@ -1,4 +1,6 @@
 AgentsButton 1.0 AgentsButton.qml
+AltscapeButton 1.0 AltscapeButton.qml
+AltscapePopup 1.0 AltscapePopup.qml
 AgentsPopup 1.0 AgentsPopup.qml
 AlarmTimerPopup 1.0 AlarmTimerPopup.qml
 AltGrHints 1.0 AltGrHints.qml
@@ -7,12 +9,15 @@ AudioPopup 1.0 AudioPopup.qml
 BarButton 1.0 BarButton.qml
 BarGroup 1.0 BarGroup.qml
 BarModuleLoader 1.0 BarModuleLoader.qml
+BarOrganizerPopup 1.0 BarOrganizerPopup.qml
 BarModules 1.0 BarModules.qml
 BarSection 1.0 BarSection.qml
 BarSurface 1.0 BarSurface.qml
 BarTooltip 1.0 BarTooltip.qml
 Bitwarden 1.0 Bitwarden.qml
 BitwardenPopup 1.0 BitwardenPopup.qml
+BluetoothDeviceCard 1.0 BluetoothDeviceCard.qml
+singleton BluetoothMonitor 1.0 BluetoothMonitor.qml
 BluetoothPopup 1.0 BluetoothPopup.qml
 BookmarkBackend 1.0 BookmarkBackend.qml
 BookmarkEditor 1.0 BookmarkEditor.qml
@@ -100,11 +105,11 @@ Theme 1.0 Theme.qml
 ToggleSwitch 1.0 ToggleSwitch.qml
 Tray 1.0 Tray.qml
 TrayFlyout 1.0 TrayFlyout.qml
-TrayManagePopup 1.0 TrayManagePopup.qml
 TrayMenu 1.0 TrayMenu.qml
 UpdatesButton 1.0 UpdatesButton.qml
 UpdatesPopup 1.0 UpdatesPopup.qml
 VpnPopup 1.0 VpnPopup.qml
+singleton VpnStatus 1.0 VpnStatus.qml
 WallpaperPopup 1.0 WallpaperPopup.qml
 WeatherPopup 1.0 WeatherPopup.qml
 WebcamPanel 1.0 WebcamPanel.qml
@@ -125,3 +130,8 @@ singleton Wallpaper 1.0 Wallpaper.qml
 singleton Weather 1.0 Weather.qml
 singleton Notifications 1.0 Notifications.qml
 singleton GnomeStatus 1.0 GnomeStatus.qml
+QuickShare 1.0 QuickShare.qml
+QuickShareButton 1.0 QuickShareButton.qml
+QuickShareEffects 1.0 QuickShareEffects.qml
+QuickShareEffectsArt 1.0 QuickShareEffectsArt.qml
+QuickSharePopup 1.0 QuickSharePopup.qml

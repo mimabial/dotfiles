@@ -8,21 +8,19 @@ Item {
     required property var shell
     required property string sectionName
     property var modules: []
-    onModulesChanged: syncSlots()
-    Component.onCompleted: syncSlots()
-    // keyed by the serialized entry, so a layout write keeps every module it did not
-    // touch alive, along with any popup that module has open
-    function syncSlots() {
-        const keys = modules.map(entry => JSON.stringify(entry))
-        for (let i = 0; i < keys.length; i++) {
-            let j = i
-            while (j < slots.count && slots.get(j).key !== keys[i]) j++
-            if (j === slots.count) slots.insert(i, { key: keys[i] })
-            else if (j > i) slots.move(j, i, 1)
+    onModulesChanged: preserveModuleInstances()
+    Component.onCompleted: preserveModuleInstances()
+    function preserveModuleInstances() {
+        const entryKeys = modules.map(entry => JSON.stringify(entry))
+        for (let targetIndex = 0; targetIndex < entryKeys.length; targetIndex++) {
+            let existingIndex = targetIndex
+            while (existingIndex < moduleInstances.count && moduleInstances.get(existingIndex).key !== entryKeys[targetIndex]) existingIndex++
+            if (existingIndex === moduleInstances.count) moduleInstances.insert(targetIndex, { key: entryKeys[targetIndex] })
+            else if (existingIndex > targetIndex) moduleInstances.move(existingIndex, targetIndex, 1)
         }
-        if (slots.count > keys.length) slots.remove(keys.length, slots.count - keys.length)
+        if (moduleInstances.count > entryKeys.length) moduleInstances.remove(entryKeys.length, moduleInstances.count - entryKeys.length)
     }
-    ListModel { id: slots }
+    ListModel { id: moduleInstances }
     readonly property var styleBox: shell.style.box(".modules-" + sectionName)
     readonly property real topInset: styleBox.margin[0] + styleBox.padding[0]
     readonly property real rightInset: styleBox.margin[1] + styleBox.padding[1]
@@ -42,7 +40,7 @@ Item {
         anchors.bottomMargin: root.bottomInset; anchors.leftMargin: root.leftInset
         spacing: root.styleBox.spacing || 0
         Repeater {
-            model: slots
+            model: moduleInstances
             delegate: BarModuleLoader { required property string key; modelData: JSON.parse(key); registry: root.registry; shell: root.shell; sectionName: root.sectionName }
         }
     }

@@ -1,0 +1,61 @@
+$HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
+
+$ICON_THEME = Fluent-yellow
+$COLOR_SCHEME = prefer-light
+$NVIM_SCHEME = hypr
+$NVIM_BACKGROUND = light
+$NVIM_TRANSPARENCY = false
+$CURSOR_THEME = Colloid-cursors
+$CURSOR_SIZE = 30
+$FONT = CommitMono Nerd Font
+$BAR_FONT = CommitMono Nerd Font
+$MENU_FONT = CommitMono Nerd Font
+$MONOSPACE_FONT = CommitMono Nerd Font
+$TERMINAL_FONT = CommitMono Nerd Font
+$NOTIFICATION_FONT = CommitMono Nerd Font Mono
+
+general {
+    col.active_border = rgb(2E311A)
+    col.inactive_border = rgb(a89e86)
+    border_size = 2
+    gaps_in = 3
+    gaps_out = 3
+    layout = dwindle
+    resize_on_border = true
+}
+
+group {
+    col.border_active = rgba(2E311Aee)
+    col.border_inactive = rgb(a89e86)
+
+    col.border_locked_active = rgba(2E311Aee)
+    col.border_locked_inactive = rgb(a89e86)
+
+    groupbar {
+        col.active = rgba(005C3299)
+        col.inactive = rgba(2E311A88)
+        text_color = rgb(DEDBC8)
+        text_color_inactive = rgba(DEDBC8ee)
+    }
+}
+
+decoration {
+    rounding = 2
+    rounding_power = 3
+    shadow {
+        enabled = yes
+        render_power = 8
+        range = 16
+        color = rgba(00000033)
+        color_inactive = rgba(0000001a)
+    }
+
+    blur {
+        enabled = yes
+        size = 6
+        passes = 4
+        new_optimizations = on
+        ignore_opacity = on
+        xray = false
+    }
+}

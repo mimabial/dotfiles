@@ -7,6 +7,7 @@ import qs.Commons as Commons
 import qs.Ui
 import "cliamp"
 import "MediaModel.js" as MediaModel
+import "Units.js" as Units
 
 PopupCard {
   id: root
@@ -49,16 +50,13 @@ PopupCard {
   property real volumeDb: 0.0
   property bool shuffleMode: false
   property string repeatMode: "off"
-  property real _lastStatusTime: 0
-  // a status read overlapping a command carries pre-command values, and would stamp
-  // them back over what the click just set. Bumped on issue and on completion, so a
-  // response is only trusted when nothing happened for its whole lifetime.
-  property int _commandGen: 0
-  property int _statusGen: 0
+  property real lastStatusEpochMs: 0
+  property int playbackCommandRevision: 0
+  property int statusCommandRevision: 0
   property bool statusPending: false
   property string eqText: "Custom"
   property var audioFx: ({ "eq": "Flat", "loudnorm": false, "spatial": false })
-  property int _preMuteVol: 80
+  property int volumeBeforeMute: 80
 
   property var historyList: []
   readonly property bool historyLocalOnly: root.shell.barLayout.mediaHistoryLocalOnly ?? true
@@ -67,18 +65,12 @@ PopupCard {
   property var playlistsList: []
   property var queueItems: []
   property string queueSource: "cliamp"
-  // a binding, not a snapshot: displayQueue folds in live playback state, so the
-  // list has to re-render when that state lands rather than only on a queue read
   readonly property var queueList: MediaModel.displayQueue(root.queueSource, root.queueItems, {
     state: root.playbackState, title: root.currentTrack, artist: root.currentArtist,
     url: root.currentUrl, art: root.artPath
   })
-  // one Process backs runCmd, so a command issued alongside another has to wait
-  // for it rather than replace it
-  property var pendingCmds: []
+  property var pendingPlaybackCommands: []
   property bool queueReloadPending: false
-  // Liked state for every row is read off the Liked playlist, so a row costs no
-  // process of its own; overrides carry the optimistic flip until the write lands.
   readonly property bool currentLiked: root.isLiked(root.currentUrl, root.currentTrack, root.currentArtist)
   readonly property var likedIndex: {
     const index = ({})
@@ -88,12 +80,8 @@ PopupCard {
     return index
   }
   property var likedOverrides: ({})
-  property bool _likeDirty: false
-  // mpd-mpris owns org.mpris.MediaPlayer2.mpd whenever mpd runs, so the derived
-  // context would send every queue read to mpd and hide what "+" just wrote.
-  // Adding pins the view to the queue it appended to, until the popup closes.
+  property bool likeWritePending: false
   property string queueOverride: ""
-  // Files tab: one directory of the library at a time, paths relative to its root
   property var filesList: []
   property string filesPath: ""
   property string filesParent: ""
@@ -131,21 +119,16 @@ PopupCard {
   property var visBandEdges: []
   property var visStereo: ({ "levels": [0, 0], "peaks": [0, 0] })
   property var visAnalysis: ({})
-  property string _latestSpectrumRaw: ""
-  property double _lastSpectrumCapture: 0
-  // Animation clock for the visualizers. Wall-clock rather than a per-spectrum-frame
-  // counter so d.frame keeps its cadence when the capture hop or repaint rate changes.
-  // double, not int: an epoch-derived counter overflows int32 after ~25h of uptime.
+  property string pendingSpectrumJson: ""
+  property double lastSpectrumCaptureEpochMs: 0
   property double visFrame: 0
-  readonly property double _visEpoch: Date.now()
-  readonly property double _visTick: 42.7
-  readonly property real _levelRiseTau: 0.075
-  readonly property real _levelFallTau: 0.23
-  property var _visState: ({})
+  readonly property double visualizerEpochMs: Date.now()
+  readonly property double visualizerFrameMilliseconds: 42.7
+  readonly property real spectrumRiseSeconds: 0.075
+  readonly property real spectrumFallSeconds: 0.23
+  property var visualizerState: ({})
   property var resumeInfo: null
   property bool resumeVisible: false
-  // Dismissal has to outlive the status poll below, which would otherwise raise
-  // the banner again a tick later. Keyed by url so a different saved track asks.
   property string resumeDismissedUrl: ""
   property var selectedPlaylist: null
   readonly property var activePlaylist: {
@@ -153,7 +136,7 @@ PopupCard {
     if (!playlist || playlist.name !== "Recently Played") return playlist
     return { name: playlist.name, system: true, tracks: root.historyList.map(track => ({
       title: track.title || "Track", artist: track.artist || "",
-      duration: track.duration_secs ? Media.time(track.duration_secs) : "",
+      duration: track.duration_secs ? Units.clockText(track.duration_secs) : "",
       url: track.path || (track.title + " " + track.artist)
     })) }
   }
@@ -185,7 +168,7 @@ PopupCard {
     root.currentUrl = newUrl
     root.artPath = String(player.trackArtUrl || "")
     root.totalSecs = player.lengthSupported ? Number(player.length || 0) : 0
-    root.timeTotal = Media.time(root.totalSecs)
+    root.timeTotal = Units.clockText(root.totalSecs)
     root.playbackSpeed = Number(player.rate || 1)
     if (player.volumeSupported) root.volumePct = Math.round(Number(player.volume || 0) * 100)
     root.shuffleMode = player.shuffleSupported ? player.shuffle : false
@@ -195,9 +178,9 @@ PopupCard {
     root.resumeVisible = false
     const localPath = newUrl.startsWith("file://") ? decodeURIComponent(newUrl.slice(7)) : ""
     if (trackChanged && localPath && newTrack !== "No track loaded") {
-      recentProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""),
+      recentProcess.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""),
         "remember", newTrack, newArtist, localPath]
-      recentProc.running = true
+      recentProcess.running = true
     }
     if (trackChanged && root.open && root.selectedTab === "queue") root.loadQueue()
     if (trackChanged && root.open) root.startSpectrum()
@@ -212,8 +195,8 @@ PopupCard {
     if (!Number.isFinite(value)) return
     root.curSecs = Math.max(0, root.totalSecs > 0 ? Math.min(value, root.totalSecs) : value)
     root.progress = root.totalSecs > 0 ? root.curSecs / root.totalSecs : 0
-    root.timeCurrent = Media.time(root.curSecs)
-    root._lastStatusTime = Date.now()
+    root.timeCurrent = Units.clockText(root.curSecs)
+    root.lastStatusEpochMs = Date.now()
     if (playerComp.lyricsVisible) playerComp.updateLyricsPosition(root.curSecs)
   }
 
@@ -224,7 +207,7 @@ PopupCard {
 
   onOpenChanged: {
     if (open) {
-      if (!root.externalMedia && !root.isRunning) warmupProc.running = true
+      if (!root.externalMedia && !root.isRunning) warmupProcess.running = true
       if (!root.syncMpris()) root.refresh()
       loadHistory()
       loadPlaylists()
@@ -236,14 +219,11 @@ PopupCard {
       root.queueOverride = ""
       root.visPickerOpen = false
       root.eqPickerOpen = false
-      // a field left focused reopens mid-edit
       trackList.urlInput.focus = false
     }
   }
 
   Component.onCompleted: {
-    Commons.Style.shell = root.shell
-    Commons.Color.shell = root.shell
     root.shell.mediaPopup = root
     refresh()
     loadPlaylists()
@@ -265,15 +245,15 @@ PopupCard {
   }
 
   function startSpectrum() {
-    spectrumProc.running = false
-    spectrumProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "start_spectrum"].concat(spectrumSelectors())
-    spectrumProc.running = true
+    spectrumProcess.running = false
+    spectrumProcess.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "start_spectrum"].concat(spectrumSelectors())
+    spectrumProcess.running = true
   }
 
   function stopSpectrum() {
-    spectrumProc.running = false
-    spectrumProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "stop_spectrum"]
-    spectrumProc.running = true
+    spectrumProcess.running = false
+    spectrumProcess.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "stop_spectrum"]
+    spectrumProcess.running = true
   }
 
   function showPopup() { root.shell.popupName = "media" }
@@ -328,10 +308,10 @@ PopupCard {
   }
 
   function refresh() {
-    if (statusProc.running) { root.statusPending = true; return }
-    if (actionProc.running) return
-    root._statusGen = root._commandGen
-    statusProc.running = true
+    if (statusProcess.running) { root.statusPending = true; return }
+    if (actionProcess.running) return
+    root.statusCommandRevision = root.playbackCommandRevision
+    statusProcess.running = true
   }
 
   MediaControls { id: mediaControls; controller: root; media: Media }
@@ -351,17 +331,14 @@ PopupCard {
   function cycleSpeed() { mediaControls.cycleSpeed() }
   function setEq(preset) {
     root.eqText = preset
-    runCmd(["set_eq", preset])
+    enqueuePlaybackCommand(["set_eq", preset])
   }
   function setVisMode(mode) {
     if (!mode) return
     root.visMode = mode
-    runCmd(["set_vis_mode", mode])
+    enqueuePlaybackCommand(["set_vis_mode", mode])
     if (playerComp) playerComp.requestPaint()
   }
-  // The track list, both pickers and the lyrics view are mutually exclusive. Route every
-  // open through here: setting one flag without clearing the others opens a pane behind
-  // another one, and the click reads as dead.
   function showPane(pane) {
     root.visPickerOpen = pane === "vis"
     root.eqPickerOpen = pane === "eq"
@@ -373,8 +350,8 @@ PopupCard {
     if (action === "close") return playerComp.toggleLyrics()
     if (action === "follow") {
       playerComp.lyricsFollowing = true
-      lyricsList.positionViewAtIndex(Math.max(0, playerComp.lyricsCurrentIdx),
-        playerComp.lyricsCurrentIdx < 0 ? ListView.Beginning : ListView.Center)
+      lyricsList.positionViewAtIndex(Math.max(0, playerComp.currentLyricsIndex),
+        playerComp.currentLyricsIndex < 0 ? ListView.Beginning : ListView.Center)
       return
     }
     if (action === "smaller" || action === "larger") {
@@ -387,21 +364,21 @@ PopupCard {
   }
   function setVisBackground(enabled) {
     root.visBackground = enabled
-    runCmd(["set_vis_bg", enabled ? "1" : "0"])
+    enqueuePlaybackCommand(["set_vis_bg", enabled ? "1" : "0"])
     if (playerComp) playerComp.requestPaint()
   }
   function setVisBackgroundPulse(enabled) {
     root.visBackgroundPulse = enabled
-    runCmd(["set_vis_bg_pulse", enabled ? "1" : "0"])
+    enqueuePlaybackCommand(["set_vis_bg_pulse", enabled ? "1" : "0"])
     if (playerComp) playerComp.requestPaint()
   }
   function toggleLoudnorm() {
-    runCmd(["toggle_loudnorm"])
+    enqueuePlaybackCommand(["toggle_loudnorm"])
     var next = !(root.audioFx && root.audioFx.loudnorm)
     root.audioFx = { eq: root.eqText, loudnorm: next, spatial: root.audioFx ? root.audioFx.spatial : false }
   }
   function toggleSpatial() {
-    runCmd(["toggle_spatial"])
+    enqueuePlaybackCommand(["toggle_spatial"])
     var next = !(root.audioFx && root.audioFx.spatial)
     root.audioFx = { eq: root.eqText, loudnorm: root.audioFx ? root.audioFx.loudnorm : false, spatial: next }
   }
@@ -411,8 +388,8 @@ PopupCard {
     root.plImportError = ""
     root.selectedTab = "playlists"
     root.selectedPlaylist = null
-    importPlProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "import_playlist", url.trim(), name || ""]
-    importPlProc.running = true
+    importPlProcess.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "import_playlist", url.trim(), name || ""]
+    importPlProcess.running = true
   }
 
   function deletePlaylist(name) {
@@ -420,7 +397,7 @@ PopupCard {
     if (root.activePlaylist && root.activePlaylist.name === name) {
       root.selectedPlaylist = null
     }
-    runCmd(["delete_playlist", name])
+    enqueuePlaybackCommand(["delete_playlist", name])
     Qt.callLater(loadPlaylists)
   }
 
@@ -432,7 +409,7 @@ PopupCard {
     root.selectedPlaylist = null
   }
 
-  function doResume() { runCmd(["resume"]); root.resumeVisible = false; root.loadingVid = "" }
+  function doResume() { enqueuePlaybackCommand(["resume"]); root.resumeVisible = false; root.loadingVid = "" }
 
   function playUrl(url, title, artist, keepQueue) {
     if (!url || !url.trim()) return
@@ -443,12 +420,10 @@ PopupCard {
     root.currentTrack = title || "Buffering..."
     root.currentArtist = artist || ""
     root.playbackState = "buffering"
-    runCmd([keepQueue ? "play_item" : "play_replace", target, title || "", artist || ""])
+    enqueuePlaybackCommand([keepQueue ? "play_item" : "play_replace", target, title || "", artist || ""])
     root.urlInputText = ""
   }
 
-  // A row that is showing the live track toggles it, the way playQueueItem does for
-  // the queue. Without this the pause glyph reloads the track instead of pausing it.
   function playOrToggle(current, url, title, artist) {
     if (current && root.playbackState !== "stopped") root.togglePlayback()
     else if (url) root.playUrl(url, title, artist)
@@ -457,20 +432,20 @@ PopupCard {
   function queueUrl(url, title, artist) {
     if (!url || !url.trim()) return
     root.queueOverride = "cliamp"
-    runCmd(["queue", url.trim(), title || "", artist || ""])
+    enqueuePlaybackCommand(["queue", url.trim(), title || "", artist || ""])
     root.urlInputText = ""
   }
 
   function queueDir(rel) {
     root.queueOverride = "cliamp"
-    runCmd(["queue_dir", rel || ""])
+    enqueuePlaybackCommand(["queue_dir", rel || ""])
   }
 
   function playDir(rel) {
     root.queueOverride = "cliamp"
-    root.pendingCmds = []
+    root.pendingPlaybackCommands = []
     root.playbackState = "buffering"
-    runCmd(["play_dir", rel || ""])
+    enqueuePlaybackCommand(["play_dir", rel || ""])
   }
 
   function queueContext() {
@@ -478,25 +453,24 @@ PopupCard {
   }
 
   function loadFiles(rel) {
-    if (filesProc.running) return
-    filesProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "files", rel || ""]
-    filesProc.running = true
+    if (filesProcess.running) return
+    filesProcess.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "files", rel || ""]
+    filesProcess.running = true
   }
 
   function startQueueLoad() {
-    queueProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "queue_list", queueContext()]
-    queueProc.running = true
+    queueProcess.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "queue_list", queueContext()]
+    queueProcess.running = true
   }
 
   function loadQueue() {
-    // dropping the reload leaves the panel showing rows the store no longer has
-    if (queueProc.running) { root.queueReloadPending = true; return }
+    if (queueProcess.running) { root.queueReloadPending = true; return }
     startQueueLoad()
   }
 
   function playQueueItem(item) {
     if (item.current === true) { togglePlayback(); return }
-    if (item.backend === "mpd") { runCmd(["mpd_play", String(item.position)]); return }
+    if (item.backend === "mpd") { enqueuePlaybackCommand(["mpd_play", String(item.position)]); return }
     if (item.backend === "youtube" && root.mprisPlayer) {
       root.mprisPlayer.openUri(item.url); Media.select(root.mprisPlayer); return
     }
@@ -506,13 +480,12 @@ PopupCard {
   }
 
   function clearQueue() {
-    // a pending chain of adds would refill the queue the moment this command exits
-    root.pendingCmds = []
-    runCmd(["queue_clear"])
+    root.pendingPlaybackCommands = []
+    enqueuePlaybackCommand(["queue_clear"])
   }
 
   function removeFromQueue(idx) {
-    runCmd(["queue_remove", String(idx)])
+    enqueuePlaybackCommand(["queue_remove", String(idx)])
   }
 
   function searchTracks(query) {
@@ -530,8 +503,8 @@ PopupCard {
     root.isSearching = true
     root.searchQuery = term
     root.selectedTab = "search"
-    searchProc.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "search", term]
-    searchProc.running = true
+    searchProcess.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "search", term]
+    searchProcess.running = true
   }
 
   function clearSearch() {
@@ -552,19 +525,17 @@ PopupCard {
   }
 
   function stopDaemon() {
-    runCmd(["stop_daemon"])
+    enqueuePlaybackCommand(["stop_daemon"])
     root.isRunning = false
     root.playbackState = "stopped"
   }
 
   function loadHistory() {
-    if (historyProc.running) return
-    historyProc.localOnly = root.historyLocalOnly
-    historyProc.running = true
+    if (historyProcess.running) return
+    historyProcess.localOnly = root.historyLocalOnly
+    historyProcess.running = true
   }
 
-  // Mirrors liked_key() in cliamp_ctl.py: a real target identifies the song, and the
-  // title/artist pair stands in for search strings that never resolved to a url.
   function isLiked(url, title, artist) {
     const key = MediaModel.likeKey(url, title, artist)
     return key in root.likedOverrides ? root.likedOverrides[key] : root.likedIndex[key] === true
@@ -577,40 +548,36 @@ PopupCard {
     const overrides = Object.assign({}, root.likedOverrides)
     overrides[MediaModel.likeKey(url, title, artist)] = !root.isLiked(url, title, artist)
     root.likedOverrides = overrides
-    root._likeDirty = true
-    runCmd(["toggle_liked", url || "", title || "", artist || ""])
+    root.likeWritePending = true
+    enqueuePlaybackCommand(["toggle_liked", url || "", title || "", artist || ""])
   }
 
   function loadPlaylists() {
-    if (playlistsProc.running) return
-    playlistsProc.localOnly = root.historyLocalOnly
-    playlistsProc.running = true
+    if (playlistsProcess.running) return
+    playlistsProcess.localOnly = root.historyLocalOnly
+    playlistsProcess.running = true
   }
 
-  function ctlCmd(args) {
+  function playbackHelperCommand(args) {
     return ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", "")].concat(args)
   }
 
   function startAction(args) {
-    root._commandGen++
-    actionProc.command = root.ctlCmd(args)
-    actionProc.running = true
+    root.playbackCommandRevision++
+    actionProcess.command = root.playbackHelperCommand(args)
+    actionProcess.running = true
   }
 
-  // Actions queue behind each other. Replacing a running one used to drop it, which
-  // is what made a second "+" click, or a click paired with another action, vanish.
-  function runCmd(args) {
-    if (actionProc.running) { root.pendingCmds.push(args); return }
+  function enqueuePlaybackCommand(args) {
+    if (actionProcess.running) { root.pendingPlaybackCommands.push(args); return }
     startAction(args)
   }
 
-  // Sliders emit per-drag-step, where only the newest value matters; these run on
-  // their own process so they never cancel a queue write.
-  function liveCmd(args) {
-    root._commandGen++
-    liveProc.running = false
-    liveProc.command = root.ctlCmd(args)
-    liveProc.running = true
+  function replaceLivePlaybackCommand(args) {
+    root.playbackCommandRevision++
+    liveProcess.running = false
+    liveProcess.command = root.playbackHelperCommand(args)
+    liveProcess.running = true
   }
 
   Connections {
@@ -629,7 +596,7 @@ PopupCard {
   }
 
   Process {
-    id: statusProc
+    id: statusProcess
     onRunningChanged: if (!running && root.statusPending) { root.statusPending = false; root.refresh() }
     command: ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "status"]
     stdout: StdioCollector {
@@ -637,7 +604,7 @@ PopupCard {
       onStreamFinished: {
         try {
           var data = JSON.parse(text || "{}")
-          const fresh = root._statusGen === root._commandGen
+          const fresh = root.statusCommandRevision === root.playbackCommandRevision
           if (fresh && !root.visPickerOpen) {
             if (data.vis_mode && String(data.vis_mode) !== root.visMode) root.visMode = String(data.vis_mode)
             if (data.vis_bg !== undefined) root.visBackground = data.vis_bg === true
@@ -662,7 +629,7 @@ PopupCard {
           root.timeCurrent = String(data.time_current || "00:00")
           root.timeTotal = String(data.time_total || "00:00")
           root.curSecs = Number(data.cur_secs || 0)
-          root._lastStatusTime = Date.now()
+          root.lastStatusEpochMs = Date.now()
           if (playerComp.lyricsVisible) playerComp.updateLyricsPosition(root.curSecs)
           root.totalSecs = Number(data.total_secs || 0)
           root.progress = Number(data.progress || 0.0)
@@ -677,7 +644,6 @@ PopupCard {
           if (data.audio_fx) root.audioFx = data.audio_fx
           if (data.resume && root.playbackState === "stopped") {
             root.resumeInfo = data.resume
-            // cliamp_ctl.py's RESUME_MIN_SECONDS: below it Resume would do nothing the play button does not.
             root.resumeVisible = Number(data.resume.pos || 0) > root.resumeMinSeconds
               && String(data.resume.url || "") !== root.resumeDismissedUrl
           } else {
@@ -690,7 +656,7 @@ PopupCard {
   }
 
   Process {
-    id: filesProc
+    id: filesProcess
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -706,7 +672,7 @@ PopupCard {
   }
 
   Process {
-    id: queueProc
+    id: queueProcess
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -720,7 +686,7 @@ PopupCard {
     }
   }
   Connections {
-    target: queueProc
+    target: queueProcess
     function onExited() {
       if (!root.queueReloadPending) return
       root.queueReloadPending = false
@@ -729,7 +695,7 @@ PopupCard {
   }
 
   Process {
-    id: searchProc
+    id: searchProcess
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -741,42 +707,41 @@ PopupCard {
   }
 
   Process {
-    id: historyProc
+    id: historyProcess
     property bool localOnly: true
-    command: root.ctlCmd(["history", "99"].concat(historyProc.localOnly ? ["--local-only"] : []))
+    command: root.playbackHelperCommand(["history", "99"].concat(historyProcess.localOnly ? ["--local-only"] : []))
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
-        if (historyProc.localOnly !== root.historyLocalOnly) return
+        if (historyProcess.localOnly !== root.historyLocalOnly) return
         try { root.historyList = JSON.parse(text || "[]") }
         catch (e) { root.historyList = [] }
       }
     }
   }
-  Connections { target: historyProc; function onExited() { if (historyProc.localOnly !== root.historyLocalOnly) root.loadHistory() } }
+  Connections { target: historyProcess; function onExited() { if (historyProcess.localOnly !== root.historyLocalOnly) root.loadHistory() } }
 
-  Process { id: recentProc }
-  Connections { target: recentProc; function onExited() { if (root.open) root.loadHistory() } }
+  Process { id: recentProcess }
+  Connections { target: recentProcess; function onExited() { if (root.open) root.loadHistory() } }
 
   Process {
-    id: playlistsProc
+    id: playlistsProcess
     property bool localOnly: true
-    command: root.ctlCmd(["playlists"].concat(playlistsProc.localOnly ? ["--local-only"] : []))
+    command: root.playbackHelperCommand(["playlists"].concat(playlistsProcess.localOnly ? ["--local-only"] : []))
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
-        if (playlistsProc.localOnly !== root.historyLocalOnly) return
+        if (playlistsProcess.localOnly !== root.historyLocalOnly) return
         try { root.playlistsList = JSON.parse(text || "[]") }
         catch (e) { root.playlistsList = [] }
-        // a reload that raced a still-pending toggle would drop its optimistic flip
-        if (!root._likeDirty) root.likedOverrides = ({})
+        if (!root.likeWritePending) root.likedOverrides = ({})
       }
     }
   }
-  Connections { target: playlistsProc; function onExited() { if (playlistsProc.localOnly !== root.historyLocalOnly) root.loadPlaylists() } }
+  Connections { target: playlistsProcess; function onExited() { if (playlistsProcess.localOnly !== root.historyLocalOnly) root.loadPlaylists() } }
 
   Process {
-    id: importPlProc
+    id: importPlProcess
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -796,20 +761,20 @@ PopupCard {
     }
   }
 
-  Process { id: liveProc }
-  Connections { target: liveProc; function onExited() { root._commandGen++ } }
+  Process { id: liveProcess }
+  Connections { target: liveProcess; function onExited() { root.playbackCommandRevision++ } }
 
-  Process { id: actionProc }
+  Process { id: actionProcess }
   Connections {
-    target: actionProc
+    target: actionProcess
     function onExited() {
-      root._commandGen++
-      if (root.pendingCmds.length > 0) {
-        root.startAction(root.pendingCmds.shift())
+      root.playbackCommandRevision++
+      if (root.pendingPlaybackCommands.length > 0) {
+        root.startAction(root.pendingPlaybackCommands.shift())
         return
       }
-      if (root._likeDirty) {
-        root._likeDirty = false
+      if (root.likeWritePending) {
+        root.likeWritePending = false
         root.loadPlaylists()
       }
       root.loadingVid = ""
@@ -818,15 +783,14 @@ PopupCard {
     }
   }
 
-  // Avoids the first post-reboot play paying mpv's startup cost.
   Process {
-    id: warmupProc
+    id: warmupProcess
     command: ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "start_daemon"]
   }
-  Connections { target: warmupProc; function onExited() { root.refresh() } }
+  Connections { target: warmupProcess; function onExited() { root.refresh() } }
 
   Process {
-    id: spectrumProc
+    id: spectrumProcess
   }
 
   Process {
@@ -858,7 +822,7 @@ PopupCard {
     atomicWrites: true
     printErrors: false
     onFileChanged: reload()
-    onLoaded: root._latestSpectrumRaw = text()
+    onLoaded: root.pendingSpectrumJson = text()
     onLoadFailed: {}
   }
 
@@ -867,7 +831,7 @@ PopupCard {
   }
 
   function easeLevel(previous, target, dt) {
-    var tau = target > previous ? root._levelRiseTau : root._levelFallTau
+    var tau = target > previous ? root.spectrumRiseSeconds : root.spectrumFallSeconds
     var eased = previous + (target - previous) * (1.0 - Math.exp(-dt / tau))
     return target === 0 && eased < 0.001 ? 0 : eased
   }
@@ -894,9 +858,9 @@ PopupCard {
       if (Array.isArray(bands) && bands.length >= 24) {
         var analysis = data.analysis || ({})
         var capturedAt = Number(analysis.captured_at_ms || Date.now())
-        if (capturedAt === root._lastSpectrumCapture) return
-        var spectrumDt = root._lastSpectrumCapture > 0 ? Math.min(0.12, Math.max(0.015, (capturedAt - root._lastSpectrumCapture) / 1000.0)) : root._visTick / 1000.0
-        root._lastSpectrumCapture = capturedAt
+        if (capturedAt === root.lastSpectrumCaptureEpochMs) return
+        var spectrumDt = root.lastSpectrumCaptureEpochMs > 0 ? Math.min(0.12, Math.max(0.015, (capturedAt - root.lastSpectrumCaptureEpochMs) / 1000.0)) : root.visualizerFrameMilliseconds / 1000.0
+        root.lastSpectrumCaptureEpochMs = capturedAt
         var stereoBands = data.bands_stereo || ({}), stereoLeft = stereoBands.left || [], stereoRight = stereoBands.right || []
         var previousStereo = root.visBandsStereo || ({}), previousLeft = previousStereo.left || [], previousRight = previousStereo.right || []
         var newBands = [], newRawBands = [], newPeaks = [], newLeft = [], newRight = []
@@ -920,7 +884,7 @@ PopupCard {
         root.visBandEdges = Array.isArray(data.band_edges_hz) ? data.band_edges_hz : []
         root.visStereo = data.stereo || ({ "levels": [0, 0], "peaks": [0, 0] })
         root.visAnalysis = analysis
-        root.visFrame = Math.floor((Date.now() - root._visEpoch) / root._visTick)
+        root.visFrame = Math.floor((Date.now() - root.visualizerEpochMs) / root.visualizerFrameMilliseconds)
         if (playerComp) playerComp.requestPaint()
       }
     } catch (e) {}
@@ -928,13 +892,13 @@ PopupCard {
 
   Timer {
     id: visTimer
-    interval: Math.round(root._visTick); running: root.open; repeat: true
+    interval: Math.round(root.visualizerFrameMilliseconds); running: root.open; repeat: true
     onTriggered: {
       if (root.isPlaying) {
-        root.updateSpectrumData(root._latestSpectrumRaw)
+        root.updateSpectrumData(root.pendingSpectrumJson)
         specFile.reload()
-        if (playerComp && playerComp.lyricsVisible && root._lastStatusTime > 0) {
-          var elapsed = (Date.now() - root._lastStatusTime) / 1000.0
+        if (playerComp && playerComp.lyricsVisible && root.lastStatusEpochMs > 0) {
+          var elapsed = (Date.now() - root.lastStatusEpochMs) / 1000.0
           playerComp.updateLyricsPosition(root.curSecs + elapsed * root.playbackSpeed)
         }
       } else {
@@ -943,9 +907,6 @@ PopupCard {
     }
   }
 
-  // a click anywhere else must release the search field, or every single-key
-  // shortcut in handleKey stays swallowed by it. DragThreshold keeps the grab
-  // passive, so rows and tabs still get their own click.
   TapHandler { gesturePolicy: TapHandler.DragThreshold; onTapped: trackList.urlInput.focus = false }
 
   header: BorderSurface {
@@ -955,7 +916,7 @@ PopupCard {
     anchors.top: parent.top
     height: Commons.Style.space(28)
     radius: root.shell.rounding
-    color: root.shell.alpha(root.background, root.surfaceOpacity)
+    color: root.shell.alpha(Commons.Style.popupTinted(root.background), root.surfaceOpacity)
     borderSpec: Commons.Border.flat(root.shell.alpha(Commons.Color.accent, root.borderOpacity), root.shell.borderWidth)
 
     Item {
@@ -980,7 +941,7 @@ PopupCard {
         anchors.right: dismissBtn.left
         anchors.rightMargin: Commons.Style.space(4)
         anchors.verticalCenter: parent.verticalCenter
-        text: root.resumeInfo ? "Resume at " + Media.time(Number(root.resumeInfo.pos || 0)) : ""
+        text: root.resumeInfo ? "Resume at " + Units.clockText(Number(root.resumeInfo.pos || 0)) : ""
         color: root.foreground
         font.family: root.fontFamily; font.pixelSize: Commons.Style.font.caption
         elide: Text.ElideRight
@@ -1137,14 +1098,14 @@ PopupCard {
                 onWheel: playerComp.lyricsFollowing = false
               }
               onVisibleChanged: if (visible && playerComp.lyricsFollowing)
-                positionViewAtIndex(Math.max(0, playerComp.lyricsCurrentIdx), ListView.Center)
+                positionViewAtIndex(Math.max(0, playerComp.currentLyricsIndex), ListView.Center)
 
               Connections {
                 target: playerComp
-                function onLyricsCurrentIdxChanged() {
+                function onCurrentLyricsIndexChanged() {
                   if (playerComp.lyricsFollowing && playerComp.lyricsLines.length)
-                    lyricsList.positionViewAtIndex(Math.max(0, playerComp.lyricsCurrentIdx),
-                      playerComp.lyricsCurrentIdx < 0 ? ListView.Beginning : ListView.Center)
+                    lyricsList.positionViewAtIndex(Math.max(0, playerComp.currentLyricsIndex),
+                      playerComp.currentLyricsIndex < 0 ? ListView.Beginning : ListView.Center)
                 }
               }
 

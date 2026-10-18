@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import qs as ShellUi
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "../Model.js" as Model
 
@@ -14,13 +14,13 @@ Column {
   property var settings: ({})
   property string temperatureUnit: "Celsius"
   property bool publicIpEnabled: true
-  property color foreground: Color.popups.text
-  property string fontFamily: Style.font.family
+  property color foreground: Commons.Color.popups.text
+  property string fontFamily: Commons.Style.font.family
 
   readonly property var events: service ? service.alertEvents : []
 
   width: parent ? parent.width : implicitWidth
-  spacing: Style.space(10)
+  spacing: Commons.Style.space(10)
 
   Card {
     foreground: root.foreground
@@ -33,9 +33,9 @@ Column {
       textFormat: Text.PlainText
       wrapMode: Text.WordWrap
       color: root.foreground
-      opacity: Style.secondaryTextAlpha
+      opacity: Commons.Style.secondaryTextAlpha
       font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
+      font.pixelSize: Commons.Style.font.caption
     }
 
     Repeater {
@@ -49,11 +49,11 @@ Column {
         readonly property var reading: root.service ? root.service.alertValue(root.service.snapshot, def.id) : null
 
         width: parent.width
-        spacing: Style.space(3)
+        spacing: Commons.Style.space(3)
 
         Item {
           width: parent.width
-          height: Style.space(28)
+          height: Commons.Style.space(28)
 
           ShellUi.ToggleSwitch {
             id: alertSwitch
@@ -66,9 +66,9 @@ Column {
 
           Text {
             anchors.left: alertSwitch.right
-            anchors.leftMargin: Style.space(12)
+            anchors.leftMargin: Commons.Style.space(12)
             anchors.right: liveReading.left
-            anchors.rightMargin: Style.space(8)
+            anchors.rightMargin: Commons.Style.space(8)
             anchors.verticalCenter: parent.verticalCenter
             text: alertRow.def.label
             textFormat: Text.PlainText
@@ -76,7 +76,7 @@ Column {
             color: root.foreground
             opacity: alertRow.armed ? 1 : 0.65
             font.family: root.fontFamily
-            font.pixelSize: Style.font.body
+            font.pixelSize: Commons.Style.font.body
             font.bold: alertRow.armed
           }
 
@@ -88,25 +88,25 @@ Column {
               ? Math.round(alertRow.reading) + alertRow.def.unit : "—"
             textFormat: Text.PlainText
             color: root.foreground
-            opacity: Style.mutedTextAlpha
+            opacity: Commons.Style.mutedTextAlpha
             font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
+            font.pixelSize: Commons.Style.font.caption
           }
         }
 
         Row {
           visible: alertRow.def.threshold !== undefined
-          x: alertSwitch.width + Style.space(12)
-          spacing: Style.space(5)
+          x: alertSwitch.width + Commons.Style.space(12)
+          spacing: Commons.Style.space(5)
 
           Text {
             text: "Limit"
             textFormat: Text.PlainText
             color: root.foreground
-            opacity: Style.mutedTextAlpha
+            opacity: Commons.Style.mutedTextAlpha
             font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            height: Style.space(22)
+            font.pixelSize: Commons.Style.font.caption
+            height: Commons.Style.space(22)
             verticalAlignment: Text.AlignVCenter
           }
 
@@ -114,7 +114,7 @@ Column {
             iconText: "−"
             foreground: root.foreground
             fontFamily: root.fontFamily
-            size: Style.space(22)
+            size: Commons.Style.space(22)
             enabled: root.service && root.service.alertThreshold(alertRow.def.id) > alertRow.def.min
             onClicked: root.service.setAlertThreshold(alertRow.def.id, root.service.alertThreshold(alertRow.def.id) - alertRow.def.step)
           }
@@ -124,9 +124,9 @@ Column {
             textFormat: Text.PlainText
             color: root.foreground
             font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
+            font.pixelSize: Commons.Style.font.caption
             font.bold: true
-            height: Style.space(22)
+            height: Commons.Style.space(22)
             verticalAlignment: Text.AlignVCenter
           }
 
@@ -134,7 +134,7 @@ Column {
             iconText: "+"
             foreground: root.foreground
             fontFamily: root.fontFamily
-            size: Style.space(22)
+            size: Commons.Style.space(22)
             enabled: root.service && root.service.alertThreshold(alertRow.def.id) < alertRow.def.max
             onClicked: root.service.setAlertThreshold(alertRow.def.id, root.service.alertThreshold(alertRow.def.id) + alertRow.def.step)
           }
@@ -142,15 +142,15 @@ Column {
 
         Text {
           visible: alertRow.def.id === "driveHealth"
-          x: alertSwitch.width + Style.space(12)
+          x: alertSwitch.width + Commons.Style.space(12)
           width: parent.width - x
           text: "Checks connected drives every five minutes; warns on bad sectors or SMART failure."
           textFormat: Text.PlainText
           wrapMode: Text.WordWrap
           color: root.foreground
-          opacity: Style.mutedTextAlpha
+          opacity: Commons.Style.mutedTextAlpha
           font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
+          font.pixelSize: Commons.Style.font.caption
         }
       }
     }
@@ -167,9 +167,9 @@ Column {
       textFormat: Text.PlainText
       wrapMode: Text.WordWrap
       color: root.foreground
-      opacity: Style.mutedTextAlpha
+      opacity: Commons.Style.mutedTextAlpha
       font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
+      font.pixelSize: Commons.Style.font.caption
     }
 
     TextField {
@@ -186,7 +186,7 @@ Column {
 
     Item {
       width: parent.width
-      height: Style.space(24)
+      height: Commons.Style.space(24)
 
       SectionTitle { text: "Recent alerts"; fontFamily: root.fontFamily; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
       PanelActionButton {
@@ -206,9 +206,9 @@ Column {
       text: "No alerts recorded. The latest 20 events are kept across shell restarts."
       textFormat: Text.PlainText
       color: root.foreground
-      opacity: Style.mutedTextAlpha
+      opacity: Commons.Style.mutedTextAlpha
       font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
+      font.pixelSize: Commons.Style.font.caption
     }
 
     Repeater {
@@ -221,23 +221,23 @@ Column {
         readonly property var event: root.events[index] || ({})
 
         width: parent.width
-        spacing: Style.space(3)
+        spacing: Commons.Style.space(3)
 
         Item {
           width: parent.width
-          height: Style.space(22)
+          height: Commons.Style.space(22)
 
           Text {
             anchors.left: parent.left
             anchors.right: when.left
-            anchors.rightMargin: Style.space(8)
+            anchors.rightMargin: Commons.Style.space(8)
             anchors.verticalCenter: parent.verticalCenter
             text: eventRow.event.title || "Alert"
             textFormat: Text.PlainText
             elide: Text.ElideRight
             color: root.foreground
             font.family: root.fontFamily
-            font.pixelSize: Style.font.bodySmall
+            font.pixelSize: Commons.Style.font.bodySmall
             font.bold: true
           }
 
@@ -248,9 +248,9 @@ Column {
             text: eventRow.event.at ? new Date(eventRow.event.at).toLocaleString() : ""
             textFormat: Text.PlainText
             color: root.foreground
-            opacity: Style.mutedTextAlpha
+            opacity: Commons.Style.mutedTextAlpha
             font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
+            font.pixelSize: Commons.Style.font.caption
           }
 
           MouseArea {
@@ -266,9 +266,9 @@ Column {
           textFormat: Text.PlainText
           wrapMode: Text.WordWrap
           color: root.foreground
-          opacity: Style.secondaryTextAlpha
+          opacity: Commons.Style.secondaryTextAlpha
           font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
+          font.pixelSize: Commons.Style.font.caption
         }
 
         Text {
@@ -278,9 +278,9 @@ Column {
           textFormat: Text.PlainText
           wrapMode: Text.WordWrap
           color: root.foreground
-          opacity: Style.mutedTextAlpha
+          opacity: Commons.Style.mutedTextAlpha
           font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
+          font.pixelSize: Commons.Style.font.caption
         }
       }
     }

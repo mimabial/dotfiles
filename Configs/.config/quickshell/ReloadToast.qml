@@ -8,12 +8,11 @@ Scope {
     required property var shell
     property bool shown: false
     property bool failed: false
+    readonly property int failureShownMs: 8000
+    readonly property int successShownMs: 1400
     property string detail: ""
     readonly property string title: root.failed ? "Configuration reload failed" : "Configuration reloaded"
 
-    // Quickshell hands over the whole trace, headed by a generic line the toast
-    // already says itself. What is left are the "caused by" frames, innermost
-    // last, and that is the one carrying the file and line worth reading.
     function showFailure(error) {
         const lines = String(error).split("\n").map(line => line.trim())
             .filter(line => line.length > 0 && line !== "Failed to load configuration")
@@ -28,17 +27,15 @@ Scope {
         root.show()
     }
 
-    function show() { root.shown = true; hide.restart() }
+    function show() { root.shown = true; toastExpiryTimer.restart() }
 
     Connections {
         target: Quickshell
         function onReloadCompleted() { Quickshell.inhibitReloadPopup(); root.showSuccess() }
         function onReloadFailed(error: string) { Quickshell.inhibitReloadPopup(); root.showFailure(error) }
     }
-    Timer { id: hide; interval: root.failed ? 8000 : 1400; onTriggered: root.shown = false }
+    Timer { id: toastExpiryTimer; interval: root.failed ? root.failureShownMs : root.successShownMs; onTriggered: root.shown = false }
 
-    // The failure box is sized to hold a wrapped trace; the success line is one
-    // short string, so it keeps measuring itself the way every other toast does.
     TextMetrics { id: titleMetrics; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; text: root.title }
 
     PanelWindow {
@@ -54,9 +51,9 @@ Scope {
         WlrLayershell.namespace: "hypr-shell-reload"; WlrLayershell.layer: WlrLayer.Overlay
         Rectangle {
             anchors.fill: parent; radius: root.shell.rounding
-            color: root.shell.alpha(root.shell.role("alt_bg", root.shell.background), Style.popupSurfaceOpacity)
+            color: root.shell.alpha(Style.popupTinted(root.shell.role("alt_bg", root.shell.background)), Style.popupSurfaceOpacity)
             border.width: 1
-            border.color: root.shell.alpha(root.shell.role(root.failed ? "error" : "act_br", root.shell.accent), .65)
+            border.color: root.shell.alpha(root.failed ? root.shell.role("error", root.shell.accent) : Style.popupBorder(root.shell.role("act_br", root.shell.accent)), .65)
             Column {
                 id: content
                 anchors.centerIn: parent

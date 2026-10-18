@@ -55,7 +55,7 @@ declare -ga HYPR_MENU_ACTION_HANDLERS=()
 declare -ga HYPR_MENU_ACTIVE_CHECKS=()
 declare -gA HYPR_MENU_MARKED=()
 declare -gA MENU_STATE_CACHE=()
-MENU_ROOT_GLYPH=""
+MENU_ROOT_GLYPH=""
 MENU_PROMPT_GLYPH=""
 
 declare -gA MENU_STYLE=([font_scale]="" [font_name]="" [width_theme]="" [radius_px]="" [window_theme]="")

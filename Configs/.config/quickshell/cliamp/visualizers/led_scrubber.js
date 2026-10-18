@@ -1,18 +1,18 @@
 .pragma library
-.import "helpers.js" as H
+.import "helpers.js" as VisualizerHelpers
 
-function render(ctx, d) {
-  var bands = d.bands || []
-  var w = d.width, h = d.height, frame = d.frame || 0
-  var isPlaying = d.playing
-  var beatDrop = d.beatDrop || 0
-  var midY = h / 2.0
+function render(canvas, frameData) {
+  var bands = frameData.bands || []
+  var width = frameData.width, height = frameData.height, frame = frameData.frame || 0
+  var isPlaying = frameData.playing
+  var beatDrop = frameData.beatDrop || 0
+  var midY = height / 2.0
 
   var numCols = 44
-  var resampled = H.resampleBandsLinear(bands, numCols)
+  var resampled = VisualizerHelpers.resampleBandsLinear(bands, numCols)
 
   var margin = 6
-  var totalDrawW = w - margin * 2
+  var totalDrawW = width - margin * 2
   var gap = 2.5
   var colW = Math.max(2.5, (totalDrawW - (numCols - 1) * gap) / numCols)
   var actualW = numCols * colW + (numCols - 1) * gap
@@ -28,9 +28,9 @@ function render(ctx, d) {
   var segColors = []
   for (var si = 0; si < numSegs; si++) {
     var tone = Math.abs(si - centerIdx) / centerIdx
-    segColors.push(H.specColor(d, tone, si === centerIdx ? 1.0 : 0.95))
+    segColors.push(VisualizerHelpers.specColor(frameData, tone, si === centerIdx ? 1.0 : 0.95))
   }
-  var unlitColor = H.rgba(d.foreground, 0.06)
+  var unlitColor = VisualizerHelpers.rgba(frameData.foreground, 0.06)
 
   for (var col = 0; col < numCols; col++) {
     var cx = startX + col * (colW + gap)
@@ -48,11 +48,11 @@ function render(ctx, d) {
       var distFromCenter = Math.abs(s - centerIdx)
       var isLit = distFromCenter <= activeRadius
 
-      ctx.fillStyle = isLit ? segColors[s] : unlitColor
+      canvas.fillStyle = isLit ? segColors[s] : unlitColor
 
-      ctx.beginPath()
-      H.roundedRect(ctx, cx, sy, colW, segH, 0.8)
-      ctx.fill()
+      canvas.beginPath()
+      VisualizerHelpers.roundedRect(canvas, cx, sy, colW, segH, 0.8)
+      canvas.fill()
     }
   }
 }

@@ -7,23 +7,15 @@ Item {
     required property var shell
     property string css: ""
     readonly property var box: shell.style.box(css)
-    // a group holds N children: slots[0] is always visible, the rest reveal on
-    // hover. primary/secondary are the two-slot spelling of the same thing.
     property Component primary
     property Component secondary
     property var slots: []
-    readonly property var chain: slots.length ? slots : [primary, secondary].filter(c => c)
-    readonly property var drawerSlots: chain.slice(1)
-    // which end the drawer grows toward; an alwaysOpen group reveals nothing, so
-    // it has no growth direction and keeps its slots in array order
+    readonly property var slotComponents: slots.length ? slots : [primary, secondary].filter(c => c)
+    readonly property var drawerSlots: slotComponents.slice(1)
     property bool reverse: false
     property bool holdOpen: false
-    // a container rather than a drawer: every slot is loaded and shown, and the
-    // group sizes to whatever is visible instead of collapsing with slots[0]
     property bool alwaysOpen: false
     property bool secondaryAvailable: true
-    // build the drawer up front instead of on hover: a slot whose script has
-    // not printed yet has no width, and the group would open twice
     property bool preload: false
     property real radius: shell.moduleRadius
     property color backgroundColor: root.boxColor("backgroundColor")
@@ -33,8 +25,8 @@ Item {
         return !spec ? "transparent" : Array.isArray(spec) ? shell.alpha(shell.role(spec[0], borderColor), spec[1] ?? 1) : shell.role(spec, borderColor)
     }
     readonly property bool hovered: hover.hovered
-    readonly property bool primaryFilled: itemFilled(head.item)
-    readonly property bool ordered: reverse && !alwaysOpen
+    readonly property bool primaryFilled: hasVisibleContent(primaryLoader.item)
+    readonly property bool drawersBeforePrimary: reverse && !alwaysOpen
     readonly property bool empty: alwaysOpen ? content.implicitHeight <= 0 && content.implicitWidth <= 0 : !primaryFilled
     property bool open: alwaysOpen || (primaryFilled && secondaryAvailable && (hovered || holdOpen))
     function boxColor(key) {
@@ -45,7 +37,7 @@ Item {
             : shell.role(spec, shell.foreground)
     }
 
-    function itemFilled(item) {
+    function hasVisibleContent(item) {
         if (!item) return false
         if (item.shown !== undefined) return item.shown
         if (item.text !== undefined) return String(item.text) !== ""
@@ -54,10 +46,10 @@ Item {
     }
 
     readonly property real borderWidth: borderColor.a === 0 ? 0 : box.borderWidth
-    readonly property real spanX: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * borderWidth
-    readonly property real spanY: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * borderWidth
-    implicitWidth: empty ? 0 : content.implicitWidth + spanX
-    implicitHeight: empty ? 0 : content.implicitHeight + spanY
+    readonly property real horizontalInsets: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * borderWidth
+    readonly property real verticalInsets: box.margin[0] + box.margin[2] + box.padding[0] + box.padding[2] + 2 * borderWidth
+    implicitWidth: empty ? 0 : content.implicitWidth + horizontalInsets
+    implicitHeight: empty ? 0 : content.implicitHeight + verticalInsets
     clip: true
 
     Behavior on implicitWidth { enabled: !root.alwaysOpen; NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
@@ -73,8 +65,8 @@ Item {
     }
     GridLayout {
         id: content
-        anchors.left: !root.ordered ? parent.left : undefined
-        anchors.right: root.ordered ? parent.right : undefined
+        anchors.left: !root.drawersBeforePrimary ? parent.left : undefined
+        anchors.right: root.drawersBeforePrimary ? parent.right : undefined
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         anchors.topMargin: root.box.margin[0] + root.borderWidth + root.box.padding[0]
@@ -82,31 +74,28 @@ Item {
         anchors.bottomMargin: root.box.margin[2] + root.borderWidth + root.box.padding[2]
         anchors.leftMargin: root.box.margin[3] + root.borderWidth + root.box.padding[3]
         rows: 1
-        columns: root.chain.length
+        columns: root.slotComponents.length
         rowSpacing: 0
         columnSpacing: 0
         Loader {
-            id: head
-            sourceComponent: root.chain[0] || null
+            id: primaryLoader
+            sourceComponent: root.slotComponents[0] || null
             visible: !root.alwaysOpen || root.primaryFilled
             Layout.fillHeight: true
-            Layout.column: root.ordered ? root.chain.length - 1 : 0
+            Layout.column: root.drawersBeforePrimary ? root.slotComponents.length - 1 : 0
         }
         Repeater {
             model: root.drawerSlots
             delegate: Loader {
-                id: slot
+                id: drawerLoader
                 required property var modelData
                 required property int index
-                // a script that prints nothing hides its button, and an empty
-                // drawer is worse than no drawer. `visible` is inherited from the
-                // closed loader, so ask the button for its own text instead
-                readonly property bool filled: root.itemFilled(slot.item)
-                readonly property int place: root.ordered ? root.chain.length - 2 - slot.index : slot.index + 1
-                sourceComponent: root.secondaryAvailable && (root.alwaysOpen || root.preload || root.hovered || root.holdOpen) ? slot.modelData : null
+                readonly property bool filled: root.hasVisibleContent(drawerLoader.item)
+                readonly property int place: root.drawersBeforePrimary ? root.slotComponents.length - 2 - drawerLoader.index : drawerLoader.index + 1
+                sourceComponent: root.secondaryAvailable && (root.alwaysOpen || root.preload || root.hovered || root.holdOpen) ? drawerLoader.modelData : null
                 Layout.fillHeight: true
-                Layout.column: slot.place
-                opacity: root.open && slot.filled ? 1 : 0
+                Layout.column: drawerLoader.place
+                opacity: root.open && drawerLoader.filled ? 1 : 0
                 visible: opacity > 0
                 Behavior on opacity { NumberAnimation { duration: 120 } }
             }

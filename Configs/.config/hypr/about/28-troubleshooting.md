@@ -36,7 +36,7 @@ Second: it is a duplicate. Binds stack rather than replace, so a second `bind` o
 the same chord does not override the first. Find it:
 
 ```bash
-grep -n '"F"' ~/.config/hypr/keybindings.lua
+rg -n '"F"' ~/.config/hypr/keybindings.lua
 ```
 
 To see the live set, parse the plain output — `hyprctl binds -j` is unusable here,
@@ -53,14 +53,23 @@ never see `submap` in that output. Submap leaders are identified by the
 
 ## The bar
 
+Read the new errors after a change:
+
 ```bash
-quickshell ipc call bar reload
-journalctl --user --since "10 seconds ago" | grep -iE 'WARN|ERROR|TypeError'
+journalctl --user --since "10 seconds ago" | grep -iE 'WARN|ERROR|TypeError' | grep -v font.db
 ```
 
 `bar reload` is a **soft** reload. It reuses the running engine, so it will not
-pick up a newly installed font or a changed `vars.lua` value. If a change appears
-to do nothing, restart the process before concluding the change was wrong.
+pick up a newly installed font, a changed `vars.lua` value, font family,
+URL-loaded components or directory imports. Restart for those changes:
+
+```bash
+hyprshell service/control restart hyprland-quickshell
+```
+
+Use `quickshell ipc call bar reload` only when no watcher reload happened.
+Consecutive QML reloads can crash the shell; save each file in one write and
+avoid `sed -i`, whose rename loses the watcher.
 
 Popup errors often only appear when you open the popup, so open the one you
 changed. `OpenType support missing` lines are constant background noise.
@@ -91,7 +100,7 @@ vanished, you edited the wrong file — `dunst.conf` is the one to change.
 Daemons load their code once at startup. Editing a script under
 `~/.local/lib/hypr/` changes nothing for an already-running daemon, and a fresh
 run from your shell will show the fix while the live process still serves the old
-code. Restart the actual unit.
+code. Restart the running service through `hyprshell service/control`.
 
 ## A theme switch left something behind
 
@@ -112,9 +121,9 @@ hyprshell service/apply-config.sh --mode restore <relative-path>
 hyprshell service/apply-managed-domains.sh --mode restore hypr-config
 ```
 
-One file, or a whole domain from stock defaults with a backup taken first. State
-is disposable — reapplying the theme regenerates the palette and every derived
-file.
+One file, or a whole domain from stock defaults with a backup taken first.
+Reapplying the theme regenerates theme output; preserve saved look-and-feel
+presets and other preferences when repairing state.
 
 ## Where to read more
 

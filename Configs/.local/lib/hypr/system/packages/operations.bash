@@ -70,17 +70,35 @@ package_remove() {
   package_run_pacman -Rns "${flags[@]}" -- "$@"
 }
 
-package_upgrade_all() {
-  local helper=""
+package_upgrade() {
+  local update_source="${1:-all}" helper=""
   local -a flags=()
   package_confirmation_flags_into flags
 
-  if helper="$(package_aur_helper)"; then
-    "${helper}" -Syu "${flags[@]}"
-  else
-    package_run_pacman -Syu "${flags[@]}"
+  case "${update_source}" in
+    all | pacman)
+      if [[ "${update_source}" == all ]] && helper="$(package_aur_helper)"; then
+        "${helper}" -Syu "${flags[@]}" || return
+      else
+        package_run_pacman -Syu "${flags[@]}" || return
+      fi
+      ;;
+    aur)
+      helper="$(package_aur_helper)" || package_error "no AUR helper found; install yay or paru"
+      "${helper}" -Sua "${flags[@]}" || return
+      ;;
+    flatpak)
+      package_command_exists flatpak || package_error "flatpak is not installed"
+      ;;
+    *) package_error "unknown update source: ${update_source}" ;;
+  esac
+
+  if [[ "${update_source}" == flatpak ]] || { [[ "${update_source}" == all ]] && package_command_exists flatpak; }; then
+    flags=()
+    ((skip_confirmation == 1)) && flags+=(-y)
+    flatpak update "${flags[@]}" || return
   fi
-  if package_command_exists flatpak; then flatpak update -y; fi
+  [[ "${update_source}" == flatpak ]] || package_review_orphans
 }
 
 package_fetch_metadata() {
@@ -135,15 +153,30 @@ package_clean_cache() {
   fi
 }
 
+package_review_orphans() {
+  local -a orphans=()
+  local reply=""
+
+  mapfile -t orphans < <(pacman -Qtdq 2>/dev/null || true)
+  ((${#orphans[@]})) || return 0
+
+  printf '\nOrphaned packages (%s):\n' "${#orphans[@]}"
+  printf '  %s\n' "${orphans[@]}"
+  if ((skip_confirmation == 0)); then
+    [[ -t 0 ]] || return 0
+    read -r -p "Remove them? [y/N] " reply || return 0
+    [[ "${reply}" =~ ^[Yy] ]] || return 0
+  fi
+  package_remove "${orphans[@]}"
+}
+
 package_remove_orphans() {
   local -a orphans=()
-  local -a flags=()
   mapfile -t orphans < <(pacman -Qtdq 2>/dev/null || true)
   ((${#orphans[@]} == 0)) && {
     printf 'No orphaned packages.\n'
     return 0
   }
-  package_confirmation_flags_into flags
-  package_run_pacman -Rns "${flags[@]}" -- "${orphans[@]}"
+  package_remove "${orphans[@]}"
 }
 

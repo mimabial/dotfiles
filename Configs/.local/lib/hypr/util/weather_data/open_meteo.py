@@ -99,6 +99,7 @@ def normalize_current_condition(current, hourly):
         "DewPointC": dew_c,
         "DewPointF": dew_f,
         "visibility": "" if metres is None else str(round(metres / 1000)),
+        "is_day": current["is_day"],
         "weatherCode": code,
         "weatherDesc": [{"value": description}],
     }
@@ -114,6 +115,7 @@ def normalize_hours_by_date(hourly):
             "tempC": hour_c,
             "tempF": hour_f,
             "weatherCode": hour_code,
+            "is_day": hourly["is_day"][index],
             "chanceofrain": str(hourly["precipitation_probability"][index] or 0),
         })
     return hours_by_date
@@ -184,9 +186,9 @@ def fetch_open_meteo_forecast(location, city, country):
             params={
                 "latitude": latitude,
                 "longitude": longitude,
-                "current": "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,uv_index,cloud_cover,surface_pressure",
+                "current": "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,uv_index,cloud_cover,surface_pressure,is_day",
                 "daily": "temperature_2m_max,temperature_2m_min,sunrise,sunset,weather_code",
-                "hourly": "temperature_2m,weather_code,precipitation_probability,dew_point_2m,visibility",
+                "hourly": "temperature_2m,weather_code,precipitation_probability,dew_point_2m,visibility,is_day",
                 "timezone": "auto",
                 "forecast_days": FORECAST_DAYS,
             },

@@ -14,6 +14,7 @@ PopupCard {
     property string configText: ""
     property bool configReady: false
     property string gameModeStatus: ""
+    property bool gameModeRefreshPending: false
     property bool copiedLaunchOptions: false
     property bool metricsExpanded: false
     readonly property var options: Model.parse(configText)
@@ -46,9 +47,12 @@ PopupCard {
         shell.closePopup()
         shell.run(["hyprshell", "gaming/launcher.sh", "--backend", backend])
     }
-    function refreshGameMode() { if (!gameModeProc.running) gameModeProc.running = true }
+    function refreshGameMode() {
+        if (gameModeProcess.running) gameModeRefreshPending = true
+        else gameModeProcess.running = true
+    }
 
-    onOpenChanged: if (open) { configFile.reload(); refreshGameMode() }
+    onOpenChanged: if (open) configFile.reload()
 
     FileView {
         id: configFile
@@ -60,11 +64,21 @@ PopupCard {
     }
 
     Process {
-        id: gameModeProc
+        id: gameModeProcess
         command: ["gamemoded", "-s"]
+        onRunningChanged: if (!running && root.gameModeRefreshPending) {
+            root.gameModeRefreshPending = false
+            root.refreshGameMode()
+        }
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.gameModeStatus = text.trim() }
     }
-    Timer { interval: 3000; repeat: true; running: root.open; triggeredOnStart: true; onTriggered: root.refreshGameMode() }
+    Process {
+        command: ["gdbus", "monitor", "--session", "--dest", "com.feralinteractive.GameMode", "--object-path", "/com/feralinteractive/GameMode"]
+        running: root.open
+        stdout: SplitParser { onRead: line => {
+            if (/GameRegistered|GameUnregistered|^The name /.test(line)) root.refreshGameMode()
+        } }
+    }
     Timer { id: copiedTimer; interval: 2500; onTriggered: root.copiedLaunchOptions = false }
 
     Flickable {

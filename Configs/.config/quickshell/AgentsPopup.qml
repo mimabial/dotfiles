@@ -1,6 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell.Io
+import "systemstats/ui" as Stats
+import "CalendarMath.js" as CalendarMath
+import "Units.js" as Units
 
 PopupCard {
     id: root
@@ -11,6 +14,10 @@ PopupCard {
     contentHeight: agentsViewport.height + padding * 2
 
     property var records: []
+    property string activeTab: "limits"
+    property int costPeriod: 7
+    onActiveTabChanged: { agentsViewport.contentY = 0; clearCursor(); rebuildRows() }
+    onCostPeriodChanged: { agentsViewport.contentY = 0; clearCursor(); rebuildRows() }
     property int selected: 0
     property string expandedProviderId: ""
     property string recommendationId: ""
@@ -21,8 +28,8 @@ PopupCard {
     signal limitNotificationsEnabled()
     onNotifyLimitChanged: if (notifyLimit) limitNotificationsEnabled()
 
-    readonly property int blockingHorizonMs: 5 * 3600000
-    readonly property int staleAfterMs: 40 * 60000
+    readonly property int blockingHorizonMs: 5 * CalendarMath.MS_PER_HOUR
+    readonly property int staleAfterMs: 40 * CalendarMath.MS_PER_MINUTE
     readonly property int viewportHeight: Style.px(520)
     readonly property real switchMargin: 0.05
 
@@ -76,7 +83,7 @@ PopupCard {
         for (const limit of (record.limits || [])) {
             const reset = Date.parse(limit.resetsAt)
             const clearsIn = isNaN(reset) ? root.blockingHorizonMs : Math.max(0, reset - now)
-            const used = clearsIn > 0 ? Math.min(1, Number(limit.percent)) : 0
+            const used = clearsIn > 0 ? Math.min(1, Number(limit.usageFraction)) : 0
             if (!(used >= 0)) continue
             pressure = Math.max(pressure, used * Math.min(1, clearsIn / root.blockingHorizonMs))
             load += used
@@ -93,17 +100,15 @@ PopupCard {
     function usageSummary(record) {
         const parts = []
         for (const limit of (record && record.limits || []))
-            if (Number(limit.percent) >= 0)
-                parts.push(Math.round(Number(limit.percent) * 100) + "% " + limitName(limit))
+            if (Number(limit.usageFraction) >= 0)
+                parts.push(Math.round(Number(limit.usageFraction) * 100) + "% " + limitName(limit))
         return parts.join("  ·  ")
     }
     function resetsIn(iso) {
         const target = Date.parse(iso)
         if (isNaN(target)) return ""
-        const minutes = Math.max(0, Math.round((target - shell.clock.date.getTime()) / 60000))
-        if (minutes >= 1440) return Math.floor(minutes / 1440) + "d " + Math.floor(minutes % 1440 / 60) + "h"
-        if (minutes >= 60) return Math.floor(minutes / 60) + "h " + minutes % 60 + "m"
-        return minutes + "m"
+        const minutes = Math.max(0, Math.round((target - shell.clock.date.getTime()) / CalendarMath.MS_PER_MINUTE))
+        return Units.spanText(minutes * Units.SECONDS_PER_MINUTE) || "0m"
     }
     function handleKey(event) {
         if (event.key === Qt.Key_R) { refreshRequested(); return true }
@@ -156,6 +161,26 @@ PopupCard {
             id: agentsColumn
             width: agentsViewport.width; spacing: Style.sectionGap
 
+        Row {
+            width: parent.width; spacing: Style.sm
+            Repeater {
+                model: ["limits", "costs"]
+                PopupTab {
+                    required property string modelData
+                    width: (agentsColumn.width - Style.sm) / 2
+                    shell: root.shell; text: modelData
+                    selected: root.activeTab === modelData
+                    onClicked: root.activeTab = modelData
+                }
+            }
+        }
+
+        AgentCosts { visible: root.activeTab === "costs"; width: parent.width; popup: root }
+
+        Column {
+            visible: root.activeTab === "limits"
+            width: parent.width; spacing: Style.sectionGap
+
         PopupHero {
             shell: root.shell
             title: root.provider ? root.provider.name : "No AI coding subscriptions found"
@@ -171,7 +196,7 @@ PopupCard {
                     required property int index; required property var modelData
                     width: (agentsColumn.width - Style.sm * (root.records.length - 1)) / root.records.length
                     shell: root.shell
-                    text: modelData.name + (root.recommendationId === String(modelData.id) ? "  *" : "")
+                    text: ({claude: "Claude", kimi: "Kimi"}[modelData.id] || modelData.name) + (root.recommendationId === String(modelData.id) ? "  *" : "")
                     selected: index === root.selected
                     onClicked: root.select(index)
                 }
@@ -200,7 +225,7 @@ PopupCard {
                         Item { width: Math.max(0, parent.width - limitName.implicitWidth - limitPercent.implicitWidth); height: 1 }
                         Text {
                             id: limitPercent
-                            text: Math.round(Number(limitRow.modelData.percent) * 100) + "%"
+                            text: Math.round(Number(limitRow.modelData.usageFraction) * 100) + "%"
                             color: root.shell.mutedText
                             font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                         }
@@ -209,9 +234,9 @@ PopupCard {
                         width: parent.width; height: Style.trackHeight; radius: Style.trackHeight / 2
                         color: root.shell.alpha(root.shell.foreground, .12)
                         Rectangle {
-                            width: parent.width * Math.max(0, Math.min(1, Number(limitRow.modelData.percent)))
+                            width: parent.width * Math.max(0, Math.min(1, Number(limitRow.modelData.usageFraction)))
                             height: parent.height; radius: parent.radius
-                            color: Number(limitRow.modelData.percent) >= root.alarmUsage
+                            color: Number(limitRow.modelData.usageFraction) >= root.alarmUsage
                                 ? root.shell.role("error", root.shell.accent)
                                 : root.shell.role("act_br", root.shell.accent)
                         }
@@ -391,6 +416,166 @@ PopupCard {
             }
         }
 
+        }
+        }
+    }
+
+    component AgentCosts: Column {
+        id: costs
+        required property var popup
+        spacing: Style.sectionGap
+        readonly property var entries: popup.records.filter(record => record.costPeriods)
+            .map(record => Object.assign({id: record.id, agent: record.name}, record.costPeriods[String(popup.costPeriod)]))
+        readonly property var total: {
+            const sum = {tokens: 0, costUsd: 0, unpricedTokens: 0, assumedRateTokens: 0, days: []}, days = {}
+            for (const entry of entries) {
+                sum.tokens += Number(entry.tokens) || 0
+                sum.costUsd += Number(entry.costUsd) || 0
+                sum.unpricedTokens += Number(entry.unpricedTokens) || 0
+                sum.assumedRateTokens += Number(entry.assumedRateTokens) || 0
+                for (const day of entry.days || []) {
+                    const bucket = days[day.date] || (days[day.date] = {date: day.date, tokens: 0, costUsd: 0, unpricedTokens: 0})
+                    bucket.tokens += Number(day.tokens) || 0
+                    bucket.costUsd += Number(day.costUsd) || 0
+                    bucket.unpricedTokens += Number(day.unpricedTokens) || 0
+                }
+            }
+            sum.days = Object.keys(days).sort().map(date => {
+                const day = days[date]
+                if (day.tokens > 0 && day.tokens === day.unpricedTokens) day.costUsd = null
+                return day
+            })
+            if (sum.tokens > 0 && sum.tokens === sum.unpricedTokens) sum.costUsd = null
+            return sum
+        }
+        readonly property var models: {
+            const models = []
+            for (const entry of entries)
+                for (const model of entry.models || []) models.push(Object.assign({agent: entry.agent}, model))
+            return models.sort((a, b) => (Number(b.costUsd) || 0) - (Number(a.costUsd) || 0) || b.tokens - a.tokens)
+        }
+        readonly property bool stalePrices: popup.records.some(record => record.pricingStatus === "stale")
+        readonly property bool missingPrices: popup.records.some(record => record.pricingStatus === "unavailable")
+
+        function money(cell) {
+            return cell.costUsd === null ? "Unpriced" : "$" + Number(cell.costUsd || 0).toLocaleString(Qt.locale(), 'f', 2) + (cell.unpricedTokens > 0 ? "+" : "")
+        }
+        function dateLabel(day) { return Qt.formatDate(new Date(day.date + "T00:00:00"), "d MMM") }
+
+        Row {
+            width: parent.width; spacing: Style.sm
+            Repeater {
+                model: [{days: 1, text: "Today"}, {days: 7, text: "7 days"}, {days: 30, text: "30 days"}]
+                PopupTab {
+                    required property var modelData
+                    width: (costs.width - Style.sm * 2) / 3
+                    shell: costs.popup.shell; text: modelData.text
+                    selected: costs.popup.costPeriod === modelData.days
+                    onClicked: costs.popup.costPeriod = modelData.days
+                }
+            }
+        }
+        PopupHero {
+            shell: costs.popup.shell
+            title: costs.entries.length ? costs.money(costs.total) + " estimated API value" : "Cost history not scanned"
+            status: costs.entries.length ? costs.popup.compact(costs.total.tokens) + " recorded tokens" : "Press R to scan local usage"
+        }
+        Text {
+            width: parent.width; wrapMode: Text.WordWrap
+            text: "Recorded tokens valued at current API rates in USD; subscription charges are separate."
+                + (costs.total.unpricedTokens > 0 ? " " + costs.popup.compact(costs.total.unpricedTokens) + " tokens have no known price." : "")
+                + (costs.total.assumedRateTokens > 0 ? " " + costs.popup.compact(costs.total.assumedRateTokens) + " tokens use default rates where pricing details are missing." : "")
+                + (costs.missingPrices ? " Prices unavailable; press R to retry." : costs.stalePrices ? " Using cached prices." : "")
+            color: costs.popup.shell.mutedText
+            font.family: costs.popup.shell.fontFamily; font.pixelSize: Style.caption
+        }
+        Text {
+            visible: costs.entries.length > 0 && costs.total.tokens === 0
+            text: "No recorded usage in this period"
+            color: costs.popup.shell.mutedText
+            font.family: costs.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
+        }
+        Column {
+            visible: costs.total.tokens > 0
+            width: parent.width; spacing: Style.sm
+            PopupSection { shell: costs.popup.shell; text: "DAILY COST" }
+            Stats.HistoryGraph {
+                width: costs.width; height: Style.controlHeight * 3
+                series: [costs.total.days.map(day => day.costUsd)]
+                colors: [costs.popup.shell.role("act_br", costs.popup.shell.accent)]
+                gap: Style.sm
+                barWidth: Math.max(1, Math.floor((width + gap) / Math.max(1, costs.total.days.length)) - gap)
+                minimumCeiling: 0; showGaps: true
+                baselineColor: costs.popup.shell.alpha(costs.popup.shell.foreground, .12)
+                gapColor: costs.popup.shell.mutedText
+            }
+            Row {
+                width: parent.width
+                Text {
+                    width: parent.width / 2
+                    text: costs.total.days.length ? costs.dateLabel(costs.total.days[0]) : ""
+                    color: costs.popup.shell.mutedText
+                    font.family: costs.popup.shell.fontFamily; font.pixelSize: Style.caption
+                }
+                Text {
+                    width: parent.width / 2; horizontalAlignment: Text.AlignRight
+                    text: costs.total.days.length ? costs.dateLabel(costs.total.days[costs.total.days.length - 1]) : ""
+                    color: costs.popup.shell.mutedText
+                    font.family: costs.popup.shell.fontFamily; font.pixelSize: Style.caption
+                }
+            }
+        }
+        Column {
+            visible: costs.total.tokens > 0
+            width: parent.width; spacing: Style.sm
+            PopupSeparator { shell: costs.popup.shell }
+            PopupSection { shell: costs.popup.shell; text: "BY AGENT" }
+            Repeater {
+                model: costs.entries.filter(entry => entry.tokens > 0)
+                PopupRow {
+                    required property var modelData
+                    width: costs.width; shell: costs.popup.shell; interactive: false
+                    title: modelData.agent; detail: costs.popup.compact(modelData.tokens) + " tokens"
+                    value: costs.money(modelData)
+                }
+            }
+        }
+        Column {
+            visible: costs.models.length > 0
+            width: parent.width; spacing: Style.md
+            PopupSeparator { shell: costs.popup.shell }
+            PopupSection { shell: costs.popup.shell; text: "BY MODEL" }
+            Repeater {
+                model: costs.models
+                Column {
+                    id: costModel
+                    required property var modelData
+                    width: costs.width; spacing: Style.xs
+                    Row {
+                        width: parent.width; spacing: Style.md
+                        Text {
+                            width: Math.max(0, parent.width - modelCost.implicitWidth - Style.md)
+                            text: costModel.modelData.name; wrapMode: Text.WrapAnywhere
+                            color: costs.popup.shell.foreground
+                            font.family: costs.popup.shell.fontFamily; font.pixelSize: Style.bodySmall; font.bold: true
+                        }
+                        Text {
+                            id: modelCost
+                            text: costs.money(costModel.modelData)
+                            color: costs.popup.shell.foreground
+                            font.family: costs.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
+                        }
+                    }
+                    Text {
+                        width: parent.width; wrapMode: Text.WordWrap
+                        text: costModel.modelData.agent + " · " + costs.popup.compact(costModel.modelData.tokens) + " tokens"
+                            + "\n" + costs.popup.compact(costModel.modelData.inputTokens) + " in · " + costs.popup.compact(costModel.modelData.outputTokens) + " out"
+                            + " · " + costs.popup.compact(costModel.modelData.cacheReadInputTokens) + " cache read · " + costs.popup.compact(costModel.modelData.cacheCreationInputTokens) + " cache write"
+                        color: costs.popup.shell.mutedText
+                        font.family: costs.popup.shell.fontFamily; font.pixelSize: Style.caption
+                    }
+                }
+            }
         }
     }
 

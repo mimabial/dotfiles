@@ -56,11 +56,11 @@ PopupCard {
     }
 
     function refresh() {
-        if (!reportProc.running && !actionProc.running) reportProc.running = true
+        if (!reportProcess.running && !actionProcess.running) reportProcess.running = true
     }
 
     function ensureCatalog() {
-        if (catalog.layouts.length === 0 && !catalogProc.running) catalogProc.running = true
+        if (catalog.layouts.length === 0 && !catalogProcess.running) catalogProcess.running = true
     }
 
     function showMain(message) {
@@ -86,13 +86,13 @@ PopupCard {
     }
 
     function runAction(args, successMessage) {
-        if (busy || actionProc.running) return
+        if (busy || actionProcess.running) return
         busy = true
         statusError = false
         statusText = "Applying keyboard settings…"
-        actionProc.successMessage = successMessage
-        actionProc.command = ["hyprshell", "util/keyboard-layout"].concat(args)
-        actionProc.running = true
+        actionProcess.successMessage = successMessage
+        actionProcess.command = ["hyprshell", "util/keyboard-layout"].concat(args)
+        actionProcess.running = true
     }
 
     function localeLabel(locale) {
@@ -104,7 +104,7 @@ PopupCard {
         busy = true
         statusError = false
         statusText = "Setting the " + scope + " language…"
-        localeProc.exec([languageHelper, scope, locale])
+        localeProcess.exec([languageHelper, scope, locale])
     }
 
     function chooseOption(index) {
@@ -173,10 +173,10 @@ PopupCard {
         ensureCatalog()
         localeConf.reload()
         displayConf.reload()
-        generatedLocalesProc.running = true
+        generatedLocalesProcess.running = true
     }
 
-    property Process reportProc: Process {
+    property Process reportProcess: Process {
         command: ["hyprshell", "util/keyboard-layout"]
         stdout: StdioCollector {
             id: reportStdout
@@ -194,7 +194,7 @@ PopupCard {
         }
     }
 
-    property Process catalogProc: Process {
+    property Process catalogProcess: Process {
         command: ["hyprshell", "util/keyboard-layout", "--available"]
         stdout: StdioCollector {
             id: catalogStdout
@@ -215,7 +215,7 @@ PopupCard {
         }
     }
 
-    property Process actionProc: Process {
+    property Process actionProcess: Process {
         property string successMessage: ""
         stdout: StdioCollector {
             id: actionStdout
@@ -249,12 +249,12 @@ PopupCard {
         onLoadFailed: root.displayOverride = ""
     }
 
-    property Process generatedLocalesProc: Process {
+    property Process generatedLocalesProcess: Process {
         command: [root.languageHelper, "system"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.generatedLocales = Model.parseLocales(text) }
     }
 
-    property Process localeProc: Process {
+    property Process localeProcess: Process {
         stdout: StdioCollector { id: localeStdout; waitForEnd: true }
         stderr: StdioCollector { id: localeStderr; waitForEnd: true }
         onExited: code => {

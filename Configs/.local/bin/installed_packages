@@ -13,8 +13,8 @@ output_file="${HOME}/installed_packages.txt"
     pacman -Qemq
   fi
 
-  printf '\n# Flatpak packages\n'
   if command -v flatpak >/dev/null 2>&1; then
+    printf '\n# Flatpak packages\n'
     flatpak list --app --columns=application
   fi
 } >"${output_file}"

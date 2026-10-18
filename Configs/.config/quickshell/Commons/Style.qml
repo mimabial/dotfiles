@@ -1,5 +1,6 @@
 pragma Singleton
 import QtQuick
+import "." as Commons
 import ".." as Active
 
 QtObject {
@@ -17,6 +18,8 @@ QtObject {
     readonly property real barOpacity: root.shell ? Number(root.shell.barOpacity) : 1
     readonly property real popupSurfaceOpacity: Active.Style.popupSurfaceOpacity
     readonly property real popupBorderOpacity: Active.Style.popupBorderOpacity
+    function popupTinted(base) { return Active.Style.popupTinted(base) }
+    function popupBorder(base) { return Active.Style.popupBorder(base) }
     readonly property int hoverDuration: Active.Style.hoverDuration
     readonly property int focusPrimeDelay: Active.Style.focusPrimeDelay
     readonly property real secondaryTextAlpha: Active.Style.secondaryTextAlpha
@@ -32,27 +35,27 @@ QtObject {
     readonly property real selectionFillAlpha: 0.35
 
     function normalFillFor(foreground, accent) {
-        return Util.alpha(foreground || Color.foreground, normalFillAlpha)
+        return Util.alpha(foreground || Commons.Color.foreground, normalFillAlpha)
     }
 
     function hoverFillFor(foreground, accent) {
-        return Util.alpha(accent || foreground || Color.foreground,
+        return Util.alpha(accent || foreground || Commons.Color.foreground,
                           Active.Style.hoverFillAlpha)
     }
     function selectedFillFor(foreground, accent) {
-        return Util.alpha(accent || foreground || Color.foreground, selectedFillAlpha)
+        return Util.alpha(accent || foreground || Commons.Color.foreground, selectedFillAlpha)
     }
     function pressedFillFor(foreground, accent) {
-        return Util.alpha(accent || foreground || Color.foreground, pressedFillAlpha)
+        return Util.alpha(accent || foreground || Commons.Color.foreground, pressedFillAlpha)
     }
     function focusFillFor(foreground, accent) {
-        return Util.alpha(accent || foreground || Color.foreground, focusFillAlpha)
+        return Util.alpha(accent || foreground || Commons.Color.foreground, focusFillAlpha)
     }
     function selectionFillFor(foreground, accent) {
-        return Util.alpha(accent || foreground || Color.foreground, selectionFillAlpha)
+        return Util.alpha(accent || foreground || Commons.Color.foreground, selectionFillAlpha)
     }
-    function hoverStateColor(foreground, accent) { return accent || foreground || Color.foreground }
-    function selectedStateColor(foreground, accent) { return accent || foreground || Color.foreground }
+    function hoverStateColor(foreground, accent) { return accent || foreground || Commons.Color.foreground }
+    function selectedStateColor(foreground, accent) { return accent || foreground || Commons.Color.foreground }
     function controlFill(focused, hot, foreground, accent) {
         return focused ? focusFillFor(foreground, accent)
              : hot ? hoverFillFor(foreground, accent)
@@ -71,7 +74,7 @@ QtObject {
         return Active.Style.fontPx(nominalSize)
     }
 
-    readonly property StyleSpacing spacing: StyleSpacing {
+    readonly property Commons.StyleSpacing spacing: Commons.StyleSpacing {
         hairline: Math.max(1, Active.Style.px(1))
         xxs: Active.Style.xxs
         xs: Active.Style.xs
@@ -97,7 +100,7 @@ QtObject {
     // This config sizes its bars from their content, so there is no fixed bar
     // thickness token. controlHeight is the one-row metric and scales with
     // TEXT_SIZE, which is what consumers of sizeHorizontal actually want.
-    readonly property StyleBar bar: StyleBar {
+    readonly property Commons.StyleBar bar: Commons.StyleBar {
         sizeHorizontal: Active.Style.controlHeight
         iconSlot: Active.Style.controlHeight
     }
@@ -117,7 +120,7 @@ QtObject {
         return ink > 0 ? reference / ink : 1
     }
 
-    readonly property StyleFont font: StyleFont {
+    readonly property Commons.StyleFont font: Commons.StyleFont {
         family: root.fontFamily
         menuFamily: root.fontFamily
         caption: Active.Style.caption

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Hyprland
+import "PopupNavigation.js" as Navigation
 
 PopupWindow {
     id: root
@@ -10,9 +11,8 @@ PopupWindow {
     required property string popupName
     property bool popupEnabled: true
     property int contentWidth: Style.px(380)
-    property int contentHeight: contentHost.childrenRect.height + padding * 2
+    property int contentHeight: popupContent.childrenRect.height + padding * 2
     property int margin: Style.popupGap
-    // Reserve detached headers opposite the bar so they never create a bar gap.
     property int headerHeight: 0
     property int padding: Style.popupPadding
     property string keyboardHint: "↑↓/Tab move · ←→ adjust · Enter · Esc"
@@ -21,45 +21,38 @@ PopupWindow {
     property alias borderColor: cardSurface.borderColor
     property alias surfaceOpacity: cardSurface.surfaceOpacity
     property alias borderOpacity: cardSurface.borderOpacity
-    // windows that belong to this panel and must not dismiss it (submenu flyouts)
     property var extraGrabWindows: []
     readonly property bool open: popupEnabled && shell.popupName === popupName
     readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null
     readonly property bool centered: shell.popupCenteredName === root.popupName
     property string position: shell.barEdge
     property bool leftAligned: false
-    // Keep controllers/timers beside visual content. Item.data accepts both
-    // QObjects and Items; visual entries still become contentHost.children.
-    default property alias content: contentHost.data
+    default property alias content: popupContent.data
     property alias header: headerHost.data
 
     visible: open || cardSurface.opacity > 0
     color: "transparent"
-    // The window keeps one height and the card moves inside it: a popup resized
-    // under a still pointer leaves Qt with stale surface coordinates until the
-    // next motion, so the following click lands on whatever used to sit there.
     property int placementRevision: 0
-    readonly property var availablePlacement: {
+    readonly property var availableScreenPlacement: {
         const screen = placementRevision >= 0 && anchorWindow ? anchorWindow.screen : null
         if (!screen || !anchorItem) return {top: 0, height: cardHeight, anchor: 0}
-        const origin = windowOrigin(), itemTop = origin.y + anchorWindow.contentItem.mapFromItem(anchorItem, 0, 0).y
+        const origin = anchorWindowScreenOrigin(), itemTop = origin.y + anchorWindow.contentItem.mapFromItem(anchorItem, 0, 0).y
         const top = !centered && position === "top" ? itemTop + anchorItem.height + margin : margin
         const bottom = !centered && position === "bottom" ? itemTop - margin : screen.height - margin
         return {top: top, height: Math.max(1, bottom - top), anchor: itemTop + anchorItem.height / 2 - top}
     }
-    // a panel that sizes itself from content reads maxHeight to shrink its own panes first
-    readonly property int maxHeight: availablePlacement.height
+    readonly property int maxHeight: availableScreenPlacement.height
     readonly property int cardHeight: Math.min(contentHeight + keyboardHintHeight, maxHeight - headerHeight) + headerHeight
     property int centeredHeight: cardHeight
     readonly property int cardY: centered ? Math.max(0, (height - centeredHeight) / 2)
         : position === "top" ? 0
         : position === "bottom" ? height - cardHeight
-        : Math.max(0, Math.min(height - cardHeight, availablePlacement.anchor - cardHeight / 2))
+        : Math.max(0, Math.min(height - cardHeight, availableScreenPlacement.anchor - cardHeight / 2))
     implicitWidth: anchorWindow && anchorWindow.screen ? Math.min(contentWidth, anchorWindow.screen.width - margin * 2) : contentWidth
     implicitHeight: anchorWindow && anchorWindow.screen ? maxHeight : cardHeight
-    mask: Region { item: card }
+    mask: Region { item: movableCard }
 
-    function windowOrigin() {
+    function anchorWindowScreenOrigin() {
         const screen = anchorWindow.screen, anchors = anchorWindow.anchors
         return Qt.point(anchors.left ? 0 : anchors.right ? screen.width - anchorWindow.width : (screen.width - anchorWindow.width) / 2,
             anchors.top ? 0 : anchors.bottom ? screen.height - anchorWindow.height : (screen.height - anchorWindow.height) / 2)
@@ -70,33 +63,23 @@ PopupWindow {
         if (hostButton) hostButton.popupCards = hostButton.popupCards.concat(root)
     }
     Component.onDestruction: {
+        if (root.shell.popupCard === root) root.shell.popupCard = null
         const hostButton = root.anchorItem as BarButton
-        if (hostButton) hostButton.popupCards = hostButton.popupCards.filter(card => card !== root)
+        if (hostButton) hostButton.popupCards = hostButton.popupCards.filter(movableCard => movableCard !== root)
     }
 
-    // Rows opt in with `navigable`; the card walks its own content rather than
-    // asking each panel to maintain a list.
     property int cursorIndex: -1
     property var navigableRows: []
     property point pointerPosition: Qt.point(-1, -1)
     onCursorIndexChanged: syncKeyboardCursor()
 
-    function collectNavigableRows(item, found) {
-        for (const child of item.children) {
-            if (!child.visible) continue
-            if (child.navigable === true) found.push(child)
-            if (child.children) collectNavigableRows(child, found)
-        }
-        return found
-    }
     function rebuildRows() {
-        navigableRows = collectNavigableRows(contentHost, [])
+        navigableRows = Navigation.collectRows(popupContent, [])
         if (cursorIndex >= navigableRows.length) cursorIndex = navigableRows.length - 1
         syncKeyboardCursor()
     }
     function syncKeyboardCursor() {
-        for (let i = 0; i < navigableRows.length; i++)
-            navigableRows[i].cursored = (i === cursorIndex)
+        Navigation.setCursor(navigableRows, cursorIndex)
     }
     function moveCursor(step) {
         rebuildRows()
@@ -112,7 +95,7 @@ PopupWindow {
                 Qt.callLater(() => {
                     const delegate = view.itemAtIndex(index)
                     if (!delegate) return
-                    const rows = collectNavigableRows(view.contentItem, []).filter(item => descendsFrom(item, delegate))
+                    const rows = Navigation.collectRows(view.contentItem, []).filter(item => descendsFrom(item, delegate))
                     if (rows.length) { selectRow(rows[step > 0 ? 0 : rows.length - 1]); revealCursor() }
                 })
                 return
@@ -124,7 +107,7 @@ PopupWindow {
         revealCursor()
     }
     function enclosingList(row) {
-        for (let item = row.parent; item && item !== contentHost; item = item.parent)
+        for (let item = row.parent; item && item !== popupContent; item = item.parent)
             if (item instanceof ListView) return item
         return null
     }
@@ -157,29 +140,23 @@ PopupWindow {
         if (index < 0) { rebuildRows(); index = navigableRows.indexOf(item) }
         if (index >= 0) cursorIndex = index
     }
-    function activateCursor() {
-        if (cursorIndex < 0 || cursorIndex >= navigableRows.length) return
-        const row = navigableRows[cursorIndex]
-        if (row.activateKeyboard) row.activateKeyboard()
-        else if (row.clicked) row.clicked(Qt.LeftButton)
-    }
-    function adjustCursor(direction) {
-        const row = navigableRows[cursorIndex]
-        if (!row || !row.adjustKeyboard) return false
-        return row.adjustKeyboard(direction) !== false
-    }
+    function activateCursor() { Navigation.activate(navigableRows[cursorIndex]) }
+    function adjustCursor(direction) { return Navigation.adjust(navigableRows[cursorIndex], direction) }
     function resumeKeyboard() { keyboardFocusScope.forceActiveFocus() }
     function clearCursor() {
         cursorIndex = -1
         syncKeyboardCursor()
     }
-    onOpenChanged: if (open) ++placementRevision; else clearCursor()
+    onOpenChanged: {
+        if (open) { ++placementRevision; shell.popupCard = root }
+        else {
+            clearCursor()
+            if (shell.popupCard === root) shell.popupCard = null
+        }
+    }
 
     property bool wantsKeyboard: false
-    property Binding activeCardBinding: Binding { target: root.shell; property: "popupCard"; value: root; when: root.open }
 
-    // The bar and focusable popup content both route here. Derived cards
-    // override handleKey and fall back to this.
     function defaultKey(event) {
         if ((event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) && (event.modifiers & Qt.ControlModifier)) {
             shell.switchPopup(event.key === Qt.Key_Backtab || (event.modifiers & Qt.ShiftModifier) ? -1 : 1)
@@ -201,12 +178,10 @@ PopupWindow {
     }
     function handleKey(event) { return defaultKey(event) }
 
-    // A window hosting bar modules outside the bar (the tray flyout) names that bar,
-    // so a click on the bar reaches it instead of dismissing the popup first.
     HyprlandFocusGrab {
         active: root.open && !root.shell.focusPriming
         windows: [root, root.anchorWindow, root.anchorWindow?.bar].filter(Boolean).concat(root.extraGrabWindows)
-        onCleared: root.shell.closePopup()
+        onCleared: if (root.open) root.shell.closePopup()
     }
     anchor {
         window: root.anchorWindow
@@ -216,17 +191,15 @@ PopupWindow {
         rect.width: 1; rect.height: 1
         onAnchoring: {
             if (!root.anchorItem || !root.anchorWindow || !root.anchorWindow.screen) return
-            // a layer surface has no x/y of its own; the compositor derives it
-            // from the anchors, so redo that to express screen coordinates in window ones
-            const origin = root.windowOrigin()
+            const origin = root.anchorWindowScreenOrigin()
             let x = root.leftAligned ? 0 : root.anchorItem.width / 2 - root.width / 2
             anchor.rect.x = Math.round(root.centered ? (root.anchorWindow.screen.width - root.width) / 2 - origin.x
                 : root.anchorWindow.contentItem.mapFromItem(root.anchorItem, x, 0).x)
-            anchor.rect.y = Math.round(root.availablePlacement.top - origin.y)
+            anchor.rect.y = Math.round(root.availableScreenPlacement.top - origin.y)
         }
     }
     Item {
-        id: card
+        id: movableCard
         y: root.cardY; width: parent.width; height: root.cardHeight
         PopupSurface {
             id: cardSurface
@@ -245,14 +218,14 @@ PopupWindow {
                 Flickable {
                     id: contentScroll
                     anchors.fill: parent
-                    contentWidth: contentHost.width
-                    contentHeight: contentHost.height
+                    contentWidth: popupContent.width
+                    contentHeight: popupContent.height
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
                     ScrollBar.vertical: PopupScrollBar { shell: root.shell }
                     ScrollBar.horizontal: PopupScrollBar { shell: root.shell }
                     Item {
-                        id: contentHost
+                        id: popupContent
                         width: Math.max(contentScroll.width, root.contentWidth - root.padding * 2)
                         height: Math.max(contentScroll.height, root.contentHeight - root.padding * 2)
                     }

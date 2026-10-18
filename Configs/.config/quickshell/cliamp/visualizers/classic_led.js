@@ -1,6 +1,5 @@
-// Port of cliamp vis_classic_led.go.
 .pragma library
-.import "helpers.js" as H
+.import "helpers.js" as VisualizerHelpers
 
 var BAR_CHARS = 2
 var BAR_GAP_CHARS = 1
@@ -21,66 +20,64 @@ function onEnter(state) {
   state.ledLast = 0
 }
 
-function render(ctx, d) {
-  var w = d.width, h = d.height
+function render(canvas, frameData) {
+  var width = frameData.width, height = frameData.height
   var charW = 6
   var charH = 10
-  var numCols = Math.floor(w / charW)
-  var rows = Math.floor(h / charH)
+  var numCols = Math.floor(width / charW)
+  var rows = Math.floor(height / charH)
   var bars = barCount(numCols)
   if (rows < 1 || bars < 1) return
 
-  var levels = H.resampleBandsLinear(d.bands, bars)
-  var s = d.state
-  if (!s.ledBody || s.ledBody.length !== bars) {
-    s.ledBody = levels.slice()
-    s.ledPeak = levels.slice()
-    s.ledHold = new Array(bars).fill(0)
-    s.ledLast = 0
+  var levels = VisualizerHelpers.resampleBandsLinear(frameData.bands, bars)
+  var animationState = frameData.state
+  if (!animationState.ledBody || animationState.ledBody.length !== bars) {
+    animationState.ledBody = levels.slice()
+    animationState.ledPeak = levels.slice()
+    animationState.ledHold = new Array(bars).fill(0)
+    animationState.ledLast = 0
   }
-  var body = s.ledBody, peak = s.ledPeak, hold = s.ledHold
+  var body = animationState.ledBody, peak = animationState.ledPeak, hold = animationState.ledHold
 
   var frameDt = 1 / FALLBACK_FPS
   var now = Date.now()
-  var dt = s.ledLast > 0 ? (now - s.ledLast) / 1000.0 : frameDt
-  if (dt <= 0 || dt > 10 * frameDt) dt = frameDt
-  s.ledLast = now
+  var elapsedSeconds = animationState.ledLast > 0 ? (now - animationState.ledLast) / 1000.0 : frameDt
+  if (elapsedSeconds <= 0 || elapsedSeconds > 10 * frameDt) elapsedSeconds = frameDt
+  animationState.ledLast = now
 
   for (var i = 0; i < bars; i++) {
     var target = levels[i] || 0
-    body[i] += (target - body[i]) * (1 - Math.exp(-(target > body[i] ? RISE_RATE : FALL_RATE) * dt))
+    body[i] += (target - body[i]) * (1 - Math.exp(-(target > body[i] ? RISE_RATE : FALL_RATE) * elapsedSeconds))
     if (body[i] >= peak[i]) {
       peak[i] = body[i]
       hold[i] = PEAK_HOLD
     } else if (hold[i] > 0) {
-      hold[i] = Math.max(0, hold[i] - dt)
+      hold[i] = Math.max(0, hold[i] - elapsedSeconds)
     } else {
-      peak[i] = Math.max(body[i], peak[i] - PEAK_FALL * dt)
+      peak[i] = Math.max(body[i], peak[i] - PEAK_FALL * elapsedSeconds)
     }
   }
 
-  var tiers = H.playerTiers(d)
+  var tiers = VisualizerHelpers.playerTiers(frameData)
   var barPx = charW * BAR_CHARS
   var stepPx = charW * (BAR_CHARS + BAR_GAP_CHARS)
   var halfH = Math.max(1, Math.round(charH / 2))
-  // Go left-pads the row, so the matrix sits against the right edge.
   var padPx = Math.max(0, numCols - (bars * (BAR_CHARS + BAR_GAP_CHARS) - BAR_GAP_CHARS)) * charW
 
   for (var b = 0; b < bars; b++) {
     var x = padPx + b * stepPx
     var lit = Math.floor(body[b] * rows + 1e-6)
     var peakSeg = Math.min(rows - 1, Math.floor(peak[b] * rows + 1e-6))
-    // A cap only renders when it sits strictly above the body; otherwise it merges.
     var showPeak = peak[b] > body[b] + 0.5 / rows && peakSeg >= lit
 
     for (var seg = 0; seg < rows; seg++) {
-      var rowY = h - (seg + 1) * charH
+      var rowY = height - (seg + 1) * charH
       if (seg < lit) {
-        ctx.fillStyle = tiers[H.specTag(seg / rows)]
-        ctx.fillRect(x, rowY + charH - halfH, barPx, halfH)   // ▄
+        canvas.fillStyle = tiers[VisualizerHelpers.specTag(seg / rows)]
+        canvas.fillRect(x, rowY + charH - halfH, barPx, halfH)    
       } else if (showPeak && seg === peakSeg) {
-        ctx.fillStyle = tiers[H.specTag(seg / rows)]
-        ctx.fillRect(x, rowY, barPx, halfH)                   // ▀
+        canvas.fillStyle = tiers[VisualizerHelpers.specTag(seg / rows)]
+        canvas.fillRect(x, rowY, barPx, halfH)                    
       }
     }
   }

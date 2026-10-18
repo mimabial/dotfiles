@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Controls as QQC
-import qs.Commons
+import qs.Commons as Commons
 
 Column {
   id: root
@@ -10,32 +10,32 @@ Column {
   property int from: 0
   property int to: 100
   property int stepSize: 1
-  property color foreground: Color.foreground
-  property color accent: Color.accent
-  property string fontFamily: Style.font.family
-  property real fontSize: Style.font.body
-  property real fieldWidth: Style.spacing.numberFieldWidth
+  property color foreground: Commons.Color.foreground
+  property color accent: Commons.Color.accent
+  property string fontFamily: Commons.Style.font.family
+  property real fontSize: Commons.Style.font.body
+  property real fieldWidth: Commons.Style.spacing.numberFieldWidth
   property bool hasCursor: false
-  property bool _hovered: false
+  property bool pointerHovered: false
   property alias field: spin
 
   signal modified(int value)
   signal hovered(bool on)
 
-  spacing: Style.spacing.md
+  spacing: Commons.Style.spacing.md
 
   Text {
     visible: root.label !== ""
     text: root.label
     color: Qt.darker(root.foreground, 1.4)
     font.family: root.fontFamily
-    font.pixelSize: Style.font.bodySmall
+    font.pixelSize: Commons.Style.font.bodySmall
   }
 
   QQC.SpinBox {
     id: spin
     width: root.fieldWidth
-    implicitHeight: Math.max(Style.spacing.controlHeight, root.fontSize + Style.spacing.controlPaddingY * 2)
+    implicitHeight: Math.max(Commons.Style.spacing.controlHeight, root.fontSize + Commons.Style.spacing.controlPaddingY * 2)
     from: root.from
     to: root.to
     stepSize: root.stepSize
@@ -45,27 +45,27 @@ Column {
     font.family: root.fontFamily
     font.pixelSize: root.fontSize
 
-    readonly property bool _focused: spin.activeFocus
-    readonly property bool _hot: root._hovered || root.hasCursor
-    readonly property var _borderSpec: Border.controlSpec(_focused ? "focus" : (_hot ? "hover-cursor" : "normal"), root.foreground, root.accent)
+    readonly property bool inputFocused: spin.activeFocus
+    readonly property bool inputHighlighted: root.pointerHovered || root.hasCursor
+    readonly property var stateBorderSpec: Commons.Border.controlSpec(inputFocused ? "focus" : (inputHighlighted ? "hover-cursor" : "normal"), root.foreground, root.accent)
 
-    leftPadding: Border.left(_borderSpec) + Style.spacing.controlPaddingX
-    rightPadding: Border.right(_borderSpec) + Style.spacing.controlPaddingX
+    leftPadding: Commons.Border.left(stateBorderSpec) + Commons.Style.spacing.controlPaddingX
+    rightPadding: Commons.Border.right(stateBorderSpec) + Commons.Style.spacing.controlPaddingX
       + (up.indicator ? up.indicator.width : 0)
-    topPadding: Border.top(_borderSpec)
-    bottomPadding: Border.bottom(_borderSpec)
+    topPadding: Commons.Border.top(stateBorderSpec)
+    bottomPadding: Commons.Border.bottom(stateBorderSpec)
 
     onValueModified: root.modified(value)
 
     background: BorderSurface {
       id: fieldBackground
-      color: Style.controlFill(spin._focused, spin._hot, root.foreground, root.accent)
-      borderSpec: spin._borderSpec
-      radius: Style.cornerRadius
+      color: Commons.Style.controlFill(spin.inputFocused, spin.inputHighlighted, root.foreground, root.accent)
+      borderSpec: spin.stateBorderSpec
+      radius: Commons.Style.cornerRadius
 
       HoverHandler {
         onHoveredChanged: {
-          root._hovered = hovered
+          root.pointerHovered = hovered
           root.hovered(hovered)
         }
       }
@@ -83,11 +83,11 @@ Column {
         Rectangle {
           width: parent.width
           height: parent.height / 2
-          radius: Math.min(Style.cornerRadius, height / 2)
+          radius: Math.min(Commons.Style.cornerRadius, height / 2)
           color: spin.up.pressed
-            ? Style.pressedFillFor(root.foreground, root.accent)
+            ? Commons.Style.pressedFillFor(root.foreground, root.accent)
             : spin.up.hovered
-              ? Style.hoverFillFor(root.foreground, root.accent)
+              ? Commons.Style.hoverFillFor(root.foreground, root.accent)
               : "transparent"
           Behavior on color { ColorAnimation { duration: 100 } }
         }
@@ -96,11 +96,11 @@ Column {
           anchors.bottom: parent.bottom
           width: parent.width
           height: parent.height / 2
-          radius: Math.min(Style.cornerRadius, height / 2)
+          radius: Math.min(Commons.Style.cornerRadius, height / 2)
           color: spin.down.pressed
-            ? Style.pressedFillFor(root.foreground, root.accent)
+            ? Commons.Style.pressedFillFor(root.foreground, root.accent)
             : spin.down.hovered
-              ? Style.hoverFillFor(root.foreground, root.accent)
+              ? Commons.Style.hoverFillFor(root.foreground, root.accent)
               : "transparent"
           Behavior on color { ColorAnimation { duration: 100 } }
         }
@@ -113,7 +113,7 @@ Column {
       clip: true
       font: spin.font
       color: root.foreground
-      selectionColor: Style.selectionFillFor(root.foreground, root.accent)
+      selectionColor: Commons.Style.selectionFillFor(root.foreground, root.accent)
       selectedTextColor: root.foreground
       horizontalAlignment: Qt.AlignHCenter
       verticalAlignment: Qt.AlignVCenter

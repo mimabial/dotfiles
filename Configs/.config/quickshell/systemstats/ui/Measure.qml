@@ -1,25 +1,22 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
-// A number and its unit set as one figure: "47.1" in the text colour with a
-// smaller, quieter "MB/s" hanging off its baseline. Units never wear the
-// data colour — identity comes from the dot beside the row, not the text.
 Row {
   id: root
 
   property string value: ""
   property string unit: ""
-  property color foreground: Color.popups.text
-  property string fontFamily: Style.font.family
-  property real valueSize: Style.font.body
-  property real unitSize: Style.font.caption
+  property color foreground: Commons.Color.popups.text
+  property string fontFamily: Commons.Style.font.family
+  property real valueSize: Commons.Style.font.body
+  property real unitSize: Commons.Style.font.caption
   property bool bold: true
   property real unitOpacity: 0.55
   property real valueOpacity: 1.0
 
-  spacing: (unit === "%" || unit === "°" || unit === "") ? 0 : Style.space(3)
+  spacing: (unit === "%" || unit === "°" || unit === "") ? 0 : Commons.Style.space(3)
 
   Text {
     id: valueText

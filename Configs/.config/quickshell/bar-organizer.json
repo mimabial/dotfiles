@@ -1,0 +1,277 @@
+{
+  "layouts": {
+    "winbar": {
+      "initial": {
+        "name": "Initial layout",
+        "savedAt": "2026-10-13T05:48:58.588Z",
+        "layout": {
+          "left": [
+            "weather"
+          ],
+          "center": [
+            {
+              "id": "menu",
+              "props": {
+                "text": "",
+                "taskbarSettings": true
+              }
+            },
+            {
+              "id": "taskbar",
+              "props": {
+                "pins": true,
+                "dash": true
+              }
+            }
+          ],
+          "right": [
+            "tray",
+            "language",
+            "spotlight",
+            "task-view",
+            "wifi-menu",
+            {
+              "id": "sound-menu",
+              "props": {
+                "mediaCard": true
+              }
+            },
+            "battery",
+            {
+              "id": "notifications",
+              "props": {
+                "showBadge": true,
+                "themed": true
+              }
+            },
+            "datetime",
+            "launcher-strip"
+          ],
+          "tray": [
+            "display",
+            "webcam",
+            "bitwarden",
+            "vpn",
+            "printers",
+            {
+              "id": "removable",
+              "props": {
+                "showBadge": true
+              }
+            },
+            "games",
+            "agents",
+            "updates",
+            "screenshot",
+            "colorpicker",
+            "converter",
+            "terminal",
+            "hyprsunset",
+            "github",
+            "sudoku",
+            "powerbutton"
+          ],
+          "edge": "bottom"
+        }
+      },
+      "snapshots": []
+    },
+    "bottom": {
+      "initial": {
+        "name": "Initial layout",
+        "savedAt": "2026-10-15T20:47:47.762Z",
+        "layout": {
+          "left": [
+            {
+              "id": "workspaces",
+              "props": {
+                "compactStyle": false,
+                "activeOnly": true,
+                "showAll": false,
+                "numerals": "roman"
+              }
+            },
+            "systemstats"
+          ],
+          "center": [
+            "submap",
+            "caffeine",
+            "datetime",
+            {
+              "id": "updates",
+              "props": {
+                "hideWhenCurrent": false
+              }
+            },
+            "weather"
+          ],
+          "right": [
+            {
+              "id": "mediaplayer",
+              "props": {
+                "appearance": "cava",
+                "fillAvailableWidth": false,
+                "showAlbumArt": false,
+                "noIcon": true,
+                "maxLabelWidth": 360,
+                "showControls": false,
+                "showArtist": false,
+                "randomizeProgressShape": true,
+                "showWhenIdle": true,
+                "cavaBars": 10,
+                "cavaBarWidth": 5,
+                "cavaGap": 2,
+                "cavaPosition": "bottom",
+                "cavaMode": "foobar",
+                "cavaFps": 30,
+                "cavaGain": 1,
+                "cavaSmoothing": 77
+              }
+            },
+            "tray",
+            "volume",
+            "microphone",
+            "privacy",
+            "display",
+            "vpn",
+            "wifi",
+            "quickshare",
+            {
+              "id": "bluetooth",
+              "props": {
+                "showReadout": false
+              }
+            },
+            {
+              "id": "removable",
+              "props": {
+                "showBadge": true
+              }
+            },
+            "powerprofile",
+            {
+              "id": "notifications",
+              "props": {
+                "showBadge": true
+              }
+            }
+          ],
+          "tray": [
+            {
+              "id": "terminal",
+              "trayPosition": {
+                "section": "right",
+                "index": 4,
+                "stringEntry": true
+              }
+            },
+            {
+              "id": "agents",
+              "trayPosition": {
+                "section": "right",
+                "index": 1,
+                "stringEntry": true
+              }
+            },
+            "bitwarden",
+            "barlayout",
+            {
+              "id": "screenshot",
+              "trayPosition": {
+                "section": "right",
+                "index": 15,
+                "stringEntry": true
+              }
+            },
+            {
+              "id": "converter",
+              "trayPosition": {
+                "section": "right",
+                "index": 11,
+                "stringEntry": true
+              }
+            },
+            {
+              "id": "wallpaper",
+              "trayPosition": {
+                "section": "right",
+                "index": 21,
+                "stringEntry": true
+              }
+            },
+            {
+              "id": "tasks",
+              "trayPosition": {
+                "section": "right",
+                "index": 20,
+                "stringEntry": true
+              }
+            },
+            {
+              "id": "sudoku",
+              "trayPosition": {
+                "section": "right",
+                "index": 5,
+                "stringEntry": true
+              }
+            },
+            {
+              "id": "colormode",
+              "trayPosition": {
+                "section": "right",
+                "index": 13,
+                "stringEntry": true
+              }
+            },
+            {
+              "id": "colorpicker",
+              "trayPosition": {
+                "section": "right",
+                "index": 12,
+                "stringEntry": true
+              }
+            },
+            {
+              "id": "hyprsunset",
+              "trayPosition": {
+                "section": "right",
+                "index": 6,
+                "stringEntry": true
+              }
+            },
+            {
+              "id": "github",
+              "props": {
+                "keepVisible": true
+              },
+              "trayPosition": {
+                "section": "right",
+                "index": 10,
+                "stringEntry": true
+              }
+            },
+            {
+              "id": "powerbutton",
+              "trayPosition": {
+                "section": "right",
+                "index": 8,
+                "stringEntry": true
+              }
+            },
+            {
+              "id": "altscape",
+              "trayPosition": {
+                "section": "right",
+                "index": 7,
+                "stringEntry": true
+              }
+            }
+          ],
+          "centerAnchor": "datetime"
+        }
+      },
+      "snapshots": []
+    }
+  },
+  "collapsed": {}
+}

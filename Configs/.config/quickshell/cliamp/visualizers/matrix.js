@@ -1,15 +1,15 @@
 .pragma library
-.import "helpers.js" as H
+.import "helpers.js" as VisualizerHelpers
 
-function render(ctx, d) {
-  var bands = d.bands, h = d.height, w = d.width, frame = d.frame
-  var playing = d.playing
-  var state = d.state
+function render(canvas, frameData) {
+  var bands = frameData.bands, height = frameData.height, width = frameData.width, frame = frameData.frame
+  var playing = frameData.playing
+  var state = frameData.state
 
   var charW = 11
   var charH = 10
-  var numCols = Math.floor(w / charW)
-  var numRows = Math.floor(h / charH)
+  var numCols = Math.floor(width / charW)
+  var numRows = Math.floor(height / charH)
   if (numCols < 1 || numRows < 1) return
 
   if (!state.matrixDrops || state.matrixDrops.length !== numCols) {
@@ -24,16 +24,16 @@ function render(ctx, d) {
     }
   }
 
-  var cols = H.resampleBandsLinear(bands, numCols)
+  var cols = VisualizerHelpers.resampleBandsLinear(bands, numCols)
   var glyphs = "0123456789ABCDEFλπΣΩ#%*+~=<>:?ｦｱｳｴｵｶｷｹｺｻｼｽｾｿﾀﾂﾃﾅﾆﾇﾈﾊﾋﾎﾏﾐﾑﾒﾓﾔﾕﾗﾘﾜ"
 
-  var c2 = (d.colors || [])[2] || d.foreground
-  var headHot = H.rgba(c2, 1), headCool = H.mixColor(c2, d.accent, 0.4, 1)
+  var c2 = (frameData.colors || [])[2] || frameData.foreground
+  var headHot = VisualizerHelpers.rgba(c2, 1), headCool = VisualizerHelpers.mixColor(c2, frameData.accent, 0.4, 1)
 
-  ctx.save()
-  ctx.font = "bold 9px monospace"
-  ctx.textAlign = "center"
-  ctx.textBaseline = "middle"
+  canvas.save()
+  canvas.font = "bold 9px monospace"
+  canvas.textAlign = "center"
+  canvas.textBaseline = "middle"
 
   for (var c = 0; c < numCols; c++) {
     var energy = playing ? Math.min(1.0, Math.max(0.0, cols[c] || 0)) : 0.05
@@ -61,16 +61,16 @@ function render(ctx, d) {
       var ch = glyphs[gIdx]
 
       if (l === 0) {
-        ctx.fillStyle = energy > 0.4 ? headHot : headCool
+        canvas.fillStyle = energy > 0.4 ? headHot : headCool
       } else {
         var alpha = (1.0 - (l / drop.length)) * (0.35 + energy * 0.65)
-        if (l === 1) ctx.fillStyle = H.mixColor(d.accent, c2, 0.4, alpha.toFixed(2))
-        else ctx.fillStyle = H.rgba(d.accent, alpha.toFixed(2))
+        if (l === 1) canvas.fillStyle = VisualizerHelpers.mixColor(frameData.accent, c2, 0.4, alpha.toFixed(2))
+        else canvas.fillStyle = VisualizerHelpers.rgba(frameData.accent, alpha.toFixed(2))
       }
 
-      ctx.fillText(ch, cx, cy)
+      canvas.fillText(ch, cx, cy)
     }
   }
 
-  ctx.restore()
+  canvas.restore()
 }

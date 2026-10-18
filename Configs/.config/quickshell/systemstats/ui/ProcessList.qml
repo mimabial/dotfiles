@@ -1,9 +1,10 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "../Model.js" as Model
+import "../../Units.js" as Units
 
 // The unfolded state lives on the host so it follows you from page to page.
 Column {
@@ -21,9 +22,9 @@ Column {
   property string emptyText: "Nothing to show yet"
   property bool expandable: true
   property var host: null
-  property color foreground: Color.popups.text
-  property string fontFamily: Style.font.family
-  property real columnWidth: Style.space(66)
+  property color foreground: Commons.Color.popups.text
+  property string fontFamily: Commons.Style.font.family
+  property real columnWidth: Commons.Style.space(66)
   property int maxRows: 200
 
   readonly property bool expanded: expandable && !!host && host.processesExpanded === true
@@ -42,7 +43,7 @@ Column {
       if (!(raw > 0)) return { value: "–", unit: "" }
       return Model.rateParts(raw)
     }
-    return Model.bytesParts(raw)
+    return Units.bytesParts(raw)
   }
 
   function setExpanded(value) {
@@ -51,11 +52,11 @@ Column {
   }
 
   width: parent ? parent.width : implicitWidth
-  spacing: Style.space(4)
+  spacing: Commons.Style.space(4)
 
   Item {
     width: parent.width
-    height: Style.space(18)
+    height: Commons.Style.space(18)
 
     SectionTitle {
       id: titleText
@@ -70,13 +71,13 @@ Column {
       visible: root.expandable
       textFormat: Text.PlainText
       anchors.left: titleText.right
-      anchors.leftMargin: Style.space(10)
+      anchors.leftMargin: Commons.Style.space(10)
       anchors.baseline: titleText.baseline
       text: root.expanded ? "Show less" : "Show all"
       color: root.foreground
       opacity: expandMouse.containsMouse ? 0.9 : 0.5
       font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
+      font.pixelSize: Commons.Style.font.caption
       font.bold: true
 
       Behavior on opacity { NumberAnimation { duration: 90 } }
@@ -84,7 +85,7 @@ Column {
       MouseArea {
         id: expandMouse
         anchors.fill: parent
-        anchors.margins: -Style.space(4)
+        anchors.margins: -Commons.Style.space(4)
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: root.setExpanded(!root.expanded)
@@ -94,7 +95,7 @@ Column {
     Row {
       anchors.right: parent.right
       anchors.verticalCenter: parent.verticalCenter
-      spacing: Style.space(8)
+      spacing: Commons.Style.space(8)
 
       Repeater {
         model: root.columns
@@ -105,9 +106,9 @@ Column {
           horizontalAlignment: Text.AlignRight
           text: modelData.title || ""
           color: root.foreground
-          opacity: Style.mutedTextAlpha
+          opacity: Commons.Style.mutedTextAlpha
           font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
+          font.pixelSize: Commons.Style.font.caption
           font.bold: true
         }
       }
@@ -120,9 +121,9 @@ Column {
     width: parent.width
     text: root.caption
     color: root.foreground
-    opacity: Style.faintTextAlpha
+    opacity: Commons.Style.faintTextAlpha
     font.family: root.fontFamily
-    font.pixelSize: Style.font.caption
+    font.pixelSize: Commons.Style.font.caption
     wrapMode: Text.WordWrap
   }
 
@@ -134,8 +135,8 @@ Column {
     placeholderText: "Search processes"
     text: root.query
     foreground: root.foreground
-    verticalPadding: Style.space(4)
-    font.pixelSize: Style.font.bodySmall
+    verticalPadding: Commons.Style.space(4)
+    font.pixelSize: Commons.Style.font.bodySmall
     onTextChanged: if (root.host && root.host.processQuery !== text) root.host.processQuery = text
     onActiveFocusChanged: if (root.host) root.host.searchActive = activeFocus
     Keys.onEscapePressed: function(event) {
@@ -152,11 +153,11 @@ Column {
     visible: root.collecting || root.shown.length === 0
     text: root.collecting ? "Collecting…" : (root.expanded ? "No match" : root.emptyText)
     color: root.foreground
-    opacity: Style.faintTextAlpha
+    opacity: Commons.Style.faintTextAlpha
     font.family: root.fontFamily
-    font.pixelSize: Style.font.bodySmall
-    topPadding: Style.space(2)
-    bottomPadding: Style.space(2)
+    font.pixelSize: Commons.Style.font.bodySmall
+    topPadding: Commons.Style.space(2)
+    bottomPadding: Commons.Style.space(2)
   }
 
   Repeater {
@@ -167,23 +168,23 @@ Column {
       required property int index
       readonly property var proc: root.shown[index] || ({})
       width: parent.width
-      height: Style.space(20)
+      height: Commons.Style.space(20)
 
       Row {
         anchors.left: parent.left
         anchors.right: figures.left
-        anchors.rightMargin: Style.space(10)
+        anchors.rightMargin: Commons.Style.space(10)
         anchors.verticalCenter: parent.verticalCenter
-        spacing: Style.space(6)
+        spacing: Commons.Style.space(6)
 
         Text {
           textFormat: Text.PlainText
           text: procRow.proc.name || ""
           color: root.foreground
           font.family: root.fontFamily
-          font.pixelSize: Style.font.body
+          font.pixelSize: Commons.Style.font.body
           elide: Text.ElideRight
-          width: Math.min(implicitWidth, parent.width - (countText.visible ? countText.implicitWidth + Style.space(6) : 0))
+          width: Math.min(implicitWidth, parent.width - (countText.visible ? countText.implicitWidth + Commons.Style.space(6) : 0))
           anchors.verticalCenter: parent.verticalCenter
         }
 
@@ -193,9 +194,9 @@ Column {
           visible: (procRow.proc.count || 1) > 1
           text: "×" + (procRow.proc.count || 1)
           color: root.foreground
-          opacity: Style.faintTextAlpha
+          opacity: Commons.Style.faintTextAlpha
           font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
+          font.pixelSize: Commons.Style.font.caption
           anchors.verticalCenter: parent.verticalCenter
         }
       }
@@ -204,7 +205,7 @@ Column {
         id: figures
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        spacing: Style.space(8)
+        spacing: Commons.Style.space(8)
 
         Repeater {
           model: root.columns
@@ -213,7 +214,7 @@ Column {
             required property var modelData
             readonly property var parts: root.figure(procRow.proc, modelData)
             width: root.columnWidth
-            height: Style.space(20)
+            height: Commons.Style.space(20)
 
             Measure {
               anchors.right: parent.right
@@ -236,9 +237,9 @@ Column {
     visible: root.expanded && root.shown.length > root.maxRows
     text: "and " + (root.shown.length - root.maxRows) + " more — narrow the search"
     color: root.foreground
-    opacity: Style.faintTextAlpha
+    opacity: Commons.Style.faintTextAlpha
     font.family: root.fontFamily
-    font.pixelSize: Style.font.caption
-    topPadding: Style.space(2)
+    font.pixelSize: Commons.Style.font.caption
+    topPadding: Commons.Style.space(2)
   }
 }

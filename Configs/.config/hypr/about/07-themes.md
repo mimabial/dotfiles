@@ -1,12 +1,13 @@
 # Themes
 
-There are 48 themes. `Super + T` then `T` opens the picker; `Left` and `Right`
-step through them without one. `Super + T` then `M` flips between the light and
-dark variant of whichever one you are on.
+There are 57 theme packs. `Super + T` then `T` opens the picker; `Left` and
+`Right` step through them without one. `Super + T` then `M` opens the palette
+source and color-mode menu: theme or wallpaper colors, with dark, light or auto.
 
 Switching a theme repaints the compositor, the bar, both terminals, rofi, dunst,
-GTK, Qt, Firefox, Chromium, Gimp, tmux, rmpc and the lock screen. Sixteen
-renderers, all driven from a single `active-palette.json`. There is no app left
+GTK, Qt, Firefox, Chromium, Gimp, tmux, rmpc, glow, Cava, Zathura and the lock
+screen. Nineteen enabled renderers, all driven from a single
+`active-palette.json`. There is no app left
 behind on the old colors, because being left behind is what the whole pipeline
 exists to prevent.
 
@@ -15,7 +16,8 @@ exists to prevent.
 A switch does not make you wait for work you cannot see.
 
 **Phase A** is the part you feel. It takes the lock, commits the theme metadata,
-runs the color sync, and then repaints wallpaper, bar and terminal in parallel.
+runs the color sync and renderers, then updates wallpaper, desktop settings,
+kitty and dunst in parallel. The bar watches the rendered palette.
 When it returns, your desktop is already switched.
 
 **Phase D** is everything else — tmux, nvim, rmpc, thumbnails, portal backends,
@@ -24,7 +26,7 @@ of its jobs checks a generation counter before doing anything, so if you switch
 themes again the previous switch's leftovers cancel themselves instead of two
 pipelines fighting over your desktop.
 
-That is why you can hold `Right` down in the theme picker and cycle through a
+That is why you can hold `Right` down in the theming submap and cycle through a
 dozen themes without the machine falling over.
 
 ## Where the color comes from
@@ -60,8 +62,9 @@ config syntax. `kitty.theme` is kitty conf, `rofi.theme` is rasi,
 renderer picks it up and passes it through, so a theme author who cares about how
 their palette lands in one specific app can say so exactly.
 
-A missing or unparseable override falls back to the palette-derived defaults
-rather than failing the render, so both paths end up with the same set of keys.
+Missing overrides use palette-derived defaults. Quickshell merges valid role
+overrides with those defaults and falls back when its JSON is malformed. Other
+overrides must follow their app's syntax.
 
 ## Turning a renderer off
 

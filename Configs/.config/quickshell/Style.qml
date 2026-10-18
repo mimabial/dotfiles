@@ -19,7 +19,7 @@ Singleton {
 
     readonly property int popupGap: 5
     readonly property int popupPadding: px(14)
-    readonly property int sectionGap: px(14)    // between popup sections
+    readonly property int sectionGap: px(14)
     readonly property int rowGap: px(8)
     readonly property int controlGap: px(8)
     readonly property int controlPaddingX: px(10)
@@ -38,8 +38,14 @@ Singleton {
 
     // Popup surfaces. PopupCard defaults from these, and the qs.Commons shim
     // re-exports them so ported panels land on the same glass as the bar's own.
-    readonly property real popupSurfaceOpacity: 0.55
+    readonly property real defaultPopupSurfaceOpacity: 0.55
+    property real popupSurfaceOpacity: defaultPopupSurfaceOpacity
     readonly property real popupBorderOpacity: 0.45
+    readonly property real maxPopupTint: 0.3
+    property color popupTint: "transparent"
+    function popupTinted(base) { return Qt.tint(base, popupTint) }
+    property color popupBorderOverride: "transparent"
+    function popupBorder(base) { return popupBorderOverride.a > 0 ? popupBorderOverride : base }
 
     readonly property real hoverFillAlpha: 0.12
     readonly property real hoverBorderAlpha: 0.55

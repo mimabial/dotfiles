@@ -19,7 +19,7 @@ import json
 import os
 import sys
 
-PROJECT_CACHE_VERSION = 1
+PROJECT_CACHE_VERSION = 2
 SCAN_REUSE_SECONDS = 20
 
 def config_dir() -> Path:
@@ -83,6 +83,7 @@ def parse_project_file(path: Path) -> dict[str, Any]:
         token_count_from_fields(usage, "output_tokens", "outputTokens"),
         token_count_from_fields(usage, "cache_read_input_tokens", "cacheReadInputTokens"),
         token_count_from_fields(usage, "cache_creation_input_tokens", "cacheCreationInputTokens"),
+        {key: usage[key] for key in ("cache_creation", "service_tier", "speed", "inference_geo") if key in usage},
       ])
 
   return {"days": days, "models": models, "sessions": sessions, "rows": rows}
@@ -175,7 +176,7 @@ def scan_projects(projects_path: Path) -> dict[str, Any]:
       seen.add(unique_key)
 
       stats.add_tokens(day, session_key, model, (
-        rounded_token_count(input_tokens), rounded_token_count(output_tokens), rounded_token_count(cache_read), rounded_token_count(cache_write)))
+        rounded_token_count(input_tokens), rounded_token_count(output_tokens), rounded_token_count(cache_read), rounded_token_count(cache_write)), pricing=row[8])
 
   return stats.as_stats()
 
@@ -183,7 +184,7 @@ def scan_projects(projects_path: Path) -> dict[str, Any]:
 def scan_cache_paths(projects_path: Path) -> tuple[Path, Path]:
   digest = cache_key(str(projects_path))
   root = usage_cache_dir()
-  return root / f"claude-scan-{digest}.json", root / f"claude-scan-{digest}.lock"
+  return root / f"claude-scan-v{PROJECT_CACHE_VERSION}-{digest}.json", root / f"claude-scan-{digest}.lock"
 
 
 def cached_scan(projects_path: Path, max_age_seconds: float) -> dict[str, Any]:

@@ -8,6 +8,7 @@ Item {
     property string label: ""
     property string icon: ""
     property real value: 0
+    readonly property real liveValue: pointerSlider.value
     property real minimum: 0
     property real maximum: 1
     property real step: 0
@@ -16,15 +17,17 @@ Item {
     property bool keyboardAdjustsExternally: false
     readonly property bool navigable: keyboardEnabled && enabled
     property bool cursored: false
-    // a slider under a PopupSection that already carries name and reading needs
-    // neither, and then the header row collapses
     property int tickCount: 0
-    readonly property bool headed: label !== "" || icon !== "" || valueText !== ""
+    readonly property bool hasHeader: label !== "" || icon !== "" || valueText !== ""
     signal changed(real value)
     signal released(real value)
     signal keyboardAdjusted(int direction)
     signal clicked(int button)
-    implicitHeight: (headed ? labelText.implicitHeight + Style.md : 0) + Style.sliderHeight
+    implicitHeight: (hasHeader ? labelText.implicitHeight + Style.md : 0) + Style.sliderHeight
+
+    function syncExternalValue() {
+        if (!pointerSlider.pressed) pointerSlider.value = value
+    }
 
     function adjustKeyboard(direction) {
         if (keyboardAdjustsExternally) {
@@ -39,20 +42,18 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        anchors.margins: -Style.xs
+        anchors.topMargin: -Style.xs
+        anchors.bottomMargin: -Style.xs
         visible: root.cursored
         color: root.shell.hoverFill()
         border.color: root.shell.hoverEdge(.85)
         radius: root.shell.rounding
     }
 
-    Text { id: labelText; visible: root.headed; anchors.left: parent.left; anchors.leftMargin: Style.controlPaddingX; anchors.top: parent.top; text: root.icon + (root.icon && root.label ? "  " : "") + root.label; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.body }
-    Text { visible: root.headed; anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX; anchors.top: parent.top; text: root.valueText; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+    Text { id: labelText; visible: root.hasHeader; anchors.left: parent.left; anchors.leftMargin: Style.controlPaddingX; anchors.top: parent.top; text: root.icon + (root.icon && root.label ? "  " : "") + root.label; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.body }
+    Text { visible: root.hasHeader; anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX; anchors.top: parent.top; text: root.valueText; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
     Slider {
-        id: slider
-        // Controls take focus on click by default, which would pull it off the
-        // surrounding card and kill its arrow-key navigation. The slider is
-        // driven by the pointer, so it never needs the keyboard itself.
+        id: pointerSlider
         focusPolicy: Qt.NoFocus
         anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
         anchors.leftMargin: Style.controlPaddingX; anchors.rightMargin: Style.controlPaddingX
@@ -61,22 +62,17 @@ Item {
         stepSize: root.step; snapMode: root.step > 0 ? Slider.SnapAlways : Slider.NoSnap
         onMoved: root.changed(value)
         onPressedChanged: if (!pressed) root.released(value)
-        // Dragging assigns Slider.value directly, which is exactly what a
-        // declarative binding to it cannot survive. Push the value in instead,
-        // whenever the pointer is not holding the handle, so an external change
-        // — a reset, a fresh reading — always moves it.
-        Component.onCompleted: value = root.value
+        Component.onCompleted: root.syncExternalValue()
         Connections {
             target: root
-            function onValueChanged() { if (!slider.pressed) slider.value = root.value }
+            function onValueChanged() { root.syncExternalValue() }
         }
         background: Rectangle {
             implicitWidth: Style.px(100); implicitHeight: Style.trackHeight
-            x: slider.leftPadding; y: slider.topPadding + slider.availableHeight / 2 - height / 2
-            width: slider.availableWidth; height: Style.trackHeight; radius: Style.trackHeight / 2
+            x: pointerSlider.leftPadding; y: pointerSlider.topPadding + pointerSlider.availableHeight / 2 - height / 2
+            width: pointerSlider.availableWidth; height: Style.trackHeight; radius: Style.trackHeight / 2
             color: root.shell.alpha(root.shell.foreground, .14)
-            Rectangle { width: parent.width * slider.visualPosition; height: parent.height; radius: parent.radius; color: root.shell.role("act_br", root.shell.accent) }
-            // notches in the card colour, so a stepped slider reads as segments
+            Rectangle { width: parent.width * pointerSlider.visualPosition; height: parent.height; radius: parent.radius; color: root.shell.role("act_br", root.shell.accent) }
             Repeater {
                 model: root.tickCount > 1 ? root.tickCount : 0
                 Rectangle {
@@ -88,7 +84,7 @@ Item {
                 }
             }
         }
-        handle: Rectangle { implicitWidth: Style.knobSize; implicitHeight: Style.knobSize; x: slider.leftPadding + slider.visualPosition * (slider.availableWidth - width); y: slider.topPadding + slider.availableHeight / 2 - height / 2; width: Style.knobSize; height: Style.knobSize; radius: Style.knobSize / 2; color: root.shell.foreground }
+        handle: Rectangle { implicitWidth: Style.knobSize; implicitHeight: Style.knobSize; x: pointerSlider.leftPadding + pointerSlider.visualPosition * (pointerSlider.availableWidth - width); y: pointerSlider.topPadding + pointerSlider.availableHeight / 2 - height / 2; width: Style.knobSize; height: Style.knobSize; radius: Style.knobSize / 2; color: root.shell.foreground }
     }
     PopupPointer { shell: root.shell; row: root }
 }

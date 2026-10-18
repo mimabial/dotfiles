@@ -1,18 +1,19 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
+import QtQml.Models
 import Quickshell.Bluetooth
 import Quickshell.Io
 import Quickshell.Services.Pipewire
 import "Ui" as Ui
-import "Commons" as Commons
 import "BluetoothModel.js" as Model
 
 PopupCard {
     id: root
-    readonly property int maxSwitchWaits: 8
+    readonly property int operationTimeoutMs: 45000
+    readonly property int deviceStateTimeoutMs: 6000
     popupName: "bluetooth"
-    keyboardHint: page === "devices" ? "↑↓/Tab move · ←→ adjust · X forget · Enter select · Esc close" : "↑↓/Tab move · ←→ adjust · Enter select · Esc back"
+    keyboardHint: page === "map" ? "↑↓ scroll · Tab move · ←→ adjust · Enter select · Esc close" : (page === "bluetooth" ? "↑↓/Tab move · ←→ adjust · X forget · Enter select" : "↑↓/Tab move · ←→ adjust · Enter select") + " · Esc back"
     contentWidth: Style.px(440)
     contentHeight: Style.px(570)
 
@@ -29,12 +30,41 @@ PopupCard {
     readonly property var connectedDevices: deviceGroups.connected || []
     readonly property var knownDevices: deviceGroups.known || []
     readonly property var discoveredDevices: deviceGroups.discovered || []
-    readonly property var connectedRows: connectedDevices.map(Model.deviceRow)
-    readonly property var knownRows: knownDevices.map(Model.deviceRow)
-    readonly property var discoveredRows: discoveredDevices.map(Model.deviceRow)
+    readonly property var connectedRows: connectedDevices.map(Model.deviceSnapshot)
+    readonly property var knownRows: knownDevices.map(Model.deviceSnapshot)
+    readonly property var discoveredRows: discoveredDevices.map(Model.deviceSnapshot)
+    readonly property var adapters: Bluetooth.adapters ? Bluetooth.adapters.values : []
+    property var mapHardware: ({})
+    property string mapError: ""
+    property bool mapRefreshPending: false
+    readonly property bool mapWanted: open && page === "map"
+    property bool showHiddenDevices: false
+    property var expandedDevices: ({})
+    readonly property var allMonitorDevices: Model.monitoringDevices(BluetoothMonitor.snapshot.devices || [], connectedRows.concat(knownRows), mapHardware)
+    readonly property var shownMonitorDevices: allMonitorDevices.filter(device => !isMonitorHidden(device))
+    readonly property var monitorDevices: showHiddenDevices ? allMonitorDevices : shownMonitorDevices
+    readonly property int hiddenDeviceCount: allMonitorDevices.length - shownMonitorDevices.length
+    readonly property int monitorOnlineCount: shownMonitorDevices.filter(device => device.online).length
+    readonly property var connectionLinks: Model.connectionLinks(adapters, monitorDevices, mapHardware, BluetoothMonitor.snapshot.receivers || [])
 
-    property string page: "devices"
+    function isMonitorHidden(device) { return !!(BluetoothMonitor.snapshot.hidden || {})[Model.monitorKey(device)] }
+    function toggleExpandedDevice(device) {
+        const next = Model.cloneMap(expandedDevices)
+        next[device.id] = !next[device.id]
+        expandedDevices = next
+        Qt.callLater(root.rebuildRows)
+    }
+    onMonitorDevicesChanged: Qt.callLater(root.rebuildRows)
+
+    function refreshConnectionMap() {
+        if (!mapWanted) return
+        if (mapProcess.running) mapRefreshPending = true
+        else mapProcess.running = true
+    }
+
+    property string page: "map"
     property string selectedAddress: ""
+    property string devicePage: "map"
     readonly property var selectedRow: rowByAddress(selectedAddress)
     property bool renameEditing: false
     property string actionError: ""
@@ -48,18 +78,19 @@ PopupCard {
     property var deviceActionFailures: ({})
     property var activeDeviceAction: null
     property bool cancelRequested: false
-    readonly property bool deviceActionBusy: deviceActionProc.running
-    readonly property bool devicePropertyBusy: propertyProc.running
-    readonly property bool audioProfileBusy: profileSetProc.running
-    readonly property bool powerBusy: powerProc.running
+    readonly property bool deviceActionBusy: deviceActionProcess.running
+    readonly property bool devicePropertyBusy: propertyProcess.running
+    readonly property bool audioProfileBusy: profileSetProcess.running
+    readonly property bool powerBusy: powerProcess.running
 
     property var audioProfiles: ({})
+    property bool audioProfilesRefreshPending: false
     property var pendingAudioProfile: null
     property var connectionStates: ({})
     property bool connectionBaselineReady: false
     property var policyQueue: ({})
     property bool owesDiscoveryStop: false
-    readonly property bool scanWanted: open && page === "devices" && adapter && adapter.enabled
+    readonly property bool scanWanted: open && page === "bluetooth" && adapter && adapter.enabled
 
     readonly property var audioPolicies: {
         try {
@@ -76,7 +107,7 @@ PopupCard {
     }
     function rowByAddress(address) {
         const device = deviceByAddress(address)
-        return device ? Model.deviceRow(device) : null
+        return device ? Model.deviceSnapshot(device) : null
     }
     function displayName(device) { return Model.deviceLabel(device) || "Bluetooth device" }
     function profileState(address) { return Model.audioProfileState(audioProfiles, address) }
@@ -122,7 +153,17 @@ PopupCard {
         pendingActions = setMapValue(pendingActions, address, label)
         pendingKinds = setMapValue(pendingKinds, address, kind)
         pendingDeadlines = setMapValue(pendingDeadlines, address,
-            label ? Number(deadline || Date.now() + 45000) : null)
+            label ? Number(deadline || Date.now() + operationTimeoutMs) : null)
+    }
+    function armActionDeadline() {
+        actionDeadline.stop()
+        const deadlines = Object.keys(pendingActions).filter(key => !(activeDeviceAction
+            && Model.normalizedAddress(activeDeviceAction.address) === key && deviceActionBusy))
+            .map(key => Number(pendingDeadlines[key] || 0))
+        if (deadlines.length) {
+            actionDeadline.interval = Math.max(0, Math.min(...deadlines) - Date.now())
+            actionDeadline.start()
+        }
     }
     function setActionFailure(address, action, message) {
         deviceActionFailures = setMapValue(deviceActionFailures, address,
@@ -150,7 +191,7 @@ PopupCard {
         const now = Date.now()
         for (const key in pendingActions) {
             if (activeDeviceAction && Model.normalizedAddress(activeDeviceAction.address) === key
-                    && deviceActionProc.running) continue
+                    && deviceActionProcess.running) continue
             if (Number(pendingDeadlines[key] || 0) > now) continue
             const kind = String(pendingKinds[key] || "")
             const labels = {
@@ -165,16 +206,16 @@ PopupCard {
     }
 
     function runDeviceAction(device, action) {
-        if (!device || !device.address || deviceActionProc.running || propertyProc.running
-                || profileSetProc.running || pendingAction(device.address)) return
+        if (!device || !device.address || deviceActionProcess.running || propertyProcess.running
+                || profileSetProcess.running || pendingAction(device.address)) return
         const labels = { pair: "pairing", connect: "connecting", disconnect: "disconnecting", forget: "forgetting" }
         actionError = ""
         setActionFailure(device.address, "", "")
         setPending(device.address, labels[action], action)
         activeDeviceAction = { address: String(device.address), action: action }
         cancelRequested = false
-        deviceActionProc.command = ["hyprshell", "bluetooth/device-action", action, String(device.address)]
-        deviceActionProc.running = true
+        deviceActionProcess.command = ["hyprshell", "bluetooth/device-action", action, String(device.address)]
+        deviceActionProcess.running = true
     }
     function activateDevice(device) {
         if (!device) return
@@ -184,8 +225,8 @@ PopupCard {
     function togglePower() {
         if (!adapter || powerBusy) return
         actionError = ""
-        powerProc.command = ["hyprshell", "bluetooth/power", adapter.enabled ? "off" : "on"]
-        powerProc.running = true
+        powerProcess.command = ["hyprshell", "bluetooth/power", adapter.enabled ? "off" : "on"]
+        powerProcess.running = true
     }
     function retryDevice(device) {
         const failure = device ? actionFailure(device.address) : null
@@ -197,19 +238,20 @@ PopupCard {
         cancelRequested = true
         setPending(device.address, "", "")
         if (typeof device.cancelPair === "function") device.cancelPair()
-        deviceActionProc.signal(15)
+        deviceActionProcess.signal(15)
     }
 
     function refreshAudioProfiles() {
-        if (!profilesProc.running && (connectedDevices.length || Object.keys(policyQueue).length))
-            profilesProc.running = true
+        if (!connectedDevices.length && !Object.keys(policyQueue).length) return
+        if (profilesProcess.running) audioProfilesRefreshPending = true
+        else profilesProcess.running = true
     }
     function setAudioProfile(address, profile, policyKey) {
-        if (!address || !profile || profileSetProc.running || deviceActionProc.running || propertyProc.running) return false
+        if (!address || !profile || profileSetProcess.running || deviceActionProcess.running || propertyProcess.running) return false
         profileError = ""
         pendingAudioProfile = { address: Model.normalizedAddress(address), profile: String(profile), policyKey: String(policyKey || "") }
-        profileSetProc.command = ["hyprshell", "bluetooth/profile-set", String(address), String(profile)]
-        profileSetProc.running = true
+        profileSetProcess.command = ["hyprshell", "bluetooth/profile-set", String(address), String(profile)]
+        profileSetProcess.running = true
         return true
     }
     function setDefaultAudioSink(sink) {
@@ -276,7 +318,7 @@ PopupCard {
         if (policy === "manual") return
         const key = Model.normalizedAddress(device.address)
         const next = cloneMap(policyQueue)
-        next[key] = { policy: policy, attempts: 0, switchRequested: false, switchWait: 0 }
+        next[key] = { policy: policy, deadline: Date.now() + operationTimeoutMs, switchRequested: false }
         policyQueue = next
         refreshAudioProfiles()
     }
@@ -287,7 +329,7 @@ PopupCard {
         if (message) actionError = message
     }
     function applyPolicies() {
-        if (!popupEnabled || deviceActionProc.running || propertyProc.running || profileSetProc.running) return
+        if (!popupEnabled || deviceActionProcess.running || propertyProcess.running || profileSetProcess.running) return
         const next = cloneMap(policyQueue)
         let changed = false
         for (const key in next) {
@@ -296,8 +338,7 @@ PopupCard {
             const policy = device ? policyFor(device.address) : "manual"
             if (!device || !device.connected || policy === "manual") { delete next[key]; changed = true; continue }
             entry.policy = policy
-            entry.attempts = Number(entry.attempts || 0) + 1
-            if (entry.attempts > 90) { delete next[key]; changed = true; continue }
+            if (Date.now() >= entry.deadline) { delete next[key]; changed = true; continue }
             const sink = bluetoothAudioSink(device)
             if (policy === "output") {
                 if (sink) { useDeviceForAudio(device); delete next[key] }
@@ -307,13 +348,10 @@ PopupCard {
             }
 
             const state = profileState(device.address)
-            if (!state) { next[key] = entry; changed = true; refreshAudioProfiles(); continue }
+            if (!state) continue
             const duplex = Model.duplexProfileOption(state)
             if (duplex && !Model.audioProfileHasInput(state, state.activeProfile)) {
-                if (entry.switchRequested) {
-                    entry.switchWait = Number(entry.switchWait || 0) + 1
-                    if (entry.switchWait > root.maxSwitchWaits) { entry.switchRequested = false; entry.switchWait = 0 }
-                } else if (setAudioProfile(device.address, duplex.value, key)) {
+                if (!entry.switchRequested && setAudioProfile(device.address, duplex.value, key)) {
                     entry.switchRequested = true
                 }
                 next[key] = entry
@@ -330,9 +368,32 @@ PopupCard {
         }
         if (changed) policyQueue = next
     }
+    function armPolicyDeadline() {
+        policyDeadline.stop()
+        const deadlines = Object.values(policyQueue).map(entry => entry.deadline)
+        if (deadlines.length) {
+            policyDeadline.interval = Math.max(0, Math.min(...deadlines) - Date.now())
+            policyDeadline.start()
+        }
+    }
+    function expirePolicies() {
+        for (const key in policyQueue)
+            if (Date.now() >= policyQueue[key].deadline)
+                removeQueuedPolicy(key, "Bluetooth audio did not become ready.")
+    }
+    function syncDiscovery() {
+        if (!adapter) return
+        if (scanWanted && !adapter.discovering) {
+            owesDiscoveryStop = true
+            adapter.discovering = true
+        } else if (!scanWanted && owesDiscoveryStop && adapter.discovering) {
+            adapter.discovering = false
+        }
+    }
 
     function openDetails(device) {
         if (!device) return
+        devicePage = page
         selectedAddress = String(device.address || "")
         renameEditing = false
         propertyError = ""
@@ -341,18 +402,20 @@ PopupCard {
     }
     function openProfiles(device) {
         if (!device) return
+        devicePage = page
         selectedAddress = String(device.address || "")
         profileError = ""
         page = "profiles"
         refreshAudioProfiles()
     }
-    function showDevices() {
+    function showPage(nextPage) {
         renameEditing = false
         forgetConfirmation = false
-        page = "devices"
+        selectedAddress = ""
+        page = nextPage
     }
     function beginRename() {
-        if (!selectedRow || propertyProc.running) return
+        if (!selectedRow || propertyProcess.running) return
         renameField.text = displayName(selectedRow)
         renameEditing = true
         Qt.callLater(() => { renameField.forceActiveFocus(); renameField.selectAll() })
@@ -363,14 +426,14 @@ PopupCard {
         updateProperty("name", value, value)
     }
     function updateProperty(name, value, expected) {
-        if (!selectedRow || !selectedRow.dbusPath || propertyProc.running || deviceActionProc.running) return
+        if (!selectedRow || !selectedRow.dbusPath || propertyProcess.running || deviceActionProcess.running) return
         propertyError = ""
-        propertyProc.propertyName = name
-        propertyProc.expected = expected
-        propertyProc.address = selectedRow.address
-        propertyProc.command = ["hyprshell", "bluetooth/device-property", name,
+        propertyProcess.propertyName = name
+        propertyProcess.expected = expected
+        propertyProcess.address = selectedRow.address
+        propertyProcess.command = ["hyprshell", "bluetooth/device-property", name,
             String(selectedRow.dbusPath), String(value)]
-        propertyProc.running = true
+        propertyProcess.running = true
     }
     function toggleProperty(name) {
         if (!selectedRow) return
@@ -380,14 +443,16 @@ PopupCard {
     function confirmForgetDevice() {
         const device = deviceByAddress(selectedAddress)
         forgetConfirmation = false
-        showDevices()
+        showPage(devicePage)
         if (device) runDeviceAction(device, "forget")
     }
     function bumpDevices() {
         deviceRevision++
+        BluetoothMonitor.refresh()
         syncPendingActions()
         observeConnections()
-        if (selectedAddress && !deviceByAddress(selectedAddress)) showDevices()
+        Qt.callLater(root.applyPolicies)
+        if (selectedAddress && !deviceByAddress(selectedAddress)) showPage(devicePage)
     }
 
     function primeCursor() {
@@ -399,7 +464,13 @@ PopupCard {
         return cursorIndex >= 0 && cursorIndex < navigableRows.length ? navigableRows[cursorIndex] : null
     }
     function handleKey(event) {
-        if (event.key === Qt.Key_Escape && page !== "devices") { showDevices(); return true }
+        if (event.key === Qt.Key_Escape && page !== "map") { showPage(page === "bluetooth" ? "map" : devicePage); return true }
+        if (page === "map" && (event.key === Qt.Key_Up || event.key === Qt.Key_K
+                || event.key === Qt.Key_Down || event.key === Qt.Key_J)) {
+            mapScroll.contentY = Math.max(0, Math.min(mapScroll.contentHeight - mapScroll.height,
+                mapScroll.contentY + (event.key === Qt.Key_Up || event.key === Qt.Key_K ? -1 : 1) * Style.popupRowHeight))
+            return true
+        }
         if (event.key === Qt.Key_J) { moveCursor(1); return true }
         if (event.key === Qt.Key_K) { moveCursor(-1); return true }
         if (event.key === Qt.Key_H || event.key === Qt.Key_Left
@@ -408,7 +479,7 @@ PopupCard {
             if (row && row.adjustKeyboard) row.adjustKeyboard(event.key === Qt.Key_H || event.key === Qt.Key_Left ? -1 : 1)
             return true
         }
-        if (event.key === Qt.Key_X && page === "devices") {
+        if (event.key === Qt.Key_X && page === "bluetooth") {
             const row = currentNavigableRow()
             if (row && row.dev && (row.dev.paired || row.dev.bonded || row.dev.trusted || row.dev.connected)) {
                 openDetails(deviceByAddress(row.dev.address)); forgetConfirmation = true
@@ -421,24 +492,48 @@ PopupCard {
     onPageChanged: { clearCursor(); Qt.callLater(primeCursor) }
     onOpenChanged: {
         if (open) {
-            page = "devices"
+            showPage("map")
             actionError = ""
             refreshAudioProfiles()
             Qt.callLater(primeCursor)
         } else {
             renameEditing = false
             forgetConfirmation = false
+            showHiddenDevices = false
         }
     }
     onDevicesChanged: bumpDevices()
+    onConnectedDevicesChanged: refreshAudioProfiles()
+    onPipewireNodesChanged: Qt.callLater(root.applyPolicies)
+    onAudioPoliciesChanged: Qt.callLater(root.applyPolicies)
+    onPopupEnabledChanged: if (popupEnabled) Qt.callLater(root.applyPolicies)
+    onPolicyQueueChanged: armPolicyDeadline()
+    onPendingDeadlinesChanged: armActionDeadline()
+    onDeviceActionBusyChanged: { armActionDeadline(); if (!deviceActionBusy) Qt.callLater(root.applyPolicies) }
+    onDevicePropertyBusyChanged: if (!devicePropertyBusy) Qt.callLater(root.applyPolicies)
+    onAudioProfileBusyChanged: if (!audioProfileBusy) Qt.callLater(root.applyPolicies)
+    onScanWantedChanged: syncDiscovery()
+    onAdapterChanged: syncDiscovery()
+    onAdaptersChanged: refreshConnectionMap()
+    onMapWantedChanged: if (mapWanted) refreshConnectionMap()
 
     Component.onCompleted: {
-        Commons.Style.shell = shell
-        Commons.Color.shell = shell
+        BluetoothMonitor.users++
         initializeConnections()
     }
+    Component.onDestruction: BluetoothMonitor.users--
 
     PwObjectTracker { objects: root.pipewireNodes.filter(node => node && node.audio) }
+    Instantiator {
+        model: root.pipewireNodes.filter(node => node && node.audio && !node.isStream)
+        delegate: Connections {
+            id: audioNodeWatcher
+            required property var modelData
+            target: audioNodeWatcher.modelData
+            function onPropertiesChanged() { if (Object.keys(root.policyQueue).length) Qt.callLater(root.applyPolicies) }
+            function onReadyChanged() { if (Object.keys(root.policyQueue).length) Qt.callLater(root.applyPolicies) }
+        }
+    }
 
     Repeater {
         model: root.devices
@@ -465,35 +560,50 @@ PopupCard {
         }
     }
 
-    Timer {
-        id: discoveryRetry
-        interval: 1000; repeat: true; triggeredOnStart: true
-        running: root.scanWanted && root.adapter && !root.adapter.discovering
-        onTriggered: { root.owesDiscoveryStop = true; root.adapter.discovering = true }
-    }
-    Timer {
-        id: discoveryStop
-        interval: 700; repeat: true
-        property int attempts: 0
-        readonly property int maxAttempts: 3
-        running: !root.scanWanted && root.owesDiscoveryStop && root.adapter && root.adapter.discovering
-        onRunningChanged: if (running) attempts = 0
-        onTriggered: {
-            if (++attempts > maxAttempts) { root.owesDiscoveryStop = false; return }
-            root.adapter.discovering = false
-        }
-    }
     Connections {
         target: root.adapter
         ignoreUnknownSignals: true
-        function onDiscoveringChanged() { if (!root.adapter.discovering) root.owesDiscoveryStop = false }
+        function onDiscoveringChanged() {
+            if (!root.scanWanted && !root.adapter.discovering) root.owesDiscoveryStop = false
+            root.syncDiscovery()
+        }
+        function onEnabledChanged() { root.syncDiscovery() }
     }
-    Timer { interval: 500; repeat: true; running: Object.keys(root.pendingActions).length > 0; onTriggered: root.expirePendingActions() }
-    Timer { interval: 2000; repeat: true; running: root.open && root.connectedDevices.length > 0; onTriggered: root.refreshAudioProfiles() }
-    Timer { interval: 500; repeat: true; triggeredOnStart: true; running: root.popupEnabled && Object.keys(root.policyQueue).length > 0; onTriggered: { root.refreshAudioProfiles(); root.applyPolicies() } }
+    Connections {
+        target: AudioPorts
+        function onCardsChanged() {
+            if (root.open || Object.keys(root.policyQueue).length) root.refreshAudioProfiles()
+        }
+    }
+    Timer { id: actionDeadline; onTriggered: { root.expirePendingActions(); root.armActionDeadline() } }
+    Timer { id: policyDeadline; onTriggered: { root.expirePolicies(); root.armPolicyDeadline() } }
 
     Process {
-        id: deviceActionProc
+        id: mapProcess
+        command: ["python3", root.shell.home + "/.local/lib/hypr/bluetooth/connection-map.py"]
+        stdout: StdioCollector { id: mapStdout; waitForEnd: true }
+        stderr: StdioCollector { id: mapStderr; waitForEnd: true }
+        onExited: code => {
+            root.mapError = ""
+            if (code !== 0) root.mapError = String(mapStderr.text || "Could not read connection hardware.").trim()
+            else {
+                try { root.mapHardware = JSON.parse(mapStdout.text) }
+                catch (error) { root.mapError = "Connection hardware returned invalid data." }
+            }
+            if (root.mapRefreshPending) {
+                root.mapRefreshPending = false
+                Qt.callLater(root.refreshConnectionMap)
+            }
+        }
+    }
+    Process {
+        command: ["stdbuf", "-oL", "udevadm", "monitor", "--kernel", "--subsystem-match=bluetooth", "--subsystem-match=power_supply"]
+        running: root.mapWanted
+        stdout: SplitParser { onRead: line => { if (String(line).startsWith("KERNEL[")) root.refreshConnectionMap() } }
+    }
+
+    Process {
+        id: deviceActionProcess
         stderr: StdioCollector { id: deviceActionStderr; waitForEnd: true }
         onExited: code => {
             const operation = root.activeDeviceAction
@@ -511,13 +621,13 @@ PopupCard {
                 root.actionError = message
             } else {
                 root.pendingDeadlines = root.setMapValue(root.pendingDeadlines,
-                    operation.address, Date.now() + 6000)
+                    operation.address, Date.now() + root.deviceStateTimeoutMs)
                 root.syncPendingActions()
             }
         }
     }
     Process {
-        id: propertyProc
+        id: propertyProcess
         property string propertyName: ""
         property string address: ""
         property var expected: null
@@ -532,8 +642,12 @@ PopupCard {
         }
     }
     Process {
-        id: profilesProc
-        command: ["hyprshell", "bluetooth/profiles"]
+        id: profilesProcess
+        command: ["bash", root.shell.home + "/.local/lib/hypr/bluetooth/profiles.sh"]
+        onRunningChanged: if (!running && root.audioProfilesRefreshPending) {
+            root.audioProfilesRefreshPending = false
+            Qt.callLater(root.refreshAudioProfiles)
+        }
         stdout: StdioCollector { id: profilesStdout; waitForEnd: true }
         stderr: StdioCollector { id: profilesStderr; waitForEnd: true }
         onExited: code => {
@@ -549,11 +663,12 @@ PopupCard {
                     if (state && state.activeProfile === root.pendingAudioProfile.profile)
                         root.pendingAudioProfile = null
                 }
+                Qt.callLater(root.applyPolicies)
             } catch (error) { root.profileError = "Bluetooth audio returned invalid profile data." }
         }
     }
     Process {
-        id: profileSetProc
+        id: profileSetProcess
         stderr: StdioCollector { id: profileSetStderr; waitForEnd: true }
         onExited: code => {
             const operation = root.pendingAudioProfile
@@ -568,10 +683,49 @@ PopupCard {
         }
     }
     Process {
-        id: powerProc
+        id: powerProcess
         stderr: StdioCollector { id: powerStderr; waitForEnd: true }
         onExited: code => {
             if (code !== 0) root.actionError = String(powerStderr.text || "Could not change Bluetooth power.").trim()
+        }
+    }
+
+    component PowerRow: PopupRow {
+        shell: root.shell
+        icon: root.adapter && root.adapter.enabled ? "󰂯" : "󰂲"
+        title: root.powerBusy ? "Changing Bluetooth power…" : root.adapter && root.adapter.enabled ? "Bluetooth powered" : "Bluetooth off"
+        detail: root.adapter ? root.adapter.name : "No controller"
+        active: root.adapter && root.adapter.enabled
+        interactive: !!root.adapter && !root.powerBusy
+        onClicked: root.togglePower()
+    }
+
+    component DeviceList: Column {
+        id: deviceLists
+        width: parent.width; spacing: Style.sectionGap
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection { visible: root.connectedRows.length > 0; shell: root.shell; text: "CONNECTED" }
+            Repeater { model: root.connectedRows; DeviceRow { required property var modelData; dev: modelData; sectionName: "connected"; width: deviceLists.width } }
+        }
+        PopupSeparator { visible: root.connectedRows.length > 0 && root.knownRows.length > 0; shell: root.shell }
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection { visible: root.knownRows.length > 0; shell: root.shell; text: "PAIRED" }
+            Repeater { model: root.knownRows; DeviceRow { required property var modelData; dev: modelData; sectionName: "known"; width: deviceLists.width } }
+        }
+        PopupSeparator { visible: (root.connectedRows.length || root.knownRows.length) && root.discoveredRows.length > 0; shell: root.shell }
+        Column {
+            width: parent.width; spacing: Style.sm
+            PopupSection { visible: root.adapter && root.adapter.enabled; shell: root.shell; text: "AVAILABLE"; value: root.adapter && root.adapter.discovering ? "scanning" : "" }
+            Repeater { model: root.scanWanted && root.adapter.discovering ? root.discoveredRows : []; DeviceRow { required property var modelData; dev: modelData; sectionName: "discovered"; width: deviceLists.width } }
+            Text {
+                visible: !root.adapter || !root.adapter.enabled || !root.connectedRows.length && !root.knownRows.length && !root.discoveredRows.length
+                width: parent.width
+                text: !root.adapter ? "No Bluetooth controller" : !root.adapter.enabled ? "Turn Bluetooth on to scan" : "Scanning for devices…"
+                color: root.shell.mutedText; font.family: root.shell.fontFamily
+                font.pixelSize: Style.bodySmall; horizontalAlignment: Text.AlignHCenter
+            }
         }
     }
 
@@ -728,20 +882,44 @@ PopupCard {
     }
 
     Item {
-        id: devicesPage
+        visible: root.page === "map"
         anchors.fill: parent
-        visible: root.page === "devices"
         Column {
             anchors.fill: parent; spacing: Style.sectionGap
-            PopupHero { shell: root.shell; title: "Bluetooth"; status: root.adapter ? root.adapter.enabled ? root.connectedDevices.length ? root.connectedDevices.length + " connected" : "scanning" : "turned off" : "no controller" }
+            Item {
+                width: parent.width; height: monitorHero.implicitHeight
+                PopupHero {
+                    id: monitorHero
+                    width: parent.width - hiddenToggle.width - (hiddenToggle.visible ? Style.md : 0); shell: root.shell; title: "Connection map"
+                    status: root.monitorOnlineCount + " connected · " + root.adapters.length + " adapter" + (root.adapters.length === 1 ? "" : "s")
+                }
+                Ui.Button {
+                    id: hiddenToggle
+                    anchors.right: parent.right; anchors.top: parent.top
+                    visible: root.hiddenDeviceCount > 0 || root.showHiddenDevices
+                    width: visible ? implicitWidth : 0
+                    readonly property bool navigable: visible
+                    property bool cursored: false
+                    text: (root.showHiddenDevices ? "󰈉" : "󰈈") + (!root.showHiddenDevices && root.hiddenDeviceCount ? " " + root.hiddenDeviceCount : "")
+                    selected: root.showHiddenDevices || cursored; bordered: true
+                    foreground: root.shell.foreground; fontFamily: root.shell.iconGlyphFont; fontSize: Style.caption
+                    horizontalPadding: Style.sm; verticalPadding: Style.xxs
+                    ToolTip.visible: hiddenHover.hovered; ToolTip.delay: Style.tooltipDelay
+                    ToolTip.text: root.showHiddenDevices ? "Hide hidden devices" : "Show hidden devices (" + root.hiddenDeviceCount + ")"
+                    HoverHandler { id: hiddenHover }
+                    onClicked: root.showHiddenDevices = !root.showHiddenDevices
+                }
+            }
+            PowerRow { width: parent.width }
             PopupRow {
-                width: parent.width; shell: root.shell
-                icon: root.adapter && root.adapter.enabled ? "󰂯" : "󰂲"
-                title: root.powerBusy ? "Changing Bluetooth power…" : root.adapter && root.adapter.enabled ? "Bluetooth powered" : "Bluetooth off"
-                detail: root.adapter ? root.adapter.name : "No controller"
-                active: root.adapter && root.adapter.enabled
-                interactive: !!root.adapter && !root.powerBusy
-                onClicked: root.togglePower()
+                width: parent.width; shell: root.shell; title: "Pair and connect"; value: "󰁔"
+                onClicked: root.showPage("bluetooth")
+            }
+            PopupRow {
+                visible: (BluetoothMonitor.snapshot.denied || []).length > 0
+                width: parent.width; shell: root.shell; icon: "󰌾"; title: "Allow Logitech access"
+                detail: "Enable pointer, wheel and Fn-key settings"
+                onClicked: root.shell.run(["pkexec", root.shell.home + "/.local/share/omarchy-bluetooth-monitor/scripts/allow-access.sh"])
             }
             Text {
                 visible: root.actionError !== ""; width: parent.width
@@ -749,40 +927,214 @@ PopupCard {
                 color: root.shell.urgent; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
             }
             PopupSeparator { shell: root.shell }
+            Text {
+                visible: text !== ""; width: parent.width
+                text: root.mapError || BluetoothMonitor.error; textFormat: Text.PlainText; wrapMode: Text.WordWrap
+                color: root.shell.urgent; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+            }
             Flickable {
-                id: deviceScroll
+                id: mapScroll
                 width: parent.width; height: parent.height - y
-                contentWidth: width; contentHeight: deviceLists.implicitHeight
+                contentWidth: width; contentHeight: mapTree.implicitHeight
                 clip: true; boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: ScrollBar { policy: deviceScroll.contentHeight > deviceScroll.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
+                ScrollBar.vertical: ScrollBar { policy: mapScroll.contentHeight > mapScroll.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
                 Column {
-                    id: deviceLists
-                    width: deviceScroll.width; spacing: Style.sectionGap
-                    Column {
-                        width: parent.width; spacing: Style.sm
-                        PopupSection { visible: root.connectedRows.length > 0; shell: root.shell; text: "CONNECTED" }
-                        Repeater { model: root.connectedRows; DeviceRow { required property var modelData; dev: modelData; sectionName: "connected"; width: deviceLists.width } }
-                    }
-                    PopupSeparator { visible: root.connectedRows.length > 0 && root.knownRows.length > 0; shell: root.shell }
-                    Column {
-                        width: parent.width; spacing: Style.sm
-                        PopupSection { visible: root.knownRows.length > 0; shell: root.shell; text: "PAIRED" }
-                        Repeater { model: root.knownRows; DeviceRow { required property var modelData; dev: modelData; sectionName: "known"; width: deviceLists.width } }
-                    }
-                    PopupSeparator { visible: (root.connectedRows.length || root.knownRows.length) && root.discoveredRows.length > 0; shell: root.shell }
-                    Column {
-                        width: parent.width; spacing: Style.sm
-                        PopupSection { visible: root.adapter && root.adapter.enabled; shell: root.shell; text: "AVAILABLE"; value: root.adapter && root.adapter.discovering ? "scanning" : "" }
-                        Repeater { model: root.adapter && root.adapter.discovering ? root.discoveredRows : []; DeviceRow { required property var modelData; dev: modelData; sectionName: "discovered"; width: deviceLists.width } }
+                    id: mapTree
+                    width: mapScroll.width; spacing: Style.rowGap
+                    PopupSection { shell: root.shell; text: "CONNECTIONS" }
+                    Item {
+                        width: parent.width; height: Style.controlHeight
+                        Rectangle {
+                            id: pcBadge
+                            width: Style.controlHeight; height: width; radius: root.shell.rounding
+                            color: root.shell.accent
+                            Text {
+                                anchors.centerIn: parent; text: "󰍹"; color: root.shell.background
+                                font.family: root.shell.iconGlyphFont; font.pixelSize: Style.title
+                            }
+                        }
                         Text {
-                            visible: !root.adapter || !root.adapter.enabled || !root.connectedRows.length && !root.knownRows.length && !root.discoveredRows.length
-                            width: parent.width
-                            text: !root.adapter ? "No Bluetooth controller" : !root.adapter.enabled ? "Turn Bluetooth on to scan" : "Scanning for devices…"
-                            color: root.shell.mutedText; font.family: root.shell.fontFamily
-                            font.pixelSize: Style.bodySmall; horizontalAlignment: Text.AlignHCenter
+                            anchors.left: pcBadge.right; anchors.leftMargin: Style.controlPaddingX
+                            anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                            text: "This PC" + (root.mapHardware.host ? " · " + root.mapHardware.host : "")
+                            textFormat: Text.PlainText; elide: Text.ElideRight
+                            color: root.shell.foreground; font.family: root.shell.fontFamily
+                            font.pixelSize: Style.subtitle; font.bold: true
+                        }
+                    }
+                    Repeater {
+                        model: root.connectionLinks
+                        delegate: Item {
+                            id: linkRow
+                            required property var modelData
+                            required property int index
+                            readonly property bool live: modelData.online > 0
+                            readonly property color lineColor: live ? root.shell.accent : root.shell.mutedText
+                            readonly property real trunkX: Style.controlHeight / 2
+                            width: mapTree.width
+                            height: Math.max(linkHead.height, deviceChips.implicitHeight)
+                            Rectangle {
+                                x: linkRow.trunkX; y: -mapTree.spacing
+                                width: Style.px(1)
+                                height: (linkRow.index === root.connectionLinks.length - 1 ? linkHead.height / 2 : linkRow.height) + mapTree.spacing
+                                color: root.shell.mutedText
+                            }
+                            Rectangle {
+                                x: linkRow.trunkX; y: linkHead.height / 2
+                                width: linkHead.x - x; height: Style.px(1); color: linkRow.lineColor
+                            }
+                            Item {
+                                id: linkHead
+                                x: Style.controlHeight + Style.lg
+                                width: (linkRow.width - x - Style.md) / 2
+                                height: Math.max(adapterBadge.height, adapterLabels.implicitHeight)
+                                Rectangle {
+                                    id: adapterBadge
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: Style.controlHeight; height: width; radius: root.shell.rounding
+                                    color: linkRow.live ? root.shell.selectedFill() : "transparent"
+                                    border.color: linkRow.lineColor
+                                    Text {
+                                        anchors.centerIn: parent; text: Model.connectionIcon(linkRow.modelData.type); color: linkRow.lineColor
+                                        font.family: root.shell.iconGlyphFont; font.pixelSize: Style.title
+                                    }
+                                }
+                                Column {
+                                    id: adapterLabels
+                                    anchors.left: adapterBadge.right; anchors.leftMargin: Style.md
+                                    anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                                    spacing: Style.xxs
+                                    Text {
+                                        width: parent.width; text: linkRow.modelData.label
+                                        textFormat: Text.PlainText; wrapMode: Text.WordWrap
+                                        color: linkRow.lineColor; font.family: root.shell.fontFamily
+                                        font.pixelSize: Style.bodySmall; font.bold: true
+                                    }
+                                    Text {
+                                        width: parent.width; text: linkRow.modelData.detail
+                                        textFormat: Text.PlainText; wrapMode: Text.WordWrap
+                                        color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                                    }
+                                    Text {
+                                        visible: !linkRow.modelData.enabled; text: "Turned off"
+                                        color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                                    }
+                                }
+                            }
+                            Column {
+                                id: deviceChips
+                                x: linkHead.x + linkHead.width + Style.md
+                                width: linkRow.width - x; spacing: Style.sm
+                                Repeater {
+                                    model: linkRow.modelData.devices
+                                    delegate: Item {
+                                        id: chip
+                                        required property var modelData
+                                        readonly property var device: root.deviceByAddress(modelData.address)
+                                        readonly property bool connected: device ? device.connected : !!modelData.connected
+                                        readonly property string pending: root.pendingAction(modelData.address)
+                                        readonly property var failure: root.actionFailure(modelData.address)
+                                        width: deviceChips.width; height: chipBox.implicitHeight
+                                        opacity: root.isMonitorHidden(modelData) ? Style.mutedTextAlpha : 1
+                                        Row {
+                                            id: radioDots
+                                            anchors.verticalCenter: parent.verticalCenter; spacing: Style.xs
+                                            Repeater {
+                                                model: Math.floor(Style.controlPaddingX / (Style.xxs + radioDots.spacing))
+                                                Rectangle {
+                                                    width: Style.xxs; height: width; radius: width / 2
+                                                    color: chip.connected ? root.shell.accent : root.shell.mutedText
+                                                }
+                                            }
+                                        }
+                                        PopupRow {
+                                            id: chipBox
+                                            x: radioDots.width + Style.sm; width: parent.width - x
+                                            shell: root.shell; active: chip.connected
+                                            interactive: !!chip.device && !chip.pending && !root.deviceActionBusy
+                                                && !root.devicePropertyBusy && !root.audioProfileBusy
+                                            icon: Model.monitorKindIcon(chip.modelData.kind)
+                                            iconColor: chip.connected ? root.shell.foreground : root.shell.mutedText
+                                            title: root.displayName(chip.modelData)
+                                            titleColor: iconColor
+                                            detail: chip.failure ? String(chip.failure.message || "Bluetooth operation failed")
+                                                : chip.pending ? chip.pending.charAt(0).toUpperCase() + chip.pending.slice(1) + "…"
+                                                : chip.connected ? Model.connectionBattery(chip.modelData, root.mapHardware) || "Connected"
+                                                : (chip.device ? chip.device.blocked : chip.modelData.blocked) ? "Blocked" : "Disconnected"
+                                            detailColor: chip.failure ? root.shell.urgent : root.shell.mutedText
+                                            onClicked: button => {
+                                                if (button === Qt.RightButton) root.openDetails(chip.device)
+                                                else if (button === Qt.LeftButton) root.activateDevice(chip.device)
+                                            }
+                                        }
+                                    }
+                                }
+                                Text {
+                                    visible: linkRow.modelData.devices.length === 0; width: parent.width
+                                    text: "No paired devices"; wrapMode: Text.WordWrap
+                                    color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+                                }
+                            }
+                        }
+                    }
+                    Text {
+                        visible: root.adapters.length === 0; width: parent.width
+                        text: "No Bluetooth controller"; color: root.shell.mutedText
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+                    }
+                    Text {
+                        width: parent.width; text: "Solid lines: hardware connection · Dotted lines: wireless"
+                        textFormat: Text.PlainText; wrapMode: Text.WordWrap
+                        color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                    }
+                    PopupSeparator { shell: root.shell }
+                    PopupSection { shell: root.shell; text: "DEVICES" }
+                    Repeater {
+                        model: root.monitorDevices.length
+                        BluetoothDeviceCard {
+                            required property int index
+                            device: root.monitorDevices[index] || ({id: "", name: "", online: false})
+                            width: mapTree.width; shell: root.shell
+                            hiddenDevice: root.isMonitorHidden(device)
+                            expanded: root.expandedDevices[device.id] === true
+                            settingsEnabled: BluetoothMonitor.ready
+                            onHiddenToggled: value => {
+                                BluetoothMonitor.send({cmd: "hide", key: Model.monitorKey(device), value: value})
+                                root.resumeKeyboard()
+                            }
+                            onExpandedToggled: root.toggleExpandedDevice(device)
+                            onSettingChanged: (key, value) => BluetoothMonitor.send({cmd: "set", device: device.id, key: key, value: value})
                         }
                     }
                 }
+            }
+        }
+    }
+
+    Item {
+        visible: root.page === "bluetooth"
+        anchors.fill: parent
+        Column {
+            anchors.fill: parent; spacing: Style.sectionGap
+            PopupHero {
+                shell: root.shell; title: "Bluetooth"
+                status: root.adapter ? root.adapter.enabled ? root.connectedDevices.length ? root.connectedDevices.length + " connected" : "scanning" : "turned off" : "no controller"
+            }
+            PowerRow { width: parent.width }
+            PopupRow { width: parent.width; shell: root.shell; icon: "󰁍"; title: "Connection map"; onClicked: root.showPage("map") }
+            Text {
+                visible: root.actionError !== ""; width: parent.width
+                text: root.actionError; textFormat: Text.PlainText; wrapMode: Text.WordWrap
+                color: root.shell.urgent; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+            }
+            PopupSeparator { shell: root.shell }
+            Flickable {
+                id: bluetoothScroll
+                width: parent.width; height: parent.height - y
+                contentWidth: width; contentHeight: bluetoothLists.implicitHeight
+                clip: true; boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: ScrollBar { policy: bluetoothScroll.contentHeight > bluetoothScroll.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
+                DeviceList { id: bluetoothLists; width: bluetoothScroll.width }
             }
         }
     }
@@ -794,7 +1146,7 @@ PopupCard {
         Column {
             anchors.fill: parent; spacing: Style.sectionGap
             PopupHero { shell: root.shell; title: root.selectedRow ? root.displayName(root.selectedRow) : "Device"; status: "device details" }
-            PopupRow { width: parent.width; shell: root.shell; icon: "󰁍"; title: "Back to devices"; onClicked: root.showDevices() }
+            PopupRow { width: parent.width; shell: root.shell; icon: "󰁍"; title: "Back to devices"; onClicked: root.showPage(root.devicePage) }
             PopupSeparator { shell: root.shell }
             Flickable {
                 id: detailsScroll
@@ -883,7 +1235,7 @@ PopupCard {
         Column {
             anchors.fill: parent; spacing: Style.sectionGap
             PopupHero { shell: root.shell; title: root.selectedRow ? root.displayName(root.selectedRow) : "Audio mode"; status: "bluetooth audio" }
-            PopupRow { width: parent.width; shell: root.shell; icon: "󰁍"; title: "Back to devices"; onClicked: root.showDevices() }
+            PopupRow { width: parent.width; shell: root.shell; icon: "󰁍"; title: "Back to devices"; onClicked: root.showPage(root.devicePage) }
             PopupRow {
                 width: parent.width; shell: root.shell; icon: "󰓃"; title: "Use for audio now"
                 detail: root.selectedRow && root.bluetoothAudioSource(root.selectedRow) ? "Output and microphone" : "Output"

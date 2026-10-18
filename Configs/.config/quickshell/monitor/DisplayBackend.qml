@@ -5,14 +5,12 @@ Item {
   id: runtime
   required property var controller
   property alias socket: backendSocket
-  property alias whichProcess: whichProcess
-  property alias enabledProcess: enabledProcess
-  property alias activeProcess: activeProcess
-  property alias serviceProcess: serviceProcess
-  property alias serviceRefreshTimer: serviceRefreshTimer
-  property alias connectionGraceTimer: connectionGraceTimer
-  property alias serviceConfirmationTimer: serviceConfirmationTimer
-  property alias reconnectTimer: reconnectTimer
+  property alias versionProcess: versionProcess
+  property alias managementCheckProcess: managementCheckProcess
+  property alias daemonCheckProcess: daemonCheckProcess
+  property alias serviceActionProcess: serviceActionProcess
+  property alias serviceActionDeadline: serviceActionDeadline
+  property bool serviceCheckQueued: false
 
   Socket {
     id: backendSocket
@@ -23,8 +21,8 @@ Item {
       onRead: function(line) { runtime.controller.handleMessage(line) }
     }
     onConnectedChanged: {
+      runtime.controller.connectionPending = false
       if (connected) {
-        runtime.controller.connectionGrace = false
         runtime.controller.lastError = ""
         runtime.controller.subscribe()
       } else {
@@ -35,135 +33,84 @@ Item {
         runtime.controller.editPending = false
         runtime.controller.profileModePending = false
         runtime.controller.clearPreview(false)
-        if (runtime.controller.serviceEnabled || runtime.controller.serviceActive)
-          serviceRefreshTimer.restart()
       }
     }
-    onError: function(error) { backendSocket.connected = false }
+    onError: {
+      runtime.controller.connectionPending = false
+      backendSocket.connected = false
+    }
   }
-  
+
+  Connections {
+    target: runtime.controller.previewCoordinator
+    function onBackendChanged() { runtime.controller.checkServiceState() }
+    function onConnectedChanged() {
+      if (runtime.controller.previewCoordinator.connected) runtime.controller.connectBackend()
+    }
+  }
+
   Process {
-    id: whichProcess
+    id: versionProcess
     stdout: StdioCollector { id: versionOutput; waitForEnd: true }
     onExited: function(exitCode) {
       runtime.controller.backendVersion = exitCode === 0 ? String(versionOutput.text || "") : ""
-      if (exitCode === 0) {
-        runtime.controller.checkServiceState()
-      } else {
+      if (exitCode === 0) runtime.controller.checkServiceState()
+      else {
         backendSocket.connected = false
         runtime.controller.serviceStateKnown = false
       }
     }
   }
-  
+
   Process {
-    id: enabledProcess
+    id: managementCheckProcess
     onExited: function(exitCode) {
       runtime.controller.serviceEnabled = exitCode === 0
-      activeProcess.command = ["hyprshell", "system/monitor-profile", "service-active"]
-      activeProcess.running = true
+      daemonCheckProcess.command = [runtime.controller.monitorProfileHelper, "service-active"]
+      daemonCheckProcess.running = true
     }
   }
-  
+
   Process {
-    id: activeProcess
+    id: daemonCheckProcess
     onExited: function(exitCode) {
-      var wasActive = runtime.controller.serviceActive
       runtime.controller.serviceActive = exitCode === 0
       runtime.controller.serviceStateKnown = true
-      if (runtime.controller.serviceActive) {
-        if (!runtime.controller.backendConnected) {
-          if (!wasActive) {
-            runtime.controller.connectionGrace = true
-            connectionGraceTimer.restart()
-          }
-          runtime.controller.connectBackend()
-        }
-      } else {
-        runtime.controller.connectionGrace = false
+      if (runtime.controller.serviceActive) runtime.controller.connectBackend()
+      else {
+        runtime.controller.connectionPending = false
         backendSocket.connected = false
       }
-      if (runtime.controller.serviceActionPending && !serviceProcess.running) {
-        // Turning management off no longer stops the daemon, so only the
-        // managed direction can be confirmed from its process state. The other one is
-        // confirmed by the daemon's status document in updateDocument.
-        var confirmed = runtime.controller.serviceTargetManaged
-          && runtime.controller.serviceEnabled
-          && runtime.controller.serviceActive
-        if (confirmed) {
-          runtime.controller.serviceActionPending = false
-          runtime.controller.serviceAction = ""
-          serviceConfirmationTimer.stop()
-        } else {
-          serviceRefreshTimer.restart()
-        }
-      }
+      if (runtime.serviceCheckQueued) runtime.controller.checkServiceState()
     }
   }
-  
+
   Process {
-    id: serviceProcess
-    stderr: StdioCollector { id: serviceStderr; waitForEnd: true }
+    id: serviceActionProcess
+    stderr: StdioCollector { id: serviceErrorOutput; waitForEnd: true }
     onExited: function(exitCode) {
-      var action = runtime.controller.serviceAction
       if (exitCode !== 0) {
+        var disabling = runtime.controller.serviceAction === "disable"
         runtime.controller.serviceActionPending = false
         runtime.controller.serviceAction = ""
-        var fallback = action === "disable" ? "Could not return display management to Hyprland." : "Could not start the display service."
-        runtime.controller.lastError = runtime.controller.displayError(serviceStderr.text, fallback).trim()
-      } else if (action === "disable") {
-        runtime.controller.checkServiceState()
-      } else {
-        runtime.controller.connectionGrace = true
-        connectionGraceTimer.restart()
-        reconnectTimer.restart()
+        var fallback = disabling ? "Could not return display management to Hyprland." : "Could not start the display service."
+        runtime.controller.lastError = runtime.controller.displayError(serviceErrorOutput.text, fallback).trim()
+      } else if (runtime.controller.serviceActionPending) {
+        serviceActionDeadline.restart()
+        runtime.controller.send("status", {})
       }
-      if (exitCode === 0) serviceConfirmationTimer.restart()
-      serviceRefreshTimer.restart()
+      runtime.controller.checkServiceState()
     }
   }
 
   Timer {
-    id: serviceRefreshTimer
-    interval: 250
-    onTriggered: runtime.controller.checkServiceState()
-  }
-  
-  Timer {
-    id: serviceDiscoveryTimer
-    interval: 2000
-    repeat: true
-    running: !runtime.controller.backendConnected && !runtime.controller.serviceActionPending
-    onTriggered: runtime.controller.checkServiceState()
-  }
-  
-  Timer {
-    id: connectionGraceTimer
-    interval: 2000
-    onTriggered: runtime.controller.connectionGrace = false
-  }
-  
-  Timer {
-    id: serviceConfirmationTimer
+    id: serviceActionDeadline
     interval: 5000
     onTriggered: {
       if (!runtime.controller.serviceActionPending) return
       runtime.controller.serviceActionPending = false
       runtime.controller.serviceAction = ""
       runtime.controller.lastError = "Could not confirm the automatic switching state."
-      runtime.controller.checkServiceState()
-    }
-  }
-  
-  Timer {
-    id: reconnectTimer
-    interval: 1000
-    repeat: true
-    running: (runtime.controller.serviceActive || (runtime.controller.serviceActionPending && runtime.controller.serviceTargetManaged))
-      && !runtime.controller.backendConnected
-    onTriggered: {
-      runtime.controller.checkServiceState()
-      runtime.controller.connectBackend()
     }
   }
 }

@@ -1,10 +1,9 @@
 import QtQuick
 
-// `blocked` forwards every key to an active inline editor.
 Item {
   id: root
 
-  property bool blocked: false
+  property bool inlineEditorActive: false
 
   signal moveRequested(int dx, int dy)
   signal activateRequested()
@@ -17,7 +16,7 @@ Item {
   focus: true
   Keys.priority: Keys.BeforeItem
   Keys.onPressed: function(event) {
-    if (blocked) return
+    if (inlineEditorActive) return
 
     if (event.key === Qt.Key_Escape) {
       closeRequested(); event.accepted = true; return

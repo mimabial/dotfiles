@@ -4,7 +4,7 @@ import QtQuick.Effects
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
-import qs.Commons
+import qs.Commons as Commons
 import "WindowModel.js" as WindowModel
 
 Item {
@@ -34,17 +34,17 @@ Item {
     Component.onCompleted: syncToplevels()
 
     Layout.fillWidth: true
-    implicitWidth: row.implicitWidth + (newWorkspace.implicitWidth + Style.spacing.sm) * 2
+    implicitWidth: row.implicitWidth + (newWorkspace.implicitWidth + Commons.Style.spacing.sm) * 2
     implicitHeight: Math.max(row.implicitHeight, newWorkspace.implicitHeight)
     readonly property real separatorCenterX: row.x + separator.x + separator.width / 2
 
     Row {
         id: row
-        readonly property real maxVisibleX: strip.width - width - Style.spacing.sm - newWorkspace.implicitWidth
+        readonly property real maxVisibleX: strip.width - width - Commons.Style.spacing.sm - newWorkspace.implicitWidth
         x: separator.visible
             ? Math.max(0, Math.min(maxVisibleX, strip.width / 2 - separator.x - separator.width / 2))
-            : (strip.width - width - Style.spacing.sm - newWorkspace.implicitWidth) / 2
-        spacing: Style.spacing.sm
+            : (strip.width - width - Commons.Style.spacing.sm - newWorkspace.implicitWidth) / 2
+        spacing: Commons.Style.spacing.sm
 
         Repeater {
             model: strip.workspaces.regular
@@ -54,9 +54,9 @@ Item {
         Rectangle {
             id: separator
             visible: strip.workspaces.special.length > 0
-            width: Style.normalBorderWidth
+            width: Commons.Style.normalBorderWidth
             height: strip.previewHeight
-            color: Color.menu.border
+            color: Commons.Color.menu.border
         }
 
         Repeater {
@@ -67,7 +67,7 @@ Item {
 
     WorkspaceChip {
         id: newWorkspace
-        x: row.x + row.width + Style.spacing.sm
+        x: row.x + row.width + Commons.Style.spacing.sm
         modelData: null
     }
 
@@ -108,14 +108,14 @@ Item {
         Component.onCompleted: syncWindows()
 
         implicitWidth: strip.previewHeight * displayWidth / displayHeight
-        implicitHeight: strip.previewHeight + Style.spacing.xs + label.implicitHeight
+        implicitHeight: strip.previewHeight + Commons.Style.spacing.xs + label.implicitHeight
 
         Rectangle {
             id: thumbnail
             width: chip.width
             height: strip.previewHeight
-            radius: Style.cornerRadius
-            color: chip.modelData === null ? Color.background : Color.alpha(Color.background, Style.popupSurfaceOpacity)
+            radius: Commons.Style.cornerRadius
+            color: chip.modelData === null ? Commons.Style.popupTinted(Commons.Color.background) : Commons.Color.alpha(Commons.Style.popupTinted(Commons.Color.background), Commons.Style.popupSurfaceOpacity)
             clip: true
 
             Image {
@@ -164,7 +164,7 @@ Item {
                         required property var modelData
                         readonly property var ipc: WindowModel.ipcFor(modelData)
                         readonly property real cornerRadius: ipc.fullscreen === strip.hyprlandFullscreenMode
-                            ? 0 : Math.min(Style.cornerRadius, width / 2, height / 2)
+                            ? 0 : Math.min(Commons.Style.cornerRadius, width / 2, height / 2)
                         readonly property var previewRect: {
                             const revision = strip.controller.modelRevision
                             return WindowModel.thumbnailRect(modelData, chip.windows,
@@ -206,7 +206,7 @@ Item {
                             radius: windowPreview.cornerRadius
                             color: "transparent"
                             border.width: strip.windowBorderWidth
-                            border.color: Color.alpha(Color.role("br", Color.menu.text), Style.popupBorderOpacity)
+                            border.color: Commons.Color.alpha(Commons.Color.role("br", Commons.Color.menu.text), Commons.Style.popupBorderOpacity)
                         }
                     }
                 }
@@ -216,23 +216,23 @@ Item {
                 visible: chip.modelData === null
                 anchors.centerIn: parent
                 text: "+"
-                color: Color.menu.text
-                font.family: Style.font.menuFamily
-                font.pixelSize: Style.font.heading
+                color: Commons.Color.menu.text
+                font.family: Commons.Style.font.menuFamily
+                font.pixelSize: Commons.Style.font.heading
             }
 
             Rectangle {
                 anchors.fill: parent
                 radius: parent.radius
                 color: "transparent"
-                border.width: Style.normalBorderWidth
-                border.color: chip.highlighted ? Color.menu.selectedBorder : chip.shown ? Color.accent : Color.menu.border
+                border.width: Commons.Style.normalBorderWidth
+                border.color: chip.highlighted ? Commons.Color.menu.selectedBorder : chip.shown ? Commons.Color.accent : Commons.Color.menu.border
             }
         }
 
         Text {
             id: label
-            y: thumbnail.height + Style.spacing.xs
+            y: thumbnail.height + Commons.Style.spacing.xs
             width: chip.width
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
@@ -241,9 +241,9 @@ Item {
                     ? "Space " + (strip.macSpaces.indexOf(chip.modelData) + 1)
                     : strip.controller.formatWorkspaceLabel(chip.name)
             textFormat: Text.PlainText
-            color: chip.shown ? Color.accent : Color.menu.text
-            font.family: Style.font.menuFamily
-            font.pixelSize: Style.font.body
+            color: chip.shown ? Commons.Color.accent : Commons.Color.menu.text
+            font.family: Commons.Style.font.menuFamily
+            font.pixelSize: Commons.Style.font.body
             font.bold: chip.shown
         }
 

@@ -12,16 +12,18 @@ ClockButton {
     readonly property int weeks: Math.ceil((Math.round((new Date(today.getFullYear(), today.getMonth() + 1, 0) - firstShown) / CalendarMath.MS_PER_DAY) + 1) / 7)
     readonly property color dim: shell.alpha(shell.foreground, .45)
     popupName: "notification-center"
+    calendarPopupName: popupName + "-calendar"
+    readonly property string settingsPopupName: popupName + "-settings"
     function archive(args) { shell.run(["hyprshell", "notify/archive"].concat(args), () => history.running = true) }
-    NotificationPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }
+    NotificationPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: root.settingsPopupName }
     MacCard {
-        anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: "notification-center"; settings: "Notification"; settingsPopup: "notifications"
+        anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: root.popupName; settings: "Notification"; settingsPopup: root.settingsPopupName
         onOpenChanged: if (open) history.running = true
         Rectangle {
             id: calendar
             readonly property bool navigable: true
             property bool cursored: false
-            function activateKeyboard() { root.shell.togglePopup("clock") }
+            function activateKeyboard() { root.shell.togglePopup(root.calendarPopupName) }
             width: parent.width; height: month.implicitHeight + Style.md * 2; radius: root.shell.rounding
             color: calendarHover.hovered || cursored ? root.shell.hoverFill() : "transparent"
             HoverHandler { id: calendarHover; cursorShape: Qt.PointingHandCursor }
@@ -59,7 +61,7 @@ ClockButton {
                 onRemoveRequested: root.archive(["remove", String(modelData.key)])
             }
         }
-        PopupRow { width: parent.width; shell: root.shell; title: "Show All Notifications…"; onClicked: root.shell.togglePopup("notifications") }
+        PopupRow { width: parent.width; shell: root.shell; title: "Show All Notifications…"; onClicked: root.shell.togglePopup(root.settingsPopupName) }
         Process {
             id: history
             command: ["hyprshell", "notify/history"]

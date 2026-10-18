@@ -24,6 +24,14 @@ Item {
         sourceComponent: Component { CliphistPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
     }
     Host {
+        popup: "altscape"; owners: ["altscape"]
+        sourceComponent: Component { AltscapePopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
+    }
+    Host {
+        popup: "quickshare"; owners: ["quickshare"]
+        sourceComponent: Component { QuickSharePopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
+    }
+    Host {
         popup: "bitwarden"; owners: ["bitwarden"]
         sourceComponent: Component { BitwardenPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
     }

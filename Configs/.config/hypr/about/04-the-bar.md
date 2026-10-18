@@ -7,18 +7,21 @@ only, so adding a module to a layout is one line and styling it is one more.
 
 ## Layouts
 
-Four layouts ship:
+Five layouts ship:
 
 | layout | shape |
 | ------ | ----- |
 | `top` | top edge, three sections |
 | `bottom` | bottom edge, three sections |
-| `winbar` | bottom edge, taskbar-led |
-| `totebar` | top edge, workspaces left and utilities right |
+| `winbar` | Windows 11 taskbar, top or bottom |
+| `macos` | top edge, app menus and status items |
+| `gnome` | top edge, Activities, date menu and Quick Settings |
 
 `Super + T` then `B` opens the picker, `C` cycles forward and `Shift + C`
 backward. Switching is live — no restart, no regeneration step, no editing state
-by hand. `Super + T` then `H` hides the bar entirely.
+by hand. `Super + T` then `H` hides the bar entirely; `Shift + H` toggles
+the floating bar. A workflow can own the layout: windows, macos and gnome fix
+one bar, while niri allows top and bottom.
 
 ## Composition
 
@@ -29,20 +32,32 @@ module name or an object with props:
 {"left": [{"id": "workspaces", "props": {"activeOnly": false}}], "right": ["datetime"]}
 ```
 
-`top` and `bottom` extend `layouts/shared/horizontal.json`; `totebar` and
-`winbar` define their own module arrangement.
+`top` and `bottom` extend `layouts/shared/horizontal.json`; `winbar`, `macos`,
+and `gnome` define their own module arrangement. `panel` and `edge` choose the
+bar shape and position; `centerAnchor` can keep one center module exactly centered.
 
 Modules include clock, forecast, workspaces,
 taskbar, media player, audio, volume, brightness, eyecare, bluetooth, wifi, vpn,
 privacy, printers, disks, updates, notifications, power, power profile, language,
-tray, submap indicator, system readouts, a converter, even a sudoku. `spacer`
+tray, submap indicator, system readouts, tasks, bookmarks, Bitwarden, agents,
+a converter, even a sudoku. `spacer`
 pushes everything after it to the far end.
+
+The tray's chevron opens its overflow. `Super + O` then `T` opens it with a
+keyboard cursor: arrows or Tab move, Enter activates, and Menu or Shift + F10
+opens an icon's menu. Right-click the chevron to move widgets between bar and
+tray; drag to reorder them or pin an icon onto the bar.
+
+In winbar, right-click Start for taskbar combining, labels, size, edge and
+auto-hide settings. The macos bar has focused-app menus and Control Center;
+gnome combines calendar and notifications in its centered date menu and puts
+device controls in Quick Settings. `Ctrl + F2` focuses the menu bar.
 
 ## Styling
 
-`styles/base.json` is shared by every layout, and `styles/<layout>.json`
-recursively overrides it. Rules are keyed by each component's `css` name, which
-is the same name you use in the layout file. Static appearance belongs in the
+`styles/base.json` is shared by every layout, and `styles/<style>.json`
+recursively overrides it. The layout's `style` selects the file; top and bottom
+share `horizontal`. Rules are keyed by each component's `css` name. Static appearance belongs in the
 JSON; anything that depends on the palette at runtime belongs in QML.
 
 That split is the whole reason theme switching works on the bar. The JSON never
@@ -61,23 +76,32 @@ a small thing until you use a bar that gets it wrong.
 
 ## The standalone panels
 
-Three things run alongside whichever bar layout is active rather than inside it:
-the **dock**, **Exposé**, and the **monitor editor**. They are separate panels
-with their own settings files and their own READMEs, and they reach the shared
-palette through a shim rather than the bar's own theme singleton. Switching bar
-layouts does not disturb them.
+The **dock**, **Exposé**, **monitor editor**, **CLIAMP**, and **lockscreen
+explorer** run alongside the bar. Their directories are `dock/`, `expose/`,
+`monitor/`, `cliamp/`, and `lockview/`; they use the shared palette through
+`qs.Commons`.
+
+The dock supports app groups: drag one app onto another or use Dock Settings
+to group them. `Super + T` then `K` opens the lockscreen explorer to select and
+preview a lock layout.
 
 ## Reloading
 
 Layout, style, state, theme and font files are all watched in place, so editing
 them takes effect immediately. QML source triggers Quickshell's own reload. For a
-deliberate one:
+deliberate one, only when no reload happened:
 
 ```bash
 quickshell ipc call bar reload
 ```
 
 Be aware that this is a *soft* reload — it reuses the running engine and keeps
-existing instances. It will not pick up a newly installed font, because Qt builds
-its font database once per process. When a change appears to do nothing, restart
-the process before you conclude the change was wrong.
+cached `vars.lua` values, font family, URL-loaded components and directory
+imports. Those changes and newly installed fonts need a process restart:
+
+```bash
+hyprshell service/control restart hyprland-quickshell
+```
+
+Do not stack an IPC reload on a file watcher's reload. Two consecutive QML
+reloads can crash the shell; put each file's changes into one write.

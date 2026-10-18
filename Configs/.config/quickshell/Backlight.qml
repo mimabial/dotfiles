@@ -3,8 +3,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// The device is resolved once via brightnessctl, then the value is read straight from sysfs so routine updates
-// cost a file read rather than a subprocess.
 Singleton {
     id: root
 
@@ -14,8 +12,8 @@ Singleton {
     readonly property int percent: maximum > 0 ? Math.round(raw * 100 / maximum) : 0
     readonly property string icon: "\u{f00df}"
 
-    function refresh() { if (device !== "") value.reload() }
-    property Process probe: Process {
+    function refresh() { if (device !== "") brightnessFile.reload() }
+    property Process deviceProbe: Process {
         running: true
         command: ["brightnessctl", "-m"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
@@ -26,7 +24,7 @@ Singleton {
         } }
     }
 
-    property FileView value: FileView {
+    property FileView brightnessFile: FileView {
         path: root.device === "" ? "" : "/sys/class/backlight/" + root.device + "/brightness"
         watchChanges: true
         printErrors: false
@@ -34,7 +32,7 @@ Singleton {
         onLoaded: root.raw = Number(String(text()).trim())
     }
 
-    property Process events: Process {
+    property Process backlightEvents: Process {
         running: root.device !== ""
         command: ["udevadm", "monitor", "--kernel", "--subsystem-match=backlight"]
         stdout: SplitParser { onRead: line => {

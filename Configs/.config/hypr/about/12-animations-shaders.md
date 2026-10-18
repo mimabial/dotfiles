@@ -6,11 +6,12 @@ generated Lua fragment the compositor loads.
 
 ## Animations
 
-Seven presets ship:
+Eight presets ship:
 
 **default** — what the config is tuned for · **optimized** — lighter, for when
 the GPU is busy · **bounce**, **blink**, **flash**, **vertical** — variations with
-different curves and directions · **disable** — none at all
+different curves and directions · **gnome** — spring animations used by the
+GNOME workflow · **disable** — none at all
 
 ```bash
 hyprshell animations.sh --set bounce

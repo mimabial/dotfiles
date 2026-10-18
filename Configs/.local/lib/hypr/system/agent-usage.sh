@@ -9,11 +9,11 @@ hypr_help_guard "Usage: hyprshell system/agent-usage [--write] [--force] [agent.
   --force     rescan local usage now, for a person who asked rather than for a
               periodic refresh. The limits probe keeps its own short window,
               which is what stops repeat presses hitting a server rate limit.
-  <agent>     limit collection to the named agents (claude, codex, opencode)
+  <agent>     limit collection to the named agents (claude, codex, kimi, opencode)
 
 Cache: \${HYPR_CACHE_HOME:-~/.cache/hypr}/agents/usage.json" "$@"
 
-readonly AGENTS=(claude codex opencode)
+readonly AGENTS=(claude codex kimi opencode)
 readonly COLLECTOR_DIR="${HYPR_LIB_DIR}/system"
 readonly CACHE_DIR="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/agents"
 readonly CACHE_FILE="${CACHE_DIR}/usage.json"
@@ -67,6 +67,8 @@ if [[ ${#records[@]} -eq 0 ]]; then
 else
   payload="$(printf '%s\n' "${records[@]}" | jq -s -c .)"
 fi
+
+payload="$(printf '%s\n' "${payload}" | python3 "${COLLECTOR_DIR}/agent-costs.py")"
 
 if ((write)); then
   mkdir -p "${CACHE_DIR}"

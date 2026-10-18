@@ -6,7 +6,7 @@ import Quickshell.Hyprland
 import Quickshell.Wayland
 import "WindowModel.js" as WindowModel
 import ".." as Shell
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui as Ui
 
 Item {
@@ -38,14 +38,14 @@ Item {
     readonly property string applicationName: WindowModel.appIdFor(modelData) || "Application"
     readonly property string workspaceName: card.inMacSpace ? "Space" : card.controller.workspaceName(modelData)
     readonly property string iconSource: card.controller.iconFor(modelData)
-    readonly property color outlineColor: focusedWindow ? Color.accent : (selected ? Color.menu.selectedBorder : Color.menu.border)
-    readonly property var outlineSpec: Border.flat(outlineColor, card.controller.outlineWidth)
-    readonly property color currentColor: Style.selectedStateColor(Color.menu.text, Color.accent)
+    readonly property color outlineColor: focusedWindow ? Commons.Color.accent : (selected ? Commons.Color.menu.selectedBorder : Commons.Color.menu.border)
+    readonly property var outlineSpec: Commons.Border.flat(outlineColor, card.controller.outlineWidth)
+    readonly property color currentColor: Commons.Style.selectedStateColor(Commons.Color.menu.text, Commons.Color.accent)
     // An excluded card keeps its last rectangle, so it neither
     // animates toward the origin nor flies back in from it.
     readonly property var packedRectSource: inLayout ? card.windowLayout[slot] : null
     property var packedRect: Qt.rect(0, 0, 1, 1)
-    readonly property var previewRect: WindowModel.previewRect(modelData, packedRect, card.layoutAreaWidth, card.layoutAreaHeight, Style.spacing.sm, card.controller.windowFooterHeight, card.controller.previewPlacement)
+    readonly property var previewRect: WindowModel.previewRect(modelData, packedRect, card.layoutAreaWidth, card.layoutAreaHeight, Commons.Style.spacing.sm, card.controller.windowFooterHeight, card.controller.previewPlacement)
     readonly property var layoutRect: previewed ? previewRect : packedRect
     readonly property bool dragging: dragHandler.active
     readonly property point dragOffset: dragging ? dragHandler.activeTranslation : Qt.point(0, 0)
@@ -117,8 +117,8 @@ Item {
     ColumnLayout {
         id: cardLayout
         anchors.fill: parent
-        anchors.margins: Style.spacing.sm
-        spacing: card.overlayFooter ? 0 : Style.spacing.sm
+        anchors.margins: Commons.Style.spacing.sm
+        spacing: card.overlayFooter ? 0 : Commons.Style.spacing.sm
 
         Item {
             Layout.fillWidth: true
@@ -132,15 +132,15 @@ Item {
                 anchors.centerIn: parent
                 width: Math.min(parent.width, parent.height * windowAspectRatio)
                 height: Math.min(parent.height, parent.width / windowAspectRatio)
-                radius: Style.cornerRadius
-                color: Color.background
+                radius: Commons.Style.cornerRadius
+                color: Commons.Color.background
                 clip: true
                 layer.enabled: true
 
                 CardText {
                     anchors.centerIn: parent
                     text: "Live preview unavailable"
-                    opacity: Style.faintTextAlpha
+                    opacity: Commons.Style.faintTextAlpha
                 }
 
                 Item {
@@ -199,14 +199,14 @@ Item {
                 id: spaceAction
                 anchors.top: previewFrame.top
                 anchors.right: previewFrame.right
-                anchors.margins: Style.spacing.sm
+                anchors.margins: Commons.Style.spacing.sm
                 z: 6
-                width: actionIcon.implicitWidth + Style.spacing.xs * 2
+                width: actionIcon.implicitWidth + Commons.Style.spacing.xs * 2
                 height: width
-                radius: Style.cornerRadius
-                color: Util.alpha(Color.menu.background, Style.popupSurfaceOpacity)
-                border.width: Style.normalBorderWidth
-                border.color: Color.menu.border
+                radius: Commons.Style.cornerRadius
+                color: Commons.Util.alpha(Commons.Style.popupTinted(Commons.Color.menu.background), Commons.Style.popupSurfaceOpacity)
+                border.width: Commons.Style.normalBorderWidth
+                border.color: Commons.Style.popupBorder(Commons.Color.menu.border)
                 visible: !card.dragging && (card.hovered || card.selected || card.actionHovered)
 
                 Shell.SymbolicIcon {
@@ -214,8 +214,8 @@ Item {
                     anchors.centerIn: parent
                     name: card.inMacSpace || card.fullscreenWindow ? "view-restore" : "view-fullscreen"
                     context: "actions"
-                    color: Color.menu.text
-                    size: Style.font.heading
+                    color: Commons.Color.menu.text
+                    size: Commons.Style.font.heading
                 }
 
                 MouseArea {
@@ -232,7 +232,7 @@ Item {
 
         Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: Style.space(40)
+            Layout.preferredHeight: Commons.Style.space(40)
             visible: !card.overlayFooter
 
             Loader {
@@ -246,9 +246,9 @@ Item {
 
     component CardText: Text {
         textFormat: Text.PlainText
-        color: Color.menu.text
-        font.family: Style.font.menuFamily
-        font.pixelSize: Style.font.body
+        color: Commons.Color.menu.text
+        font.family: Commons.Style.font.menuFamily
+        font.pixelSize: Commons.Style.font.body
     }
 
     component FooterTitle: CardText {
@@ -259,8 +259,8 @@ Item {
 
     component FooterIcon: Image {
         property int iconSize: 24
-        Layout.preferredWidth: Style.space(iconSize)
-        Layout.preferredHeight: Style.space(iconSize)
+        Layout.preferredWidth: Commons.Style.space(iconSize)
+        Layout.preferredHeight: Commons.Style.space(iconSize)
         source: card.iconSource
         fillMode: Image.PreserveAspectFit
         asynchronous: true
@@ -272,16 +272,16 @@ Item {
         CardText {
             Layout.alignment: Qt.AlignRight
             text: card.workspaceName
-            color: card.focusedWindow ? card.currentColor : Color.menu.text
-            font.pixelSize: Style.font.heading
+            color: card.focusedWindow ? card.currentColor : Commons.Color.menu.text
+            font.pixelSize: Commons.Style.font.heading
             font.bold: true
         }
 
         CardText {
             Layout.alignment: Qt.AlignRight
             text: "Workspace"
-            opacity: Style.mutedTextAlpha
-            font.pixelSize: Style.font.caption
+            opacity: Commons.Style.mutedTextAlpha
+            font.pixelSize: Commons.Style.font.caption
         }
     }
 
@@ -293,7 +293,7 @@ Item {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
-                height: Math.min(parent.height * 0.45, Style.space(84))
+                height: Math.min(parent.height * 0.45, Commons.Style.space(84))
 
                 gradient: Gradient {
                     orientation: Gradient.Vertical
@@ -305,7 +305,7 @@ Item {
 
                     GradientStop {
                         position: 1
-                        color: Color.menu.background
+                        color: Commons.Color.menu.background
                     }
                 }
             }
@@ -314,8 +314,8 @@ Item {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
-                anchors.margins: Style.spacing.md
-                spacing: Style.spacing.md
+                anchors.margins: Commons.Style.spacing.md
+                spacing: Commons.Style.spacing.md
 
                 FooterIcon { iconSize: 28 }
 
@@ -328,8 +328,8 @@ Item {
                     CardText {
                         Layout.fillWidth: true
                         text: card.applicationName
-                        opacity: Style.secondaryTextAlpha
-                        font.pixelSize: Style.font.caption
+                        opacity: Commons.Style.secondaryTextAlpha
+                        font.pixelSize: Commons.Style.font.caption
                         elide: Text.ElideRight
                     }
                 }
@@ -343,7 +343,7 @@ Item {
         id: floatingFooter
 
         RowLayout {
-            spacing: Style.spacing.md
+            spacing: Commons.Style.spacing.md
 
             FooterIcon { iconSize: 30 }
 
@@ -356,8 +356,8 @@ Item {
                 CardText {
                     Layout.fillWidth: true
                     text: card.applicationName
-                    opacity: Style.mutedTextAlpha
-                    font.pixelSize: Style.font.caption
+                    opacity: Commons.Style.mutedTextAlpha
+                    font.pixelSize: Commons.Style.font.caption
                     elide: Text.ElideRight
                 }
             }
@@ -370,7 +370,7 @@ Item {
         id: integratedFooter
 
         RowLayout {
-            spacing: Style.spacing.md
+            spacing: Commons.Style.spacing.md
 
             FooterIcon {}
 
@@ -378,9 +378,9 @@ Item {
 
             CardText {
                 text: "WS " + card.workspaceName
-                color: card.focusedWindow ? card.currentColor : Color.menu.text
+                color: card.focusedWindow ? card.currentColor : Commons.Color.menu.text
                 opacity: card.focusedWindow ? 1 : 0.68
-                font.pixelSize: Style.font.caption
+                font.pixelSize: Commons.Style.font.caption
                 font.bold: true
             }
         }
@@ -394,20 +394,20 @@ Item {
 
             RowLayout {
                 Layout.alignment: Qt.AlignHCenter
-                spacing: Style.spacing.md
+                spacing: Commons.Style.spacing.md
 
                 FooterIcon {}
 
-                FooterTitle { Layout.maximumWidth: Math.max(1, card.width - Style.space(80)) }
+                FooterTitle { Layout.maximumWidth: Math.max(1, card.width - Commons.Style.space(80)) }
             }
 
             CardText {
                 Layout.alignment: Qt.AlignHCenter
-                Layout.maximumWidth: Math.max(1, card.width - Style.space(32))
+                Layout.maximumWidth: Math.max(1, card.width - Commons.Style.space(32))
                 text: card.applicationName + "  ·  Workspace " + card.workspaceName
-                color: card.focusedWindow ? card.currentColor : Color.menu.text
+                color: card.focusedWindow ? card.currentColor : Commons.Color.menu.text
                 opacity: card.focusedWindow ? 1 : 0.62
-                font.pixelSize: Style.font.caption
+                font.pixelSize: Commons.Style.font.caption
                 elide: Text.ElideRight
             }
         }

@@ -6,15 +6,16 @@ change the typeface along with the colors.
 
 The roles a theme sets:
 
-| role | current value |
+| role | theme variable |
 | ---- | ------------- |
-| interface | Cantarell |
-| documents | Cantarell |
-| monospace | JetBrainsMono Nerd Font |
-| the bar | JetBrainsMono Nerd Font |
-| menus and rofi | JetBrainsMono Nerd Font |
-| notifications | Mononoki Nerd Font Mono |
-| group bars | Cantarell |
+| interface | `FONT` |
+| documents | `DOCUMENT_FONT` |
+| monospace | `MONOSPACE_FONT` |
+| terminals | `TERMINAL_FONT` |
+| the bar | `BAR_FONT` |
+| menus and rofi | `MENU_FONT` |
+| notifications | `NOTIFICATION_FONT` |
+| group bars | `GROUPBAR_FONT` |
 
 `Super + T` then `F` opens the font picker, and `Shift + F` installs a Nerd Font
 from the collection.
@@ -28,8 +29,8 @@ they stay that way until you go and clear it.
 
 `userfonts.lua` is generated, so the way back is to remove the `vars.set` lines
 it wrote — treat emptying the file as the reset, not as a place to hand-tune.
-Right now it holds no overrides at all, which is why the table above is coming
-from the theme.
+Right now it holds no overrides at all, so theme packs and their defaults supply
+the fonts.
 
 So do not reach for the picker just to try a font out.
 
@@ -39,7 +40,7 @@ Qt builds its font database once per process. `quickshell ipc call bar reload` i
 a soft reload that reuses the running engine, so a font you installed thirty
 seconds ago will not appear no matter how many times you reload.
 
-Restart the process. If the bar still does not show the font after that, then the
+Use `hyprshell service/control restart hyprland-quickshell`. If the bar still does not show the font after that, then the
 change was wrong — but not before.
 
 ## Auditing

@@ -12,22 +12,20 @@ var LOGIN_TYPE = 1
 var SSH_KEY_TYPE = 5
 var CUSTOM_FIELD_TYPE = { text: 0, hidden: 1 }
 
-// One schema drives both the detail view and the edit form, so a field added
-// here appears in both. Flags: s = secret, m = multiline.
-const FIELDS = {
-    1: [["login.username", "Username"], ["login.password", "Password", "s"],
-        ["login.totp", "Authenticator key", "s"], ["login.uris", "Websites", "m"]],
+const FIELD_SCHEMA = {
+    1: [["login.username", "Username"], ["login.password", "Password", "secret"],
+        ["login.totp", "Authenticator key", "secret"], ["login.uris", "Websites", "multiline"]],
     2: [],
-    3: [["card.cardholderName", "Cardholder"], ["card.brand", "Brand"], ["card.number", "Number", "s"],
-        ["card.expMonth", "Expiry month"], ["card.expYear", "Expiry year"], ["card.code", "Security code", "s"]],
+    3: [["card.cardholderName", "Cardholder"], ["card.brand", "Brand"], ["card.number", "Number", "secret"],
+        ["card.expMonth", "Expiry month"], ["card.expYear", "Expiry year"], ["card.code", "Security code", "secret"]],
     4: [["identity.title", "Title"], ["identity.firstName", "First name"], ["identity.lastName", "Last name"],
         ["identity.username", "Username"], ["identity.company", "Company"], ["identity.email", "Email"],
-        ["identity.phone", "Phone"], ["identity.ssn", "Social security number", "s"],
-        ["identity.passportNumber", "Passport number", "s"], ["identity.licenseNumber", "License number", "s"],
+        ["identity.phone", "Phone"], ["identity.ssn", "Social security number", "secret"],
+        ["identity.passportNumber", "Passport number", "secret"], ["identity.licenseNumber", "License number", "secret"],
         ["identity.address1", "Address"], ["identity.address2", "Address 2"], ["identity.city", "City"],
         ["identity.state", "State"], ["identity.postalCode", "Postal code"], ["identity.country", "Country"]],
-    5: [["sshKey.publicKey", "Public key", "m"], ["sshKey.keyFingerprint", "Fingerprint"],
-        ["sshKey.privateKey", "Private key", "sm"]]
+    5: [["sshKey.publicKey", "Public key", "multiline"], ["sshKey.keyFingerprint", "Fingerprint"],
+        ["sshKey.privateKey", "Private key", "secret multiline"]]
 }
 
 function type(item) { return TYPES[item.type] || TYPES[2] }
@@ -49,8 +47,8 @@ function write(item, path, text) {
 }
 
 function schema(itemType) {
-    return (FIELDS[itemType] || []).concat([["notes", "Notes", "m"]])
-        .map(([path, label, flags]) => ({ path: path, label: label, secret: /s/.test(flags), multiline: /m/.test(flags) }))
+    return (FIELD_SCHEMA[itemType] || []).concat([["notes", "Notes", "multiline"]])
+        .map(([path, label, modifiers = ""]) => ({ path: path, label: label, secret: modifiers.includes("secret"), multiline: modifiers.includes("multiline") }))
 }
 
 function details(item) {
@@ -81,9 +79,6 @@ function filter(items, needle, itemType, folderNames) {
         && words.every(word => searchText(item, folderNames[item.folderId]).includes(word)))
 }
 
-// Browsers end a title with " - App name" and name their class after it, so the
-// suffix is dropped and the class must match whole: otherwise "Google Chrome"
-// suggests every Google login.
 function suggestions(items, title, appClass) {
     const page = String(title || "").replace(/\s[-—–]\s[^-—–]+$/, "").toLowerCase(), app = String(appClass || "").toLowerCase()
     const keyword = uri => { const labels = host(uri).split("."); return labels[Math.max(0, labels.length - 2)] }

@@ -1,5 +1,5 @@
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 import ".." as Shell
 import "DockModel.js" as DockModel
 
@@ -85,10 +85,10 @@ Item {
     visible: fitem.dock.showIndicators && fitem.isOpen
     x: (fitem.width - width) / 2
     y: fitem.dock.indicatorY(fitem.height, height)
-    width: Style.space(4)
-    height: Style.space(4)
+    width: Commons.Style.space(4)
+    height: Commons.Style.space(4)
     radius: width / 2
-    color: Color.bar.active
+    color: Commons.Color.bar.active
   }
 
   MouseArea {

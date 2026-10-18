@@ -34,7 +34,7 @@ RowLayout {
     function selector(toplevel) { return "address:" + DockModel.windowAddress(toplevel) }
     function dispatch(lua) { shell.run(["hyprctl", "dispatch", lua]) }
     function onFocused(dispatcher, args) { return () => dispatch(`hl.dsp.${dispatcher}({${args ? args + ", " : ""}window = "${selector(focused)}"})`) }
-    function refreshRecentFolders() { recentFoldersProc.running = true }
+    function refreshRecentFolders() { recentFoldersProcess.running = true }
     function computerItems() {
         const volumes = []
         for (const device of Removable.systemDevices.concat(Removable.devices))
@@ -120,7 +120,7 @@ RowLayout {
         }
     }
     Process {
-        id: recentFoldersProc
+        id: recentFoldersProcess
         command: ["python3", root.shell.home + "/.local/lib/hypr/quickshell/recent-items.py", "folders"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.recentFolders = JSON.parse(text) }
     }

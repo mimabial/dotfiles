@@ -1,5 +1,5 @@
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
 Item {
   id: crow
@@ -8,7 +8,7 @@ Item {
   property string glyph: ""
   property string shortcut: ""
   property bool checked: false
-  property color textColor: Color.menu.text
+  property color textColor: Commons.Color.menu.text
   property bool danger: false
   property bool isHeader: false
   // Shown but not actionable: the row still says what it would do, instead of
@@ -23,41 +23,42 @@ Item {
   property bool winFocused: false
   property bool winParked: false
   signal triggered()
+  function activateKeyboard() { triggered() }
 
   // Rows ask for what they need, then all get drawn at the menu's width, so
   // hover and checked fills line up down the menu instead of stepping in and
   // out with the length of each label.
   readonly property bool isMenuContent: true
-  readonly property real markWidth: Style.space(14)
+  readonly property real markWidth: Commons.Style.space(14)
   // Reserved on every window row, selected or not, for the same reason the
   // mark column is: the selection chevron used to be prepended to the label
   // text, so cycling the window list under the scroll wheel re-measured each
   // row and the whole menu visibly changed width as the selection moved.
-  readonly property real chevronWidth: crow.isWindowRow ? Style.space(8) : 0
+  readonly property real chevronWidth: crow.isWindowRow ? Commons.Style.space(8) : 0
 
-  implicitWidth: Style.space(8) + crow.markWidth + Style.space(6)
-    + (crow.chevronWidth > 0 ? crow.chevronWidth + Style.space(6) : 0)
-    + label.implicitWidth + Style.space(8)
+  implicitWidth: Commons.Style.space(8) + crow.markWidth + Commons.Style.space(6)
+    + (crow.chevronWidth > 0 ? crow.chevronWidth + Commons.Style.space(6) : 0)
+    + label.implicitWidth + Commons.Style.space(8)
   width: crow.menuWidth > 0 ? crow.menuWidth : crow.implicitWidth
-  height: crow.isHeader ? Math.max(22, Style.space(22)) : Math.max(28, Style.space(28))
+  height: crow.isHeader ? Math.max(22, Commons.Style.space(22)) : Math.max(28, Commons.Style.space(28))
 
   Rectangle {
     anchors.fill: parent
     visible: !crow.isHeader && !crow.disabled
-    radius: Style.cornerRadius
+    radius: Commons.Style.cornerRadius
     color: (area.containsMouse || crow.cursored || crow.highlighted)
-      ? (crow.danger ? Util.alpha(Color.urgent, 0.16) : Color.menu.selectedBackground)
-      : (crow.checked ? Util.alpha(Color.bar.active, 0.12) : "transparent")
+      ? (crow.danger ? Commons.Util.alpha(Commons.Color.urgent, 0.16) : Commons.Color.menu.selectedBackground)
+      : (crow.checked ? Commons.Util.alpha(Commons.Color.bar.active, 0.12) : "transparent")
   }
 
   Row {
     id: content
     anchors.left: parent.left
-    anchors.leftMargin: Style.space(8)
+    anchors.leftMargin: Commons.Style.space(8)
     anchors.right: parent.right
-    anchors.rightMargin: Style.space(8) + (shortcutLabel.visible ? shortcutLabel.implicitWidth + Style.space(12) : 0)
+    anchors.rightMargin: Commons.Style.space(8) + (shortcutLabel.visible ? shortcutLabel.implicitWidth + Commons.Style.space(12) : 0)
     anchors.verticalCenter: parent.verticalCenter
-    spacing: Style.space(6)
+    spacing: Commons.Style.space(6)
 
     // The mark column is always reserved, so labels stay on one left edge and
     // a row keeps its width when it gets checked.
@@ -69,16 +70,16 @@ Item {
 
       Rectangle {
         visible: crow.isWindowRow
-        width: Style.space(6)
-        height: Style.space(6)
+        width: Commons.Style.space(6)
+        height: Commons.Style.space(6)
         radius: width / 2
         anchors.centerIn: parent
         color: crow.winFocused
-          ? Color.bar.active
-          : (crow.winParked ? "transparent" : (crow.checked ? Color.bar.active : Util.alpha(Color.menu.text, 0.45)))
+          ? Commons.Color.bar.active
+          : (crow.winParked ? "transparent" : (crow.checked ? Commons.Color.bar.active : Commons.Util.alpha(Commons.Color.menu.text, 0.45)))
         border.color: crow.winFocused
-          ? Color.bar.active
-          : (crow.winParked ? Util.alpha(Color.menu.text, 0.4) : (crow.checked ? Color.bar.active : "transparent"))
+          ? Commons.Color.bar.active
+          : (crow.winParked ? Commons.Util.alpha(Commons.Color.menu.text, 0.4) : (crow.checked ? Commons.Color.bar.active : "transparent"))
         border.width: 1
       }
 
@@ -90,9 +91,9 @@ Item {
         textFormat: Text.PlainText
         opacity: (crow.glyph !== "" || crow.checked) ? 1 : 0
         text: crow.glyph !== "" ? crow.glyph : "\uf00c"
-        font.family: Style.font.family
-        font.pixelSize: Style.font.caption
-        color: crow.checked ? Color.bar.active : (crow.isHeader ? Util.alpha(Color.menu.text, 0.5) : crow.textColor)
+        font.family: Commons.Style.font.family
+        font.pixelSize: Commons.Style.font.caption
+        color: crow.checked ? Commons.Color.bar.active : (crow.isHeader ? Commons.Util.alpha(Commons.Color.menu.text, 0.5) : crow.textColor)
       }
     }
 
@@ -108,9 +109,9 @@ Item {
         text: "›"
         textFormat: Text.PlainText
         opacity: crow.checked ? 1 : 0
-        font.family: Style.font.family
-        font.pixelSize: Style.font.body
-        color: Color.bar.active
+        font.family: Commons.Style.font.family
+        font.pixelSize: Commons.Style.font.body
+        color: Commons.Color.bar.active
       }
     }
 
@@ -122,12 +123,12 @@ Item {
       text: crow.text
       textFormat: Text.PlainText
       color: (crow.isHeader || crow.disabled)
-        ? Util.alpha(Color.menu.text, 0.5)
+        ? Commons.Util.alpha(Commons.Color.menu.text, 0.5)
         : (crow.checked || crow.winFocused
-            ? Color.bar.active
-        : ((area.containsMouse || crow.cursored) && crow.danger ? Color.urgent : crow.textColor))
-      font.family: Style.font.family
-      font.pixelSize: crow.isHeader ? Style.font.caption : Style.font.body
+            ? Commons.Color.bar.active
+        : ((area.containsMouse || crow.cursored) && crow.danger ? Commons.Color.urgent : crow.textColor))
+      font.family: Commons.Style.font.family
+      font.pixelSize: crow.isHeader ? Commons.Style.font.caption : Commons.Style.font.body
       // `checked` boldens an option row to mark the current value, which is
       // static. On a window row it tracks the wheel, so it would resize the
       // row mid-scroll the way the chevron used to.
@@ -141,13 +142,13 @@ Item {
     id: shortcutLabel
     visible: crow.shortcut !== ""
     anchors.right: parent.right
-    anchors.rightMargin: Style.space(8)
+    anchors.rightMargin: Commons.Style.space(8)
     anchors.verticalCenter: parent.verticalCenter
     text: crow.shortcut
     textFormat: Text.PlainText
-    color: Util.alpha(Color.menu.text, 0.5)
-    font.family: Style.font.family
-    font.pixelSize: Style.font.body
+    color: Commons.Util.alpha(Commons.Color.menu.text, 0.5)
+    font.family: Commons.Style.font.family
+    font.pixelSize: Commons.Style.font.body
   }
 
   MouseArea {

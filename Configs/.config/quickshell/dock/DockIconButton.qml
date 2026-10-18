@@ -1,4 +1,6 @@
 import QtQuick
+import qs.Commons as Commons
+import ".." as Shell
 
 Item {
   id: btn
@@ -31,15 +33,12 @@ Item {
   width: btn.slotMain
   height: btn.dock.iconSlot
 
-  Image {
+  Shell.SymbolicIcon {
     anchors.centerIn: parent
-    width: btn.dock.iconSize
-    height: width
-    source: btn.dock.appLibrary.iconSource(btn.icon)
-    sourceSize: Qt.size(width * btn.dock.magnifyPeak, height * btn.dock.magnifyPeak)
-    fillMode: Image.PreserveAspectFit
-    asynchronous: true
-    mipmap: true
+    name: btn.icon
+    context: "categories"
+    color: Commons.Color.bar.text
+    size: btn.dock.iconSize
     transformOrigin: btn.dock.floorTransformOrigin
     scale: btn.magnifyScale * (area.pressed ? 0.92 : 1.0)
   }

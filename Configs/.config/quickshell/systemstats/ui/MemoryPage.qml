@@ -1,8 +1,9 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 import "../Model.js" as Model
+import "../../Units.js" as Units
 
 Column {
   id: root
@@ -12,20 +13,20 @@ Column {
   property int historyRange: 0
   property string temperatureUnit: "Celsius"
   property bool publicIpEnabled: true
-  property color foreground: Color.popups.text
-  property string fontFamily: Style.font.family
+  property color foreground: Commons.Color.popups.text
+  property string fontFamily: Commons.Style.font.family
 
   function flag(key) { return Model.flag(settings, key) }
 
   readonly property var snap: service ? service.snapshot : ({})
   readonly property var hist: service ? Model.peakHistoryView(service.history, service.historyHour, service.historyDay, historyRange) : Model.emptyHistory()
-  readonly property color s1: service ? service.series1 : Color.accent
-  readonly property color s2: service ? service.series2 : Color.accent
-  readonly property color s3: service ? service.tertiary : Color.accent
-  readonly property color warn: service ? service.warn : Color.urgent
-  readonly property color danger: service ? service.danger : Color.urgent
-  readonly property color track: Util.alpha(foreground, 0.16)
-  readonly property color reclaimable: Util.alpha(s2, 0.35)
+  readonly property color s1: service ? service.series1 : Commons.Color.accent
+  readonly property color s2: service ? service.series2 : Commons.Color.accent
+  readonly property color s3: service ? service.tertiary : Commons.Color.accent
+  readonly property color warn: service ? service.warn : Commons.Color.urgent
+  readonly property color danger: service ? service.danger : Commons.Color.urgent
+  readonly property color track: Commons.Util.alpha(foreground, 0.16)
+  readonly property color reclaimable: Commons.Util.alpha(s2, 0.35)
 
   readonly property var mem: snap.mem || ({})
   readonly property var procs: snap.procs || null
@@ -38,15 +39,13 @@ Column {
   readonly property real swapUsed: Model.num(mem.swapUsed)
   readonly property real cached: Model.num(mem.cached)
 
-  // The ring beside "Memory": swap, with the zram compression ratio as its
-  // caption once something is actually compressed.
-  readonly property var gaugeSpec: {
+  readonly property var swapGaugeSpec: {
     if (swapTotal <= 0) {
       return { value: 0, color: s1, text: "Off", unit: "", label: "Swap", sub: "" }
     }
     var frac = swapUsed / swapTotal
     // Just the figure: the ring is small, and "used" is implied by the arc.
-    var sub = Model.bytesText(swapUsed > 0 ? swapUsed : swapTotal)
+    var sub = Units.bytesText(swapUsed > 0 ? swapUsed : swapTotal)
     return {
       value: frac,
       color: frac >= Model.SWAP_DANGER ? danger : (frac >= Model.SWAP_WARN ? warn : s1),
@@ -54,10 +53,10 @@ Column {
     }
   }
 
-  function part(bytes) { return Model.bytesParts(bytes) }
+  function part(bytes) { return Units.bytesParts(bytes) }
 
   width: parent ? parent.width : implicitWidth
-  spacing: Style.space(10)
+  spacing: Commons.Style.space(10)
 
   Card {
     foreground: root.foreground
@@ -69,19 +68,19 @@ Column {
       Row {
         id: rings
         anchors.horizontalCenter: parent.horizontalCenter
-        spacing: Style.space(30)
+        spacing: Commons.Style.space(30)
 
         RingGauge {
-          value: root.gaugeSpec.value
-          color: root.gaugeSpec.color
+          value: root.swapGaugeSpec.value
+          color: root.swapGaugeSpec.color
           foreground: root.foreground
           fontFamily: root.fontFamily
-          valueText: root.gaugeSpec.text
-          unitText: root.gaugeSpec.unit
-          labelText: root.gaugeSpec.label
-          subText: root.gaugeSpec.sub
-          valueSize: root.gaugeSpec.unit === "" ? Style.font.title : Style.font.display
-          size: Style.space(86)
+          valueText: root.swapGaugeSpec.text
+          unitText: root.swapGaugeSpec.unit
+          labelText: root.swapGaugeSpec.label
+          subText: root.swapGaugeSpec.sub
+          valueSize: root.swapGaugeSpec.unit === "" ? Commons.Style.font.title : Commons.Style.font.display
+          size: Commons.Style.space(86)
         }
 
         RingGauge {
@@ -96,7 +95,7 @@ Column {
           unitText: "%"
           labelText: "Memory"
           subText: root.pressure >= 0.5 ? "pressure " + Math.round(root.pressure) + "%" : ""
-          size: Style.space(86)
+          size: Commons.Style.space(86)
         }
       }
     }
@@ -109,31 +108,31 @@ Column {
     SectionTitle { text: "Memory used"; fontFamily: root.fontFamily }
     HistoryGraph {
       width: parent.width
-      height: Style.space(56)
+      height: Commons.Style.space(56)
       barWidth: Model.historyBarWidth(width, root.historyRange)
       showGaps: root.historyRange > 0
       series: [root.hist.memUsed || []]
       colors: [root.s1]
       ceiling: 100
-      baselineColor: Util.alpha(root.foreground, 0.14)
+      baselineColor: Commons.Util.alpha(root.foreground, 0.14)
     }
     SectionTitle { text: "Memory pressure"; fontFamily: root.fontFamily }
     HistoryGraph {
       width: parent.width
-      height: Style.space(44)
+      height: Commons.Style.space(44)
       barWidth: Model.historyBarWidth(width, root.historyRange)
       showGaps: root.historyRange > 0
       series: [root.hist.memPressure || []]
       colors: [root.s2]
       ceiling: 100
-      baselineColor: Util.alpha(root.foreground, 0.14)
+      baselineColor: Commons.Util.alpha(root.foreground, 0.14)
     }
   }
 
   Card {
     visible: root.flag("showBreakdown")
     foreground: root.foreground
-    spacing: Style.space(2)
+    spacing: Commons.Style.space(2)
 
     StatRow {
       label: "Apps"
@@ -184,7 +183,7 @@ Column {
     StatRow {
       visible: root.hasSwap
       label: "Swap"
-      detail: "of " + Model.bytesText(root.mem.swapTotal)
+      detail: "of " + Units.bytesText(root.mem.swapTotal)
       dot: Model.num(root.mem.swapUsed) > 0 ? root.danger : "transparent"
       showDot: true
       value: root.part(root.mem.swapUsed).value

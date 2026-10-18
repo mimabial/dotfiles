@@ -9,8 +9,6 @@ function scatterHash(band, row, col, frame) {
   return (h % 10000) / 10000.0
 }
 
-// shade — same hue and saturation at a different lightness. Palette colours are picked
-// to sit as text on a dark background, so they need darkening to work as fills.
 function shade(color, light) {
   return hueShift(color, 0, undefined, light)
 }
@@ -42,13 +40,13 @@ function resampleBandsLinear(bands, totalCols) {
   return out
 }
 
-function bandAvg(b, lo, hi) {
-  if (lo < 0) lo = 0
-  if (hi > b.length) hi = b.length
-  if (hi <= lo) return 0
-  var s = 0
-  for (var i = lo; i < hi; i++) s += b[i]
-  return s / (hi - lo)
+function bandAvg(bands, firstBand, endBand) {
+  if (firstBand < 0) firstBand = 0
+  if (endBand > bands.length) endBand = bands.length
+  if (endBand <= firstBand) return 0
+  var sum = 0
+  for (var i = firstBand; i < endBand; i++) sum += bands[i]
+  return sum / (endBand - firstBand)
 }
 
 function colorRgb(color, fallback) {
@@ -75,8 +73,6 @@ function rgba(color, alpha) {
   return "rgba(" + c.r + "," + c.g + "," + c.b + "," + alpha + ")"
 }
 
-// hsl — {h in degrees, s, l} plus the normalised rgb it came from, so callers that need
-// to reason about a colour's own lightness or hue don't re-derive the conversion.
 function hsl(color) {
   var c = colorRgb(color)
   var r = c.r / 255, g = c.g / 255, b = c.b / 255
@@ -88,20 +84,13 @@ function hsl(color) {
   return { h: (((h * 60) % 360) + 360) % 360, s: s, l: l, r: r, g: g, b: b }
 }
 
-// hueShift — rotate a colour around the hue circle. sat and light are optional absolute
-// HSL targets; omit them to keep the input's own. Decorative fills should set them,
-// because a pale low-chroma accent stays pale through any rotation and five such blobs
-// composite to grey mud rather than a nebula.
-// Returns a normalised {r,g,b} rather than a string so the result still composes with
-// rgba/mixColor/specColor; a fully desaturated input has no hue to rotate and passes
-// through unchanged unless sat is given.
-function hueShift(color, degrees, sat, light) {
+function hueShift(color, degrees, saturation, lightness) {
   var c = hsl(color)
   var s = c.s, l = c.l
-  if (s === 0 && sat === undefined) return { r: c.r, g: c.g, b: c.b }
+  if (s === 0 && saturation === undefined) return { r: c.r, g: c.g, b: c.b }
   var h = (((c.h + degrees) % 360) + 360) % 360
-  if (sat !== undefined) s = sat
-  if (light !== undefined) l = light
+  if (saturation !== undefined) s = saturation
+  if (lightness !== undefined) l = lightness
   var chroma = (1 - Math.abs(2 * l - 1)) * s
   var x = chroma * (1 - Math.abs((h / 60) % 2 - 1))
   var m = l - chroma / 2
@@ -121,16 +110,12 @@ function mixColor(first, second, amount, alpha) {
     + Math.round(a.b + (b.b - a.b) * t) + "," + alpha + ")"
 }
 
-// A continuous spectrum made only from the theme's dim, accent and foreground roles.
 function specColor(d, norm, alpha) {
   var level = Math.max(0, Math.min(1, norm))
   if (level < 0.5) return mixColor(d.dim, d.accent, level * 2, alpha === undefined ? 0.9 : alpha)
   return mixColor(d.accent, d.foreground, (level - 0.5) * 2, alpha === undefined ? 0.9 : alpha)
 }
 
-// specTiers — the three spectrum tiers as cliamp paints them: ANSI bright green,
-// yellow and red (styles.go SpectrumLow/Mid/High), indexed by the tier tag a
-// visualizer assigns. Falls back to the accent when a slot is absent.
 function specTiers(d) {
   var c = d.colors || []
   return [rgba(c[10] || d.accent, 1), rgba(c[11] || d.accent, 1), rgba(c[9] || d.foreground, 1)]
@@ -144,13 +129,10 @@ function playerTiers(d) {
   return playerSpectrum(d).map(function (color) { return rgba(color, 1) })
 }
 
-// specTag — cliamp's row colour tier (visualizer.go specTag): a hard three-way split
-// on normalised height, not a gradient. specWrap tags every rendered row with it.
 function specTag(norm) {
   return norm >= 0.6 ? 2 : norm >= 0.3 ? 1 : 0
 }
 
-// tierRamp — one tier colour per pixel row, built once per frame.
 function tierRamp(tiers, height) {
   var steps = Math.max(1, Math.ceil(height)) + 1
   var out = new Array(steps)
@@ -162,10 +144,6 @@ function playerTierRamp(d, height) {
   return tierRamp(playerTiers(d), height)
 }
 
-// specRamp — one specColor per pixel row, built once per frame. Every per-pixel
-// visualizer asks for a colour that varies only with the row, and each specColor parses
-// two hex strings and builds an rgba() string, so calling it per pixel costs ~50x what
-// the ramp does. One spare slot absorbs a rounded bar height landing on h.
 function specRamp(d, height, alpha) {
   var steps = Math.max(1, Math.ceil(height)) + 1
   var out = new Array(steps)
@@ -173,38 +151,32 @@ function specRamp(d, height, alpha) {
   return out
 }
 
-// LCG RNG — uses 64-bit constants that JS doubles can't handle precisely.
-// 32-bit Numerical Recipes LCG produces equivalent deterministic pseudo-randomness.
 function lcgRng(state) {
   state.v = (state.v * 1664525 + 1013904223) & 0xFFFFFFFF
   return state.v
 }
 
-// Extract [0,1) float from upper bits of an LCG state. The shift must be unsigned:
-// lcgRng masks with & 0xFFFFFFFF, which yields a signed 32-bit int, so an arithmetic
-// >> returns a negative float half the time and every `rand01() < p` test passes.
 function lcgRand01(state) {
   lcgRng(state)
   return ((state.v >>> 16) % 1000) / 1000.0
 }
 
-// Universal rounded rectangle path compatible with all Qt Quick Canvas versions
-function roundedRect(ctx, x, y, w, h, r) {
-  if (w <= 0 || h <= 0) return
+function roundedRect(canvas, x, y, width, height, r) {
+  if (width <= 0 || height <= 0) return
   if (r <= 0) {
-    ctx.rect(x, y, w, h)
+    canvas.rect(x, y, width, height)
     return
   }
-  var radius = Math.min(r, w / 2.0, h / 2.0)
-  ctx.moveTo(x + radius, y)
-  ctx.lineTo(x + w - radius, y)
-  ctx.arcTo(x + w, y, x + w, y + radius, radius)
-  ctx.lineTo(x + w, y + h - radius)
-  ctx.arcTo(x + w, y + h, x + w - radius, y + h, radius)
-  ctx.lineTo(x + radius, y + h)
-  ctx.arcTo(x, y + h, x, y + h - radius, radius)
-  ctx.lineTo(x, y + radius)
-  ctx.arcTo(x, y, x + radius, y, radius)
+  var radius = Math.min(r, width / 2.0, height / 2.0)
+  canvas.moveTo(x + radius, y)
+  canvas.lineTo(x + width - radius, y)
+  canvas.arcTo(x + width, y, x + width, y + radius, radius)
+  canvas.lineTo(x + width, y + height - radius)
+  canvas.arcTo(x + width, y + height, x + width - radius, y + height, radius)
+  canvas.lineTo(x + radius, y + height)
+  canvas.arcTo(x, y + height, x, y + height - radius, radius)
+  canvas.lineTo(x, y + radius)
+  canvas.arcTo(x, y, x + radius, y, radius)
 }
 
 var CLIAMP_TICK_MS = 50
@@ -251,7 +223,7 @@ function cliampBands(bands, edgesHz) {
   return out
 }
 
-function paintTagGrid(ctx, tags, cols, rows, colors) {
+function paintTagGrid(canvas, tags, cols, rows, colors) {
   var runs = colors.map(function () { return [] })
   for (var y = 0; y < rows; y++) {
     var row = y * cols
@@ -262,7 +234,7 @@ function paintTagGrid(ctx, tags, cols, rows, colors) {
     }
   }
   for (var t = 1; t < colors.length; t++) {
-    ctx.fillStyle = colors[t]
-    for (var i = 0; i < runs[t].length; i += 3) ctx.fillRect(runs[t][i], runs[t][i + 1], runs[t][i + 2], 1)
+    canvas.fillStyle = colors[t]
+    for (var i = 0; i < runs[t].length; i += 3) canvas.fillRect(runs[t][i], runs[t][i + 1], runs[t][i + 2], 1)
   }
 }

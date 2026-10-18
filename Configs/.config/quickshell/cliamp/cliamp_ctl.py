@@ -43,7 +43,6 @@ CACHE_DIR = os.path.expanduser("~/.cache/cliamp")
 AUDIO_CACHE_DIR = os.path.join(CACHE_DIR, "audio")
 COVER_CACHE_DIR = os.path.join(CACHE_DIR, "covers")
 HISTORY_PATH = os.path.expanduser("~/.config/cliamp/history.toml")
-# append-only, and parse_history reads all of it on every call, so cap the file
 HISTORY_MAX_BYTES = 96 * 1024
 HISTORY_KEEP = 400
 HISTORY_PLAYLIST_LIMIT = 99
@@ -57,6 +56,9 @@ HISTORY_TAIL_BYTES = 2048
 DEFAULT_VOLUME = 80
 FOLDER_TRACK_LIMIT = 500
 PLAYLIST_IMPORT_LIMIT = 500
+COVER_EXTRACTION_LIMIT = 8
+COVER_THUMBNAIL_WIDTH = 96
+COVER_EXTRACTION_SECONDS = 2.5
 TERM_GRACE_SECONDS = 0.3
 MPV_START_SECONDS = 3
 SPECTRUM_START_SECONDS = 3
@@ -119,8 +121,7 @@ try:
 except Exception:
     pass
 
-def get_process_starttime(pid):
-    """Retrieve process start time from /proc/<pid>/stat to detect PID reuse."""
+def process_start_ticks(pid):
     try:
         with open(f"/proc/{pid}/stat", "r") as f:
             stat_content = f.read()
@@ -149,7 +150,7 @@ def verify_process_identity(pid, expected_signature, expected_starttime):
         if stat.st_uid != os.getuid():
             return False
 
-        cur_starttime = get_process_starttime(pid)
+        cur_starttime = process_start_ticks(pid)
         if cur_starttime is None or cur_starttime != expected_starttime:
             return False
 
@@ -170,7 +171,6 @@ def verify_process_identity(pid, expected_signature, expected_starttime):
         return False
 
 def terminate_tracked_pid(pid_file, expected_signature):
-    """Legacy or malformed PID files are cleaned up without signalling anything."""
     if not os.path.exists(pid_file):
         return
     try:
@@ -203,9 +203,9 @@ def terminate_tracked_pid(pid_file, expected_signature):
     finally:
         unlink(pid_file)
 
-def save_tracked_proc(pid_file, pid, signature=None):
+def save_process_identity(pid_file, pid, signature=None):
     try:
-        starttime = get_process_starttime(pid)
+        starttime = process_start_ticks(pid)
         payload = json.dumps({
             "pid": pid,
             "signature": signature,
@@ -291,11 +291,6 @@ def add_to_queue(url, title=None, artist=None, playlist_id=None):
     return {"success": True, "queue": queue}
 
 def drop_mpv_queue_entry(i):
-    """Remove queue.json entry i from mpv's playlist.
-
-    mpv keeps the playing entry at playlist-pos and queue.json does not, so a
-    queue index sits that many places further along.
-    """
     pos = (send_mpv_cmd(["get_property", "playlist-pos"]) or {}).get("data")
     if not isinstance(pos, int) or pos < 0:
         return
@@ -316,17 +311,10 @@ def remove_from_queue(idx):
 
 def clear_queue():
     save_queue([])
-    # mpv's stop is "stop playback and clear playlist", so this empties both sides
     send_mpv_cmd(["stop"])
     return {"success": True}
 
 def reconcile_queue():
-    """Drop entries mpv has already advanced into on its own.
-
-    keep-open leaves appended entries playable, so the playlist can move on
-    without anything popping the queue file. Entries through the loaded track
-    have therefore been consumed.
-    """
     queue = read_queue()
     if not queue:
         return queue
@@ -351,9 +339,7 @@ def play_next_in_queue(queue=None):
         return play_item(next_track["url"], next_track.get("title"), next_track.get("artist"))
     return {"success": False, "error": "Queue empty"}
 
-def cover_path(track):
-    """Cache slot for a track's embedded art, keyed by path and mtime so a
-    re-tagged file gets a fresh thumbnail."""
+def embedded_cover_cache_path(track):
     try:
         stat = os.stat(track)
     except OSError:
@@ -361,46 +347,56 @@ def cover_path(track):
     key = hashlib.sha1(f"{os.path.realpath(track)}:{int(stat.st_mtime)}".encode("utf-8")).hexdigest()
     return os.path.join(COVER_CACHE_DIR, key + ".jpg")
 
-def attach_covers(tracks, budget=2.5, key="url"):
-    local = [t for t in tracks if t.get(key) and os.path.isfile(t[key])]
-    if not local or not shutil.which("ffmpeg"):
+def attach_covers(tracks, budget_seconds=COVER_EXTRACTION_SECONDS, track_path_key="url"):
+    local_tracks = [track for track in tracks if track.get(track_path_key) and os.path.isfile(track[track_path_key])]
+    if not local_tracks or not shutil.which("ffmpeg"):
         return tracks
     os.makedirs(COVER_CACHE_DIR, mode=0o700, exist_ok=True)
-    cold = []
-    for track in local:
-        dest = cover_path(track[key])
-        track["thumb"] = dest if dest and os.path.exists(dest) else ""
-        if dest and not track["thumb"]:
-            cold.append((track, dest))
-    deadline = time.monotonic() + budget
-    pending, index = [], 0
-    while (index < len(cold) or pending) and time.monotonic() < deadline:
-        while index < len(cold) and len(pending) < 8:
-            track, dest = cold[index]
-            index += 1
+    uncached_covers = []
+    for track in local_tracks:
+        cover = embedded_cover_cache_path(track[track_path_key])
+        track["thumb"] = cover if cover and os.path.exists(cover) else ""
+        if cover and not track["thumb"]:
+            uncached_covers.append((track, cover))
+    deadline = time.monotonic() + budget_seconds
+    pending, next_cover = {}, 0
+    try:
+        while (next_cover < len(uncached_covers) or pending) and time.monotonic() < deadline:
+            while next_cover < len(uncached_covers) and len(pending) < COVER_EXTRACTION_LIMIT:
+                track, cover = uncached_covers[next_cover]
+                next_cover += 1
+                try:
+                    command = ["ffmpeg", "-v", "error", "-y", "-i", track[track_path_key], "-an", "-vframes", "1", "-vf", f"scale={COVER_THUMBNAIL_WIDTH}:-1", cover]
+                    process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except OSError:
+                    continue
+                try:
+                    pending[os.pidfd_open(process.pid)] = process, track, cover
+                except OSError:
+                    process.kill()
+                    process.wait()
+                    unlink(cover)
+            if not pending:
+                continue
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            for pidfd in select.select(list(pending), [], [], remaining)[0]:
+                process, track, cover = pending.pop(pidfd)
+                os.close(pidfd)
+                if process.wait() == 0 and os.path.exists(cover):
+                    track["thumb"] = cover
+                else:
+                    unlink(cover)
+    finally:
+        for pidfd, (process, _, cover) in pending.items():
+            os.close(pidfd)
             try:
-                command = ["ffmpeg", "-v", "error", "-y", "-i", track[key], "-an", "-vframes", "1", "-vf", "scale=96:-1", dest]
-                pending.append((subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL), track, dest))
+                process.kill()
             except OSError:
                 pass
-        active = []
-        for process, track, dest in pending:
-            if process.poll() is None:
-                active.append((process, track, dest))
-            elif process.returncode == 0 and os.path.exists(dest):
-                track["thumb"] = dest
-            else:
-                unlink(dest)
-        pending = active
-        if pending:
-            time.sleep(min(0.02, max(0, deadline - time.monotonic())))
-    for process, _, dest in pending:
-        try:
-            process.kill()
-        except OSError:
-            pass
-        process.wait()
-        unlink(dest)
+            process.wait()
+            unlink(cover)
     return tracks
 
 def dir_tracks(rel="", limit=FOLDER_TRACK_LIMIT):
@@ -452,8 +448,6 @@ def play_dir(rel="", limit=FOLDER_TRACK_LIMIT):
     return {"success": result.get("success", True), "added": len(tracks), "queue": read_queue()}
 
 def browse_library(rel=""):
-    """One directory of MUSIC_DIR, folders first. rel is always relative to it,
-    and a path that escapes the root falls back to the root."""
     base = MUSIC_DIR
     target = os.path.realpath(os.path.join(base, rel)) if rel else base
     if target != base and not target.startswith(base + os.sep):
@@ -717,7 +711,7 @@ def parse_history(limit=500, local_only=False):
         thumb = os.path.join(AUDIO_CACHE_DIR, f"{video_id}.jpg") if video_id else ""
         if thumb and os.path.exists(thumb):
             item["thumb"] = thumb
-    return attach_covers(entries, budget=1.5, key="path")
+    return attach_covers(entries, budget=1.5, track_path_key="path")
 
 def most_played(items, limit=HISTORY_PLAYLIST_LIMIT):
     ranked = {}
@@ -777,8 +771,6 @@ def save_liked(tracks):
         pass
 
 def liked_key(url, title, artist):
-    """The same song reaches here as a library path, a search string or a stream
-    URL, so a real target identifies it and the title/artist pair is the fallback."""
     target = (url or "").strip()
     if target:
         return "url:" + target
@@ -966,7 +958,6 @@ DEFAULT_VIS_MODE = "osc_warp"
 VIS_BG_FILE = os.path.join(CACHE_DIR, "vis_bg.txt")
 VIS_BG_PULSE_FILE = os.path.join(CACHE_DIR, "vis_bg_pulse.txt")
 
-# Background options are on unless explicitly disabled, including with a missing state file.
 def get_vis_toggle(path):
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -1270,7 +1261,6 @@ def resolve_spotify_url(url):
     return None
 
 def search_youtube_innertube(query, limit=10):
-    """Avoids starting a yt-dlp process per search."""
     if not query:
         return []
     url = "https://www.youtube.com/youtubei/v1/search"
@@ -1417,7 +1407,6 @@ def search_tracks(query, limit=10):
                 pass
         results.extend(yt_results)
 
-    # Detached workers survive this short-lived search process.
     for item in results[:2]:
         result_url = item.get("url", "")
         if is_youtube_url(result_url) and not get_cached_stream_url(result_url):
@@ -1453,9 +1442,6 @@ os.makedirs(LYRICS_DIR, mode=0o700, exist_ok=True)
 
 LYRICS_CACHE = {}
 NEGATIVE_TTL = 7 * 86400
-# The hypr lyrics pipeline already writes .lrc files under the music library and has
-# more providers than this one. Prefer its files, and never cache them, so a refetch
-# there takes effect immediately.
 LYRICS_LIB = os.path.expanduser("~/.local/lib/hypr/media")
 
 def read_local_lrc(path):
@@ -1490,7 +1476,6 @@ def fetch_lyrics(title, artist, url="", refresh=False):
         try:
             with open(disk_cache, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            # a miss is not permanent: lyrics get added upstream, so let them expire
             if data.get("source") or time.time() - os.path.getmtime(disk_cache) < NEGATIVE_TTL:
                 LYRICS_CACHE[key] = data
                 return data
@@ -1507,8 +1492,6 @@ def fetch_lyrics(title, artist, url="", refresh=False):
             clean_a = parts[0].strip()
             clean_t = parts[1].strip()
 
-        # one fetcher for the whole system: lrclib + simpmusic + ytmusic in parallel,
-        # with the match validation and miss cache that library already carries
         text = ""
         try:
             if LYRICS_LIB not in sys.path:
@@ -1532,7 +1515,6 @@ def fetch_lyrics(title, artist, url="", refresh=False):
         return {"synced": "", "plain": "", "source": ""}
 
 def save_youtube_meta(url, title, artist):
-    """Lets get_status show the real track name and art."""
     vid_id = youtube_id(url)
     if vid_id and (title or artist):
         meta_f = os.path.join(AUDIO_CACHE_DIR, f"{vid_id}.json")
@@ -1667,7 +1649,7 @@ if __name__ == "__main__":
     if action == "_worker":
         pid_file, signature, command = sys.argv[2], json.loads(sys.argv[3]), sys.argv[4:]
         if pid_file:
-            save_tracked_proc(pid_file, os.getpid(), signature)
+            save_process_identity(pid_file, os.getpid(), signature)
         os.execvp(command[0], command)
     elif action == "_prefetch":
         kind, args = sys.argv[2], sys.argv[3:]
@@ -1778,7 +1760,6 @@ if __name__ == "__main__":
         print(json.dumps({"success": True}))
     elif action in ["play_item", "play_replace"]:
         url, title, artist = (sys.argv[2:5] + ["", "", ""])[:3]
-        # play_replace starts a new queue; play_item keeps the rest of the current one
         if action == "play_replace":
             save_queue([])
         print(json.dumps(play_item(url, title, artist)))

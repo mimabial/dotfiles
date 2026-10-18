@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.Commons
+import qs.Commons as Commons
 
 Item {
     id: root
@@ -13,18 +13,18 @@ Item {
     property bool full: false
     property bool stale: false
 
-    readonly property color background: Color.menu.background
-    readonly property color foreground: Color.menu.text
+    readonly property color background: Commons.Color.menu.background
+    readonly property color foreground: Commons.Color.menu.text
     readonly property color muted: Qt.rgba(foreground.r, foreground.g, foreground.b, 0.6)
-    readonly property color accent: Color.accent
-    readonly property string fontFamily: Style.font.menuFamily
+    readonly property color accent: Commons.Color.accent
+    readonly property string fontFamily: Commons.Style.font.menuFamily
     readonly property int columns: 3
-    readonly property int contentMargin: Style.spacing.panelPadding + Style.space(8)
-    readonly property int gap: Style.space(20)
-    readonly property int captionHeight: Style.space(58)
-    readonly property int headerHeight: Style.space(96)
-    readonly property int footerHeight: Style.space(40)
-    readonly property int rightPanelW: Style.space(348)
+    readonly property int contentMargin: Commons.Style.spacing.panelPadding + Commons.Style.space(8)
+    readonly property int gap: Commons.Style.space(20)
+    readonly property int captionHeight: Commons.Style.space(58)
+    readonly property int headerHeight: Commons.Style.space(96)
+    readonly property int footerHeight: Commons.Style.space(40)
+    readonly property int rightPanelW: Commons.Style.space(348)
     readonly property var selected: layouts[current] ?? null
     readonly property string activeName: layouts.find(layout => layout.active)?.name ?? ""
 
@@ -61,11 +61,6 @@ Item {
         return screens[0]
     }
 
-    Component.onCompleted: {
-        Style.shell = root.shell
-        Color.shell = root.shell
-    }
-
     Process {
         id: helper
         running: true
@@ -92,8 +87,6 @@ Item {
         }
     }
 
-    // Anything the preview is built from: the layouts, the palette, the shared
-    // variables every layout is parsed against, and the helper's own code.
     component Watch: FileView {
         required property var owner
         watchChanges: true
@@ -143,9 +136,9 @@ Item {
         readonly property real canvasHeight: window.monitor.height * window.monitor.devicePixelRatio
 
         title: "Lock Layouts"
-        implicitWidth: Math.min(Style.space(1560), window.monitor.width * 0.9)
+        implicitWidth: Math.min(Commons.Style.space(1560), window.monitor.width * 0.9)
         implicitHeight: window.monitor.height * 0.9
-        color: Color.alpha(root.background, Style.popupSurfaceOpacity)
+        color: Commons.Color.alpha(Commons.Style.popupTinted(root.background), Commons.Style.popupSurfaceOpacity)
         onClosed: root.close()
 
         Item {
@@ -188,19 +181,19 @@ Item {
                     anchors.top: parent.top
                     spacing: 3
                     Row {
-                        spacing: Style.space(8)
+                        spacing: Commons.Style.space(8)
                         Text {
                             text: "::"
                             color: root.accent
                             font.family: root.fontFamily
-                            font.pixelSize: Style.font.display
+                            font.pixelSize: Commons.Style.font.display
                             font.weight: Font.Bold
                         }
                         Text {
                             text: "LOCK SCREEN EXPLORER"
                             color: root.foreground
                             font.family: root.fontFamily
-                            font.pixelSize: Style.font.display
+                            font.pixelSize: Commons.Style.font.display
                             font.weight: Font.Bold
                             font.letterSpacing: 2
                         }
@@ -210,7 +203,7 @@ Item {
                         textFormat: Text.PlainText
                         color: root.muted
                         font.family: root.fontFamily
-                        font.pixelSize: Style.font.bodySmall
+                        font.pixelSize: Commons.Style.font.bodySmall
                     }
                 }
 
@@ -218,8 +211,8 @@ Item {
                     visible: root.activeName !== ""
                     anchors.right: parent.right
                     anchors.top: parent.top
-                    width: activeLabel.implicitWidth + Style.space(20)
-                    height: Style.space(28)
+                    width: activeLabel.implicitWidth + Commons.Style.space(20)
+                    height: Commons.Style.space(28)
                     color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.18)
                     border.width: 1
                     border.color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.5)
@@ -230,7 +223,7 @@ Item {
                         textFormat: Text.PlainText
                         color: root.foreground
                         font.family: root.fontFamily
-                        font.pixelSize: Style.font.bodySmall
+                        font.pixelSize: Commons.Style.font.bodySmall
                     }
                 }
             }
@@ -244,14 +237,14 @@ Item {
                 anchors.bottom: footer.top
                 anchors.left: parent.left
                 anchors.right: previewPanel.left
-                anchors.rightMargin: Style.space(20)
-                anchors.bottomMargin: Style.space(8)
+                anchors.rightMargin: Commons.Style.space(20)
+                anchors.bottomMargin: Commons.Style.space(8)
                 clip: true
                 model: root.layouts
                 currentIndex: root.current
                 cellWidth: cellSpan
                 cellHeight: thumbHeight + root.captionHeight + root.gap
-                topMargin: Style.space(4)
+                topMargin: Commons.Style.space(4)
                 boundsBehavior: Flickable.StopAtBounds
 
                 delegate: Item {
@@ -266,7 +259,7 @@ Item {
                         id: frame
                         width: grid.thumbWidth
                         height: grid.thumbHeight
-                        color: Color.background
+                        color: Commons.Color.background
                         border.width: cell.selected ? 3 : 1
                         border.color: cell.selected ? root.accent : Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.18)
                         clip: true
@@ -288,9 +281,9 @@ Item {
                         Rectangle {
                             anchors.left: parent.left
                             anchors.top: parent.top
-                            anchors.margins: Style.space(10)
-                            width: Style.space(24)
-                            height: Style.space(24)
+                            anchors.margins: Commons.Style.space(10)
+                            width: Commons.Style.space(24)
+                            height: Commons.Style.space(24)
                             radius: 5
                             color: Qt.rgba(0, 0, 0, 0.55)
                             Text {
@@ -298,7 +291,7 @@ Item {
                                 text: cell.index + 1
                                 color: "#ffffff"
                                 font.family: root.fontFamily
-                                font.pixelSize: Style.font.caption
+                                font.pixelSize: Commons.Style.font.caption
                                 font.bold: true
                             }
                         }
@@ -306,17 +299,17 @@ Item {
                             visible: cell.modelData.active
                             anchors.right: parent.right
                             anchors.top: parent.top
-                            anchors.margins: Style.space(10)
-                            width: activeText.implicitWidth + Style.space(14)
-                            height: Style.space(24)
+                            anchors.margins: Commons.Style.space(10)
+                            width: activeText.implicitWidth + Commons.Style.space(14)
+                            height: Commons.Style.space(24)
                             color: root.accent
                             Text {
                                 id: activeText
                                 anchors.centerIn: parent
                                 text: "󰄬 Active"
-                                color: Color.background
+                                color: Commons.Color.background
                                 font.family: root.fontFamily
-                                font.pixelSize: Style.font.caption
+                                font.pixelSize: Commons.Style.font.caption
                                 font.bold: true
                             }
                         }
@@ -329,20 +322,20 @@ Item {
                             visible: cell.selected
                             anchors.right: parent.right
                             anchors.bottom: parent.bottom
-                            anchors.margins: Style.space(10)
-                            spacing: Style.space(6)
+                            anchors.margins: Commons.Style.space(10)
+                            spacing: Commons.Style.space(6)
                             Rectangle {
-                                width: useLabel.implicitWidth + Style.space(16)
-                                height: Style.space(26)
+                                width: useLabel.implicitWidth + Commons.Style.space(16)
+                                height: Commons.Style.space(26)
                                 radius: 6
                                 color: root.accent
                                 Text {
                                     id: useLabel
                                     anchors.centerIn: parent
                                     text: "Use  ⏎"
-                                    color: Color.background
+                                    color: Commons.Color.background
                                     font.family: root.fontFamily
-                                    font.pixelSize: Style.font.caption
+                                    font.pixelSize: Commons.Style.font.caption
                                     font.bold: true
                                 }
                                 MouseArea {
@@ -351,8 +344,8 @@ Item {
                                 }
                             }
                             Rectangle {
-                                width: testLabel.implicitWidth + Style.space(16)
-                                height: Style.space(26)
+                                width: testLabel.implicitWidth + Commons.Style.space(16)
+                                height: Commons.Style.space(26)
                                 radius: 6
                                 color: Qt.rgba(0, 0, 0, 0.6)
                                 border.width: 1
@@ -363,7 +356,7 @@ Item {
                                     text: "Test  T"
                                     color: "#ffffff"
                                     font.family: root.fontFamily
-                                    font.pixelSize: Style.font.caption
+                                    font.pixelSize: Commons.Style.font.caption
                                     font.bold: true
                                 }
                                 MouseArea {
@@ -376,23 +369,23 @@ Item {
 
                     Column {
                         anchors.top: frame.bottom
-                        anchors.topMargin: Style.space(8)
+                        anchors.topMargin: Commons.Style.space(8)
                         width: grid.thumbWidth
                         spacing: 2
                         Row {
-                            spacing: Style.space(8)
+                            spacing: Commons.Style.space(8)
                             Text {
                                 text: cell.modelData.name
                                 textFormat: Text.PlainText
                                 color: cell.selected ? root.foreground : root.muted
                                 font.family: root.fontFamily
-                                font.pixelSize: Style.font.title
+                                font.pixelSize: Commons.Style.font.title
                                 font.weight: cell.selected ? Font.DemiBold : Font.Normal
                             }
                             Rectangle {
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: tagLabel.implicitWidth + Style.space(10)
-                                height: Style.space(18)
+                                width: tagLabel.implicitWidth + Commons.Style.space(10)
+                                height: Commons.Style.space(18)
                                 radius: 4
                                 color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.08)
                                 Text {
@@ -401,7 +394,7 @@ Item {
                                     text: cell.modelData.path.startsWith(root.shell.home + "/.config/") ? "user" : "shared"
                                     color: root.muted
                                     font.family: root.fontFamily
-                                    font.pixelSize: Style.font.caption
+                                    font.pixelSize: Commons.Style.font.caption
                                 }
                             }
                         }
@@ -412,7 +405,7 @@ Item {
                             elide: Text.ElideMiddle
                             color: root.muted
                             font.family: root.fontFamily
-                            font.pixelSize: Style.font.bodySmall
+                            font.pixelSize: Commons.Style.font.bodySmall
                         }
                     }
                 }
@@ -423,10 +416,10 @@ Item {
                 anchors.top: header.bottom
                 anchors.bottom: footer.top
                 anchors.right: parent.right
-                anchors.rightMargin: Style.space(8)
-                anchors.topMargin: Style.space(6)
-                width: root.rightPanelW - Style.space(8)
-                spacing: Style.space(12)
+                anchors.rightMargin: Commons.Style.space(8)
+                anchors.topMargin: Commons.Style.space(6)
+                width: root.rightPanelW - Commons.Style.space(8)
+                spacing: Commons.Style.space(12)
 
                 Item {
                     width: parent.width
@@ -436,7 +429,7 @@ Item {
                         text: "LOCK SCREEN"
                         color: root.muted
                         font.family: root.fontFamily
-                        font.pixelSize: Style.font.caption
+                        font.pixelSize: Commons.Style.font.caption
                         font.letterSpacing: 2
                     }
                     Text {
@@ -445,13 +438,13 @@ Item {
                         textFormat: Text.PlainText
                         color: root.accent
                         font.family: root.fontFamily
-                        font.pixelSize: Style.font.caption
+                        font.pixelSize: Commons.Style.font.caption
                     }
                 }
                 Rectangle {
                     width: parent.width
                     height: Math.round(parent.width * window.canvasHeight / window.canvasWidth)
-                    color: Color.background
+                    color: Commons.Color.background
                     border.width: 1
                     border.color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.2)
                     clip: true
@@ -467,7 +460,7 @@ Item {
                 }
                 Rectangle {
                     width: parent.width
-                    height: Style.space(30)
+                    height: Commons.Style.space(30)
                     color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, fullButton.containsMouse ? 0.12 : 0.05)
                     border.width: 1
                     border.color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.2)
@@ -476,7 +469,7 @@ Item {
                         text: "Preview full screen · Space"
                         color: root.foreground
                         font.family: root.fontFamily
-                        font.pixelSize: Style.font.caption
+                        font.pixelSize: Commons.Style.font.caption
                     }
                     MouseArea {
                         id: fullButton
@@ -499,7 +492,7 @@ Item {
                     text: "Arrows: browse   Space: preview   Enter: select   T: test   R: reload   Esc: close"
                     color: root.muted
                     font.family: root.fontFamily
-                    font.pixelSize: Style.font.bodySmall
+                    font.pixelSize: Commons.Style.font.bodySmall
                 }
             }
         }

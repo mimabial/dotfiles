@@ -8,32 +8,48 @@ PopupCard {
     contentHeight: sunsetColumn.implicitHeight + padding * 2
 
     property var report: ({})
+    property string savedSettings: ""
+    property bool refreshPending: false
     readonly property bool active: report.active === true
     readonly property var limits: report.limits || ({})
     readonly property int temperature: report.temperature || 4500
     readonly property int gamma: report.gamma || 100
 
-    // -q keeps the script from firing a notification for every slider step.
-    // The readback is a script run away, so adopt the value now: otherwise the
-    // handle snaps to the stale reading until the report catches up.
     function apply(mode, value) {
         const set = Math.round(value)
         report = Object.assign({}, report, mode === "temp" ? { temperature: set } : { gamma: set })
         shell.run(["hyprshell", "hyprsunset", "--cm", mode, "-s", String(set), "-q"], root.refresh)
     }
-    function refresh() { if (!readProc.running) readProc.running = true }
+    function refresh() {
+        if (readProcess.running) refreshPending = true
+        else readProcess.running = true
+    }
     function toggle() { shell.run(["hyprshell", "hyprsunset", "-t", "-q"], root.refresh) }
 
     onOpenChanged: if (open) refresh()
 
-    property Process readProc: Process {
-        command: ["hyprshell", "hyprsunset", "-rq"]
+    property Process readProcess: Process {
+        command: ["bash", root.shell.home + "/.local/lib/hypr/system/hyprsunset.sh", "-rq"]
+        onRunningChanged: if (!running && root.refreshPending) {
+            root.refreshPending = false
+            root.refresh()
+        }
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             try { root.report = JSON.parse(text) || ({}) }
             catch (error) { root.report = ({}) }
         } }
     }
-    property Timer poll: Timer { interval: 5000; running: root.open; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
+    FileView {
+        path: root.shell.home + "/.local/state/hypr/staterc"
+        watchChanges: true; printErrors: false
+        onFileChanged: reload()
+        onLoaded: {
+            const settings = text().split("\n").filter(line => /^HYPRSUNSET_(TEMP|GAMMA|ENABLED)=/.test(line)).join("\n")
+            if (settings === root.savedSettings) return
+            root.savedSettings = settings
+            if (root.open) root.refresh()
+        }
+    }
 
     Column {
         id: sunsetColumn
@@ -48,7 +64,6 @@ PopupCard {
             width: parent.width; shell: root.shell
             label: "Temperature"
             valueText: Math.round(root.temperature) + "K"
-            // the slider works in 0..1; the script clamps to its own bounds anyway
             readonly property int low: root.limits.tempMin || 3000
             readonly property int high: root.limits.tempMax || 10000
             value: (root.temperature - low) / Math.max(1, high - low)

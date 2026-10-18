@@ -1,19 +1,17 @@
-// Port of cliamp vis_mirror.go.
 .pragma library
-.import "helpers.js" as H
+.import "helpers.js" as VisualizerHelpers
 
 var SPAN_PERCENT = 84
 
-// brailleBit from visualizer.go: (dot row, dot col) to its bit in U+2800.
 var BRAILLE_BIT = [[0x01, 0x08], [0x02, 0x10], [0x04, 0x20], [0x40, 0x80]]
 
-function render(ctx, d) {
-  var bands = d.bands, w = d.width, h = d.height
+function render(canvas, frameData) {
+  var bands = frameData.bands, width = frameData.width, height = frameData.height
 
   var charW = 6
   var charH = 10
-  var numCols = Math.floor(w / charW)
-  var numRows = Math.floor(h / charH)
+  var numCols = Math.floor(width / charW)
+  var numRows = Math.floor(height / charH)
   if (numCols < 1 || numRows < 1) return
 
   var dotRows = numRows * 4
@@ -25,7 +23,6 @@ function render(ctx, d) {
   var axisY = Math.floor(dotRows / 2)
   var maxRadius = Math.min(axisY, dotRows - 1 - axisY)
 
-  // The grid is cleared every frame in Go's ensure(), so it needs no carried state.
   var cells = new Array(dotRows * dotCols)
   for (var z = 0; z < cells.length; z++) cells[z] = 0
 
@@ -41,8 +38,7 @@ function render(ctx, d) {
   for (var b = 0; b < bands.length; b++) env += Math.max(0, Math.min(1, bands[b]))
   if (bands.length > 0) env /= bands.length
 
-  // Go reads elapsed seconds as frame * TickAnim; here the render tick is 42.7 ms.
-  var t = d.frame * 0.0427
+  var t = frameData.frame * 0.0427
   var halfBars = (barCount - 1) / 2
 
   for (var i = 0; i < barCount; i++) {
@@ -50,20 +46,20 @@ function render(ctx, d) {
     var wobble = 0.4 + 0.6 * Math.abs(Math.sin(t * 4.6 + i * 0.42) * Math.sin(t * 1.9 - i * 0.13))
     var amplitude = dotRows * 0.80 * (1 - distance * 0.55) * (0.3 + 0.7 * env) * (0.35 + 0.65 * wobble)
     var radius = Math.min(maxRadius, Math.max(1, Math.round(amplitude)))
-    var bx = x0 + i * 2 + 1
+    var centerX = x0 + i * 2 + 1
 
     for (var y = axisY - radius; y <= axisY + radius; y++) {
       var radial = Math.abs(y - axisY) / radius
-      setDot(bx, y, radial >= 0.75 ? 3 : radial >= 0.5 ? 2 : 1)
+      setDot(centerX, y, radial >= 0.75 ? 3 : radial >= 0.5 ? 2 : 1)
     }
   }
 
-  var tiers = H.playerTiers(d)
+  var tiers = VisualizerHelpers.playerTiers(frameData)
 
-  ctx.save()
-  ctx.font = "bold 10px monospace"
-  ctx.textAlign = "center"
-  ctx.textBaseline = "middle"
+  canvas.save()
+  canvas.font = "bold 10px monospace"
+  canvas.textAlign = "center"
+  canvas.textBaseline = "middle"
 
   for (var row = 0; row < numRows; row++) {
     var cy = row * charH + charH / 2
@@ -78,10 +74,10 @@ function render(ctx, d) {
         }
       }
       if (bits === 0) continue
-      ctx.fillStyle = tiers[cellTag < 0 ? 0 : cellTag]
-      ctx.fillText(String.fromCharCode(0x2800 + bits), col * charW + charW / 2, cy)
+      canvas.fillStyle = tiers[cellTag < 0 ? 0 : cellTag]
+      canvas.fillText(String.fromCharCode(0x2800 + bits), col * charW + charW / 2, cy)
     }
   }
 
-  ctx.restore()
+  canvas.restore()
 }

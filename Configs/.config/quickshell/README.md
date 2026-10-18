@@ -35,6 +35,10 @@ It discovers layouts from `layouts/*.json` and writes state through the locked
 `state_set` helper. Layout switching needs no process restart or service-manager
 call.
 
+Niri, Windows, and macOS select an initial bar but allow any layout afterward.
+A bar selected manually in these workflows is kept on exit; the next workflow's
+own defaults still apply.
+
 ## Layouts
 
 | name | panel | edge | purpose |
@@ -82,7 +86,7 @@ entries as in any section, plus `"icon:<id>"` to place a system icon among them;
 unlisted icons follow. Dragging a module onto the chevron, within the flyout, or
 out of it rewrites that array; one dragged out lands where the accent line on the
 bar shows, before the first widget whose middle lies right of the pointer. A system icon dragged out onto the bar is pinned; a pinned icon
-dropped on the chevron is unpinned. Drag the chevron to move the tray. Right-click the chevron to hide or pin system icons, or to switch each bar widget
+dropped on the chevron is unpinned. Drag the chevron to move the tray. Right-click the chevron to open Bar Organizer. Its compact tree uses foldable Left, Center, Right and Tray sections, guide lines and section chips. Drag a widget by its label between rows to reorder it, or onto a section heading to append it there, including empty and collapsed sections. Available widgets can be dragged into any section. Scroll while holding a widget to reach other rows; Esc cancels the drag. Arrows appear on the highlighted widget to reorder it, and L/C/R/T chips move it. Available lists unused registered widgets. Switch each bar widget
 between the bar and the tray: hiding appends it to the flyout and saves its bar
 section and position in the layout; restoring returns it there. Widgets without
 a saved position return right after the tray. The icon choices live in `~/.local/state/quickshell/bar.json`. Pinned icons sit
@@ -90,6 +94,15 @@ beside the chevron in the order they were pinned, followed by any icon whose app
 asks for attention until it stops. Icon tooltips show the app's description under
 its title. The `tray` style rule frames the pinned icons and sizes the
 flyout cells, `tray.chevron` styles the chevron; hosted widgets keep their own rules.
+Bar Organizer saves My layout and the first-open Initial layout, with the five latest
+undo snapshots, in `~/.config/quickshell/bar-organizer.json`. Restore requires two
+presses and snapshots the current layout first. Saved layouts include widget props,
+section order, the edge and the center anchor; other settings keep their current values.
+Top and bottom continue to share their horizontal layout. Arrows navigate,
+Shift+arrows reorder or change sections, 1–4 pick a section, Space toggles,
+S saves My layout, Enter twice restores, and P pins a system icon.
+Click a widget's selected L/C/R/T chip again, or repeat its 1–4 section key,
+to remove it from both the bar and tray. It returns to Available for adding back.
 If a section contains repeated module IDs, the bar adds `trayInstance` to later
 entries in that layout so each widget keeps its own tray state when reordered.
 
@@ -284,13 +297,22 @@ Important geometry rules:
 - `agents` shows a confused robot outline, switching to angry at 90% and dead
   at 100% of any reported provider limit. All states use `color`.
 - A button's count badge (`BarButton.badgeText`, used by `notifications`,
-  `bluetooth`, `tasks`, and `removable`) uses an `md-numeric_<n>` glyph by default
-  (`9+` past nine). `badgeNumerals: "standard"` uses plain digits in the text font,
-  as on the horizontal bar's Bluetooth, tasks, and notifications buttons.
-  The badge is drawn as an exponent past the glyph's top-right. `badgeColor` sets its
+  `bluetooth`, `tasks`, `removable`, and `microphone`) uses plain digits in the
+  text font (`9+` past nine). Icon badges use the icon font.
+  The badge is drawn as an exponent past the glyph's top-right;
+  `badgeVerticalAlignment: "center"` aligns it with the glyph's vertical center.
+  `badgeColor` sets its
   colour and opacity; otherwise it follows the glyph. `badgeBackgroundColor` paints a pill behind it. `badgeSize` sets its px size (default 9);
   `badgeOffsetX`/`badgeOffsetY` nudge it, positive right and down. It tracks the
   glyph, not the module frame, so it stays put as the bar widens.
+
+## Alt+Tab
+
+In every workflow, `Alt+Tab` focuses the next window immediately and `Alt+Shift+Tab` focuses the previous one, bringing it to the front. Holding Alt keeps the cycle order stable; releasing Alt ends the cycle. No switcher preview opens. The `altscape` button, in the winbar and horizontal trays, and `Super+Alt+Shift+S` toggle its settings popup: which windows it cycles through (all workspaces, other workspaces, this monitor, or this workspace), the order (by workspace or most recent first), and whether scratchpads are included. They are saved in `~/.local/state/quickshell/altscape/settings.json`. Bindings live in `~/.config/hypr/keybindings.lua`.
+
+Entering Windows selects the Windows 11 theme and floats ordinary windows through `~/.config/hypr/floating_windows.lua`, which the Floating workflow shares. Leaving restores existing windows' floating states and geometry. Theme and tiling-layout changes made in Windows or macOS are kept on exit, while the next workflow's own defaults take priority. Without a manual change, Windows restores its previous theme and layout.
+
+Use `quickshell ipc call altscape next|prev|release` for direct switching and `open|close|status` for the popup. The port lives in `altscape/`, with its original MIT attribution in `altscape/LICENSE`.
 
 ## Drawers and popups
 
@@ -306,6 +328,16 @@ A panel opens with `PopupHero`. Its top-level column uses `Style.sectionGap`; ea
 `PopupTab`, facts `PopupInfoPair`, glyph actions `PopupIconButton`, switches
 `PopupToggleRow`. Controls take `Style.controlHeight`; chosen state is
 `shell.selectedFill()`/`selectedEdge()`, secondary text `shell.mutedText`/`faintText`.
+
+Popup appearance is shared. The desktop popup's POPUPS section sets opacity, accent
+tint and accent border, saved as `popupOpacity` (-1 keeps `Style.defaultPopupSurfaceOpacity`),
+`popupTint` and `popupAccentBorder` in `~/.local/state/quickshell/bar.json`. Opacity
+drives `Style.popupSurfaceOpacity`, so tooltips, flyouts and the dock and Exposé menus
+follow it; a style's `popup` `surfaceOpacity` rule still wins. The tint reaches cards,
+tooltips, dropdowns, menus, flyouts, the reload toast, the lock-layouts window and
+Exposé's window-card buttons and workspace thumbnails through `Style.popupTinted()`. The accent border
+replaces the border color on those same surfaces through `Style.popupBorder()`, including
+cards that set their own `borderColor`; a failed reload toast keeps its error border.
 
 Popup cards fit the screen and scroll overflow in both directions. Scrollbars
 stay visible while content overflows. Pointer movement and keyboard navigation
@@ -357,6 +389,17 @@ device and has no native path, so sysfs and D-Bus paths come from the
   not a refresh path anything else may rely on. Pressing R in the popup forces
   a local rescan. The OpenCode tab reads provider
   tokens and cost from `opencode.db`; its Go limits appear when a Go key is available.
+  Kimi Code reads quota limits from the sign-in at
+  `~/.kimi/credentials/kimi-code.json` (`KIMI_SHARE_DIR` overrides the root)
+  and token counts from its session wire logs. Costs shows today's, 7-day and
+  30-day API value from local usage, with a daily chart and agent/model breakdowns.
+  Current model rates come from LiteLLM and are cached for a day. Each response is
+  priced before aggregation, preserving context size, cache duration and recorded
+  tier, speed and geography. Recorded costs take precedence per response. Missing
+  pricing details use default rates and are flagged; unknown rates stay unpriced.
+  OpenCode resolves its provider and model ID separately from the display label;
+  usage counts once in Costs, even when the limits view also attributes it to
+  Claude or Codex. Kimi wire logs do not report a model, so their cost stays unpriced.
   The popup has independent switches for recommendation-change and 90% limit
   notifications. Both default off in `agents.json`; limit notices use fresh
   readings from every provider and send once per limit crossing or reset period.

@@ -8,6 +8,11 @@ hypr_runtime_require state system wallpaper_catalog || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR}/theme/pairs.sh" || exit 1
 
+if [[ "${HYPR_WORKFLOW_TRANSITION:-0}" != 1 ]]; then
+  exec {theme_switch_workflow_lock_fd}>"$(hypr_lock_path_ensure_parent workflow)"
+  flock "${theme_switch_workflow_lock_fd}"
+fi
+
 THEME_SWITCH_LOCK="$(hypr_lock_path_ensure_parent theme_switch)"
 exec {theme_switch_lock_fd}>"${THEME_SWITCH_LOCK}"
 if ! flock -n "${theme_switch_lock_fd}"; then
@@ -164,6 +169,7 @@ cleanup_theme_switch() {
   [[ -n "${theme_switch_metadata_file}" && -e "${theme_switch_metadata_file}" ]] && rm -f -- "${theme_switch_metadata_file}"
   theme_notify_finish "${exit_code}"
   flock -u "${theme_switch_lock_fd}" 2>/dev/null || true
+  if [[ -n "${theme_switch_workflow_lock_fd:-}" ]]; then flock -u "${theme_switch_workflow_lock_fd}"; fi
   return "${exit_code}"
 }
 trap 'cleanup_theme_switch "$?"' EXIT
@@ -325,6 +331,11 @@ main() {
   : >"${theme_switch_render_failures}" || exit 1
   HYPR_THEME_METADATA_FILE="${theme_switch_metadata_file}" HYPR_THEME_RENDER_FAILURES="${theme_switch_render_failures}" \
     "${theme_apply_cmd[@]}" || exit 1
+  if ((theme_switch_selection_requested && !theme_switch_from_auto)) && [[ "${HYPR_WORKFLOW_TRANSITION:-0}" != 1 ]]; then
+    case "$(state_get HYPR_WORKFLOW default)" in
+      windows | macos) state_set WORKFLOW_THEME_OVERRIDE 1 staterc ;;
+    esac
+  fi
 }
 
 main "$@"

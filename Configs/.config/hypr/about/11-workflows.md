@@ -3,7 +3,7 @@
 A workflow is a named set of tradeoffs applied in one keystroke. `Super + U` then
 `W` picks one.
 
-There are eight. Six you choose:
+There are ten. Eight you choose:
 
 **default** — no workflow configuration. The theme and your look-and-feel
 overrides decide everything.
@@ -16,13 +16,21 @@ night light, and removes transparency and distracting effects. When you leave,
 it restores only the runtime settings it changed; manual changes made while the
 workflow is active are left alone.
 
-**windows** — a window-focused workspace: the dwindle layout, the winbar bar
-layout, effects disabled.
+**windows** — floating windows, the Windows 11 theme, and the winbar bar layout.
+Leaving restores the previous theme, window layout, and each existing window's floating state and
+floating geometry. Theme and tiling-layout changes made while Windows is active
+are kept. Scratchpads, pinned windows, and fullscreen windows keep their placement.
 
 **niri** — scrollable tiling with half-width columns and vertical workspaces, on
 the plain top or bottom bar.
 
-**macos** — the master layout under the macos bar.
+**macos** — the master layout under the macos bar, with the Tundra theme on entry.
+Themes and tiling layouts chosen while macOS is active are kept on exit too.
+The next workflow's own defaults take priority in either case.
+
+**gnome** — the GNOME-style top bar and dock with spring animations.
+
+**floating** — movable, resizable windows with the current bar.
 
 And two you do not:
 
@@ -78,14 +86,15 @@ runtime.config("decoration.blur.enabled", 0)
 runtime.config("general.layout", "scrolling")
 ```
 
-`WORKFLOW_QUICKSHELL_LAYOUT` is how `windows` switches the bar to `winbar` and
-puts it back when you leave — unless your old bar sat on the other edge, in
-which case you get top or bottom on the edge you were on. winbar itself moves to
-the edge your previous bar was on, so only `macos`, whose bar exists only at the
-top, changes edges. It takes a space-separated set: `niri` sets `"top bottom"`,
-so entering it from another bar picks the one on that bar's edge (winbar's moved
-edge included) and the bar picker offers only those two. A workflow that sets
+`WORKFLOW_QUICKSHELL_LAYOUT` selects the initial bar: Windows uses winbar,
+macOS uses macos, and Niri uses top or bottom on the current edge. Winbar moves to
+the edge your previous bar was on. Windows, macOS, and Niri allow any bar after
+entry; a manual selection is kept on exit. Without a manual change, the previous
+bar returns when compatible with the current edge. The next workflow's defaults
+still apply. Other workflows' declared bar sets continue to restrict the picker.
+A workflow that sets
 `general.layout` owns the window layout, and the layout toggle refuses while it
-is active. `hl.layer_rule` and `hl.window_rule` work here too — that is how
-`windows` kills the bar and notification animations and pushes the terminals to
+is active, except Windows and macOS, whose defaults allow manual overrides.
+`hl.layer_rule` and `hl.window_rule` work here too — that is how
+`windows` disables the bar and notification animations and pushes the terminals to
 near-opaque.

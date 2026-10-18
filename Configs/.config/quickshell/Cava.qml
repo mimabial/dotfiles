@@ -21,7 +21,7 @@ Singleton {
     Variants {
         model: root.profiles
         delegate: Process {
-            id: process
+            id: spectrumProcess
             required property string modelData
             readonly property var settings: JSON.parse(modelData)
             readonly property string config: "[general]\nbars = " + settings.bars + "\nframerate = " + settings.fps
@@ -29,14 +29,14 @@ Singleton {
                 + "\ndata_format = ascii\nascii_max_range = " + root.maxValue + "\nbar_delimiter = 59\nframe_delimiter = 10\n"
                 + "[smoothing]\nnoise_reduction = " + settings.smoothing + "\n"
             command: ["cava", "-p", "/dev/stdin"]
-            running: root.consumers.some(consumer => consumer.profile === process.modelData && consumer.visible && consumer.playing)
+            running: root.consumers.some(consumer => consumer.profile === spectrumProcess.modelData && consumer.visible && consumer.playing)
             stdinEnabled: true
-            onStarted: { process.write(process.config); process.stdinEnabled = false }
-            onRunningChanged: if (!process.running) { process.stdinEnabled = true; root.clear(process.modelData) }
-            Component.onDestruction: root.clear(process.modelData)
+            onStarted: { spectrumProcess.write(spectrumProcess.config); spectrumProcess.stdinEnabled = false }
+            onRunningChanged: if (!spectrumProcess.running) { spectrumProcess.stdinEnabled = true; root.clear(spectrumProcess.modelData) }
+            Component.onDestruction: root.clear(spectrumProcess.modelData)
             stdout: SplitParser {
                 onRead: line => root.values = Object.assign({}, root.values, {
-                    [process.modelData]: line.slice(0, -1).split(";").map(value => Number(value) / root.maxValue)
+                    [spectrumProcess.modelData]: line.slice(0, -1).split(";").map(value => Number(value) / root.maxValue)
                 })
             }
         }

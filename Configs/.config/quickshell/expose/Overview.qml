@@ -6,7 +6,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
-import qs.Commons
+import qs.Commons as Commons
 import "IconResolver.js" as IconResolver
 import "WindowModel.js" as WindowModel
 
@@ -81,7 +81,7 @@ Item {
     readonly property real slideOffsetFraction: root.animationStyle === "slide"
         ? 0.11 * (1 - root.motionProgress)
         : 0
-    readonly property real windowFooterHeight: root.windowFooterStyle === "overlay" ? 0 : Style.space(40)
+    readonly property real windowFooterHeight: root.windowFooterStyle === "overlay" ? 0 : Commons.Style.space(40)
     readonly property int backgroundBlur: {
         var raw = root.pluginEntry ? root.pluginEntry.backgroundBlur : undefined;
         var value = raw === null || raw === undefined ? NaN : Number(raw);
@@ -107,20 +107,20 @@ Item {
     readonly property string workspaceLabelStyle: root.pluginEntry && root.pluginEntry.workspaceLabelStyle === "slot" ? "slot" : "full"
     // Reach farther along both screen edges than into the desktop. Fast flings
     // are easier to catch without stealing a large square from the bar below.
-    readonly property int hotCornerReach: Style.space(48)
-    readonly property int hotCornerDepth: Style.space(6)
+    readonly property int hotCornerReach: Commons.Style.space(48)
+    readonly property int hotCornerDepth: Commons.Style.space(6)
     readonly property bool moveCursorToWindow: !root.pluginEntry || root.pluginEntry.moveCursorToWindow !== false
     readonly property string multiMonitorMode: root.pluginEntry && root.pluginEntry.multiMonitorMode === "per-monitor"
         ? "per-monitor"
         : "mirrored"
     readonly property bool showFooter: !root.pluginEntry || root.pluginEntry.showFooter !== false
-    readonly property real dragPreviewHeight: Style.space(72)
-    readonly property real workspaceBandBlur: Style.space(64)
+    readonly property real dragPreviewHeight: Commons.Style.space(72)
+    readonly property real workspaceBandBlur: Commons.Style.space(64)
     readonly property real workspaceBandTint: 0.25
     // Apple's frosted material saturates its backdrop to 180%.
     readonly property real workspaceBandSaturation: 0.8
     readonly property var windowDragKeys: ["expose-window"]
-    readonly property real outlineWidth: root.shell ? Math.max(0, root.shell.borderWidth) : Style.normalBorderWidth
+    readonly property real outlineWidth: root.shell ? Math.max(0, root.shell.borderWidth) : Commons.Style.normalBorderWidth
     property bool opened: false
     property bool surfaceMounted: false
     property string pendingWorkspaceAction: ""
@@ -1259,8 +1259,8 @@ Item {
         }
         else if (event.key === Qt.Key_Backspace && root.appFilter && !root.filterText)
             root.setAppFilter("");
-        else if (Util.editsFilter(event, root.filterText))
-            root.setFilter(Util.editedFilter(event, root.filterText));
+        else if (Commons.Util.editsFilter(event, root.filterText))
+            root.setFilter(Commons.Util.editedFilter(event, root.filterText));
         else if (event.text && event.text.length === 1 && event.text.charCodeAt(0) >= 32 && !(event.modifiers & (Qt.AltModifier | Qt.MetaModifier)))
             root.setFilter(root.filterText + event.text);
         else
@@ -1441,11 +1441,6 @@ Item {
     }
 
     OverviewIpc { controller: root }
-
-    Component.onCompleted: {
-        Style.shell = root.shell;
-        Color.shell = root.shell;
-    }
 
     component HotCornerTarget: Item {
         id: cornerTarget
@@ -1643,7 +1638,7 @@ Item {
 
                 Rectangle {
                     anchors.fill: parent
-                    color: Util.alpha(Color.background, root.workspaceBandTint)
+                    color: Commons.Util.alpha(Commons.Color.background, root.workspaceBandTint)
                 }
             }
 
@@ -1682,9 +1677,9 @@ Item {
                 ColumnLayout {
                     id: contentColumn
                     anchors.fill: parent
-                    anchors.margins: Style.spacing.sm
-                    anchors.topMargin: Style.spacing.lg
-                    spacing: Style.spacing.md
+                    anchors.margins: Commons.Style.spacing.sm
+                    anchors.topMargin: Commons.Style.spacing.lg
+                    spacing: Commons.Style.spacing.md
 
                     WorkspaceStrip {
                         id: workspaceStrip
@@ -1697,7 +1692,7 @@ Item {
                     Item {
                         id: statusGroup
                         Layout.fillWidth: true
-                        Layout.preferredHeight: implicitHeight + Style.spacing.sm * 2
+                        Layout.preferredHeight: implicitHeight + Commons.Style.spacing.sm * 2
                         implicitHeight: Math.max(windowCount.implicitHeight, statusSeparator.height, scopeGroup.implicitHeight)
 
                         Rectangle {
@@ -1706,49 +1701,49 @@ Item {
                                 ? workspaceStrip.x + workspaceStrip.separatorCenterX - statusGroup.x
                                 : statusGroup.width / 2) - width / 2
                             anchors.verticalCenter: parent.verticalCenter
-                            width: Math.max(1, Style.normalBorderWidth)
-                            height: Style.space(24)
-                            color: Color.menu.border
+                            width: Math.max(1, Commons.Style.normalBorderWidth)
+                            height: Commons.Style.space(24)
+                            color: Commons.Color.menu.border
                         }
 
                         Text {
                             id: windowCount
                             anchors.right: statusSeparator.left
-                            anchors.rightMargin: Style.spacing.md
+                            anchors.rightMargin: Commons.Style.spacing.md
                             anchors.verticalCenter: statusSeparator.verticalCenter
                             text: overviewWindow.screenToplevels.length + " windows"
                             textFormat: Text.PlainText
-                            color: Color.menu.text
-                            opacity: Style.mutedTextAlpha
-                            font.family: Style.font.menuFamily
-                            font.pixelSize: Style.font.bodySmall
+                            color: Commons.Color.menu.text
+                            opacity: Commons.Style.mutedTextAlpha
+                            font.family: Commons.Style.font.menuFamily
+                            font.pixelSize: Commons.Style.font.bodySmall
                         }
 
                         RowLayout {
                             id: scopeGroup
                             anchors.left: statusSeparator.right
-                            anchors.leftMargin: Style.spacing.md
+                            anchors.leftMargin: Commons.Style.spacing.md
                             anchors.verticalCenter: statusSeparator.verticalCenter
-                            spacing: Style.spacing.md
+                            spacing: Commons.Style.spacing.md
 
                             Image {
                                 id: appIcon
                                 readonly property var appWindow: root.appFilter ? overviewWindow.screenToplevels[0] : null
                                 visible: Boolean(appIcon.appWindow)
-                                Layout.preferredWidth: Style.space(24)
-                                Layout.preferredHeight: Style.space(24)
+                                Layout.preferredWidth: Commons.Style.space(24)
+                                Layout.preferredHeight: Commons.Style.space(24)
                                 source: appIcon.appWindow ? root.iconFor(appIcon.appWindow) : ""
                                 fillMode: Image.PreserveAspectFit
                                 asynchronous: true
                             }
 
                             Text {
-                                Layout.maximumWidth: Style.space(176)
+                                Layout.maximumWidth: Commons.Style.space(176)
                                 text: root.appFilter ? root.appFilter : overviewWindow.screenScopeLabel
                                 textFormat: Text.PlainText
-                                color: Color.accent
-                                font.family: Style.font.menuFamily
-                                font.pixelSize: Style.font.bodySmall
+                                color: Commons.Color.accent
+                                font.family: Commons.Style.font.menuFamily
+                                font.pixelSize: Commons.Style.font.bodySmall
                                 font.bold: true
                                 elide: Text.ElideRight
                             }
@@ -1763,8 +1758,8 @@ Item {
                         readonly property var windowLayout: {
                             var revision = root.modelRevision;
                             return root.shell.workflow === "niri"
-                                ? WindowModel.composeStrips(overviewWindow.screenToplevels, width, height, Style.spacing.huge * 2, Style.spacing.sm, root.windowFooterHeight, overviewWindow.screenToplevels.indexOf(root.followedWindow))
-                                : root.computeWindowLayout(overviewWindow.screenToplevels, width, height, Style.spacing.huge * 2, Style.spacing.sm, root.windowFooterHeight, overviewWindow.screenRatio);
+                                ? WindowModel.composeStrips(overviewWindow.screenToplevels, width, height, Commons.Style.spacing.huge * 2, Commons.Style.spacing.sm, root.windowFooterHeight, overviewWindow.screenToplevels.indexOf(root.followedWindow))
+                                : root.computeWindowLayout(overviewWindow.screenToplevels, width, height, Commons.Style.spacing.huge * 2, Commons.Style.spacing.sm, root.windowFooterHeight, overviewWindow.screenRatio);
                         }
 
                         WheelHandler {
@@ -1815,16 +1810,16 @@ Item {
                                     ? "No windows on " + overviewWindow.screenScopeLabel
                                     : "No open windows")
                             textFormat: Text.PlainText
-                            color: Color.menu.text
-                            opacity: Style.secondaryTextAlpha
-                            font.family: Style.font.menuFamily
-                            font.pixelSize: Style.font.display
+                            color: Commons.Color.menu.text
+                            opacity: Commons.Style.secondaryTextAlpha
+                            font.family: Commons.Style.font.menuFamily
+                            font.pixelSize: Commons.Style.font.display
                         }
                     }
 
                     RowLayout {
                         Layout.alignment: Qt.AlignHCenter
-                        spacing: Style.spacing.xl
+                        spacing: Commons.Style.spacing.xl
                         visible: root.showFooter
 
                         Text {
@@ -1832,10 +1827,10 @@ Item {
                                 + (root.appFilter ? "Tab next app   Backspace all apps" : "Tab next workspace   Shift+Tab previous")
                                 + "   Drag to a workspace to move   Shift+Q close   Enter open   Esc close"
                             textFormat: Text.PlainText
-                            color: Color.menu.text
-                            opacity: Style.mutedTextAlpha
-                            font.family: Style.font.menuFamily
-                            font.pixelSize: Style.font.bodySmall
+                            color: Commons.Color.menu.text
+                            opacity: Commons.Style.mutedTextAlpha
+                            font.family: Commons.Style.font.menuFamily
+                            font.pixelSize: Commons.Style.font.bodySmall
                         }
 
                     }

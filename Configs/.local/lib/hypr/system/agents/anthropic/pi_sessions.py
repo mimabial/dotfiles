@@ -12,7 +12,7 @@ from typing import Any
 import json
 
 def scan_pi_usage(max_age_seconds: float) -> dict[str, Any] | None:
-  cache_file = usage_cache_dir() / "claude-pi-sessions.json"
+  cache_file = usage_cache_dir() / "claude-pi-sessions-v2.json"
   cached = read_fresh_cached_json(cache_file, max_age_seconds)
   if cached is not None:
     return cached.get("stats")
@@ -53,10 +53,11 @@ def scan_pi_usage(max_age_seconds: float) -> dict[str, Any] | None:
                 continue
               model = str(message.get("model") or "claude")
               day = local_date_from_timestamp(entry.get("timestamp") or message.get("timestamp"))
+              reported_cost = float((usage.get("cost") or {}).get("total") or 0)
             except Exception:
               continue
 
-            stats.add_tokens(day, str(path), model, (input_tokens, output_tokens, cache_read, cache_write))
+            stats.add_tokens(day, str(path), model, (input_tokens, output_tokens, cache_read, cache_write), reported_cost=reported_cost)
       except OSError:
         continue
 

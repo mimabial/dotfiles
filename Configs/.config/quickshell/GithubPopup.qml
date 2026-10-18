@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell.Io
 import "Ui" as Ui
+import "CalendarMath.js" as CalendarMath
 
 PopupCard {
     id: root
@@ -16,8 +17,6 @@ PopupCard {
     readonly property var security: report.security || ({})
     readonly property var kinds: security.kinds || []
     readonly property var issues: [inbox.issue, reviews.issue, security.issue, security.note].filter(entry => !!entry)
-    // a report started before a mark-read landed still lists the thread, so
-    // marked ids stay hidden until a report finishes with nothing pending
     property var dismissed: []
     property var queued: []
     property var marking: []
@@ -25,29 +24,29 @@ PopupCard {
     readonly property var notifications: (inbox.items || []).filter(item => !dismissed.includes(item.id))
     readonly property var reviewItems: reviews.items || []
 
-    function refresh() { if (reportProc.running) refreshAgain = true; else reportProc.running = true }
+    function refresh() { if (reportProcess.running) refreshAgain = true; else reportProcess.running = true }
     function openUrl(url) { shell.run(["xdg-open", url]); shell.closePopup() }
     function markRead(id) { dismissed = dismissed.concat(id); queued = queued.concat(id); sendMarks() }
     function sendMarks() {
-        if (markProc.running || queued.length === 0) return
+        if (markProcess.running || queued.length === 0) return
         marking = queued
-        markProc.command = ["hyprshell", "github-notifications", "--mark-read"].concat(queued)
+        markProcess.command = ["hyprshell", "github-notifications", "--mark-read"].concat(queued)
         queued = []
-        markProc.running = true
+        markProcess.running = true
     }
 
     onOpenChanged: if (open) refresh()
 
-    property Process reportProc: Process {
+    property Process reportProcess: Process {
         command: ["hyprshell", "github-notifications", "--report"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             try { root.report = JSON.parse(text) || ({}) }
             catch (error) { root.report = ({}) }
             if (root.refreshAgain) { root.refreshAgain = false; root.refresh() }
-            else if (!root.markProc.running && root.queued.length === 0) root.dismissed = []
+            else if (!root.markProcess.running && root.queued.length === 0) root.dismissed = []
         } }
     }
-    property Process markProc: Process {
+    property Process markProcess: Process {
         onExited: (exitCode) => {
             if (exitCode !== 0) root.dismissed = root.dismissed.filter(id => !root.marking.includes(id))
             root.marking = []
@@ -58,7 +57,7 @@ PopupCard {
             }
         }
     }
-    property Timer poll: Timer { interval: 300000; running: root.open; repeat: true; onTriggered: root.refresh() }
+    property Timer notificationPollTimer: Timer { interval: 5 * CalendarMath.MS_PER_MINUTE; running: root.open; repeat: true; onTriggered: root.refresh() }
 
     component CappedList: Flickable {
         id: list

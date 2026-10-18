@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from .icons import weather_icon
+from .icons import condition_is_day, weather_icon
 
 MAX_RAIN_READOUT_PERCENT = 99
 
@@ -40,7 +40,7 @@ def weather_status(weather, formatting, field_separator, show_icon, show_locatio
     description = current["weatherDesc"][0]["value"]
     city = weather["nearest_area"][0]["areaName"][0]["value"]
     country = weather["nearest_area"][0]["country"][0]["value"]
-    icon = weather_icon(current["weatherCode"]) if show_icon else ""
+    icon = weather_icon(current["weatherCode"], condition_is_day(current, today["astronomy"][0])) if show_icon else ""
     feels = formatting.temperature(current["FeelsLikeC"], current["FeelsLikeF"])
     temperature = formatting.temperature(current["temp_C"], current["temp_F"])
     high = formatting.temperature(today["maxtempC"], today["maxtempF"])

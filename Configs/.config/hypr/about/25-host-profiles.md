@@ -16,11 +16,13 @@ machine is `laptop`.
 
 ## What goes per-host
 
-Anything the hardware decides:
+Files that differ between machines:
 
 - `monitors.lua` — display layout and resolutions
 - `gpu.lua` — GPU-specific settings
 - `env-overrides` — per-host environment exports
+- `user-dirs.dirs` — home directory locations
+- `MangoHud.conf` — per-host gaming overlay settings
 
 They are marked in `dotfiles-sync.conf` with the `host|` prefix, and the sync
 routes them to `Configs/hosts/<profile>/...` rather than `Configs/...`. Set up a
@@ -34,7 +36,7 @@ all shared. The premise is that per-host divergence should be the exception and
 should be visible, not something that quietly accumulates because it was easier
 than making a setting portable.
 
-If you find yourself wanting a fourth host file, it is worth asking first whether
+If you find yourself wanting another host file, it is worth asking first whether
 the thing could detect its own environment instead. `gpu.lua` earns its place;
 most things do not.
 

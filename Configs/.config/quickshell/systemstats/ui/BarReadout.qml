@@ -2,17 +2,17 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import qs as Bar
-import qs.Commons
+import qs.Commons as Commons
 import "../Model.js" as Model
 
 Item {
   id: root
 
   required property var shell
-  property int barSize: Style.bar.sizeHorizontal
+  property int barSize: Commons.Style.bar.sizeHorizontal
   property string fontFamily: shell.fontFamily
   required property var box
-  readonly property real iconSize: Style.fontPx(box.fontSize) * shell.iconFontScale
+  readonly property real iconSize: Commons.Style.fontPx(box.fontSize) * shell.iconFontScale
   readonly property color foreground: shell.styleColor(box.color, shell.foreground)
   property real horizontalMargin
   property real fixedWidth
@@ -35,7 +35,7 @@ Item {
   signal activated(string module, int button)
   signal pressed(int button)
 
-  readonly property real scaledHorizontalMargin: Style.spaceReal(horizontalMargin)
+  readonly property real scaledHorizontalMargin: Commons.Style.spaceReal(horizontalMargin)
   implicitWidth: fixedWidth > 0 ? fixedWidth : content.implicitWidth + scaledHorizontalMargin * 2
   implicitHeight: fixedHeight > 0 ? fixedHeight : barSize
   visible: hasVisualContent
@@ -56,7 +56,7 @@ Item {
   readonly property color contentColor: hovered ? shell.role("hvr_fg", foreground) : foreground
   readonly property color s1: hovered ? contentColor : (service ? service.series1 : foreground)
   readonly property color s2: hovered ? contentColor : (service ? service.series2 : foreground)
-  readonly property real graphHeight: Math.max(8, barSize - Style.space(11))
+  readonly property real graphHeight: Math.max(8, barSize - Commons.Style.space(11))
 
   readonly property var cpu: snap.cpu || ({})
   readonly property var gpu: snap.gpu || null
@@ -172,7 +172,7 @@ Item {
   TextMetrics {
     id: reserve
     font.family: root.fontFamily
-    font.pixelSize: root.twoLine ? Style.font.caption : Style.font.body
+    font.pixelSize: root.twoLine ? Commons.Style.font.caption : Commons.Style.font.body
     text: root.reserveText
   }
 
@@ -182,7 +182,7 @@ Item {
     anchors.verticalCenter: parent.verticalCenter
     columns: 0
     rows: 1
-    spacing: Style.space(4)
+    spacing: Commons.Style.space(4)
     horizontalItemAlignment: Grid.AlignHCenter
     verticalItemAlignment: Grid.AlignVCenter
 
@@ -197,8 +197,8 @@ Item {
       text: root.def.short || root.def.label
       color: root.metricColor
       fontFamily: root.fontFamily
-      letterSize: Style.spaceReal(10)
-      maxHeight: root.barSize - Style.space(3)
+      letterSize: Commons.Style.spaceReal(10)
+      maxHeight: root.barSize - Commons.Style.space(3)
     }
 
     Loader {
@@ -230,7 +230,7 @@ Item {
           ? root.temperatureColor(reading.celsius, reading.critical) : root.foreground
         columns: 0
         rows: 1
-        spacing: Style.space(3)
+        spacing: Commons.Style.space(3)
         horizontalItemAlignment: Grid.AlignHCenter
         verticalItemAlignment: Grid.AlignVCenter
 
@@ -245,14 +245,14 @@ Item {
           text: sensorPair.reading.short || "TMP"
           color: sensorPair.readingColor
           fontFamily: root.fontFamily
-          letterSize: Style.spaceReal(10)
-          maxHeight: root.barSize - Style.space(3)
+          letterSize: Commons.Style.spaceReal(10)
+          maxHeight: root.barSize - Commons.Style.space(3)
         }
 
         TextMetrics {
           id: sensorReserve
           font.family: root.fontFamily
-          font.pixelSize: Style.font.body
+          font.pixelSize: Commons.Style.font.body
           text: sensorPair.reading.kind === "fan" ? "9999" : "100°"
         }
 
@@ -263,7 +263,7 @@ Item {
           text: root.ready ? String(sensorPair.reading.text || "") + String(sensorPair.reading.unit === "°" ? "°" : "") : "…"
           color: sensorPair.readingColor
           font.family: root.fontFamily
-          font.pixelSize: Style.font.body
+          font.pixelSize: Commons.Style.font.body
           renderType: Text.NativeRendering
         }
       }
@@ -294,12 +294,12 @@ Item {
     id: ringGauge
 
     MiniRing {
-      size: Math.max(10, root.barSize - Style.space(10))
-      thickness: Style.spaceReal(2.4)
+      size: Math.max(10, root.barSize - Commons.Style.space(10))
+      thickness: Commons.Style.spaceReal(2.4)
       value: root.ringValue
       color: root.ringColor
       foreground: root.contentColor
-      trackColor: Util.alpha(root.contentColor, 0.22)
+      trackColor: Commons.Util.alpha(root.contentColor, 0.22)
     }
   }
 
@@ -316,7 +316,7 @@ Item {
         ? [root.hist.cpuUser || [], root.hist.cpuSystem || []]
         : [root.module === "memory" ? (root.hist.memUsed || []) : (root.hist.gpu || [])]
       colors: [root.s1, root.s2]
-      baselineColor: Util.alpha(root.contentColor, 0.28)
+      baselineColor: Commons.Util.alpha(root.contentColor, 0.28)
     }
   }
 
@@ -333,7 +333,7 @@ Item {
       upColor: root.s2
       downColor: root.s1
       minimumCeiling: root.module === "network" ? Model.NETWORK_SCALE_FLOOR : Model.DISK_SCALE_FLOOR
-      midlineColor: Util.alpha(root.contentColor, 0.32)
+      midlineColor: Commons.Util.alpha(root.contentColor, 0.32)
     }
   }
 
@@ -347,7 +347,7 @@ Item {
       text: root.primaryText
       color: root.metricColor
       font.family: root.fontFamily
-      font.pixelSize: Style.font.body
+      font.pixelSize: Commons.Style.font.body
       renderType: Text.NativeRendering
     }
   }
@@ -365,7 +365,7 @@ Item {
         text: root.primaryText
         color: root.contentColor
         font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
+        font.pixelSize: Commons.Style.font.caption
         lineHeight: 0.95
         renderType: Text.NativeRendering
       }
@@ -377,7 +377,7 @@ Item {
         text: root.secondaryText
         color: root.contentColor
         font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
+        font.pixelSize: Commons.Style.font.caption
         lineHeight: 0.95
         renderType: Text.NativeRendering
       }

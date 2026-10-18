@@ -26,7 +26,7 @@ PopupCard {
         ? ({provider: "networkmanager", state: nmPending || (nmStatus.connected ? "connected" : "disconnected"), relay: nmStatus.active ? nmStatus.active.name : "", features: []}) : status
     readonly property string state: backend === "networkmanager" ? String(viewStatus.state || "checking") : pendingAction || String(viewStatus.state || "checking")
     readonly property bool connected: viewStatus.state === "connected"
-    readonly property bool busy: backend === "networkmanager" ? nmActionProc.running : pendingAction !== "" || ["connecting", "disconnecting"].includes(String(status.state))
+    readonly property bool busy: backend === "networkmanager" ? nmActionProcess.running : pendingAction !== "" || ["connecting", "disconnecting"].includes(String(status.state))
     readonly property bool blocked: backend === "mullvad" && (status.state === "blocked" || status.lockedDown === true)
     readonly property bool disconnectable: connected || backend === "mullvad" && status.state === "blocked"
     readonly property var features: viewStatus.features || []
@@ -34,7 +34,7 @@ PopupCard {
 
     property var relays: ({})
     property string filter: ""
-    property string browsing: ""          // "", "countries", or a country code
+    property string browsing: ""           
     property int resultIndex: -1
     readonly property int resultOffset: filter === "" ? 1 : 0
     readonly property var countries: relays.countries || []
@@ -80,7 +80,6 @@ PopupCard {
     function kind(value) { return ({wireguard: "WireGuard", openvpn: "OpenVPN", openconnect: "OpenConnect", vpnc: "VPNC"})[value] || value }
     function selectBackend(name) { backend = name; browsing = ""; filter = ""; settingsOpen = false; cursorIndex = -1 }
     function pinCurrent() {
-        // 50 countries in a 208px window: open on the one currently in use
         if (browsing !== "countries") return
         for (let i = 0; i < countries.length; i++)
             if (countries[i].code === currentLocation.country)
@@ -107,17 +106,17 @@ PopupCard {
     }
 
     function refresh(force) {
-        if (statusProc.running || nmStatusProc.running) { refreshPending = true; return }
-        if (!statusProc.running) statusProc.running = true
-        if (!nmStatusProc.running) nmStatusProc.running = true
+        if (statusProcess.running || nmStatusProcess.running) { refreshPending = true; return }
+        if (!statusProcess.running) statusProcess.running = true
+        if (!nmStatusProcess.running) nmStatusProcess.running = true
         if (force) { loadRelays(true); if (settingsOpen) loadSettings() }
     }
-    function loadRelays(force) { if ((force || countries.length === 0) && !relayProc.running) relayProc.running = true }
+    function loadRelays(force) { if ((force || countries.length === 0) && !relayProcess.running) relayProcess.running = true }
     function loadSettings() {
-        if (settingsProc.running) return
-        settingsProc.action = "load"
-        settingsProc.command = [root.shell.home + "/.local/lib/hypr/system/vpn-status.sh", "--settings"]
-        settingsProc.running = true
+        if (settingsProcess.running) return
+        settingsProcess.action = "load"
+        settingsProcess.command = [root.shell.home + "/.local/lib/hypr/system/vpn-status.sh", "--settings"]
+        settingsProcess.running = true
     }
     function toggleSettings() {
         settingsOpen = !settingsOpen
@@ -135,17 +134,17 @@ PopupCard {
         catch (error) { nmError = "NetworkManager status unavailable" }
     }
     function nmAction(action, profile) {
-        if (!profile || nmActionProc.running) return
+        if (!profile || nmActionProcess.running) return
         nmError = ""; nmPending = action === "connect" ? "connecting" : "disconnecting"
-        nmActionProc.command = [root.shell.home + "/.local/lib/hypr/system/vpn-networkmanager.sh", "--" + action, profile.uuid]
-        nmActionProc.running = true
+        nmActionProcess.command = [root.shell.home + "/.local/lib/hypr/system/vpn-networkmanager.sh", "--" + action, profile.uuid]
+        nmActionProcess.running = true
     }
     function setLocation(args) {
-        if (locationProc.running) return
+        if (locationProcess.running) return
         actionError = ""; pendingAction = "changing location"
-        locationProc.selected = args
-        locationProc.command = ["mullvad", "relay", "set", "location"].concat(args)
-        locationProc.running = true
+        locationProcess.selected = args
+        locationProcess.command = ["mullvad", "relay", "set", "location"].concat(args)
+        locationProcess.running = true
         browsing = ""; filter = ""
     }
     function label(value) { return value.charAt(0).toUpperCase() + value.slice(1) }
@@ -155,15 +154,15 @@ PopupCard {
             else if (nmProfiles.length === 1) nmAction("connect", nmProfiles[0])
             return
         }
-        if (busy || actionProc.running) return
+        if (busy || actionProcess.running) return
         actionError = ""; pendingAction = disconnectable ? "disconnecting" : "connecting"
-        actionProc.running = true
+        actionProcess.running = true
     }
     function setSetting(name, enabled) {
-        if (settingsProc.running) return
-        settingsError = ""; settingsProc.action = name
-        settingsProc.command = [root.shell.home + "/.local/lib/hypr/system/vpn-status.sh", "--set", name, enabled ? "on" : "off"]
-        settingsProc.running = true
+        if (settingsProcess.running) return
+        settingsError = ""; settingsProcess.action = name
+        settingsProcess.command = [root.shell.home + "/.local/lib/hypr/system/vpn-status.sh", "--set", name, enabled ? "on" : "off"]
+        settingsProcess.running = true
     }
     function copyIp() {
         if (!status.address) return
@@ -210,27 +209,26 @@ PopupCard {
         else { browsing = ""; filter = "" }
     }
 
-    property Process statusProc: Process {
+    property Process statusProcess: Process {
         command: [root.shell.home + "/.local/lib/hypr/system/vpn-status.sh"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.applyStatus(text) }
-        onExited: if (root.refreshPending && !root.nmStatusProc.running) { root.refreshPending = false; Qt.callLater(root.refresh) }
+        onExited: if (root.refreshPending && !root.nmStatusProcess.running) { root.refreshPending = false; Qt.callLater(root.refresh) }
     }
-    property Process nmStatusProc: Process {
+    property Process nmStatusProcess: Process {
         command: [root.shell.home + "/.local/lib/hypr/system/vpn-networkmanager.sh"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.applyNmStatus(text) }
-        onExited: if (root.refreshPending && !root.statusProc.running) { root.refreshPending = false; Qt.callLater(root.refresh) }
+        onExited: if (root.refreshPending && !root.statusProcess.running) { root.refreshPending = false; Qt.callLater(root.refresh) }
     }
     property Process nmEvents: Process {
         command: ["nmcli", "monitor"]
         running: root.open && root.backend === "networkmanager"
         stdout: SplitParser { onRead: root.refresh() }
     }
-    property Process tunnelTransitions: Process {
-        command: ["mullvad", "status", "listen"]
-        running: root.open && root.backend === "mullvad" && root.status.provider === "mullvad"
-        stdout: SplitParser { onRead: root.refresh() }
+    property Connections tunnelTransitions: Connections {
+        target: VpnStatus
+        function onOutputChanged() { if (root.open && root.backend === "mullvad") root.refresh() }
     }
-    property Process relayProc: Process {
+    property Process relayProcess: Process {
         command: [root.shell.home + "/.local/lib/hypr/system/vpn-relays.py"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             try { const next = JSON.parse(text) || ({}); if (next.countries && next.countries.length) root.relays = next }
@@ -238,7 +236,7 @@ PopupCard {
             root.pinCurrent()
         } }
     }
-    property Process actionProc: Process {
+    property Process actionProcess: Process {
         command: [root.shell.home + "/.local/lib/hypr/quickshell/vpn-toggle.sh"]
         stderr: StdioCollector { id: actionStderr; waitForEnd: true }
         onExited: (code, status) => {
@@ -247,7 +245,7 @@ PopupCard {
             root.refresh()
         }
     }
-    property Process nmActionProc: Process {
+    property Process nmActionProcess: Process {
         stderr: StdioCollector { id: nmActionStderr; waitForEnd: true }
         onExited: (code, status) => {
             root.nmPending = ""
@@ -255,7 +253,7 @@ PopupCard {
             root.refresh()
         }
     }
-    property Process locationProc: Process {
+    property Process locationProcess: Process {
         property var selected: []
         stderr: StdioCollector { id: locationStderr; waitForEnd: true }
         onExited: (code, status) => {
@@ -269,7 +267,7 @@ PopupCard {
             root.refresh()
         }
     }
-    property Process settingsProc: Process {
+    property Process settingsProcess: Process {
         property string action: ""
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             try { root.settings = JSON.parse(text) || ({}); root.settingsLoaded = true; root.settingsError = "" }
@@ -341,10 +339,10 @@ PopupCard {
             PopupSeparator { shell: root.shell }
             PopupSection { shell: root.shell; text: "PRIVACY" }
             PopupRow { width: parent.width; shell: root.shell; icon: "󰒓"; title: "Mullvad settings"; detail: root.settingsOpen ? "Hide settings" : "Auto-connect, lockdown and local network"; active: root.settingsOpen; onClicked: root.toggleSettings() }
-            Text { visible: root.settingsOpen && !root.settingsLoaded && root.settingsProc.running; text: "Loading settings…"; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
-            PopupToggleRow { visible: root.settingsOpen && root.settings.autoconnect != null; enabled: !root.settingsProc.running; width: parent.width; shell: root.shell; title: "Connect on startup"; detail: "Connect when the Mullvad daemon starts"; checked: root.settings.autoconnect === true; onToggled: root.setSetting("autoconnect", !checked) }
-            PopupToggleRow { visible: root.settingsOpen && root.settings.lockdown != null; enabled: !root.settingsProc.running; width: parent.width; shell: root.shell; title: "Lockdown mode"; detail: "Block all traffic while disconnected"; checked: root.settings.lockdown === true; onToggled: root.setSetting("lockdown", !checked) }
-            PopupToggleRow { visible: root.settingsOpen && root.settings.lan != null; enabled: !root.settingsProc.running; width: parent.width; shell: root.shell; title: "Allow local network"; detail: "Reach printers and local devices"; checked: root.settings.lan === true; onToggled: root.setSetting("lan", !checked) }
+            Text { visible: root.settingsOpen && !root.settingsLoaded && root.settingsProcess.running; text: "Loading settings…"; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
+            PopupToggleRow { visible: root.settingsOpen && root.settings.autoconnect != null; enabled: !root.settingsProcess.running; width: parent.width; shell: root.shell; title: "Connect on startup"; detail: "Connect when the Mullvad daemon starts"; checked: root.settings.autoconnect === true; onToggled: root.setSetting("autoconnect", !checked) }
+            PopupToggleRow { visible: root.settingsOpen && root.settings.lockdown != null; enabled: !root.settingsProcess.running; width: parent.width; shell: root.shell; title: "Lockdown mode"; detail: "Block all traffic while disconnected"; checked: root.settings.lockdown === true; onToggled: root.setSetting("lockdown", !checked) }
+            PopupToggleRow { visible: root.settingsOpen && root.settings.lan != null; enabled: !root.settingsProcess.running; width: parent.width; shell: root.shell; title: "Allow local network"; detail: "Reach printers and local devices"; checked: root.settings.lan === true; onToggled: root.setSetting("lan", !checked) }
         }
 
         Column {
@@ -442,7 +440,6 @@ PopupCard {
                         ? modelData.code === root.currentLocation.city
                         : modelData.code === root.currentLocation.country
                     width: ListView.view.width; shell: root.shell
-                    // a blank icon keeps every row's text on the same left edge
                     icon: current ? "󰍎" : " "
                     title: searchedCity ? modelData.name + ", " + modelData.countryName : modelData.name
                     detail: root.relayCount(modelData.relays)

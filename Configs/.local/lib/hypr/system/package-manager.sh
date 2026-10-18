@@ -4,7 +4,7 @@ export LC_ALL=C
 
 usage() {
   cat <<'HELP'
-Usage: hyprshell system/package-manager [--pm yay|paru|pacman] [--noconfirm] <command> [args...]
+Usage: package-manager.sh [--pm yay|paru|pacman] [--noconfirm] <command> [args...]
 
 Commands:
   add <pkg...>             Install repo packages with pacman, --needed --noconfirm
@@ -13,7 +13,7 @@ Commands:
   install-repo [pkg...]    Alias for install
   install-aur [pkg...]     Install AUR packages; fzf selector when empty
   remove, r [pkg...]       Remove packages; fzf selector when empty
-  upgrade, u               Upgrade repo/AUR packages and Flatpaks when available
+  upgrade, u [source]      Upgrade all (default), pacman, aur, or flatpak
   fetch, f                 Refresh package metadata
   info, n <pkg>            Show package information
   list, l all|installed    List repo or installed packages

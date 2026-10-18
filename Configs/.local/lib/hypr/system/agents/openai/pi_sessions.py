@@ -71,7 +71,8 @@ def record_pi_message(totals, seen_pi_messages, path, entry):
   if tokens is None:
     return
   day = local_date_from_timestamp(entry.get("timestamp") or message.get("timestamp"))
-  totals.add_tokens(day, path, model_name(message.get("model")), tokens)
+  cost = float(((message.get("usage") or {}).get("cost") or {}).get("total") or 0)
+  totals.add_tokens(day, path, model_name(message.get("model")), tokens, reported_cost=cost)
 
 
 def scan_pi_sessions(totals):

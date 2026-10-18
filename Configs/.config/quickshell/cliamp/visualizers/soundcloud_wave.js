@@ -1,28 +1,28 @@
 .pragma library
-.import "helpers.js" as H
+.import "helpers.js" as VisualizerHelpers
 
-function render(ctx, d) {
-  var bands = d.bands || []
-  var w = d.width, h = d.height, frame = d.frame || 0
-  var isPlaying = d.playing
-  var beatDrop = d.beatDrop || 0
+function render(canvas, frameData) {
+  var bands = frameData.bands || []
+  var width = frameData.width, height = frameData.height, frame = frameData.frame || 0
+  var isPlaying = frameData.playing
+  var beatDrop = frameData.beatDrop || 0
 
   var numBars = 84
-  var resampled = H.resampleBandsLinear(bands, numBars)
+  var resampled = VisualizerHelpers.resampleBandsLinear(bands, numBars)
 
   var margin = 6
-  var totalDrawW = w - margin * 2
+  var totalDrawW = width - margin * 2
   var gap = 1.4
   var barW = Math.max(1.2, (totalDrawW - (numBars - 1) * gap) / numBars)
   var actualW = numBars * barW + (numBars - 1) * gap
   var startX = margin + (totalDrawW - actualW) / 2.0
 
-  var baselineY = h * 0.66
+  var baselineY = height * 0.66
   var maxTopH = baselineY - 4
-  var maxBotH = (h - baselineY) - 4
+  var maxBotH = (height - baselineY) - 4
 
   for (var i = 0; i < numBars; i++) {
-    var bx = startX + i * (barW + gap)
+    var centerX = startX + i * (barW + gap)
 
     var env = Math.sin((i / numBars) * Math.PI)
     var shapeVal = 0.16 + env * 0.48 + Math.sin(i * 0.55 + 0.2) * 0.12 + Math.sin(i * 1.3) * 0.08
@@ -39,21 +39,21 @@ function render(ctx, d) {
     var botY = baselineY + horizonSlit
     var r = Math.min(barW / 2.0, 0.8)
 
-    var topGrad = ctx.createLinearGradient(0, topY, 0, baselineY)
-    topGrad.addColorStop(0, H.rgba(d.foreground, 0.98))
-    topGrad.addColorStop(0.20, H.mixColor(d.accent, d.foreground, 0.35, 0.95))
-    topGrad.addColorStop(1, H.rgba(d.accent, 0.88))
-    ctx.fillStyle = topGrad
-    ctx.beginPath()
-    H.roundedRect(ctx, bx, topY, barW, topH, r)
-    ctx.fill()
+    var topGrad = canvas.createLinearGradient(0, topY, 0, baselineY)
+    topGrad.addColorStop(0, VisualizerHelpers.rgba(frameData.foreground, 0.98))
+    topGrad.addColorStop(0.20, VisualizerHelpers.mixColor(frameData.accent, frameData.foreground, 0.35, 0.95))
+    topGrad.addColorStop(1, VisualizerHelpers.rgba(frameData.accent, 0.88))
+    canvas.fillStyle = topGrad
+    canvas.beginPath()
+    VisualizerHelpers.roundedRect(canvas, centerX, topY, barW, topH, r)
+    canvas.fill()
 
-    var botGrad = ctx.createLinearGradient(0, botY, 0, botY + botH)
-    botGrad.addColorStop(0, H.rgba(d.accent, 0.55))
-    botGrad.addColorStop(1, H.rgba(d.accent, 0.15))
-    ctx.fillStyle = botGrad
-    ctx.beginPath()
-    H.roundedRect(ctx, bx, botY, barW, botH, r)
-    ctx.fill()
+    var botGrad = canvas.createLinearGradient(0, botY, 0, botY + botH)
+    botGrad.addColorStop(0, VisualizerHelpers.rgba(frameData.accent, 0.55))
+    botGrad.addColorStop(1, VisualizerHelpers.rgba(frameData.accent, 0.15))
+    canvas.fillStyle = botGrad
+    canvas.beginPath()
+    VisualizerHelpers.roundedRect(canvas, centerX, botY, barW, botH, r)
+    canvas.fill()
   }
 }

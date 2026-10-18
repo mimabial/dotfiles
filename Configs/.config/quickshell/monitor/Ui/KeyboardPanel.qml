@@ -1,22 +1,21 @@
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
-import qs.Commons
+import qs.Commons as Commons
 
 PopupWindow {
   id: root
   required property Item anchorItem
   required property var shell
   property var owner: null
-  property int margin: Style.gapsOut
-  property int padding: Style.spacing.panelPadding
-  property int contentWidth: Style.space(430)
-  property int contentHeight: Style.space(500)
-  property var borderSpec: Border.surfaceSpec("popups", "border", Color.popups.border, Math.max(1, Style.space(1)))
+  property int margin: Commons.Style.gapsOut
+  property int padding: Commons.Style.spacing.panelPadding
+  property int contentWidth: Commons.Style.space(430)
+  property int contentHeight: Commons.Style.space(500)
+  property var borderSpec: Commons.Border.surfaceSpec("popups", "border", Commons.Style.popupBorder(Commons.Color.popups.border), Math.max(1, Commons.Style.space(1)))
   property bool centerOnBar: false
   property bool open: false
   property Item focusTarget: null
-  property bool focusSettling: false
   default property alias panelContent: contentHolder.data
   readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null
   readonly property bool centered: shell && owner
@@ -33,7 +32,7 @@ PopupWindow {
     return Math.round(Math.min(desired, available))
   }
   function fittedContentHeight(height, cap) {
-    var desired = Math.max(1, Number(height) || 1) + padding * 2 + Border.top(borderSpec) + Border.bottom(borderSpec)
+    var desired = Math.max(1, Number(height) || 1) + padding * 2 + Commons.Border.top(borderSpec) + Commons.Border.bottom(borderSpec)
     var available = anchorWindow && anchorWindow.screen ? anchorWindow.screen.height - margin * 2 : desired
     if (cap !== undefined && Number(cap) > 0) available = Math.min(available, Number(cap))
     return Math.round(Math.min(desired, available))
@@ -43,29 +42,16 @@ PopupWindow {
   color: "transparent"
   implicitWidth: contentWidth
   implicitHeight: contentHeight
-  onOpenChanged: {
-    if (!open) {
-      focusSettle.stop()
-      focusSettling = false
-      return
-    }
-    focusSettling = true
-    focusSettle.restart()
-    if (focusTarget) Qt.callLater(function() {
-      if (root.open && root.focusTarget) root.focusTarget.forceActiveFocus()
-    })
+  function focusContent() {
+    if (open && backingWindowVisible && focusTarget) focusTarget.forceActiveFocus()
   }
-
-  Timer {
-    id: focusSettle
-    interval: 450
-    onTriggered: root.focusSettling = false
-  }
+  onOpenChanged: focusContent()
+  onBackingWindowVisibleChanged: focusContent()
 
   HyprlandFocusGrab {
-    active: root.open && !root.focusSettling && !(root.shell && root.shell.focusPriming)
+    active: root.open && root.backingWindowVisible && !(root.shell && root.shell.focusPriming)
     windows: root.anchorWindow ? [root, root.anchorWindow] : [root]
-    onCleared: root.close()
+    onCleared: if (root.open) root.close()
   }
 
   anchor {
@@ -104,9 +90,9 @@ PopupWindow {
     id: card
     anchors.fill: parent
     opacity: root.open ? 1 : 0
-    color: Color.alpha(Color.popups.background, Style.popupSurfaceOpacity)
+    color: Commons.Color.alpha(Commons.Style.popupTinted(Commons.Color.popups.background), Commons.Style.popupSurfaceOpacity)
     borderSpec: root.borderSpec
-    radius: Style.cornerRadius
+    radius: Commons.Style.cornerRadius
     Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
     FocusScope {
       anchors.fill: parent

@@ -68,7 +68,7 @@ package_dispatch() {
     remove | r)
       if ((${#package_arguments[@]} == 0)); then package_pick_removal; else package_remove "${package_arguments[@]}"; fi
       ;;
-    upgrade | u) package_upgrade_all ;;
+    upgrade | u) package_upgrade "${package_arguments[@]}" ;;
     fetch | f) package_fetch_metadata ;;
     info | n) package_show_info "${package_arguments[@]}" ;;
     list | l) package_list "${package_arguments[@]}" ;;

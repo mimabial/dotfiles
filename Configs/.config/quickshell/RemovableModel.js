@@ -1,4 +1,5 @@
 .pragma library
+.import "Units.js" as Units
 
 var SECTOR_BYTES = 512
 var MAX_LISTED_BLOCKERS = 3
@@ -49,13 +50,8 @@ function plain(value) { return clean(value).replace(/[<>]/g, "") }
 function shellQuote(value) { return "'" + exact(value).replace(/'/g, "'\\''") + "'" }
 
 function formatBytes(bytes) {
-    let value = Number(bytes)
-    if (!isFinite(value) || value <= 0) return ""
-    const units = ["B", "KB", "MB", "GB", "TB", "PB"]
-    let unit = 0
-    while (value >= 1024 && unit < units.length - 1) { value /= 1024; ++unit }
-    if (unit === 0) return Math.round(value) + " B"
-    return (value >= 100 ? value.toFixed(0) : value.toFixed(1)) + " " + units[unit]
+    const value = Number(bytes)
+    return isFinite(value) && value > 0 ? Units.bytesText(value) : ""
 }
 
 function formatFsType(value) {

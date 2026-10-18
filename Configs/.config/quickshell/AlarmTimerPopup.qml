@@ -4,6 +4,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell.Io
+import "CalendarMath.js" as CalendarMath
+import "Units.js" as Units
 
 PopupCard {
     id: root
@@ -16,7 +18,7 @@ PopupCard {
     property int timerHours: 0
     property int timerMinutes: 0
     property int timerSeconds: 0
-    readonly property date alarmDefault: new Date(Date.now() + 3600000)
+    readonly property date alarmDefault: new Date(Date.now() + CalendarMath.MS_PER_HOUR)
     property int alarmHours: alarmDefault.getHours()
     property int alarmMinutes: alarmDefault.getMinutes()
     property var alarmDays: [alarmDefault.getDay()]
@@ -103,15 +105,12 @@ PopupCard {
         alarmLabel.text = ""
     }
     function resetAlarm() {
-        const target = new Date(Date.now() + 3600000)
+        const target = new Date(Date.now() + CalendarMath.MS_PER_HOUR)
         alarmHours = target.getHours(); alarmMinutes = target.getMinutes()
         alarmDays = [target.getDay()]
         alarmLabel.text = ""; error = ""
     }
-    function remaining(epoch) {
-        const seconds = Math.max(0, Number(epoch) - now), hours = Math.floor(seconds / 3600), minutes = Math.floor(seconds % 3600 / 60)
-        return (hours ? hours + ":" : "") + String(minutes).padStart(hours ? 2 : 1, "0") + ":" + String(seconds % 60).padStart(2, "0")
-    }
+    function remaining(epoch) { return Units.clockText(Number(epoch) - now) }
     function selectMode(nextMode) {
         if (clockwork.running && mode !== nextMode) return
         if (nextMode !== "timer" && nextMode !== "alarm") {

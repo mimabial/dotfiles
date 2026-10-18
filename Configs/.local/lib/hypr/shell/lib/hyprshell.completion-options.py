@@ -24,7 +24,8 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import NamedTuple
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+HYPR_LIB_DIR = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(HYPR_LIB_DIR))
 
 from pyutils.xdg_base_dirs import xdg_cache_home
 
@@ -43,26 +44,13 @@ class CompletionCacheEntry(NamedTuple):
     options: str
 
 
-def script_search_roots() -> list[Path]:
-    library_dir = os.environ.get("LIB_DIR", str(Path.home() / ".local/lib"))
-    search_path = os.environ.get("HYPR_SCRIPTS_PATH", f"{library_dir}/hypr")
-    roots, seen_directories = [], set()
-    for directory in search_path.split(":"):
-        if directory and directory not in seen_directories:
-            seen_directories.add(directory)
-            if Path(directory).is_dir():
-                roots.append(Path(directory))
-    return roots
-
-
 def resolve_script_path(command_name: str) -> Path | None:
     resolved = subprocess.run(["hyprshell", "resolve", command_name], capture_output=True, text=True, check=False)
     if resolved.returncode != 0:
         return None
     relative_path = resolved.stdout.strip()
-    for root in script_search_roots():
-        if (candidate := root / relative_path).is_file():
-            return candidate
+    if (candidate := HYPR_LIB_DIR / relative_path).is_file():
+        return candidate
     return Path(relative_path) if Path(relative_path).is_file() else None
 
 
@@ -159,16 +147,15 @@ def make_completion_cache_entry(script_path: Path, script_stat: os.stat_result, 
 
 def rebuild_completion_cache() -> int:
     entries: dict[str, CompletionCacheEntry] = {}
-    for root in script_search_roots():
-        for script_path in root.rglob("*"):
-            if not script_path.is_file() or script_path.suffix not in SCRIPT_SUFFIXES:
-                continue
-            if "__pycache__" in script_path.parts:
-                continue
-            command_name = str(script_path.relative_to(root).with_suffix(""))
-            found = extract_script_options(script_path)
-            if found:
-                entries[command_name] = make_completion_cache_entry(script_path, script_path.stat(), found)
+    for script_path in HYPR_LIB_DIR.rglob("*"):
+        if not script_path.is_file() or script_path.suffix not in SCRIPT_SUFFIXES:
+            continue
+        if "__pycache__" in script_path.parts:
+            continue
+        command_name = str(script_path.relative_to(HYPR_LIB_DIR).with_suffix(""))
+        found = extract_script_options(script_path)
+        if found:
+            entries[command_name] = make_completion_cache_entry(script_path, script_path.stat(), found)
     write_completion_cache(entries)
     print(f"{len(entries)} scripts with options", file=sys.stderr)
     return 0

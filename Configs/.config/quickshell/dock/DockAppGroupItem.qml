@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 import "DockModel.js" as DockModel
 
 Item {
@@ -59,16 +59,16 @@ Item {
 
     Rectangle {
       anchors.fill: parent
-      radius: Math.min(width / 4, Style.cornerRadius)
-      color: Util.alpha(Color.bar.background, 0.65)
-      border.color: item.isDropTarget ? Color.accent : Util.alpha(Color.menu.border, 0.65)
+      radius: Math.min(width / 4, Commons.Style.cornerRadius)
+      color: Commons.Util.alpha(Commons.Color.bar.background, 0.65)
+      border.color: item.isDropTarget ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.menu.border, 0.65)
       border.width: item.isDropTarget ? 2 : 1
     }
 
     Grid {
       anchors.centerIn: parent
       columns: 2
-      spacing: Style.space(2)
+      spacing: Commons.Style.space(2)
       Repeater {
         model: item.appIds.slice(0, 4)
         delegate: Image {
@@ -89,12 +89,12 @@ Item {
   Rectangle {
     visible: item.dock.showIndicators && (item.runningInfo.windows > 0 || item.isOpen)
     readonly property bool emphasized: item.runningInfo.active || item.isOpen
-    width: Style.space(emphasized ? 12 : 4)
-    height: Style.space(4)
+    width: Commons.Style.space(emphasized ? 12 : 4)
+    height: Commons.Style.space(4)
     radius: height / 2
     x: (item.width - width) / 2
     y: item.dock.indicatorY(item.height, height)
-    color: emphasized ? Color.bar.active : Util.alpha(Color.bar.text, 0.88)
+    color: emphasized ? Commons.Color.bar.active : Commons.Util.alpha(Commons.Color.bar.text, 0.88)
   }
 
   MouseArea {

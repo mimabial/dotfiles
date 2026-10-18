@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Io
+import "Units.js" as Units
 
 PopupCard {
     id: root
@@ -15,31 +16,27 @@ PopupCard {
     readonly property var jobs: report.jobs || []
     readonly property var defaultPrinter: printers.find(printer => printer.default) || ({})
 
-    function refresh() { if (!listProc.running) listProc.running = true }
+    function refresh() { if (!listProcess.running) listProcess.running = true }
     function act(args) {
         error = ""
-        actProc.running = false
-        actProc.command = ["bash", script].concat(args)
-        actProc.running = true
-    }
-    function sizeLabel(bytes) {
-        const kb = Number(bytes) / 1024
-        return kb >= 1024 ? (kb / 1024).toFixed(1) + " MB" : Math.round(kb) + " KB"
+        actProcess.running = false
+        actProcess.command = ["bash", script].concat(args)
+        actProcess.running = true
     }
 
     onOpenChanged: if (open) { error = ""; refresh() }
 
-    property Process listProc: Process {
+    property Process listProcess: Process {
         command: ["bash", root.script, "--report"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             try { root.report = JSON.parse(text) || ({}) } catch (error) { root.report = ({}) }
         } }
     }
-    property Process actProc: Process {
+    property Process actProcess: Process {
         stderr: StdioCollector { waitForEnd: true; onStreamFinished: root.error = String(text).trim() }
         onExited: root.refresh()
     }
-    property Timer poll: Timer { interval: 5000; running: root.open; repeat: true; onTriggered: root.refresh() }
+    property Timer printerPollTimer: Timer { interval: 5000; running: root.open; repeat: true; onTriggered: root.refresh() }
 
     Column {
         id: printersColumn
@@ -91,7 +88,7 @@ PopupCard {
                     width: printersColumn.width; shell: root.shell
                     icon: "\u{f015a}"
                     title: modelData.id
-                    detail: modelData.user + " — " + root.sizeLabel(modelData.size)
+                    detail: modelData.user + " — " + Units.bytesText(modelData.size)
                     value: "Cancel"
                     onClicked: root.act(["--cancel", modelData.id])
                 }

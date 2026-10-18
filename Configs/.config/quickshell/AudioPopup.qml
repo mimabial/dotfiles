@@ -36,9 +36,9 @@ PopupCard {
         const id = stream && stream.ready && stream.properties ? String(stream.properties["object.id"] || "") : ""
         return !!pinnedRoutes[id]
     }
-    function refreshRoutes() { if (!routesProc.running) routesProc.running = true }
+    function refreshRoutes() { if (!routesProcess.running) routesProcess.running = true }
     function route(stream, device, recording, followDefault) {
-        if (routeProc.running) return
+        if (routeProcess.running) return
         const streamSerial = serial(stream)
         const targetSerial = serial(device)
         if (!/^\d+$/.test(streamSerial) || !/^\d+$/.test(targetSerial)) {
@@ -46,18 +46,18 @@ PopupCard {
             return
         }
         routeError = ""
-        routeProc.command = ["hyprshell", "controls/stream-route", recording ? "recording" : "playback",
+        routeProcess.command = ["hyprshell", "controls/stream-route", recording ? "recording" : "playback",
             streamSerial, targetSerial, followDefault ? "default" : "override"]
-        routeProc.running = true
+        routeProcess.running = true
     }
-    function refreshCards() { if (!cardsProc.running) cardsProc.running = true }
+    function refreshCards() { if (!cardsProcess.running) cardsProcess.running = true }
     function openCards() { page = "cards"; profileError = ""; refreshCards() }
     function openProfiles(cardName) { selectedCard = cardName; page = "profiles"; profileError = "" }
     function setProfile(profile) {
-        if (!selectedCard || !profile || profileProc.running) return
+        if (!selectedCard || !profile || profileProcess.running) return
         profileError = ""
-        profileProc.command = ["hyprshell", "bluetooth/audio-profile-transition", selectedCard, profile]
-        profileProc.running = true
+        profileProcess.command = ["hyprshell", "bluetooth/audio-profile-transition", selectedCard, profile]
+        profileProcess.running = true
     }
     function volumeAction(device, action) { root.shell.run(["hyprshell", "volume-control.sh", "-" + device, action]) }
     function adjustCursor(direction) {
@@ -103,13 +103,16 @@ PopupCard {
         for (const [floor, name] of steps) if (Math.round(audio.volume * 100) >= floor) return name
         return "silenced"
     }
-    function microphoneStatus() { return !root.source ? "unavailable" : root.source.audio.muted ? "muted" : root.recordings.length ? "in use" : "ready" }
+    function microphoneStatus() {
+        const audio = root.source && root.source.audio
+        return !audio ? "unavailable" : audio.muted ? "muted" : root.recordings.length ? "in use" : "ready"
+    }
     property PwObjectTracker tracker: PwObjectTracker { objects: root.open ? (root.microphoneMode ? root.inputs.concat(root.recordings) : root.outputs.concat(root.playbacks)) : [] }
     onPageChanged: { clearCursor(); Qt.callLater(() => { rebuildRows(); cursorIndex = navigableRows.length ? 0 : -1 }) }
     onOpenChanged: if (open) { page = "mixer"; routeError = ""; profileError = ""; refreshRoutes() }
 
     Process {
-        id: routeProc
+        id: routeProcess
         stderr: StdioCollector { id: routeStderr; waitForEnd: true }
         onExited: code => {
             if (code !== 0) root.routeError = String(routeStderr.text || "Could not change the application route.").trim()
@@ -117,7 +120,7 @@ PopupCard {
         }
     }
     Process {
-        id: routesProc
+        id: routesProcess
         command: ["hyprshell", "controls/stream-route-status"]
         stdout: StdioCollector { id: routesStdout; waitForEnd: true }
         onExited: code => {
@@ -127,7 +130,7 @@ PopupCard {
         }
     }
     Process {
-        id: cardsProc
+        id: cardsProcess
         command: ["hyprshell", "bluetooth/audio-cards"]
         stdout: StdioCollector { id: cardsStdout; waitForEnd: true }
         stderr: StdioCollector { id: cardsStderr; waitForEnd: true }
@@ -140,7 +143,7 @@ PopupCard {
         }
     }
     Process {
-        id: profileProc
+        id: profileProcess
         stderr: StdioCollector { id: profileStderr; waitForEnd: true }
         onExited: code => {
             if (code !== 0) root.profileError = String(profileStderr.text || "Could not change the device profile.").trim()
@@ -172,7 +175,7 @@ PopupCard {
         PopupSelect {
             id: routeSelect
             width: parent.width; shell: root.shell
-            enabled: !routeProc.running
+            enabled: !routeProcess.running
             choices: [{label: "Choose route…"}, {label: "Follow default " + (control.recording ? "input" : "output")}]
                 .concat(control.devices.map(device => ({label: "Always use " + root.name(device)})))
             onActivated: index => {
@@ -269,7 +272,7 @@ PopupCard {
             PopupHero { shell: root.shell; title: root.selectedAudioCard ? root.selectedAudioCard.label : "Audio device"; status: "profile" }
             PopupRow { width: parent.width; shell: root.shell; icon: "󰁍"; title: "Back to devices"; onClicked: root.openCards() }
             PopupSeparator { shell: root.shell }
-            PopupSection { shell: root.shell; text: "AVAILABLE PROFILES"; value: profileProc.running ? "switching" : "" }
+            PopupSection { shell: root.shell; text: "AVAILABLE PROFILES"; value: profileProcess.running ? "switching" : "" }
             ListView {
                 width: parent.width; height: parent.height - y - profileMessage.height - Style.sectionGap
                 model: root.selectedAudioCard ? root.selectedAudioCard.profiles : []; spacing: Style.xs; clip: true
@@ -279,7 +282,7 @@ PopupCard {
                     width: ListView.view.width; shell: root.shell; icon: "󰓃"
                     title: modelData.label; detail: root.selectedAudioCard && root.selectedAudioCard.activeProfile === modelData.value ? "Active" : ""
                     active: root.selectedAudioCard && root.selectedAudioCard.activeProfile === modelData.value
-                    interactive: !profileProc.running
+                    interactive: !profileProcess.running
                     onClicked: root.setProfile(modelData.value)
                 }
             }

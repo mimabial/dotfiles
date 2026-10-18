@@ -27,27 +27,21 @@ ScriptButton {
         ? "<br><span style='color:" + shell.foreground + "'>" + pending + "</span>"
         : ""
     textFormat: stacked ? Text.RichText : Text.PlainText
-    // a host can claim either button for its own action; unclaimed, the left
-    // one opens the report and the right one does nothing
     property var primaryAction: null
     property var rightAction: null
     onClicked: button => button === Qt.RightButton && root.rightAction ? root.rightAction()
         : root.primaryAction ? root.primaryAction()
         : root.shell.togglePopup("updates")
-    // the daily poll leaves the report stale; opening the panel re-reads it,
-    // usually from the provider's six-hour cache
     refreshKey: shell.popupName === "updates"
 
-    // the forced check writes the cache the module reads, so re-run the module
-    // when it exits rather than guessing at how long it took
-    property Process recheckProc: Process {
+    property Process recheckProcess: Process {
         command: ["hyprshell", "system/system.update.sh", "--refresh"]
         onRunningChanged: if (!running) root.refresh()
     }
 
     UpdatesPopup {
         anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled
-        report: root.output; checking: root.recheckProc.running
-        onRecheck: root.recheckProc.running = true
+        report: root.output; checking: root.recheckProcess.running
+        onRecheck: root.recheckProcess.running = true
     }
 }

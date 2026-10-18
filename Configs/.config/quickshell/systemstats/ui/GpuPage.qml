@@ -1,9 +1,10 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui as Ui
 import "../Model.js" as Model
+import "../../Units.js" as Units
 
 Column {
   id: root
@@ -14,8 +15,8 @@ Column {
   property int historyRange: 0
   property string temperatureUnit: "Celsius"
   property bool publicIpEnabled: true
-  property color foreground: Color.popups.text
-  property string fontFamily: Style.font.family
+  property color foreground: Commons.Color.popups.text
+  property string fontFamily: Commons.Style.font.family
 
   readonly property var snap: service ? service.snapshot : ({})
   readonly property var hist: service ? Model.peakHistoryView(service.history, service.historyHour, service.historyDay, historyRange) : Model.emptyHistory()
@@ -31,7 +32,7 @@ Column {
   }
 
   function graphColor(index) {
-    if (!service) return Color.accent
+    if (!service) return Commons.Color.accent
     return index % 2 ? service.series2 : service.series1
   }
 
@@ -41,7 +42,7 @@ Column {
   }
 
   width: parent ? parent.width : implicitWidth
-  spacing: Style.space(10)
+  spacing: Commons.Style.space(10)
 
   Card {
     visible: root.devices.length > 1
@@ -61,7 +62,7 @@ Column {
         selected: active
         bordered: true
         foreground: root.foreground
-        accent: Color.accent
+        accent: Commons.Color.accent
         fontFamily: root.fontFamily
         onClicked: if (!active && root.service) root.service.selectGpu(device.vendor)
       }
@@ -87,13 +88,13 @@ Column {
 
       HistoryGraph {
         width: parent.width
-        height: Style.space(56)
+        height: Commons.Style.space(56)
         barWidth: Model.historyBarWidth(width, root.historyRange)
         showGaps: root.historyRange > 0
         series: [root.hist.gpus && root.hist.gpus[gpuCard.device.vendor] || []]
         colors: [gpuCard.seriesColor]
         ceiling: 100
-        baselineColor: Util.alpha(root.foreground, 0.14)
+        baselineColor: Commons.Util.alpha(root.foreground, 0.14)
       }
 
       SectionTitle {
@@ -104,13 +105,13 @@ Column {
       HistoryGraph {
         visible: Model.hasReading(root.hist.gpuTemps && root.hist.gpuTemps[gpuCard.device.vendor])
         width: parent.width
-        height: Style.space(44)
+        height: Commons.Style.space(44)
         barWidth: Model.historyBarWidth(width, root.historyRange)
         showGaps: root.historyRange > 0
         series: [root.hist.gpuTemps && root.hist.gpuTemps[gpuCard.device.vendor] || []]
         colors: [gpuCard.seriesColor]
         minimumCeiling: Model.TEMPERATURE_SCALE_FLOOR
-        baselineColor: Util.alpha(root.foreground, 0.14)
+        baselineColor: Commons.Util.alpha(root.foreground, 0.14)
       }
 
       SectionTitle {
@@ -121,13 +122,13 @@ Column {
       HistoryGraph {
         visible: Model.hasReading(root.hist.vrams && root.hist.vrams[gpuCard.device.vendor])
         width: parent.width
-        height: Style.space(44)
+        height: Commons.Style.space(44)
         barWidth: Model.historyBarWidth(width, root.historyRange)
         showGaps: root.historyRange > 0
         series: [root.hist.vrams && root.hist.vrams[gpuCard.device.vendor] || []]
         colors: [gpuCard.seriesColor]
         ceiling: 100
-        baselineColor: Util.alpha(root.foreground, 0.14)
+        baselineColor: Commons.Util.alpha(root.foreground, 0.14)
       }
 
       StatRow {
@@ -154,7 +155,7 @@ Column {
         label: "Memory"
         detail: visible ? Model.percentText(gpuCard.device.memUsed / gpuCard.device.memTotal * 100) : ""
         value: visible ? Model.pairText(gpuCard.device.memUsed, gpuCard.device.memTotal).replace(/ [A-Z]+$/, "") : ""
-        unit: visible ? Model.bytesParts(gpuCard.device.memTotal).unit : ""
+        unit: visible ? Units.bytesParts(gpuCard.device.memTotal).unit : ""
         foreground: root.foreground
         fontFamily: root.fontFamily
       }

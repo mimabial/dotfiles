@@ -1,15 +1,15 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
 Item {
   id: root
 
   property string title: ""
   property string detail: ""
-  property color foreground: Color.popups.text
-  property string fontFamily: Style.font.family
+  property color foreground: Commons.Color.popups.text
+  property string fontFamily: Commons.Style.font.family
 
   width: parent ? parent.width : implicitWidth
   implicitHeight: Math.max(titleText.implicitHeight, detailText.implicitHeight)
@@ -21,12 +21,12 @@ Item {
     anchors.left: parent.left
     anchors.verticalCenter: parent.verticalCenter
     text: root.title
-    color: Color.accent
+    color: Commons.Color.accent
     font.family: root.fontFamily
-    font.pixelSize: Style.font.subtitle
+    font.pixelSize: Commons.Style.font.subtitle
     font.bold: true
     elide: Text.ElideRight
-    width: Math.min(implicitWidth, parent.width - detailText.width - Style.space(8))
+    width: Math.min(implicitWidth, parent.width - detailText.width - Commons.Style.space(8))
   }
 
   Text {
@@ -36,8 +36,8 @@ Item {
     anchors.verticalCenter: parent.verticalCenter
     text: root.detail
     color: root.foreground
-    opacity: Style.mutedTextAlpha
+    opacity: Commons.Style.mutedTextAlpha
     font.family: root.fontFamily
-    font.pixelSize: Style.font.bodySmall
+    font.pixelSize: Commons.Style.font.bodySmall
   }
 }

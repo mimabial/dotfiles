@@ -1,22 +1,22 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 
 Text {
   id: root
 
-  property string fontFamily: Style.font.family
+  property string fontFamily: Commons.Style.font.family
 
   textFormat: Text.PlainText
-  color: Color.accent
+  color: Commons.Color.accent
   font.family: fontFamily
-  font.pixelSize: Style.font.caption
+  font.pixelSize: Commons.Style.font.caption
   font.bold: true
   font.letterSpacing: 1.1
   font.capitalization: Font.AllUppercase
   elide: Text.ElideRight
   // Nerd Font outlines overshoot the em box; reserve it so the first row in a
   // clipping list is never beheaded (mirrors qs.Ui.PanelSectionHeader).
-  topPadding: Math.ceil(Style.font.caption * 0.15)
+  topPadding: Math.ceil(Commons.Style.font.caption * 0.15)
 }

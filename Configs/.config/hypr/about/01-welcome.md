@@ -10,8 +10,8 @@ a menu entry for every key. You can drive the whole desktop without touching the
 mouse, and most days you will.
 
 **Everything visual comes from one palette.** Pick a theme and the compositor,
-the bar, both terminals, rofi, dunst, GTK, Qt, Firefox, Chromium, tmux, the
-music player and the lock screen all change together. There is no app that
+the bar, both terminals, rofi, dunst, GTK, Qt, Firefox, Chromium, tmux, glow,
+Cava, Zathura, the music player and the lock screen all change together. There is no app that
 quietly stays on last month's colors.
 
 **Everything is reversible.** Generated files are never edited by hand and never
@@ -21,7 +21,7 @@ with one command.
 
 What that adds up to: a Lua-configured compositor, a QML bar you compose from
 JSON, a theme pipeline that switches in two phases so you never wait on work you
-cannot see, and 320 scripts sitting behind a single dispatcher.
+cannot see, and 250 runnable targets sitting behind a single dispatcher.
 
 It is not trying to be familiar. It is trying to be fast and to never surprise
 you twice. Config files get edited by hand, the terminal does a lot of the work,

@@ -1,4 +1,6 @@
 import QtQuick
+import Quickshell
+import Quickshell.Io
 import ".."
 
 ScriptButton {
@@ -20,11 +22,14 @@ ScriptButton {
         NumberAnimation { target: blink; property: "phase"; from: 0; to: 1; duration: 500 }
         NumberAnimation { target: blink; property: "phase"; from: 1; to: 0; duration: 500 }
     }
-    // the recorder pushes its own transitions; the timer only runs while recording,
-    // to catch a gpu-screen-recorder that died without clearing its state file
-    command: ["hyprshell", "screenrecord", "--status"]
-    indicator: "screenrecord"; polling: recording; interval: 3000
+    command: ["bash", root.shell.home + "/.local/lib/hypr/capture/screenrecord.sh", "--status"]
+    indicator: "screenrecord"; polling: false
     Component.onCompleted: refresh()
+    Process {
+        command: ["pidwait", "--euid", Quickshell.env("USER"), "--full", "^gpu-screen-recorder($| )"]
+        running: root.recording
+        onRunningChanged: if (!running) root.refresh()
+    }
     // the panel replaces the portal's ScreenCast dialog
     onClicked: button => button === Qt.RightButton
         ? root.shell.run(["hyprshell", "screenrecord", "--quit"])

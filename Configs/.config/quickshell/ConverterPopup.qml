@@ -44,22 +44,22 @@ PopupCard {
         if (selectedTab === "currency") resetUnits()
     }
     function ensureRates() {
-        if (currencies.length || ratesProc.running) return
-        ratesLoading = true; rateError = ""; ratesProc.running = true
+        if (currencies.length || ratesProcess.running) return
+        ratesLoading = true; rateError = ""; ratesProcess.running = true
     }
     function selectTab(tab) { selectedTab = tab; resetUnits(); if (tab === "currency") ensureRates() }
     onCategoryIndexChanged: resetUnits()
     onOpenChanged: if (open) {
-        if (!categories.length && !unitsProc.running) unitsProc.running = true
+        if (!categories.length && !unitsProcess.running) unitsProcess.running = true
         if (selectedTab === "currency") ensureRates()
         amountField.forceActiveFocus(); amountField.selectAll()
     }
 
-    property Process unitsProc: Process {
+    property Process unitsProcess: Process {
         command: [root.shell.home + "/.local/lib/hypr/util/converter.py", "--units"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.loadUnits(text) }
     }
-    property Process ratesProc: Process {
+    property Process ratesProcess: Process {
         command: [root.shell.home + "/.local/lib/hypr/util/converter.py", "--rates"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.loadRates(text) }
     }

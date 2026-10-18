@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import qs.Commons
+import qs.Commons as Commons
 import "../Model.js" as Model
 
 Column {
@@ -13,18 +13,18 @@ Column {
   property int historyRange: 0
   property string temperatureUnit: "Celsius"
   property bool publicIpEnabled: true
-  property color foreground: Color.popups.text
-  property string fontFamily: Style.font.family
+  property color foreground: Commons.Color.popups.text
+  property string fontFamily: Commons.Style.font.family
 
   function flag(key) { return Model.flag(settings, key) }
 
   readonly property var snap: service ? service.snapshot : ({})
   readonly property var hist: service ? Model.peakHistoryView(service.history, service.historyHour, service.historyDay, historyRange) : Model.emptyHistory()
-  readonly property color s1: service ? service.series1 : Color.accent
-  readonly property color s2: service ? service.series2 : Color.accent
-  readonly property color good: service ? service.good : Color.accent
-  readonly property color warn: service ? service.warn : Color.urgent
-  readonly property color danger: service ? service.danger : Color.urgent
+  readonly property color s1: service ? service.series1 : Commons.Color.accent
+  readonly property color s2: service ? service.series2 : Commons.Color.accent
+  readonly property color good: service ? service.good : Commons.Color.accent
+  readonly property color warn: service ? service.warn : Commons.Color.urgent
+  readonly property color danger: service ? service.danger : Commons.Color.urgent
 
   readonly property var battery: snap.battery || ({})
   readonly property bool present: battery.present === true
@@ -68,7 +68,7 @@ Column {
   }
 
   width: parent ? parent.width : implicitWidth
-  spacing: Style.space(10)
+  spacing: Commons.Style.space(10)
 
   Card {
     foreground: root.foreground
@@ -80,7 +80,7 @@ Column {
       Row {
         id: rings
         anchors.horizontalCenter: parent.horizontalCenter
-        spacing: Style.space(30)
+        spacing: Commons.Style.space(30)
 
         RingGauge {
           value: root.hasPercent ? root.percent / 100 : 0
@@ -90,7 +90,7 @@ Column {
           valueText: root.hasPercent ? String(Math.round(root.percent)) : "—"
           unitText: root.hasPercent ? "%" : ""
           subText: root.timeText
-          size: Style.space(88)
+          size: Commons.Style.space(88)
         }
 
         RingGauge {
@@ -102,7 +102,7 @@ Column {
           valueText: String(Math.round(Model.num(root.battery.health)))
           unitText: "%"
           labelText: "Health"
-          size: Style.space(88)
+          size: Commons.Style.space(88)
         }
       }
     }
@@ -121,13 +121,13 @@ Column {
 
     HistoryGraph {
       width: parent.width
-      height: Style.space(56)
+      height: Commons.Style.space(56)
       barWidth: Model.historyBarWidth(width, root.historyRange)
       showGaps: root.historyRange > 0
       series: [root.chargeHistory.charging, root.chargeHistory.discharging]
       colors: [root.good, root.s1]
       ceiling: 100
-      baselineColor: Util.alpha(root.foreground, 0.14)
+      baselineColor: Commons.Util.alpha(root.foreground, 0.14)
     }
 
     Legend {
@@ -143,7 +143,7 @@ Column {
   Card {
     visible: root.flag("showDetails")
     foreground: root.foreground
-    spacing: Style.space(2)
+    spacing: Commons.Style.space(2)
 
     StatRow {
       label: "Status"
@@ -214,7 +214,7 @@ Column {
   Card {
     visible: root.peripherals.length > 0 && root.flag("showDevices")
     foreground: root.foreground
-    spacing: Style.space(2)
+    spacing: Commons.Style.space(2)
 
     SectionTitle { text: "Devices"; fontFamily: root.fontFamily }
 

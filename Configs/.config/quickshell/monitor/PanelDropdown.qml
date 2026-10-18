@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
-import qs.Commons
+import qs.Commons as Commons
 import "Ui"
 
 // The menu is positioned in panel coordinates instead of relying on Popup's implicit parent, which keeps it attached to
@@ -16,13 +16,13 @@ Item {
   property var options: []
   property Item popupParent: null
   property bool ownerOpen: true
-  property color foreground: Color.popups.text
-  property color background: Color.popups.background
-  property color popupBorder: Color.popups.border
-  property color accent: Color.accent
-  property string fontFamily: Style.font.family
-  property int rowHeight: Style.spacing.controlHeight
-  property int popupRowHeight: Style.spacing.popupRowHeight
+  property color foreground: Commons.Color.popups.text
+  property color background: Commons.Color.popups.background
+  property color popupBorder: Commons.Color.popups.border
+  property color accent: Commons.Color.accent
+  property string fontFamily: Commons.Style.font.family
+  property int rowHeight: Commons.Style.spacing.controlHeight
+  property int popupRowHeight: Commons.Style.spacing.popupRowHeight
   // Touch the two control surfaces. Their adjoining one-pixel borders provide
   // the visible seam; adding another coordinate gap makes it look wider.
   property int popupGap: 0
@@ -30,8 +30,8 @@ Item {
   property bool showLabel: true
   property bool hasCursor: false
 
-  readonly property var popupBorderSpec: Border.localOrSurfaceSpec(
-    "popups", "border", popupBorder, Color.popups.border, Style.normalBorderWidth)
+  readonly property var popupBorderSpec: Commons.Border.localOrSurfaceSpec(
+    "popups", "border", Commons.Style.popupBorder(root.popupBorder), Commons.Color.popups.border, Commons.Style.normalBorderWidth)
   readonly property bool popupOpen: menu.opened
 
   signal changed(string value)
@@ -62,12 +62,12 @@ Item {
     return trigger.mapToItem(popupParent, 0, -menu.implicitHeight - root.popupGap)
   }
 
-  implicitWidth: Style.spacing.dropdownWidth
-  implicitHeight: showLabel && label !== "" ? rowHeight + Style.spacing.huge : rowHeight
+  implicitWidth: Commons.Style.spacing.dropdownWidth
+  implicitHeight: showLabel && label !== "" ? rowHeight + Commons.Style.spacing.huge : rowHeight
 
   Column {
     anchors.fill: parent
-    spacing: Style.spacing.labelGap
+    spacing: Commons.Style.spacing.labelGap
 
     Text {
       textFormat: Text.PlainText
@@ -75,7 +75,7 @@ Item {
       text: root.label
       color: Qt.darker(root.foreground, 1.4)
       font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
+      font.pixelSize: Commons.Style.font.caption
       font.bold: true
     }
 
@@ -83,13 +83,13 @@ Item {
       id: trigger
       width: parent.width
       height: root.rowHeight
-      radius: Style.cornerRadius
+      radius: Commons.Style.cornerRadius
       activeFocusOnTab: true
 
       readonly property bool focused: activeFocus
       readonly property bool hot: triggerHover.hovered || root.hasCursor
-      color: Style.controlFill(focused, hot, root.foreground, root.accent)
-      borderSpec: Border.controlSpec(focused ? "focus" : (hot ? "hover-cursor" : "normal"),
+      color: Commons.Style.controlFill(focused, hot, root.foreground, root.accent)
+      borderSpec: Commons.Border.controlSpec(focused ? "focus" : (hot ? "hover-cursor" : "normal"),
                                      root.foreground, root.accent)
 
       HoverHandler {
@@ -113,12 +113,12 @@ Item {
         anchors.left: parent.left
         anchors.right: chevron.left
         anchors.verticalCenter: parent.verticalCenter
-        anchors.leftMargin: trigger.borderLeft + Style.spacing.controlPaddingX
-        anchors.rightMargin: trigger.borderRight + Style.spacing.md
+        anchors.leftMargin: trigger.borderLeft + Commons.Style.spacing.controlPaddingX
+        anchors.rightMargin: trigger.borderRight + Commons.Style.spacing.md
         text: root.currentLabel()
         color: root.foreground
         font.family: root.fontFamily
-        font.pixelSize: Style.font.body
+        font.pixelSize: Commons.Style.font.body
         elide: Text.ElideRight
       }
 
@@ -127,11 +127,11 @@ Item {
         id: chevron
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        anchors.rightMargin: trigger.borderRight + Style.spacing.controlGap
+        anchors.rightMargin: trigger.borderRight + Commons.Style.spacing.controlGap
         text: menu.opened ? "󰅃" : "󰅀"
         color: Qt.darker(root.foreground, 1.2)
         font.family: root.fontFamily
-        font.pixelSize: Style.font.body
+        font.pixelSize: Commons.Style.font.body
       }
 
       MouseArea {
@@ -162,15 +162,15 @@ Item {
     rightInset: 0
     bottomInset: 0
     leftInset: 0
-    padding: Style.spacing.hairline
-    leftPadding: Border.left(root.popupBorderSpec) + Style.spacing.hairline
-    rightPadding: Border.right(root.popupBorderSpec) + Style.spacing.hairline
-    topPadding: Border.top(root.popupBorderSpec) + Style.spacing.hairline
-    bottomPadding: Border.bottom(root.popupBorderSpec) + Style.spacing.hairline
+    padding: Commons.Style.spacing.hairline
+    leftPadding: Commons.Border.left(root.popupBorderSpec) + Commons.Style.spacing.hairline
+    rightPadding: Commons.Border.right(root.popupBorderSpec) + Commons.Style.spacing.hairline
+    topPadding: Commons.Border.top(root.popupBorderSpec) + Commons.Style.spacing.hairline
+    bottomPadding: Commons.Border.bottom(root.popupBorderSpec) + Commons.Style.spacing.hairline
     readonly property real menuContentHeight: root.options.length * root.popupRowHeight
-      + Math.max(0, root.options.length - 1) * Style.spacing.labelGap
+      + Math.max(0, root.options.length - 1) * Commons.Style.spacing.labelGap
     readonly property real maximumContentHeight: root.popupRowHeight * 8
-      + 7 * Style.spacing.labelGap
+      + 7 * Commons.Style.spacing.labelGap
     implicitHeight: Math.min(menuContentHeight, maximumContentHeight)
       + topPadding + bottomPadding
     focus: true
@@ -178,9 +178,9 @@ Item {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnReleaseOutside
 
     background: BorderSurface {
-      color: root.background
+      color: Commons.Style.popupTinted(root.background)
       borderSpec: root.popupBorderSpec
-      radius: Style.cornerRadius
+      radius: Commons.Style.cornerRadius
     }
 
     onOpened: {
@@ -191,7 +191,7 @@ Item {
 
     contentItem: ListView {
       id: optionList
-      spacing: Style.spacing.labelGap
+      spacing: Commons.Style.spacing.labelGap
       implicitHeight: contentHeight
       clip: true
       interactive: root.scrollable && contentHeight > height
@@ -240,7 +240,7 @@ Item {
         width: optionList.width
         height: root.popupRowHeight
         color: index === optionList.currentIndex
-          ? Style.hoverFillFor(root.foreground, root.accent)
+          ? Commons.Style.hoverFillFor(root.foreground, root.accent)
           : "transparent"
 
         Text {
@@ -248,14 +248,14 @@ Item {
           anchors.left: parent.left
           anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter
-          anchors.leftMargin: Style.spacing.controlPaddingX
-          anchors.rightMargin: Style.spacing.controlPaddingX
+          anchors.leftMargin: Commons.Style.spacing.controlPaddingX
+          anchors.rightMargin: Commons.Style.spacing.controlPaddingX
           text: root.optionLabel(option.modelData)
           color: option.index === optionList.currentIndex
-            ? Style.hoverStateColor(root.foreground, root.accent)
+            ? Commons.Style.hoverStateColor(root.foreground, root.accent)
             : root.foreground
           font.family: root.fontFamily
-          font.pixelSize: Style.font.body
+          font.pixelSize: Commons.Style.font.body
           elide: Text.ElideRight
         }
 

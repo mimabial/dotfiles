@@ -6,7 +6,7 @@ from datetime import datetime
 import json
 
 def main():
-    providers, models, days, has_db = local_usage()
+    providers, models, days, has_db, cost_days = local_usage()
     limits, go_status, observed_at = go_limits()
     if not has_db and not limits and not go_status:
         return
@@ -17,6 +17,7 @@ def main():
         "updatedAt": datetime.now().astimezone().isoformat(),
         "usageStatusText": f"{week_tokens:,} tokens · ${week_cost:.2f} / 7d",
         "providerUsage": providers, "modelUsage": models, "recentDays": days,
+        "costDays": cost_days,
         "limits": limits, "limitsObservedAt": observed_at,
         "goStatus": go_status,
     }

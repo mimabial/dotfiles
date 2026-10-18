@@ -111,8 +111,8 @@ def scoped_limits(payload: dict[str, Any], percent_scale: bool) -> list[dict[str
     kind = str(entry.get("kind") or "").strip()
     if name == "" or (name, kind) in seen:
       continue
-    percent = normalize_utilization(entry.get("percent"), percent_scale)
-    if percent < 0:
+    usage_fraction = normalize_utilization(entry.get("percent"), percent_scale)
+    if usage_fraction < 0:
       continue
     seen.add((name, kind))
     window = scoped_window(kind)
@@ -120,7 +120,7 @@ def scoped_limits(payload: dict[str, Any], percent_scale: bool) -> list[dict[str
     out.append({
       "label": title,
       "title": title,
-      "percent": percent,
+      "usageFraction": usage_fraction,
       "resetsAt": normalize_reset_at(entry.get("resets_at")),
     })
   return out
@@ -164,13 +164,13 @@ def probe_limits(access_token: str) -> dict[str, Any]:
 
   limits = []
   if session is not None:
-    percent = normalize_utilization(session.get("utilization"), percent_scale)
-    if percent >= 0:
-      limits.append({"label": "Session (5-hour)", "percent": percent, "resetsAt": normalize_reset_at(session.get("resets_at"))})
+    usage_fraction = normalize_utilization(session.get("utilization"), percent_scale)
+    if usage_fraction >= 0:
+      limits.append({"label": "Session (5-hour)", "usageFraction": usage_fraction, "resetsAt": normalize_reset_at(session.get("resets_at"))})
   if weekly is not None:
-    percent = normalize_utilization(weekly.get("utilization"), percent_scale)
-    if percent >= 0:
-      limits.append({"label": "Weekly (7-day)", "percent": percent, "resetsAt": normalize_reset_at(weekly.get("resets_at"))})
+    usage_fraction = normalize_utilization(weekly.get("utilization"), percent_scale)
+    if usage_fraction >= 0:
+      limits.append({"label": "Weekly (7-day)", "usageFraction": usage_fraction, "resetsAt": normalize_reset_at(weekly.get("resets_at"))})
   limits.extend(scoped_limits(payload, percent_scale))
 
   if not limits:
@@ -203,7 +203,7 @@ def usable_cached_limits(cached: dict[str, Any]) -> list[dict[str, Any]]:
 def collect_limits(access_token: str, expires_at_ms: int) -> dict[str, Any]:
   result = {"limits": [], "usageStatusText": "", "authHelpText": AUTH_HELP}
 
-  probe_cache = usage_cache_dir() / "claude-limits.json"
+  probe_cache = usage_cache_dir() / "claude-limits-v2.json"
   cached = read_fresh_cached_json(probe_cache, float("inf")) or {}
   fallback = usable_cached_limits(cached)
   result["limitsObservedAt"] = rounded_token_count(cached.get("fetchedAtMs"))

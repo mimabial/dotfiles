@@ -27,6 +27,22 @@ PopupCard {
     function refresh() { for (const process of [barLayoutRead, layoutRead, workflowRead]) if (!process.running) process.running = true }
     onOpenChanged: if (open) refresh()
 
+    component OpacityRow: PopupRow {
+        id: opacityRow
+        required property real selectedOpacity
+        required property string automaticLabel
+        signal picked(real value)
+        icon: "󰃟"; title: "Opacity"; interactive: false; rightInset: opacitySelect.width + Style.sm
+        PopupSelect {
+            id: opacitySelect
+            anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX; anchors.verticalCenter: parent.verticalCenter
+            width: Style.px(172); shell: opacityRow.shell
+            choices: [{ label: opacityRow.automaticLabel, value: -1 }].concat(Opacity.presets.map(preset => ({ label: Opacity.label(preset), value: preset.value })))
+            selectedIndex: opacityRow.selectedOpacity < 0 ? 0 : 1 + Opacity.presets.indexOf(Opacity.nearest(opacityRow.selectedOpacity))
+            onActivated: index => opacityRow.picked(opacitySelect.choices[index].value)
+        }
+    }
+
     property Process barLayoutRead: Process { command: [root.helperDir + "quickshell/layout.sh", "list"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.barLayouts = String(text).trim().split("\n").filter(Boolean) } }
     property Process layoutRead: Process { command: [root.helperDir + "util/window-layout.sh", "--list"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.layouts = root.rows(text, root.title) } }
     property Process workflowRead: Process { command: [root.helperDir + "util/workflows.sh", "--list"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.workflows = root.rows(text, root.title) } }
@@ -54,18 +70,16 @@ PopupCard {
                 width: parent.width; spacing: Style.sm
                 PopupSection { shell: root.shell; text: "BAR" }
                 PopupRow { width: parent.width; shell: root.shell; icon: "󰽙"; title: "Background blur"; detail: active ? "Enabled" : "Disabled"; active: root.shell.prefs.barBlur; onClicked: root.shell.toggleBarBlur() }
-                PopupRow {
-                    width: parent.width; shell: root.shell; icon: "󰃟"; title: "Opacity"; interactive: false; rightInset: opacitySelect.width + Style.sm
-                    PopupSelect {
-                        id: opacitySelect
-                        anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX; anchors.verticalCenter: parent.verticalCenter
-                        width: Style.px(172); shell: root.shell
-                        choices: [{ label: "Auto (Workflow)", value: -1 }].concat(Opacity.presets.map(preset => ({ label: Opacity.label(preset), value: preset.value })))
-                        selectedIndex: root.shell.prefs.barOpacity < 0 ? 0 : 1 + Opacity.presets.indexOf(Opacity.nearest(root.shell.prefs.barOpacity))
-                        onActivated: index => root.shell.prefs.barOpacity = opacitySelect.choices[index].value
-                    }
-                }
+                OpacityRow { width: parent.width; shell: root.shell; automaticLabel: "Auto (Workflow)"; selectedOpacity: root.shell.prefs.barOpacity; onPicked: value => root.shell.prefs.barOpacity = value }
                 PopupRow { width: parent.width; shell: root.shell; icon: "󰹞"; title: "Floating bar"; detail: active ? root.shell.barFloatGap + " px gap" : "Disabled"; active: root.shell.prefs.barFloating; onClicked: root.shell.toggleBarFloating() }
+            }
+            PopupSeparator { shell: root.shell }
+            Column {
+                width: parent.width; spacing: Style.sm
+                PopupSection { shell: root.shell; text: "POPUPS" }
+                OpacityRow { width: parent.width; shell: root.shell; automaticLabel: Opacity.label({ name: "Default", value: Style.defaultPopupSurfaceOpacity }); selectedOpacity: root.shell.prefs.popupOpacity; onPicked: value => root.shell.prefs.popupOpacity = value }
+                PopupSlider { id: tintSlider; width: parent.width; shell: root.shell; icon: "󰉦"; label: "Accent tint"; value: root.shell.prefs.popupTint; maximum: Style.maxPopupTint; valueText: Math.round(tintSlider.liveValue * 100) + "%"; onReleased: value => root.shell.prefs.popupTint = value }
+                PopupRow { width: parent.width; shell: root.shell; icon: "󰃎"; title: "Accent border"; detail: active ? "Enabled" : "Disabled"; active: root.shell.prefs.popupAccentBorder; onClicked: root.shell.prefs.popupAccentBorder = !root.shell.prefs.popupAccentBorder }
             }
             PopupSeparator { shell: root.shell }
             Column {

@@ -1,5 +1,3 @@
-// Pure helpers for the dock plugin. No QML state — the host object owns the
-// model; this file only turns inputs into output arrays.
 
 var IGNORED_TOKENS = {
   "org": true, "com": true, "io": true, "net": true, "app": true, "apps": true, "bin": true,
@@ -37,15 +35,12 @@ function copyMap(src) {
   return out
 }
 
-// Compact workspace label for a tooltip: numbered workspaces only. Special
-// workspaces have no number worth showing, so they get nothing.
 function workspaceShort(wsId, wsName) {
   if (wsId === null || wsId === undefined || wsId < 0) return ""
   var name = String(wsName == null ? "" : wsName)
   if (name && name.length <= 2) return name
   return String(wsId)
 }
-
 
 function getCandidates(id) {
   var raw = stripDesktop(id).toLowerCase()
@@ -156,8 +151,6 @@ function isPinned(pinnedIds, appId) {
   return arr.indexOf(stripDesktop(appId)) >= 0
 }
 
-// If insertBeforeId is null/empty, move to the end. Dropping onto the dragged
-// item itself is a no-op (prevents the "teleport to end" self-drop bug).
 function reorderPinned(pinnedIds, appId, insertBeforeId) {
   var arr = Array.isArray(pinnedIds) ? pinnedIds.slice() : []
   var id = stripDesktop(appId)
@@ -191,16 +184,15 @@ function entryFor(appRows, appId) {
     if (stripDesktop(entry.id) === want || stripDesktop(entry.id).toLowerCase() === wantLower) return entry
   }
 
-  // Candidate tokens bridge webapp/profile suffixes and desktop IDs.
-  var wantCands = getCandidates(want)
+  var desktopIdCandidates = getCandidates(want)
   for (var i = 0; i < appRows.length; i++) {
     var entry = appRows[i] && appRows[i].entry
     if (!entry) continue
     var entryCands = getCandidates(entry.id)
       .concat(getCandidates(entry.name))
       .concat(getCandidates(entry.icon))
-    for (var k = 0; k < wantCands.length; k++) {
-      var cand = wantCands[k]
+    for (var k = 0; k < desktopIdCandidates.length; k++) {
+      var cand = desktopIdCandidates[k]
       if (entryCands.indexOf(cand) >= 0) return entry
     }
   }
@@ -210,8 +202,8 @@ function entryFor(appRows, appId) {
     if (!entry) continue
     var execStr = String(entry.exec || "").toLowerCase()
     if (execStr && (execStr.indexOf("http://") >= 0 || execStr.indexOf("https://") >= 0 || execStr.indexOf("--app") >= 0)) {
-      for (var k = 0; k < wantCands.length; k++) {
-        var cand = wantCands[k]
+      for (var k = 0; k < desktopIdCandidates.length; k++) {
+        var cand = desktopIdCandidates[k]
         if (cand.length >= 4 && !IGNORED_TOKENS[cand] && execStr.indexOf(cand) >= 0) return entry
       }
     }
@@ -221,17 +213,20 @@ function entryFor(appRows, appId) {
     var entry = appRows[i] && appRows[i].entry
     if (!entry) continue
     var generic = String(entry.genericName || "").toLowerCase()
-    if (generic && wantCands.indexOf(generic) >= 0) return entry
+    if (generic && desktopIdCandidates.indexOf(generic) >= 0) return entry
   }
 
   return null
 }
 
-function windowAddress(handle) {
-  var value = String((handle && handle.address) || "").trim()
-  if (!value) return ""
+function hyprAddress(raw) {
+  var value = String(raw || "").trim()
   if (value.slice(0, 2) === "0x" || value.slice(0, 2) === "0X") value = value.slice(2)
-  return "0x" + value
+  return value ? "0x" + value : ""
+}
+
+function windowAddress(handle) {
+  return hyprAddress(handle && handle.address)
 }
 
 function luaString(value) {
@@ -296,12 +291,10 @@ function workspaceLabel(name) {
   return suffix ? suffix.charAt(0).toUpperCase() : ""
 }
 
-// isMinimizedWs: predicate over a workspace name. Each parked window gets its
-// own special workspace, so there is no single name to compare against.
 function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMinimizedWs, minimizedOrigins, appGroups, recentIds, recentLimit) {
   var pinned = Array.isArray(pinnedIds) ? pinnedIds : []
   var list = toArray(toplevels)
-  var isMinWs = typeof isMinimizedWs === "function"
+  var isParkedWorkspace = typeof isMinimizedWs === "function"
     ? isMinimizedWs
     : function (name) { return name === "special:minimized" }
   var minOrigins = minimizedOrigins || {}
@@ -342,9 +335,7 @@ function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMini
     var addr = windowAddress(h)
     var ws = h ? h.workspace : null
     var wsName = ws ? String(ws.name || ws.id || "") : ""
-    // With no handle yet, the origins map is the only evidence; the name stays
-    // empty and isMinimized carries the state.
-    var isParked = (wsName !== "" && isMinWs(wsName)) || Boolean(addr && minOrigins[addr])
+    var isParked = (wsName !== "" && isParkedWorkspace(wsName)) || Boolean(addr && minOrigins[addr])
     winMap[appId].push({
       title: String(toplevel.title || "Window"),
       address: addr,
@@ -368,8 +359,6 @@ function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMini
   function enrich(list) {
     for (var j = 0; j < list.length; j++) {
       var item = list[j]
-      // An exact desktop id wins over entryFor's token matching, and is the only
-      // way to reach the NoDisplay entries appRows leaves out.
       var entry = (appLibrary && appLibrary.lookup) ? appLibrary.lookup(item.appId) : null
       if (!entry) entry = entryFor(appRows, item.appId)
       if (entry && appLibrary) {
@@ -458,20 +447,8 @@ function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMini
   return { pinned: pinnedOut, running: runningOut, grouped: groupedOut }
 }
 
-// True when the list has at least one window and every one of them is parked
-// on the minimized workspace. Used by both the running-icon hide logic and
-// the divider gating so the two can never disagree.
-//
-// liveWsOf/minWs: optional live resolver. The cached isMinimized flag freezes
-// at rebuild time and can be stale — Quickshell's Hyprland handle lags silent
-// moves onto the special workspace — so callers that can resolve live state
-// (the address-based lookup the running-dot uses) must pass it here. A window
-// counts as minimized when its cached flag says so OR the live workspace does.
-function allWindowsMinimized(windowList, liveWsOf, isMinimizedWs) {
-  // toArray, NOT Array.isArray: windowList arrives from the Repeater model as
-  // a QVariantList, which Array.isArray rejects — the guard silently emptied
-  // every list and made this helper return false forever (v2.9.1 regression).
-  var isMinWs = typeof isMinimizedWs === "function"
+function allWindowsMinimized(windowList, resolveLiveWorkspace, isMinimizedWs) {
+  var isParkedWorkspace = typeof isMinimizedWs === "function"
     ? isMinimizedWs
     : function (name) { return name === "special:minimized" }
   var list = toArray(windowList)
@@ -480,14 +457,12 @@ function allWindowsMinimized(windowList, liveWsOf, isMinimizedWs) {
     var w = list[i]
     if (!w) return false
     if (w.isMinimized) continue
-    var ws = liveWsOf ? String(liveWsOf(w) || "") : String(w.workspaceName || "")
-    if (!isMinWs(ws)) return false
+    var ws = resolveLiveWorkspace ? String(resolveLiveWorkspace(w) || "") : String(w.workspaceName || "")
+    if (!isParkedWorkspace(ws)) return false
   }
   return true
 }
 
-// Which window a click or a wheel step should land on. Pure: the caller
-// decides how to bring it forward.
 function pickAppWindow(toplevels, activeToplevel, appId, direction) {
   var want = stripDesktop(appId)
   if (!want) return null
@@ -503,17 +478,16 @@ function pickAppWindow(toplevels, activeToplevel, appId, direction) {
   if (matching.length === 1) return matching[0]
 
   var dir = (typeof direction === "number" && direction < 0) ? -1 : 1
-  var activeIdx = -1
+  var focusedWindowIndex = -1
   for (var j = 0; j < matching.length; j++) {
     if (matching[j] === activeToplevel || matching[j].activated) {
-      activeIdx = j
+      focusedWindowIndex = j
       break
     }
   }
 
-  // Nothing of this app is focused: enter the list from the end we came from.
-  if (activeIdx < 0) return matching[dir > 0 ? 0 : matching.length - 1]
-  return matching[(activeIdx + dir + matching.length) % matching.length]
+  if (focusedWindowIndex < 0) return matching[dir > 0 ? 0 : matching.length - 1]
+  return matching[(focusedWindowIndex + dir + matching.length) % matching.length]
 }
 
 function focusWindow(toplevel) {
@@ -548,12 +522,10 @@ function folderIconFor(path, explicitIcon) {
   return "folder"
 }
 
-// The standard place icon a folder icon name stands for; a path passes through.
 function resolveThemedFolderIcon(iconName) {
   var name = String(iconName || "folder").trim()
   if (name.indexOf("/") === 0 || name.indexOf("file://") === 0) return name
 
-  // Place aliases with no dedicated icon in the standard place sets
   var placeAliases = {
     "folder-development": "folder",
     "folder-projects": "folder",
