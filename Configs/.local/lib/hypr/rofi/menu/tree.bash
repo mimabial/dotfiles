@@ -90,7 +90,6 @@ menu_show_menu() {
     return 0
   fi
 
-  # anything else non-zero is cancel, and cancel always leaves the tree
   if ((rofi_exit != 0 && rofi_exit != MENU_EXIT_DESCEND)); then
     exit 0
   fi

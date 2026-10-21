@@ -36,13 +36,13 @@ Item {
   readonly property bool opened: root.stage !== "idle"
   readonly property string dialogScreenName: {
     var screens = Quickshell.screens || []
-    for (var i = 0; i < screens.length; i++) {
-      if (String(screens[i].name || "") === root.targetScreenName) return root.targetScreenName
+    for (var screen of screens) {
+      if (String(screen.name || "") === root.targetScreenName) return root.targetScreenName
     }
     var focused = Hyprland.focusedMonitor
     var focusedName = focused ? String(focused.name || "") : ""
-    for (var j = 0; j < screens.length; j++) {
-      if (String(screens[j].name || "") === focusedName) return focusedName
+    for (var screen of screens) {
+      if (String(screen.name || "") === focusedName) return focusedName
     }
     return screens.length > 0 ? String(screens[0].name || "") : ""
   }

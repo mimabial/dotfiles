@@ -43,7 +43,6 @@ def _status_error():
     return {"text": "", "alt": "error", "class": "error"}
 
 
-# every query rides the one connection: no dunstctl shell, no dbus-send, no fork.
 def _call_dunst_dbus(iface, method, params=None):
     return BUS.call_sync(
         DUNST_DEST, DUNST_PATH, iface, method, params, None,

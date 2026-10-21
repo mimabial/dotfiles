@@ -14,26 +14,19 @@ import "visualizers/ascii.js" as VisAscii
 import "visualizers/wave.js" as VisWave
 import "visualizers/sine.js" as VisSine
 import "visualizers/mirror.js" as VisMirror
-import "visualizers/siriwave.js" as VisSiriWave
 import "visualizers/soundcloud_wave.js" as VisSoundCloudWave
 import "visualizers/telegram_wave.js" as VisTelegramWave
 import "visualizers/daw_wave.js" as VisDAWWave
 import "visualizers/led_scrubber.js" as VisLEDScrubber
 import "visualizers/heatmap_wave.js" as VisHeatmapWave
 import "visualizers/grounded_wave.js" as VisGroundedWave
-import "visualizers/retro.js" as VisRetro
 import "visualizers/matrix.js" as VisMatrix
-import "visualizers/binary.js" as VisBinary
-import "visualizers/terrain.js" as VisTerrain
 import "visualizers/mosaic.js" as VisMosaic
 import "visualizers/scatter.js" as VisScatter
 import "visualizers/butterfly.js" as VisButterfly
 import "visualizers/plasma.js" as VisPlasma
-import "visualizers/osc_warp.js" as VisOscWarp
-import "visualizers/crt_scanline.js" as VisCRTScanline
 import "visualizers/cyber_tunnel.js" as VisCyberTunnel
 import "visualizers/red_sector.js" as VisRedSector
-import "visualizers/yinyang.js" as VisYinYang
 import "visualizers/background.js" as VisBackground
 import "visualizers/helpers.js" as VisTheme
 
@@ -133,23 +126,23 @@ Item {
     var rawLines = raw.split("\n")
     var timestampPattern = /\[(\d{1,3}):(\d{1,2}(?:\.\d+)?)\]/g
     for (var i = 0; i < rawLines.length; i++) {
-      var l = rawLines[i].trim()
-      if (!l) continue
-      if (/^\[(ar|ti|al|by|offset|length|re|ve):/i.test(l)) continue
+      var line = rawLines[i].trim()
+      if (!line) continue
+      if (/^\[(ar|ti|al|by|offset|length|re|ve):/i.test(line)) continue
       var match
       var times = []
       var textStart = 0
       timestampPattern.lastIndex = 0
-      while ((match = timestampPattern.exec(l)) !== null) {
-        var min = parseInt(match[1])
-        var sec = parseFloat(match[2])
-        times.push(min * 60 + sec)
+      while ((match = timestampPattern.exec(line)) !== null) {
+        var minutes = parseInt(match[1])
+        var seconds = parseFloat(match[2])
+        times.push(minutes * 60 + seconds)
         textStart = timestampPattern.lastIndex
       }
-      var lineText = l.slice(textStart).trim()
+      var lineText = line.slice(textStart).trim()
       if (times.length > 0) {
-        for (var t = 0; t < times.length; t++) {
-          lines.push({ time: times[t], text: lineText })
+        for (var timestamp of times) {
+          lines.push({ time: timestamp, text: lineText })
         }
       } else if (lineText && !/^\[.*?\]$/.test(lineText)) {
         lines.push({ time: -1, text: lineText })
@@ -178,37 +171,30 @@ Item {
     "peaks": VisPeaks.render, "stereo": VisStereo.render,
     "correlation": VisCorrelation.render, "ascii": VisAscii.render,
     "wave": VisWave.render, "sine": VisSine.render, "mirror": VisMirror.render,
-    "siriwave": VisSiriWave.render,
     "soundcloud_wave": VisSoundCloudWave.render, "telegram_wave": VisTelegramWave.render,
     "daw_wave": VisDAWWave.render, "led_scrubber": VisLEDScrubber.render,
     "heatmap_wave": VisHeatmapWave.render, "grounded_wave": VisGroundedWave.render,
-    "retro": VisRetro.render,
-    "matrix": VisMatrix.render, "binary": VisBinary.render, "terrain": VisTerrain.render,
+    "matrix": VisMatrix.render,
     "mosaic": VisMosaic.render, "scatter": VisScatter.render,
     "butterfly": VisButterfly.render, "plasma": VisPlasma.render,
-    "osc_warp": VisOscWarp.render, "crt_scanline": VisCRTScanline.render,
-    "cyber_tunnel": VisCyberTunnel.render, "red_sector": VisRedSector.render,
-    "yinyang": VisYinYang.render
+    "cyber_tunnel": VisCyberTunnel.render, "red_sector": VisRedSector.render
   })
 
   readonly property var visualizerEntryHooks: ({ "mosaic": VisMosaic.onEnter, "peaks": VisPeaks.onEnter,
                                       "classic_led": VisClassicLED.onEnter,
-                                      "red_sector": VisRedSector.onEnter, "yinyang": VisYinYang.onEnter })
+                                      "red_sector": VisRedSector.onEnter })
 
   readonly property var visualizerLabels: ({
     "bars": "Bars", "bricks": "Bricks", "classic_led": "Classic LED",
     "peaks": "Peaks", "stereo": "Stereo", "correlation": "Correlation", "ascii": "Ascii",
     "wave": "Wave", "sine": "Sine Wave", "mirror": "Mirror",
-    "siriwave": "Siri Wave",
     "soundcloud_wave": "SoundCloud Wave", "telegram_wave": "Telegram Wave",
     "daw_wave": "DAW Meter", "led_scrubber": "LED Scrubber",
     "heatmap_wave": "Heatmap Wave", "grounded_wave": "Baseline Wave",
-    "retro": "Retro",
-    "matrix": "Matrix", "binary": "Binary", "terrain": "Terrain",
+    "matrix": "Matrix",
     "mosaic": "Mosaic", "scatter": "Scatter",
     "butterfly": "Butterfly", "plasma": "Liquid Plasma",
-    "osc_warp": "Oscilloscope Warp", "crt_scanline": "CRT Radar Scope",
-    "cyber_tunnel": "3D Cyber Tunnel", "red_sector": "Red Sector", "yinyang": "Yin Yang"
+    "cyber_tunnel": "3D Cyber Tunnel", "red_sector": "Red Sector"
   })
 
   readonly property color opaqueVisualizerDim: root.controller ? Qt.rgba(
@@ -545,8 +531,8 @@ Item {
             ctx.clearRect(0, 0, w, h)
 
             var payload = root.visPayload(w, h)
-            var fn = root.visualizerRenderers[root.controller.visMode]
-            if (fn) fn(ctx, payload)
+            var renderVisualizer = root.visualizerRenderers[root.controller.visMode]
+            if (renderVisualizer) renderVisualizer(ctx, payload)
             root.peaksMoving = root.controller.visMode === "peaks" && VisPeaks.animating(root.controller.visualizerState)
           }
 
@@ -664,9 +650,8 @@ Item {
         Text {
           visible: seekBar.hoverSecs >= 0 && root.controller.totalSecs > 0
           text: {
-            var s = seekBar.hoverSecs
-            var m = Math.floor(s / 60), sec = s % 60
-            return m + ":" + (sec < 10 ? "0" + sec : sec)
+            var minutes = Math.floor(seekBar.hoverSecs / 60), seconds = seekBar.hoverSecs % 60
+            return minutes + ":" + (seconds < 10 ? "0" + seconds : seconds)
           }
           color: root.controller.foreground; font.family: root.controller.fontFamily; font.pixelSize: Commons.Style.font.caption; font.bold: true
           x: Math.max(0, Math.min(parent.width - width, seekMouse.mouseX - width / 2))
@@ -703,9 +688,9 @@ Item {
       onStreamFinished: {
         root.lyricsLoading = false
         try {
-          var d = JSON.parse(text || "{}")
-          if (d.synced) root.parseLyrics(d.synced)
-          else if (d.plain) root.parseLyrics(d.plain)
+          var lyrics = JSON.parse(text || "{}")
+          if (lyrics.synced) root.parseLyrics(lyrics.synced)
+          else if (lyrics.plain) root.parseLyrics(lyrics.plain)
           else root.lyricsLines = []
         } catch (e) { root.lyricsLines = [] }
       }

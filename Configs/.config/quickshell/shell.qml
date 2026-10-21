@@ -169,7 +169,7 @@ ShellRoot {
     readonly property var activeEntries: timerItems.filter(item => Number(item.epoch) > timerNow).sort((a, b) => a.epoch - b.epoch)
     readonly property var activeTimers: activeEntries.filter(item => item.kind === "timer")
     readonly property alias clockwork: clockworkState
-    readonly property alias quickshare: quickshareService
+    readonly property alias kdeconnect: kdeconnectService
     readonly property alias altscape: altscapeService
     readonly property alias bitwarden: bitwardenVault
     readonly property alias systemStats: systemStatsService
@@ -291,7 +291,7 @@ ShellRoot {
     }
 
     ClockworkState { id: clockworkState; shell: shellRoot }
-    QuickShare { id: quickshareService; shell: shellRoot }
+    KdeConnect { id: kdeconnectService; shell: shellRoot }
     Altscape.Service { id: altscapeService; shell: shellRoot }
     Bitwarden { id: bitwardenVault; shell: shellRoot }
     SystemStatsService { id: systemStatsService; shell: shellRoot }

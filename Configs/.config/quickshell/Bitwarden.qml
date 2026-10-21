@@ -31,7 +31,6 @@ Item {
     readonly property string pinCipher: "openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -a -A -pass env:PIN"
     readonly property string prompt: pam.active ? pam.message : ""
 
-    // A job whose session changed underneath it answers for a vault that is gone.
     function runShellScript(script, commandArgs, onFinished, environment) {
         const requestedSession = session
         const commandProcess = jobComponent.createObject(root, {
@@ -119,27 +118,25 @@ Item {
     }
     function install() { terminal("Install Bitwarden CLI", "hyprshell pm add bitwarden-cli") }
 
-    // `stored` unlocks from the armed secret; `arm` stores the password that just
-    // proved itself, so a quick unlock never holds a stale one.
-    function unlock(env, stored, arm) {
+    function unlock(env, fromArmedSecret, armAs) {
         error = ""
         const decode = settings.quickUnlock === "pin" ? pinCipher + " -d" : "cat"
-        const script = stored
+        const script = fromArmedSecret
             ? '[ -s "$1" ] || exit ' + exitNotArmed + '; BW_PASSWORD="$(' + decode + ' < "$1")" || exit ' + exitWrongPin + '; export BW_PASSWORD; bw unlock --passwordenv BW_PASSWORD --raw'
             : 'bw unlock --passwordenv BW_PASSWORD --raw || exit 1'
-                + (arm ? '; (umask 077; printf %s "$BW_PASSWORD" | ' + (arm === "pin" ? pinCipher : "cat") + ' > "$1") || exit ' + exitArmFailed : "")
+                + (armAs ? '; (umask 077; printf %s "$BW_PASSWORD" | ' + (armAs === "pin" ? pinCipher : "cat") + ' > "$1") || exit ' + exitArmFailed : "")
         runShellScript(script, [unlockFile], (code, out, err) => {
             if (code === 0 || code === exitArmFailed) {
                 sessionFile.setText(out.trim())
                 adopt(out.trim())
                 pinFailures = 0
-                if (arm) settings.quickUnlock = code ? "" : arm
+                if (armAs) settings.quickUnlock = code ? "" : armAs
                 if (code) error = "Unlocked, but quick unlock could not be armed"
                 return
             }
             error = code === exitNotArmed ? "Unlock with your master password once to arm quick unlock"
                 : code === exitWrongPin ? "Wrong PIN" : Model.lastLine(err) || "Unlock failed"
-            if (stored && code !== exitNotArmed && (settings.quickUnlock !== "pin" || ++pinFailures >= maxPinFailures)) {
+            if (fromArmedSecret && code !== exitNotArmed && (settings.quickUnlock !== "pin" || ++pinFailures >= maxPinFailures)) {
                 runShellScript('rm -f "$1"', [unlockFile])
                 pinFailures = 0
                 error += " — quick unlock disarmed, use your master password"
@@ -242,7 +239,6 @@ Item {
         target: "bitwarden"
         function lock(): void { root.lock() }
         function screenLocked(): void { if (root.settings.lockWithScreen) root.lock() }
-        // the terminal login/install hand-off: re-read the session and show the result
         function reload(): void {
             root.status = ""
             sessionFile.reload()

@@ -22,7 +22,6 @@ Rectangle {
     property color valueHoverColor: valueColor
     property bool active: false
     property bool hoverBorder: true
-    // a row with nothing to click should not light up or take the keyboard cursor
     property bool interactive: true
     property real rightInset: 0
     readonly property bool navigable: interactive && enabled
@@ -52,7 +51,6 @@ Rectangle {
     Row {
         anchors.fill: parent; anchors.leftMargin: Style.controlPaddingX; anchors.rightMargin: Style.controlPaddingX + root.rightInset
         spacing: Style.controlPaddingX
-        // centred in its fixed column so the gap to the border matches the gap to the text
         IconImage { id: iconImage; visible: root.iconSource !== ""; implicitWidth: root.iconSize; implicitHeight: root.iconSize; clip: true; backer.fillMode: Image.PreserveAspectCrop; anchors.verticalCenter: parent.verticalCenter; source: root.iconSource }
         Text { id: iconText; visible: root.icon !== ""; width: Style.px(22); horizontalAlignment: Text.AlignHCenter; anchors.verticalCenter: parent.verticalCenter; text: root.icon; color: root.iconColor; font.family: root.shell.fontFamily; font.pixelSize: Style.title + 3 }
         Column {

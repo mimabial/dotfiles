@@ -18,7 +18,7 @@ from autotag_identity import album_agrees, album_context, existing
 from lyrics_paths import music_library_dir
 from autotag_models import TrackTags, Unidentified
 from autotag_cache import ResolutionCache
-from autotag_catalogs import ACOUSTID_INTERVAL, DEEZER_INTERVAL, HTTP_SESSION, HTTP_TIMEOUT_S, ITUNES_INTERVAL, MUSICBRAINZ_INTERVAL, RateLimiter, acoustid_key, configure_persistent_cache
+from autotag_catalogs import ACOUSTID_INTERVAL_SECONDS, DEEZER_INTERVAL_SECONDS, HTTP_SESSION, HTTP_TIMEOUT_SECONDS, ITUNES_INTERVAL_SECONDS, MUSICBRAINZ_INTERVAL_SECONDS, RateLimiter, acoustid_key, configure_persistent_cache
 from autotag_youtube_credits import filename_credit_loss, recovered_youtube_artist
 from autotag_tag_io import NON_TAG_FIELDS, embed_artwork, embedded_artwork, has_artwork, prepare_metadata, tidy_title, write_tags
 from autotag_resolver import Resolver, cache_resolution
@@ -252,7 +252,7 @@ def report_dry_run(path: Path, tags, meta: dict, args, in_album_group: bool) -> 
 
 
 def embed_track_artwork(path: Path, meta: dict, written: dict) -> None:
-    image = HTTP_SESSION.get(meta["artwork_url"], timeout=HTTP_TIMEOUT_S)
+    image = HTTP_SESSION.get(meta["artwork_url"], timeout=HTTP_TIMEOUT_SECONDS)
     image.raise_for_status()
     if embedded_artwork(path) != image.content:
         embed_artwork(path, image.content)
@@ -269,7 +269,7 @@ def apply_album_artwork(group: AlbumArtworkGroup, resolver: Resolver) -> int:
         return 0
 
     try:
-        image = HTTP_SESSION.get(artwork_url, timeout=HTTP_TIMEOUT_S)
+        image = HTTP_SESSION.get(artwork_url, timeout=HTTP_TIMEOUT_SECONDS)
         image.raise_for_status()
     except requests.RequestException as exc:
         print(f"!! {group.album}: artwork download failed: {exc}", file=sys.stderr)
@@ -392,10 +392,10 @@ def make_resolver(args, lookup_key: str, cache) -> Resolver:
     return Resolver(
         args,
         {
-            "acoustid": RateLimiter(ACOUSTID_INTERVAL),
-            "musicbrainz": RateLimiter(MUSICBRAINZ_INTERVAL),
-            "itunes": RateLimiter(ITUNES_INTERVAL),
-            "deezer": RateLimiter(DEEZER_INTERVAL),
+            "acoustid": RateLimiter(ACOUSTID_INTERVAL_SECONDS),
+            "musicbrainz": RateLimiter(MUSICBRAINZ_INTERVAL_SECONDS),
+            "itunes": RateLimiter(ITUNES_INTERVAL_SECONDS),
+            "deezer": RateLimiter(DEEZER_INTERVAL_SECONDS),
         },
         lookup_key,
         cache,

@@ -44,7 +44,6 @@ Column {
       return { value: 0, color: s1, text: "Off", unit: "", label: "Swap", sub: "" }
     }
     var frac = swapUsed / swapTotal
-    // Just the figure: the ring is small, and "used" is implied by the arc.
     var sub = Units.bytesText(swapUsed > 0 ? swapUsed : swapTotal)
     return {
       value: frac,

@@ -40,7 +40,6 @@ BorderSurface {
         color: root.enabled ? (root.hot ? root.hoverColor : root.foreground)
                             : Commons.Util.alpha(root.foreground, 0.35)
         font.family: root.fontFamily
-        // play and pause draw at different ink heights to every other icon here
         font.pixelSize: root.fontSize * Commons.Style.iconScale(root.iconText)
     }
 

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# Underscore-prefixed, so hypr-theme's renderer scan skips it.
 
 import os
 import sys

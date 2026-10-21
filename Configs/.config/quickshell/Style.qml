@@ -4,8 +4,6 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 
-// Shared spacing and type tokens. Every popup metric comes from here — a value
-// invented at a use site is how the padding drifted in the first place.
 Singleton {
     id: root
     readonly property int xxs: px(2)
@@ -36,8 +34,6 @@ Singleton {
     readonly property int spotlightSectionHeight: px(24)
     readonly property int spotlightListHeight: px(456)
 
-    // Popup surfaces. PopupCard defaults from these, and the qs.Commons shim
-    // re-exports them so ported panels land on the same glass as the bar's own.
     readonly property real defaultPopupSurfaceOpacity: 0.55
     property real popupSurfaceOpacity: defaultPopupSurfaceOpacity
     readonly property real popupBorderOpacity: 0.45
@@ -60,11 +56,12 @@ Singleton {
     readonly property int tooltipDelay: 400
     readonly property int focusPrimeDelay: 150
 
-    // hyprshell system/text-size writes the application body size directly.
-    property int textSize: 12
-    readonly property real uiScale: textSize / 12
+    readonly property int defaultTextSize: 12
+    property int textSize: defaultTextSize
+    readonly property real uiScale: textSize / defaultTextSize
+    readonly property real glyphOvershoot: 0.15
     function px(size) { return Math.round(size * uiScale) }
-    function fontPx(nominalSize) { return Math.round(nominalSize * textSize / 12) }
+    function fontPx(nominalSize) { return Math.round(nominalSize * textSize / defaultTextSize) }
     function typePx(ratio) { return Math.max(1, Math.round(textSize * ratio)) }
 
     property Process animationProbe: Process {
@@ -98,7 +95,7 @@ Singleton {
         onFileChanged: reload()
         onLoaded: {
             const match = String(text()).match(/(?:^|\n)TEXT_SIZE=["']?(\d+)/)
-            root.textSize = match ? parseInt(match[1]) : 12
+            root.textSize = match ? parseInt(match[1]) : root.defaultTextSize
         }
     }
 }

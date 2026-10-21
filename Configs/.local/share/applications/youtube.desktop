@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=youtube
+Comment=youtube
+Exec="/home/rifle/.local/share/hypr/webapps/youtube"
+Terminal=false
+Icon=/home/rifle/.local/share/applications/icons/youtube.png
+StartupNotify=true
+X-Hypr-WebApp=true
+X-Hypr-WebApp-Id=youtube

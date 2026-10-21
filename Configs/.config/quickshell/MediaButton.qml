@@ -24,8 +24,6 @@ Item {
     property bool controlsRight: false
     property bool showArtist: true
     property bool randomizeProgressShape: false
-    // with no player the module collapses to nothing; showWhenIdle keeps a
-    // placeholder in the bar to open the popup from
     property bool showWhenIdle: false
     property string idleIcon: "󰽯"
     property var idleQuotes: [

@@ -12,8 +12,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from pyutils.xdg_base_dirs import xdg_runtime_dir
 from submap_bindings import normalize_submap, build_submap_hint
 
-COMMAND_TIMEOUT = 2
-HINT_BUILD_TIMEOUT = 5
+COMMAND_TIMEOUT_SECONDS = 2
+HINT_BUILD_TIMEOUT_SECONDS = 5
 NOTIFY_ID_SUBMAP_HINT = "9042"
 LOG = logging.getLogger("submap-hint")
 
@@ -31,7 +31,7 @@ async def stop_process(process):
         await process.wait()
 
 
-async def run_command(args, label, timeout=COMMAND_TIMEOUT):
+async def run_command(args, label, timeout=COMMAND_TIMEOUT_SECONDS):
     process = await asyncio.create_subprocess_exec(
         *args,
         stdout=asyncio.subprocess.PIPE,
@@ -94,7 +94,7 @@ async def generate_submap_hint_with_deadline(name):
     try:
         return await asyncio.wait_for(
             asyncio.to_thread(build_submap_hint, name),
-            HINT_BUILD_TIMEOUT,
+            HINT_BUILD_TIMEOUT_SECONDS,
         )
     except TimeoutError as error:
         raise RuntimeError(f"hint generation timed out for submap {name!r}") from error

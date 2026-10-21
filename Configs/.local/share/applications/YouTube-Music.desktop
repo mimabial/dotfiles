@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=YouTube Music
+Comment=YouTube Music
+Exec="/home/rifle/.local/share/hypr/webapps/YouTube-Music"
+Terminal=false
+Icon=/home/rifle/.local/share/applications/icons/YouTube-Music.png
+StartupNotify=true
+X-Hypr-WebApp=true
+X-Hypr-WebApp-Id=YouTube-Music

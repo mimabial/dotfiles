@@ -53,16 +53,14 @@ function getCandidates(id) {
     var webTarget = webAppMatch[1].replace(/^https?___?/i, "").replace(/__.*$/, "")
     if (webTarget && list.indexOf(webTarget) < 0) list.push(webTarget)
     var webDomain = webTarget.split(/[\.\/_]+/)
-    for (var w = 0; w < webDomain.length; w++) {
-      var seg = webDomain[w]
-      if (seg && list.indexOf(seg) < 0) list.push(seg)
+    for (var segment of webDomain) {
+      if (segment && list.indexOf(segment) < 0) list.push(segment)
     }
   }
 
   var parts = raw.split(/[\.\/_-]+/)
-  for (var i = 0; i < parts.length; i++) {
-    var p = parts[i]
-    if (p && list.indexOf(p) < 0) list.push(p)
+  for (var part of parts) {
+    if (part && list.indexOf(part) < 0) list.push(part)
   }
 
   var len = list.length
@@ -75,10 +73,9 @@ function getCandidates(id) {
   }
 
   var out = []
-  for (var i = 0; i < list.length; i++) {
-    var s = list[i]
-    if (s && !IGNORED_TOKENS[s] && out.indexOf(s) < 0) {
-      out.push(s)
+  for (var token of list) {
+    if (token && !IGNORED_TOKENS[token] && out.indexOf(token) < 0) {
+      out.push(token)
     }
   }
   return out
@@ -90,11 +87,10 @@ function isAppMatch(idA, idB) {
   var b = stripDesktop(idB).toLowerCase()
   if (a === b) return true
 
-  var candsA = getCandidates(a)
-  var candsB = getCandidates(b)
-  for (var i = 0; i < candsA.length; i++) {
-    var ca = candsA[i]
-    if (candsB.indexOf(ca) >= 0) return true
+  var candidatesA = getCandidates(a)
+  var candidatesB = getCandidates(b)
+  for (var candidate of candidatesA) {
+    if (candidatesB.indexOf(candidate) >= 0) return true
   }
   return false
 }
@@ -114,8 +110,8 @@ function parsePinned(raw) {
   var arr = Array.isArray(parsed.pinned) ? parsed.pinned : []
   var out = []
   var seen = {}
-  for (var i = 0; i < arr.length; i++) {
-    var id = stripDesktop(arr[i])
+  for (var appId of arr) {
+    var id = stripDesktop(appId)
     if (!id || seen[id]) continue
     seen[id] = true
     out.push(id)
@@ -127,8 +123,8 @@ function serializePinned(pinnedIds) {
   var arr = Array.isArray(pinnedIds) ? pinnedIds : []
   var cleaned = []
   var seen = {}
-  for (var i = 0; i < arr.length; i++) {
-    var id = stripDesktop(arr[i])
+  for (var appId of arr) {
+    var id = stripDesktop(appId)
     if (!id || seen[id]) continue
     seen[id] = true
     cleaned.push(id)
@@ -172,45 +168,47 @@ function reorderPinned(pinnedIds, appId, insertBeforeId) {
   return arr
 }
 
+function exactEntryFor(appRows, appId) {
+  var want = stripDesktop(appId).toLowerCase()
+  if (!want || !appRows) return null
+  for (var appRow of appRows) {
+    var entry = appRow && appRow.entry
+    if (entry && stripDesktop(entry.id).toLowerCase() === want) return entry
+  }
+  return null
+}
+
 function entryFor(appRows, appId) {
+  var exact = exactEntryFor(appRows, appId)
+  if (exact) return exact
   var want = stripDesktop(appId)
   if (!want || !appRows) return null
-  var wantLower = want.toLowerCase()
-
-  for (var i = 0; i < appRows.length; i++) {
-    var row = appRows[i]
-    var entry = row && row.entry
-    if (!entry) continue
-    if (stripDesktop(entry.id) === want || stripDesktop(entry.id).toLowerCase() === wantLower) return entry
-  }
 
   var desktopIdCandidates = getCandidates(want)
-  for (var i = 0; i < appRows.length; i++) {
-    var entry = appRows[i] && appRows[i].entry
+  for (var appRow of appRows) {
+    var entry = appRow && appRow.entry
     if (!entry) continue
-    var entryCands = getCandidates(entry.id)
+    var entryCandidates = getCandidates(entry.id)
       .concat(getCandidates(entry.name))
       .concat(getCandidates(entry.icon))
-    for (var k = 0; k < desktopIdCandidates.length; k++) {
-      var cand = desktopIdCandidates[k]
-      if (entryCands.indexOf(cand) >= 0) return entry
+    for (var candidate of desktopIdCandidates) {
+      if (entryCandidates.indexOf(candidate) >= 0) return entry
     }
   }
 
-  for (var i = 0; i < appRows.length; i++) {
-    var entry = appRows[i] && appRows[i].entry
+  for (var appRow of appRows) {
+    var entry = appRow && appRow.entry
     if (!entry) continue
     var execStr = String(entry.exec || "").toLowerCase()
     if (execStr && (execStr.indexOf("http://") >= 0 || execStr.indexOf("https://") >= 0 || execStr.indexOf("--app") >= 0)) {
-      for (var k = 0; k < desktopIdCandidates.length; k++) {
-        var cand = desktopIdCandidates[k]
-        if (cand.length >= 4 && !IGNORED_TOKENS[cand] && execStr.indexOf(cand) >= 0) return entry
+      for (var candidate of desktopIdCandidates) {
+        if (candidate.length >= 4 && !IGNORED_TOKENS[candidate] && execStr.indexOf(candidate) >= 0) return entry
       }
     }
   }
 
-  for (var i = 0; i < appRows.length; i++) {
-    var entry = appRows[i] && appRows[i].entry
+  for (var appRow of appRows) {
+    var entry = appRow && appRow.entry
     if (!entry) continue
     var generic = String(entry.genericName || "").toLowerCase()
     if (generic && desktopIdCandidates.indexOf(generic) >= 0) return entry
@@ -235,8 +233,7 @@ function luaString(value) {
 
 function windowByAddress(windows, address, isParked) {
   if (!address) return null
-  for (var i = 0; i < windows.length; i++) {
-    var window = windows[i]
+  for (var window of windows) {
     if (window && window.address === address) return isParked(window) ? null : window
   }
   return null
@@ -257,9 +254,9 @@ function focusedIndex(windows, activeAddress) {
 }
 
 function windowOnWorkspace(windows, workspaceOf, workspaceId, workspaceName) {
-  for (var i = 0; i < windows.length; i++) {
-    var workspace = workspaceOf(windows[i])
-    if (windows[i] && (workspace === String(workspaceId) || workspace === workspaceName)) return windows[i]
+  for (var window of windows) {
+    var workspace = workspaceOf(window)
+    if (window && (workspace === String(workspaceId) || workspace === workspaceName)) return window
   }
   return null
 }
@@ -300,10 +297,10 @@ function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMini
   var minOrigins = minimizedOrigins || {}
   var groupedIds = []
   var groups = toArray(appGroups)
-  for (var g = 0; g < groups.length; g++) {
-    var apps = toArray(groups[g] && groups[g].apps)
-    for (var a = 0; a < apps.length; a++) {
-      var groupedId = stripDesktop(apps[a])
+  for (var group of groups) {
+    var apps = toArray(group && group.apps)
+    for (var app of apps) {
+      var groupedId = stripDesktop(app)
       if (groupedId && groupedIds.indexOf(groupedId) < 0) groupedIds.push(groupedId)
     }
   }
@@ -322,8 +319,7 @@ function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMini
 
   var runningIds = []
   var winMap = {}
-  for (var i = 0; i < list.length; i++) {
-    var toplevel = list[i]
+  for (var toplevel of list) {
     if (!toplevel) continue
     var appId = stripDesktop(toplevel.appId)
     if (!appId) continue
@@ -347,18 +343,16 @@ function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMini
 
   function getWindowsFor(targetId) {
     if (winMap[targetId] && winMap[targetId].length > 0) return winMap[targetId]
-    for (var k = 0; k < runningIds.length; k++) {
-      var rid = runningIds[k]
-      if (isAppMatch(targetId, rid)) {
-        return winMap[rid] || []
+    for (var runningId of runningIds) {
+      if (isAppMatch(targetId, runningId)) {
+        return winMap[runningId] || []
       }
     }
     return []
   }
 
   function enrich(list) {
-    for (var j = 0; j < list.length; j++) {
-      var item = list[j]
+    for (var item of list) {
       var entry = (appLibrary && appLibrary.lookup) ? appLibrary.lookup(item.appId) : null
       if (!entry) entry = entryFor(appRows, item.appId)
       if (entry && appLibrary) {
@@ -368,10 +362,9 @@ function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMini
         item.name = item.appId
         var iconFound = ""
         if (appLibrary) {
-          var cands = getCandidates(item.appId)
-          for (var k = 0; k < cands.length; k++) {
-            var cand = cands[k]
-            var testSrc = appLibrary.iconSource(cand)
+          var candidates = getCandidates(item.appId)
+          for (var candidate of candidates) {
+            var testSrc = appLibrary.iconSource(candidate)
             if (testSrc && testSrc.indexOf("application-x-executable") < 0) {
               iconFound = testSrc
               break
@@ -453,11 +446,10 @@ function allWindowsMinimized(windowList, resolveLiveWorkspace, isMinimizedWs) {
     : function (name) { return name === "special:minimized" }
   var list = toArray(windowList)
   if (list.length === 0) return false
-  for (var i = 0; i < list.length; i++) {
-    var w = list[i]
-    if (!w) return false
-    if (w.isMinimized) continue
-    var ws = resolveLiveWorkspace ? String(resolveLiveWorkspace(w) || "") : String(w.workspaceName || "")
+  for (var window of list) {
+    if (!window) return false
+    if (window.isMinimized) continue
+    var ws = resolveLiveWorkspace ? String(resolveLiveWorkspace(window) || "") : String(window.workspaceName || "")
     if (!isParkedWorkspace(ws)) return false
   }
   return true
@@ -469,9 +461,8 @@ function pickAppWindow(toplevels, activeToplevel, appId, direction) {
   var list = toArray(toplevels)
   var matching = []
 
-  for (var i = 0; i < list.length; i++) {
-    var t = list[i]
-    if (t && (stripDesktop(t.appId) === want || isAppMatch(t.appId, want))) matching.push(t)
+  for (var toplevel of list) {
+    if (toplevel && (stripDesktop(toplevel.appId) === want || isAppMatch(toplevel.appId, want))) matching.push(toplevel)
   }
 
   if (matching.length === 0) return null
@@ -499,11 +490,10 @@ function closeApp(toplevels, appId) {
   if (!want) return 0
   var list = toArray(toplevels)
   var closed = 0
-  for (var i = 0; i < list.length; i++) {
-    var t = list[i]
-    if (!t) continue
-    if (stripDesktop(t.appId) === want || isAppMatch(t.appId, want)) {
-      if (t.close) t.close()
+  for (var toplevel of list) {
+    if (!toplevel) continue
+    if (stripDesktop(toplevel.appId) === want || isAppMatch(toplevel.appId, want)) {
+      if (toplevel.close) toplevel.close()
       closed += 1
     }
   }

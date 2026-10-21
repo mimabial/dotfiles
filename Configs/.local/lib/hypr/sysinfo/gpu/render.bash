@@ -77,7 +77,6 @@ GPU_BAR_UTILIZATION_DIGITS=2
 
 gpu_format_utilization() {
   if [[ -n "${gpu_utilization_percent}" && "${gpu_utilization_percent}" != "N/A" ]]; then
-    # Keep the bar at two digits; the tooltip retains the raw value.
     local display_utilization_percent="${gpu_utilization_percent%%.*}"
     local display_max_percent=$((10 ** GPU_BAR_UTILIZATION_DIGITS - 1))
     [[ "${display_utilization_percent}" =~ ^[0-9]+$ ]] && ((display_utilization_percent > display_max_percent)) && display_utilization_percent="${display_max_percent}"

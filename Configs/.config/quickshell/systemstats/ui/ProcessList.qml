@@ -6,7 +6,6 @@ import qs.Ui
 import "../Model.js" as Model
 import "../../Units.js" as Units
 
-// The unfolded state lives on the host so it follows you from page to page.
 Column {
   id: root
 

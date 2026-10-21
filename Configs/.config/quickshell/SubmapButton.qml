@@ -2,9 +2,6 @@ import QtQuick
 import Quickshell.Io
 import Quickshell.Hyprland
 
-// Hyprland already streams submap changes into this process, so the module binds
-// to the event instead of a provider poll. It is only on screen while a submap is
-// held; the blink is what makes that state hard to miss.
 BarButton {
     id: root
     property color baseColor: shell.foreground

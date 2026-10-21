@@ -115,21 +115,20 @@ Item {
 
   readonly property int appsSlots: root.showAppsButton ? 1 : 0
   readonly property int visibleRunningCount: {
-    var n = 0
-    for (var i = 0; i < root.runningSection.length; i++) {
-      var item = root.runningSection[i]
+    var count = 0
+    for (var item of root.runningSection) {
       if (root.showMinimizedTiles && item && DockModel.allWindowsMinimized(item.windowList, root.liveWsNameOf, root.isMinimizedWorkspace)) continue
-      n++
+      count++
     }
-    return n
+    return count
   }
   function visibleRunningSlotBefore(idx) {
-    var n = 0
+    var count = 0
     for (var i = 0; i < idx && i < root.runningSection.length; i++) {
-      var e = root.runningSection[i]
-      if (!(root.showMinimizedTiles && e && DockModel.allWindowsMinimized(e.windowList, root.liveWsNameOf, root.isMinimizedWorkspace))) n++
+      var entry = root.runningSection[i]
+      if (!(root.showMinimizedTiles && entry && DockModel.allWindowsMinimized(entry.windowList, root.liveWsNameOf, root.isMinimizedWorkspace))) count++
     }
-    return n
+    return count
   }
   readonly property int groupSlots: root.appGroups.length
   readonly property bool hasSeparator: (root.pinnedSection.length > 0 || root.groupSlots > 0 || root.hasTiles)
@@ -148,14 +147,13 @@ Item {
     }
     var groups = {}
     var order = []
-    for (var i = 0; i < list.length; i++) {
-      var w = list[i]
-      var key = w.appId || w.address
+    for (var window of list) {
+      var key = window.appId || window.address
       if (!groups[key]) {
-        groups[key] = { type: "group", appId: key, title: w.title, windows: [] }
+        groups[key] = { type: "group", appId: key, title: window.title, windows: [] }
         order.push(key)
       }
-      groups[key].windows.push(w)
+      groups[key].windows.push(window)
     }
     order.sort(function (a, b) { return root.parkedSince(groups[a].windows[0].address) - root.parkedSince(groups[b].windows[0].address) })
     return order.map(function (key) { return groups[key] })
@@ -283,7 +281,7 @@ Item {
     var model = root.buildDockModel(root.recentIds)
     var runningIds = model.running.filter(entry => entry.running).map(entry => entry.appId)
     var closedIds = root.runningSection.filter(entry => entry.running && !runningIds.includes(entry.appId)
-      && DockModel.entryFor(root.appRows, entry.appId)).map(entry => entry.appId)
+      && DockModel.exactEntryFor(root.appRows, entry.appId)).map(entry => entry.appId)
     root.dockModel = closedIds.length ? root.buildDockModel(closedIds.concat(root.recentIds)) : model
   }
 
@@ -306,19 +304,18 @@ Item {
   function rescanMinimizedWindows() {
     var parkedWindows = []
     var tops = Hyprland.toplevels ? Hyprland.toplevels.values : []
-    for (var i = 0; i < tops.length; i++) {
-      var h = tops[i]
-      if (!h) continue
-      var addr = root.windowAddress(h)
+    for (var toplevel of tops) {
+      if (!toplevel) continue
+      var addr = root.windowAddress(toplevel)
       if (!addr) continue
-      var isParked = (h.workspace && root.isMinimizedWorkspace(h.workspace.name))
+      var isParked = (toplevel.workspace && root.isMinimizedWorkspace(toplevel.workspace.name))
                   || (root.minimizedOrigins && root.minimizedOrigins[addr] !== undefined)
       if (!isParked) continue
       var top = root.liveToplevelForAddress(addr)
-      var title = String((top && top.title) || h.title || "Window")
+      var title = String((top && top.title) || toplevel.title || "Window")
       var appId = ""
       try {
-        appId = h.appId ? DockModel.normalizeId(h.appId)
+        appId = toplevel.appId ? DockModel.normalizeId(toplevel.appId)
           : (top && top.appId ? DockModel.normalizeId(top.appId) : "")
       } catch (e) {}
       parkedWindows.push({ address: addr, title: title, appId: appId, waylandToplevel: top })
@@ -594,9 +591,9 @@ Item {
     var dockName = dockScreen ? String(dockScreen.name || "") : ""
     if (dockName !== "" && Hyprland.monitors) {
       var monitors = Hyprland.monitors.values || []
-      for (var m = 0; m < monitors.length; m++) {
-        if (monitors[m] && String(monitors[m].name || "") === dockName) {
-          dockMonitor = monitors[m]
+      for (var monitor of monitors) {
+        if (monitor && String(monitor.name || "") === dockName) {
+          dockMonitor = monitor
           break
         }
       }
@@ -623,8 +620,7 @@ Item {
     }
     var dockSpecialWs = root.dockSpecialWorkspace
 
-    for (var i = 0; i < clients.length; i++) {
-      var client = clients[i]
+    for (var client of clients) {
       if (!client.mapped || client.hidden) continue
       if (!client.workspace) continue
       if (client.workspace.id !== dockWorkspaceId
@@ -950,8 +946,8 @@ Item {
       root.requestDockOverlap()
     }
     function onRawEvent(event) {
-      var n = String((event && event.name) || "")
-      if (n === "activespecial") {
+      var eventName = String((event && event.name) || "")
+      if (eventName === "activespecial") {
         var special = String(event.data || "").split(",")
         var onMonitor = special.length > 1 ? special[special.length - 1].trim() : ""
         if (onMonitor === "" || onMonitor === root.dockMonitorName) {
@@ -960,13 +956,13 @@ Item {
           root.requestDockOverlap()
         }
       }
-      if (n === "openwindow") {
+      if (eventName === "openwindow") {
         var fullAddr = DockModel.hyprAddress(String(event.data || "").split(",")[0])
         var rec = DockModel.copyMap(root.recentOpenedWindowAddrs)
         rec[fullAddr] = Date.now() + root.openedWindowUrgencyGraceMs
         root.recentOpenedWindowAddrs = rec
       }
-      if (n === "urgent") {
+      if (eventName === "urgent") {
         var fullAddr = DockModel.hyprAddress(event.data)
 
         var activeAddr = root.windowAddress(root.hyprToplevelFor(ToplevelManager.activeToplevel))
@@ -979,8 +975,7 @@ Item {
         }
 
         var allEntries = root.pinnedSection.concat(root.runningSection)
-        for (var e = 0; e < allEntries.length; e++) {
-          var entry = allEntries[e]
+        for (var entry of allEntries) {
           if (!entry) continue
           if (root.launchPending && root.launchPending[entry.id]) {
             var wins = entry.windowList || []
@@ -994,16 +989,16 @@ Item {
         Qt.callLater(root.syncDockState)
         root.playUrgentChime()
       }
-      if (n === "activewindow" || n === "activewindowv2") {
+      if (eventName === "activewindow" || eventName === "activewindowv2") {
         var eventData = String(event.data || "").trim()
-        if (n === "activewindowv2") {
+        if (eventName === "activewindowv2") {
           root.clearUrgentApp("", DockModel.hyprAddress(eventData.split(",")[0]))
         } else {
           var winClass = eventData.split(",")[0].trim()
           if (winClass) root.clearUrgentApp(winClass, "")
         }
       }
-      if (n === "closewindow") {
+      if (eventName === "closewindow") {
         var fullAddr = DockModel.hyprAddress(event.data)
         if (root.recentOpenedWindowAddrs && root.recentOpenedWindowAddrs[fullAddr]) {
           var rec = DockModel.copyMap(root.recentOpenedWindowAddrs)
@@ -1022,15 +1017,15 @@ Item {
         }
         root.syncDockState()
       }
-      if (n === "workspace" || n === "workspacev2" || n === "openwindow" || n === "closewindow" ||
-          n === "movewindow" || n === "movewindowv2" || n === "activewindow" || n === "activewindowv2" ||
-          n === "changefloatingmode" || n === "fullscreen" || n === "pin" || n === "focusedmon") {
+      if (eventName === "workspace" || eventName === "workspacev2" || eventName === "openwindow" || eventName === "closewindow" ||
+          eventName === "movewindow" || eventName === "movewindowv2" || eventName === "activewindow" || eventName === "activewindowv2" ||
+          eventName === "changefloatingmode" || eventName === "fullscreen" || eventName === "pin" || eventName === "focusedmon") {
         root.requestDockOverlap()
       }
-      if (n === "openwindow" || n === "closewindow" || n === "urgent"
-          || n === "movewindow" || n === "movewindowv2"
-          || n === "workspace" || n === "workspacev2") Qt.callLater(root.syncDockState)
-      if (n === "configreloaded") Hyprland.refreshToplevels()
+      if (eventName === "openwindow" || eventName === "closewindow" || eventName === "urgent"
+          || eventName === "movewindow" || eventName === "movewindowv2"
+          || eventName === "workspace" || eventName === "workspacev2") Qt.callLater(root.syncDockState)
+      if (eventName === "configreloaded") Hyprland.refreshToplevels()
     }
   }
 
@@ -1234,8 +1229,7 @@ Item {
     if (!addr) return null
     try {
       var tops = ToplevelManager.toplevels ? ToplevelManager.toplevels.values : []
-      for (var i = 0; i < tops.length; i++) {
-        var top = tops[i]
+      for (var top of tops) {
         if (!top) continue
         var h = root.hyprToplevelFor(top)
         if (root.windowAddress(h) === addr) return top
@@ -1248,9 +1242,8 @@ Item {
     if (!addr) return null
     try {
       var tops = Hyprland.toplevels ? Hyprland.toplevels.values : []
-      for (var i = 0; i < tops.length; i++) {
-        var h = tops[i]
-        if (h && root.windowAddress(h) === addr) return h
+      for (var toplevel of tops) {
+        if (toplevel && root.windowAddress(toplevel) === addr) return toplevel
       }
     } catch (e) {}
     return null
@@ -1381,10 +1374,9 @@ Item {
     var bestTime = -1
     var here = root.workspaceTarget(Hyprland.focusedWorkspace)
 
-    for (var i = 0; i < wins.length; i++) {
-      var w = wins[i]
-      if (!w || !w.address) continue
-      var address = w.address
+    for (var window of wins) {
+      if (!window || !window.address) continue
+      var address = window.address
 
       var origin = origins[address] || ""
       var target = (useOrigin || root.isScratchpadWorkspace(origin)) && origin ? origin : here
@@ -1470,8 +1462,7 @@ Item {
   function minimizeAllWindows(entry) {
     var windows = entry ? (entry.windowList || []) : []
     var parked = false
-    for (var i = 0; i < windows.length; i++) {
-      var win = windows[i]
+    for (var win of windows) {
       if (!win || !win.address) continue
       if (!root.isWinParkedLive(win) && root.minimizeToplevel(win.address))
         parked = true
@@ -1483,17 +1474,17 @@ Item {
     var windows = entry ? (entry.windowList || []) : []
     var target = null
 
-    for (var i = 0; i < windows.length; i++) {
-      if (windows[i] && windows[i].address && windows[i].address === root.activeWindowAddress) {
-        target = windows[i]
+    for (var window of windows) {
+      if (window && window.address && window.address === root.activeWindowAddress) {
+        target = window
         break
       }
     }
     if (!target) target = root.recentWindow(entry ? entry.appId : "", windows)
     if (!target) {
-      for (var j = 0; j < windows.length; j++) {
-        if (windows[j] && !root.isWinParkedLive(windows[j])) {
-          target = windows[j]
+      for (var window of windows) {
+        if (window && !root.isWinParkedLive(window)) {
+          target = window
           break
         }
       }
@@ -1505,8 +1496,8 @@ Item {
   function pruneWindowState() {
     var live = {}
     var list = Hyprland.toplevels ? Hyprland.toplevels.values : []
-    for (var i = 0; i < list.length; i++) {
-      var address = root.windowAddress(list[i])
+    for (var toplevel of list) {
+      var address = root.windowAddress(toplevel)
       if (address) live[address] = true
     }
 
@@ -1532,8 +1523,7 @@ Item {
 
     var next = {}
     var dropped = false
-    for (var i = 0; i < keys.length; i++) {
-      var key = keys[i]
+    for (var key of keys) {
       if (key.slice(0, 2) === "0x" && !live[key]) dropped = true
       else next[key] = map[key]
     }
@@ -1589,8 +1579,7 @@ Item {
 
     var next = {}
     var dropped = false
-    for (var i = 0; i < keys.length; i++) {
-      var key = keys[i]
+    for (var key of keys) {
       if (live[addressesAreValues ? map[key] : key]) next[key] = map[key]
       else dropped = true
     }
@@ -1612,9 +1601,9 @@ Item {
     function restoreLast(): void {
       var parked = []
       var all = root.pinnedSection.concat(root.runningSection)
-      for (var i = 0; i < all.length; i++) {
-        if (!all[i]) continue
-        parked = parked.concat(root.parkedWindows(all[i].windowList || []))
+      for (var entry of all) {
+        if (!entry) continue
+        parked = parked.concat(root.parkedWindows(entry.windowList || []))
       }
       if (parked.length > 0) root.restoreWindow(root.oldestParked(parked), "")
     }
@@ -1866,8 +1855,7 @@ Item {
     var wins = entry && entry.windowList ? entry.windowList : []
     if (wins.length === 0) {
       var allTops = ToplevelManager.toplevels ? ToplevelManager.toplevels.values : []
-      for (var w = 0; w < allTops.length; w++) {
-        var top = allTops[w]
+      for (var top of allTops) {
         if (top && (top.appId === root.contextAppId || DockModel.isAppMatch(top.appId, root.contextAppId))) {
           var h = root.hyprToplevelFor ? root.hyprToplevelFor(top) : null
           var addr = root.windowAddress(h)
@@ -1946,11 +1934,10 @@ Item {
 
   function closeContextTile() {
     var wins = root.contextTileWins
-    for (var i = 0; i < wins.length; i++) {
-      var w = wins[i]
-      if (w && w.address) root.hyprDispatch(
-        'hl.dsp.window.close({ window = "address:' + w.address + '" })',
-        "closewindow address:" + w.address)
+    for (var window of wins) {
+      if (window && window.address) root.hyprDispatch(
+        'hl.dsp.window.close({ window = "address:' + window.address + '" })',
+        "closewindow address:" + window.address)
     }
   }
 
@@ -2035,8 +2022,8 @@ Item {
   function isFolderPinned(path) {
     var norm = (path || "").replace(/^~/, Quickshell.env("HOME"))
     var list = root.pinnedFolders || []
-    for (var i = 0; i < list.length; i++) {
-      if ((list[i].path || "").replace(/^~/, Quickshell.env("HOME")) === norm) return true
+    for (var folder of list) {
+      if ((folder.path || "").replace(/^~/, Quickshell.env("HOME")) === norm) return true
     }
     return false
   }
@@ -2046,8 +2033,7 @@ Item {
     var found = false
     var norm = (path || "").replace(/^~/, Quickshell.env("HOME"))
     var list = root.pinnedFolders || []
-    for (var i = 0; i < list.length; i++) {
-      var folder = list[i]
+    for (var folder of list) {
       if ((folder.path || "").replace(/^~/, Quickshell.env("HOME")) === norm) {
         found = true
       } else {
@@ -2096,8 +2082,8 @@ Item {
 
   function createAppGroup(appIds, name) {
     var apps = []
-    for (var i = 0; i < appIds.length; i++) {
-      var id = DockModel.normalizeId(appIds[i])
+    for (var appId of appIds) {
+      var id = DockModel.normalizeId(appId)
       if (id && apps.indexOf(id) < 0) apps.push(id)
     }
     if (apps.length < 2) return
@@ -2132,8 +2118,7 @@ Item {
 
   function removeAppFromGroup(groupId, appId, pinRemoved) {
     var groups = [], pins = root.pinnedIds.slice(), remaining = []
-    for (var i = 0; i < root.appGroups.length; i++) {
-      var group = root.appGroups[i]
+    for (var group of root.appGroups) {
       if (!group || group.id !== groupId) {
         groups.push(group)
         continue
@@ -2155,7 +2140,7 @@ Item {
     var group = root.appGroup(groupId)
     if (!group) return
     var pins = root.pinnedIds.slice(), apps = DockModel.toArray(group.apps)
-    for (var i = 0; i < apps.length; i++) if (pins.indexOf(apps[i]) < 0) pins.push(apps[i])
+    for (var app of apps) if (pins.indexOf(app) < 0) pins.push(app)
     root.appGroups = root.appGroups.filter(function(item) { return item && item.id !== groupId })
     root.setPinned(pins)
     root.saveConfig()
@@ -2263,11 +2248,10 @@ Item {
     if (!item) return widest
 
     var kids = item.children
-    for (var i = 0; i < kids.length; i++) {
-      var kid = kids[i]
-      if (!kid || !kid.visible) continue
-      if (kid.isMenuContent === true && kid.implicitWidth > widest) widest = kid.implicitWidth
-      var nested = root.menuContentWidth(kid)
+    for (var child of kids) {
+      if (!child || !child.visible) continue
+      if (child.isMenuContent === true && child.implicitWidth > widest) widest = child.implicitWidth
+      var nested = root.menuContentWidth(child)
       if (nested > widest) widest = nested
     }
     return Math.min(Math.max(widest, Commons.Style.space(220)), Commons.Style.space(280))

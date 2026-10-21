@@ -15,7 +15,6 @@ BarButton {
     css: "bluetooth." + power
     text: ({ connected: "󰂱", on: "󰂯", off: "󰂲" })[power]
     badgeText: showReadout && connected.length ? root.countText(connected.length) : ""
-    // the tooltip renders as rich text, so the rows are separated by <br>
     tooltip: !adapters.length ? "No Bluetooth controller"
         : "<b>Connected</b>" + (connected.length ? "" : " none")
             + connected.map(device => "<br>" + (device.batteryAvailable

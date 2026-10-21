@@ -40,8 +40,6 @@ wallpaper_apply_backend() {
   fi
 }
 
-# The one place that reads the catalog; every step below takes the resolved path
-# instead.
 wallpaper_selected_path() {
   printf '%s\n' "${wallpaper_paths[selected_wallpaper_index]:-}"
 }

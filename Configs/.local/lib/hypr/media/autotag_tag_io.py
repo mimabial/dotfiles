@@ -11,7 +11,6 @@ from audio_tags import VORBIS, read_tags
 from autotag_identity import MIN_TITLE_SIMILARITY, drop_redundant_feat, existing, missing_credit_names, parse_filename, title_similarity, track_identity
 
 
-# The picture-type and text-encoding codes FLAC and ID3 share.
 PICTURE_TYPE_FRONT_COVER = 3
 
 

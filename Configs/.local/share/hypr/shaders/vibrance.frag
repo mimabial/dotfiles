@@ -1,6 +1,4 @@
 // Author: khing
-// Vibrance raises saturation more in muted colours than in saturated ones, so it reads
-// more natural than plain saturation; skin tones are protected and nothing clips.
 
 // Any #ifndef default below can be predefined in vibrance.inc, which window/shaders.sh compiles in first.
 

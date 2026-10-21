@@ -16,7 +16,7 @@ var PEERS = (function () {
         var boxRow = Math.floor(row / BOX_SIDE) * BOX_SIDE, boxCol = Math.floor(col / BOX_SIDE) * BOX_SIDE, peers = []
         for (var i = 0; i < SIDE; i++) {
             var candidates = [row * SIDE + i, i * SIDE + col, (boxRow + Math.floor(i / BOX_SIDE)) * SIDE + boxCol + i % BOX_SIDE]
-            for (var j = 0; j < candidates.length; j++) if (candidates[j] !== cell && peers.indexOf(candidates[j]) < 0) peers.push(candidates[j])
+            for (var candidate of candidates) if (candidate !== cell && peers.indexOf(candidate) < 0) peers.push(candidate)
         }
         out.push(peers)
     }
@@ -146,7 +146,7 @@ function applyDigit(state, index, digit) {
     if (digit !== next.solution[index]) next.mistakes++
     else {
         var bit = 1 << digit - 1, peers = PEERS[index]
-        for (var p = 0; p < peers.length; p++) next.notes[peers[p]] &= ~bit
+        for (var peer of peers) next.notes[peer] &= ~bit
         if (isBoardComplete(next)) next.status = STATUS_WON
     }
     return next

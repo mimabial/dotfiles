@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import "Units.js" as Units
 
-// Given explicit properties rather than a modelData of its own, so the popup owns the shape of an entry and this owns its look.
 Rectangle {
     id: root
     required property var shell
@@ -19,7 +18,6 @@ Rectangle {
     property bool showBody: true
     property bool showPreview: true
 
-    // keeps PopupCard's up/down cursor working over these rows
     readonly property bool navigable: true
     property bool cursored: false
     readonly property bool hovered: rowArea.containsMouse
@@ -53,8 +51,6 @@ Rectangle {
         return Units.largestUnitText(seconds) || "now"
     }
 
-    // paths reach QML as plain absolute paths; a space or a '#' in one would
-    // otherwise truncate the URL
     function fileUrl(path) {
         if (!path) return ""
         return "file://" + String(path).split("/").map(encodeURIComponent).join("/")

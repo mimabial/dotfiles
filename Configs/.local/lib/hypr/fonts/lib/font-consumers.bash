@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-# Callers may source runtime/init.bash first, but these helpers also lazily
-# load it when they need layered config access.
-
 font_sync_ensure_runtime() {
   if declare -F hypr_config_value_from_layers >/dev/null 2>&1; then
     return 0

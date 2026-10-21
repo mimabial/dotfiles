@@ -7,7 +7,6 @@ PopupCard {
     contentWidth: Style.px(340)
     contentHeight: caffeineColumn.implicitHeight + padding * 2
 
-    // the provider is the single source of truth; the popup only toggles
     readonly property bool manual: shell.keepAwakeManual
     readonly property bool audioEnabled: shell.keepAwakeAudio
     readonly property bool playing: Mpris.players.values.some(player => player.isPlaying)

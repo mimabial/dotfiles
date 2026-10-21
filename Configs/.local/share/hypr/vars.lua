@@ -1,5 +1,6 @@
 local M = {}
 local home = os.getenv("HOME")
+local MAX_VARIABLE_EXPANSION_DEPTH = 12
 
 local function current_uid()
     for line in io.lines("/proc/self/status") do
@@ -86,7 +87,7 @@ end
 
 function M.expand(value)
     local expanded = tostring(value or "")
-    for _ = 1, 12 do
+    for _ = 1, MAX_VARIABLE_EXPANSION_DEPTH do
         local changed = false
         expanded = expanded:gsub("%$([%w_.&%-]+)", function(name)
             local replacement = M.get(name)

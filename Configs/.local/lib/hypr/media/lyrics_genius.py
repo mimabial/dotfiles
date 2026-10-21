@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pyutils import child_process
 from pyutils.xdg_base_dirs import xdg_config_home
 from lyrics_text import ProviderResult, build_result, lrc_header, to_lrc_from_plain
-from lyrics_http import DEFAULT_TIMEOUT
+from lyrics_http import DEFAULT_TIMEOUT_SECONDS
 
 
 try:
@@ -34,7 +34,7 @@ _GENIUS_TOKEN_KEYS = ("GENIUS_TOKEN", "GENIUS_ACCESS_TOKEN")
 _GENIUS_WORKER_FLAG = "--genius-worker"
 
 
-GENIUS_WORKER_TIMEOUT = DEFAULT_TIMEOUT * 4 + 5
+GENIUS_WORKER_TIMEOUT_SECONDS = DEFAULT_TIMEOUT_SECONDS * 4 + 5
 
 
 def _parse_env_value(raw_value: str) -> str:
@@ -123,7 +123,7 @@ def get_genius_client():
                 token,
                 skip_non_songs=True,
                 remove_section_headers=True,
-                timeout=DEFAULT_TIMEOUT,
+                timeout=DEFAULT_TIMEOUT_SECONDS,
             )
         except TypeError as error:
             if "timeout" not in str(error):
@@ -201,7 +201,7 @@ def _fetch_lyrics_genius_excluded(
             command,
             capture_output=True,
             text=True,
-            timeout=GENIUS_WORKER_TIMEOUT,
+            timeout=GENIUS_WORKER_TIMEOUT_SECONDS,
             check=False,
         )
     except (OSError, subprocess.TimeoutExpired) as error:

@@ -71,11 +71,11 @@ PopupCard {
     readonly property string todayDate: Qt.formatDate(shell.clock.date, "yyyy-MM-dd")
 
     function compact(value) {
-        const n = Number(value) || 0
-        if (n >= 1e9) return (n / 1e9).toFixed(1) + "B"
-        if (n >= 1e6) return (n / 1e6).toFixed(1) + "M"
-        if (n >= 1e3) return (n / 1e3).toFixed(1) + "K"
-        return String(Math.round(n))
+        const amount = Number(value) || 0
+        if (amount >= 1e9) return (amount / 1e9).toFixed(1) + "B"
+        if (amount >= 1e6) return (amount / 1e6).toFixed(1) + "M"
+        if (amount >= 1e3) return (amount / 1e3).toFixed(1) + "K"
+        return String(Math.round(amount))
     }
     function rank(record) {
         const now = Date.now()

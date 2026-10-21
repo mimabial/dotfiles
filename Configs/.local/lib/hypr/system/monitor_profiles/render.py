@@ -74,7 +74,7 @@ def to_lua(profile: dict) -> str:
     for rule in _workspace_rules(profile):
         fields = [("workspace", rule["workspace"]), ("monitor", rule["monitor"])]
         if rule["default"]:
-            fields.extend((("default", True), ("persistent", True)))
+            fields.append(("default", True))
         body = "\n".join(f"  {k} = {_lua_value(v)}," for k, v in fields)
         blocks.append("hl.workspace_rule({\n%s\n})" % body)
     return HEADER + "\n\n" + "\n".join(blocks) + "\n"
@@ -91,7 +91,7 @@ def to_conf(profile: dict) -> str:
     for rule in _workspace_rules(profile):
         line = f'workspace = {rule["workspace"]}, monitor:{rule["monitor"]}'
         if rule["default"]:
-            line += ", default:true, persistent:true"
+            line += ", default:true"
         blocks.append(line)
     return CONF_HEADER + "\n\n" + "\n".join(blocks) + "\n"
 

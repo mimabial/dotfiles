@@ -30,7 +30,6 @@ ScriptButton {
         running: root.recording
         onRunningChanged: if (!running) root.refresh()
     }
-    // the panel replaces the portal's ScreenCast dialog
     onClicked: button => button === Qt.RightButton
         ? root.shell.run(["hyprshell", "screenrecord", "--quit"])
         : root.shell.togglePopup("screenrecord")

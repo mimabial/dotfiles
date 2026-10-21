@@ -57,9 +57,10 @@ Item {
         const shown = typeof value === "string" ? value : (canvas.cmdText[value.cmd] ?? "")
         return canvas.qtMarkup(shown).replace(/\n/g, "<br>")
     }
-    // pango sizes are points rendered at 96 dpi
+    readonly property int pangoDpi: 96
+    readonly property int pointsPerInch: 72
     function fontPx(points) {
-        return Math.max(1, Math.round(points * 4 / 3 * canvas.scaleFactor))
+        return Math.max(1, Math.round(points * pangoDpi / pointsPerInch * canvas.scaleFactor))
     }
 
     Repeater {

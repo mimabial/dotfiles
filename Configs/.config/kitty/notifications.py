@@ -8,6 +8,7 @@ import subprocess
 
 
 DEFAULT_TIMEOUT_MS = 4000
+LONGEST_PLAUSIBLE_TIMEOUT_MS = 30000
 DEFAULT_URGENCY = "normal"
 DUNST_APP_NAMES = {"codex": "Codex", "claude": "Claude Code"}
 DEFAULT_ICON_CANDIDATES = (
@@ -43,8 +44,7 @@ def _detect_app(cmd: object) -> str | None:
 def _timeout_ms(cmd: object) -> int:
     timeout = getattr(cmd, "timeout", -1)
     if isinstance(timeout, int) and timeout > 0:
-        # Cap at 30 seconds - larger values are likely unit errors
-        if timeout > 30000:
+        if timeout > LONGEST_PLAUSIBLE_TIMEOUT_MS:
             return DEFAULT_TIMEOUT_MS
         return timeout
     return DEFAULT_TIMEOUT_MS

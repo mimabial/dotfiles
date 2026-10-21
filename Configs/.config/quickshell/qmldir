@@ -37,14 +37,15 @@ ClockworkState 1.0 ClockworkState.qml
 ColorModePopup 1.0 ColorModePopup.qml
 ColorPickerPopup 1.0 ColorPickerPopup.qml
 ColumnMap 1.0 ColumnMap.qml
-ConverterPopup 1.0 ConverterPopup.qml
 DesktopPopup 1.0 DesktopPopup.qml
 DisksPopup 1.0 DisksPopup.qml
 GamePopup 1.0 GamePopup.qml
-GithubPopup 1.0 GithubPopup.qml
 GlyphInk 1.0 GlyphInk.qml
 HorizontalBar 1.0 HorizontalBar.qml
 HyprsunsetPopup 1.0 HyprsunsetPopup.qml
+KdeConnect 1.0 KdeConnect.qml
+KdeConnectButton 1.0 KdeConnectButton.qml
+KdeConnectPopup 1.0 KdeConnectPopup.qml
 LanguagePopup 1.0 LanguagePopup.qml
 LayerBlur 1.0 LayerBlur.qml
 LazyPopup 1.0 LazyPopup.qml
@@ -130,8 +131,3 @@ singleton Wallpaper 1.0 Wallpaper.qml
 singleton Weather 1.0 Weather.qml
 singleton Notifications 1.0 Notifications.qml
 singleton GnomeStatus 1.0 GnomeStatus.qml
-QuickShare 1.0 QuickShare.qml
-QuickShareButton 1.0 QuickShareButton.qml
-QuickShareEffects 1.0 QuickShareEffects.qml
-QuickShareEffectsArt 1.0 QuickShareEffectsArt.qml
-QuickSharePopup 1.0 QuickSharePopup.qml

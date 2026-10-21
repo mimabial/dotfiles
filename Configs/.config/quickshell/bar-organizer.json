@@ -64,10 +64,8 @@
             "updates",
             "screenshot",
             "colorpicker",
-            "converter",
             "terminal",
             "hyprsunset",
-            "github",
             "sudoku",
             "powerbutton"
           ],
@@ -135,7 +133,7 @@
             "display",
             "vpn",
             "wifi",
-            "quickshare",
+            "kdeconnect",
             {
               "id": "bluetooth",
               "props": {
@@ -184,14 +182,6 @@
               }
             },
             {
-              "id": "converter",
-              "trayPosition": {
-                "section": "right",
-                "index": 11,
-                "stringEntry": true
-              }
-            },
-            {
               "id": "wallpaper",
               "trayPosition": {
                 "section": "right",
@@ -236,17 +226,6 @@
               "trayPosition": {
                 "section": "right",
                 "index": 6,
-                "stringEntry": true
-              }
-            },
-            {
-              "id": "github",
-              "props": {
-                "keepVisible": true
-              },
-              "trayPosition": {
-                "section": "right",
-                "index": 10,
                 "stringEntry": true
               }
             },

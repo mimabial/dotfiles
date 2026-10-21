@@ -16,7 +16,5 @@ Text {
   font.letterSpacing: 1.1
   font.capitalization: Font.AllUppercase
   elide: Text.ElideRight
-  // Nerd Font outlines overshoot the em box; reserve it so the first row in a
-  // clipping list is never beheaded (mirrors qs.Ui.PanelSectionHeader).
-  topPadding: Math.ceil(Commons.Style.font.caption * 0.15)
+  topPadding: Math.ceil(Commons.Style.font.caption * Commons.Style.glyphOvershoot)
 }

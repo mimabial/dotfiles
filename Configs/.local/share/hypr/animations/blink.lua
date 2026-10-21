@@ -1,4 +1,3 @@
--- Expressive motion with one controlled overshoot instead of prolonged wobble.
 local runtime = require("runtime")
 
 runtime.config("animations.enabled", true)

@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons as Commons
 
-// Bars are snapped to device pixels so 1px marks stay crisp on fractional scales.
 Canvas {
   id: root
 

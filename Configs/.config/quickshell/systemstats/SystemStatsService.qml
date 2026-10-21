@@ -74,8 +74,8 @@ Item {
     try { data = JSON.parse(text) } catch (error) { return }
     if (!data || typeof data !== "object") return
 
-    var h = root.history
-    var n = root.historyLength
+    var history = root.history
+    var historyLength = root.historyLength
     var cpu = data.cpu || {}
     var mem = data.mem || {}
     var net = data.net || {}
@@ -123,10 +123,10 @@ Item {
     var perDisk = disks.perDisk || {}
     var diskHistory = {}
     for (var name in perDisk) {
-      var previous = h.disks && h.disks[name] ? h.disks[name] : { read: [], write: [] }
+      var previous = history.disks && history.disks[name] ? history.disks[name] : { read: [], write: [] }
       diskHistory[name] = {
-        read: Model.pushHistory(previous.read, perDisk[name].read, n),
-        write: Model.pushHistory(previous.write, perDisk[name].write, n)
+        read: Model.pushHistory(previous.read, perDisk[name].read, historyLength),
+        write: Model.pushHistory(previous.write, perDisk[name].write, historyLength)
       }
       values["disk/" + name + "/read"] = perDisk[name].read
       values["disk/" + name + "/write"] = perDisk[name].write
@@ -134,14 +134,13 @@ Item {
     var gpuHistory = {}
     var gpuTempHistory = {}, vramHistory = {}
     var gpuDevices = gpu && Array.isArray(gpu.devices) ? gpu.devices : []
-    for (var i = 0; i < gpuDevices.length; i++) {
-      var vendor = String(gpuDevices[i].vendor || "")
+    for (var device of gpuDevices) {
+      var vendor = String(device.vendor || "")
       if (vendor) {
-        var device = gpuDevices[i]
         var deviceVram = device.memTotal > 0 ? device.memUsed / device.memTotal * 100 : null
-        gpuHistory[vendor] = Model.pushHistory(h.gpus && h.gpus[vendor], device.util, n)
-        gpuTempHistory[vendor] = Model.pushHistory(h.gpuTemps && h.gpuTemps[vendor], device.temp, n)
-        vramHistory[vendor] = Model.pushHistory(h.vrams && h.vrams[vendor], deviceVram, n)
+        gpuHistory[vendor] = Model.pushHistory(history.gpus && history.gpus[vendor], device.util, historyLength)
+        gpuTempHistory[vendor] = Model.pushHistory(history.gpuTemps && history.gpuTemps[vendor], device.temp, historyLength)
+        vramHistory[vendor] = Model.pushHistory(history.vrams && history.vrams[vendor], deviceVram, historyLength)
         values["gpu/" + vendor] = device.util
         values["gpuTemp/" + vendor] = device.temp
         values["vram/" + vendor] = deviceVram
@@ -149,25 +148,25 @@ Item {
     }
 
     root.history = {
-      cpuUser: Model.pushHistory(h.cpuUser, cpu.user, n),
-      cpuSystem: Model.pushHistory(h.cpuSystem, cpu.system, n),
-      cpuTotal: Model.pushHistory(h.cpuTotal, cpu.total, n),
-      cpuTemp: Model.pushHistory(h.cpuTemp, cpu.temp, n),
-      gpu: Model.pushHistory(h.gpu, gpuPercent, n),
-      gpuTemp: Model.pushHistory(h.gpuTemp, gpuTemp, n),
-      vram: Model.pushHistory(h.vram, vramPercent, n),
+      cpuUser: Model.pushHistory(history.cpuUser, cpu.user, historyLength),
+      cpuSystem: Model.pushHistory(history.cpuSystem, cpu.system, historyLength),
+      cpuTotal: Model.pushHistory(history.cpuTotal, cpu.total, historyLength),
+      cpuTemp: Model.pushHistory(history.cpuTemp, cpu.temp, historyLength),
+      gpu: Model.pushHistory(history.gpu, gpuPercent, historyLength),
+      gpuTemp: Model.pushHistory(history.gpuTemp, gpuTemp, historyLength),
+      vram: Model.pushHistory(history.vram, vramPercent, historyLength),
       gpus: gpuHistory,
       gpuTemps: gpuTempHistory,
       vrams: vramHistory,
-      memUsed: Model.pushHistory(h.memUsed, memPercent, n),
-      memPressure: Model.pushHistory(h.memPressure, mem.pressureSome, n),
-      netRx: Model.pushHistory(h.netRx, net.rx, n),
-      netTx: Model.pushHistory(h.netTx, net.tx, n),
-      diskRead: Model.pushHistory(h.diskRead, disks.read, n),
-      diskWrite: Model.pushHistory(h.diskWrite, disks.write, n),
+      memUsed: Model.pushHistory(history.memUsed, memPercent, historyLength),
+      memPressure: Model.pushHistory(history.memPressure, mem.pressureSome, historyLength),
+      netRx: Model.pushHistory(history.netRx, net.rx, historyLength),
+      netTx: Model.pushHistory(history.netTx, net.tx, historyLength),
+      diskRead: Model.pushHistory(history.diskRead, disks.read, historyLength),
+      diskWrite: Model.pushHistory(history.diskWrite, disks.write, historyLength),
       disks: diskHistory,
-      battery: Model.pushHistory(h.battery, battery && battery.present ? battery.percent : null, n),
-      batteryCharging: Model.pushHistory(h.batteryCharging, battery && battery.status === "Charging" ? 1 : 0, n)
+      battery: Model.pushHistory(history.battery, battery && battery.present ? battery.percent : null, historyLength),
+      batteryCharging: Model.pushHistory(history.batteryCharging, battery && battery.status === "Charging" ? 1 : 0, historyLength)
     }
     var historyMinute = Math.floor(Number(data.t) / 60)
     var previousHistoryMinute = historyHour.slots.length ? historyHour.slots[historyHour.slots.length - 1] : -1
@@ -194,8 +193,8 @@ Item {
       }
     } catch (error) { alertConfig = ({ enabled: {}, thresholds: {}, sensorThresholds: {}, alertCommand: "" }) }
     var states = Object.assign({}, alertStates)
-    for (var i = 0; i < Model.ALERTS.length; i++) {
-      var key = Model.ALERTS[i].id
+    for (var alert of Model.ALERTS) {
+      var key = alert.id
       if ((previous.enabled[key] === true) !== alertEnabled(key) || previous.thresholds[key] !== alertConfig.thresholds[key]) {
         delete states[key]
         if (key === "driveHealth") driveLevels = ({})
@@ -325,8 +324,7 @@ Item {
   function evaluateMetricAlerts(data) {
     if (!alertsReady) return
     var now = Date.now(), states = Object.assign({}, alertStates)
-    for (var i = 0; i < Model.ALERTS.length; i++) {
-      var def = Model.ALERTS[i]
+    for (var def of Model.ALERTS) {
       if (def.id === "driveHealth" || !alertEnabled(def.id)) continue
       var reading = Model.alertReading(data, def.id), value = reading.value
       var valid = value !== null && value !== undefined && isFinite(Number(value))
@@ -342,8 +340,8 @@ Item {
     }
     var temps = data.sensors && Array.isArray(data.sensors.temps) ? data.sensors.temps : []
     var seenSensors = {}
-    for (var j = 0; j < temps.length; j++) {
-      var sensor = temps[j], sensorId = String(sensor.alertId || "")
+    for (var sensor of temps) {
+      var sensorId = String(sensor.alertId || "")
       var limit = sensorThreshold(sensorId)
       if (!sensorId || limit < 0) continue
       var key = "sensor:" + sensorId
@@ -363,8 +361,8 @@ Item {
     if (!alertsReady || !alertEnabled("driveHealth")) return
     var seen = Object.assign({}, driveLevels)
     var devices = Removable.devices.concat(Removable.systemDevices)
-    for (var i = 0; i < devices.length; i++) {
-      var device = devices[i], health = Removable.healthFor(device)
+    for (var device of devices) {
+      var health = Removable.healthFor(device)
       if (!health || health.state === "unavailable") continue
       var level = health.state === "failing" ? 2 : health.state === "warning" ? 1 : 0
       var key = Removable.healthKey(device)
@@ -422,8 +420,6 @@ Item {
   function acquireFull() { fullRefs += 1; syncDetail() }
   function releaseFull() { fullRefs = Math.max(0, fullRefs - 1); syncDetail() }
 
-  // Which page the open panel shows; the sampler adds page-specific extras
-  // (per-process connections for the Network page).
   function setFocus(page) {
     var next = String(page || "")
     if (next === focusPage) return
@@ -472,8 +468,8 @@ Item {
   function showTab(tab, mode) {
     var live = instances.filter(function(item) { return !!item })
     var target = String(tab || "")
-    for (var i = 0; i < live.length; i++) {
-      if (target && typeof live[i].showTab === "function") live[i].showTab(target)
+    for (var instance of live) {
+      if (target && typeof instance.showTab === "function") instance.showTab(target)
     }
     if (mode === "hide") {
       if (shell.popupName === "systemstats") shell.closePopup()
@@ -490,9 +486,9 @@ Item {
     var value = String(span || "").toLowerCase()
     if (value === "2m") value = "live"
     if (["live", "1h", "24h"].indexOf(value) === -1) return "unknown history span"
-    for (var i = 0; i < instances.length; i++) {
-      if (instances[i] && typeof instances[i].persist === "function") {
-        instances[i].persist("historySpan", value)
+    for (var instance of instances) {
+      if (instance && typeof instance.persist === "function") {
+        instance.persist("historySpan", value)
         return "ok"
       }
     }

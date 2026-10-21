@@ -7,6 +7,10 @@ cache_home="${XDG_CACHE_HOME:-$HOME/.cache}"
 config_path="${RMPC_CONFIG_PATH:-${config_home}/rmpc/config.ron}"
 prepare_configs="${config_home}/rmpc/lib/prepare_configs.py"
 target_theme="${1:-}"
+if [[ "${target_theme}" == "--resize" ]]; then
+  source "${config_home}/rmpc/lib/theme-size.bash"
+  rmpc_theme_for_size_into target_theme "${COLS}" "${ROWS}"
+fi
 target_theme_path="${2:-${config_home}/rmpc/themes/${target_theme}.ron}"
 snapshot_path="${cache_home}/rmpc/configs/${target_theme}.ron"
 

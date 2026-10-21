@@ -57,7 +57,7 @@ menu_run_action_core() {
     main_apps) hyprshell rofi/rofi-launch.sh ;;
     main_bookmarks) hyprshell rofi/run-after-close.sh -- quickshell ipc call bar bookmarks ;;
     main_about) menu_present_terminal --hypr-profile tui --app-id org.tui.About --title About -- hyprshell util/about.sh ;;
-    dev_calculator) menu_present_terminal --hypr-cells 96 28 --app-id org.tui.Calc --title Calculator -- hyprshell util/calc-tui.py ;;
+    dev_calculator) hyprshell util/calc-launch ;;
     dev_git) menu_present_terminal --hypr-profile tui --app-id org.tui.LazyGit --title LazyGit -- lazygit ;;
     dev_docker) menu_present_terminal --hypr-profile tui --app-id org.tui.LazyDocker --title LazyDocker -- lazydocker ;;
     dev_system_monitor) hyprshell util/sysmon-launch.sh ;;

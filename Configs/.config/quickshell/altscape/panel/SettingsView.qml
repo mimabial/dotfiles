@@ -20,10 +20,10 @@ Item {
     }
 
     readonly property int changed: {
-        var n = 0
-        for (var i = 0; i < Schema.items.length; i++)
-            if (!same(Schema.items[i])) n++
-        return n
+        var count = 0
+        for (var item of Schema.items)
+            if (!same(item)) count++
+        return count
     }
 
     function resetAll() {

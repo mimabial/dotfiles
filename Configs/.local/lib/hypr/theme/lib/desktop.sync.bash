@@ -305,7 +305,6 @@ theme_desktop_configure_qt_kde_bridge() {
   fi
 }
 
-# GTK3 and GTK4 take the same key set; only the file differs.
 theme_desktop_write_gtk_settings() {
   local -n desktop_settings_ref="$1"
   shift
@@ -681,8 +680,6 @@ theme_desktop_apply_static_resolved_if_needed() {
   hash_file="$(hypr_hash_cache_runtime_file "theme-desktop-static.hash")" || return 1
   static_hash="$(theme_desktop_static_state_hash "${!desktop_settings_ref}")" || return 1
 
-  # hypr_hash_cache_is_current honors FORCE_COLOR_REGEN; store honors
-  # HYPR_HASH_CACHE_ENABLE — no per-callsite flag checks needed.
   if theme_desktop_static_targets_ready "${!desktop_settings_ref}" \
     && hypr_hash_cache_is_current "${hash_file}" "${static_hash}"; then
     print_log -sec "theme" -stat "skip" "static desktop sync unchanged"

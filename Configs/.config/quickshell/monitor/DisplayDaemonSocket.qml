@@ -6,7 +6,6 @@ Socket {
   readonly property string socketFileName: "hyprmoncfgd.sock"
   path: runtimeDir + "/" + socketFileName
   connected: false
-  onError: connected = false
   signal directoryChanged()
 
   property Process existingSocketCheck: Process {

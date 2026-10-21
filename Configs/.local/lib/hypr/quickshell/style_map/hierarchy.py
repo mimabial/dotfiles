@@ -30,9 +30,9 @@ def collect_nested_style_slots(body, source, blocks, index):
             child_text = read_qml_source(index[child_type])
             base, variants = resolve_css_keys(css_property_expression(child_text), child_text)
             if base is None:
-                boxed = style_box_keys(child_text)
-                base = base_style_key(boxed)
-                variants = sorted(boxed - {base}) if base else []
+                direct_style_keys = style_box_keys(child_text)
+                base = base_style_key(direct_style_keys)
+                variants = sorted(direct_style_keys - {base}) if base else []
         if base:
             inner.append({"css": base, "variants": variants, "gate": None, "default": True,
                           "pinned": [(prop, source) for prop in assigned_style_properties(child)],
@@ -75,11 +75,10 @@ def collect_component_style_hierarchy(type_name, index, depth=0, seen=()):
             slots.append({"css": base, "variants": variants, "gate": gate, "pinned": marks,
                           "type": child_type, "default": boolean_property_default(text, gate) if gate else True,
                           "children": children})
-    # a component can ask for keys directly, bypassing the css property
-    boxed = style_box_keys(text)
+    direct_style_keys = style_box_keys(text)
     if group_css is None:
-        group_css = base_style_key(boxed)
-    for key in sorted(boxed):
+        group_css = base_style_key(direct_style_keys)
+    for key in sorted(direct_style_keys):
         if key != group_css and key not in [s["css"] for s in slots]:
             slots.append({"css": key, "variants": [], "gate": None, "default": True,
                           "pinned": [], "type": None, "children": []})

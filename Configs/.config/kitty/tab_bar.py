@@ -35,12 +35,11 @@ except ImportError:
 
 
 RIGHT_MARGIN = 1
+TITLE_ELIDE_ABOVE_CHARS = 25
+TITLE_ELIDED_END_CHARS = 6
 CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
 STATE_HOME = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
-COLOR_FILES = (
-    CONFIG_HOME / "kitty/theme.generated.conf",
-    CONFIG_HOME / "kitty/colors.conf",
-)
+COLORS_PATH = CONFIG_HOME / "kitty/colors.conf"
 QS_STATUS_PATH = STATE_HOME / "quickshell/time-visibility"
 COLOR_MAP = {
     "icon_fg": ("foreground", "#dcd7ba"),
@@ -60,19 +59,15 @@ def _mtime(path: Path) -> int:
 
 
 def _load_colors() -> dict[str, int]:
-    raw: dict[str, str] = {}
-    for path in COLOR_FILES:
-        try:
-            raw = {
-                parts[0]: parts[1]
-                for line in path.read_text().splitlines()
-                if line and not line.lstrip().startswith("#")
-                and len(parts := line.split()) >= 2
-            }
-        except OSError:
-            continue
-        if raw:
-            break
+    try:
+        raw = {
+            parts[0]: parts[1]
+            for line in COLORS_PATH.read_text().splitlines()
+            if line and not line.lstrip().startswith("#")
+            and len(parts := line.split()) >= 2
+        }
+    except OSError:
+        raw = {}
     return {
         name: as_rgb(int(raw.get(source, fallback).lstrip("#"), 16))
         for name, (source, fallback) in COLOR_MAP.items()
@@ -80,16 +75,16 @@ def _load_colors() -> dict[str, int]:
 
 
 _colors = _load_colors()
-_color_mtimes = tuple(map(_mtime, COLOR_FILES))
+_colors_mtime = _mtime(COLORS_PATH)
 _qs_status_mtime = 0
 _qs_status = (0, False, False)
 
 
 def _refresh_colors() -> None:
-    global _colors, _color_mtimes
-    mtimes = tuple(map(_mtime, COLOR_FILES))
-    if mtimes != _color_mtimes:
-        _color_mtimes = mtimes
+    global _colors, _colors_mtime
+    mtime = _mtime(COLORS_PATH)
+    if mtime != _colors_mtime:
+        _colors_mtime = mtime
         try:
             _colors = _load_colors()
         except ValueError:
@@ -149,7 +144,11 @@ def _draw_tab(
     screen.cursor.italic = tab.is_active  # type: ignore
     screen.draw("  " if tab.is_active else "  ")  # type: ignore
     title = tab.title  # type: ignore
-    screen.draw(f"{index}:{title[:6]}…{title[-6:]}" if len(title) > 25 else f"{index}:{title}")
+    screen.draw(
+        f"{index}:{title[:TITLE_ELIDED_END_CHARS]}…{title[-TITLE_ELIDED_END_CHARS:]}"
+        if len(title) > TITLE_ELIDE_ABOVE_CHARS
+        else f"{index}:{title}"
+    )
     if getattr(tab, "layout_name", "") == "stack":
         screen.draw(" []")
     screen.draw(" ")

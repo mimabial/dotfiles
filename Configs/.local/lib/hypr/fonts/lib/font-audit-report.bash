@@ -28,8 +28,6 @@ section_header() {
   echo "======================================"
 }
 
-# The array goes by name because the four lists differ only in their heading and
-# bullet.
 print_package_section() {
   local heading="$1" empty_message="$2" bullet="$3"
   local -n packages_ref="$4"

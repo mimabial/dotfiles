@@ -29,9 +29,9 @@
   "clickToMinimize": true,
   "iconSize": 36,
   "recentApps": [
-    "xdg-desktop-portal-gtk",
-    "org.qbittorrent.qBittorrent",
-    "net.lutris.Lutris"
+    "blueman-manager",
+    "org.pulseaudio.pavucontrol",
+    "org.tui.Calc"
   ],
   "showRecents": true,
   "showIndicators": true

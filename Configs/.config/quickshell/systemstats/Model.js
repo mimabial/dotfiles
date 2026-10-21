@@ -30,7 +30,7 @@ var ALERTS = [
 ]
 
 function alertDef(id) {
-  for (var i = 0; i < ALERTS.length; i++) if (ALERTS[i].id === id) return ALERTS[i]
+  for (var alert of ALERTS) if (alert.id === id) return alert
   return null
 }
 
@@ -47,8 +47,7 @@ function alertReading(snapshot, id) {
   if (id === "batteryLow") return { value: battery.present && battery.status === "Discharging" && battery.percent !== null && battery.percent !== undefined ? battery.percent : null, subject: "" }
   if (id === "diskUsage") {
     var volumes = Array.isArray(disks.volumes) ? disks.volumes : [], fullest = null
-    for (var i = 0; i < volumes.length; i++) {
-      var volume = volumes[i]
+    for (var volume of volumes) {
       if (!(volume.size > 0) || !isFinite(Number(volume.used))) continue
       var percent = Number(volume.used) / Number(volume.size) * 100
       if (!fullest || percent > fullest.value) fullest = { value: percent, subject: String(volume.mount || volume.device || "") }
@@ -180,7 +179,7 @@ function parseList(raw) {
   var text = Array.isArray(raw) ? raw.join(",") : String(raw || "")
   var out = []
   var parts = text.split(/[\s,;]+/)
-  for (var i = 0; i < parts.length; i++) if (parts[i] && out.indexOf(parts[i]) === -1) out.push(parts[i])
+  for (var part of parts) if (part && out.indexOf(part) === -1) out.push(part)
   return out
 }
 
@@ -203,9 +202,9 @@ function sensorOptions(snapshot) {
   var gpuTemp = gpu && gpu.temp !== null && isFinite(Number(gpu.temp)) ? gpu.temp : sensors.gpuTemp
   if (gpuTemp !== null && gpuTemp !== undefined && isFinite(Number(gpuTemp))) out.push({ value: "gpu", label: "GPU temperature", kind: "temp" })
   var temps = Array.isArray(sensors.temps) ? sensors.temps : []
-  for (var i = 0; i < temps.length; i++) out.push({ value: String(temps[i].id), label: sensorLabel(temps[i]), kind: "temp" })
+  for (var temp of temps) out.push({ value: String(temp.id), label: sensorLabel(temp), kind: "temp" })
   var fans = Array.isArray(sensors.fans) ? sensors.fans : []
-  for (var j = 0; j < fans.length; j++) out.push({ value: String(fans[j].id), label: String(fans[j].label || "Fan"), kind: "fan" })
+  for (var fan of fans) out.push({ value: String(fan.id), label: String(fan.label || "Fan"), kind: "fan" })
   return out
 }
 
@@ -227,17 +226,17 @@ function sensorReading(snapshot, id, unit) {
     return { icon: "󰢮", short: "GPU", label: "GPU", text: gpuParts.value, unit: gpuParts.unit, kind: "temp", celsius: gpuTemp }
   }
   var temps = Array.isArray(sensors.temps) ? sensors.temps : []
-  for (var i = 0; i < temps.length; i++) {
-    if (String(temps[i].id) === id) {
-      var parts = tempParts(temps[i].value, unit)
-      return { icon: "󰔏", short: "TMP", label: sensorLabel(temps[i]), text: parts.value, unit: parts.unit, kind: "temp", celsius: temps[i].value, critical: temps[i].critical }
+  for (var temp of temps) {
+    if (String(temp.id) === id) {
+      var parts = tempParts(temp.value, unit)
+      return { icon: "󰔏", short: "TMP", label: sensorLabel(temp), text: parts.value, unit: parts.unit, kind: "temp", celsius: temp.value, critical: temp.critical }
     }
   }
   var fans = Array.isArray(sensors.fans) ? sensors.fans : []
-  for (var j = 0; j < fans.length; j++) {
-    if (String(fans[j].id) === id) {
-      var rpm = num(fans[j].rpm)
-      return { icon: "󰈐", short: "FAN", label: String(fans[j].label || "Fan"), text: rpm > 0 ? String(Math.round(rpm)) : "Off", unit: rpm > 0 ? "rpm" : "", kind: "fan", rpm: rpm }
+  for (var fan of fans) {
+    if (String(fan.id) === id) {
+      var rpm = num(fan.rpm)
+      return { icon: "󰈐", short: "FAN", label: String(fan.label || "Fan"), text: rpm > 0 ? String(Math.round(rpm)) : "Off", unit: rpm > 0 ? "rpm" : "", kind: "fan", rpm: rpm }
     }
   }
   return null
@@ -249,12 +248,12 @@ function diskOptions(snapshot) {
   var perDisk = disks.perDisk || {}
   var volumes = Array.isArray(disks.volumes) ? disks.volumes : []
   var models = {}
-  for (var i = 0; i < volumes.length; i++) if (volumes[i].disk && volumes[i].model) models[volumes[i].disk] = volumes[i].model
+  for (var volume of volumes) if (volume.disk && volume.model) models[volume.disk] = volume.model
   var out = [{ value: "all", label: "All disks" }]
   var names = Object.keys(perDisk).sort()
-  for (var j = 0; j < names.length; j++) {
-    var model = models[names[j]] ? " · " + String(models[names[j]]).slice(0, 22) : ""
-    out.push({ value: names[j], label: names[j] + model })
+  for (var name of names) {
+    var model = models[name] ? " · " + String(models[name]).slice(0, 22) : ""
+    out.push({ value: name, label: name + model })
   }
   return out
 }
@@ -312,7 +311,6 @@ function normalizeStyle(value) {
   return STYLES.indexOf(mode) !== -1 ? mode : ""
 }
 
-// Style choices offered for one module: rings only where fullness means something.
 function styleOptions(module) {
   var def = moduleDef(module)
   var out = []
@@ -342,7 +340,7 @@ function moveInList(list, id, delta) {
 }
 
 function moduleDef(id) {
-  for (var i = 0; i < MODULES.length; i++) if (MODULES[i].id === id) return MODULES[i]
+  for (var module of MODULES) if (module.id === id) return module
   return MODULES[0]
 }
 
@@ -364,19 +362,16 @@ function parseModules(raw) {
     if (id === "temp" || id === "temps" || id === "sensor") id = "sensors"
     if (id === "bat") id = "battery"
     var known = false
-    for (var j = 0; j < MODULES.length; j++) if (MODULES[j].id === id) known = true
+    for (var module of MODULES) if (module.id === id) known = true
     if (known && out.indexOf(id) === -1) out.push(id)
   }
   return out
 }
 
-// Module tabs in canonical order, filtered by the "tabs" setting and by the
-// hardware present. Never empty: the CPU tab is the floor.
 function panelTabs(hasGpu, hasBattery, tabsSetting) {
   var wanted = parseModules(tabsSetting === undefined ? SETTINGS.tabs : tabsSetting)
   var out = []
-  for (var i = 0; i < PANEL_TABS.length; i++) {
-    var id = PANEL_TABS[i]
+  for (var id of PANEL_TABS) {
     if (id === "gpu" && !hasGpu) continue
     if (id === "battery" && !hasBattery) continue
     if (wanted.indexOf(id) === -1) continue
@@ -406,7 +401,6 @@ function rateParts(bytesPerSecond) {
   return { value: parts.value, unit: parts.unit + "/s" }
 }
 
-// Ultra-compact rate for the bar: "0", "34K", "1.2M".
 function compactRate(bytesPerSecond) {
   var rate = Number(bytesPerSecond)
   if (!isFinite(rate) || rate < 1024 / 2) return "0"
@@ -414,7 +408,6 @@ function compactRate(bytesPerSecond) {
   return parts.value + parts.unit.charAt(0)
 }
 
-// "1.2 / 24 GB" — drop the unit from the first number when both share it.
 function pairText(first, second) {
   var firstParts = Units.bytesParts(first), secondParts = Units.bytesParts(second)
   if (firstParts.unit === secondParts.unit) return firstParts.value + " / " + secondParts.value + " " + secondParts.unit
@@ -494,7 +487,7 @@ var WIFI_SIGNAL_ICONS = [[-55, "󰤨"], [-65, "󰤥"], [-75, "󰤢"], [-85, "�
 function wifiIcon(dbm) {
   var signal = Number(dbm)
   if (!isFinite(signal)) return WIFI_SIGNAL_ICONS[0][1]
-  for (var i = 0; i < WIFI_SIGNAL_ICONS.length; i++) if (signal >= WIFI_SIGNAL_ICONS[i][0]) return WIFI_SIGNAL_ICONS[i][1]
+  for (var [minimumDbm, icon] of WIFI_SIGNAL_ICONS) if (signal >= minimumDbm) return icon
   return "󰤯"
 }
 
@@ -558,8 +551,8 @@ function normalizePeakBucket(raw, limit) {
   }
   var series = {}
   var keys = Object.keys(raw.series).slice(0, PEAK_SERIES_LIMIT)
-  for (var j = 0; j < keys.length; j++) {
-    var key = keys[j], values = raw.series[key]
+  for (var key of keys) {
+    var values = raw.series[key]
     if (!validPeakKey(key) || !Array.isArray(values) || values.length < slots.length) continue
     series[key] = values.slice(-slots.length).map(peakValue)
   }
@@ -638,7 +631,7 @@ function historyBarWidth(width, range) {
 
 function hasReading(values) {
   if (!Array.isArray(values)) return false
-  for (var i = 0; i < values.length; i++) if (peakValue(values[i]) !== null) return true
+  for (var value of values) if (peakValue(value) !== null) return true
   return false
 }
 
@@ -699,8 +692,8 @@ var FALLBACK_TEMPERATURE_RAMP = [
 function parseTemperatureRamp(text) {
   var ramp = []
   var lines = String(text || "").split("\n")
-  for (var i = 0; i < lines.length; i++) {
-    var match = lines[i].match(/^\s*(\d+)\|\s*(#[0-9a-fA-F]{6})?\s*$/)
+  for (var line of lines) {
+    var match = line.match(/^\s*(\d+)\|\s*(#[0-9a-fA-F]{6})?\s*$/)
     if (match) ramp.push({ threshold: Number(match[1]), color: match[2] || "" })
   }
   return ramp.length ? ramp.sort(function(a, b) { return b.threshold - a.threshold }) : FALLBACK_TEMPERATURE_RAMP
@@ -712,7 +705,7 @@ function temperatureColor(ramp, celsius, critical, fallback) {
   if (!isFinite(limit) || limit <= 0) limit = 100
   var normalized = Number(celsius) * 100 / limit
   var stops = Array.isArray(ramp) && ramp.length ? ramp : FALLBACK_TEMPERATURE_RAMP
-  for (var i = 0; i < stops.length; i++) if (normalized >= stops[i].threshold) return stops[i].color || fallback
+  for (var stop of stops) if (normalized >= stop.threshold) return stop.color || fallback
   return fallback
 }
 
@@ -733,10 +726,6 @@ function shiftHue(color, degrees, minSaturation) {
   return Qt.hsla(hue, Math.max(minSaturation || 0.45, parsed.hslSaturation), clamp(parsed.hslLightness, 0.45, 0.72), 1)
 }
 
-// Derive the two-hue iStat scheme from the active theme: series1 is the
-// accent; series2 is the theme colour furthest around the wheel from it
-// (magenta/cyan/blue preferred), and a tertiary colour covers a third
-// category where one is needed. Warn/danger are the theme's yellow/red.
 function pickPalette(theme, accent, foreground, background, urgent) {
   theme = theme || {}
   var accentHue = hueOf(accent)
@@ -753,19 +742,17 @@ function pickPalette(theme, accent, foreground, background, urgent) {
   candidates.sort(function(a, b) { return b.dist - a.dist })
 
   var second = null
-  for (var j = 0; j < candidates.length; j++) {
-    var cand = candidates[j]
-    if ((cand.name === "magenta" || cand.name === "cyan" || cand.name === "blue") && cand.dist >= 50) { second = cand; break }
+  for (var candidate of candidates) {
+    if ((candidate.name === "magenta" || candidate.name === "cyan" || candidate.name === "blue") && candidate.dist >= 50) { second = candidate; break }
   }
   if (!second && candidates.length > 0 && candidates[0].dist >= 30) second = candidates[0]
   var series2 = second ? second.color : shiftHue(accent, 180)
   var series2Hue = hueOf(series2)
 
   var tertiary = null
-  for (var k = 0; k < candidates.length; k++) {
-    var alt = candidates[k]
-    if (alt === second) continue
-    if (alt.dist >= 35 && hueDistance(alt.hue, series2Hue) >= 35) { tertiary = alt.color; break }
+  for (var candidate of candidates) {
+    if (candidate === second) continue
+    if (candidate.dist >= 35 && hueDistance(candidate.hue, series2Hue) >= 35) { tertiary = candidate.color; break }
   }
   if (!tertiary) tertiary = theme.yellow || shiftHue(accent, 120)
 

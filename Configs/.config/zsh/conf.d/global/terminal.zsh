@@ -10,8 +10,6 @@ _load_completions() {
   for file in "$ZDOTDIR/completions/"*.zsh(N); do source "$file"; done
 }
 
-# Keep the generated completion aligned with its two source files without
-# invoking its Python option parser on cache hits.
 _refresh_hyprshell_completion() {
   (( $+commands[hyprshell] )) || return
   zmodload -F zsh/stat b:zstat 2>/dev/null || return
@@ -101,7 +99,6 @@ if [[ -f $HOME/.zsh_history && ! -f $HISTFILE ]]; then
 fi
 HISTSIZE=10000
 SAVEHIST=10000
-# Concurrent shells append under a lock instead of rewriting history at exit.
 setopt INC_APPEND_HISTORY HIST_FCNTL_LOCK
 export HISTFILE ZSH_AUTOSUGGEST_STRATEGY HISTSIZE SAVEHIST
 

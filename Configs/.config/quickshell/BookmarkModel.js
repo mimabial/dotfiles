@@ -5,8 +5,8 @@ function keywordAction(bookmarks, value) {
   if (space < 1) return null
   var keyword = input.substring(0, space).toLowerCase(), terms = input.substring(space).trim()
   if (!terms) return null
-  for (var i = 0; i < bookmarks.length; i++) {
-    var bookmark = bookmarks[i], url = String(bookmark.url || "")
+  for (var bookmark of bookmarks) {
+    var url = String(bookmark.url || "")
     if (String(bookmark.keyword || "").toLowerCase() === keyword && parameterizedUrl(url))
       return { bookmark: bookmark, terms: terms }
   }
@@ -35,10 +35,10 @@ function parameterizedUrl(url) {
 
 function tags(bookmarks) {
   var byName = {}, items = []
-  for (var i = 0; i < bookmarks.length; i++) {
-    var values = bookmarks[i].tags || [], seen = {}
-    for (var j = 0; j < values.length; j++) {
-      var name = String(values[j] || "").trim(), key = name.toLowerCase()
+  for (var bookmark of bookmarks) {
+    var values = bookmark.tags || [], seen = {}
+    for (var value of values) {
+      var name = String(value || "").trim(), key = name.toLowerCase()
       if (!key || seen[key]) continue
       seen[key] = true
       if (byName[key]) byName[key].count++
@@ -54,18 +54,18 @@ function matchingTags(items, value) {
   var search = String(value || "").trim().toLowerCase()
   if (!search) return items
   var prefix = [], substring = []
-  for (var i = 0; i < items.length; i++) {
-    var tag = items[i].tag.toLowerCase()
-    if (tag.indexOf(search) === 0) prefix.push(items[i])
-    else if (tag.indexOf(search) !== -1) substring.push(items[i])
+  for (var item of items) {
+    var tag = item.tag.toLowerCase()
+    if (tag.indexOf(search) === 0) prefix.push(item)
+    else if (tag.indexOf(search) !== -1) substring.push(item)
   }
   return prefix.concat(substring)
 }
 
 function keywords(bookmarks) {
   var seen = {}, items = []
-  for (var i = 0; i < bookmarks.length; i++) {
-    var bookmark = bookmarks[i], keyword = String(bookmark.keyword || "").trim()
+  for (var bookmark of bookmarks) {
+    var keyword = String(bookmark.keyword || "").trim()
     var key = keyword.toLowerCase()
     if (!key || seen[key]) continue
     seen[key] = true
@@ -80,8 +80,8 @@ function matchingKeywords(items, value) {
   var search = String(value || "").trim().toLowerCase()
   if (!search) return items
   var prefix = [], substring = []
-  for (var i = 0; i < items.length; i++) {
-    var item = items[i], keyword = item.keyword.toLowerCase()
+  for (var item of items) {
+    var keyword = item.keyword.toLowerCase()
     var searchable = (item.keyword + " " + title(item.bookmark) + " " + item.bookmark.url).toLowerCase()
     if (keyword.indexOf(search) === 0) prefix.push(item)
     else if (searchable.indexOf(search) !== -1) substring.push(item)
@@ -114,17 +114,17 @@ function relevance(bookmark, search, tokens, tagTokens) {
     if (keyword && keyword.indexOf(search) === 0) score += 280
     if (url.indexOf(search) !== -1) score += 100
   }
-  for (var i = 0; i < tokens.length; i++) {
-    if (titleText.indexOf(tokens[i]) === 0) score += 30
-    else if (titleText.indexOf(tokens[i]) !== -1) score += 20
-    if (keyword === tokens[i]) score += 25
+  for (var token of tokens) {
+    if (titleText.indexOf(token) === 0) score += 30
+    else if (titleText.indexOf(token) !== -1) score += 20
+    if (keyword === token) score += 25
   }
-  for (var j = 0; j < tagTokens.length; j++) {
-    if (!tagTokens[j]) continue
+  for (var tagToken of tagTokens) {
+    if (!tagToken) continue
     for (var k = 0; k < bookmark.tags.length; k++) {
       var tag = String(bookmark.tags[k]).toLowerCase()
-      if (tag === tagTokens[j]) { score += 90; break }
-      if (tag.indexOf(tagTokens[j]) === 0) { score += 45; break }
+      if (tag === tagToken) { score += 90; break }
+      if (tag.indexOf(tagToken) === 0) { score += 45; break }
     }
   }
   return score

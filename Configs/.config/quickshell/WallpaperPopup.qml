@@ -11,21 +11,16 @@ PopupCard {
     readonly property int columns: 3
     readonly property real cellSpacing: Style.xs
     readonly property real cellSize: Math.floor((contentWidth - padding * 2 - cellSpacing * (columns - 1)) / columns)
-    // a theme's wallpaper count is unbounded, so cap the grid and scroll it
-    // rather than letting the card grow past the screen
     readonly property int gridRows: 3
     readonly property real gridMaxHeight: cellSize * gridRows + cellSpacing * (gridRows - 1)
     // the wallpaper under the cursor, shown in the section header — a tooltip
     // window would stack over the popup that owns the focus grab
     property string hoverName: ""
-    // the slider's live position while dragging, so the reading tracks the knob
-    // without writing the config on every step
     property int draftInterval: -1
 
     readonly property int intervalIndex: root.nearestStep(Wallpaper.intervalMinutes)
     readonly property int shownInterval: Wallpaper.intervalSteps[root.draftInterval >= 0 ? root.draftInterval : root.intervalIndex]
 
-    // a hand-edited interval need not be one of the steps; snap to the closest
     function nearestStep(minutes) {
         const steps = Wallpaper.intervalSteps
         let best = 0
@@ -34,7 +29,6 @@ PopupCard {
         return best
     }
 
-    // opening is the only moment worth paying for thumbnail generation
     onOpenChanged: {
         if (!open) { root.hoverName = ""; root.draftInterval = -1; return }
         Wallpaper.nowEpoch = Date.now()
@@ -96,8 +90,6 @@ PopupCard {
                             signal clicked(int button)
                             onClicked: Wallpaper.setWallpaper(modelData.path)
                             readonly property bool isCurrent: Wallpaper.selectedWallpaper === modelData.path
-                            // the thumbnail cache can lag a freshly added wallpaper;
-                            // fall back to the full image rather than an empty cell
                             property bool thumbFailed: false
                             width: root.cellSize; height: root.cellSize
                             color: root.shell.alpha(root.shell.foreground, .06)

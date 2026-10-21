@@ -39,8 +39,8 @@ Column {
     var active = 0
     var sum = 0
     var peak = 0
-    for (var i = 0; i < fans.length; i++) {
-      var rpm = Model.num(fans[i].rpm)
+    for (var fan of fans) {
+      var rpm = Model.num(fan.rpm)
       if (rpm > 0) { active += 1; sum += rpm; peak = Math.max(peak, rpm) }
     }
     return { active: active, average: active > 0 ? sum / active : 0, peak: peak }

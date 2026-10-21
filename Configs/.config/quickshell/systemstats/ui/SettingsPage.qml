@@ -23,8 +23,8 @@ Column {
   readonly property var tabModules: Model.parseModules(Model.settingValue(settings, "tabs"))
   readonly property var availableModules: {
     var out = []
-    for (var i = 0; i < Model.MODULES.length; i++) {
-      var id = Model.MODULES[i].id
+    for (var module of Model.MODULES) {
+      var id = module.id
       if (id === "settings" || id === "alerts" || id === "power") continue
       if (id === "gpu" && !hasGpu) continue
       if (id === "battery" && !hasBattery) continue
@@ -34,14 +34,13 @@ Column {
   }
   readonly property var orderedModules: {
     var out = []
-    for (var i = 0; i < barModules.length; i++) if (availableModules.indexOf(barModules[i]) !== -1) out.push(barModules[i])
-    for (var j = 0; j < availableModules.length; j++) if (out.indexOf(availableModules[j]) === -1) out.push(availableModules[j])
+    for (var barModule of barModules) if (availableModules.indexOf(barModule) !== -1) out.push(barModule)
+    for (var availableModule of availableModules) if (out.indexOf(availableModule) === -1) out.push(availableModule)
     return out
   }
   readonly property var pages: {
     var out = []
-    for (var i = 0; i < Model.PANEL_TABS.length; i++) {
-      var id = Model.PANEL_TABS[i]
+    for (var id of Model.PANEL_TABS) {
       if (id === "gpu" && !hasGpu) continue
       if (id === "battery" && !hasBattery) continue
       out.push(id)
@@ -80,7 +79,6 @@ Column {
     var at = list.indexOf(id)
     if (enabled && at === -1) {
       list.push(id)
-      // Keep canonical order so the strip never reshuffles.
       list.sort(function(a, b) { return Model.PANEL_TABS.indexOf(a) - Model.PANEL_TABS.indexOf(b) })
     }
     if (!enabled && at !== -1) list.splice(at, 1)

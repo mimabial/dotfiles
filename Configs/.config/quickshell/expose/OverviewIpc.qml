@@ -9,9 +9,6 @@ Scope {
     id: ipc
     target: "expose"
     function open(): string {
-        // Must not call toggle(): that makes "open" a duplicate of
-        // "toggle", so calling open on an already-open overview closes it.
-        // Mirrors close(), which correctly calls dismiss().
         root.controller.open();
         return "ok";
     }

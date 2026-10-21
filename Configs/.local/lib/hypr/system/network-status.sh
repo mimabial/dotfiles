@@ -64,7 +64,6 @@ if [[ -n "${iface}" && -d "/sys/class/net/${iface}/statistics" ]]; then
   tx="$(cat "/sys/class/net/${iface}/statistics/tx_bytes" 2>/dev/null || true)"
 fi
 
-# The active profile, so the panel can show and flip its autoconnect flag.
 uuid=""
 autoconnect=""
 if command -v nmcli >/dev/null 2>&1 && [[ -n "${profile_iface}" ]]; then

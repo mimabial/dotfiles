@@ -23,8 +23,6 @@ Item {
   property string fontFamily: Commons.Style.font.family
   property int rowHeight: Commons.Style.spacing.controlHeight
   property int popupRowHeight: Commons.Style.spacing.popupRowHeight
-  // Touch the two control surfaces. Their adjoining one-pixel borders provide
-  // the visible seam; adding another coordinate gap makes it look wider.
   property int popupGap: 0
   property bool scrollable: true
   property bool showLabel: true
@@ -50,8 +48,8 @@ Item {
     return option && typeof option === "object" ? String(option.label) : String(option)
   }
   function currentLabel() {
-    for (var index = 0; index < options.length; index++) {
-      if (optionValue(options[index]) === value) return optionLabel(options[index])
+    for (var option of options) {
+      if (optionValue(option) === value) return optionLabel(option)
     }
     return value
   }

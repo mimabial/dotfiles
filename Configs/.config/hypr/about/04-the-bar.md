@@ -40,7 +40,7 @@ Modules include clock, forecast, workspaces,
 taskbar, media player, audio, volume, brightness, eyecare, bluetooth, wifi, vpn,
 privacy, printers, disks, updates, notifications, power, power profile, language,
 tray, submap indicator, system readouts, tasks, bookmarks, Bitwarden, agents,
-a converter, even a sudoku. `spacer`
+even a sudoku. `spacer`
 pushes everything after it to the far end.
 
 The tray's chevron opens its overflow. `Super + O` then `T` opens it with a

@@ -1035,8 +1035,6 @@ BorderSurface {
           // icon click focuses it first (summoning the scratchpad) and only
           // minimizes on a second click.
           visible: contextMenu.dock.minimizeMode !== "off" && contextMenu.dock.contextWindows > 0
-          // Nothing left on screen, or the row the selection sits on is
-          // already parked — say so rather than offering a no-op.
           disabled: contextMenu.dock.selectedContextWindowParked
             || contextMenu.dock.visibleWindows(contextMenu.dock.contextWindowList).length === 0
           onTriggered: {

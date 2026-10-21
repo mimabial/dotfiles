@@ -28,7 +28,7 @@ Item {
     readonly property real radius: box.borderRadius ?? shell.moduleRadius
     readonly property var icons: {
         const values = SystemTray.items.values, result = []
-        for (let i = 0; i < values.length; i++) if (values[i].status !== Status.Passive) result.push(values[i])
+        for (const item of values) if (item.status !== Status.Passive) result.push(item)
         return result
     }
     readonly property var shownIcons: shell.prefs.trayShowIcons ? icons.filter(item => !shell.trayHidden.includes(iconId(item))) : []

@@ -57,7 +57,7 @@
     "display",
     "vpn",
     "wifi",
-    "quickshare",
+    { "id": "kdeconnect", "props": { "showBadge": false } },
     {
       "id": "bluetooth",
       "props": {
@@ -102,14 +102,6 @@
       "trayPosition": {
         "section": "right",
         "index": 15,
-        "stringEntry": true
-      }
-    },
-    {
-      "id": "converter",
-      "trayPosition": {
-        "section": "right",
-        "index": 11,
         "stringEntry": true
       }
     },
@@ -162,17 +154,6 @@
       }
     },
     {
-      "id": "github",
-      "props": {
-        "keepVisible": true
-      },
-      "trayPosition": {
-        "section": "right",
-        "index": 10,
-        "stringEntry": true
-      }
-    },
-    {
       "id": "powerbutton",
       "trayPosition": {
         "section": "right",
@@ -185,6 +166,14 @@
       "trayPosition": {
         "section": "right",
         "index": 7,
+        "stringEntry": true
+      }
+    },
+    {
+      "id": "printers",
+      "trayPosition": {
+        "section": "right",
+        "index": 19,
         "stringEntry": true
       }
     }

@@ -10,7 +10,7 @@ import requests
 _HTTP_LOCAL = threading.local()
 
 
-DEFAULT_TIMEOUT = 10
+DEFAULT_TIMEOUT_SECONDS = 10
 
 
 def http_get(url: str, **kwargs):

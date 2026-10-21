@@ -22,7 +22,7 @@
   "systemstats.disks": { "fontSize": 11 },
   "games": { "fontSize": 16 },
   "": { "symbols": "MacTahoe-dark/{context}/symbolic" },
-  "bluetooth, tasks, notifications": { "badgeSize": 9 },
-  "agents, github": { "badgeSize": 7.0 },
+  "bluetooth, tasks, notifications, kdeconnect": { "badgeSize": 9 },
+  "agents": { "badgeSize": 7.0 },
   "weather": { "symbolSize": 14 }
 }

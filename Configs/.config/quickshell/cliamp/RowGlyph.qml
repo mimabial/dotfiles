@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons as Commons
 
-// Disabled hides the glyph but keeps its slot, so every row's glyph columns line up.
 Text {
   id: root
   required property var controller

@@ -14,7 +14,7 @@ import urllib.request
 KIMI_HOME = Path(os.environ.get("KIMI_SHARE_DIR") or Path.home() / ".kimi").expanduser()
 USAGE_ENDPOINT = "https://api.kimi.com/coding/v1/usages"
 PROBE_MIN_INTERVAL_SECONDS = 15
-PROBE_TIMEOUT = 10
+PROBE_TIMEOUT_SECONDS = 10
 TIME_UNITS = {"TIME_UNIT_SECOND": 1, "TIME_UNIT_MINUTE": 60, "TIME_UNIT_HOUR": 3600, "TIME_UNIT_DAY": 86400, "TIME_UNIT_WEEK": 604800}
 
 
@@ -62,7 +62,7 @@ def collect_limits():
         return cached
     request = urllib.request.Request(USAGE_ENDPOINT, headers={"Authorization": "Bearer " + token, "Accept": "application/json"})
     try:
-        with urllib.request.urlopen(request, timeout=PROBE_TIMEOUT) as response:
+        with urllib.request.urlopen(request, timeout=PROBE_TIMEOUT_SECONDS) as response:
             payload = json.load(response)
         result.update(limits=usage_limits(payload), limitsObservedAt=round(time.time() * 1000), usageStatusText="")
         if not result["limits"]:

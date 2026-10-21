@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from pyutils.xdg_base_dirs import xdg_cache_home
 
-MISS_TTL = 60 * 60
+MISS_TTL_SECONDS = 60 * 60
 CACHE_COMMIT_BATCH = 64
 
 
@@ -106,7 +106,7 @@ class LyricsMissCache:
             self._mark_dirty_locked()
             return False
 
-    def put(self, cache_key: str, ttl: int = MISS_TTL) -> None:
+    def put(self, cache_key: str, ttl: int = MISS_TTL_SECONDS) -> None:
         with self._lock:
             self.connection.execute(
                 """

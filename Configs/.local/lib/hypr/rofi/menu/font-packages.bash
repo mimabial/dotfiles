@@ -5,7 +5,7 @@ nerd_font_display_name_from_package() {
   local display="${package_name}"
   local -a words=()
 
-  [[ "${display}" == ttf-* || "${display}" == otf-* ]] && display="${display:4}"
+  display="${display#[ot]tf-}"
   if [[ "${display}" == *-nerdfonts ]]; then
     display="${display%-nerdfonts}"
   else

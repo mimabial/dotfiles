@@ -16,18 +16,17 @@ function parseSnapshot(snap) {
 
   var out = [];
   var clients = Array.isArray(snap.clients) ? snap.clients : [];
-  for (var k = 0; k < clients.length; k++) {
-    var c = clients[k];
-    if (!c || c.mapped === false || !c.address) continue;
-    var ws = c.workspace || { id: 0, name: "" };
+  for (var client of clients) {
+    if (!client || client.mapped === false || !client.address) continue;
+    var ws = client.workspace || { id: 0, name: "" };
     if (Number(ws.id) === 0 && String(ws.name || "") === "") continue;
-    var mon = monById[c.monitor] || focusedMon;
+    var mon = monById[client.monitor] || focusedMon;
     out.push({
-      address: String(c.address),
+      address: String(client.address),
       ws: Number(ws.id),
       special: isSpecial(ws),
       monitor: mon ? String(mon.name || "") : "",
-      focusId: Number(c.focusHistoryID) >= 0 ? Number(c.focusHistoryID) : 999
+      focusId: Number(client.focusHistoryID) >= 0 ? Number(client.focusHistoryID) : 999
     });
   }
 
@@ -42,13 +41,12 @@ function switchable(state, cfg) {
   var scope = cfg.scope;
   var items = [];
   var src = state && state.windows ? state.windows : [];
-  for (var i = 0; i < src.length; i++) {
-    var w = src[i];
-    if (w.special && (cfg.showSpecial !== true || scope === "workspace")) continue;
-    if (scope === "monitor" && w.monitor !== state.focusedMonitor) continue;
-    if (scope === "workspace" && w.ws !== state.activeWorkspace) continue;
-    if (scope === "others" && w.ws === state.activeWorkspace) continue;
-    items.push(w);
+  for (var window of src) {
+    if (window.special && (cfg.showSpecial !== true || scope === "workspace")) continue;
+    if (scope === "monitor" && window.monitor !== state.focusedMonitor) continue;
+    if (scope === "workspace" && window.ws !== state.activeWorkspace) continue;
+    if (scope === "others" && window.ws === state.activeWorkspace) continue;
+    items.push(window);
   }
 
   if (cfg.order === "recent") {

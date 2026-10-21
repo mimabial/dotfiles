@@ -17,7 +17,6 @@ hyprshell_print_entrypoint_records() {
   local relative_path script_path
   while IFS=$'\t' read -r relative_path script_path; do
     hyprshell_is_internal_script "${relative_path}" && continue
-    # Python: list entrypoints only, not import-only modules.
     if [[ "${script_path}" == *.py && ! -x "${script_path}" ]]; then
       grep -qs '__name__ == .__main__.' "${script_path}" || continue
     fi

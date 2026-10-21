@@ -4,6 +4,9 @@ MEDIA_LIB="$HOME/.local/lib/hypr/media"
 STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 DEBUG_DIR="$STATE_HOME/hypr/lyrics"
 DEBUG_LOG="$DEBUG_DIR/fetch.log"
+DEBUG_LOG_MAX_LINES=200
+DEFAULT_TIMEOUT_SECONDS=20
+LYRICS_NOT_FOUND_STATUS=1
 ORIGINAL_LRC_FILE="${LRC_FILE:-}"
 
 if [ -r "$MEDIA_LIB/lib/lyrics-paths.bash" ]; then
@@ -56,8 +59,8 @@ if [ -z "$PYTHON_EXEC" ]; then
   exit 0
 fi
 
-timeout_seconds="${LYRICS_MAX_TOTAL_SEC:-20}"
-case "$timeout_seconds" in '' | *[!0-9]* | 0) timeout_seconds=20 ;; esac
+timeout_seconds="${LYRICS_MAX_TOTAL_SEC:-$DEFAULT_TIMEOUT_SECONDS}"
+case "$timeout_seconds" in '' | *[!0-9]* | 0) timeout_seconds=$DEFAULT_TIMEOUT_SECONDS ;; esac
 tmp_log="$(mktemp "${TMPDIR:-/tmp}/fetch_lyrics.XXXXXX" 2>/dev/null || true)"
 [ -n "$tmp_log" ] && trap 'rm -f "$tmp_log"' EXIT HUP INT TERM
 
@@ -79,12 +82,12 @@ if [ "$rc" -eq 0 ] && [ -s "$LRC_FILE" ]; then
   exit 0
 fi
 
-if [ "$rc" -eq 124 ] || [ "$rc" -ge 2 ]; then
+if [ "$rc" -gt "$LYRICS_NOT_FOUND_STATUS" ]; then
   mkdir -p "$DEBUG_DIR" 2>/dev/null || true
   {
     printf '[%s] rc=%s file=%s artist=%s title=%s\n' \
       "$(date '+%Y-%m-%d %H:%M:%S')" "$rc" "${FILE:-}" "${ARTIST:-}" "${TITLE:-}"
-    [ -s "$tmp_log" ] && sed -n '1,200p' "$tmp_log"
+    [ -s "$tmp_log" ] && sed -n "1,${DEBUG_LOG_MAX_LINES}p" "$tmp_log"
     printf '\n'
   } >>"$DEBUG_LOG" 2>/dev/null || true
   notify "Lyrics lookup failed (see $DEBUG_LOG)" error

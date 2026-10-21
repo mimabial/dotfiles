@@ -17,7 +17,6 @@ test_policy_that_does_not() {
   if managed_backup_policy_is_enabled never file; then fail "never must not back up"; fi
 }
 
-# An unknown policy must abort rather than silently skip the backup.
 test_unknown_policy_aborts() {
   local out="" rc=0
   out="$(managed_backup_policy_is_enabled bogus tree 2>&1)" || rc=$?
@@ -26,7 +25,6 @@ test_unknown_policy_aborts() {
     || fail "error must name the kind and the policy: ${out}"
 }
 
-# The file and tree messages come from one place now, so they cannot drift.
 test_kind_appears_in_message() {
   local out=""
   out="$(managed_backup_policy_is_enabled bogus file 2>&1)" || true

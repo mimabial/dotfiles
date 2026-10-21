@@ -84,8 +84,7 @@ function thumbnailRect(toplevel, windows, source, outputWidth, outputHeight, gap
     var right = left + Number(size[0] ?? 0), bottom = top + Number(size[1] ?? 0);
     var nearLeft = -Infinity, nearTop = -Infinity, nearRight = Infinity, nearBottom = Infinity;
     if (!ipc.floating && !ipc.pinned && !ipc.fullscreen) {
-        for (var index = 0; index < windows.length; index++) {
-            var other = windows[index];
+        for (var other of windows) {
             if (other === toplevel)
                 continue;
             var candidate = ipcFor(other);
@@ -167,12 +166,10 @@ function composeRows(rows, scale, width, height, gap, padding, footerHeight) {
         return null;
     var extraRowSpace = (height - totalHeight) / measured.length;
     var y = extraRowSpace / 2, result = [];
-    for (var outputRow = 0; outputRow < measured.length; outputRow++) {
-        var row = measured[outputRow];
+    for (var row of measured) {
         var extraCardSpace = (width - row.width) / row.cards.length;
         var x = extraCardSpace / 2;
-        for (var cardIndex = 0; cardIndex < row.cards.length; cardIndex++) {
-            var card = row.cards[cardIndex];
+        for (var card of row.cards) {
             result[card.index] = {
                 x: x,
                 y: y + (row.height - card.height) / 2,

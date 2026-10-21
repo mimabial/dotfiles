@@ -32,9 +32,6 @@ function mirrorTarget(monitor) {
   return String((monitor || {}).mirror_of || "").trim()
 }
 
-// A monitor only earns a rectangle when it drives its own image. One that is
-// off has no place on the canvas, and one that mirrors another shares its
-// source's position, so drawing it would stack two cards on the same spot.
 function drawsOwnImage(monitor) {
   return !!monitor
     && monitor.enabled !== false
@@ -50,8 +47,8 @@ function hiddenDisplays(monitors) {
   var off = []
   var mirrored = []
 
-  for (var i = 0; i < summaries.length; i++) {
-    var monitor = summaries[i] || {}
+  for (var summary of summaries) {
+    var monitor = summary || {}
     var name = String(monitor.name || "Display")
     if (monitor.enabled === false) {
       off.push(name)
@@ -187,8 +184,8 @@ function validEditorDocument(value) {
 
 function editorMetadata(editorDisplays, key) {
   var displays = editorDisplays instanceof Array ? editorDisplays : []
-  for (var i = 0; i < displays.length; i++) {
-    if (String((displays[i] || {}).key || "") === String(key || "")) return displays[i]
+  for (var display of displays) {
+    if (String((display || {}).key || "") === String(key || "")) return display
   }
   return {}
 }
@@ -266,8 +263,8 @@ function hiddenProfileDisplays(profile) {
 
 function outputByKey(profile, key) {
   var outputs = profile && profile.outputs instanceof Array ? profile.outputs : []
-  for (var i = 0; i < outputs.length; i++) {
-    if (String((outputs[i] || {}).key || "") === String(key || "")) return outputs[i]
+  for (var output of outputs) {
+    if (String((output || {}).key || "") === String(key || "")) return output
   }
   return null
 }
@@ -338,10 +335,6 @@ function clampBrightness(value) {
   return Math.max(1, Math.min(100, Math.round(number)))
 }
 
-// Brightness is live hardware state, not profile state. Resolve the selected
-// profile output back to a connector only while that output is connected and
-// enabled, then give the panel a friendly label that cannot be mistaken for a
-// global brightness control.
 function brightnessTarget(profile, key, editorDisplays) {
   var output = outputByKey(profile, key)
   var metadata = editorMetadata(editorDisplays, key)
@@ -358,12 +351,12 @@ function brightnessTarget(profile, key, editorDisplays) {
 
 function initialOutputKey(profile, editorDisplays) {
   var displays = editorDisplays instanceof Array ? editorDisplays : []
-  for (var i = 0; i < displays.length; i++) {
-    if (displays[i] && displays[i].focused) return String(displays[i].key || "")
+  for (var display of displays) {
+    if (display && display.focused) return String(display.key || "")
   }
   var outputs = profile && profile.outputs instanceof Array ? profile.outputs : []
-  for (var j = 0; j < outputs.length; j++) {
-    if (outputs[j] && outputs[j].enabled !== false) return String(outputs[j].key || "")
+  for (var output of outputs) {
+    if (output && output.enabled !== false) return String(output.key || "")
   }
   return outputs.length ? String((outputs[0] || {}).key || "") : ""
 }
@@ -435,29 +428,26 @@ function profileOptions(document) {
 
 function savedProfileByName(editorDocument, name) {
   var profiles = editorDocument && editorDocument.profiles instanceof Array ? editorDocument.profiles : []
-  for (var i = 0; i < profiles.length; i++) {
-    if (String((profiles[i] || {}).name || "") === String(name || "")) return profiles[i]
+  for (var profile of profiles) {
+    if (String((profile || {}).name || "") === String(name || "")) return profile
   }
   return null
 }
 
 function profileSummaryByName(document, name) {
   var profiles = document && document.profiles instanceof Array ? document.profiles : []
-  for (var i = 0; i < profiles.length; i++) {
-    if (String((profiles[i] || {}).name || "") === String(name || "")) return profiles[i]
+  for (var profile of profiles) {
+    if (String((profile || {}).name || "") === String(name || "")) return profile
   }
   return null
 }
 
-// The daemon owns display matching. This helper only picks the exact match it
-// already identified so the panel can decide whether the current hardware set
-// needs its own profile.
 function exactDisplayProfile(document) {
   var profiles = document && document.profiles instanceof Array ? document.profiles : []
   var active = null
   var first = null
-  for (var i = 0; i < profiles.length; i++) {
-    var item = profiles[i] || {}
+  for (var profile of profiles) {
+    var item = profile || {}
     if (item.exact_display_match !== true) continue
     if (item.recommended === true) return item
     if (item.active === true) active = item
@@ -604,10 +594,8 @@ function normalizeManualWorkspaceDefaults(rules) {
     var rule = items[i] || {}
     var target = String(rule.output_key || rule.output_name || "")
     rule.default = false
-    rule.persistent = false
     if (target !== "" && !seen["key:" + target]) {
       rule.default = true
-      rule.persistent = true
       seen["key:" + target] = true
     }
     items[i] = rule
@@ -632,9 +620,6 @@ function manualWorkspaceRulesFromPlan(plan, profile) {
   }
   if (rules.length > 0) return normalizeManualWorkspaceDefaults(rules)
 
-  // A disabled planner has no daemon plan to materialize. Recreate the plan
-  // from its saved generated settings so switching to manual still starts
-  // from what the user configured rather than an empty list.
   var settings = (profile || {}).workspaces || {}
   var keys = manualWorkspaceTargetKeys(profile)
   var maximum = Math.max(1, Math.floor(Number(settings.max_workspaces || DEFAULT_MAX_WORKSPACES)))
@@ -673,8 +658,8 @@ function manualWorkspaceCount(settings) {
   var value = settings || {}
   var rules = value.rules instanceof Array ? value.rules : []
   var maximum = 0
-  for (var i = 0; i < rules.length; i++) {
-    maximum = Math.max(maximum, workspaceRuleNumber((rules[i] || {}).workspace))
+  for (var rule of rules) {
+    maximum = Math.max(maximum, workspaceRuleNumber((rule || {}).workspace))
   }
   return maximum > 0 ? maximum : Math.max(1, Number(value.max_workspaces || DEFAULT_MAX_WORKSPACES))
 }
@@ -735,7 +720,7 @@ function workspacePlanRows(plan, profile) {
 function enabledOutputCount(profile) {
   var outputs = profile && profile.outputs instanceof Array ? profile.outputs : []
   var count = 0
-  for (var i = 0; i < outputs.length; i++) if (outputs[i] && outputs[i].enabled !== false) count++
+  for (var output of outputs) if (output && output.enabled !== false) count++
   return count
 }
 
@@ -749,9 +734,9 @@ function layoutMetrics(bounds, canvasWidth, canvasHeight, padding) {
 
 function workspaceText(plan, outputKey) {
   var rows = plan instanceof Array ? plan : []
-  for (var i = 0; i < rows.length; i++) {
-    if (String((rows[i] || {}).output_key || "") === String(outputKey || "")) {
-      var workspaces = rows[i].workspaces instanceof Array ? rows[i].workspaces : []
+  for (var row of rows) {
+    if (String((row || {}).output_key || "") === String(outputKey || "")) {
+      var workspaces = row.workspaces instanceof Array ? row.workspaces : []
       return workspaces.join(", ")
     }
   }

@@ -17,7 +17,6 @@ Loader {
     readonly property bool spacer: moduleId === "spacer"
     readonly property bool customSource: !registry[moduleId] && !!moduleEntry.source
     readonly property point dragPosition: handle.centroid.scenePosition
-    // a hosted drag released where no drop area of its own window took it
     signal droppedOutside(point position)
     function moduleVisible(module: var): bool {
         if (!module) return true

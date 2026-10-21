@@ -12,7 +12,6 @@ hl.workspace_rule({
   workspace = "1",
   monitor = "desc:BOE 0x07D8",
   default = true,
-  persistent = true,
 })
 hl.workspace_rule({
   workspace = "2",

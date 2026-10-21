@@ -1,5 +1,3 @@
-# NOTE: _fuzzy_search_cmd_history requires fzf shell integration
-
 typeset -g _FZF_WARNED_RG=0
 typeset -g _FZF_WARNED_BAT=0
 
@@ -61,21 +59,24 @@ typeset -g _FZF_SEARCH_DEPTH=""
 typeset -gr _FZF_DEFAULT_PROMPT=' '
 typeset -gr _FZF_SEARCH_PROMPT='Search: '
 typeset -gr _FZF_SCROLLBAR=' ▌'
+typeset -gr _FZF_FALLBACK_COLUMNS=120
+typeset -gr _FZF_DEFAULT_BREAKPOINT=100
+typeset -gr _FZF_MIN_BREAKPOINT=80
 
 _fzf_term_columns() {
     local cols="${FZF_LAYOUT_COLUMNS:-$COLUMNS}"
     if [[ -z "$cols" || "$cols" != <-> ]]; then
         cols=$(command tput cols 2>/dev/null)
     fi
-    [[ -z "$cols" || "$cols" != <-> ]] && cols=120
+    [[ -z "$cols" || "$cols" != <-> ]] && cols=$_FZF_FALLBACK_COLUMNS
     print -r -- "$cols"
 }
 
 _fzf_layout_mode() {
     local cols="$(_fzf_term_columns)"
-    local breakpoint="${FZF_LAYOUT_BREAKPOINT:-100}"
-    if [[ -z "$breakpoint" || "$breakpoint" != <-> || "$breakpoint" -lt 80 ]]; then
-        breakpoint=100
+    local breakpoint="${FZF_LAYOUT_BREAKPOINT:-$_FZF_DEFAULT_BREAKPOINT}"
+    if [[ -z "$breakpoint" || "$breakpoint" != <-> || "$breakpoint" -lt $_FZF_MIN_BREAKPOINT ]]; then
+        breakpoint=$_FZF_DEFAULT_BREAKPOINT
     fi
 
     if (( cols >= breakpoint )); then

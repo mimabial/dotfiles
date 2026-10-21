@@ -14,9 +14,6 @@ trap 'rm -f -- "${render_job[staged_file]}"' EXIT
 
 render_read_palette_into render_job
 
-# Border source of truth:
-#   theme mode     -> pack's hypr.theme verbatim (no border directives if the pack omits them)
-#   wallpaper mode -> derived from palette
 emit_hyprland_border_sections() {
   local -n border_job_ref="$1"
   if [[ "${border_job_ref[palette_mode]}" == "theme" && "${border_job_ref[palette_source]}" == theme:* ]]; then

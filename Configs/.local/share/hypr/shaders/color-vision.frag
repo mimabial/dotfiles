@@ -45,7 +45,6 @@ const mat3 LMS2RGB = mat3(
     -0.000365296938, -0.00412161469, 0.693511405
 );
 
-// LMS: the long, medium and short cone responses.
 vec3 simulateColorVisionDeficiency(vec3 color) {
     vec3 lms = RGB2LMS * color;
     mat3 m = mat3(1.0);
@@ -71,7 +70,6 @@ vec3 simulateColorVisionDeficiency(vec3 color) {
     return LMS2RGB * (m * lms);
 }
 
-// Daltonization moves the part of a colour a CVD viewer cannot see into channels they can.
 vec3 daltonize(vec3 color, vec3 simulation) {
     vec3 error = color - simulation;
     vec3 correction = vec3(0.0);

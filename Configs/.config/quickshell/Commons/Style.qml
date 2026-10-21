@@ -9,12 +9,11 @@ QtObject {
     property var shell: null
 
     readonly property int textSize: Active.Style.textSize
+    readonly property real glyphOvershoot: Active.Style.glyphOvershoot
     readonly property int cornerRadius: root.shell ? Number(root.shell.rounding) : 0
     readonly property int gapsOut: Active.Style.popupGap
     readonly property string fontFamily:
         root.shell ? String(root.shell.fontFamily) : "JetBrainsMono Nerd Font"
-    // What the bar and its popups actually paint, so a ported panel does not
-    // end up the only opaque surface on the desktop.
     readonly property real barOpacity: root.shell ? Number(root.shell.barOpacity) : 1
     readonly property real popupSurfaceOpacity: Active.Style.popupSurfaceOpacity
     readonly property real popupBorderOpacity: Active.Style.popupBorderOpacity
@@ -97,25 +96,22 @@ QtObject {
         popupPadding: Active.Style.popupPadding
     }
 
-    // This config sizes its bars from their content, so there is no fixed bar
-    // thickness token. controlHeight is the one-row metric and scales with
-    // TEXT_SIZE, which is what consumers of sizeHorizontal actually want.
     readonly property Commons.StyleBar bar: Commons.StyleBar {
         sizeHorizontal: Active.Style.controlHeight
         iconSlot: Active.Style.controlHeight
     }
 
-    // Icon glyphs from the text font disagree on ink height — in Lekton the play
-    // triangle is 0.810 em against the plus's 0.750 and the pause's 0.692 — so the
-    // same pixelSize renders them at visibly different sizes. Measure the live face
-    // and scale the odd ones onto the plus, the 0.750-em anchor.
-    readonly property TextMetrics inkPlus: TextMetrics { font.family: root.fontFamily; font.pixelSize: 200; text: "\uf067" }
-    readonly property TextMetrics inkPlay: TextMetrics { font.family: root.fontFamily; font.pixelSize: 200; text: "\uf04b" }
-    readonly property TextMetrics inkPause: TextMetrics { font.family: root.fontFamily; font.pixelSize: 200; text: "\uf04c" }
+    readonly property string plusGlyph: "\uf067"
+    readonly property string playGlyph: "\uf04b"
+    readonly property string pauseGlyph: "\uf04c"
+    readonly property int inkProbePixelSize: 200
+    readonly property TextMetrics inkPlus: TextMetrics { font.family: root.fontFamily; font.pixelSize: root.inkProbePixelSize; text: root.plusGlyph }
+    readonly property TextMetrics inkPlay: TextMetrics { font.family: root.fontFamily; font.pixelSize: root.inkProbePixelSize; text: root.playGlyph }
+    readonly property TextMetrics inkPause: TextMetrics { font.family: root.fontFamily; font.pixelSize: root.inkProbePixelSize; text: root.pauseGlyph }
     function iconScale(glyph) {
         const reference = root.inkPlus.tightBoundingRect.height
         if (!(reference > 0)) return 1
-        const probe = glyph === "\uf04b" ? root.inkPlay : glyph === "\uf04c" ? root.inkPause : null
+        const probe = glyph === root.playGlyph ? root.inkPlay : glyph === root.pauseGlyph ? root.inkPause : null
         const ink = probe ? probe.tightBoundingRect.height : 0
         return ink > 0 ? reference / ink : 1
     }

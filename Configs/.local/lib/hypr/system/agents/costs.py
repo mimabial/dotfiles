@@ -10,8 +10,8 @@ import sys
 import urllib.request
 
 PRICE_URL = "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
-PRICE_MAX_AGE = 24 * 60 * 60
-PRICE_TIMEOUT = 10
+PRICE_MAX_AGE_SECONDS = 24 * 60 * 60
+PRICE_TIMEOUT_SECONDS = 10
 RATE_FIELDS = ("input_cost_per_token", "output_cost_per_token", "cache_read_input_token_cost", "cache_creation_input_token_cost")
 PERIODS = (1, RECENT_DAYS, ROLLING_MONTH_DAYS)
 CONTEXT_RATE = re.compile(r"input_cost_per_token(_above_(\d+)k_tokens)$")
@@ -20,11 +20,11 @@ TOKENS_PER_K = 1000
 
 def load_prices():
     path = usage_cache_dir() / "prices-v2.json"
-    cached = read_fresh_cached_json(path, PRICE_MAX_AGE)
+    cached = read_fresh_cached_json(path, PRICE_MAX_AGE_SECONDS)
     if cached is not None:
         return cached, "fresh"
     try:
-        with urllib.request.urlopen(PRICE_URL, timeout=PRICE_TIMEOUT) as response:
+        with urllib.request.urlopen(PRICE_URL, timeout=PRICE_TIMEOUT_SECONDS) as response:
             document = json.load(response)
         prices = {model: {key: value for key, value in entry.items()
                          if key.startswith(RATE_FIELDS) or key in ("litellm_provider", "provider_specific_entry")}

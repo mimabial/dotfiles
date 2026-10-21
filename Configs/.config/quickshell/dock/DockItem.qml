@@ -61,8 +61,8 @@ Item {
     if (item.active || item.isFocused) return false
     if (item.appId && item.dock.urgentMap[item.appId]) return true
     var list = item.windowList || []
-    for (var i = 0; i < list.length; i++) {
-      var addr = list[i] ? list[i].address : ""
+    for (var window of list) {
+      var addr = window ? window.address : ""
       if (addr && item.dock.urgentMap[addr]) return true
     }
     return false
@@ -72,8 +72,8 @@ Item {
 
   readonly property bool onFocusedWorkspace: {
     var list = item.windowList || []
-    for (var i = 0; i < list.length; i++) {
-      var ws = list[i] ? list[i].workspaceName : ""
+    for (var window of list) {
+      var ws = window ? window.workspaceName : ""
       if (ws && (ws === String(item.dock.focusedWorkspaceId) || ws === item.dock.focusedWorkspaceName)) return true
     }
     return false
@@ -87,9 +87,6 @@ Item {
 
   readonly property bool starting: item.dock.launchPending[item.appId] !== undefined
 
-  // The header is the app's name plus, in brackets, whatever state qualifies
-  // it. They are handed out separately so the qualifier can be drawn at lower
-  // contrast: it is context, not the thing being named.
   readonly property string tooltipSuffix: {
     if (item.name === "") return ""
     if (item.starting) return "[starting…]"
@@ -140,8 +137,6 @@ Item {
 
     transform: Translate { y: item.dock.awaySign * item.bounceOffset }
 
-    // Sits on the dock floor and grows away from it, so a magnified icon
-    // never reaches back over the running dots beneath it.
     Image {
       id: iconImg
       x: (iconBox.width - width) / 2
@@ -188,8 +183,8 @@ Item {
   readonly property bool isFocused: {
     if (item.appId && item.dock.activeId && DockModel.isAppMatch(item.appId, item.dock.activeId)) return true
     var list = item.windowList || []
-    for (var i = 0; i < list.length; i++) {
-      if (list[i] && list[i].address && list[i].address === item.dock.activeWindowAddress) return true
+    for (var window of list) {
+      if (window && window.address && window.address === item.dock.activeWindowAddress) return true
     }
     return false
   }
@@ -256,8 +251,6 @@ Item {
       }
     }
 
-    // Compact overflow pill when 6+ windows are open. Wrapped for the same
-    // reason as the spine separators: indicatorRow positions its children.
     Item {
       visible: item.totalWindowCount > item.denseDotThreshold
       width: overflowPill.width

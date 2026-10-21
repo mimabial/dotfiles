@@ -19,7 +19,7 @@ from autotag_models import TrackTags, Unidentified
 from autotag_cache import ResolutionCache
 
 
-HTTP_TIMEOUT_S = 20
+HTTP_TIMEOUT_SECONDS = 20
 
 
 EXACT_MATCH_SCORE = 0.999
@@ -59,20 +59,20 @@ HTTP_SESSION.headers.update({"User-Agent": USER_AGENT})
 
 
 # MusicBrainz allows one request per second per client and blocks abusers.
-MUSICBRAINZ_INTERVAL = 1.1
+MUSICBRAINZ_INTERVAL_SECONDS = 1.1
 
 
-ACOUSTID_INTERVAL = 0.34
+ACOUSTID_INTERVAL_SECONDS = 0.34
 
 
 # Apple publishes no firm figure; the 429 backoff absorbs whatever the real one is.
-ITUNES_INTERVAL = 1.2
+ITUNES_INTERVAL_SECONDS = 1.2
 
 
-DEEZER_INTERVAL = 0.2
+DEEZER_INTERVAL_SECONDS = 0.2
 
 
-DEEZER_COOLDOWN = 60 * 60
+DEEZER_COOLDOWN_SECONDS = 60 * 60
 
 
 # MusicBrainz scores matches 0-100; below this a hit is usually a different song.
@@ -106,7 +106,7 @@ def _disable_deezer() -> None:
     if not _deezer_blocked:
         _deezer_blocked = True
         if _persistent_cache is not None:
-            _persistent_cache.put_state(DEEZER_BLOCKED_STATE, DEEZER_COOLDOWN)
+            _persistent_cache.put_state(DEEZER_BLOCKED_STATE, DEEZER_COOLDOWN_SECONDS)
         print("deezer refused this address; skipping it for the rest of the run",
               file=sys.stderr)
 
@@ -145,7 +145,7 @@ def http_get(url: str, params: dict, limiter: RateLimiter, attempts: int = 4):
     response = None
     for attempt in range(attempts):
         limiter.wait()
-        response = HTTP_SESSION.get(url, params=params, timeout=HTTP_TIMEOUT_S)
+        response = HTTP_SESSION.get(url, params=params, timeout=HTTP_TIMEOUT_SECONDS)
         if response.status_code in (429, 503) and attempt < attempts - 1:
             retry_after = response.headers.get("Retry-After", "")
             time.sleep(float(retry_after) if retry_after.isdigit() else delay)

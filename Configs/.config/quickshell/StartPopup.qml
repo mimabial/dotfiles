@@ -69,8 +69,6 @@ PopupCard {
         pinsConfigFile.setText(JSON.stringify(ids, null, 2) + "\n")
     }
 
-    // XDG-derived defaults stay live; places.json only records what the user
-    // added on top and which defaults they removed
     property var defaultPlaces: []
     property var customPlaces: []
     property var hiddenDefaultPaths: []
@@ -112,7 +110,6 @@ PopupCard {
         savePlacePreferences()
         closePlaceEditor()
     }
-    // a default is remembered as hidden so it stays gone; an added one just goes
     function removePlace(place) {
         const adds = customPlaces.slice()
         const at = adds.findIndex(p => p.path === place.path)

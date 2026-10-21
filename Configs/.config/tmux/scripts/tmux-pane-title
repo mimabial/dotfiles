@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+LABEL_MAX_CHARS=18
+HOST_MAX_CHARS=14
+AGENT_TITLE_MAX_CHARS=24
+FIELD_SEPARATOR=$'\034'
+
 plain=0
 if [[ ${1:-} == --plain ]]; then plain=1; shift; fi
 cmd="${1:-}"
@@ -8,7 +13,7 @@ tty="${2:-}"
 pane_title="${3:-}"
 
 trim() {
-  local value="${1:-}" max="${2:-18}"
+  local value="${1:-}" max="${2:-$LABEL_MAX_CHARS}"
   value="${value#"${value%%[![:space:]]*}"}"
   value="${value%"${value##*[![:space:]]}"}"
   ((${#value} <= max)) && printf '%s\n' "$value" || printf '%s\n' "${value:0:max}"
@@ -17,16 +22,16 @@ trim() {
 resolve_process() {
   local tty="$1" fallback="$2" record proc args script
   [[ -n $tty ]] || { printf '%s\n' "${fallback:-shell}"; return; }
-  record="$(ps -t "$tty" -o stat= -o comm= -o args= 2>/dev/null | awk '
+  record="$(ps -t "$tty" -o stat= -o comm= -o args= 2>/dev/null | awk -v field_separator="$FIELD_SEPARATOR" '
     {
       stat=$1; comm=$2; $1=$2=""; sub(/^[[:space:]]+/, "")
-      row=comm sprintf("%c", 28) $0
+      row=comm field_separator $0
       last=row
       if (stat ~ /^[^TXZ ]*\+/) { found=1; print row; exit }
     }
     END { if (!found && last != "") print last }
   ')"
-  IFS=$'\034' read -r proc args <<< "$record"
+  IFS="$FIELD_SEPARATOR" read -r proc args <<< "$record"
   proc="${proc##*/}"
   [[ -n $proc || -n $args ]] || { printf '%s\n' "${fallback:-shell}"; return; }
 
@@ -53,7 +58,7 @@ resolve_process() {
     script="${script%.sh}"; script="${script%.bash}"; script="${script%.zsh}"
     if [[ $script =~ ^(\.|config|rc|profile)$ || -z $script ]]; then trim "$proc"; else trim "$script"; fi
   elif [[ $proc =~ ^(ssh|mosh)$ && $args =~ ${proc}[[:space:]]+([^[:space:]]+@)?([^[:space:]]+) ]]; then
-    printf '%s:%s\n' "$proc" "$(trim "${BASH_REMATCH[2]}" 14)"
+    printf '%s:%s\n' "$proc" "$(trim "${BASH_REMATCH[2]}" "$HOST_MAX_CHARS")"
   elif [[ $args =~ /nix/store/[^/]+/bin/([^[:space:]]+) ]]; then
     trim "${BASH_REMATCH[1]}"
   else
@@ -66,7 +71,7 @@ resolved="$(resolve_process "$tty" "$cmd" 2>/dev/null || true)"
 
 case "$cmd" in
   codex | claude | anthropic | aider)
-    icon=󰚩; label="$(trim "$pane_title")"; label="${label:-$cmd}"; label="$(trim "$label" 24)" ;;
+    icon=󰚩; label="$(trim "$pane_title")"; label="${label:-$cmd}"; label="$(trim "$label" "$AGENT_TITLE_MAX_CHARS")" ;;
   nvim | vim | vi | view) icon=; label=nvim ;;
   zsh | bash | fish | sh) icon=; label="$cmd" ;;
   ssh:* | mosh:*) icon=󰣀; label="${cmd#*:}" ;;

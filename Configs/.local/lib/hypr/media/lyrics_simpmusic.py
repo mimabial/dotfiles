@@ -8,7 +8,7 @@ from http import HTTPStatus
 
 from lyrics_cache import lyrics_miss_cache
 from lyrics_text import ProviderResult, build_result, lrc_header, normalize_text, text_similarity, to_lrc_from_plain
-from lyrics_http import DEFAULT_TIMEOUT, response_ok, http_get
+from lyrics_http import DEFAULT_TIMEOUT_SECONDS, response_ok, http_get
 
 
 SIMPMUSIC_API_BASE = "https://api-lyrics.simpmusic.org/v1"
@@ -17,7 +17,7 @@ SIMPMUSIC_API_BASE = "https://api-lyrics.simpmusic.org/v1"
 _SIMPMUSIC_COOLDOWN_KEY = "simpmusic"
 
 
-SIMPMUSIC_COOLDOWN_TTL = 60 * 60
+SIMPMUSIC_COOLDOWN_SECONDS = 60 * 60
 
 
 _SIMPMUSIC_COOLDOWN_LOCK = threading.Lock()
@@ -137,19 +137,19 @@ def _simpmusic_cooldown_expiry() -> float:
 def _activate_simpmusic_cooldown() -> None:
     global _SIMPMUSIC_COOLDOWN_UNTIL, _SIMPMUSIC_NOTICE_UNTIL
 
-    expires_at = time.time() + SIMPMUSIC_COOLDOWN_TTL
+    expires_at = time.time() + SIMPMUSIC_COOLDOWN_SECONDS
     with _SIMPMUSIC_COOLDOWN_LOCK:
         cache = lyrics_miss_cache()
         if cache:
             expires_at = cache.put_cooldown(
                 _SIMPMUSIC_COOLDOWN_KEY,
-                SIMPMUSIC_COOLDOWN_TTL,
+                SIMPMUSIC_COOLDOWN_SECONDS,
             )
         _SIMPMUSIC_COOLDOWN_UNTIL = expires_at
         _SIMPMUSIC_NOTICE_UNTIL = expires_at
 
     print(
-        f"  [simpmusic] Rate limited ({HTTPStatus.TOO_MANY_REQUESTS.value}); cooling down for {SIMPMUSIC_COOLDOWN_TTL // 60} minutes",
+        f"  [simpmusic] Rate limited ({HTTPStatus.TOO_MANY_REQUESTS.value}); cooling down for {SIMPMUSIC_COOLDOWN_SECONDS // 60} minutes",
         file=sys.stderr,
     )
 
@@ -174,7 +174,7 @@ def _simpmusic_cooldown_active() -> bool:
 
 
 def _simpmusic_response(path: str, failure: str, **kwargs):
-    response = http_get(f"{SIMPMUSIC_API_BASE}/{path}", timeout=DEFAULT_TIMEOUT, **kwargs)
+    response = http_get(f"{SIMPMUSIC_API_BASE}/{path}", timeout=DEFAULT_TIMEOUT_SECONDS, **kwargs)
     if response.status_code == HTTPStatus.TOO_MANY_REQUESTS:
         _activate_simpmusic_cooldown()
         return None

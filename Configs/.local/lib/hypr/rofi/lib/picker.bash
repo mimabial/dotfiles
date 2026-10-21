@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 ROFI_PICKER_RECENT_LIMIT=50
-# Mouse-driven dmenu selection: hovering highlights, primary click accepts.
 ROFI_MOUSE_SELECT_ARGS=(-sync -no-custom -hover-select -me-select-entry "" -me-accept-entry MousePrimary)
 
 rofi_picker_parse_style_args() {
@@ -56,8 +55,7 @@ rofi_picker_rasi_args() {
 rofi_picker_index_to_line() {
   local raw_file="$1"
   local index="$2"
-  # rofi -format 'i' is 0-based; awk NR is 1-based.
-  awk -v idx=$((index + 1)) 'NR==idx{print; exit}' "${raw_file}"
+  awk -v line_number=$((index + 1)) 'NR==line_number{print; exit}' "${raw_file}"
 }
 
 rofi_picker_run_indexed() {

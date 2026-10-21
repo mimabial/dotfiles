@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell.Hyprland
 
-// The whole set, since the bar itself only shows the active one.
 PopupCard {
     id: root
     popupName: "workspaces"

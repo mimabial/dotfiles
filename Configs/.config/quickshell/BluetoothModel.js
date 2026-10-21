@@ -42,8 +42,7 @@ function sortedByLabel(devices) {
 function deviceLists(devices) {
     var groups = { connected: [], known: [], discovered: [] }
     var values = toArray(devices)
-    for (var i = 0; i < values.length; i++) {
-        var device = values[i]
+    for (var device of values) {
         if (!device || !hasHumanName(device) && !device.connected && !device.paired
                 && !device.bonded && !device.trusted && !device.blocked) continue
         if (device.connected) groups.connected.push(device)
@@ -254,9 +253,9 @@ function audioProfileState(states, address) {
 function audioProfileOptions(state) {
     var result = []
     var profiles = state && Array.isArray(state.profiles) ? state.profiles : []
-    for (var i = 0; i < profiles.length; i++) {
-        var value = String(profiles[i] ? profiles[i].value || profiles[i].name || "" : "")
-        if (value) result.push({ value: value, label: String(profiles[i].label || value) })
+    for (var profile of profiles) {
+        var value = String(profile ? profile.value || profile.name || "" : "")
+        if (value) result.push({ value: value, label: String(profile.label || value) })
     }
     return result
 }

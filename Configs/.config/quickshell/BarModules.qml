@@ -28,15 +28,15 @@ Item {
         "mediaplayer": mod_media, "datetime": mod_datetime,
         "weather": catalog.winbar ? mod_winbar_weather : mod_weather,
         "systemstats": mod_systemstats, "agents": mod_agents,
-        "wifi": mod_wifi, "bluetooth": mod_bluetooth, "quickshare": mod_quickshare, "vpn": mod_vpn,
+        "wifi": mod_wifi, "bluetooth": mod_bluetooth, "kdeconnect": mod_kdeconnect, "vpn": mod_vpn,
         "printers": mod_printers, "removable": mod_removable, "volume": mod_volume, "microphone": mod_microphone,
         "display": mod_display, "updates": mod_updates, "notifications": mod_notifications, "tasks": mod_tasks,
         "wallpaper": mod_wallpaper, "colormode": mod_colormode, "barlayout": mod_barlayout, "windowlayout": mod_windowlayout, "workflows": mod_workflows,
         "colorpicker": mod_colorpicker, "powerprofile": mod_powerprofile, "powerbutton": mod_powerbutton,
-        "bitwarden": mod_bitwarden, "github": mod_github, "privacy": mod_privacy, "language": mod_language,
+        "bitwarden": mod_bitwarden, "privacy": mod_privacy, "language": mod_language,
         "hyprsunset": mod_hyprsunset, "caffeine": mod_caffeine, "screenrecord": mod_screenrecord,
         "screenshot": mod_screenshot, "webcam": mod_webcam, "terminal": mod_terminal,
-        "converter": mod_converter, "sudoku": mod_sudoku, "games": mod_games,
+        "sudoku": mod_sudoku, "games": mod_games,
         "appmenu": mod_appmenu, "battery": mod_battery, "spotlight": mod_spotlight, "controlcenter": mod_controlcenter, "gnome-activities": mod_gnome_activities, "gnome-date-menu": mod_gnome_date, "gnome-quick-settings": mod_gnome_settings, "gnome-screen-record": mod_gnome_record, "nowplaying": mod_nowplaying, "sound-menu": mod_sound,
         "wifi-menu": mod_wifi_menu, "bluetooth-menu": mod_bluetooth_menu, "vpn-menu": mod_vpn_menu, "language-menu": mod_language_menu, "mirroring-menu": mod_mirroring_menu, "display-menu": mod_display_menu,
         "notification-center": mod_notification_center,
@@ -55,7 +55,7 @@ Item {
     Component { id: mod_agents; AgentsButton { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_wifi; WifiButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_altscape; AltscapeButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
-    Component { id: mod_quickshare; QuickShareButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_kdeconnect; KdeConnectButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_bluetooth; BluetoothButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_vpn; VpnButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_printers; PrintersButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
@@ -93,7 +93,6 @@ Item {
     Component { id: mod_powerprofile; PowerProfileButton { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_powerbutton; LogoutButton { shell: catalog.shell; text: ""; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_bitwarden; BitwardenButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
-    Component { id: mod_github; GithubButton { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_privacy; PrivacyButton { shell: catalog.shell; Layout.fillHeight: true } }
     Component { id: mod_language; LanguageButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_hyprsunset; HyprsunsetButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
@@ -102,7 +101,6 @@ Item {
     Component { id: mod_screenshot; ScreenshotButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_webcam; WebcamButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_terminal; TerminalButton { shell: catalog.shell; Layout.fillHeight: true } }
-    Component { id: mod_converter; ConverterButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_sudoku; SudokuButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_games; GameButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_appmenu; AppMenu { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }

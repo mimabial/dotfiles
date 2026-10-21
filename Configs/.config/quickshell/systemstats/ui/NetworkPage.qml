@@ -31,13 +31,13 @@ Column {
   readonly property var connections: Array.isArray(net.procs) ? net.procs : []
   readonly property var ifaces: Array.isArray(net.ifaces) ? net.ifaces : []
   readonly property var primary: {
-    for (var i = 0; i < ifaces.length; i++) if (ifaces[i].default) return ifaces[i]
-    for (var j = 0; j < ifaces.length; j++) if (ifaces[j].up) return ifaces[j]
+    for (var iface of ifaces) if (iface.default) return iface
+    for (var iface of ifaces) if (iface.up) return iface
     return ifaces.length > 0 ? ifaces[0] : null
   }
   readonly property var shownIfaces: {
     var out = []
-    for (var i = 0; i < ifaces.length; i++) if (ifaces[i].up || ifaces[i].default || ifaces[i].wireless) out.push(ifaces[i])
+    for (var iface of ifaces) if (iface.up || iface.default || iface.wireless) out.push(iface)
     return out
   }
   readonly property var upParts: Model.rateParts(net.tx)
@@ -47,7 +47,7 @@ Column {
     if (!primary) return out
     var v4 = Array.isArray(primary.ipv4) ? primary.ipv4 : []
     var v6 = Array.isArray(primary.ipv6) ? primary.ipv6 : []
-    for (var i = 0; i < v4.length; i++) out.push(v4[i])
+    for (var address of v4) out.push(address)
     for (var j = 0; j < Math.min(2, v6.length); j++) out.push(v6[j])
     return out
   }

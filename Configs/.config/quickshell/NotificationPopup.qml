@@ -31,8 +31,6 @@ PopupCard {
     property string filter: ""
     property bool searching: false
     property double now: Date.now()
-    // what counted as unread when the panel was opened; the rows stay marked
-    // while it is open, rather than clearing themselves out from under the eye
     property double seenMark: -1
 
     function refresh() { Notifications.refresh() }
@@ -55,9 +53,6 @@ PopupCard {
             value => String(value || "").toLowerCase().indexOf(needle) >= 0)
     }
 
-    // The heading a notification is filed under. Days, not hours: what you
-    // remember about the one you are hunting for is which day it was, and a list
-    // broken any finer is a list that is mostly headings.
     function dayOf(timestamp) {
         const when = new Date(timestamp)
         const today = new Date()
@@ -132,7 +127,6 @@ PopupCard {
             }
             return defaultKey(event)
         }
-        // "/" is the only key that opens the search, so the list stays navigable
         if (event.text === "/") { startSearch(); return true }
         if (event.key === Qt.Key_Delete) {
             const row = navigableRows[cursorIndex]

@@ -72,8 +72,8 @@ Item {
                         elide: Text.ElideRight
                         text: {
                             if (!view.svc) return "Starting…"
-                            var n = view.svc.windowCount
-                            return n + (n === 1 ? " window" : " windows")
+                            var count = view.svc.windowCount
+                            return count + (count === 1 ? " window" : " windows")
                         }
                     }
                 }

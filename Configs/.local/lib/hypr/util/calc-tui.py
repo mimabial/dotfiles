@@ -5,11 +5,13 @@ import argparse
 import codecs
 import curses
 from curses.ascii import ctrl
+from functools import cache
 import locale
 import os
 import queue
 import re
 import select
+import shlex
 import shutil
 import subprocess
 import sys
@@ -18,23 +20,42 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-# the converter popup owns the curated unit table; reuse it rather than
-# maintaining a second one
-from converter import GROUPS
+from conversion.currency import CURRENCY_NAMES
+from conversion.units import UNIT_CATEGORIES
 from pyutils import child_process
-from pyutils.xdg_base_dirs import xdg_state_home
+from pyutils.xdg_base_dirs import xdg_config_home, xdg_state_home
+
+CURRENCY_CATEGORY = "Currency"
+GROUPS = {name: tuple(symbol for symbol, _ in units) for name, units in UNIT_CATEGORIES.items()}
+GROUPS[CURRENCY_CATEGORY] = tuple(CURRENCY_NAMES)
+CURRENCY_EDIT_KEY = ("Edit currencies", "@currencies")
+CURRENCIES_FILE = Path(os.environ.get("HYPR_CONFIG_HOME") or xdg_config_home() / "hypr") / "calc-currencies"
 
 STATE_DIR = Path(os.environ.get("HYPR_STATE_HOME") or xdg_state_home() / "hypr")
 HISTORY_FILE = STATE_DIR / "calc-history"
 HISTORY_LIMIT = 1000
-TIME_LIMIT_MS = 400
+QALC_TIME_LIMIT_MS = 400
 QALC_ANSWER_TIMEOUT_SECONDS = 3.0
+QALC_RATE_FETCH_TIMEOUT_SECONDS = 15
+QALC_RATE_MAX_AGE_DAYS = 1
 QALC_PROMPT = "> "
 QALC_READ_SIZE = 4096
 KEYPAD_MIN_HEIGHT = 15
 SIDE_PANEL_MIN_WIDTH = 62
+HEADER_ROWS = 2
+INPUT_ROWS = 3
+FOOTER_ROWS = 1
+SIDE_PADDING = 2
 ESCAPE = "\x1b"
+ESCAPE_DELAY_MS = 25
 DELETE = "\x7f"
+TERMINAL_DEFAULT_COLOR = -1
+INPUT_PROMPT = "> "
+RESULT_PROMPT = "= "
+KEY_LABEL_MIN_WIDTH = 3
+KEY_GAP = 1
+PANEL_LABEL_WIDTH = 5
+CATEGORY_KEY_PREFIX = "@cat:"
 
 SGR = re.compile(r"\x1b\[([0-9;]*)m")
 ANS = re.compile(r"\bans\b")
@@ -88,6 +109,11 @@ EXTRAS = {
     "programmer": [("hex", "hex"), ("oct", "octal"), ("bin", "binary")],
 }
 
+INPUT_HINT = "enter commit · ^Y copy · ↑↓ history · tab keys · esc clear · ^C quit"
+KEYPAD_HINT = "↑↓←→ pick · enter insert · tab back to input · ^C quit"
+CURRENCY_HINT = "^P currencies · "
+MODE_HINT = "F1-F4"
+
 
 class QalcSession:
     """One long-lived `qalc -t`, so variables, ans and settings survive."""
@@ -97,7 +123,7 @@ class QalcSession:
 
     def _start(self) -> None:
         self.proc = subprocess.Popen(
-            ["qalc", "-t", "-m", str(TIME_LIMIT_MS)],
+            ["qalc", "-t", "-m", str(QALC_TIME_LIMIT_MS)],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -132,7 +158,7 @@ class QalcSession:
 
         threading.Thread(target=pump, daemon=True).start()
 
-    def evaluate(self, expr: str) -> tuple[list[str], str]:
+    def evaluate(self, expr: str, timeout: float = QALC_ANSWER_TIMEOUT_SECONDS) -> tuple[list[str], str]:
         if not expr.strip():
             return [], ""
 
@@ -143,11 +169,11 @@ class QalcSession:
             return [], "qalc session ended"
 
         try:
-            answer = self._answers.get(timeout=QALC_ANSWER_TIMEOUT_SECONDS)
+            answer = self._answers.get(timeout=timeout)
         except queue.Empty:
             self.close()
             self._start()
-            return [], f"qalc gave no answer within {QALC_ANSWER_TIMEOUT_SECONDS:g} s; session restarted"
+            return [], f"qalc gave no answer within {timeout:g} s; session restarted"
         if answer is None:
             return [], "qalc session ended"
 
@@ -156,6 +182,15 @@ class QalcSession:
         while not self._notes.empty():
             note = self._notes.get()
         return [line.strip() for line in body.split("\n") if line != ""], note
+
+    def refresh_rates(self, currencies: tuple[str, ...]) -> str:
+        self.evaluate(f"set update exchange rates {QALC_RATE_MAX_AGE_DAYS}")
+        note = ""
+        for code in currencies:
+            _, warning = self.evaluate(f"1 {code} to EUR", timeout=QALC_RATE_FETCH_TIMEOUT_SECONDS + QALC_ANSWER_TIMEOUT_SECONDS)
+            note = warning or note
+        self.evaluate("set update exchange rates 0")
+        return note
 
     def close(self) -> None:
         try:
@@ -195,8 +230,11 @@ def qalc_name(symbol: str) -> str:
     return QALC_NAMES.get(symbol, symbol)
 
 
-def base_unit(category: str) -> str:
-    return next(symbol for symbol, scale in GROUPS[category] if scale == 1)
+def load_currencies() -> tuple[str, ...]:
+    try:
+        return tuple(CURRENCIES_FILE.read_text(encoding="utf-8").split())
+    except OSError:
+        return GROUPS[CURRENCY_CATEGORY]
 
 
 def load_history() -> list[str]:
@@ -216,7 +254,7 @@ def append_history(expr: str) -> None:
         pass
 
 
-def copy(text: str) -> bool:
+def copy_to_clipboard(text: str) -> bool:
     if not text or not shutil.which("wl-copy"):
         return False
     try:
@@ -228,17 +266,52 @@ def copy(text: str) -> bool:
     return True
 
 
+def key_cell(label: str) -> str:
+    return f" {label.center(max(KEY_LABEL_MIN_WIDTH, len(label)))} "
+
+
+def panel_label(label: str) -> str:
+    return f"{label:>{PANEL_LABEL_WIDTH}}  "
+
+
 def wrap(keys: list[tuple[str, str]], width: int) -> list[list[tuple[str, str]]]:
     rows: list[list[tuple[str, str]]] = [[]]
     used = 0
     for key in keys:
-        span = max(3, len(key[0])) + 3
+        span = len(key_cell(key[0])) + KEY_GAP
         if used + span > width and rows[-1]:
             rows.append([])
             used = 0
         rows[-1].append(key)
         used += span
     return [row for row in rows if row]
+
+
+def conversion_keypad(width: int, category: str, currencies: tuple[str, ...]) -> list[list[tuple[str, str]]]:
+    rows = wrap([(name, CATEGORY_KEY_PREFIX + name) for name in GROUPS], width)
+    symbols = currencies if category == CURRENCY_CATEGORY else GROUPS[category]
+    keys = [(qalc_name(symbol), " to " + qalc_name(symbol)) for symbol in symbols]
+    if category == CURRENCY_CATEGORY:
+        keys.append(CURRENCY_EDIT_KEY)
+    return rows + wrap(keys, width)
+
+
+@cache
+def keypad_space(width: int) -> int:
+    return max(*(len(rows) for rows in KEYPADS.values()),
+               *(len(conversion_keypad(width, category, GROUPS[CURRENCY_CATEGORY])) for category in GROUPS)) + 1
+
+
+def required_terminal_size(currencies: tuple[str, ...]) -> tuple[int, int]:
+    tab_width = len("│".join(f" {title} " for title in MODE_TITLES.values())) + len(MODE_HINT)
+    keypad_width = max(sum(len(key_cell(label)) + KEY_GAP for label, _ in row)
+                       for rows in KEYPADS.values() for row in rows)
+    columns = max(SIDE_PANEL_MIN_WIDTH, tab_width, keypad_width,
+                  len(CURRENCY_HINT + INPUT_HINT), len(CURRENCY_HINT + KEYPAD_HINT)) + SIDE_PADDING
+    result_rows = 2
+    panel_rows = max(len(currencies), *(len(units) for units in UNIT_CATEGORIES.values())) + result_rows
+    rows = panel_rows + HEADER_ROWS + INPUT_ROWS + FOOTER_ROWS + keypad_space(columns - SIDE_PADDING)
+    return columns, max(KEYPAD_MIN_HEIGHT, rows)
 
 
 class Calculator:
@@ -248,6 +321,7 @@ class Calculator:
         self.live = live
         self.mode = "basic"
         self.category = "Length"
+        self.currencies = load_currencies()
         self.buffer = ""
         self.cursor = 0
         self.result: list[tuple[str, str]] = []
@@ -270,7 +344,7 @@ class Calculator:
         curses.mousemask(curses.BUTTON1_CLICKED | curses.BUTTON1_PRESSED)
         names = ("value", "unit", "name", "error", "dim", "tab")
         for index, role in enumerate(names, start=1):
-            curses.init_pair(index, self.color_for(role), -1)
+            curses.init_pair(index, self.color_for(role), TERMINAL_DEFAULT_COLOR)
         self.roles = {role: curses.color_pair(index) for index, role in enumerate(names, start=1)}
         self.roles["plain"] = curses.A_NORMAL
         self.roles["dim"] |= curses.A_DIM
@@ -302,7 +376,7 @@ class Calculator:
             "unit": curses.COLOR_GREEN,
             "name": curses.COLOR_YELLOW,
             "error": curses.COLOR_RED,
-            "dim": -1,
+            "dim": TERMINAL_DEFAULT_COLOR,
             "tab": curses.COLOR_CYAN,
         }[role]
 
@@ -337,7 +411,7 @@ class Calculator:
         return rows
 
     def fits(self, category: str) -> bool:
-        tokens = self.ask(f"({self.buffer})/(1 {qalc_name(base_unit(category))})")
+        tokens = self.ask(f"({self.buffer})/(1 {qalc_name(GROUPS[category][0])})")
         return bool(tokens) and not unit_of(tokens)
 
     def conversions(self) -> list[tuple[str, list[tuple[str, str]]]]:
@@ -351,10 +425,14 @@ class Calculator:
             category = next((name for name in GROUPS if self.fits(name)), "")
         if not category:
             return []
-        self.category = category
+        if category != self.category:
+            self.set_category(category)
+            if category == CURRENCY_CATEGORY:
+                self.evaluate()
+                return self.extras
 
         rows = []
-        for symbol, _ in GROUPS[category]:
+        for symbol in self.currencies if category == CURRENCY_CATEGORY else GROUPS[category]:
             name = qalc_name(symbol)
             tokens = self.ask(f"({self.buffer})/(1 {name})")
             if tokens and not unit_of(tokens):
@@ -389,12 +467,29 @@ class Calculator:
     def keypad(self, width: int) -> list[list[tuple[str, str]]]:
         if self.mode != "convert":
             return KEYPADS[self.mode]
-        rows = wrap([(name, "@cat:" + name) for name in GROUPS], width)
         # labelled with the name qalc accepts, so every row on screen is also
         # something the user can type
-        rows += wrap([(qalc_name(symbol), " to " + qalc_name(symbol))
-                      for symbol, _ in GROUPS[self.category]], width)
-        return rows
+        return conversion_keypad(width, self.category, self.currencies)
+
+    def edit_currencies(self) -> None:
+        try:
+            CURRENCIES_FILE.parent.mkdir(parents=True, exist_ok=True)
+            if not CURRENCIES_FILE.exists():
+                CURRENCIES_FILE.write_text(" ".join(self.currencies) + "\n", encoding="utf-8")
+            curses.def_prog_mode()
+            curses.endwin()
+            try:
+                subprocess.run([*shlex.split(os.environ.get("EDITOR") or "nvim"), str(CURRENCIES_FILE)])
+            finally:
+                curses.reset_prog_mode()
+                self.screen.clearok(True)
+            self.currencies = load_currencies()
+            self.selection = (0, 0)
+            self.focus = "input"
+            self.set_category(CURRENCY_CATEGORY)
+            self.dirty = True
+        except OSError as error:
+            self.status = str(error)
 
     def insert(self, text: str) -> None:
         self.edit(self.buffer[: self.cursor] + text + self.buffer[self.cursor:],
@@ -407,14 +502,16 @@ class Calculator:
         elif payload == "@back":
             if self.cursor:
                 self.edit(self.buffer[: self.cursor - 1] + self.buffer[self.cursor:], self.cursor - 1)
-        elif payload.startswith("@cat:"):
-            self.category = payload[5:]
+        elif payload.startswith(CATEGORY_KEY_PREFIX):
+            self.set_category(payload.removeprefix(CATEGORY_KEY_PREFIX))
             self.dirty = True
+        elif payload == "@currencies":
+            self.edit_currencies()
         else:
             self.insert(payload)
 
     def move_selection(self, dy: int, dx: int) -> None:
-        rows = self.keypad(self.screen.getmaxyx()[1] - 2)
+        rows = self.keypad(self.screen.getmaxyx()[1] - SIDE_PADDING)
         if not rows:
             return
         row = max(0, min(len(rows) - 1, self.selection[0] + dy))
@@ -422,7 +519,7 @@ class Calculator:
         self.selection = (row, column)
 
     def selected(self) -> tuple[str, str] | None:
-        rows = self.keypad(self.screen.getmaxyx()[1] - 2)
+        rows = self.keypad(self.screen.getmaxyx()[1] - SIDE_PADDING)
         row, column = self.selection
         if row < len(rows) and column < len(rows[row]):
             return rows[row][column]
@@ -450,34 +547,37 @@ class Calculator:
         height, width = self.screen.getmaxyx()
         self.targets = []
 
-        rows = self.keypad(width - 2)
-        keypad_height = len(rows) + 1 if height >= KEYPAD_MIN_HEIGHT else 0
-        footer = height - 1
-        result_row = footer - keypad_height - 1
-        input_row = result_row - 1
-        panel_top, panel_bottom = 2, input_row - 2
+        rows = self.keypad(width - SIDE_PADDING)
+        keypad_height = keypad_space(width - SIDE_PADDING) if height >= KEYPAD_MIN_HEIGHT else 0
+        footer = height - FOOTER_ROWS
+        panel_top = HEADER_ROWS
+        input_row = max(panel_top + 1, footer - keypad_height - INPUT_ROWS + 1)
+        result_row = input_row + 1
+        keypad_height = max(0, footer - result_row - 1)
+        panel_bottom = input_row - 2
 
         self.draw_tabs(width)
         if panel_bottom >= panel_top:
             self.draw_panel(panel_top, panel_bottom, width)
         self.write(input_row - 1, 0, "─" * (width - 1), self.roles["dim"])
 
-        visible = max(1, width - 3)
+        input_column = len(INPUT_PROMPT)
+        visible = max(1, width - input_column - 1)
         start = max(0, self.cursor - visible + 1)
-        self.write(input_row, 0, "> ", self.roles["dim"])
-        self.write(input_row, 2, self.buffer[start:start + visible])
-        self.targets.append((input_row, 2, width, "input", start))
+        self.write(input_row, 0, INPUT_PROMPT, self.roles["dim"])
+        self.write(input_row, input_column, self.buffer[start:start + visible])
+        self.targets.append((input_row, input_column, width, "input", start))
         if self.result:
-            self.write(result_row, 0, "= ", self.roles["dim"])
-            self.write_tokens(result_row, 2, self.result, width - 1)
+            self.write(result_row, 0, RESULT_PROMPT, self.roles["dim"])
+            self.write_tokens(result_row, len(RESULT_PROMPT), self.result, width - 1)
 
         if keypad_height:
-            self.draw_keypad(footer - keypad_height, rows, width)
+            self.draw_keypad(footer - keypad_height, rows, width, keypad_height - 1)
         self.draw_footer(footer, width)
 
         if self.focus == "input":
             try:
-                self.screen.move(input_row, 2 + self.cursor - start)
+                self.screen.move(input_row, input_column + self.cursor - start)
             except curses.error:
                 pass
         self.screen.refresh()
@@ -492,7 +592,7 @@ class Calculator:
             self.write(0, x, label, self.roles["tab"] | curses.A_REVERSE if active else self.roles["dim"])
             self.targets.append((0, x, x + len(label), "tab", mode))
             x += len(label)
-        self.write(0, max(x, width - 7), "F1-F4", self.roles["dim"])
+        self.write(0, max(x, width - len(MODE_HINT) - SIDE_PADDING), MODE_HINT, self.roles["dim"])
         self.write(1, 0, "─" * (width - 1), self.roles["dim"])
 
     def panel_lines(self) -> list[tuple[str, str, object]]:
@@ -514,14 +614,15 @@ class Calculator:
     def panel_width(self, lines: list[tuple[str, str, object]], width: int) -> int:
         if width < SIDE_PANEL_MIN_WIDTH or not lines:
             return 0
+        label_width = len(panel_label(""))
         needed = []
         for kind, label, payload in lines:
             if kind == "head":
                 needed.append(len(label))
             elif kind == "value":
-                needed.append(7 + len(plain(payload)))
+                needed.append(label_width + len(plain(payload)))
             elif kind == "var":
-                needed.append(7 + len(str(payload)))
+                needed.append(label_width + len(str(payload)))
         return min(max(needed) + 2, width // 3)
 
     def draw_panel(self, top: int, bottom: int, width: int) -> None:
@@ -553,39 +654,44 @@ class Calculator:
             if kind == "head":
                 self.write(row, x, label, self.roles["dim"])
             elif kind == "value":
-                end = self.write(row, x, f"{label:>5}  ", self.roles["dim"]) if label else x
+                end = self.write(row, x, panel_label(label), self.roles["dim"]) if label else x
                 self.write_tokens(row, end, payload, width - 1)
                 self.targets.append((row, x, width, "value", plain(payload)))
             elif kind == "var":
-                end = self.write(row, x, f"{label:>5}  ", self.roles["name"])
+                end = self.write(row, x, panel_label(label), self.roles["name"])
                 self.write(row, end, str(payload)[: width - end - 1], self.roles["value"])
                 self.targets.append((row, x, width, "var", label))
 
-    def draw_keypad(self, top: int, rows: list[list[tuple[str, str]]], width: int) -> None:
+    def draw_keypad(self, top: int, rows: list[list[tuple[str, str]]], width: int, visible: int) -> None:
         self.write(top, 0, "─" * (width - 1), self.roles["dim"])
-        for index, keys in enumerate(rows):
-            y = top + 1 + index
+        start = max(0, min(len(rows) - visible, self.selection[0] - visible + 1)) if self.focus == "keys" else 0
+        if len(rows) > visible:
+            self.write(top, 1, f" {start + 1}–{min(start + visible, len(rows))}/{len(rows)} ", self.roles["dim"])
+        for index in range(start, min(start + visible, len(rows))):
+            keys = rows[index]
+            y = top + 1 + index - start
             x = 1
             for column, key in enumerate(keys):
-                label = key[0].center(max(3, len(key[0])))
-                cell = f" {label} "
+                cell = key_cell(key[0])
                 focused = self.focus == "keys" and self.selection == (index, column)
-                active = key[1] == "@cat:" + self.category
+                active = key[1] == CATEGORY_KEY_PREFIX + self.category
                 attr = curses.A_REVERSE if focused else (self.roles["tab"] if active else curses.A_NORMAL)
                 if x + len(cell) >= width:
                     break
                 self.write(y, x, cell, attr)
                 self.targets.append((y, x, x + len(cell), "key", key))
-                x += len(cell) + 1
+                x += len(cell) + KEY_GAP
 
     def draw_footer(self, row: int, width: int) -> None:
         if self.status:
             self.write(row, 0, self.status, self.roles["error"])
             return
         if self.focus == "keys":
-            hint = "↑↓←→ pick · enter insert · tab back to input · ^C quit"
+            hint = KEYPAD_HINT
         else:
-            hint = "enter commit · ^Y copy · ↑↓ history · tab keys · esc clear · ^C quit"
+            hint = INPUT_HINT
+        if self.mode == "convert" and self.category == CURRENCY_CATEGORY:
+            hint = CURRENCY_HINT + hint
         self.write(row, 0, hint, self.roles["dim"])
 
     def recall(self, delta: int) -> None:
@@ -626,13 +732,22 @@ class Calculator:
                 self.insert(payload)
             elif kind == "input":
                 self.focus = "input"
-                self.cursor = max(0, min(len(self.buffer), payload + x - 2))
+                self.cursor = max(0, min(len(self.buffer), payload + x - left))
             return
+
+    def set_category(self, category: str) -> None:
+        self.category = category
+        if category == CURRENCY_CATEGORY:
+            self.status = "Checking exchange rates…"
+            self.draw()
+            self.status = self.session.refresh_rates(self.currencies)
 
     def set_mode(self, mode: str) -> None:
         self.mode = mode
         self.selection = (0, 0)
         self.dirty = True
+        if mode == "convert" and self.category == CURRENCY_CATEGORY:
+            self.set_category(self.category)
 
     def navigate(self, key) -> bool:
         on_keys = self.focus == "keys"
@@ -656,6 +771,8 @@ class Calculator:
                 self.edit("", 0)
         elif key == ctrl("l"):
             self.entries.clear()
+        elif key == ctrl("p") and self.mode == "convert" and self.category == CURRENCY_CATEGORY:
+            self.edit_currencies()
         elif key in ("\n", "\r", curses.KEY_ENTER):
             if not on_keys:
                 self.commit()
@@ -694,7 +811,7 @@ class Calculator:
             self.edit(self.buffer[:cut] + after, cut)
         elif key == ctrl("y"):
             text = plain(self.result) or (plain(self.entries[-1][1]) if self.entries else "")
-            self.status = "copied" if copy(text) else "nothing to copy"
+            self.status = "copied" if copy_to_clipboard(text) else "nothing to copy"
         else:
             return False
         return True
@@ -712,6 +829,7 @@ def main() -> int:
         prog="hyprshell util/calc-tui",
         description="Calculator TUI backed by a persistent qalc session",
     )
+    parser.add_argument("--size", action="store_true", help="print the terminal columns and rows needed for the calculator")
     parser.add_argument(
         "--mode",
         choices=MODES,
@@ -726,12 +844,16 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    if args.size:
+        print(*required_terminal_size(load_currencies()))
+        return 0
+
     if not shutil.which("qalc"):
         print("qalc not found; install libqalculate", file=sys.stderr)
         return 1
 
     locale.setlocale(locale.LC_ALL, "")
-    os.environ.setdefault("ESCDELAY", "25")
+    os.environ.setdefault("ESCDELAY", str(ESCAPE_DELAY_MS))
 
     session = QalcSession()
     session.evaluate("0")

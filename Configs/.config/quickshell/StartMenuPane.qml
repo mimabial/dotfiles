@@ -16,13 +16,13 @@ Column {
     spacing: Style.sm
     height: totalHeight
 
-    // search_all/main_apps are rofi-only: the popup has its own search and app list
+    readonly property var rofiOnlyTargets: ["search_all", "main_apps"]
     readonly property var items: {
         const menu = menus["main"]
         if (!menu) return []
         const out = []
         for (const item of menu.items) {
-            if (item.target === "search_all" || item.target === "main_apps") continue
+            if (rofiOnlyTargets.includes(item.target)) continue
             out.push(item)
         }
         return out

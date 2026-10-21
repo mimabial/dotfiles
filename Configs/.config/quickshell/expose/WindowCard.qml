@@ -41,8 +41,6 @@ Item {
     readonly property color outlineColor: focusedWindow ? Commons.Color.accent : (selected ? Commons.Color.menu.selectedBorder : Commons.Color.menu.border)
     readonly property var outlineSpec: Commons.Border.flat(outlineColor, card.controller.outlineWidth)
     readonly property color currentColor: Commons.Style.selectedStateColor(Commons.Color.menu.text, Commons.Color.accent)
-    // An excluded card keeps its last rectangle, so it neither
-    // animates toward the origin nor flies back in from it.
     readonly property var packedRectSource: inLayout ? card.windowLayout[slot] : null
     property var packedRect: Qt.rect(0, 0, 1, 1)
     readonly property var previewRect: WindowModel.previewRect(modelData, packedRect, card.layoutAreaWidth, card.layoutAreaHeight, Commons.Style.spacing.sm, card.controller.windowFooterHeight, card.controller.previewPlacement)
@@ -70,8 +68,6 @@ Item {
     Drag.source: card
     Drag.keys: card.controller.windowDragKeys
     Drag.hotSpot: dragHandler.centroid.pressPosition
-    // Shrinks around the pointer so the workspace row stays visible while
-    // carrying the window there.
     transform: Scale {
         origin.x: card.Drag.hotSpot.x
         origin.y: card.Drag.hotSpot.y

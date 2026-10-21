@@ -130,7 +130,6 @@ Item {
 
     FloatingWindow {
         id: window
-        // Layout offsets target the lock surface of the monitor the explorer opened from.
         readonly property var monitor: root.targetScreen()
         readonly property real canvasWidth: window.monitor.width * window.monitor.devicePixelRatio
         readonly property real canvasHeight: window.monitor.height * window.monitor.devicePixelRatio

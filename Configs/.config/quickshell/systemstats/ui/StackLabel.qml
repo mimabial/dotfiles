@@ -10,16 +10,12 @@ Item {
   property color color: Commons.Color.foreground
   property string fontFamily: Commons.Style.font.family
   property real letterSize: Commons.Style.spaceReal(10)
-  // Rows are spaced by cap height, not line height: these are all capitals,
-  // which fill about three quarters of the em box, so packing the rows that
-  // tightly lets the letters be large (and therefore thick-stemmed) inside a
-  // short strip. `maxHeight` is the budget the letters must fit.
-  readonly property real rowFactor: 0.78
+  readonly property real capHeightRatio: 0.78
   property real maxHeight: 0
   readonly property real fittedSize: maxHeight > 0 && rows > 0
-    ? Math.max(6, Math.min(letterSize, Math.floor(maxHeight / rows / rowFactor)))
+    ? Math.max(6, Math.min(letterSize, Math.floor(maxHeight / rows / capHeightRatio)))
     : letterSize
-  property real rowHeight: Math.round(fittedSize * rowFactor)
+  property real rowHeight: Math.round(fittedSize * capHeightRatio)
   property real letterOpacity: 1.0
 
   readonly property int rows: text.length

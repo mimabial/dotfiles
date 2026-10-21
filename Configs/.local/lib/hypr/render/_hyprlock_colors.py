@@ -50,10 +50,9 @@ def render_hyprlock_colors(palette: dict, font_name: str, corner_radius: str, to
     for short in ("bg", "fg"):
         print(f"${short}.hex = {palette[short].lstrip('#').lower()}")
     print()
-    # Compatibility palette for ported layouts, with groups sorted dark to light.
-    LADDER = (0.24, 0.32, 0.39, 0.45, 0.52, 0.62, 0.75, 0.80, 0.90)
+    ported_layout_accent_lightness = (0.24, 0.32, 0.39, 0.45, 0.52, 0.62, 0.75, 0.80, 0.90)
     if palette.get("background") == "light":
-        LADDER = LADDER[::-1]
+        ported_layout_accent_lightness = ported_layout_accent_lightness[::-1]
     def emit_color(name, rgb3):
         r, g, b = rgb3
         print(f"${name} = {r:02X}{g:02X}{b:02X}")
@@ -63,7 +62,7 @@ def render_hyprlock_colors(palette: dict, font_name: str, corner_radius: str, to
         h, l, s = colorsys.rgb_to_hls(*(v / 255 for v in seed_rgb))
         emit_color(f"primary_{n}", seed_rgb)
         emit_color(f"text_{n}", hex_to_rgb(palette["fg"] if l < 0.5 else palette["bg"]))
-        for m, level in enumerate(LADDER, 1):
+        for m, level in enumerate(ported_layout_accent_lightness, 1):
             emit_color(f"p{n}_accent_{m}", tuple(round(v * 255) for v in colorsys.hls_to_rgb(h, level, s)))
         r, g, b = seed_rgb
         print(f"$primary_{n + 4}_rgba = rgba({r},{g},{b},{PORTED_LAYOUT_TRANSLUCENT_OPACITY})")

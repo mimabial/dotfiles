@@ -2,6 +2,7 @@
 
 import os
 import re
+import time
 from pathlib import Path
 
 config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
@@ -96,9 +97,11 @@ def render_config(base_lines: list[str], theme_name: str) -> str:
 
 base_lines = config_path.read_text().splitlines(keepends=True)
 output_dir.mkdir(parents=True, exist_ok=True)
+shared_snapshot_mtime_ns = time.time_ns()
 
 for theme_name in theme_names:
     output_path = output_dir / f"{theme_name}.ron"
     temporary_path = output_path.with_suffix(".ron.tmp")
     temporary_path.write_text(render_config(base_lines, theme_name))
+    os.utime(temporary_path, ns=(shared_snapshot_mtime_ns, shared_snapshot_mtime_ns))
     temporary_path.replace(output_path)

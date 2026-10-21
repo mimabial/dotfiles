@@ -14,8 +14,6 @@ BorderSurface {
   property bool interactive: true
   property bool selectable: interactive
   property bool movable: interactive
-  // Every canvas uses the same monitor-card anatomy. Emphasis changes visual
-  // priority for the active task; it never changes what the monitor means.
   property string emphasis: "layout"
   property bool detailed: true
   property bool framed: true

@@ -9,7 +9,6 @@ XDG_DATA_DIRS="${XDG_DATA_DIRS:-$XDG_DATA_HOME:/usr/local/share:/usr/share}"
 XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 
-# Keep runtime files out of the mirrored config tree.
 ZSH_STATE_DIR="${XDG_STATE_HOME}/zsh"
 ZSH_CACHE_DIR="${XDG_CACHE_HOME}/zsh"
 HISTFILE="${HISTFILE:-$ZSH_STATE_DIR/.zsh_history}"

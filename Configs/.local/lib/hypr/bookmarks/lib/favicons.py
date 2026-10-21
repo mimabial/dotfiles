@@ -235,6 +235,20 @@ def image_to_png_data_url(raw: bytes) -> str:
     return "data:image/png;base64," + base64.b64encode(output).decode("ascii")
 
 
+def svg_without_active_content(raw: bytes) -> bytes | None:
+    lowered = raw.lower()
+    if (b"<!doctype" in lowered or b"<!entity" in lowered
+            or b"@import" in lowered
+            or re.search(br"url\s*\(\s*['\"]?(?:/|file:|https?:|ftp:)", lowered)):
+        return None
+    return re.sub(
+        br"(?:xlink:)?href\s*=\s*(['\"])(?!(?:#|data:)).*?\1",
+        b"",
+        raw,
+        flags=re.I | re.S,
+    )
+
+
 def embedded_icon_to_png_data_url(value: Any) -> str:
     value = str(value or "").strip()
     if len(value) > MAX_ICON_INPUT_BASE64_CHARS + DATA_URL_PREFIX_MAX_CHARS:
@@ -248,17 +262,8 @@ def embedded_icon_to_png_data_url(value: Any) -> str:
         raw = base64.b64decode(match.group(1), validate=True)
     except (ValueError, TypeError):
         return ""
-    # Reject active/external SVG content before handing it to the rasterizer.
     if b"<svg" in raw[:SVG_SNIFF_BYTES].lower():
-        lowered = raw.lower()
-        if (b"<!doctype" in lowered or b"<!entity" in lowered
-                or b"@import" in lowered
-                or re.search(br"url\s*\(\s*['\"]?(?:/|file:|https?:|ftp:)", lowered)):
+        raw = svg_without_active_content(raw)
+        if raw is None:
             return ""
-        raw = re.sub(
-            br"(?:xlink:)?href\s*=\s*(['\"])(?!(?:#|data:)).*?\1",
-            b"",
-            raw,
-            flags=re.I | re.S,
-        )
     return image_to_png_data_url(raw)

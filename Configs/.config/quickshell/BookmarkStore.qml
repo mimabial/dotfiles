@@ -71,10 +71,10 @@ Item {
     var parts = String(value || "").split(".")
     if (parts.length !== 4)
       return false
-    for (var index = 0; index < parts.length; index++) {
-      if (!parts[index] || !/^\d+$/.test(parts[index]))
+    for (var part of parts) {
+      if (!part || !/^\d+$/.test(part))
         return false
-      var number = Number(parts[index])
+      var number = Number(part)
       if (!isFinite(number) || number < 0 || number > 255)
         return false
     }
@@ -115,10 +115,10 @@ Item {
 
     var groups = address.split(":")
     var groupCount = 0
-    for (var index = 0; index < groups.length; index++) {
-      if (!groups[index])
+    for (var group of groups) {
+      if (!group)
         continue
-      if (!/^[0-9A-Fa-f]{1,4}$/.test(groups[index]))
+      if (!/^[0-9A-Fa-f]{1,4}$/.test(group))
         return false
       groupCount++
     }
@@ -177,11 +177,11 @@ Item {
           return ""
       }
       var labels = comparableHost.split(".")
-      for (var labelIndex = 0; labelIndex < labels.length; labelIndex++) {
-        if (!labels[labelIndex]
-            || labels[labelIndex].length > 63
-            || labels[labelIndex].charAt(0) === "-"
-            || labels[labelIndex].charAt(labels[labelIndex].length - 1) === "-") {
+      for (var label of labels) {
+        if (!label
+            || label.length > 63
+            || label.charAt(0) === "-"
+            || label.charAt(label.length - 1) === "-") {
           return ""
         }
       }
@@ -298,8 +298,8 @@ Item {
         || rawTags.length > root.maxTags) {
       return null
     }
-    for (var tagIndex = 0; tagIndex < rawTags.length; tagIndex++) {
-      if (String(rawTags[tagIndex]).trim().length > root.maxTagLength)
+    for (var tag of rawTags) {
+      if (String(tag).trim().length > root.maxTagLength)
         return null
     }
     var url = root.normalizeUrl(item.url)
@@ -578,8 +578,7 @@ Item {
       return false
     var next = []
     var updated = false
-    for (var i = 0; i < root.bookmarks.length; i++) {
-      var current = root.bookmarks[i]
+    for (var current of root.bookmarks) {
       if (current.id === id) {
         var item = root.normalizedBookmark({
           id: current.id, title: title, url: url, tags: tags,
@@ -607,9 +606,9 @@ Item {
       return false
     var next = []
     var removed = false
-    for (var i = 0; i < root.bookmarks.length; i++) {
-      if (root.bookmarks[i].id !== id)
-        next.push(root.bookmarks[i])
+    for (var bookmark of root.bookmarks) {
+      if (bookmark.id !== id)
+        next.push(bookmark)
       else
         removed = true
     }
@@ -622,8 +621,7 @@ Item {
     var now = Date.now()
     var next = []
     var recorded = false
-    for (var i = 0; i < root.bookmarks.length; i++) {
-      var current = root.bookmarks[i]
+    for (var current of root.bookmarks) {
       if (current.id === id) {
         next.push({
           id: current.id,
@@ -670,8 +668,8 @@ Item {
     for (var i = 0; i < next.length; i++)
       positions["url:" + root.canonicalUrl(next[i].url)] = i
 
-    for (var j = 0; j < items.length; j++) {
-      var incoming = root.normalizedBookmark(items[j], false)
+    for (var item of items) {
+      var incoming = root.normalizedBookmark(item, false)
       if (!incoming)
         continue
       var key = "url:" + root.canonicalUrl(incoming.url)

@@ -35,9 +35,8 @@ store_notification_image() {
 
   dest="${images}/${hash}.${ext}"
   if [[ ! -f "${dest}" ]]; then
-    # Shrink large previews on ingestion; `>` leaves small images untouched.
     if [[ "${ext}" != "svg" ]] && command -v magick >/dev/null 2>&1; then
-      magick "${src}" -auto-orient -resize "${ARCHIVE_IMAGE_MAX_EDGE_PX}x${ARCHIVE_IMAGE_MAX_EDGE_PX}>" -strip "${dest}" 2>/dev/null \
+      magick "${src}" -auto-orient -resize "${ARCHIVE_IMAGE_SHRINK_ONLY_GEOMETRY}" -strip "${dest}" 2>/dev/null \
         || cp -- "${src}" "${dest}" 2>/dev/null || return 1
     else
       cp -- "${src}" "${dest}" 2>/dev/null || return 1

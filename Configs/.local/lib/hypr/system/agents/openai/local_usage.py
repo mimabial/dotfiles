@@ -76,7 +76,6 @@ def _cached_local_stats(max_age):
     if cached is not None:
       return cached
     stats, complete = run_local_scans()
-    # Never cache a partial OpenCode scan.
     if complete:
       write_cached_stats(cache_file, stats)
     return stats

@@ -9,7 +9,6 @@ PopupCard {
     contentWidth: Style.px(380)
     contentHeight: updatesColumn.implicitHeight + padding * 2
 
-    // system.update.sh emits the bar fields plus a structured breakdown.
     property var report: ({})
     property bool checking: false
     signal recheck()
@@ -49,8 +48,6 @@ PopupCard {
                 : "checked " + root.ago(root.system.checked)
         }
 
-        // nothing to list when there is nothing pending, so the panel says what
-        // it knows about the system instead of showing an empty card
         Column {
             visible: root.total === 0 && root.errors.length === 0
             width: parent.width; spacing: Style.sm

@@ -98,7 +98,6 @@ def options_from_shell(text: str) -> set[str]:
         body = match.group(3)
         if re.search(r"(?i)^\s*(usage|options)", body, re.M) or "--help" in body:
             found |= options_from_usage(body)
-    # Scripts that print usage from a usage() function rather than a heredoc.
     for match in USAGE_LINE_PATTERN.finditer(text):
         found.update(OPTION_TOKEN_PATTERN.findall(match.group(1)))
     return found

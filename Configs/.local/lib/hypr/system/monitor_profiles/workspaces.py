@@ -62,7 +62,6 @@ def rules(profile: dict) -> list[dict]:
                     "output_key": row["output_key"],
                     "output_name": row["output_name"],
                     "default": first,
-                    "persistent": first,
                 }
             )
     return out

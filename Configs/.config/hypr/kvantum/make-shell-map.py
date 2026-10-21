@@ -41,6 +41,7 @@ def lstar(h):
 
 NEUTRAL_CHROMA = 12
 FAR_MISMATCH = 120
+MOST_USED_SHOWN = 18
 NEUTRAL_ROLES = ("background", "color0", "color8", "color7", "color15", "foreground")
 
 
@@ -104,10 +105,10 @@ def main():
 
     print(f"{shell_dir.name}: {len(report)} entries from {pack.name}")
     print(f"{'uses':>5}  {'literal':<9} {'role':<12} {'role hex':<9} dist")
-    for n, hex_, role, rolehex, mismatch in report[:18]:
+    for n, hex_, role, rolehex, mismatch in report[:MOST_USED_SHOWN]:
         flag = "  <-- far" if mismatch > FAR_MISMATCH else ""
         print(f"{n:>5}  {hex_:<9} {role:<12} {rolehex:<9} {mismatch:6.1f}{flag}")
-    far = [r for r in report if r[4] > FAR_MISMATCH]
+    far = [mismatch for *_, mismatch in report if mismatch > FAR_MISMATCH]
     print(f"far matches (>{FAR_MISMATCH}): {len(far)} of {len(report)}")
 
 

@@ -18,7 +18,6 @@ BorderSurface {
     { id: "correlation", name: "Correlation", category: "classic", icon: "\uf07e" },
     { id: "ascii", name: "ASCII", category: "classic", icon: "\uf121" },
 
-    { id: "siriwave", name: "Siri Wave", category: "wave", icon: "\uf179" },
     { id: "soundcloud_wave", name: "SoundCloud Wave", category: "wave", icon: "\uf1be" },
     { id: "telegram_wave", name: "Telegram Wave", category: "wave", icon: "\uf130" },
     { id: "daw_wave", name: "DAW Peak Wave", category: "wave", icon: "\uf080" },
@@ -29,19 +28,13 @@ BorderSurface {
     { id: "sine", name: "Sine Wave", category: "wave", icon: "\uf1d8" },
     { id: "mirror", name: "Mirror", category: "wave", icon: "\uf042" },
 
-    { id: "retro", name: "Retro Synth", category: "retro", icon: "\uf185" },
     { id: "matrix", name: "Matrix", category: "retro", icon: "\uf108" },
-    { id: "terrain", name: "Terrain", category: "retro", icon: "\uf06e" },
-    { id: "binary", name: "Binary", category: "retro", icon: "\uf120" },
     { id: "mosaic", name: "Mosaic", category: "retro", icon: "\uf009" },
 
     { id: "butterfly", name: "Butterfly", category: "particle", icon: "\uf1d8" },
     { id: "scatter", name: "Scatter", category: "particle", icon: "\uf005" },
-    { id: "yinyang", name: "Yin Yang", category: "particle", icon: "\ueee9" },
 
     { id: "plasma", name: "Liquid Plasma (2D)", category: "3d", icon: "\uf043" },
-    { id: "osc_warp", name: "Oscilloscope Warp", category: "3d", icon: "\uf1fe" },
-    { id: "crt_scanline", name: "CRT Radar Scope", category: "3d", icon: "\uf26c" },
     { id: "cyber_tunnel", name: "3D Cyber Tunnel", category: "3d", icon: "\uf135" },
     { id: "red_sector", name: "Red Sector", category: "3d", icon: "\uf1b2" }
   ]
@@ -49,8 +42,8 @@ BorderSurface {
   readonly property var filteredModes: {
     if (selectedCategory === "all") return allModes
     var res = []
-    for (var i = 0; i < allModes.length; i++) {
-      if (allModes[i].category === selectedCategory) res.push(allModes[i])
+    for (var mode of allModes) {
+      if (mode.category === selectedCategory) res.push(mode)
     }
     return res
   }

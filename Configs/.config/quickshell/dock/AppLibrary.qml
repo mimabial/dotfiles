@@ -16,12 +16,10 @@ QtObject {
         return DesktopEntries.byId(id) || DesktopEntries.byId(id + ".desktop")
     }
 
-    // Rows carry the entry plus its sort key, the shape DockModel expects.
     function entries() {
         const values = DesktopEntries.applications ? DesktopEntries.applications.values : []
         const rows = []
-        for (let i = 0; i < values.length; i++) {
-            const entry = values[i]
+        for (const entry of values) {
             if (!entry || entry.noDisplay) continue
             const name = root.entryName(entry)
             if (!name) continue

@@ -14,6 +14,9 @@ if str(SCRIPT_DIR) not in sys.path:
 from fetch_album_lyrics import ProcessResult, process_audio_file
 from lyrics_paths import lrc_path_for, music_library_dir
 
+LYRICS_NOT_FOUND_STATUS = 1
+LYRICS_ERROR_STATUS = 2
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -25,7 +28,7 @@ def main() -> int:
     audio_file = args.audio_file.expanduser().resolve()
     if not audio_file.is_file():
         print(f"audio file not found: {audio_file}", file=sys.stderr)
-        return 2
+        return LYRICS_ERROR_STATUS
 
     try:
         result = process_audio_file(
@@ -37,8 +40,8 @@ def main() -> int:
         )
     except Exception as exc:  # noqa: BLE001 - command boundary reports runtime failure
         print(f"lyrics fetch failed: {exc}", file=sys.stderr)
-        return 2
-    return 1 if result is ProcessResult.FAILED else 0
+        return LYRICS_ERROR_STATUS
+    return LYRICS_NOT_FOUND_STATUS if result is ProcessResult.FAILED else 0
 
 
 if __name__ == "__main__":

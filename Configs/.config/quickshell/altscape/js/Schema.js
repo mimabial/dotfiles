@@ -17,36 +17,36 @@ var items = [
 ];
 
 function defaults() {
-  var d = {};
-  for (var i = 0; i < items.length; i++) d[items[i].key] = items[i].fallback;
-  return d;
+  var fallbacks = {};
+  for (var item of items) fallbacks[item.key] = item.fallback;
+  return fallbacks;
 }
 
 var itemByKey = (function() {
-  var m = {};
-  for (var i = 0; i < items.length; i++) m[items[i].key] = items[i];
-  return m;
+  var byKey = {};
+  for (var item of items) byKey[item.key] = item;
+  return byKey;
 })();
 
-function clean(key, v) {
-  var it = itemByKey[key];
-  if (!it) return v;
-  if (v === null || v === undefined) return it.fallback;
-  switch (it.kind) {
+function clean(key, value) {
+  var item = itemByKey[key];
+  if (!item) return value;
+  if (value === null || value === undefined) return item.fallback;
+  switch (item.kind) {
   case "enum":
-    return it.options.indexOf(String(v)) >= 0 ? String(v) : it.fallback;
+    return item.options.indexOf(String(value)) >= 0 ? String(value) : item.fallback;
   case "bool":
-    if (v === true || v === "true") return true;
-    if (v === false || v === "false") return false;
-    return it.fallback;
+    if (value === true || value === "true") return true;
+    if (value === false || value === "false") return false;
+    return item.fallback;
   default:
-    return v;
+    return value;
   }
 }
 
 function migrate(values) {
   var out = Object.assign({}, values);
-  for (var i = 0; i < removedKeys.length; i++) delete out[removedKeys[i]];
+  for (var removedKey of removedKeys) delete out[removedKey];
   return out;
 }
 

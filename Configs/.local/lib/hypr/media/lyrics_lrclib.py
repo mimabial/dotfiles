@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 from lyrics_text import ProviderResult, build_result, lrc_header
-from lyrics_http import DEFAULT_TIMEOUT, response_ok, http_get
+from lyrics_http import DEFAULT_TIMEOUT_SECONDS, response_ok, http_get
 
 
 LRCLIB_API_SEARCH = "https://lrclib.net/api/search"
@@ -31,7 +31,7 @@ def fetch_lyrics_lrclib(
         search_resp = http_get(
             LRCLIB_API_SEARCH,
             params={"track_name": title, "artist_name": artist},
-            timeout=DEFAULT_TIMEOUT,
+            timeout=DEFAULT_TIMEOUT_SECONDS,
         )
         if not response_ok("lrclib", "Search failed", search_resp):
             return None
@@ -50,7 +50,7 @@ def fetch_lyrics_lrclib(
                 "album_name": track["albumName"],
                 "duration": track["duration"],
             },
-            timeout=DEFAULT_TIMEOUT,
+            timeout=DEFAULT_TIMEOUT_SECONDS,
         )
         if not response_ok("lrclib", "Get lyrics failed", get_resp):
             return None

@@ -1,7 +1,5 @@
 import QtQuick
 
-// A popup's own name and live status line. Kept distinct from PopupSection so a
-// panel's title never reads as one of its section headers.
 Item {
     id: root
     required property var shell

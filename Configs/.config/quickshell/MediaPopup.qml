@@ -92,7 +92,7 @@ PopupCard {
   property string loadingVid: ""
   property string selectedTab: "recents"
   property string urlInputText: ""
-  property string visMode: "osc_warp"
+  property string visMode: "bars"
   property bool visBackground: true
   property bool visBackgroundPulse: true
   property bool visPickerOpen: false
@@ -101,11 +101,11 @@ PopupCard {
     "bars", "bricks", "classic_led",
     "peaks", "stereo", "correlation", "ascii",
     "wave", "sine", "mirror",
-    "siriwave", "soundcloud_wave", "telegram_wave",
+    "soundcloud_wave", "telegram_wave",
     "daw_wave", "led_scrubber", "heatmap_wave", "grounded_wave",
-    "retro", "matrix", "binary", "terrain", "mosaic",
-    "scatter", "butterfly", "yinyang",
-    "plasma", "osc_warp", "crt_scanline", "cyber_tunnel", "red_sector"
+    "matrix", "mosaic",
+    "scatter", "butterfly",
+    "plasma", "cyber_tunnel", "red_sector"
   ]
 
   property var visBands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -237,8 +237,8 @@ PopupCard {
     const candidates = [Media.playerKey(player), player.dbusName, player.desktopEntry, player.identity,
       player.trackTitle, Media.displayArtist(player)]
     const selectors = []
-    for (var i = 0; i < candidates.length; i++) {
-      const value = String(candidates[i] || "").trim()
+    for (var candidate of candidates) {
+      const value = String(candidate || "").trim()
       if (value && selectors.indexOf(value) === -1) selectors.push(value)
     }
     return selectors

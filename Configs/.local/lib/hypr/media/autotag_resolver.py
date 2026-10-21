@@ -7,7 +7,7 @@ from typing import NamedTuple
 from audio_tags import read_tags
 from autotag_identity import album_context, derive_candidates, existing, first_artist_fallbacks, folder_hints, match_score, normalize_identity_tokens
 from autotag_models import Unidentified
-from autotag_cache import CACHE_MISS_TTL, CACHE_SUCCESS_TTL, CACHE_VERSION, ResolutionCache
+from autotag_cache import CACHE_MISS_TTL_SECONDS, CACHE_SUCCESS_TTL_SECONDS, CACHE_VERSION, ResolutionCache
 from autotag_catalogs import EXACT_MATCH_SCORE, from_acoustid, from_deezer, from_itunes, from_musicbrainz
 
 
@@ -73,7 +73,7 @@ def cache_resolution(
             album,
         ),
         {"identified": True, "metadata": cached_metadata},
-        CACHE_SUCCESS_TTL,
+        CACHE_SUCCESS_TTL_SECONDS,
     )
 
 
@@ -115,7 +115,7 @@ class Resolver:
             self.cache.put(cache_key, payload, ttl)
 
     def _cache_identified_metadata(self, cache_key: str, metadata: dict) -> dict:
-        self._cache_result(cache_key, {"identified": True, "metadata": metadata}, CACHE_SUCCESS_TTL)
+        self._cache_result(cache_key, {"identified": True, "metadata": metadata}, CACHE_SUCCESS_TTL_SECONDS)
         return metadata
 
     def _read_cached_resolution(self, cache_key: str) -> dict | None:
@@ -146,7 +146,7 @@ class Resolver:
         except Unidentified as exc:
             if not self.args.fallback:
                 self._cache_result(
-                    cache_key, {"identified": False, "reason": str(exc)}, CACHE_MISS_TTL
+                    cache_key, {"identified": False, "reason": str(exc)}, CACHE_MISS_TTL_SECONDS
                 )
                 raise
             return None
@@ -272,6 +272,6 @@ class Resolver:
                 return self._cache_identified_metadata(cache_key, metadata)
 
         reason = self._failure_reason(candidate_tiers, context.failures)
-        self._cache_result(cache_key, {"identified": False, "reason": reason}, CACHE_MISS_TTL)
+        self._cache_result(cache_key, {"identified": False, "reason": reason}, CACHE_MISS_TTL_SECONDS)
         raise Unidentified(reason)
 

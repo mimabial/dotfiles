@@ -1,8 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 
-// The target and destination choices screenshot.sh takes positionally, so the
-// three-way click on the module is not the only way in.
 PopupCard {
     id: root
     popupName: "screenshot"

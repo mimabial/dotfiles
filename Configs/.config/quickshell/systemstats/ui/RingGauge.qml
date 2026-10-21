@@ -64,20 +64,20 @@ Item {
       ctx.arc(cx, cy, r, 0, Math.PI * 2)
       ctx.stroke()
 
-      var segs = root.paintSegments
+      var segments = root.paintSegments
       var start = -Math.PI / 2
       var gapAngle = root.gapPx / r
-      var multi = segs.length > 1
+      var multi = segments.length > 1
       var filled = 0
-      for (var i = 0; i < segs.length; i++) {
-        var frac = Math.max(0, Math.min(1 - filled, Number(segs[i].value) || 0))
+      for (var segment of segments) {
+        var frac = Math.max(0, Math.min(1 - filled, Number(segment.value) || 0))
         if (frac < 0.004) continue
         var a0 = start + filled * Math.PI * 2
         var a1 = a0 + frac * Math.PI * 2
         var from = multi ? a0 + gapAngle / 2 : a0
         var to = multi ? a1 - gapAngle / 2 : a1
         if (to > from) {
-          ctx.strokeStyle = segs[i].color
+          ctx.strokeStyle = segment.color
           ctx.lineCap = multi ? "butt" : "round"
           ctx.beginPath()
           ctx.arc(cx, cy, r, from, to)

@@ -3,7 +3,6 @@ set -euo pipefail
 
 declare -F state_resolve_color_mode >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/state.bash"
 
-# Read the color policy from state files without sourcing them.
 selected_color_source="$(state_get "selected_color_source" "")"
 selected_color_mode="$(state_get "selected_color_mode" "")"
 background_mode="$(state_get "BACKGROUND_MODE" "dark")"

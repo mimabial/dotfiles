@@ -17,7 +17,6 @@ theme_polarity() {
   echo "${polarity[$1]}"
 }
 
-# One grep over every theme's first $COLOR_SCHEME line.
 theme_polarities_into() {
   local -n polarity_ref="$1"
   shift

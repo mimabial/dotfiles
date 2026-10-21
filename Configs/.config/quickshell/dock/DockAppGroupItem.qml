@@ -21,11 +21,10 @@ Item {
   readonly property bool isDropTarget: dock.dropTargetGroupId === groupId
   readonly property var runningInfo: {
     var windows = 0, active = false
-    for (var i = 0; i < dock.groupedSection.length; i++) {
-      var entry = dock.groupedSection[i]
+    for (var entry of dock.groupedSection) {
       if (!entry) continue
-      for (var j = 0; j < appIds.length; j++) {
-        if (!DockModel.isAppMatch(entry.appId, appIds[j])) continue
+      for (var appId of appIds) {
+        if (!DockModel.isAppMatch(entry.appId, appId)) continue
         windows += entry.windows || 0
         if (DockModel.isAppMatch(dock.activeId, entry.appId)) active = true
         break

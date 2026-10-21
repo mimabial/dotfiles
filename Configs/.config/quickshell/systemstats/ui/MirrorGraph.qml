@@ -10,7 +10,7 @@ Canvas {
   property var down: []
   property color upColor: Commons.Color.accent
   property color downColor: Commons.Color.accent
-  property real minimumCeiling: 10 * 1024  // keeps an idle link from looking busy
+  property real minimumCeiling: 1
   property real headroom: 1.08
   property int barWidth: 2
   property int gap: 1

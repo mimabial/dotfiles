@@ -1,8 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 
-// Popups opened by name (IPC, keybind, menutree) must exist even when the active
-// layout carries no module to host them. One instance per bar.
 Item {
     id: root
     required property var shell
@@ -26,10 +24,6 @@ Item {
     Host {
         popup: "altscape"; owners: ["altscape"]
         sourceComponent: Component { AltscapePopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
-    }
-    Host {
-        popup: "quickshare"; owners: ["quickshare"]
-        sourceComponent: Component { QuickSharePopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
     }
     Host {
         popup: "bitwarden"; owners: ["bitwarden"]

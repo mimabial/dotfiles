@@ -26,7 +26,7 @@ Row {
   }
 
   PanelActionButton {
-    iconText: root.controller.isPlaying ? "\uf04c" : "\uf04b"
+    iconText: root.controller.isPlaying ? Commons.Style.pauseGlyph : Commons.Style.playGlyph
     tooltipText: root.controller.isPlaying ? "Pause" : "Play"
     foreground: root.controller.isPlaying ? Commons.Color.accent : root.controller.foreground
     hoverColor: Commons.Color.accent; fontFamily: root.controller.fontFamily

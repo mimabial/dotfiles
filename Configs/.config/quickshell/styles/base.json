@@ -94,7 +94,7 @@
     "symbol": "status/microphone-sensitivity-muted"
   },
   "wallpaper": { "badgeColor": "accent", "symbol": "apps/preferences-desktop-wallpaper" },
-  "bluetooth, tasks, notifications, removable, microphone": {
+  "bluetooth, tasks, notifications, removable, microphone, kdeconnect": {
     "badgeColor": ["accent", 1.0],
     "badgeSize": 7.0
   },
@@ -151,7 +151,6 @@
   "screenshot": { "symbol": "devices/camera-photo" },
   "webcam": { "symbol": "devices/camera-web" },
   "terminal": { "symbol": "apps/utilities-terminal" },
-  "converter": { "symbol": "apps/accessories-calculator" },
   "sudoku": { "symbol": "apps/sudoku-app" },
   "colorpicker": { "symbol": "actions/color-picker" },
   "colormode": { "symbol": "actions/color-palette" },
@@ -187,15 +186,6 @@
       "": "actions/view-top-pane",
       "": "actions/view-bottom-pane",
       "": "actions/view-layout"
-    }
-  },
-  "github": {
-    "symbol": "apps/github-desktop",
-    "badges": {
-      "": { "text": "×", "color": ["error", 1.0] },
-      "": { "text": "!", "color": ["warning", 1.0] },
-      "": { "text": "!", "color": ["warning", 1.0] },
-      "": { "text": "•", "color": ["accent", 1.0] }
     }
   },
   "notifications": {

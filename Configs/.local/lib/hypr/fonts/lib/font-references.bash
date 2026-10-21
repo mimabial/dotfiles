@@ -66,7 +66,6 @@ classify_match_kind() {
   printf 'explicit\n'
 }
 
-# The best_* variables belong to the caller.
 record_best_match() {
   local -n best_score_ref="$1" best_kind_ref="$2" best_match_ref="$3"
   local kind="$4"

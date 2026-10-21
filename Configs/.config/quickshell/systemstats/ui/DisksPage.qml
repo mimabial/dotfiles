@@ -41,7 +41,7 @@ Column {
   readonly property var writeParts: Model.rateParts(writeRate)
   readonly property string sourceModel: {
     if (!singleDisk) return ""
-    for (var i = 0; i < volumes.length; i++) if (volumes[i].disk === source && volumes[i].model) return String(volumes[i].model)
+    for (var volume of volumes) if (volume.disk === source && volume.model) return String(volume.model)
     return ""
   }
 

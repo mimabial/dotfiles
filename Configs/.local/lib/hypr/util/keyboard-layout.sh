@@ -18,7 +18,6 @@ Options:
 
 keyboard_config_path=${HYPR_KEYBOARD_CONFIG_FILE:-${HYPR_CONFIG_HOME}/keyboard.lua}
 keyboard_config_lock_fd=""
-# The autoreload value to put back once the config is committed; empty while unpaused.
 keyboard_autoreload_restore_value=""
 
 source "${BASH_SOURCE[0]%/*}/keyboard/config.bash"

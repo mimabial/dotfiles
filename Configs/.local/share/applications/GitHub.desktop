@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=GitHub
+Comment=GitHub
+Exec="/home/rifle/.local/share/hypr/webapps/GitHub"
+Terminal=false
+Icon=/home/rifle/.local/share/applications/icons/GitHub.png
+StartupNotify=true
+X-Hypr-WebApp=true
+X-Hypr-WebApp-Id=GitHub

@@ -346,7 +346,6 @@ theme_apply_notify_wallpaper_detached() {
 }
 
 theme_apply_sync_theme_color_variant() {
-  # Keep phase-D's desktop color scheme aligned with the applied palette.
   local palette="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
   command -v jq >/dev/null 2>&1 || return 0
   [[ -r "${palette}" ]] || return 0

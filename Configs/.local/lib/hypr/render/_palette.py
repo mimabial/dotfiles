@@ -57,7 +57,7 @@ def parse_kitty_theme(path: Path) -> dict:
             data["selection_bg"] = v
         elif k.startswith("color"):
             try:
-                idx = int(k[5:])
+                idx = int(k.removeprefix("color"))
             except ValueError:
                 continue
             if 0 <= idx < ANSI_COLOR_COUNT:

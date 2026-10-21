@@ -74,8 +74,6 @@ Item {
             : inValue;
         return {"in": inValue, "out": outValue};
     }
-    // Latched by animateMotionTo when a transition starts from rest, so reversing
-    // mid-flight slides back out the side it came from instead of popping across.
     property string slideMotionDirection: ""
     readonly property var slideVector: root.slideVectors[root.slideMotionDirection] || root.slideVectors[root.slideDirection["in"]]
     readonly property real slideOffsetFraction: root.animationStyle === "slide"
@@ -105,8 +103,6 @@ Item {
     readonly property int hotCornerDelay: Math.max(0, Math.min(1000, Number(root.pluginEntry && root.pluginEntry.hotCornerDelay) || 0))
     readonly property string initialWorkspaceScope: root.pluginEntry && root.pluginEntry.initialWorkspaceScope === "current" ? "current" : "all"
     readonly property string workspaceLabelStyle: root.pluginEntry && root.pluginEntry.workspaceLabelStyle === "slot" ? "slot" : "full"
-    // Reach farther along both screen edges than into the desktop. Fast flings
-    // are easier to catch without stealing a large square from the bar below.
     readonly property int hotCornerReach: Commons.Style.space(48)
     readonly property int hotCornerDepth: Commons.Style.space(6)
     readonly property bool moveCursorToWindow: !root.pluginEntry || root.pluginEntry.moveCursorToWindow !== false
@@ -117,7 +113,6 @@ Item {
     readonly property real dragPreviewHeight: Commons.Style.space(72)
     readonly property real workspaceBandBlur: Commons.Style.space(64)
     readonly property real workspaceBandTint: 0.25
-    // Apple's frosted material saturates its backdrop to 180%.
     readonly property real workspaceBandSaturation: 0.8
     readonly property var windowDragKeys: ["expose-window"]
     readonly property real outlineWidth: root.shell ? Math.max(0, root.shell.borderWidth) : Commons.Style.normalBorderWidth
@@ -164,8 +159,7 @@ Item {
         var screens = Quickshell.screens;
         var wanted = String(root.overviewScreenName || "");
         var fallback = null;
-        for (var index = 0; index < screens.length; index++) {
-            var screen = screens[index];
+        for (var screen of screens) {
             if (!screen)
                 continue;
             if (!fallback)
@@ -443,8 +437,7 @@ Item {
                 || nextOut !== Number(current["out"])
                 || nextSeparate !== (current.separate === true)) {
             var timings = {};
-            for (var index = 0; index < root.animationStyles.length; index++) {
-                var animationMode = root.animationStyles[index];
+            for (var animationMode of root.animationStyles) {
                 var timing = root.animationTimingFor(animationMode);
                 timings[animationMode] = animationMode === mode
                     ? {"in": nextIn, "out": nextOut, separate: nextSeparate}
@@ -506,7 +499,6 @@ Item {
         return next;
     }
 
-    // Splitting a side also splits slide timing: one toggle governs both.
     function setSlideDirectionIn(value) {
         var next = root.normalizeSlideDirection(value);
         root.setAnimationTimingSeparate("slide", true);
@@ -598,8 +590,8 @@ Item {
 
     function hotCornerHovered() {
         var groups = [hotCornerInstances, surfaceInstances];
-        for (var groupIndex = 0; groupIndex < groups.length; groupIndex++) {
-            var instances = groups[groupIndex].instances;
+        for (var group of groups) {
+            var instances = group.instances;
             for (var index = 0; index < instances.length; index++)
                 if (instances[index] && instances[index].hotCornerHovered)
                     return true;
@@ -653,8 +645,7 @@ Item {
     }
 
     function focusKeyboardWindow() {
-        for (var i = 0; i < surfaceInstances.instances.length; i++) {
-            var surface = surfaceInstances.instances[i];
+        for (var surface of surfaceInstances.instances) {
             if (surface && surface.acceptsKeyboard) {
                 surface.keyboardItem.forceActiveFocus();
                 return;
@@ -725,8 +716,8 @@ Item {
     function cycleApp(step) {
         var apps = [];
         var windows = root.toplevelsOnScreen(root.keyboardScreenName);
-        for (var index = 0; index < windows.length; index++) {
-            var app = WindowModel.appIdFor(windows[index]).toLowerCase();
+        for (var window of windows) {
+            var app = WindowModel.appIdFor(window).toLowerCase();
             if (app && apps.indexOf(app) === -1)
                 apps.push(app);
         }
@@ -884,8 +875,7 @@ Item {
             next.push(existing);
             nextRatios.push(root.sessionAspectRatios[oldIndex] || root.liveAspectRatioFor(existing));
         }
-        for (var newIndex = 0; newIndex < current.length; newIndex++) {
-            var candidate = current[newIndex];
+        for (var candidate of current) {
             if (next.indexOf(candidate) !== -1)
                 continue;
             next.push(candidate);
@@ -928,8 +918,7 @@ Item {
     function monitorForScreen(screenName) {
         var wanted = String(screenName || "");
         var monitors = Hyprland.monitors ? Hyprland.monitors.values : [];
-        for (var index = 0; index < monitors.length; index++) {
-            var monitor = monitors[index];
+        for (var monitor of monitors) {
             if (monitor && monitor.name === wanted)
                 return monitor;
         }
@@ -943,8 +932,7 @@ Item {
         var dock = root.shell ? root.shell.dock : null;
         var regular = [], special = [];
         var all = Hyprland.workspaces.values;
-        for (var index = 0; index < all.length; index++) {
-            var workspace = all[index];
+        for (var workspace of all) {
             var name = String(workspace.name || "");
             if (name.indexOf("macspace_") === 0 && !root.allToplevels.some(function(top) {
                 return WindowModel.workspaceName(top) === name && WindowModel.ipcFor(top).mapped !== false;
@@ -1049,8 +1037,7 @@ Item {
     function toplevelsOnScreen(screenName) {
         var result = [];
         var source = root.surfaceMounted || root.openingPending ? root.sessionToplevels : root.allToplevels;
-        for (var index = 0; index < source.length; index++) {
-            var top = source[index];
+        for (var top of source) {
             if (top && root.isOnScreen(top, screenName))
                 result.push(top);
         }
@@ -1062,8 +1049,7 @@ Item {
         var scopedWorkspace = root.scopedWorkspaceForScreen(screenName);
         var candidates = root.toplevelsOnScreen(screenName);
         var result = [];
-        for (var index = 0; index < candidates.length; index++) {
-            var top = candidates[index];
+        for (var top of candidates) {
             if (root.workspaceScope !== "all" && !root.isOnWorkspace(top, scopedWorkspace))
                 continue;
             if (root.appFilter && WindowModel.appIdFor(top).toLowerCase() !== root.appFilter)
@@ -1115,8 +1101,7 @@ Item {
 
         var high = Math.min(availableWidth, availableHeight);
         var footerSpacing = footerHeight > 0 ? padding : 0;
-        for (var entryIndex = 0; entryIndex < entries.length; entryIndex++) {
-            var entry = entries[entryIndex];
+        for (var entry of entries) {
             high = Math.min(high,
                 (availableWidth - padding * 2) / Math.sqrt(entry.weight * entry.ratio),
                 (availableHeight - footerHeight - padding * 2 - footerSpacing) / Math.sqrt(entry.weight / entry.ratio));
@@ -1418,7 +1403,6 @@ Item {
         }
     }
 
-    // Let compositor keybinds reach the resident shell without spawning a CLI.
     Connections {
         target: Hyprland
         function onFocusedMonitorChanged() { root.handleDisplayStateChanged(); }

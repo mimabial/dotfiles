@@ -184,8 +184,6 @@ local function restore_float_size(window, selector)
 		return
 	end
 
-	-- Nothing remembered: reuse the tiled footprint, capped so a window that was
-	-- tiled alone does not float at full screen.
 	local max_width, max_height = usable_area(window.monitor)
 	local width = math.min(window.size.x, math.floor(max_width * FLOAT_FALLBACK_FRACTION))
 	local height = math.min(window.size.y, math.floor(max_height * FLOAT_FALLBACK_FRACTION))
@@ -338,7 +336,6 @@ exec(
 )
 -- Focus the existing window if there is one -- hl.dsp.focus pulls in a hidden
 -- special workspace as well as a regular one -- otherwise spawn it on its workspace.
--- On a scratchpad the same key hides it again while it is showing, so the bind toggles.
 local function summon_app(class, workspace, command, focus_when_opened)
 	local scratchpad = workspace:match("^special:(.+)$")
 	local pending_focus = false
@@ -665,7 +662,6 @@ submap_leader("window", mod, "W", function()
 	)
 end)
 
--- Theming: arrows cycle and stay, letters pick and leave.
 submap_leader("theming", mod, "T", function()
 	submap_cycle("RIGHT", "[Theming] next theme", "hyprshell theme.switch.sh -n --quiet")
 	submap_cycle("LEFT", "[Theming] previous theme", "hyprshell theme.switch.sh -p --quiet")
@@ -697,7 +693,6 @@ submap_leader("theming", mod, "T", function()
 	submap_exec("R", "[Theming] select rofi theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh -s")
 	submap_exec("L", "[Theming] select launcher style", "hyprshell rofi-launch.sh -s")
 	submap_exec("K", "[Theming] select lock layout", "quickshell ipc call lockview open")
-	-- the number row keeps working, so a theme can be judged on another workspace
 	for workspace = 1, 10 do
 		local description, action = numbered_workspace_action(workspace)
 		submap_action(
@@ -763,7 +758,7 @@ submap_leader("terminal", mod, "J", function()
 	tui_app("W", "Impala", "org.tui.Impala", "impala")
 	tui_app("V", "Wiremix", "org.tui.Wiremix", "wiremix")
 	tui_app("U", "Dua", "org.tui.Dua", "dua i")
-	tui_app("C", "Calculator", "org.tui.Calc", "hyprshell util/calc-tui.py")
+	submap_exec("C", "[Terminal] Calculator", "hyprshell util/calc-launch")
 	tui_app("D", "Display layout", "org.tui.Displays", "hyprmoncfg")
 	submap_exec("L", "[Terminal] Look and feel", "hyprshell window/settings.sh")
 	submap_exec("T", "[Terminal] Dropdown terminal", "hyprshell window/dropdown-terminal")

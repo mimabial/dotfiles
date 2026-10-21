@@ -947,13 +947,13 @@ VIS_MODES = {
     "bars", "bricks", "classic_led",
     "peaks", "stereo", "correlation", "ascii",
     "wave", "sine", "mirror",
-    "siriwave", "soundcloud_wave", "telegram_wave",
+    "soundcloud_wave", "telegram_wave",
     "daw_wave", "led_scrubber", "heatmap_wave", "grounded_wave",
-    "retro", "matrix", "binary", "terrain", "mosaic",
-    "scatter", "butterfly", "yinyang",
-    "plasma", "osc_warp", "crt_scanline", "cyber_tunnel", "red_sector",
+    "matrix", "mosaic",
+    "scatter", "butterfly",
+    "plasma", "cyber_tunnel", "red_sector",
 }
-DEFAULT_VIS_MODE = "osc_warp"
+DEFAULT_VIS_MODE = "bars"
 
 VIS_BG_FILE = os.path.join(CACHE_DIR, "vis_bg.txt")
 VIS_BG_PULSE_FILE = os.path.join(CACHE_DIR, "vis_bg_pulse.txt")

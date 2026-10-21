@@ -62,7 +62,6 @@ _hyprshell() {
         local -a script_options
         script_options=(\${=\$(_hyprshell_script_options \$words[2])})
         if (( \${#script_options} )); then
-            # Two tagged groups, so options and paths are offered side by side.
             _alternative \\
                 "options:script option:compadd -a script_options" \\
                 "files:file:_files"
@@ -72,8 +71,6 @@ _hyprshell() {
     fi
 }
 
-# Cache hit stays inside zsh: no subprocess, no interpreter start. Python runs
-# only when the script changed, and then reparses just that one file.
 _hyprshell_script_options() {
     local command_name="\$1" cache_file cache_line
     local cached_name script_path modified_seconds size_bytes cached_options

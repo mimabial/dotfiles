@@ -220,7 +220,7 @@ PopupCard {
     function activateDevice(device) {
         if (!device) return
         if (device.connected) runDeviceAction(device, "disconnect")
-        else runDeviceAction(device, device.paired || device.bonded || device.trusted ? "connect" : "pair")
+        else runDeviceAction(device, device.bonded ? "connect" : "pair")
     }
     function togglePower() {
         if (!adapter || powerBusy) return
@@ -237,7 +237,7 @@ PopupCard {
                 || Model.normalizedAddress(activeDeviceAction.address) !== Model.normalizedAddress(device.address)) return
         cancelRequested = true
         setPending(device.address, "", "")
-        if (typeof device.cancelPair === "function") device.cancelPair()
+        if (device.pairing) device.cancelPair()
         deviceActionProcess.signal(15)
     }
 

@@ -13,8 +13,8 @@ MEDIA_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(MEDIA_DIR))
 
 import autotag
-from autotag_cache import (CACHE_MISS_TTL, CACHE_SUCCESS_TTL, ResolutionCache)
-from autotag_catalogs import (DEEZER_COOLDOWN, RateLimiter, from_acoustid, from_itunes, from_musicbrainz)
+from autotag_cache import (CACHE_MISS_TTL_SECONDS, CACHE_SUCCESS_TTL_SECONDS, ResolutionCache)
+from autotag_catalogs import (DEEZER_COOLDOWN_SECONDS, RateLimiter, from_acoustid, from_itunes, from_musicbrainz)
 from autotag import (ScannedAudioFile, restore_youtube_credit_tags)
 from autotag_models import (Unidentified)
 from autotag_identity import (album_context, candidate_agrees, derive_candidates, drop_redundant_feat, first_artist_fallbacks, match_score, missing_credit_names, search_variants, split_featured_title)
@@ -137,9 +137,9 @@ class AlbumMatchingTests(unittest.TestCase):
 
 class CachePolicyTests(unittest.TestCase):
     def test_requested_expirations(self):
-        self.assertEqual(CACHE_SUCCESS_TTL, 99 * 24 * 60 * 60)
-        self.assertEqual(CACHE_MISS_TTL, 60 * 60)
-        self.assertEqual(DEEZER_COOLDOWN, 60 * 60)
+        self.assertEqual(CACHE_SUCCESS_TTL_SECONDS, 99 * 24 * 60 * 60)
+        self.assertEqual(CACHE_MISS_TTL_SECONDS, 60 * 60)
+        self.assertEqual(DEEZER_COOLDOWN_SECONDS, 60 * 60)
 
 
 class ResolutionCacheTests(unittest.TestCase):
@@ -157,7 +157,7 @@ class ResolutionCacheTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "cache.sqlite3"
             cache = ResolutionCache(path)
-            cache.put("song", {"identified": True}, CACHE_SUCCESS_TTL)
+            cache.put("song", {"identified": True}, CACHE_SUCCESS_TTL_SECONDS)
 
             with contextlib.closing(sqlite3.connect(path)) as observer:
                 count_before = observer.execute(

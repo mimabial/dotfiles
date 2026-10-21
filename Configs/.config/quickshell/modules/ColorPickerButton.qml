@@ -2,8 +2,6 @@ import QtQuick
 import Quickshell.Io
 import ".."
 
-// the glyph carries the last picked colour, so the button owns that state
-// rather than the group it happens to sit in
 BarButton {
     id: root
     property bool popupsAllowed: true

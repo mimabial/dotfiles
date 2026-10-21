@@ -26,7 +26,6 @@ TextField {
     }
     onCursorPositionChanged: if (masked && blank && cursorPosition !== 0) cursorPosition = 0
 
-    // "" until the user has actually typed a digit
     readonly property string value: {
         const packed = String(text).replace(/\s/g, "")
         return /\d/.test(packed) ? packed : ""

@@ -38,13 +38,16 @@ class SettingsStore(Store):
 upstream.SettingsStore = SettingsStore
 monitor = upstream.Monitor()
 hidden = SettingsStore(str(config / "hidden.json"))
-notification_features = {
+NOTIFICATION_FEATURES = {
     upstream.F_BATTERY, upstream.F_UNIFIED_BATTERY, upstream.F_VOLTAGE,
     upstream.F_DPI, upstream.F_SMARTSHIFT, upstream.F_SMARTSHIFT_ENH,
     upstream.F_FN_INVERSION, upstream.F_FN_INVERSION_NEW, upstream.F_FN_INVERSION_HOST,
 }
-connection_notification = 0x41
-child_exit_timeout = 2
+HIDPP_CONNECTION_SUB_ID = 0x41
+HIDPP_HEADER_BYTES = 4
+SCAN_ERROR_TEXT_LIMIT = 200
+READ_CHUNK_BYTES = 4096
+CHILD_EXIT_TIMEOUT_SECONDS = 2
 
 
 def emit_snapshot():
@@ -57,7 +60,7 @@ def refresh():
     try:
         monitor.scan()
     except Exception as error:
-        monitor.snapshot = dict(monitor.snapshot, phase="error", error=upstream.clean(str(error), 200))
+        monitor.snapshot = dict(monitor.snapshot, phase="error", error=upstream.clean(str(error), SCAN_ERROR_TEXT_LIMIT))
     for entry in monitor.snapshot.get("devices", []):
         if entry.get("id", "").endswith("-direct"):
             node = entry["id"].removesuffix("-direct")
@@ -95,13 +98,14 @@ def hardware_changed(ready):
             changed = True
             continue
         for report in node.events:
-            if len(report) < 4 or report[0] not in (upstream.SHORT, upstream.LONG):
+            if len(report) < HIDPP_HEADER_BYTES or report[0] not in (upstream.SHORT, upstream.LONG):
                 continue
-            if report[2] == connection_notification:
+            _, device_index, feature_index = report[:3]
+            if feature_index == HIDPP_CONNECTION_SUB_ID:
                 changed = True
             for device in monitor.devices.values():
-                if device.node is node and report[1] == device.index:
-                    changed |= any(report[2] == device.features.get(feature) for feature in notification_features)
+                if device.node is node and device_index == device.index:
+                    changed |= any(feature_index == device.features.get(feature) for feature in NOTIFICATION_FEATURES)
         node.events.clear()
     return changed
 
@@ -124,7 +128,7 @@ def run():
             ready, _, _ = select.select(watched, [], [])
             changed = hardware_changed(ready)
             if input_fd in ready:
-                chunk = os.read(input_fd, 4096)
+                chunk = os.read(input_fd, READ_CHUNK_BYTES)
                 if not chunk:
                     return
                 input_buffer += chunk
@@ -132,7 +136,7 @@ def run():
                     line, input_buffer = input_buffer.split(b"\n", 1)
                     changed |= handle(line)
             if event_fd in ready:
-                chunk = os.read(event_fd, 4096)
+                chunk = os.read(event_fd, READ_CHUNK_BYTES)
                 if not chunk:
                     raise RuntimeError("Hardware event monitor stopped")
                 event_buffer += chunk
@@ -146,7 +150,7 @@ def run():
             node.close()
         events.terminate()
         try:
-            events.wait(timeout=child_exit_timeout)
+            events.wait(timeout=CHILD_EXIT_TIMEOUT_SECONDS)
         except subprocess.TimeoutExpired:
             events.kill()
             events.wait()

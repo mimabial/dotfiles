@@ -85,8 +85,7 @@ Item {
       case "disks": {
         var volumes = Array.isArray(disks.volumes) ? disks.volumes : []
         var chosen = null
-        for (var i = 0; i < volumes.length; i++) {
-          var volume = volumes[i]
+        for (var volume of volumes) {
           if (singleDisk ? volume.disk === disksSource : volume.mount === "/") { chosen = volume; break }
         }
         if (!chosen && volumes.length > 0) chosen = volumes[0]
@@ -112,8 +111,8 @@ Item {
   readonly property var sensorReadings: {
     var ids = Model.parseList(barSensors)
     var out = []
-    for (var i = 0; i < ids.length; i++) {
-      var reading = Model.sensorReading(snap, ids[i], temperatureUnit)
+    for (var sensorId of ids) {
+      var reading = Model.sensorReading(snap, sensorId, temperatureUnit)
       if (reading) out.push(reading)
     }
     if (out.length === 0) {
@@ -152,7 +151,6 @@ Item {
     return ""
   }
 
-  // Reserve a stable minimum width; larger live values may extend past it.
   readonly property string reserveText: {
     switch (module) {
       case "network":
