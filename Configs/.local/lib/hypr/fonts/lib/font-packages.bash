@@ -15,7 +15,7 @@ refresh_font_cache() {
 font_packages_label() {
   local -a packages=("$@")
   local joined=""
-  joined="$(printf '%s, ' "${packages[@]}")"
+  printf -v joined '%s, ' "${packages[@]}"
   printf '%s\n' "${joined%, }"
 }
 

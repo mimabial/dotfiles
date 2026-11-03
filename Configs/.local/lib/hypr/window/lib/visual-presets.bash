@@ -77,7 +77,7 @@ hypr_visual_preset_write_lua() {
     esac
   done
 
-  mkdir -p "${out_file%/*}" || return 1
+  [[ -d "${out_file%/*}" ]] || mkdir -p "${out_file%/*}" || return 1
 
   {
     printf '%s\n' '-- Generated native Hyprland Lua. Do not edit manually.'

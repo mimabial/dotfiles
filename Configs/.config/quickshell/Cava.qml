@@ -8,7 +8,6 @@ Singleton {
     id: root
     property var consumers: []
     readonly property var profiles: Array.from(new Set(consumers.map(consumer => consumer.profile)))
-    readonly property var modes: ["bars", "foobar", "dots", "wave", "mirror", "blocks"]
     readonly property int maxValue: 1000
     property var values: ({})
 

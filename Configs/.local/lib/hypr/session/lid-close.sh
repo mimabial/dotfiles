@@ -6,8 +6,9 @@ set -euo pipefail
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell session/lid-close [--no-suspend]
-Lock the screen, wait for it to map, then run the configured lid action. Bound to the lid switch, so it
-must not depend on hypridle: caffeine stops that daemon and would skip the lock." "$@"
+Lock the screen, wait for it to map, then run the configured lid action, or keep running while
+session/toggle-system-keep-awake holds sleep. Bound to the lid switch, so it must not depend on
+hypridle: caffeine stops that daemon and would skip the lock." "$@"
 
 LOCK_CONFIRM_TIMEOUT_S=5
 
@@ -15,11 +16,13 @@ suspend=1
 [[ "${1:-}" == "--no-suspend" ]] && suspend=0
 action=suspend
 if ((suspend)); then
-  action="$(hyprshell system/power-manager.sh lid-action)" || exit 1
+  action="$("${HYPR_LIB_DIR}/system/power-manager.sh" lid-action)" || exit 1
   [[ "${action}" == ignore ]] && exit 0
+  source "${BASH_SOURCE[0]%/*}/idle/state.bash"
+  idle_system_enabled && suspend=0
 fi
 
-mkdir -p "${HYPR_RUNTIME_DIR}"
+[[ -d "${HYPR_RUNTIME_DIR}" ]] || mkdir -p "${HYPR_RUNTIME_DIR}"
 exec {close_fd}>"${HYPR_RUNTIME_DIR}/lid-close.lock"
 flock -n "${close_fd}" || exit 0
 log="$(mktemp "${HYPR_RUNTIME_DIR}/lid-lock.XXXXXX")"
@@ -39,4 +42,4 @@ if ! exec {inhibitor_fd}<"${HYPR_RUNTIME_DIR}/logind-inhibitor" || flock -n "${i
   notify_send_safe -u critical 'Suspend cancelled' 'Logind inhibitor is not running'
   exit 1
 fi
-exec hyprshell system/power-manager.sh perform "${action}" --locked
+exec "${HYPR_LIB_DIR}/system/power-manager.sh" perform "${action}" --locked

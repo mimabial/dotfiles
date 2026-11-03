@@ -1,3 +1,5 @@
+declare -F hypr_config_value_from_layers_into >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/config-layers.bash" || return 1
+
 DEFAULT_APP_CATALOG=(
   'agent|claude|claude||Claude|󰛄'
   'agent|codex|codex||Codex|󱙺'

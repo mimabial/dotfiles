@@ -4,6 +4,7 @@ set -euo pipefail
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
+declare -F hypr_svc_user >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/services.bash" || exit 1
 
 RECOVER_USAGE="Usage: hyprshell service/recover <bluetooth|hypridle|hyprsunset|pipewire|wifi>"
 hypr_help_guard "${RECOVER_USAGE}

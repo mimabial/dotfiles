@@ -97,6 +97,8 @@ RowLayout {
                 { text: "Zoom", run: onFocused("window.fullscreen", 'mode = "maximized", action = "toggle"') },
                 { text: "Toggle Floating", run: onFocused("window.float", 'action = "toggle"') },
                 { text: "Center", run: onFocused("window.center") },
+                { text: "Snap Placement…", run: [shell.home + "/.local/lib/hypr/window/snap.sh", DockModel.windowAddress(focused)] },
+                { text: "Show Desktop", run: () => shell.dock?.toggleDesktop() },
                 separator
             ].concat(windows.map(toplevel => ({ text: toplevel.title, checked: toplevel === focused,
                 run: () => dispatch(`hl.dsp.focus({window = "${selector(toplevel)}"})`) }))),

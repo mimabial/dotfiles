@@ -27,14 +27,11 @@ Column {
   readonly property color danger: service ? service.danger : Commons.Color.urgent
 
   readonly property var cpu: snap.cpu || ({})
-  readonly property var gpu: snap.gpu || null
-  readonly property var sensors: snap.sensors || ({})
-  readonly property var temps: sortedTemps(Array.isArray(sensors.temps) ? sensors.temps : [])
-  readonly property var fans: Array.isArray(sensors.fans) ? sensors.fans : []
+  readonly property var gpu: Model.primarySensorGpu(snap)
+  readonly property var temps: sortedTemps(Model.sensorTemps(snap))
+  readonly property var fans: Model.sensorFans(snap)
   readonly property real cpuTemp: Model.num(cpu.temp, NaN)
-  readonly property real gpuTemp: gpu && gpu.temp !== null && isFinite(Number(gpu.temp))
-    ? Number(gpu.temp)
-    : Model.num(sensors.gpuTemp, NaN)
+  readonly property real gpuTemp: Model.num(Model.sensorGpuTemp(snap), NaN)
   readonly property var fanSummary: {
     var active = 0
     var sum = 0
@@ -286,15 +283,15 @@ Column {
         id: fanRow
         required property int index
         readonly property var modelData: root.fans[index] || ({})
-        readonly property real rpm: Model.num(modelData.rpm)
+        readonly property var reading: Model.fanParts(modelData)
         label: String(modelData.label || "Fan")
-        value: rpm > 0 ? String(Math.round(rpm)) : "Off"
-        unit: rpm > 0 ? "rpm" : ""
+        value: reading.value
+        unit: reading.unit
         boldValue: false
-        labelOpacity: rpm > 0 ? 0.85 : 0.5
+        labelOpacity: reading.unit ? 0.85 : 0.5
         foreground: root.foreground
         fontFamily: root.fontFamily
-        ringValue: Math.min(1, fanRow.rpm / Model.FAN_FULL_SCALE_RPM)
+        ringValue: Model.fanFraction(fanRow.modelData)
         ringColor: root.s2
       }
     }

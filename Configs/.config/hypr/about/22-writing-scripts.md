@@ -16,7 +16,10 @@ What it does.
   --flag    what the flag does" "$@"
 ```
 
-`init.bash` bootstraps `LIB_DIR`, the `HYPR_*_HOME` variables and the lock paths.
+`init.bash` bootstraps `LIB_DIR`, the `HYPR_*_HOME` variables and the lock paths,
+and loads `core/common.bash`. The narrower core modules (`events`, `services`,
+`dbus`, `geometry`, `config-layers`) load on demand: source the one you call, e.g.
+`declare -F hypr_wait_for >/dev/null || source "${HYPR_LIB_DIR}/core/events.bash"`.
 `hypr_help_guard` gives you `--help` on stdout with exit 0, which is the
 convention every other script here follows.
 

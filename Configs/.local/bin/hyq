@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import os
-import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -9,39 +8,6 @@ from typing import Any
 HYPR_LIB_DIR = Path(__file__).resolve().parent.parent / "lib/hypr"
 sys.path.insert(0, str(HYPR_LIB_DIR))
 from pyutils.hyprlang import HyprlangParser  # noqa: E402
-
-
-def infer_scalar_type(value: Any) -> str:
-    if value is None:
-        return "NULL"
-    elif isinstance(value, bool):
-        return "BOOL"
-    elif isinstance(value, int):
-        return "INT"
-    elif isinstance(value, float):
-        return "FLOAT"
-    elif isinstance(value, str):
-        if value.startswith(("rgb", "0x", "#")):
-            return "COLOR"
-        return "STRING"
-    else:
-        return "CUSTOM"
-
-
-def infer_type(value: Any) -> str:
-    if isinstance(value, list):
-        item_types = {infer_scalar_type(item) for item in value}
-        item_types.discard("NULL")
-        if not item_types:
-            return "NULL"
-        if len(item_types) == 1:
-            return item_types.pop()
-        return "CUSTOM"
-    return infer_scalar_type(value)
-
-
-def normalize_type(type_str: str) -> str:
-    return type_str.upper().replace("_", "").replace("-", "")
 
 
 def stringify_value(value: Any) -> str:
@@ -52,70 +18,16 @@ def stringify_value(value: Any) -> str:
     return str(value)
 
 
-def escape_env_value(value: str) -> str:
-    value = value.replace("\\", "\\\\")
-    value = value.replace('"', '\\"')
-    value = value.replace("$", "\\$")
-    value = value.replace("`", "\\`")
-    value = value.replace("\n", "\\n")
-    return value
-
-
-def filter_value(value: Any, predicate) -> Any | None:
-    if isinstance(value, list):
-        filtered = [item for item in value if predicate(item)]
-        if not filtered:
-            return None
-        if len(filtered) == 1:
-            return filtered[0]
-        return filtered
-    return value if predicate(value) else None
-
-
-def parse_query_input(query_str: str) -> tuple[str, str | None]:
-    match = re.fullmatch(r"(?P<key>[^\[]+)(?:\[(?P<type>[^\]]*)\])?", query_str)
-    if not match:
-        return query_str, None
-
-    return match["key"], match["type"] or None
-
-
-def process_query(parser: HyprlangParser, query_str: str) -> Any | None:
-    query, expected_type = parse_query_input(query_str)
-    value = parser.query(query)
-    if value is None or not expected_type:
-        return value
-
-    expected_type_norm = normalize_type(expected_type)
-    return filter_value(value, lambda item: normalize_type(infer_type(item)) == expected_type_norm)
-
-
-def export_env(values: list[Any], queries: list[str]):
-    for value, raw_query in zip(values, queries):
-        query = raw_query.removeprefix("$")
-
-        query = re.sub(r"\[.*?\]", "", query)
-
-        env_key = query.replace(":", "_").replace("-", "_")
-
-        is_variable = raw_query.startswith("$")
-        prefix = "__" if is_variable else "_"
-
-        env_value = escape_env_value(stringify_value(value))
-        print(f'{prefix}{env_key}="{env_value}"')
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Query hyprlang .conf/.meta files. "
         "Does not parse the Lua compositor config.",
         epilog="""query syntax:
-  section:key[TYPE]   nested key, optionally filtered
+  section:key         nested key
   $VARIABLE           hyprlang variable, recursively resolved
-  TYPE keeps list items inferred as BOOL INT FLOAT COLOR STRING CUSTOM
 
 A repeated key yields a list, printed one item per line.
-Exit status is 1 if any query resolved to nothing, unless --allow-missing.
+Exit status is 1 if any query resolved to nothing.
 
 examples:
   hyq -Q '$CURSOR_THEME' ~/.config/hypr/themes/theme.meta
@@ -131,13 +43,7 @@ examples:
         action="append",
         dest="queries",
         required=True,
-        help="Query to execute (format: query[expectedType])",
-    )
-    parser.add_argument(
-        "--allow-missing", action="store_true", help="Allow missing values"
-    )
-    parser.add_argument(
-        "--export", choices=["env"], help="Print shell variable assignments"
+        help="Query to execute (section:key or $VARIABLE)",
     )
     return parser
 
@@ -155,14 +61,10 @@ def main():
     hypr_parser = HyprlangParser()
     hypr_parser.parse_file(config_file)
 
-    values = [process_query(hypr_parser, query) for query in args.queries]
+    values = [hypr_parser.query(query) for query in args.queries]
+    print("\n".join(stringify_value(value) for value in values))
 
-    if args.export == "env":
-        export_env(values, args.queries)
-    else:
-        print("\n".join(stringify_value(value) for value in values))
-
-    return int(not args.allow_missing and any(value is None for value in values))
+    return int(any(value is None for value in values))
 
 
 if __name__ == "__main__":

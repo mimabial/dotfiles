@@ -20,9 +20,10 @@ case "${1:-}" in
   --length) media_reader=hyprlock_media_duration ;;
 esac
 if [[ -n "${media_reader:-}" ]]; then
-  media_player="$(mpris_selected_player)"
-  hyprlock_queue_artwork_update HYPRLOCK_PATHS "${media_player}"
-  "${media_reader}" "${2:-${media_player}}"
+  declare -A media=()
+  mpris_snapshot_into media "${HYPRLOCK_PATHS[mpris_snapshot]}"
+  [[ -z "${media[fresh]:-}" ]] || hyprlock_queue_artwork_update HYPRLOCK_PATHS media
+  "${media_reader}" media
   exit
 fi
 

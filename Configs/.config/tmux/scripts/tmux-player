@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-status="$(playerctl status 2>/dev/null)"
-if [[ "$status" == "Playing" || "$status" == "Paused" ]]; then
-  playerctl metadata --format '#[default]#[fg=#{@theme_gray}] 󰽯 #[default,italics]{{title}}#[fg=#{@theme_gray}]  #[default]' 2>/dev/null
-fi
+now_playing="$(playerctl metadata --format $'{{status}}\n#[default]#[fg=#{@theme_gray}] 󰽯 #[default,italics]{{title}}#[fg=#{@theme_gray}]  #[default]' 2>/dev/null)"
+case "${now_playing%%$'\n'*}" in
+  Playing | Paused) printf '%s\n' "${now_playing#*$'\n'}" ;;
+esac

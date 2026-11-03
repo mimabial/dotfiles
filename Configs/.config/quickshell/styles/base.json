@@ -3,7 +3,7 @@
     "fontSize": 12,
     "borderColor": null,
     "backgroundColor": null,
-    "hover": { "borderColor": null, "backgroundColor": null, "color": ["hvr_fg", 1.0] },
+    "hover": { "backgroundColor": null, "color": ["hvr_fg", 1.0] },
     "margin": [0.0, 6.0, 0.0, 6.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
@@ -18,7 +18,6 @@
     "margin": [0.0, 0.0, 0.0, 0.0],
     "padding": [0.0, 6.0, 0.0, 0.0]
   },
-  "altscape": { "symbol": { "󰕰": "actions/view-grid" } },
   "agents": {
     "color": ["fg", 1.0],
     "symbol": "apps/org.gnome.Robots",
@@ -74,7 +73,6 @@
       "󰘮": "actions/view-grid",
       "": "actions/view-dual",
       "󰕭": "actions/view-column",
-      "󰐨": "actions/view-presentation",
       "󰀵": "apps/preferences-desktop-wallpaper",
       "": "actions/view-layout",
       "󰽏": "actions/view-layout",
@@ -94,6 +92,7 @@
     "symbol": "status/microphone-sensitivity-muted"
   },
   "wallpaper": { "badgeColor": "accent", "symbol": "apps/preferences-desktop-wallpaper" },
+  "themerotation": { "badgeColor": "accent", "symbol": "apps/preferences-desktop-appearance" },
   "bluetooth, tasks, notifications, removable, microphone, kdeconnect": {
     "badgeColor": ["accent", 1.0],
     "badgeSize": 7.0
@@ -136,6 +135,8 @@
   "display": { "symbol": "status/display-brightness" },
   "bluetooth": { "symbol": "status/bluetooth-active" },
   "bluetooth.on": { "symbol": "status/bluetooth-disconnected" },
+  "bluetooth.low": { "color": ["warning", 1.0] },
+  "bluetooth.critical": { "color": ["error", 1.0] },
   "powerprofile": { "symbol": "status/power-profile-balanced" },
   "powerprofile.performance": { "symbol": "status/power-profile-performance" },
   "powerprofile.power-saver": { "symbol": "status/power-profile-power-saver" },

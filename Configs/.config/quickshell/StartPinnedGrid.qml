@@ -7,14 +7,19 @@ Column {
     id: root
     required property var shell
     property var apps: []
+    property int cursorIndex: -1
+    readonly property int columns: 4
+    readonly property int tileHeight: Style.px(62)
+    readonly property int iconSize: Style.px(28)
     signal launched(var app)
     signal unpinned(var app)
+    signal pointed(int index, point position)
     visible: apps.length > 0
     spacing: Style.sm
 
     PopupSection { shell: root.shell; text: "PINNED" }
     Grid {
-        columns: 4
+        columns: root.columns
         columnSpacing: Style.lg
         rowSpacing: Style.lg
         width: parent.width
@@ -23,13 +28,11 @@ Column {
             Rectangle {
                 id: pinnedApp
                 required property var modelData
-                readonly property bool hovered: tileMouse.containsMouse
-                width: Math.floor((root.width - Style.lg * 3) / 4)
-                height: Style.px(62)
+                required property int index
+                width: Math.floor((root.width - Style.lg * (root.columns - 1)) / root.columns)
+                height: root.tileHeight
                 radius: root.shell.rounding
-                color: hovered ? root.shell.alpha(root.shell.foreground, .1) : "transparent"
-                border.color: hovered && root.shell.mode !== "winbar"
-                    ? root.shell.alpha(root.shell.role("br", root.shell.foreground), .35) : "transparent"
+                color: pinnedApp.index === root.cursorIndex ? root.shell.hoverFill() : "transparent"
                 Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
                 Column {
                     anchors.centerIn: parent
@@ -37,7 +40,7 @@ Column {
                     spacing: Style.xs
                     IconImage {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        implicitWidth: 28; implicitHeight: 28
+                        implicitWidth: root.iconSize; implicitHeight: root.iconSize
                         source: Quickshell.iconPath(pinnedApp.modelData.icon, true)
                     }
                     Text {
@@ -55,6 +58,7 @@ Column {
                     anchors.fill: parent
                     hoverEnabled: true
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onPositionChanged: mouse => root.pointed(pinnedApp.index, tileMouse.mapToGlobal(mouse.x, mouse.y))
                     onClicked: event => event.button === Qt.RightButton
                         ? root.unpinned(pinnedApp.modelData) : root.launched(pinnedApp.modelData)
                 }

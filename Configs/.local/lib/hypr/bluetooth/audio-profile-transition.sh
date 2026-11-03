@@ -29,36 +29,36 @@ flock -w "$AUDIO_MUTATION_LOCK_TIMEOUT_SECONDS" "$audio_mutation_lock_fd" || {
   exit 1
 }
 
-script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+script_dir=${BASH_SOURCE[0]%/*}
+[[ $script_dir != "${BASH_SOURCE[0]}" ]] || script_dir=.
 source "${script_dir}/lib/audio-endpoints.bash"
 source "${script_dir}/lib/audio-profile-restoration.bash"
 source "${script_dir}/lib/audio-profile-readiness.bash"
 source "${script_dir}/lib/audio-profile-snapshot.bash"
 
 requested_profile_metadata=$("$script_dir/audio-cards.sh" |
-  jq -ec --arg card "${card[name]}" --arg profile "${card[requested_profile]}" '
+  jq -er --arg card "${card[name]}" --arg profile "${card[requested_profile]}" '
     first(.[] | select(.name == $card) | .profiles[] | select(.value == $profile))
+    | (.sinks // 0), (.sources // 0)
   ') || {
   echo "Profile is not available for this device" >&2
   exit 1
 }
 
-expected_sinks=$(jq -r '.sinks // 0' <<<"$requested_profile_metadata")
-expected_sources=$(jq -r '.sources // 0' <<<"$requested_profile_metadata")
+{ read -r expected_sinks; read -r expected_sources; } <<<"$requested_profile_metadata"
 [[ $expected_sinks =~ ^[0-9]+$ && $expected_sources =~ ^[0-9]+$ ]] || exit 1
 
 card_info=$(hypr_daemon_call pactl -f json list cards 2>/dev/null |
-  jq -ec --arg card "${card[name]}" 'first(.[] | select(.name == $card))') || {
+  jq -er --arg card "${card[name]}" 'first(.[] | select(.name == $card)) | (.index // ""), (.active_profile // "")') || {
   echo "Audio card is not available" >&2
   exit 1
 }
-card[index]=$(jq -r '.index // empty' <<<"$card_info") || exit 1
+{ read -r 'card[index]'; read -r 'card[previous_profile]'; } <<<"$card_info"
 [[ ${card[index]} =~ ^[0-9]+$ ]] || exit 1
 
 # Re-applying the active profile needlessly tears down the same endpoints,
 # briefly silences playback, and creates another opportunity for restoration
 # to fail. The caller can still persist this already-active preference.
-card[previous_profile]=$(jq -r '.active_profile // empty' <<<"$card_info") || exit 1
 [[ ${card[previous_profile]} != "${card[requested_profile]}" ]] || exit 0
 
 capture_original_audio_state card original || exit 1

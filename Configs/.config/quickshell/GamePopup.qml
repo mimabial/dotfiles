@@ -192,13 +192,13 @@ PopupCard {
                 Row {
                     width: parent.width; spacing: Style.sm
                     PopupNumberField {
-                        width: (parent.width - parent.spacing) / 2; shell: root.shell
+                        width: (parent.width - parent.spacing) / 2; shell: root.shell; popupController: root
                         label: "FPS cap"; value: Number(root.option("fps_limit", "0")) || 0
                         minimum: 0; maximum: 360; enabled: root.configReady
                         onCommitted: next => root.setOption("fps_limit", String(next))
                     }
                     PopupNumberField {
-                        width: (parent.width - parent.spacing) / 2; shell: root.shell
+                        width: (parent.width - parent.spacing) / 2; shell: root.shell; popupController: root
                         label: "Font size"; value: Number(root.option("font_size", "24")) || 24
                         minimum: 10; maximum: 48; enabled: root.configReady
                         onCommitted: next => root.setOption("font_size", String(next))

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-declare -F hypr_wait_for >/dev/null || source "${BASH_SOURCE[0]%/*}/../../core/common.bash"
+declare -F hypr_ensure_runtime_dir_into >/dev/null || source "${BASH_SOURCE[0]%/*}/../../core/common.bash"
+declare -F hypr_wait_for >/dev/null || source "${BASH_SOURCE[0]%/*}/../../core/events.bash"
 declare -F notify_send_safe >/dev/null || source "${BASH_SOURCE[0]%/*}/../../core/notify.bash"
 
 CAPTURE_CLICK_MAX_AREA_PIXELS=20
@@ -23,9 +24,7 @@ capture_stop_freeze() {
   [[ -n "${freeze_pid}" ]] && kill "${freeze_pid}" 2>/dev/null || true
 }
 
-capture_monitor_geometry_jq() {
-  cat <<'EOF'
-def rotated_sideways: .transform % 2 == 1;
+CAPTURE_MONITOR_GEOMETRY_JQ='def rotated_sideways: .transform % 2 == 1;
 def format_geo:
   .x as $x | .y as $y |
   (.width / .scale | floor) as $w |
@@ -34,16 +33,11 @@ def format_geo:
     "\($x),\($y) \($h)x\($w)"
   else
     "\($x),\($y) \($w)x\($h)"
-  end;
-EOF
-}
+  end;'
 
 capture_active_workspace_rectangles() {
-  local geometry_filter
-  geometry_filter="$(capture_monitor_geometry_jq)"
-
   hyprctl --batch -j "monitors;clients" \
-    | jq -sr "${geometry_filter}
+    | jq -sr "${CAPTURE_MONITOR_GEOMETRY_JQ}
         .[0] as \$monitors
         | (.[1] // []) as \$clients
         | (\$monitors[] | select(.focused == true) | .activeWorkspace.id) as \$active_workspace
@@ -53,11 +47,8 @@ capture_active_workspace_rectangles() {
 }
 
 capture_visible_workspace_rectangles() {
-  local geometry_filter
-  geometry_filter="$(capture_monitor_geometry_jq)"
-
   hyprctl --batch -j "monitors;workspaces;clients" \
-    | jq -sr "${geometry_filter}
+    | jq -sr "${CAPTURE_MONITOR_GEOMETRY_JQ}
         .[0] as \$monitors
         | (.[1] // []) as \$workspace_data
         | (.[2] // []) as \$clients
@@ -79,12 +70,13 @@ capture_visible_workspace_rectangles() {
 capture_select_geometry() {
   local freeze="$1" rectangles="$2"
   shift 2
-  local selection="" freeze_pid="" selection_lock_fd=""
+  local selection="" freeze_pid="" selection_lock_fd="" runtime_dir=""
 
-  exec {selection_lock_fd}>"$(hypr_ensure_runtime_root_dir)/capture-selection.lock"
+  hypr_ensure_runtime_dir_into runtime_dir || return 1
+  exec {selection_lock_fd}>"${runtime_dir}/capture-selection.lock"
   flock -n "${selection_lock_fd}" || return 1
   [[ "${freeze}" != frozen ]] || freeze_pid="$(capture_start_freeze)"
-  selection="$(printf '%s\n' "${rectangles}" | slurp "$@" 2>/dev/null)"
+  selection="$(slurp "$@" 2>/dev/null <<<"${rectangles}")"
   capture_stop_freeze "${freeze_pid}"
   [[ -n "${selection}" ]] || return 1
   printf '%s\n' "${selection}"

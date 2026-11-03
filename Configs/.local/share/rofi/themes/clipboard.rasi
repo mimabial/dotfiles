@@ -18,7 +18,7 @@ window {
 mainbox {
     enabled:                     true;
     spacing:                     0em;
-    padding:                     0.5em;
+    padding:                     @popup-padding;
     orientation:                 vertical;
     children:                    [ "wallbox" , "listbox" ];
     background-color:            transparent;
@@ -37,7 +37,7 @@ wallframe {
     spacing:                     0em;
     padding:                     0em;
     expand:                      false;
-    background-color:            @background-alpha;
+    background-color:            transparent;
     background-image:            url("~/.cache/hypr/wallpaper/current/wall.quad", width);
 }
 
@@ -45,14 +45,17 @@ inputbar {
     enabled:                     true;
     padding:                     0em;
     children:                    [ "entry" ];
-    background-color:            @background-alpha;
+    background-color:            transparent;
     expand:                      true;
 }
 entry {
     enabled:                     true;
-    padding:                     2em;
+    padding:                     @control-padding;
     text-color:                  @foreground;
-    background-color:            transparent;
+    border:                      1px;
+    border-color:                @field-border;
+    border-radius:               @element-border-radius;
+    background-color:            @field-background;
 }
 
 listbox {
@@ -63,8 +66,10 @@ listbox {
     background-color:            transparent;
 }
 listview {
+    spacing:                     @row-gap;
+    scrollbar:                   true;
     enabled:                     true;
-    padding:                     0.5em;
+    padding:                     @popup-padding-top;
     columns:                     1;
     lines:                       11; 
     show-icons:                  false;
@@ -84,7 +89,7 @@ dummy {
 
 element {
     enabled:                     true;
-    padding:                     0.5em;
+    padding:                     @control-padding;
     orientation:                 horizontal;
     children:                    [ "element-text" ];
     show-icons:                  false;

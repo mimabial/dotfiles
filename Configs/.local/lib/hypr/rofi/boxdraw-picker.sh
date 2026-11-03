@@ -35,11 +35,11 @@ boxdraw_resolve_layout_into() {
   read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
 
   picker_layout_ref[columns]="${ROFI_BOXDRAW_COLUMNS:-}"
-  [[ "${picker_layout_ref[columns]}" =~ ^[0-9]+$ ]] || picker_layout_ref[columns]="$(hypr_clamp \
-    $((logical_width / (font_scale * BOXDRAW_PX_PER_COLUMN_PER_SCALE))) "${BOXDRAW_COLUMNS_MIN}" "${BOXDRAW_COLUMNS_MAX}")"
+  [[ "${picker_layout_ref[columns]}" =~ ^[0-9]+$ ]] || hypr_clamp_into "picker_layout_ref[columns]" \
+    $((logical_width / (font_scale * BOXDRAW_PX_PER_COLUMN_PER_SCALE))) "${BOXDRAW_COLUMNS_MIN}" "${BOXDRAW_COLUMNS_MAX}"
   picker_layout_ref[lines]="${ROFI_BOXDRAW_LINES:-}"
-  [[ "${picker_layout_ref[lines]}" =~ ^[0-9]+$ ]] || picker_layout_ref[lines]="$(hypr_clamp \
-    $((logical_height / (font_scale * BOXDRAW_PX_PER_LINE_PER_SCALE))) "${BOXDRAW_LINES_MIN}" "${BOXDRAW_LINES_MAX}")"
+  [[ "${picker_layout_ref[lines]}" =~ ^[0-9]+$ ]] || hypr_clamp_into "picker_layout_ref[lines]" \
+    $((logical_height / (font_scale * BOXDRAW_PX_PER_LINE_PER_SCALE))) "${BOXDRAW_LINES_MIN}" "${BOXDRAW_LINES_MAX}"
 
   # same coupling as the glyph picker: columns shrink as the font grows and the
   # width follows them down, so floor the window at three quarters of the screen
@@ -67,7 +67,7 @@ boxdraw_write_entries() {
 boxdraw_rofi_args_into() {
   local -n picker_layout_ref="$3"
   local -n boxdraw_args_ref="$1"
-  local style_type="$2" placeholder="" theme=""
+  local style_type="$2" theme=""
   local -a base_args=("${ROFI_BOXDRAW_ARGS[@]}") grid_args=() rofi_config_args=()
 
   if [[ -n "${use_rofile}" ]]; then
@@ -78,19 +78,20 @@ boxdraw_rofi_args_into() {
 
   case ${style_type} in
     2 | grid)
-      placeholder=" 󰇟 Box Drawing" theme="${ROFI_BOXDRAW_STYLE:-clipboard}"
+      theme="${ROFI_BOXDRAW_STYLE:-clipboard}"
       base_args=("${ROFI_BOXDRAW_ARGS[@]/-multi-select/}")
       grid_args=(-display-columns 1 -theme-str "listview {columns: ${picker_layout_ref[columns]}; lines: ${picker_layout_ref[lines]}; flow: horizontal; fixed-columns: true;}")
       ;;
-    1 | list) placeholder="  Box Drawing" theme="${ROFI_BOXDRAW_STYLE:-clipboard}" ;;
-    *) placeholder=" 📐 Box Drawing" theme="${style_type:-${ROFI_BOXDRAW_STYLE:-clipboard}}" ;;
+    1 | list) theme="${ROFI_BOXDRAW_STYLE:-clipboard}" ;;
+    *) theme="${style_type:-${ROFI_BOXDRAW_STYLE:-clipboard}}" ;;
   esac
   boxdraw_args_ref=(-i "${base_args[@]}" "${grid_args[@]}"
-    -theme-str "entry { placeholder: \"${placeholder}\";} ${picker_layout_ref[position_theme]} ${picker_layout_ref[window_theme]}"
+    -theme-str "${picker_layout_ref[position_theme]} ${picker_layout_ref[window_theme]}"
     -theme-str "${picker_layout_ref[font_theme]}"
     -theme-str "${picker_layout_ref[size_theme]}"
     -theme "$(rofi_resolve_theme "${theme}")"
     -no-custom)
+  rofi_picker_header_args_into "$1" "Box Drawing" "󰇟" "$3"
 }
 
 boxdraw_pick_menu_record() {
@@ -132,7 +133,7 @@ boxdraw_pick_category() {
   local selected=""
   local style_type="${boxdraw_style:-$ROFI_BOXDRAW_STYLE}"
   local theme_name="clipboard"
-  local -a category_rofi_args=()
+  local -a category_rofi_args=() header_args=()
 
   if [[ "${category}" == "recent" ]]; then
     if [[ ! -f "${recent_data}" ]] || [[ ! -s "${recent_data}" ]]; then
@@ -173,11 +174,13 @@ boxdraw_pick_category() {
       ;;
   esac
 
+  rofi_picker_header_args_into header_args "${category}" "󰇟" "$2"
   selected=$(rofi_with_background_theme -dmenu -i -display-columns 1 \
     "${category_rofi_args[@]}" \
-    -theme-str "entry { placeholder: \"📂 ${category}\";} ${picker_layout_ref[position_theme]} ${picker_layout_ref[window_theme]}" \
+    -theme-str "${picker_layout_ref[position_theme]} ${picker_layout_ref[window_theme]}" \
     -theme-str "${picker_layout_ref[font_theme]}" \
     -theme "$(rofi_resolve_theme "${theme_name}")" \
+    "${header_args[@]}" \
     -no-custom <"${temp_category}")
 
   rm -f "${temp_category}"

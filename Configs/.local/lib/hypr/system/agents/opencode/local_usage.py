@@ -5,10 +5,19 @@ from agents.usage_records import RECENT_DAYS
 from agents.usage_records import ROLLING_MONTH_DAYS
 from datetime import datetime
 from datetime import timedelta
+from typing import NamedTuple
 import sqlite3
 
 
-def local_usage():
+class LocalUsage(NamedTuple):
+    providers: list
+    models: dict
+    recent_days: list
+    has_db: bool
+    cost_days: dict
+
+
+def local_usage() -> LocalUsage:
     now = datetime.now().astimezone()
     dates = [(now - timedelta(days=offset)).strftime("%Y-%m-%d") for offset in range(RECENT_DAYS - 1, -1, -1)]
     recent = {day: {"date": day, "tokenCount": 0, "cost": 0.0} for day in dates}
@@ -17,7 +26,7 @@ def local_usage():
     cost_days = {}
     db = OPENCODE_DB
     if not db.is_file():
-        return [], {}, list(recent.values()), False, cost_days
+        return LocalUsage(providers=[], models={}, recent_days=list(recent.values()), has_db=False, cost_days=cost_days)
 
     week_cutoff = round(datetime.fromisoformat(dates[0]).astimezone().timestamp() * 1000)
     month_start = (now - timedelta(days=ROLLING_MONTH_DAYS - 1)).strftime("%Y-%m-%d")
@@ -78,6 +87,7 @@ def local_usage():
              for item in provider["models"].values() if item["tokensWeek"] > 0),
             key=lambda item: item["tokensWeek"], reverse=True)
 
-    return (sorted(providers.values(), key=lambda item: item["tokensWeek"], reverse=True),
-            {name: {"totalTokens": tokens} for name, tokens in models.items() if tokens > 0},
-            list(recent.values()), True, cost_days)
+    return LocalUsage(
+        providers=sorted(providers.values(), key=lambda item: item["tokensWeek"], reverse=True),
+        models={name: {"totalTokens": tokens} for name, tokens in models.items() if tokens > 0},
+        recent_days=list(recent.values()), has_db=True, cost_days=cost_days)

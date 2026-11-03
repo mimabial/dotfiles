@@ -1,9 +1,16 @@
+calendar_table_cache=""
+calendar_title_filters_file="${KHAL_FILTERS:-${XDG_CONFIG_HOME:-$HOME/.config}/khal/filters.json}"
+
 read_khal_calendar_table() {
   python3 "${calendar_library}/calendar_catalog.py" 2>/dev/null || printf '{"default":"","calendars":{},"locations":[]}\n'
 }
 
-cached_khal_calendar_table() {
+load_khal_calendar_table() {
   [[ -n "${calendar_table_cache}" ]] || calendar_table_cache="$(read_khal_calendar_table)"
+}
+
+cached_khal_calendar_table() {
+  load_khal_calendar_table
   printf '%s' "${calendar_table_cache}"
 }
 
@@ -49,7 +56,7 @@ readonly_calendar_for_directory() {
 }
 
 exit_with_readonly_calendar_error() {
-  jq -n --arg day "${day}" --arg name "$1" \
+  jq -n --arg day "$1" --arg name "$2" \
     '{day: $day, events: [], error: ($name + " is read-only")}'
   exit 1
 }

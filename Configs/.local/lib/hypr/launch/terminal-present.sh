@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [--app-id ID] [--title TITLE] [--hypr-profile PROFILE] [--hypr-cells COLUMNS ROWS] [--hypr-size WIDTH HEIGHT] -- <command>
+Usage: ${0##*/} [--app-id ID] [--title TITLE] [--hypr-profile PROFILE] [--hypr-cells COLUMNS ROWS] [--hypr-size WIDTH HEIGHT] -- <command>
 EOF
 }
 
-presented_command_name() {
+command_needs_hold_prompt() {
   local command_name="${1##*/}"
-
-  [[ "$#" -gt 0 ]] || return 1
 
   # sudo and hyprshell are both wrappers whose next argument names the command
   # that actually owns the screen.
@@ -16,12 +14,7 @@ presented_command_name() {
     command_name="${2##*/}"
   fi
 
-  [[ -n "${command_name}" ]] || return 1
-  printf '%s\n' "${command_name}"
-}
-
-command_needs_hold_prompt() {
-  case "$(presented_command_name "$@" || true)" in
+  case "${command_name}" in
     nvim | vim | htop | btop | bottom | nano | less | more | bat | about.sh | agent-tui | calc-tui.py | rmpc | nvtop | dua | wiremix | bluetui | oryx | claude | codex | opencode)
       return 1
       ;;

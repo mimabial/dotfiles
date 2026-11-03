@@ -33,7 +33,7 @@ def read_fresh_cached_json(path: Path, max_age_seconds: float) -> dict[str, Any]
   return None
 
 
-def write_cached_json(path: Path, payload: dict[str, Any]) -> None:
+def write_cached_json(path: Path, payload: Any) -> None:
   handle_fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
   tmp = Path(tmp_name)
   try:

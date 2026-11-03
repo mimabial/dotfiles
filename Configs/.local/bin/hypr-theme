@@ -51,16 +51,12 @@ hypr_runtime_require state || exit 1
 RENDER_DIR="${HYPR_LIB_DIR}/render"
 PALETTE="${HYPR_STATE_HOME}/active-palette.json"
 
-COLOR_GEN_LOCK="$(hypr_lock_path_ensure_parent color_gen)"
+hypr_lock_path_into COLOR_GEN_LOCK color_gen
 exec {COLOR_GEN_LOCK_FD}>"${COLOR_GEN_LOCK}"
 flock "${COLOR_GEN_LOCK_FD}"
 
 wallpaper_superseded() {
-  local current_wall="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/wallpaper/current/wall.set"
-  local target_wall="$1"
-
-  [[ -e "${current_wall}" && -e "${target_wall}" ]] || return 0
-  [[ "$(readlink -f -- "${current_wall}")" != "$(readlink -f -- "${target_wall}")" ]]
+  [[ ! "${WALLPAPER_CACHE_DIR}/current/wall.set" -ef "$1" ]]
 }
 
 if [[ "${subcommand}" == "wallpaper" && "${HYPR_THEME_REQUIRE_CURRENT_WALLPAPER:-0}" == 1 ]] \

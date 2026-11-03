@@ -1,7 +1,5 @@
 #!/usr/bin/env zsh
 
-[[ "$ZSH_PROMPT" == 1 ]] || return
-
 # Starship requires prompt command substitution; keep plugins from disabling it.
 setopt promptsubst
 autoload -Uz add-zsh-hook

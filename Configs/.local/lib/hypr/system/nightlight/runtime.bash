@@ -1,3 +1,5 @@
+declare -F hypr_wait_for >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/events.bash" || return 1
+
 hyprsunset_matching_pids() {
   pgrep -u "${HYPRSUNSET_USER_ID}" -x "$1" 2>/dev/null || true
 }

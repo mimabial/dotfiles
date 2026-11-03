@@ -45,15 +45,15 @@ global namespace — see the hotkeys chapter for the full set.
 ## Window mode
 
 `Super + W` drops you into a submap where every key is bare. Arrows focus,
-`Shift + Arrow` moves, and `Ctrl + Arrow` resizes. Those actions leave the submap;
-`Escape` leaves without acting. `F` floats, `M` maximizes, `G` groups, and `P`
-pins.
+`Shift + Arrow` moves, and `Alt + Arrow` resizes. Those actions leave the submap;
+`Escape` leaves without acting. `F` goes fullscreen, `Shift + F` floats, `M`
+maximizes, `G` groups, and `P` pins.
 
 `T` and `Shift + T` cycle layouts forward and backward while staying in the
-submap. `U` opens the layout picker.
+submap. `L` opens the layout picker.
 
-This is where the layout-specific keys live too. In scrolling you get `H` and `L`
-for the previous and next column, `B` to consume a window into the current
+This is where the layout-specific keys live too. In scrolling you get `N` and `Shift + N`
+to focus the next and previous column, `B` to consume a window into the current
 column, `Shift + B` to expel it, and `X` to expand the column to fit. In master
 you get `W` to focus the master window, `A` and `Shift + A` to add and remove
 masters, `O` to cycle orientation. The window-mode hint only shows the keys for
@@ -65,9 +65,10 @@ the layout you are actually in, so you never scroll past sixty rows to find four
 `Super + 6` summons Signal, `Super + 8` the browser, `Super + 9` the file
 manager, and `Super + 0` toggles the scratchpad.
 
-`Super + Shift + 1`–`7` sends the focused window to that numbered workspace
-and follows it; `Super + Alt + 1`–`7` sends it without following. With `8`,
-`9`, and `0`, Shift sends it to the browser, file manager, or scratchpad instead.
+`Super + Shift + 1`–`5` and `7` send the focused window to that numbered workspace
+and follow it; `Super + Alt` with them sends it without following. With `6`, `8`,
+`9`, and `0`, Shift sends it to Signal, the browser, file manager, or scratchpad instead.
+`Super + Alt + 6` sends it to Signal without following,
 `Super + Alt + 8` opens a private browser, `Super + Alt + 9` opens the file
 manager in the current directory, and `Super + Alt + 0` sends to the scratchpad
 without following.
@@ -116,5 +117,7 @@ the current workspace, `Space` gives you a Quick Look, `Enter` activates, and
 `Shift + Q` closes a window without leaving the overview. When you have genuinely
 lost a window, this beats walking the workspaces.
 
-`Super + S` opens Spotlight to search apps, menu actions, places, recent files,
-and indexed Documents. `Super + Ctrl + D` focuses the dock for keyboard navigation.
+`Super + S` opens Spotlight to search apps, open windows, menu actions, places,
+recent files and indexed Documents. `w:` lists only windows, `a:` apps and `f:`
+files; `12*7+3` or `100 usd to eur` calculates; `aw`, `aur`, `gh`, `mdn`, `w` or
+`yt` before a query searches that site. `Super + Ctrl + D` focuses the dock for keyboard navigation.

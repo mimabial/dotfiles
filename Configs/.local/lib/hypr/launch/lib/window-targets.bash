@@ -1,6 +1,3 @@
-launch_regex_escape() {
-  printf '%s\n' "$1" | sed 's/[][\\.^$*+?(){}|]/\\&/g'
-}
 
 launch_resolve_window_address() {
   local window_pattern="$1"
@@ -19,11 +16,10 @@ launch_resolve_window_address() {
       ;;
   esac
 
-  escaped_pattern="$(launch_regex_escape "${window_pattern}")"
+  escaped_pattern="${window_pattern//[][\\.^\$*+?(){\}|]/\\&}"
 
   [[ -n "${clients_json}" ]] || clients_json="$(hyprctl clients -j)"
-  printf '%s\n' "${clients_json}" \
-    | jq -r --arg p "${window_pattern}" --arg re "${escaped_pattern}" --arg kind "${selector_kind}" '
+  jq -r --arg p "${window_pattern}" --arg re "${escaped_pattern}" --arg kind "${selector_kind}" '
         def word_match($value; $re):
           (($value // "") | test("\\b" + $re + "\\b"; "i"));
         def exact_class($p):
@@ -52,7 +48,7 @@ launch_resolve_window_address() {
         ]
         | sort_by(._rank)
         | .[0].address // empty
-      '
+      ' <<<"${clients_json}"
 }
 
 launch_read_window_info() {

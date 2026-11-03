@@ -2,18 +2,21 @@ $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Tela-pink-dark
 $COLOR_SCHEME = prefer-dark
+
 $NVIM_SCHEME = aether
 $NVIM_VARIANT = sakura-mochi
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = true
+
 $CURSOR_THEME = Emo
 $CURSOR_SIZE = 30
-$FONT = M+1Code Nerd Font
-$BAR_FONT = M+1Code Nerd Font
-$MENU_FONT = M+1Code Nerd Font
-$MONOSPACE_FONT = M+1Code Nerd Font
-$TERMINAL_FONT = M+1Code Nerd Font
-$NOTIFICATION_FONT = M+1Code Nerd Font Mono
+
+$FONT = CaskaydiaCove Nerd Font
+$BAR_FONT = CaskaydiaCove Nerd Font
+$MENU_FONT = CaskaydiaCove Nerd Font
+$MONOSPACE_FONT = CaskaydiaCove Nerd Font
+$TERMINAL_FONT = CaskaydiaCove Nerd Font
+$NOTIFICATION_FONT = CaskaydiaCove Nerd Font Mono
 
 general {
     col.active_border = rgba(f23888ee)

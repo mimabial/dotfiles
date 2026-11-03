@@ -1,0 +1,23 @@
+local windowSpeed, springSpeed, mass, spacesSpringDurationSeconds = 2.5, 1, 1, 0.5
+local spacesStiffness = mass * (2 * math.pi / spacesSpringDurationSeconds) ^ 2
+
+require("runtime").config("animations.enabled", true)
+hl.curve("macosOpen", {type = "bezier", points = {{0, 0}, {0.58, 1}}})
+hl.curve("macosClose", {type = "bezier", points = {{0.42, 0}, {1, 1}}})
+hl.curve("macosMove", {type = "bezier", points = {{0.25, 0.1}, {0.25, 1}}})
+hl.curve("macosWorkspace", {type = "spring", mass = mass, stiffness = spacesStiffness, dampening = 2 * math.sqrt(mass * spacesStiffness)})
+hl.animation({leaf = "windowsIn", enabled = true, speed = windowSpeed, bezier = "macosOpen", style = "popin 80%"})
+hl.animation({leaf = "windowsOut", enabled = true, speed = windowSpeed, bezier = "macosClose", style = "popin 100%"})
+hl.animation({leaf = "windowsMove", enabled = true, speed = windowSpeed, bezier = "macosMove", style = "slide"})
+hl.animation({leaf = "border", enabled = true, speed = windowSpeed, bezier = "macosMove"})
+hl.animation({leaf = "borderangle", enabled = false})
+hl.animation({leaf = "fade", enabled = true, speed = windowSpeed, bezier = "macosMove"})
+hl.animation({leaf = "fadeIn", enabled = true, speed = windowSpeed, bezier = "macosOpen"})
+hl.animation({leaf = "fadeOut", enabled = true, speed = windowSpeed, bezier = "macosClose"})
+hl.animation({leaf = "layersIn", enabled = true, speed = windowSpeed, bezier = "macosOpen", style = "fade"})
+hl.animation({leaf = "layersOut", enabled = true, speed = windowSpeed, bezier = "macosClose", style = "fade"})
+hl.animation({leaf = "fadeLayersIn", enabled = true, speed = windowSpeed, bezier = "macosOpen"})
+hl.animation({leaf = "fadeLayersOut", enabled = true, speed = windowSpeed, bezier = "macosClose"})
+hl.animation({leaf = "workspaces", enabled = true, speed = springSpeed, spring = "macosWorkspace", style = "slide"})
+hl.animation({leaf = "specialWorkspace", enabled = true, speed = windowSpeed, bezier = "macosMove", style = "fade"})
+require("vars").set("WORKSPACE_SWIPE_AXIS", "horizontal")

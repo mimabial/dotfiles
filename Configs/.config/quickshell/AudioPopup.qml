@@ -8,7 +8,7 @@ PopupCard {
     id: root
     property bool microphoneMode: false
     popupName: microphoneMode ? "microphone" : "audio"
-    keyboardHint: page === "mixer" ? "↑↓/Tab move · ←→ volume · M mute · Enter select · Esc close" : "↑↓/Tab move · Enter select · Esc back"
+    keyboardHint: page === "mixer" ? "↑↓/Tab Move  ←→ Volume  M Mute  Enter Select  Esc Close" : "↑↓/Tab Move  Enter Select  Esc Back"
     contentWidth: Style.px(380)
     contentHeight: page === "mixer" ? audioColumn.implicitHeight + padding * 2 : Style.px(430)
     property string page: "mixer"
@@ -18,11 +18,13 @@ PopupCard {
     property string routeError: ""
     property string profileError: ""
     readonly property var selectedAudioCard: audioCards.find(item => item.name === selectedCard) || null
-    readonly property var sink: Pipewire.defaultAudioSink
+    readonly property var sink: Pipewire.defaultAudioSink || Pipewire.preferredDefaultAudioSink
     readonly property var source: Pipewire.defaultAudioSource
     readonly property var activeNode: microphoneMode ? source : sink
     readonly property var nodes: Pipewire.nodes.values
     readonly property var outputs: nodes.filter(node => node && node.isSink && !node.isStream && node.audio)
+    readonly property var outputDevice: AudioPorts.sinks.find(device => root.sink && device.name === root.sink.name) || null
+    readonly property var outputPorts: outputDevice ? outputDevice.ports : []
     readonly property var playbacks: nodes.filter(node => node && node.isStream && !node.isSink && node.audio)
     readonly property var recordings: nodes.filter(node => node && node.isStream && node.isSink && node.audio)
     readonly property var inputs: nodes.filter(node => node && !node.isSink && !node.isStream && node.audio)
@@ -120,6 +122,16 @@ PopupCard {
         }
     }
     Process {
+        id: portProcess
+        stderr: StdioCollector { id: portStderr; waitForEnd: true }
+        onExited: code => {
+            if (code !== 0) {
+                root.routeError = String(portStderr.text || "Could not change the output port.").trim()
+                outputPortSelect.currentIndex = outputPortSelect.selectedIndex
+            }
+        }
+    }
+    Process {
         id: routesProcess
         command: ["hyprshell", "controls/stream-route-status"]
         stdout: StdioCollector { id: routesStdout; waitForEnd: true }
@@ -207,6 +219,25 @@ PopupCard {
             }
         }
         Column {
+            visible: !root.microphoneMode && root.outputPorts.length > 1
+            width: parent.width; spacing: Style.sm
+            PopupSection { shell: root.shell; text: "OUTPUT PORT" }
+            PopupSelect {
+                id: outputPortSelect
+                width: parent.width; shell: root.shell
+                enabled: root.sink !== null && !portProcess.running
+                choices: root.outputPorts.map(port => ({label: port.description + (port.availability === "not available" ? " (not detected)" : "")}))
+                selectedIndex: root.outputPorts.findIndex(port => port.name === root.outputDevice.active_port)
+                onActivated: index => {
+                    const port = root.outputPorts[index]
+                    if (!root.sink || !port || portProcess.running) return
+                    root.routeError = ""
+                    portProcess.command = ["pactl", "set-sink-port", root.sink.name, port.name]
+                    portProcess.running = true
+                }
+            }
+        }
+        Column {
             width: parent.width; spacing: Style.sm
             PopupSection { visible: root.microphoneMode && root.inputs.length > 0; shell: root.shell; text: "INPUT DEVICE" }
             ListView {
@@ -235,7 +266,10 @@ PopupCard {
                 delegate: StreamControl { required property var modelData; stream: modelData; recording: true }
             }
         }
-        Text { visible: root.routeError !== ""; width: parent.width; text: root.routeError; textFormat: Text.PlainText; wrapMode: Text.WordWrap; color: root.shell.urgent; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+        PopupHint {
+            shell: root.shell; error: true
+            width: parent.width; text: root.routeError
+        }
         PopupRow { width: parent.width; shell: root.shell; icon: "󰒓"; title: "Device profiles"; detail: "Sound cards and Bluetooth codecs"; onClicked: root.openCards() }
     }
 
@@ -257,11 +291,13 @@ PopupCard {
                     onClicked: root.openProfiles(modelData.name)
                 }
             }
-            Text {
+            PopupHint {
                 id: cardMessage
+                shell: root.shell; error: root.profileError !== ""
                 width: parent.width; text: root.profileError || (!root.audioCards.length ? "No audio devices available." : "")
-                textFormat: Text.PlainText; wrapMode: Text.WordWrap; color: root.shell.urgent
-                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+                color: root.profileError !== "" ? root.shell.foreground : root.shell.urgent
+                wrapMode: Text.Wrap; horizontalAlignment: Text.AlignLeft
+                font.pixelSize: Style.bodySmall
             }
         }
     }
@@ -286,12 +322,12 @@ PopupCard {
                     onClicked: root.setProfile(modelData.value)
                 }
             }
-            Text {
+            PopupHint {
                 id: profileMessage
+                shell: root.shell; error: root.profileError !== "" || !root.selectedAudioCard
                 width: parent.width; text: root.profileError || (!root.selectedAudioCard ? "Audio device disconnected." : "Profile changes preserve volume and mute state.")
-                textFormat: Text.PlainText; wrapMode: Text.WordWrap
-                color: root.profileError ? root.shell.urgent : root.shell.mutedText
-                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+                wrapMode: Text.Wrap; horizontalAlignment: Text.AlignLeft
+                font.pixelSize: Style.bodySmall
             }
         }
     }

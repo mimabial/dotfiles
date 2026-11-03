@@ -37,10 +37,12 @@ nightlight_send_notification() {
   notify_send_safe "${notify_args[@]}"
 }
 
-nightlight_render_threshold_color() {
-  local value="$1" suffix="$2"
-  local -n colors_ref="$3"
+nightlight_render_threshold_color_into() {
+  local -n colored_ref="$1"
+  local value="$2" suffix="$3"
+  local -n colors_ref="$4"
   local threshold selected_threshold="" color
+  colored_ref=""
   for threshold in "${!colors_ref[@]}"; do
     if ((value >= threshold)) && [[ -z "$selected_threshold" || "$threshold" -gt "$selected_threshold" ]]; then
       selected_threshold="$threshold"
@@ -49,18 +51,18 @@ nightlight_render_threshold_color() {
   [[ -n "$selected_threshold" ]] || return 0
   color="${colors_ref[$selected_threshold]}"
   if [[ -n "$color" ]]; then
-    printf "<span color='%s'><b>%s%s</b></span>" "$color" "$value" "$suffix"
+    printf -v colored_ref "<span color='%s'><b>%s%s</b></span>" "$color" "$value" "$suffix"
   else
-    printf '<b>%s%s</b>' "$value" "$suffix"
+    printf -v colored_ref '<b>%s%s</b>' "$value" "$suffix"
   fi
 }
 
-nightlight_get_temp_color() {
-  nightlight_render_threshold_color "$1" "K" temperature_colors
+nightlight_get_temp_color_into() {
+  nightlight_render_threshold_color_into "$1" "$2" "K" temperature_colors
 }
 
-nightlight_get_gamma_color() {
-  nightlight_render_threshold_color "$1" "" gamma_colors
+nightlight_get_gamma_color_into() {
+  nightlight_render_threshold_color_into "$1" "$2" "" gamma_colors
 }
 
 nightlight_generate_status() {
@@ -76,8 +78,8 @@ nightlight_generate_status() {
     alt_text="active"
     active_json=true
     temperature_kelvin="${runtime_temperature_kelvin}"
-    temp_colored="$(nightlight_get_temp_color "${runtime_temperature_kelvin}")"
-    gamma_colored="$(nightlight_get_gamma_color "${state_ref[gamma_percent]}")"
+    nightlight_get_temp_color_into temp_colored "${runtime_temperature_kelvin}"
+    nightlight_get_gamma_color_into gamma_colored "${state_ref[gamma_percent]}"
     tooltip_text="󰈈 <b>Hyprsunset Active</b>\n"
     tooltip_text+="󰔄 Temperature: ${temp_colored}\n"
     tooltip_text+="󰍉 Gamma: ${gamma_colored}\n"
@@ -87,8 +89,8 @@ nightlight_generate_status() {
     alt_text="inactive"
     active_json=false
     temperature_kelvin="${state_ref[temperature_kelvin]}"
-    saved_temp_colored="$(nightlight_get_temp_color "${state_ref[temperature_kelvin]}")"
-    saved_gamma_colored="$(nightlight_get_gamma_color "${state_ref[gamma_percent]}")"
+    nightlight_get_temp_color_into saved_temp_colored "${state_ref[temperature_kelvin]}"
+    nightlight_get_gamma_color_into saved_gamma_colored "${state_ref[gamma_percent]}"
     tooltip_text="<b> Hyprsunset: Inactive</b>\n"
     tooltip_text+="󰔄 Temperature: ${saved_temp_colored}\n"
     tooltip_text+="󰍉 Gamma: ${saved_gamma_colored}\n"
@@ -97,7 +99,5 @@ nightlight_generate_status() {
 
   [[ "${temperature_kelvin}" =~ ^[0-9]+$ ]] || temperature_kelvin="${DEFAULT_TEMPERATURE_KELVIN}"
 
-  cat <<JSON
-{"text":"${text_output}", "alt":"${alt_text}", "tooltip":"${tooltip_text}", "active":${active_json}, "temperature":${temperature_kelvin}, "gamma":${state_ref[gamma_percent]}, "limits":{"tempMin":${MIN_TEMPERATURE_KELVIN},"tempMax":${MAX_TEMPERATURE_KELVIN},"gammaMin":${MIN_GAMMA_PERCENT},"gammaMax":${MAX_GAMMA_PERCENT}}}
-JSON
+  printf '%s\n' "{\"text\":\"${text_output}\", \"alt\":\"${alt_text}\", \"tooltip\":\"${tooltip_text}\", \"active\":${active_json}, \"temperature\":${temperature_kelvin}, \"gamma\":${state_ref[gamma_percent]}, \"limits\":{\"tempMin\":${MIN_TEMPERATURE_KELVIN},\"tempMax\":${MAX_TEMPERATURE_KELVIN},\"gammaMin\":${MIN_GAMMA_PERCENT},\"gammaMax\":${MAX_GAMMA_PERCENT}}}"
 }

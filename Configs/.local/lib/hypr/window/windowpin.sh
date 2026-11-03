@@ -5,7 +5,7 @@ set -euo pipefail
 HYPR_LIB_ROOT="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}"
 # shellcheck source=/dev/null
 source "${HYPR_LIB_ROOT}/launch/lib/window-launch.bash" || exit 1
-launch_source_core_common || exit 1
+source "${HYPR_LIB_ROOT}/core/common.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell window/windowpin
 Toggle pinning the active window as a centred floating pop-out." "$@"
@@ -50,10 +50,11 @@ main() {
   local active=""
   local pinned=""
   local window_address=""
+  local window_fields=""
 
   active="$(resolve_active_window)"
-  pinned="$(jq '.pinned' <<<"${active}")"
-  window_address="$(jq -r '.address' <<<"${active}")"
+  window_fields="$(jq -r '"\(.pinned)\t\(.address)"' <<<"${active}")"
+  IFS=$'\t' read -r pinned window_address <<<"${window_fields}"
 
   [ -z "${window_address}" ] && {
     echo "No active window"

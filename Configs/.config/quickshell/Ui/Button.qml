@@ -24,7 +24,7 @@ BorderSurface {
         ? Commons.Util.alpha(accent, selected ? 0.24 : 0.14)
         : "transparent"
     borderSpec: bordered
-        ? Commons.Border.flat(selected || activeFocus ? accent : Commons.Util.alpha(foreground, 0.38), Commons.Style.normalBorderWidth)
+        ? Commons.Border.flat(Commons.Util.alpha(foreground, 0.38), Commons.Style.normalBorderWidth)
         : Commons.Border.none()
 
     Keys.onReturnPressed: root.clicked()

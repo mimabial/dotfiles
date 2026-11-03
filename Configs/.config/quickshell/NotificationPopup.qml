@@ -6,10 +6,10 @@ import "CalendarMath.js" as CalendarMath
 PopupCard {
     id: root
     popupName: "notifications"
-    keyboardHint: searching ? "Type search · ↑↓ move · Enter select · Esc" : "↑↓ move · Enter select · / search · Del · Esc"
+    keyboardHint: searching ? "Type search  ↑↓ Move  Enter Select  Esc" : "↑↓ Move  Enter Select  C Copy Code  / Search  Del  Esc"
     property Component calendarPane: null
     property bool calendarLoaded: false
-    readonly property bool groupsByApp: calendarPane !== null
+    readonly property bool groupsByApp: true
     property string expandedApp: ""
     property var appGroupSizes: ({})
     readonly property int calendarPaneWidth: Style.px(300)
@@ -128,6 +128,12 @@ PopupCard {
             return defaultKey(event)
         }
         if (event.text === "/") { startSearch(); return true }
+        if (event.text.toLowerCase() === "c") {
+            const row = navigableRows[cursorIndex]
+            if (row instanceof NotificationEntry && row.codes.length > 0)
+                Notifications.copyCode(row.archiveKey, 0)
+            return true
+        }
         if (event.key === Qt.Key_Delete) {
             const row = navigableRows[cursorIndex]
             if (row instanceof NotificationEntry) row.removeRequested()
@@ -216,6 +222,8 @@ PopupCard {
                 }
             }
         }
+
+        PopupHint { shell: root.shell; error: true; width: parent.width; text: Notifications.copyError }
 
         Rectangle {
             visible: root.searching
@@ -316,6 +324,10 @@ PopupCard {
                 now: root.now
                 showBody: root.showBody
                 showPreview: root.showPreview
+                archiveKey: String(model.key)
+                verification: (root.report.verification || ({}))[String(model.key)] || ({})
+                copyBusy: Notifications.copying
+                onCodeCopyRequested: index => Notifications.copyCode(String(model.key), index)
                 onClicked: root.activate(model.key)
                 onRemoveRequested: root.removeRow(model.key)
                 onHoveredChanged: if (hovered) root.selectRow(notificationEntry)

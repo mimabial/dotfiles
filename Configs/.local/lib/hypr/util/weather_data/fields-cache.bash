@@ -8,34 +8,37 @@ weather_fields_cache_is_fresh() {
 }
 
 weather_fields_write_location_cache() {
-  if [ -n "$weather_country" ] || [ -n "$weather_city" ]; then
+  local -n weather_ref=$1
+  if [ -n "${weather_ref[country]}" ] || [ -n "${weather_ref[city]}" ]; then
     cat >"$weather_location_cache_path" <<EOF
-COUNTRY=$weather_country
-CITY=$weather_city
+COUNTRY=${weather_ref[country]}
+CITY=${weather_ref[city]}
 EOF
   fi
 }
 
 weather_fields_write_weather_cache() {
+  local -n weather_ref=$1
   cat >"$weather_fields_cache_path" <<EOF
-WEATHER_ICON=$weather_condition_icon
-WEATHER_DESC=$weather_description
-TEMP=$weather_temperature_celsius
+WEATHER_ICON=${weather_ref[icon]}
+WEATHER_DESC=${weather_ref[description]}
+TEMP=${weather_ref[temperature]}
 EOF
 }
 
 weather_fields_refresh_cache() {
-  weather_fields_resolve_location || return
-  weather_fields_fetch_fields
+  local -n weather_ref=$1
+  weather_fields_resolve_location "$1" || return
+  weather_fields_fetch_fields "$1"
 
-  if [ -z "$weather_condition_code" ] || [ -z "$weather_description" ] || [ -z "$weather_temperature_celsius" ]; then
+  if [ -z "${weather_ref[condition_code]}" ] || [ -z "${weather_ref[description]}" ] || [ -z "${weather_ref[temperature]}" ]; then
     echo "Error: Failed to fetch weather data" >&2
     return 1
   fi
 
-  mkdir -p "$weather_fields_cache_dir"
-  weather_fields_write_location_cache
-  weather_fields_write_weather_cache
+  [[ -d "$weather_fields_cache_dir" ]] || mkdir -p "$weather_fields_cache_dir"
+  weather_fields_write_location_cache "$1"
+  weather_fields_write_weather_cache "$1"
 }
 
 weather_fields_read_cached_value() {

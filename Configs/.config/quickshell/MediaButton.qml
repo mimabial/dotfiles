@@ -9,7 +9,6 @@ Item {
     property real cavaBarWidth: 2
     property real cavaGap: 1
     property string cavaPosition: "center"
-    property string cavaMode: "bars"
     property int cavaFps: 20
     property real cavaGain: 1
     property int cavaSmoothing: 77
@@ -79,13 +78,9 @@ Item {
 
     function wheel(delta) { if (delta > 0) Media.previous(); else if (delta < 0) Media.next() }
     function cycleIdleQuote() { if (idleQuotes.length > 1) idleQuoteIndex = (idleQuoteIndex + 1) % idleQuotes.length }
-    function rightClick() {
-        if (cavaAppearance) cavaMode = Cava.modes[(Cava.modes.indexOf(cavaMode) + 1) % Cava.modes.length]
-        else Media.playPause()
-    }
     function metadataClick(button) {
         if (button === Qt.MiddleButton) Media.previous()
-        else if (button === Qt.RightButton) rightClick()
+        else if (button === Qt.RightButton) Media.playPause()
         else shell.togglePopup("media")
     }
 
@@ -101,6 +96,7 @@ Item {
         id: simpleLoader
         anchors.verticalCenter: parent.verticalCenter
         width: root.simpleItem ? root.simpleItem.implicitWidth : 0
+        height: root.height
         // swapping left/horizontalCenter anchors after creation briefly sets both, which pins width to 0
         x: root.fillAvailableWidth ? 0 : (root.width - width) / 2
         active: root.shown && !root.mprisView
@@ -112,13 +108,11 @@ Item {
             id: readout
             shell: root.shell
             opensPopup: true
+            popupCards: [mediaPopup]
             css: "mediaplayer"
             maxWidth: root.quoteView
                 ? Math.min(Style.px(root.maxLabelWidth), root.fillAvailableWidth ? Math.max(1, root.width) : Style.px(root.maxLabelWidth))
                 : 0
-            textColor: !root.player && root.showWhenIdle ? shell.alpha(shell.foreground, .5)
-                : box.color !== undefined ? styleColor("color")
-                : shell.alpha(shell.role("act_fg", shell.foreground), .7)
             leadingIcon: !root.noIcon && root.quoteView ? root.idleIcon : ""
             text: root.player ? root.cavaAppearance ? (root.noIcon ? "" : Media.icon(root.player)) : (root.noIcon ? Media.remaining(root.player)
                 : Media.icon(root.player) + (root.iconAppearance ? "" : "  " + Media.remaining(root.player)))
@@ -126,7 +120,7 @@ Item {
             tooltip: root.cavaAppearance && root.hasPlayer ? root.displayText : ""
             trailingWidth: spectrum.active ? spectrum.width + (text ? Style.sm : 0) : 0
             onHoveredChanged: if (hovered && root.quoteView) root.cycleIdleQuote()
-            onClicked: button => button === Qt.RightButton ? root.rightClick()
+            onClicked: button => button === Qt.RightButton ? Media.playPause()
                 : button === Qt.MiddleButton ? Media.next() : root.shell.togglePopup("media")
             onWheeled: delta => root.wheel(delta)
             Binding on implicitHeight {
@@ -150,7 +144,6 @@ Item {
                         barWidth: Style.px(root.cavaBarWidth)
                         gap: Style.px(root.cavaGap)
                         position: root.cavaPosition
-                        mode: root.cavaMode
                         frameRate: root.cavaFps
                         gain: root.cavaGain
                         smoothing: root.cavaSmoothing
@@ -160,7 +153,7 @@ Item {
         }
     }
 
-    MediaPopup { anchorItem: root.fillAvailableWidth ? (root.mprisView ? contents : simpleLoader) : root; shell: root.shell; popupEnabled: root.popupEnabled; randomizeProgressShape: root.randomizeProgressShape }
+    MediaPopup { id: mediaPopup; anchorItem: root.fillAvailableWidth ? (root.mprisView ? contents : simpleLoader) : root; shell: root.shell; popupEnabled: root.popupEnabled; randomizeProgressShape: root.randomizeProgressShape }
 
     Row {
         id: contents

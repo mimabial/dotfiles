@@ -233,9 +233,7 @@ PopupCard {
         width: implicitWidth; height: implicitHeight
         opacity: !shown ? 0 : enabled || current ? 1 : Commons.Style.mutedTextAlpha
         radius: root.shell.rounding
-        color: current ? root.shell.selectedFill() : chipMouse.containsMouse && enabled ? root.shell.hoverFill() : "transparent"
-        border.width: current ? Commons.Style.normalBorderWidth : 0
-        border.color: root.shell.selectedEdge()
+        color: chipMouse.containsMouse && enabled ? root.shell.hoverFill() : current ? root.shell.selectedFill() : "transparent"
         Behavior on color { ColorAnimation { duration: Commons.Style.hoverDuration } }
         Text {
             id: chipText
@@ -308,7 +306,7 @@ PopupCard {
                 width: parent.width
                 textFormat: Text.PlainText
                 wrapMode: Text.WordWrap
-                text: "↑↓ move · [ ] sections · Shift+↑↓ order · Shift+←→ section"
+                text: "↑↓ Move  [ ] Sections  Shift+↑↓ Order  Shift+←→ Section"
                 color: root.shell.mutedText
                 font.family: root.shell.fontFamily; font.pixelSize: Commons.Style.font.caption
             }
@@ -361,7 +359,6 @@ PopupCard {
                     height: entryRow.height - y - (entryRow.headerRow ? 0 : Commons.Style.spacing.hairline)
                     radius: root.shell.rounding
                     color: entryRow.cursored ? root.shell.hoverFill() : "transparent"
-                    border.color: entryRow.cursored ? root.shell.hoverEdge(.85) : "transparent"
                     Behavior on color { ColorAnimation { duration: Commons.Style.hoverDuration; easing.type: Easing.OutCubic } }
                     MouseArea {
                         anchors.fill: parent

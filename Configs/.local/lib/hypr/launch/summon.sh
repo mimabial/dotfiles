@@ -3,6 +3,7 @@ set -euo pipefail
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
+declare -F hypr_monitors_json >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/geometry.bash" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR}/launch/lib/window-launch.bash" || exit 1
 # shellcheck source=/dev/null
@@ -34,7 +35,6 @@ launch_summon_to_workspace() {
   local window_lua=""
   local workspace_lua=""
 
-  launch_source_core_common || return 1
   window_lua="$(hypr_lua_quote "address:${window_address}")"
   workspace_lua="$(hypr_lua_quote "${workspace_name}")"
   hypr_lua_batch \
@@ -105,6 +105,7 @@ main() {
   local window_address=""
   local hypr_snapshot_json=""
   local clients_json=""
+  local monitors_json=""
   local workspace_has_other_window="false"
 
   parse_summon_arguments options launch_cmd "$@" || {
@@ -112,9 +113,12 @@ main() {
     return 2
   }
 
-  hypr_snapshot_json="$(hyprctl --batch -j 'activeworkspace;clients;monitors all' | jq -sc '.')"
-  clients_json="$(jq -c '.[1] // []' <<<"${hypr_snapshot_json}")"
-  hypr_monitors_json_prime "$(jq -c '.[2] // []' <<<"${hypr_snapshot_json}")"
+  {
+    read -r hypr_snapshot_json
+    read -r clients_json
+    read -r monitors_json
+  } < <(hyprctl --batch -j 'activeworkspace;clients;monitors all' | jq -sc '., (.[1] // []), (.[2] // [])')
+  hypr_monitors_json_prime "${monitors_json}"
 
   summon_resolve_geometry options || return $?
 

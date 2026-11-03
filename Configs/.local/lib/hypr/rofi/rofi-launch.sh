@@ -30,7 +30,7 @@ launcher_run_command() {
 }
 
 show_help() {
-  echo "$(basename "${0}") [action]"
+  echo "${0##*/} [action]"
   echo "d : drun mode"
   echo "w : window mode"
   echo "f : filebrowser mode"
@@ -84,8 +84,8 @@ launcher_style_menu_override() {
   elm_height_px=$((preview_image_size * hidpi_scale))
   max_avail_x_px=$((mon_x_res_px - LAUNCHER_STYLE_MARGIN_X_PER_SCALE * font_scale))
   max_avail_y_px=$((mon_y_res_px - LAUNCHER_STYLE_MARGIN_Y_PER_SCALE * font_scale))
-  col_count="$(hypr_clamp $((max_avail_x_px / elm_width_px)) "${GRID_MIN_CELLS}" "${GRID_MAX_COLUMNS}")"
-  row_count="$(hypr_clamp $((max_avail_y_px / elm_height_px)) "${GRID_MIN_CELLS}" "${GRID_MAX_ROWS}")"
+  hypr_clamp_into col_count $((max_avail_x_px / elm_width_px)) "${GRID_MIN_CELLS}" "${GRID_MAX_COLUMNS}"
+  hypr_clamp_into row_count $((max_avail_y_px / elm_height_px)) "${GRID_MIN_CELLS}" "${GRID_MAX_ROWS}"
 
   cat <<EOF
 window{width:100%;height:100%;fullscreen:true;}
@@ -197,11 +197,9 @@ build_runtime_overrides() {
 
   rofi_args+=(-theme-str "${font_override}" -theme-str "${icon_override}" -theme-str "${window_override}")
 
-  width_override="$(rofi_wallpaper_width_override "${rofi_config}" "${font_name}" "${font_scale}")"
-  [[ -n "${width_override}" ]] && rofi_args+=(-theme-str "${width_override}")
-
-  if [[ "$(state_get "HYPR_WORKFLOW" "default")" == "windows" && "${rofi_config##*/}" == "style_11.rasi" ]]; then
-    rofi_args+=(-theme-str "inputbar { background-color: #000000CC; } listbox { background-color: #000000CC; }")
+  if ! rofi_theme_is_fullscreen "${rofi_config}"; then
+    width_override="$(rofi_wallpaper_width_override "${rofi_config}" "${font_name}" "${font_scale}")"
+    rofi_args+=(-theme-str "${width_override:-$(rofi_window_position_theme)}")
   fi
 
   rofi_args+=(-theme "${rofi_config}")
@@ -211,6 +209,7 @@ launch_rofi() {
   local font_scale=""
   local font_name=""
 
+  rofi_hypr_snapshot
   font_scale="$(rofi_effective_font_scale "${ROFI_LAUNCH_SCALE}")"
   font_name="$(rofi_effective_font_name "${ROFI_LAUNCH_FONT:-$ROFI_FONT}")"
   build_runtime_overrides "${font_scale}" "${font_name}"

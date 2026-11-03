@@ -2,7 +2,6 @@
 
 THEME_SELECTOR_MENU_RADIUS_MULTIPLIER=5
 THEME_SELECTOR_MENU_ICON_OFFSET=5
-THEME_SELECTOR_PREVIEW_RADIUS_MULTIPLIER=2
 THEME_SELECTOR_PREVIEW_ICON_OFFSET=4
 
 theme_selector_monitor_metrics_into() {
@@ -87,7 +86,7 @@ theme_pack_picker_layout_into() {
   preview_geometry[element_height]=$((preview_geometry[element_height_em] * font_scale * ROFI_EM_PX_PER_SCALE))
   [[ -n "${theme_style}" ]] || theme_style=1
   theme_selector_scaled_radii_into preview_geometry "$5" \
-    "${THEME_SELECTOR_PREVIEW_RADIUS_MULTIPLIER}" "${THEME_SELECTOR_PREVIEW_ICON_OFFSET}"
+    "${ROFI_IMAGE_TILE_RADIUS_MULTIPLIER}" "${THEME_SELECTOR_PREVIEW_ICON_OFFSET}"
   rofi_theme_ref=selector
 
   case "${theme_style}" in

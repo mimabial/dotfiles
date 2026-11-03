@@ -96,6 +96,24 @@ function monitorBattery(device, hardware) {
         value, {percent: Math.round(device.battery * 100)}) : value
 }
 
+var LOW_BATTERY_PERCENT = 25
+var CRITICAL_BATTERY_PERCENT = 10
+
+function batteryAlert(battery) {
+    if (!battery || battery.charging || battery.external_power) return ""
+    var level = String(battery.level || "").toLowerCase()
+    var knownPercent = battery.percent !== null && battery.percent !== undefined
+    if (knownPercent ? battery.percent <= CRITICAL_BATTERY_PERCENT : level === "critical" || level === "empty") return "critical"
+    if (knownPercent ? battery.percent <= LOW_BATTERY_PERCENT : level === "low") return "low"
+    return ""
+}
+
+function bluezKind(icon) {
+    return ({"audio-headset": "headset", "audio-headphones": "headset", "audio-card": "speaker",
+        "input-keyboard": "keyboard", "input-mouse": "mouse", "input-tablet": "tablet",
+        "input-gaming": "gamepad", phone: "phone", "camera-video": "camera", "camera-photo": "camera"})[icon] || "device"
+}
+
 function monitoringDevices(devices, rows, hardware) {
     var known = {}, seen = {}, result = []
     toArray(rows).forEach(function(row) { known[normalizedAddress(row.address)] = row })
@@ -104,6 +122,7 @@ function monitoringDevices(devices, rows, hardware) {
         var row = known[address]
         var value = Object.assign({}, device, {
             address: row ? row.address : device.address || "",
+            name: row && row.name || device.name,
             dbusPath: row ? row.dbusPath : "", connected: !!device.online,
             icon: row ? row.icon : device.kind
         })
@@ -114,14 +133,17 @@ function monitoringDevices(devices, rows, hardware) {
     toArray(rows).forEach(function(row) {
         var address = normalizedAddress(row.address)
         if (seen[address]) return
-        var kind = ({"audio-headset": "headset", "audio-headphones": "headset", "audio-card": "speaker",
-            "input-keyboard": "keyboard", "input-mouse": "mouse", "input-tablet": "tablet",
-            "input-gaming": "gamepad", phone: "phone", "camera-video": "camera", "camera-photo": "camera"})[row.icon] || "device"
         result.push(Object.assign({}, row, {id: "bt-" + address.toUpperCase(), key: "bt:" + String(row.address).toUpperCase(),
-            kind: kind, online: row.connected, connection: "bluetooth", receiver: null, slot: null,
+            kind: bluezKind(row.icon), online: row.connected, connection: "bluetooth", receiver: null, slot: null,
             adapter: String(row.dbusPath || "").split("/").slice(-2)[0], battery: monitorBattery(row, hardware)}))
     })
     return result
+}
+
+function isConnected(device) { return !!device.connected }
+
+function connectedFirst(items, connected) {
+    return items.filter(connected).concat(items.filter(function(item) { return !connected(item) }))
 }
 
 function connectionLinks(adapters, devices, hardware, receivers) {
@@ -131,7 +153,7 @@ function connectionLinks(adapters, devices, hardware, receivers) {
         var paired = toArray(receiver.devices).length
         return {id: receiver.id, type: "dongle", label: receiver.name || connectionName(receiver.family),
             detail: paired + " paired · " + (receiver.max_devices - paired) + " free slots", enabled: true,
-            online: mine.filter(function(device) { return device.connected }).length, devices: mine}
+            online: mine.filter(isConnected).length, devices: connectedFirst(mine, isConnected)}
     })
     links = links.concat(toArray(adapters).map(function(adapter) {
         var id = String(adapter.dbusPath || "").split("/").pop()
@@ -143,25 +165,20 @@ function connectionLinks(adapters, devices, hardware, receivers) {
         return {id: id, type: "bluetooth",
             label: meta.kind === "builtin" ? "Built-in Bluetooth" : meta.kind === "usb" ? "USB Bluetooth" : "Bluetooth adapter",
             detail: [id, meta.vendor].filter(Boolean).join(" · "), kind: meta.kind || "", enabled: !!adapter.enabled,
-            online: mine.filter(function(device) { return device.connected }).length, devices: mine}
+            online: mine.filter(isConnected).length, devices: connectedFirst(mine, isConnected)}
     }))
     for (const connection of ["usb", "wireless"]) {
         var mine = rows.filter(function(device) { return !device.receiver && device.connection === connection })
         if (mine.length) links.push({id: connection, type: connection, label: connectionName(connection), detail: "",
-            enabled: true, online: mine.filter(function(device) { return device.connected }).length, devices: mine})
+            enabled: true, online: mine.filter(isConnected).length, devices: connectedFirst(mine, isConnected)})
     }
-    return links
+    return connectedFirst(links, function(link) { return link.online > 0 })
 }
 
 function batteryText(battery) {
     if (!battery) return ""
-    return battery.percent !== null && battery.percent !== undefined ? battery.percent + "%" : battery.label || battery.level || ""
-}
-
-function connectionBattery(device, hardware) {
-    if (!device.connected) return ""
-    var battery = device.battery && typeof device.battery === "object" ? device.battery : monitorBattery(device, hardware)
-    return battery ? (battery.charging ? "󰂄 " : "") + batteryText(battery) : ""
+    if (battery.percent !== null && battery.percent !== undefined) return battery.percent + "%"
+    return battery.external_power ? "" : battery.label || battery.level || ""
 }
 
 function cloneMap(values) {

@@ -7,7 +7,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "vpn"
-    keyboardHint: browsing ? "Type filter · ↑↓ move · Enter select · Esc back" : "Tab move · Enter · / country · R refresh · D off · Esc"
+    keyboardHint: browsing ? "Type filter  ↑↓ Move  Enter Select  Esc Back" : "Tab Move  Enter  / Country  R Refresh  D Off  Esc"
     contentWidth: Style.px(380)
     contentHeight: vpnColumn.implicitHeight + padding * 2
 
@@ -296,7 +296,10 @@ PopupCard {
                 : root.blocked || root.state === "error" ? root.shell.role("error", root.shell.foreground)
                 : root.shell.mutedText
         }
-        Text { visible: root.notice !== ""; width: parent.width; wrapMode: Text.Wrap; text: root.notice; color: root.shell.role("error", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
+        PopupHint {
+            shell: root.shell; error: true
+            width: parent.width; text: root.notice
+        }
 
         Row {
             visible: root.nmStatus.available === true
@@ -382,8 +385,7 @@ PopupCard {
             Rectangle {
                 visible: root.browsing !== ""
                 width: parent.width; height: Style.controlHeight; radius: root.shell.rounding
-                color: root.shell.alpha(root.shell.foreground, .06)
-                border.width: 2; border.color: root.shell.alpha(root.shell.role("act_br", root.shell.accent), .65)
+                color: root.shell.selectedFill()
                 Text { anchors.left: parent.left; anchors.leftMargin: Style.controlPaddingX; anchors.verticalCenter: parent.verticalCenter; text: "󰍉"; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
                 Text { id: searchText; anchors.left: parent.left; anchors.leftMargin: Style.px(34); anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX; anchors.verticalCenter: parent.verticalCenter; text: root.filter; color: root.shell.alpha(root.shell.foreground, .9); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; elide: Text.ElideRight }
                 Rectangle {

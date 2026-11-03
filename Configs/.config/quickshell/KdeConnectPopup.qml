@@ -7,8 +7,8 @@ import "StartMenuModel.js" as StartMenuModel
 
 PopupCard {
     id: root
-    readonly property var service: shell.kdeconnect
-    readonly property int deviceCount: service.reachableDevices.count
+    required property KdeConnect service
+    readonly property int deviceCount: service.deviceCount
     readonly property int fileCount: service.selectedFiles.length
     readonly property color foreground: shell.foreground
     readonly property color accent: shell.accent
@@ -36,9 +36,7 @@ PopupCard {
         foreground: root.foreground; accent: root.accent; fontFamily: root.fontFamily
         radius: root.shell.rounding
         color: activeFocus || hot ? root.shell.hoverFill() : selected || active ? root.shell.selectedFill() : "transparent"
-        borderSpec: Commons.Border.flat(activeFocus || hasCursor ? root.shell.hoverEdge()
-            : selected || active ? root.shell.selectedEdge()
-            : bordered ? root.shell.alpha(root.foreground, root.borderOpacity) : "transparent", root.shell.borderWidth)
+        borderSpec: Commons.Border.flat(bordered ? root.shell.alpha(root.foreground, root.borderOpacity) : "transparent", root.shell.borderWidth)
         focusable: true; bordered: true
         opacity: enabled ? 1 : Style.mutedTextAlpha
         Accessible.role: Accessible.Button

@@ -359,18 +359,18 @@ Item {
         }
       }
 
-      Text {
-        anchors.centerIn: parent
-        width: Commons.Style.space(360)
-        visible: root.loading || root.error
-        text: root.loading ? "Finding installed browsers…" : root.error
-        textFormat: Text.PlainText
-        color: root.error ? Commons.Color.urgent : Commons.Color.menu.text
-        opacity: root.error ? 1 : 0.7
-        font.family: Commons.Style.font.menuFamily
-        font.pixelSize: Commons.Style.font.title
-        horizontalAlignment: Text.AlignHCenter
-        wrapMode: Text.WordWrap
+      PopupHint {
+          id: errorHint
+          shell: Commons.Style.shell; error: !root.loading && root.error !== ""
+          anchors.centerIn: parent
+          width: Commons.Style.space(360)
+          visible: root.loading || root.error
+          text: root.loading ? "Finding installed browsers…" : root.error
+          color: errorHint.error ? errorHint.shell.foreground : Commons.Color.menu.text
+          opacity: root.error ? 1 : 0.7
+          font.pixelSize: errorHint.error ? Commons.Style.font.bodySmall : Commons.Style.font.title
+          horizontalAlignment: errorHint.error ? Text.AlignLeft : Text.AlignHCenter
+          wrapMode: Text.Wrap
       }
     }
 

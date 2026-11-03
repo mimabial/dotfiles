@@ -149,13 +149,17 @@ def delete(name: str) -> bool:
     return removed
 
 
+def match_key(output: dict) -> str:
+    return output.get("match_key") or output.get("key", "")
+
+
 def score(profile: dict, monitors: list[dict]) -> dict:
     connected = {hypr.monitor_key(m) for m in monitors}
     outputs = profile.get("outputs", [])
     seen, tally = set(), {}
 
     for output in outputs:
-        key = output.get("match_key") or output.get("key", "")
+        key = match_key(output)
         seen.add(key)
         is_connected, is_enabled = key in connected, bool(output.get("enabled", True))
         if is_connected:
@@ -172,9 +176,7 @@ def score(profile: dict, monitors: list[dict]) -> dict:
         {"kind": kind, "count": count, "points": count * WEIGHTS[kind]}
         for kind, count in sorted(tally.items())
     ]
-    connected_outputs = sum(
-        1 for o in outputs if (o.get("match_key") or o.get("key", "")) in connected
-    )
+    connected_outputs = sum(1 for o in outputs if match_key(o) in connected)
     return {
         "name": profile.get("name", ""),
         "match_score": sum(r["points"] for r in reasons),
@@ -184,9 +186,7 @@ def score(profile: dict, monitors: list[dict]) -> dict:
         "enabled_outputs": sum(1 for o in outputs if o.get("enabled", True)),
         "connected_outputs": connected_outputs,
         "connected_enabled_outputs": sum(
-            1
-            for o in outputs
-            if (o.get("match_key") or o.get("key", "")) in connected and o.get("enabled", True)
+            1 for o in outputs if match_key(o) in connected and o.get("enabled", True)
         ),
         "updated_at": profile.get("updated_at", ""),
     }
@@ -197,8 +197,3 @@ def rank(monitors: list[dict], profiles: list[dict] | None = None) -> list[dict]
     scored = [score(p, monitors) for p in profiles]
     scored.sort(key=lambda s: (-s["match_score"], not s["exact_display_match"], s["name"]))
     return scored
-
-
-def best(monitors: list[dict], profiles: list[dict] | None = None) -> dict | None:
-    scored = rank(monitors, profiles)
-    return scored[0] if scored and scored[0]["match_score"] > 0 else None

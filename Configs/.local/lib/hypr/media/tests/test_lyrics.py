@@ -34,7 +34,7 @@ from fetch_album_lyrics import (
     track_identity,
 )
 from lyrics_cache import LyricsMissCache
-from lyrics_provider import fetch_lyrics
+from lyrics_provider import ProviderSearch, fetch_lyrics
 
 
 class LyricsMetadataTests(unittest.TestCase):
@@ -367,7 +367,7 @@ class LyricsMissCacheTests(unittest.TestCase):
                 patch("lyrics_provider.lyrics_miss_cache", return_value=cache),
                 patch(
                     "lyrics_provider._fetch_sequential",
-                    return_value=(None, []),
+                    return_value=ProviderSearch(None, []),
                 ) as fetch_sequential,
             ):
                 first = fetch_lyrics(
@@ -395,7 +395,7 @@ class LyricsMissCacheTests(unittest.TestCase):
             patch("lyrics_provider.lyrics_miss_cache", return_value=None),
             patch(
                 "lyrics_provider._fetch_sequential",
-                return_value=(None, [plain_result]),
+                return_value=ProviderSearch(None, [plain_result]),
             ) as fetch_sequential,
         ):
             result = fetch_lyrics(

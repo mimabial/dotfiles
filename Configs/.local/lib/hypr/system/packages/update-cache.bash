@@ -1,3 +1,6 @@
+update_runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/hypr"
+update_cache_path="${update_runtime_dir}/update_status.json"
+
 updates_remove_check_database() {
   local exit_code="${1:-$?}"
   if [[ -n "${update_database_dir}" ]]; then

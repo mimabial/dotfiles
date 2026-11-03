@@ -14,15 +14,25 @@ hyprshell_is_internal_script() {
 }
 
 hyprshell_print_entrypoint_records() {
-  local relative_path script_path
+  local relative_path script_path record
+  local -a records=() module_paths=()
+  local -A runnable_modules=()
   while IFS=$'\t' read -r relative_path script_path; do
     hyprshell_is_internal_script "${relative_path}" && continue
-    if [[ "${script_path}" == *.py && ! -x "${script_path}" ]]; then
-      grep -qs '__name__ == .__main__.' "${script_path}" || continue
-    fi
-    printf '%s\t%s\n' "${relative_path}" "${script_path}"
+    records+=("${relative_path}"$'\t'"${script_path}")
+    [[ "${script_path}" != *.py || -x "${script_path}" ]] || module_paths+=("${script_path}")
   done < <(find -L "${HYPR_LIB_DIR}" -maxdepth 2 -type f \
     \( -name '*.sh' -o -name '*.py' \) -printf '%P\t%p\n' 2>/dev/null)
+  if ((${#module_paths[@]})); then
+    while IFS= read -r script_path; do
+      runnable_modules["${script_path}"]=1
+    done < <(grep -ls '__name__ == .__main__.' "${module_paths[@]}")
+  fi
+  for record in "${records[@]}"; do
+    script_path="${record#*$'\t'}"
+    [[ "${script_path}" != *.py || -x "${script_path}" || -n "${runnable_modules["${script_path}"]:-}" ]] || continue
+    printf '%s\n' "${record}"
+  done
 }
 
 hyprshell_print_script_names() {

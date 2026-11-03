@@ -14,7 +14,5 @@ ExecStart=%h/.local/lib/hypr/system/tmux-server.sh
 ExecStop=-%h/.config/tmux/scripts/tmux-resurrect-save-safe quiet
 KillMode=control-group
 
-RestartSec=2
-
 [Install]
 WantedBy=default.target

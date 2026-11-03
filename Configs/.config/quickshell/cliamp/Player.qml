@@ -16,12 +16,9 @@ import "visualizers/sine.js" as VisSine
 import "visualizers/mirror.js" as VisMirror
 import "visualizers/soundcloud_wave.js" as VisSoundCloudWave
 import "visualizers/telegram_wave.js" as VisTelegramWave
-import "visualizers/daw_wave.js" as VisDAWWave
 import "visualizers/led_scrubber.js" as VisLEDScrubber
 import "visualizers/heatmap_wave.js" as VisHeatmapWave
 import "visualizers/grounded_wave.js" as VisGroundedWave
-import "visualizers/matrix.js" as VisMatrix
-import "visualizers/mosaic.js" as VisMosaic
 import "visualizers/scatter.js" as VisScatter
 import "visualizers/butterfly.js" as VisButterfly
 import "visualizers/plasma.js" as VisPlasma
@@ -172,15 +169,14 @@ Item {
     "correlation": VisCorrelation.render, "ascii": VisAscii.render,
     "wave": VisWave.render, "sine": VisSine.render, "mirror": VisMirror.render,
     "soundcloud_wave": VisSoundCloudWave.render, "telegram_wave": VisTelegramWave.render,
-    "daw_wave": VisDAWWave.render, "led_scrubber": VisLEDScrubber.render,
+    "led_scrubber": VisLEDScrubber.render,
     "heatmap_wave": VisHeatmapWave.render, "grounded_wave": VisGroundedWave.render,
-    "matrix": VisMatrix.render,
-    "mosaic": VisMosaic.render, "scatter": VisScatter.render,
+    "scatter": VisScatter.render,
     "butterfly": VisButterfly.render, "plasma": VisPlasma.render,
     "cyber_tunnel": VisCyberTunnel.render, "red_sector": VisRedSector.render
   })
 
-  readonly property var visualizerEntryHooks: ({ "mosaic": VisMosaic.onEnter, "peaks": VisPeaks.onEnter,
+  readonly property var visualizerEntryHooks: ({ "peaks": VisPeaks.onEnter,
                                       "classic_led": VisClassicLED.onEnter,
                                       "red_sector": VisRedSector.onEnter })
 
@@ -189,10 +185,9 @@ Item {
     "peaks": "Peaks", "stereo": "Stereo", "correlation": "Correlation", "ascii": "Ascii",
     "wave": "Wave", "sine": "Sine Wave", "mirror": "Mirror",
     "soundcloud_wave": "SoundCloud Wave", "telegram_wave": "Telegram Wave",
-    "daw_wave": "DAW Meter", "led_scrubber": "LED Scrubber",
+    "led_scrubber": "LED Scrubber",
     "heatmap_wave": "Heatmap Wave", "grounded_wave": "Baseline Wave",
-    "matrix": "Matrix",
-    "mosaic": "Mosaic", "scatter": "Scatter",
+    "scatter": "Scatter",
     "butterfly": "Butterfly", "plasma": "Liquid Plasma",
     "cyber_tunnel": "3D Cyber Tunnel", "red_sector": "Red Sector"
   })
@@ -564,7 +559,7 @@ Item {
           width: modeText.implicitWidth + Commons.Style.space(10); height: Commons.Style.space(16)
           radius: Commons.Style.cornerRadius
           color: root.controller.visPickerOpen ? Commons.Color.menu.selectedBackground
-            : (modeMouse.containsMouse ? root.controller.shell.hoverFill(1) : root.controller.shell.alpha(root.controller.surface, 0.75))
+            : (modeMouse.containsMouse ? root.controller.shell.hoverFill() : root.controller.shell.alpha(root.controller.surface, 0.75))
 
           Text {
             id: modeText

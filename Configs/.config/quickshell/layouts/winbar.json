@@ -9,15 +9,28 @@
     {
       "id": "menu",
       "props": {
-        "text": "",
+        "icon": "start-here-kde-symbolic",
         "taskbarSettings": true
+      }
+    },
+    {
+      "id": "spotlight",
+      "props": {
+        "useSymbolic": false
+      }
+    },
+    {
+      "id": "task-view",
+      "props": {
+        "useSymbolic": false
       }
     },
     {
       "id": "taskbar",
       "props": {
         "pins": true,
-        "dash": true
+        "dash": true,
+        "previews": true
       }
     }
   ],
@@ -25,6 +38,7 @@
     "powerbutton",
     "display",
     "bluetooth",
+    "vpn",
     "webcam",
     "bitwarden",
     "printers",
@@ -40,30 +54,22 @@
     "screenshot",
     "colorpicker",
     "terminal",
-    "hyprsunset",
-    "sudoku",
     {
-      "id": "altscape",
-      "trayPosition": {
-        "section": "right",
-        "index": 7,
-        "stringEntry": true
+      "id": "mediaplayer",
+      "props": {
+        "appearance": "icon",
+        "showWhenIdle": true
       }
-    }
+    },
+    "hyprsunset",
+    "wallpaper",
+    "themerotation",
+    "sudoku"
   ],
   "right": [
     "tray",
     "language",
-    "spotlight",
-    "task-view",
-    "wifi-menu",
-    {
-      "id": "sound-menu",
-      "props": {
-        "mediaCard": true
-      }
-    },
-    "battery",
+    "windows-quick-settings",
     {
       "id": "notifications",
       "props": {

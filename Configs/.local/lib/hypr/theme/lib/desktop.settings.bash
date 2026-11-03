@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+declare -F hypr_config_value_from_layers_into >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/config-layers.bash" || return 1
+
 theme_desktop_load_looknfeel_cursor_values() {
   local -n cursor_settings="$1"
   local color_variant="$2"
@@ -78,25 +80,20 @@ theme_desktop_resolve_base_values_into() {
 
 theme_desktop_resolve_settings_into() {
   local -n settings_ref="$1"
-  local resolved_color_variant="${resolved_color_variant:-$(state_get_color_variant 2>/dev/null || true)}"
-  resolved_color_variant="${resolved_color_variant:-dark}"
+  local requested_color_source="${2:-}" requested_color_mode="${3:-}"
+  local color_variant="" color_source="" color_mode=""
+  state_get_color_variant_into color_variant || true
+  color_variant="${color_variant:-dark}"
+  state_resolve_color_source_into color_source "${requested_color_source}" "${requested_color_mode}"
+  state_resolve_color_mode_into color_mode "${requested_color_mode}" "${color_variant}"
 
-  local selected_color_source="$(state_resolve_color_source "${selected_color_source:-}" "${selected_color_mode:-}")"
-  local selected_color_mode="$(state_resolve_color_mode "${selected_color_mode:-}" "${resolved_color_variant}")"
-
-  theme_desktop_resolve_base_values_into "$1" "${selected_color_source}"
-  settings_ref[COLOR_SCHEME]="prefer-${resolved_color_variant}"
-  theme_desktop_load_looknfeel_cursor_values "$1" "${resolved_color_variant}"
-
-  if [[ "${revert_colors:-0}" -eq 1 ]] \
-    || [[ "${selected_color_mode:-0}" == "${STATE_COLOR_MODE_DARK}" && "${resolved_color_variant:-}" == "light" ]] \
-    || [[ "${selected_color_mode:-0}" == "${STATE_COLOR_MODE_LIGHT}" && "${resolved_color_variant:-}" == "dark" ]]; then
-    if [[ "${resolved_color_variant}" == "dark" ]]; then
-      settings_ref[COLOR_SCHEME]="prefer-light"
-    else
-      settings_ref[COLOR_SCHEME]="prefer-dark"
-    fi
-  fi
+  theme_desktop_resolve_base_values_into "$1" "${color_source}"
+  settings_ref[COLOR_SCHEME]="prefer-${color_variant}"
+  theme_desktop_load_looknfeel_cursor_values "$1" "${color_variant}"
+  case "${color_mode}" in
+    "${STATE_COLOR_MODE_DARK}") settings_ref[COLOR_SCHEME]="prefer-dark" ;;
+    "${STATE_COLOR_MODE_LIGHT}") settings_ref[COLOR_SCHEME]="prefer-light" ;;
+  esac
 
   local resolved_gtk="Adwaita"
   local pack_dir="${HYPR_CONFIG_HOME}/themes/${HYPR_THEME:-}"

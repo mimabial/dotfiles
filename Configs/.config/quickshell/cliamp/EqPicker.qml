@@ -76,11 +76,9 @@ BorderSurface {
         width: (parent.width - Commons.Style.space(6)) / 2
         height: Commons.Style.space(24)
         radius: Commons.Style.space(4)
-        color: active ? Commons.Color.menu.selectedBackground
-          : (loudMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Commons.Color.menu.selectedBackground)
-            : (root.controller ? root.controller.shell.alpha(root.controller.surface, 0.8) : Commons.Color.popups.background))
-        border.width: 1
-        border.color: active || loudMouse.containsMouse || cursored ? Commons.Color.menu.selectedBorder : "transparent"
+        color: loudMouse.containsMouse || cursored ? Commons.Color.menu.selectedBackground
+          : active ? Commons.Style.selectedFillFor(Commons.Color.menu.text, Commons.Color.accent)
+          : (root.controller ? root.controller.shell.alpha(root.controller.surface, 0.8) : Commons.Color.popups.background)
 
         Row {
           anchors.centerIn: parent
@@ -115,11 +113,9 @@ BorderSurface {
         width: (parent.width - Commons.Style.space(6)) / 2
         height: Commons.Style.space(24)
         radius: Commons.Style.space(4)
-        color: active ? Commons.Color.menu.selectedBackground
-          : (spatialMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Commons.Color.menu.selectedBackground)
-            : (root.controller ? root.controller.shell.alpha(root.controller.surface, 0.8) : Commons.Color.popups.background))
-        border.width: 1
-        border.color: active || spatialMouse.containsMouse || cursored ? Commons.Color.menu.selectedBorder : "transparent"
+        color: spatialMouse.containsMouse || cursored ? Commons.Color.menu.selectedBackground
+          : active ? Commons.Style.selectedFillFor(Commons.Color.menu.text, Commons.Color.accent)
+          : (root.controller ? root.controller.shell.alpha(root.controller.surface, 0.8) : Commons.Color.popups.background)
 
         Row {
           anchors.centerIn: parent
@@ -151,7 +147,7 @@ BorderSurface {
       height: parent.height - Commons.Style.space(56)
       contentWidth: width; contentHeight: presetCol.implicitHeight
       clip: true; boundsBehavior: Flickable.StopAtBounds
-      ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+      ScrollBar.vertical: PanelScrollBar { policy: ScrollBar.AsNeeded }
 
       Column {
         id: presetCol
@@ -170,10 +166,8 @@ BorderSurface {
             width: parent.width
             height: Commons.Style.space(32)
             radius: Commons.Style.space(4)
-            color: isActive ? Commons.Color.menu.selectedBackground
-              : (rowMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Commons.Color.menu.selectedBackground) : "transparent")
-            border.width: 1
-            border.color: isActive || rowMouse.containsMouse || cursored ? Commons.Color.menu.selectedBorder : "transparent"
+            color: rowMouse.containsMouse || cursored ? Commons.Color.menu.selectedBackground
+              : isActive ? Commons.Style.selectedFillFor(Commons.Color.menu.text, Commons.Color.accent) : "transparent"
 
             Row {
               anchors.fill: parent

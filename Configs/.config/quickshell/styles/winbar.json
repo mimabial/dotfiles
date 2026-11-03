@@ -26,16 +26,31 @@
     "margin": [0.0, 0.0, 0.0, 0.0],
     "padding": [0.0, 0.0, 0.0, 0.0]
   },
+  "tray.chevron, language, quick-settings, notifications, datetime": {
+    "margin": [4.0, 0.0, 4.0, 0.0],
+    "padding": [0.0, 4.0, 0.0, 4.0]
+  },
+  "tray.chevron, language, notifications, spotlight, task-view": {
+    "fixedWidth": 32.0
+  },
+  "spotlight": {
+    "icon": "preferences-system-search"
+  },
+  "task-view": {
+    "icon": "/home/rifle/.local/share/icons/Windows-11/32/apps/preferences-desktop-virtual.svg"
+  },
+  "menu, spotlight, task-view": {
+    "padding": [0.0, 8.0, 0.0, 8.0]
+  },
+  "quick-settings, datetime": {
+    "padding": [0.0, 8.0, 0.0, 8.0]
+  },
+  "quick-settings": {
+    "spacing": 8.0
+  },
   "bar": {
     "margin": [0.0, 0.0, 0.0, 0.0],
-    "borderRadius": 0.0,
-    "borderTopWidth": 1.0,
-    "borderTopColor": ["fg", 0.08]
-  },
-  "bar.top": {
-    "borderTopWidth": 0.0,
-    "borderBottomWidth": 1.0,
-    "borderBottomColor": ["fg", 0.08]
+    "borderRadius": 0.0
   },
   "weather": {
     "justify": "left",
@@ -74,20 +89,28 @@
     "padding": [0.0, 8.0, 8.0, 4.0]
   },
   "tray": {
-    "iconSize": 16.0,
+    "iconSize": 10.0,
+    "minWidth": 32.0,
+    "popupBorderWidth": 0,
     "backgroundColor": null,
     "margin": [4.0, 0.0, 4.0, 0.0],
-    "padding": [0.0, 6.0, 0.0, 6.0]
+    "padding": [0.0, 0.0, 0.0, 0.0]
   },
   "tray.chevron": {
     "color": ["fg", 1.0],
     "fontWeight": 400,
-    "iconBox": 8.0,
-    "margin": [4.0, 2.0, 4.0, 2.0],
-    "padding": [0.0, 8.0, 0.0, 8.0]
+    "iconBox": 8.0
   },
   "updates": {
     "color": ["fg", 1.0]
+  },
+  "mediaplayer": {
+    "symbol": {
+      "󰽯": "apps/multimedia-audio-player",
+      "": "actions/media-playback-start",
+      "": "actions/media-playback-pause",
+      "": "actions/media-playback-stop"
+    }
   },
   "language": {
     "fontSize": 11.0
@@ -97,7 +120,7 @@
     "fontWeight": 400,
     "fontSize": 10.0
   },
-  "task-view, wifi, volume, battery, notifications": {
+  "spotlight, task-view, wifi, volume, battery, notifications, quick-settings": {
     "iconBox": 10.0
   },
   "notifications": {
@@ -121,13 +144,49 @@
     "#taskbar button": {
       "margin": [1.0, 2.0, 1.0, 2.0]
     },
-    "spotlight": { "iconBox": 9.0 },
-    "task-view, wifi, volume, battery, notifications": {
+    "spotlight, task-view, wifi, volume, battery, notifications, quick-settings": {
       "iconBox": 8.0
+    },
+    "tray": {
+      "iconSize": 8.0
     },
     "tray.chevron": {
       "iconBox": 5.5
     }
   },
-  "microphone.muted": { "symbol": "status/audio-input-microphone-muted" }
+  "microphone.muted": { "symbol": "status/audio-input-microphone-muted" },
+  "quick-settings.popup": {
+    "width": 360,
+    "contentPadding": 24,
+    "sectionGap": 24,
+    "sliderGap": 20,
+    "footerHeight": 48
+  },
+  "quick-settings.action": {
+    "minWidth": 32,
+    "minHeight": 32,
+    "iconSize": 16
+  },
+  "quick-settings.tile": {
+    "minHeight": 48,
+    "iconSize": 20,
+    "labelGap": 8,
+    "rowGap": 24,
+    "columnGap": 12,
+    "splitWidth": 48
+  },
+  "quick-settings.pager": {
+    "width": 20,
+    "buttonHeight": 12,
+    "iconSize": 8,
+    "dotSize": 3,
+    "activeDotSize": 6,
+    "spacing": 2
+  },
+  "quick-settings.slider": {
+    "trackHeight": 4,
+    "knobSize": 20,
+    "knobInset": 5,
+    "padding": 0
+  }
 }

@@ -25,6 +25,11 @@ Additional capabilities:
 - **Pipeline rows** — animation preset, screen shader, and workflow profile are
   editable from the same surface, dispatching into hyprshell rather than
   writing Hyprland keys.
+- **Mouse & Touchpad** — the one input section. Its `input:*` keys are saved to
+  `$XDG_STATE_HOME/hypr/input.lua` instead of the theme's file, because a theme
+  switch must not change how the pointer behaves. `hyprland.lua` loads it right
+  after `keyboard.lua`; preview, reset and the override marker work as for every
+  other row.
 
 ### Non-goals
 
@@ -32,8 +37,9 @@ Additional capabilities:
   them here would pin borders and break theme switching.
 - **Named presets.** The config already has `animations/`, `shaders/`, and
   `workflows/` preset directories; a fourth preset system is not wanted.
-- **Input, misc, gestures, layer rules, per-monitor settings.** The catalogue
-  stops at visual look and feel.
+- **Keyboard input, misc, gestures, layer rules, per-monitor or per-device
+  settings.** Apart from Mouse & Touchpad, the catalogue stops at visual look
+  and feel.
 - **"Full opacity" switch.** `windowrules.lua` has only per-class
   opacity rules and no blanket rule to clear, so the switch would be a no-op.
 
@@ -45,7 +51,7 @@ left, rows for the selected section on the right — with a header carrying the
 active theme key and a footer carrying either the key hints or the last
 `hyprctl configerrors` output. The visual sections share this window with
 theme, bar, keyboard, display, workspace, audio, network, Bluetooth, power,
-compose, and keybinding pages.
+and compose pages.
 
 `windowrules.lua` needs no entry: the existing `^(org\.tui\..*|…)$` rule already
 floats every `org.tui.*` window, which is why the app-id is shaped that way.
@@ -355,10 +361,10 @@ hyprshell launch/focus.sh org.tui.Settings -- \
   python3 "${HYPR_LIB_DIR}/window/settings/main.py"
 ```
 
-Bound in the theming submap (`keybindings.lua`) on `V`:
+Bound in the theming submap (`keybindings.lua`) on `L`:
 
 ```lua
-submap_exec("V", "[Theming] look and feel", "hyprshell window/settings.sh")
+submap_exec("L", "[Theming] look and feel", "hyprshell window/settings.sh")
 ```
 
 The description is a lookup key for `keybinds_hint.py` — keep it unique and

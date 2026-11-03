@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
-hypr_runtime_require rofi || exit 1
+hypr_runtime_require rofi system || exit 1
+hypr_runtime_load_desktop_environment || true
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash"
 
@@ -21,32 +22,26 @@ cache_dependencies+=("${BASH_SOURCE[0]}" "${HYPR_LIB_DIR}"/keybinds/lib/*.py)
 ROFI_FIELD_SEPARATOR=':::'
 LUA_ACTION_DISPATCHER='__lua_action'
 
-hint_cache_dir="$(hypr_ensure_runtime_subdir hypr)" || exit 1
+hypr_ensure_runtime_dir_into hint_cache_dir hypr || exit 1
 hint_cache_file="${hint_cache_dir}/keybinds_hint.rofi"
 
 needs_regeneration=false
 if [[ -f "${hint_cache_file}" ]]; then
-  cache_mtime=$(stat -c %Y "${hint_cache_file}" 2>/dev/null || echo 0)
   for conf_file in "${cache_dependencies[@]}"; do
-    if [[ -f "${conf_file}" ]]; then
-      conf_mtime=$(stat -c %Y "${conf_file}" 2>/dev/null || echo 0)
-      if [[ "${conf_mtime}" -gt "${cache_mtime}" ]]; then
-        needs_regeneration=true
-        break
-      fi
+    if [[ -f "${conf_file}" && "${conf_file}" -nt "${hint_cache_file}" ]]; then
+      needs_regeneration=true
+      break
     fi
   done
 else
   needs_regeneration=true
 fi
 
-hint_rows="$({
-  if [[ "${needs_regeneration}" == true ]]; then
-    python3 "${HYPR_LIB_DIR}/keybinds/lib/keybinds_hint.py" --format rofi | tee "${hint_cache_file}"
-  else
-    cat "${hint_cache_file}"
-  fi
-})"
+if [[ "${needs_regeneration}" == true ]]; then
+  hint_rows="$(python3 "${HYPR_LIB_DIR}/keybinds/lib/keybinds_hint.py" --format rofi | tee "${hint_cache_file}")"
+else
+  hint_rows="$(<"${hint_cache_file}")"
+fi
 
 if [[ -z "${hint_rows}" ]]; then
   dunstify -t "${NOTIFY_LONG_MS}" -i "dialog-error" "Keybind Hint" "Initialization failed."
@@ -59,29 +54,36 @@ if ! command -v rofi >/dev/null 2>&1; then
   exit 0
 fi
 
+rofi_hypr_snapshot
 font_scale="$(rofi_effective_font_scale "${ROFI_KEYBIND_HINT_SCALE}")"
 font_name="$(rofi_effective_font_name "${ROFI_KEYBIND_HINT_FONT:-$ROFI_FONT}")"
 font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
 icon_override="$(rofi_icon_theme_override)"
 window_override="$(rofi_standard_window_theme listview same)"
-entry_count=$(printf '%s\n' "${hint_rows}" | sed '/^[[:space:]]*$/d' | wc -l)
-entry_count=${entry_count//[[:space:]]/}
+entry_count=0
+while IFS= read -r hint_row; do
+  [[ "${hint_row}" == *[![:space:]]* ]] && entry_count=$((entry_count + 1))
+done <<<"${hint_rows}"
 layout_override="$(rofi_cheatsheet_layout_override "${entry_count}" "${font_name}" "${font_scale}")"
+declare -A header_style=([font_name]="${font_name}" [font_scale]="${font_scale}")
+header_args=()
+rofi_picker_header_args_into header_args Keybinds "" header_style
 
 selected_binding=$(printf '%s\n' "${hint_rows}" | rofi_with_background_theme -dmenu -p " Keybinds" -i \
   -display-columns 1 \
   -display-column-separator "${ROFI_FIELD_SEPARATOR}" \
   -theme "$(rofi_resolve_theme "${ROFI_KEYBIND_HINT_STYLE:-clipboard}")" \
-  -theme-str "entry { placeholder: \"  Keybindings\"; }" \
   -theme-str "${font_override}" \
   -theme-str "${icon_override}" \
   -theme-str "${window_override}" \
-  -theme-str "${layout_override}")
+  -theme-str "${layout_override}" \
+  "${header_args[@]}")
 [[ -z "${selected_binding}" ]] && exit 0
 
-dispatcher=$(awk -F "${ROFI_FIELD_SEPARATOR}" '{print $2}' <<<"${selected_binding}" | xargs)
-dispatcher_arg=$(awk -F "${ROFI_FIELD_SEPARATOR}" '{print $3}' <<<"${selected_binding}" | xargs)
-repeat_mode=$(awk -F "${ROFI_FIELD_SEPARATOR}" '{print $4}' <<<"${selected_binding}" | xargs)
+IFS=$'\x1f' read -r _ dispatcher dispatcher_arg repeat_mode _ <<<"${selected_binding//"${ROFI_FIELD_SEPARATOR}"/$'\x1f'}"
+dispatcher="${dispatcher//[[:space:]]/}"
+dispatcher_arg="${dispatcher_arg//[[:space:]]/}"
+repeat_mode="${repeat_mode//[[:space:]]/}"
 
 run_selected_dispatch() {
   local dispatch_output=""
@@ -89,7 +91,7 @@ run_selected_dispatch() {
   local action_lua=""
 
   if [[ "${dispatcher}" == "${LUA_ACTION_DISPATCHER}" ]]; then
-    action_key="$(printf '%s' "${dispatcher_arg}" | base64 --decode 2>/dev/null)" || return 1
+    action_key="$(base64 --decode <<<"${dispatcher_arg}" 2>/dev/null)" || return 1
     action_lua="$(hypr_lua_quote "${action_key}")"
     dispatch_output="$(hypr_lua_dispatch "_G.HYPR_BIND_ACTIONS[${action_lua}]" 2>&1)"
   elif [[ "${dispatcher}" == hl.dsp.* ]]; then
@@ -108,7 +110,7 @@ if [[ -n "${dispatcher}" && "${dispatcher}" != *$'\n'* ]]; then
   if [[ "${repeat_mode}" == "repeat" ]]; then
     while true; do
       repeat_command=$(printf 'Repeat\n' | rofi_with_background_theme -dmenu -no-custom -p "Repeat command?" \
-        -theme "notification" -theme-str "${font_override}")
+        -theme "notification" -theme-str "${font_override}" -theme-str "$(rofi_window_position_theme)")
       if [[ "${repeat_command}" == "Repeat" ]]; then
         run_selected_dispatch
       else

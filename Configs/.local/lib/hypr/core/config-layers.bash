@@ -2,54 +2,31 @@
 
 # First wins: the reverse of the order hyprland.lua applies these layers in.
 # vars.lua resolves user-first, like the package.path hyprland.lua sets.
-hypr_config_layer_files() {
+hypr_config_layer_files_into() {
+  local -n layer_files_ref="$1"
   local config_home="${HYPR_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}"
   local data_home="${HYPR_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/hypr}"
   local vars_file="${config_home}/vars.lua"
 
   [[ -f "${vars_file}" ]] || vars_file="${data_home}/vars.lua"
 
-  printf '%s\n' \
-    "${config_home}/userprefs.lua" \
-    "${config_home}/userfonts.lua" \
-    "${config_home}/themes/theme.meta" \
+  layer_files_ref=(
+    "${config_home}/userprefs.lua"
+    "${config_home}/userfonts.lua"
+    "${config_home}/themes/theme.meta"
     "${vars_file}"
+  )
 }
 
 declare -gA HYPR_CONFIG_LAYER_CACHE=()
 declare -g HYPR_CONFIG_LAYER_CACHE_KEY=""
 declare -g HYPR_CONFIG_LAYER_CACHE_READY=0
 
-hypr_config_file_signature_line() {
-  local file_path="$1"
-
-  if [[ -e "${file_path}" || -L "${file_path}" ]]; then
-    stat -Lc '%n:%y:%s:%i' -- "${file_path}" 2>/dev/null || printf '%s:unreadable\n' "${file_path}"
-  else
-    printf '%s:missing\n' "${file_path}"
-  fi
-}
-
-# shellcheck disable=SC2120
-hypr_config_file_signature() {
-  local file_path=""
-
-  if (($#)); then
-    for file_path in "$@"; do
-      hypr_config_file_signature_line "${file_path}"
-    done
-    return 0
-  fi
-
-  while IFS= read -r file_path; do
-    hypr_config_file_signature_line "${file_path}"
-  done < <(hypr_config_layer_files)
-}
-
 hypr_config_parse_layer_file() {
   local file_path="$1"
   local -n layer_values_ref="$2"
   local raw_line=""
+  local line=""
   local lhs=""
   local rhs=""
   local variable_key=""
@@ -66,12 +43,12 @@ hypr_config_parse_layer_file() {
   fi
 
   while IFS= read -r raw_line; do
-    [[ -n "${raw_line//[[:space:]]/}" ]] || continue
-    [[ ! "${raw_line}" =~ ^[[:space:]]*# ]] || continue
-    if [[ "${raw_line}" =~ ${vars_set_re} ]]; then
+    line="${raw_line#"${raw_line%%[![:space:]]*}"}"
+    [[ -n "${line}" && "${line}" != \#* ]] || continue
+    if [[ "${line}" == vars.set\(\"* && "${raw_line}" =~ ${vars_set_re} ]]; then
       variable_key="${BASH_REMATCH[1]}"
       rhs="${BASH_REMATCH[2]}"
-    elif ((is_vars_table)) && [[ "${raw_line}" =~ ${vars_table_field_re} ]]; then
+    elif ((is_vars_table)) && [[ "${line}" == *=*\"* && "${raw_line}" =~ ${vars_table_field_re} ]]; then
       variable_key="${BASH_REMATCH[2]:-${BASH_REMATCH[3]}}"
       rhs="${BASH_REMATCH[4]}"
     else
@@ -102,29 +79,37 @@ hypr_config_parse_layer_file() {
 hypr_config_layer_cache_load() {
   local cache_key=""
   local file_path=""
+  local -a layer_files=()
 
-  # shellcheck disable=SC2119
-  cache_key="$(hypr_config_file_signature)"
+  hypr_config_layer_files_into layer_files
+  cache_key="$(stat -Lc '%n:%y:%s:%i' -- "${layer_files[@]}" 2>/dev/null)"
   if [[ "${HYPR_CONFIG_LAYER_CACHE_READY:-0}" -eq 1 && "${HYPR_CONFIG_LAYER_CACHE_KEY:-}" == "${cache_key}" ]]; then
     return 0
   fi
 
   HYPR_CONFIG_LAYER_CACHE=()
-  while IFS= read -r file_path; do
+  for file_path in "${layer_files[@]}"; do
     hypr_config_parse_layer_file "${file_path}" HYPR_CONFIG_LAYER_CACHE
-  done < <(hypr_config_layer_files)
+  done
 
   HYPR_CONFIG_LAYER_CACHE_KEY="${cache_key}"
   HYPR_CONFIG_LAYER_CACHE_READY=1
 }
 
-hypr_config_value_from_layers() {
-  local variable_key="${1#\$}"
+hypr_config_value_from_layers_into() {
+  local -n layer_value_ref="$1"
+  local variable_key="${2#\$}"
 
+  layer_value_ref=""
   [[ -n "${variable_key}" ]] || return 1
   hypr_config_layer_cache_load || return 1
   [[ -v "HYPR_CONFIG_LAYER_CACHE[${variable_key}]" ]] || return 1
-  printf '%s\n' "${HYPR_CONFIG_LAYER_CACHE[${variable_key}]}"
+  layer_value_ref="${HYPR_CONFIG_LAYER_CACHE[${variable_key}]}"
+}
 
-  return 0
+hypr_config_value_from_layers() {
+  local layer_value=""
+
+  hypr_config_value_from_layers_into layer_value "$1" || return 1
+  printf '%s\n' "${layer_value}"
 }

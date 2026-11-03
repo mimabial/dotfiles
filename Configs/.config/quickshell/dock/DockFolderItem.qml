@@ -106,10 +106,9 @@ Item {
   // (PanelToolTip is an opaque shell component; folder names come from user config.)
   HoverTooltip {
     dock: fitem.dock
+    target: fitem
     text: fitem.tooltip
     hovered: area.containsMouse
     blocked: !fitem.dock.showTooltips || fitem.dock.activeStackFolder !== ""
-    x: (fitem.width - width) / 2
-    y: fitem.dock.tipY(fitem.height, height)
   }
 }

@@ -11,18 +11,22 @@ from game_entry import Game
 from pyutils.xdg_base_dirs import xdg_data_home
 
 EXCLUDED_STEAM_NAMES = re.compile(r"\b(proton|steam.*runtime|steamworks|steam client)\b", re.I)
+APP_LAST_PLAYED = re.compile(r'"(\d+)"\s*\{[^{}]*?"LastPlayed"\s*"(\d+)"')
 
 
-def steamapps_directories() -> list[Path]:
+def steam_roots() -> list[Path]:
     candidates = [
         xdg_data_home() / "Steam",
         Path.home() / ".steam/steam",
         Path.home() / ".var/app/com.valvesoftware.Steam/.local/share/Steam",
     ]
+    return [root for root in candidates if root.is_dir()]
+
+
+def steamapps_directories() -> list[Path]:
     roots: list[Path] = []
-    for root in candidates:
-        if root.is_dir():
-            roots.append(root)
+    for root in steam_roots():
+        roots.append(root)
         library_file = root / "steamapps/libraryfolders.vdf"
         if not library_file.is_file():
             continue
@@ -74,7 +78,21 @@ def steam_icon(steamapps: Path, appid: str) -> str:
     return ""
 
 
+def steam_last_played() -> dict[str, int]:
+    configs = {config.resolve() for root in steam_roots() for config in root.glob("userdata/*/config/localconfig.vdf")}
+    last_played: dict[str, int] = {}
+    for config in configs:
+        try:
+            text = config.read_text(errors="ignore")
+        except OSError:
+            continue
+        for appid, timestamp in APP_LAST_PLAYED.findall(text):
+            last_played[appid] = max(last_played.get(appid, 0), int(timestamp))
+    return last_played
+
+
 def steam_games() -> list[Game]:
+    last_played = steam_last_played()
     games: list[Game] = []
     for steamapps in steamapps_directories():
         for manifest in steamapps.glob("appmanifest_*.acf"):
@@ -93,6 +111,7 @@ def steam_games() -> list[Game]:
                     name=name,
                     icon=steam_icon(steamapps, appid),
                     argv=["xdg-open", f"steam://rungameid/{appid}"],
+                    last_played=last_played.get(appid, 0),
                 )
             )
     return games

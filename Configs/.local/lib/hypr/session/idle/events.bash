@@ -1,3 +1,5 @@
+declare -F hypr_wait_for >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/events.bash" || return 1
+
 idle_forward_events() {
   local event_kind="$1" filter="$2" stream_fd stream_pid line
   shift 2

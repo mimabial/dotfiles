@@ -62,8 +62,6 @@ Column {
         implicitHeight: body.implicitHeight + Style.sm * 2
         radius: root.shell.rounding
         color: cursored ? root.shell.hoverFill() : "transparent"
-        border.width: root.shell.borderWidth
-        border.color: cursored ? root.shell.hoverEdge() : "transparent"
         Column { id: body; x: Style.sm; y: Style.sm; width: parent.width - Style.sm * 2; spacing: Style.sm }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: section.clicked() }
         PopupPointer { shell: root.shell; row: section }

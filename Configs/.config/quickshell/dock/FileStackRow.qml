@@ -12,6 +12,7 @@ Item {
   property string icon: "folder"
   property string subtext: ""
   property real menuWidth: 0
+  property bool cursored: false
   signal triggered()
 
   readonly property bool isMenuContent: true
@@ -24,11 +25,15 @@ Item {
 
   readonly property string resolvedIcon: DockModel.resolveFileItemIcon(frow.icon)
   readonly property bool isIconSymbolic: frow.dock.symbolicFolders && DockModel.isPlaceIcon(frow.resolvedIcon)
+  readonly property string iconSource: {
+    var _tv = frow.dock.themeVersion
+    return frow.dock.appLibrary.iconSource(frow.resolvedIcon)
+  }
 
   Rectangle {
     anchors.fill: parent
     radius: Commons.Style.cornerRadius
-    color: area.containsMouse ? Commons.Color.menu.selectedBackground : "transparent"
+    color: area.containsMouse || frow.cursored ? Commons.Color.menu.selectedBackground : "transparent"
   }
 
   Item {
@@ -49,10 +54,7 @@ Item {
 
       Image {
         anchors.fill: parent
-        source: {
-          var _tv = frow.dock.themeVersion
-          return frow.isIconSymbolic ? "" : frow.dock.appLibrary.iconSource(frow.resolvedIcon)
-        }
+        source: frow.isIconSymbolic ? "" : frow.iconSource
         sourceSize: Qt.size(48, 48)
         fillMode: Image.PreserveAspectFit
         asynchronous: true
@@ -103,7 +105,25 @@ Item {
     id: area
     anchors.fill: parent
     hoverEnabled: true
-    cursorShape: Qt.PointingHandCursor
+    preventStealing: true
+    cursorShape: area.drag.active ? Qt.ClosedHandCursor : Qt.PointingHandCursor
+    drag.target: payload
+    drag.onActiveChanged: frow.dock.fileDragOut = area.drag.active
     onClicked: frow.triggered()
+
+    Item {
+      id: payload
+      Drag.dragType: Drag.Automatic
+      Drag.supportedActions: Qt.CopyAction | Qt.MoveAction | Qt.LinkAction
+      Drag.proposedAction: Qt.CopyAction
+      Drag.mimeData: ({ "text/uri-list": DockModel.fileUrl(frow.path) + "\r\n", "text/plain": frow.path })
+      Drag.imageSource: area.drag.active ? frow.iconSource : ""
+      Drag.imageSourceSize: Qt.size(frow.dock.iconSize, frow.dock.iconSize)
+      Drag.active: area.drag.active
+      Drag.onDragFinished: function(dropAction) {
+        frow.dock.fileDragOut = false
+        if (dropAction !== Qt.IgnoreAction) frow.dock.closeFolderStack()
+      }
+    }
   }
 }

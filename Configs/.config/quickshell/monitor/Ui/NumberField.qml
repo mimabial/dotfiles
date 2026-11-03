@@ -24,6 +24,13 @@ Column {
 
   spacing: Commons.Style.spacing.md
 
+  TextMetrics {
+    id: stepperGlyph
+    font.family: root.fontFamily
+    font.pixelSize: Commons.Style.font.caption
+    text: "󰅀"
+  }
+
   Text {
     visible: root.label !== ""
     text: root.label
@@ -47,62 +54,71 @@ Column {
 
     readonly property bool inputFocused: spin.activeFocus
     readonly property bool inputHighlighted: root.pointerHovered || root.hasCursor
-    readonly property var stateBorderSpec: Commons.Border.controlSpec(inputFocused ? "focus" : (inputHighlighted ? "hover-cursor" : "normal"), root.foreground, root.accent)
+    readonly property var normalBorderSpec: Commons.Border.controlSpec("normal", root.foreground, root.accent)
+    readonly property real borderTop: Commons.Border.top(normalBorderSpec)
+    readonly property real borderRight: Commons.Border.right(normalBorderSpec)
+    readonly property real borderBottom: Commons.Border.bottom(normalBorderSpec)
+    readonly property real stepperWidth: stepperGlyph.advanceWidth + Commons.Style.spacing.controlGap * 2
+    readonly property real stepperHeight: (height - borderTop - borderBottom) / 2
 
-    leftPadding: Commons.Border.left(stateBorderSpec) + Commons.Style.spacing.controlPaddingX
-    rightPadding: Commons.Border.right(stateBorderSpec) + Commons.Style.spacing.controlPaddingX
-      + (up.indicator ? up.indicator.width : 0)
-    topPadding: Commons.Border.top(stateBorderSpec)
-    bottomPadding: Commons.Border.bottom(stateBorderSpec)
+    function stepperFill(button) {
+      return button.pressed ? Commons.Style.pressedFillFor(root.foreground, root.accent)
+        : button.hovered ? Commons.Style.hoverFillFor(root.foreground, root.accent)
+        : "transparent"
+    }
+
+    leftPadding: Commons.Border.left(normalBorderSpec) + Commons.Style.spacing.controlPaddingX
+    rightPadding: borderRight + Commons.Style.spacing.controlPaddingX + stepperWidth
+    topPadding: borderTop
+    bottomPadding: borderBottom
 
     onValueModified: root.modified(value)
 
+    up.indicator: Rectangle {
+      x: spin.width - width - spin.borderRight
+      y: spin.borderTop
+      width: spin.stepperWidth
+      height: spin.stepperHeight
+      radius: Math.min(Commons.Style.cornerRadius, height / 2)
+      color: spin.stepperFill(spin.up)
+      Behavior on color { ColorAnimation { duration: 100 } }
+
+      Text {
+        textFormat: Text.PlainText
+        anchors.centerIn: parent
+        text: "󰅃"
+        color: Qt.darker(root.foreground, 1.2)
+        font: stepperGlyph.font
+      }
+    }
+
+    down.indicator: Rectangle {
+      x: spin.width - width - spin.borderRight
+      y: spin.borderTop + spin.stepperHeight
+      width: spin.stepperWidth
+      height: spin.stepperHeight
+      radius: Math.min(Commons.Style.cornerRadius, height / 2)
+      color: spin.stepperFill(spin.down)
+      Behavior on color { ColorAnimation { duration: 100 } }
+
+      Text {
+        textFormat: Text.PlainText
+        anchors.centerIn: parent
+        text: "󰅀"
+        color: Qt.darker(root.foreground, 1.2)
+        font: stepperGlyph.font
+      }
+    }
+
     background: BorderSurface {
-      id: fieldBackground
       color: Commons.Style.controlFill(spin.inputFocused, spin.inputHighlighted, root.foreground, root.accent)
-      borderSpec: spin.stateBorderSpec
+      borderSpec: spin.normalBorderSpec
       radius: Commons.Style.cornerRadius
 
       HoverHandler {
         onHoveredChanged: {
           root.pointerHovered = hovered
           root.hovered(hovered)
-        }
-      }
-
-      Item {
-        anchors.top: parent.top
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.topMargin: fieldBackground.borderTop
-        anchors.rightMargin: fieldBackground.borderRight
-        anchors.bottomMargin: fieldBackground.borderBottom
-        width: Math.max(spin.up.indicator ? spin.up.indicator.width : 0,
-                        spin.down.indicator ? spin.down.indicator.width : 0)
-
-        Rectangle {
-          width: parent.width
-          height: parent.height / 2
-          radius: Math.min(Commons.Style.cornerRadius, height / 2)
-          color: spin.up.pressed
-            ? Commons.Style.pressedFillFor(root.foreground, root.accent)
-            : spin.up.hovered
-              ? Commons.Style.hoverFillFor(root.foreground, root.accent)
-              : "transparent"
-          Behavior on color { ColorAnimation { duration: 100 } }
-        }
-
-        Rectangle {
-          anchors.bottom: parent.bottom
-          width: parent.width
-          height: parent.height / 2
-          radius: Math.min(Commons.Style.cornerRadius, height / 2)
-          color: spin.down.pressed
-            ? Commons.Style.pressedFillFor(root.foreground, root.accent)
-            : spin.down.hovered
-              ? Commons.Style.hoverFillFor(root.foreground, root.accent)
-              : "transparent"
-          Behavior on color { ColorAnimation { duration: 100 } }
         }
       }
     }

@@ -21,7 +21,6 @@ Rectangle {
     property color valueColor: shell.alpha(shell.foreground, .7)
     property color valueHoverColor: valueColor
     property bool active: false
-    property bool hoverBorder: true
     property bool interactive: true
     property real rightInset: 0
     readonly property bool navigable: interactive && enabled
@@ -37,14 +36,8 @@ Rectangle {
     signal clicked(int button)
     signal valueClicked()
     implicitHeight: Math.max(Style.popupRowHeight, Math.max(textColumn.implicitHeight, iconImage.visible ? root.iconSize : 0) + Style.controlPaddingY * 2)
-    readonly property color highlight: !hoverBorder ? "transparent"
-        : selected ? shell.hoverEdge(.85)
-        : active ? shell.selectedEdge()
-        : highlighted ? shell.hoverEdge(.85)
-        : "transparent"
     color: (interactive && (highlighted || selected)) ? shell.hoverFill()
         : active ? shell.selectedFill() : "transparent"
-    border.color: highlight
     radius: shell.rounding
     Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
 
@@ -112,6 +105,7 @@ Rectangle {
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         cursorShape: Qt.PointingHandCursor
         onClicked: event => {
+            root.shell.keyboardInput = false
             if (event.button === Qt.LeftButton && root.valueHovered) root.valueClicked()
             else root.clicked(event.button)
         }

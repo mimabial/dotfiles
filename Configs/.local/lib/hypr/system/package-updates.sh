@@ -17,8 +17,6 @@ hypr_help_guard "Usage: hyprshell system/package-updates [up [all|pacman|aur|fla
 Report pending updates as bar JSON; 'up' opens an upgrade terminal.
 Repeat calls inside ${update_cache_ttl_seconds}s reuse the cached report; --refresh forces a re-check." "$@"
 
-update_runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/hypr"
-update_cache_path="${update_runtime_dir}/update_status.json"
 update_database_dir=""
 update_aur_helper=""
 declare -a system_update_errors=()

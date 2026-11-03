@@ -38,17 +38,43 @@ Item {
   readonly property bool hasGpu: !!(service && service.hasGpu)
   readonly property bool hasBattery: !!(service && service.hasBattery)
   readonly property var configuredModules: Model.parseModules(Model.settingValue(settings, "modules"))
-  readonly property var barModules: configuredModules.filter(function(module) {
-    return module !== "power" && (module !== "gpu" || hasGpu) && (module !== "battery" || hasBattery)
-  })
+  readonly property var snapshot: service ? service.snapshot : ({})
+  readonly property var barModules: {
+    var out = []
+    var cards = Model.selectedGpus(snapshot, Model.settingValue(settings, "barGpus"))
+    var perDisk = (snapshot.disks || {}).perDisk || {}
+    var drives = Model.barDisksHere(snapshot, settings).map(function(entry) {
+      return { disk: Model.resolveDisk(snapshot, entry.disk), show: entry.show }
+    }).filter(function(entry) { return entry.disk !== "" || Object.keys(perDisk).length === 0 })
+    for (var module of configuredModules) {
+      if (module === "power" || (module === "battery" && !hasBattery)) continue
+      if (module === "gpu") {
+        for (var card of cards) {
+          out.push({ id: "gpu", gpuId: Model.gpuId(card), label: cards.length > 1 ? Model.gpuShort(card) : "" })
+          if (Model.flag(settings, "showGpuMemory") && Model.gpuMemoryPercent(card) !== null)
+            out.push({ id: "gpuMemory", gpuId: Model.gpuId(card), label: "VRM" })
+        }
+      } else if (module === "disks") {
+        for (var drive of drives)
+          out.push({ id: "disks", disk: drive.disk || "all", diskShow: drive.show, label: drives.length > 1 ? Model.diskShort(drive.disk) : "" })
+      } else out.push({ id: module })
+    }
+    return out.length ? out : [{ id: "cpu" }]
+  }
+  readonly property var stableSettings: Model.stableSettings(settings, snapshot)
+  onStableSettingsChanged: if (stableSettings) Qt.callLater(adoptStableSettings)
+
+  function adoptStableSettings() {
+    var changes = Model.stableSettings(settings, snapshot)
+    if (changes) saveSettings(Object.assign({}, settings, changes))
+  }
   readonly property var moduleTabs: Model.panelTabs(hasGpu, hasBattery, Model.settingValue(settings, "tabs"))
   readonly property var panelTabs: moduleTabs.concat(["alerts", "settings"])
   readonly property bool processesSearchable: currentTab === "cpu" || currentTab === "disks" || currentTab === "network"
-  readonly property string disksSource: String(Model.settingValue(settings, "disksSource") || "all")
   readonly property string barSensors: String(Model.settingValue(settings, "barSensors") || "cpu")
   readonly property string barLabels: {
     const value = String(Model.settingValue(settings, "barLabels")).toLowerCase()
-    return value === "icon" || value === "none" ? value : "text"
+    return value === "icon" || value === "inline" || value === "none" ? value : "text"
   }
   readonly property bool opened: panel.open
   implicitWidth: inlineReadouts.width + leftInset + rightInset + Commons.Style.space(2)
@@ -185,24 +211,28 @@ Item {
       horizontalItemAlignment: Grid.AlignHCenter
 
       Repeater {
-        model: root.barModules.length ? root.barModules : ["cpu"]
+        model: root.barModules
         delegate: UI.BarReadout {
           required property var modelData
           shell: root.shell
-          box: root.shell.style.box("systemstats." + modelData)
+          box: root.shell.style.box("systemstats." + modelData.id)
           barSize: root.barSize
-          module: String(modelData)
+          module: modelData.id
+          gpuId: modelData.gpuId || ""
+          shortLabel: modelData.label || ""
           service: root.service
-          mode: root.styleFor(module)
+          settings: root.settings
+          mode: root.styleFor(module === "gpuMemory" ? "gpu" : module)
           graphWidth: root.graphWidth
           temperatureUnit: root.temperatureUnit
           colorTemperatureIcons: root.colorTemperatureIcons
-          disksSource: root.disksSource
+          disksSource: modelData.disk || "all"
+          diskShow: modelData.diskShow || "speed"
           barSensors: root.barSensors
           labelMode: root.barLabels
           onActivated: function(id, button) {
             if (button === Qt.LeftButton) root.toggleModule(id)
-            else if (button === Qt.RightButton && id !== "network") root.shell.run(["hyprshell", "util/sysmon-launch"].concat(id in root.monitorCommands ? ["-e", root.monitorCommands[id]] : []))
+            else if (button === Qt.RightButton && id !== "network") root.shell.run(["hyprshell", "util/sysmon-launch"].concat(Model.tabFor(id) in root.monitorCommands ? ["-e", root.monitorCommands[Model.tabFor(id)]] : []))
             else if (button === Qt.MiddleButton && root.publicIpEnabled) root.service.requestPublicIp(true)
           }
         }
@@ -224,7 +254,7 @@ Item {
     anchorItem: root.popupAnchor
     shell: root.shell
     popupName: "systemstats"
-    keyboardHint: "←→ tabs · ↑↓ scroll · 1–" + root.moduleTabs.length + " tab" + (root.processesSearchable ? " · / search" : "") + " · Esc"
+    keyboardHint: "←→ Tabs  ↑↓ Scroll  1–" + root.moduleTabs.length + " Tab" + (root.processesSearchable ? "  / Search" : "") + "  Esc"
     popupEnabled: root.popupsAllowed
     wantsKeyboard: true
     contentWidth: Math.max(Commons.Style.space(420), Math.ceil(tabs.spelledWidth) + padding * 2)
@@ -274,7 +304,7 @@ Item {
       contentHeight: pageLoader.implicitHeight
       interactive: contentHeight > height
       boundsBehavior: Flickable.StopAtBounds
-      ScrollBar.vertical: ScrollBar { policy: scrollArea.interactive ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
+      ScrollBar.vertical: PopupScrollBar { shell: root.shell }
 
       Loader {
         id: pageLoader

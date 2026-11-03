@@ -5,7 +5,7 @@ import Quickshell
 PopupCard {
     id: root
     popupName: "tray"
-    keyboardHint: "↑↓ move · → open · ← back · Esc close"
+    keyboardHint: "↑↓ Move  → Open  ← Back  Esc Close"
     contentWidth: Style.px(260)
 
     property var handle: null
@@ -62,7 +62,6 @@ PopupCard {
                     title: entry.modelData.text
                     iconSource: entry.modelData.icon
                     active: root.openSub === entry.modelData
-                    color: row.highlight
                     value: entry.modelData.hasChildren ? "›"
                         : entry.modelData.buttonType === QsMenuButtonType.CheckBox
                             ? (entry.modelData.checkState === Qt.Checked ? "✓" : "")

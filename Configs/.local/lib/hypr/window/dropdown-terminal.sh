@@ -5,7 +5,8 @@ set -euo pipefail
 HYPR_LIB_ROOT="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}"
 # shellcheck source=/dev/null
 source "${HYPR_LIB_ROOT}/launch/lib/window-launch.bash" || exit 1
-launch_source_core_common || exit 1
+source "${HYPR_LIB_ROOT}/core/common.bash" || exit 1
+declare -F hypr_monitors_json >/dev/null || source "${HYPR_LIB_ROOT}/core/geometry.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell window/dropdown-terminal
 Toggle the dropdown terminal: spawn it, or show/hide it on the focused workspace." "$@"
@@ -66,16 +67,17 @@ main() {
   local window_address=""
   local window_workspace=""
   local current_workspace=""
+  local monitors_json=""
 
   {
     IFS= read -r window_address
     IFS= read -r window_workspace
     IFS= read -r current_workspace
-    IFS= read -r HYPR_MONITORS_JSON_CACHE
+    IFS= read -r monitors_json
   } < <(hyprctl --batch -j 'clients;activeworkspace;monitors all' 2>/dev/null | jq -sr '
     (first(.[0][] | select(.class == "dropdown-terminal")) // {}) as $window
     | $window.address // "", $window.workspace.name // "", .[1].name // "", (.[2] // [] | tojson)')
-  HYPR_MONITORS_JSON_CACHE_READY=1
+  hypr_monitors_json_prime "${monitors_json}"
   if [[ -z "${window_address}" ]]; then
     spawn_dropdown_window
     return 0

@@ -39,6 +39,7 @@ end
 require("windowrules")
 require("userprefs")
 runtime.load(config_home .. "/hypr/keyboard.lua", true)
+runtime.load(state_home .. "/hypr/input.lua", true)
 -- Last of the visual layers, so panel edits win over the theme pack and over
 -- hand-written prefs. Resolves the active theme's file itself.
 runtime.load(state_home .. "/hypr/looknfeel.lua", true)
@@ -59,6 +60,7 @@ hl.config({cursor = {
 require("keybindings")
 runtime.load(config_home .. "/hypr/monitors.lua")
 runtime.load(state_home .. "/hypr/monitor-toggles.lua", true)
+runtime.load(state_home .. "/hypr/touchpads-disabled.lua", true)
 runtime.load(state_home .. "/hypr/window-layout.lua", true)
 runtime.load(state_home .. "/hypr/workflows.lua", true)
 require("workspaces")

@@ -13,7 +13,7 @@ text="${text%"${text##*[![:space:]]}"}"
 # cksum in one fork; its byte count separates same-checksum texts of different length.
 cache_key() {
   local sum
-  sum="$(printf '%s' "$1" | cksum)"
+  sum="$(cksum <<<"$1")"
   printf -v "$2" '%s' "${sum// /-}"
 }
 dir="${XDG_RUNTIME_DIR:-/run/user/${UID}}/hypr/fit"

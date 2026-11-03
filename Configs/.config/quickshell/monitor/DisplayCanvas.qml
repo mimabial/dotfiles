@@ -1,22 +1,18 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Commons as Commons
-import "Ui"
 import "Model.js" as Model
 
-BorderSurface {
+Item {
   id: root
 
   property var profile: ({ outputs: [] })
   property var editorDisplays: []
   property var workspacePlan: []
   property string selectedKey: ""
-  property bool interactive: true
-  property bool selectable: interactive
-  property bool movable: interactive
+  property bool selectable: false
+  property bool movable: false
   property string emphasis: "layout"
-  property bool detailed: true
-  property bool framed: true
   property bool markDisconnected: false
   property color foreground: Commons.Color.foreground
   property color dim: Qt.darker(foreground, 1.5)
@@ -30,11 +26,20 @@ BorderSurface {
   readonly property var bounds: Model.layoutBounds(displays)
   readonly property var metrics: Model.layoutMetrics(bounds, canvas.width, canvas.height, Commons.Style.space(8))
   readonly property string hiddenDisplays: Model.hiddenProfileDisplays(profile)
+  readonly property bool strongWorkspaces: emphasis !== "layout"
+  readonly property int cardPadding: Commons.Style.space(6)
+  readonly property int lineSpacing: Commons.Style.space(2)
+  readonly property int chipPadding: Commons.Style.space(4)
+  readonly property int chipSpacing: Commons.Style.space(3)
 
   implicitHeight: Commons.Style.space(205)
-  color: framed ? Qt.rgba(foreground.r, foreground.g, foreground.b, 0.025) : "transparent"
-  borderSpec: framed ? Commons.Border.controlSpec("normal", foreground, accent) : Commons.Border.none()
-  radius: framed ? Commons.Style.cornerRadius : 0
+
+  FontMetrics {
+    id: chipMetrics
+    font.family: root.fontFamily
+    font.pixelSize: Commons.Style.font.caption
+    font.bold: true
+  }
 
   Text {
     textFormat: Text.PlainText
@@ -62,25 +67,32 @@ BorderSurface {
     anchors.margins: Commons.Style.space(8)
     anchors.topMargin: hiddenLabel.visible ? Commons.Style.space(5) : Commons.Style.space(8)
 
-    Repeater {
-      model: 8
-      Rectangle {
-        required property int index
-        x: Math.round(index * canvas.width / 7)
-        width: 1
-        height: canvas.height
-        color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.10)
-      }
-    }
+    Item {
+      id: grid
+      readonly property int columns: 7
+      readonly property int rows: 5
+      anchors.fill: parent
 
-    Repeater {
-      model: 6
-      Rectangle {
-        required property int index
-        y: Math.round(index * canvas.height / 5)
-        width: canvas.width
-        height: 1
-        color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.10)
+      Repeater {
+        model: grid.columns + 1
+        Rectangle {
+          required property int index
+          x: Math.round(index * grid.width / grid.columns)
+          width: 1
+          height: grid.height
+          color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.10)
+        }
+      }
+
+      Repeater {
+        model: grid.rows + 1
+        Rectangle {
+          required property int index
+          y: Math.round(index * grid.height / grid.rows)
+          width: grid.width
+          height: 1
+          color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.10)
+        }
       }
     }
 
@@ -94,13 +106,26 @@ BorderSurface {
         property real dragOffsetX: 0
         property real dragOffsetY: 0
         readonly property bool selected: String(modelData.key || "") === root.selectedKey
-        readonly property string workspaceText: Model.workspaceText(root.workspacePlan, modelData.key)
         readonly property bool disconnected: root.markDisconnected && modelData.connected === false
-        readonly property int fullDetailHeight: Commons.Style.space(workspaceText !== ""
-          ? (disconnected ? 110 : 98)
-          : (disconnected ? 98 : 86))
-        readonly property bool compact: width < Commons.Style.space(155) || height < fullDetailHeight
-        readonly property bool hasModelRoom: root.detailed && height >= Commons.Style.space(56)
+        readonly property var workspaceIds: Model.workspaceIds(root.workspacePlan, modelData.key)
+        readonly property real chipWidth: Math.max(0, ...workspaceIds.map(id => chipMetrics.advanceWidth(id))) + root.chipPadding * 2
+        readonly property real chipStep: chipWidth + root.chipSpacing
+        readonly property int shownChips: workspaceIds.length * chipStep - root.chipSpacing <= content.width
+          ? workspaceIds.length
+          : Math.max(0, Math.floor((content.width - chipMetrics.advanceWidth("+" + workspaceIds.length)) / chipStep))
+        readonly property bool chipsOnNameRow: workspaceIds.length > 0
+          && nameText.implicitWidth + root.chipSpacing + chipRow.width <= content.width
+        readonly property int lineBudget: Math.max(1, Math.floor((content.height + root.lineSpacing) / (nameText.implicitHeight + root.lineSpacing)))
+        readonly property var rows: [
+          "name",
+          disconnected ? "disconnected" : "",
+          workspaceIds.length > 0 && !chipsOnNameRow ? "workspaces" : "",
+          "model",
+          "mode",
+          "placement"
+        ].filter(Boolean).slice(0, lineBudget)
+
+        function shows(row) { return rows.indexOf(row) !== -1 }
 
         x: previewRect.x + dragOffsetX
         y: previewRect.y + dragOffsetY
@@ -109,103 +134,132 @@ BorderSurface {
         radius: Math.min(Commons.Style.cornerRadius, Commons.Style.space(5))
         color: selected
           ? Commons.Style.selectedFillFor(root.foreground, root.accent)
-          : Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.045)
-        border.width: selected ? Math.max(1, Commons.Style.normalBorderWidth) : 1
-        border.color: selected ? root.accent : Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.55)
+          : Commons.Style.normalFillFor(root.foreground, root.accent)
+        border.color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.55)
 
         Behavior on color { ColorAnimation { duration: 100 } }
 
-        Column {
-          anchors.centerIn: parent
-          width: Math.max(0, parent.width - Commons.Style.space(10))
-          spacing: Commons.Style.space(1)
+        Item {
+          id: content
+          anchors.fill: parent
+          anchors.margins: root.cardPadding
 
-          Text {
-            textFormat: Text.PlainText
+          Column {
             width: parent.width
-            text: String(card.modelData.name || "Display")
-            color: root.foreground
-            font.family: root.fontFamily
-            font.pixelSize: Commons.Style.font.caption
-            font.bold: true
-            horizontalAlignment: Text.AlignHCenter
-            elide: Text.ElideRight
+            spacing: root.lineSpacing
+
+            Text {
+              id: nameText
+              textFormat: Text.PlainText
+              width: card.chipsOnNameRow ? parent.width - chipRow.width - root.chipSpacing : parent.width
+              text: String(card.modelData.name || "Display")
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Commons.Style.font.caption
+              font.bold: true
+              elide: Text.ElideRight
+            }
+
+            Text {
+              textFormat: Text.PlainText
+              visible: card.shows("disconnected")
+              width: parent.width
+              text: "not connected"
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Commons.Style.font.caption
+              font.italic: true
+              elide: Text.ElideRight
+            }
+
+            Text {
+              textFormat: Text.PlainText
+              visible: card.shows("model")
+              width: parent.width
+              text: Model.displayModelLabel(card.modelData, false)
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Commons.Style.font.caption
+              elide: Text.ElideRight
+            }
+
+            Item {
+              id: chipSlot
+              visible: card.shows("workspaces")
+              width: parent.width
+              height: nameText.implicitHeight
+            }
           }
 
-          Text {
-            textFormat: Text.PlainText
-            visible: card.hasModelRoom
-            width: parent.width
-            text: Model.displayModelLabel(card.modelData, false)
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Commons.Style.font.caption
-            horizontalAlignment: Text.AlignHCenter
-            elide: Text.ElideRight
+          Row {
+            id: chipRow
+            visible: card.chipsOnNameRow || card.shows("workspaces")
+            x: card.chipsOnNameRow ? content.width - width : 0
+            y: card.chipsOnNameRow ? 0 : chipSlot.y
+            spacing: root.chipSpacing
+
+            Repeater {
+              model: card.workspaceIds.slice(0, card.shownChips)
+
+              Rectangle {
+                id: chip
+                required property string modelData
+                width: card.chipWidth
+                height: nameText.implicitHeight
+                radius: Math.min(Commons.Style.cornerRadius, Commons.Style.space(3))
+                color: root.strongWorkspaces
+                  ? Commons.Style.selectionFillFor(root.foreground, root.accent)
+                  : Commons.Style.focusFillFor(root.foreground, root.accent)
+
+                Text {
+                  textFormat: Text.PlainText
+                  anchors.centerIn: parent
+                  text: chip.modelData
+                  color: root.foreground
+                  font.family: root.fontFamily
+                  font.pixelSize: Commons.Style.font.caption
+                  font.bold: root.strongWorkspaces
+                }
+              }
+            }
+
+            Text {
+              textFormat: Text.PlainText
+              visible: card.shownChips < card.workspaceIds.length
+              text: "+" + (card.workspaceIds.length - card.shownChips)
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Commons.Style.font.caption
+              font.bold: true
+            }
           }
 
-          Text {
-            textFormat: Text.PlainText
-            visible: card.disconnected
+          Column {
+            anchors.bottom: parent.bottom
             width: parent.width
-            text: "not connected"
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Commons.Style.font.caption
-            font.italic: true
-            horizontalAlignment: Text.AlignHCenter
-            elide: Text.ElideRight
-          }
+            spacing: root.lineSpacing
 
-          Text {
-            textFormat: Text.PlainText
-            visible: !card.compact && root.detailed
-            width: parent.width
-            text: String(card.modelData.mode || "")
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Commons.Style.font.caption
-            horizontalAlignment: Text.AlignHCenter
-            elide: Text.ElideRight
-          }
+            Text {
+              textFormat: Text.PlainText
+              visible: card.shows("mode")
+              width: parent.width
+              text: Model.modeLabel(card.modelData.mode)
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Commons.Style.font.caption
+              elide: Text.ElideRight
+            }
 
-          Text {
-            textFormat: Text.PlainText
-            visible: !card.compact && root.detailed
-            width: parent.width
-            text: Model.displayScaleLayoutLabel(card.modelData)
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Commons.Style.font.caption
-            horizontalAlignment: Text.AlignHCenter
-            elide: Text.ElideRight
-          }
-
-          Text {
-            textFormat: Text.PlainText
-            visible: !card.compact && root.detailed
-            width: parent.width
-            text: "pos " + Number(card.modelData.x || 0) + "," + Number(card.modelData.y || 0)
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Commons.Style.font.caption
-            horizontalAlignment: Text.AlignHCenter
-            elide: Text.ElideRight
-          }
-
-          Text {
-            textFormat: Text.PlainText
-            visible: card.workspaceText !== ""
-            width: parent.width
-            text: card.workspaceText
-            color: root.emphasis === "layout"
-              ? Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.78)
-              : root.accent
-            font.family: root.fontFamily
-            font.pixelSize: Commons.Style.font.caption
-            font.bold: root.emphasis !== "layout"
-            horizontalAlignment: Text.AlignHCenter
-            elide: Text.ElideRight
+            Text {
+              textFormat: Text.PlainText
+              visible: card.shows("placement")
+              width: parent.width
+              text: Model.placementLabel(card.modelData)
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Commons.Style.font.caption
+              elide: Text.ElideRight
+            }
           }
         }
 

@@ -1,0 +1,8 @@
+module qs.minimap
+singleton MinimapState 1.0 MinimapState.qml
+MotionBehavior 1.0 MotionBehavior.qml
+WindowTape 1.0 WindowTape.qml
+FocusTab 1.0 FocusTab.qml
+BoxFx 1.0 BoxFx.qml
+WorkspaceFx 1.0 WorkspaceFx.qml
+StateMarks 1.0 StateMarks.qml

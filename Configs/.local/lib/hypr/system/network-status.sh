@@ -19,34 +19,48 @@ probe="${DEFAULT_PROBE_HOST}"
 
 # The interface that actually carries the default route, not the first one up.
 route_details="$(ip route get "${probe}" 2>/dev/null || true)"
-iface="$(awk '{ for (i = 1; i <= NF; i++) if ($i == "dev") { print $(i + 1); exit } }' <<<"${route_details}")"
-gateway="$(awk '{ for (i = 1; i <= NF; i++) if ($i == "via") { print $(i + 1); exit } }' <<<"${route_details}")"
-address="$(ip -o -4 addr show dev "${iface}" 2>/dev/null | awk '{ print $4; exit }')"
+iface="" gateway="" iface_found=false gateway_found=false
+while read -ra route_fields; do
+  for ((field_index = 0; field_index < ${#route_fields[@]}; field_index++)); do
+    if ! ${iface_found} && [[ "${route_fields[field_index]}" == dev ]]; then
+      iface="${route_fields[field_index + 1]:-}" iface_found=true
+    fi
+    if ! ${gateway_found} && [[ "${route_fields[field_index]}" == via ]]; then
+      gateway="${route_fields[field_index + 1]:-}" gateway_found=true
+    fi
+  done
+done <<<"${route_details}"
+address=""
+read -r _ _ _ address _ < <(ip -o -4 addr show dev "${iface}" 2>/dev/null) || true
 profile_iface="$(ip -j -4 route show default | jq -r 'min_by(.metric // 0).dev // empty')"
 [[ -n "${profile_iface}" ]] || profile_iface="${iface}"
 
-dns_json='[]'
+dns_servers=()
 if command -v resolvectl >/dev/null 2>&1 && [[ -n "${iface}" ]]; then
-  dns_json="$(resolvectl dns "${iface}" 2>/dev/null \
-    | sed 's/^.*: *//' \
-    | tr ' ' '\n' \
-    | jq -R -s -c 'split("\n") | map(select(length > 0))' || true)"
-  [[ -n "${dns_json}" ]] || dns_json='[]'
+  while IFS= read -r dns_line; do
+    dns_line="${dns_line##*:}"
+    IFS=' ' read -ra dns_fields <<<"${dns_line}"
+    dns_servers+=("${dns_fields[@]}")
+  done < <(resolvectl dns "${iface}" 2>/dev/null || true)
 fi
 # resolvectl is silent without systemd-resolved; NetworkManager writes the real
 # list straight to resolv.conf there.
-if [[ "${dns_json}" == '[]' && -r /etc/resolv.conf ]]; then
-  dns_json="$(awk '$1 == "nameserver" { print $2 }' /etc/resolv.conf \
-    | jq -R -s -c 'split("\n") | map(select(length > 0))' || true)"
-  [[ -n "${dns_json}" ]] || dns_json='[]'
+if ((${#dns_servers[@]} == 0)) && [[ -r /etc/resolv.conf ]]; then
+  while read -r resolv_key resolv_value _ || [[ -n "${resolv_key}" ]]; do
+    [[ "${resolv_key}" == nameserver && -n "${resolv_value}" ]] && dns_servers+=("${resolv_value}")
+  done </etc/resolv.conf
 fi
 
 band=""
 signal=""
 if command -v nmcli >/dev/null 2>&1 && [[ -n "${profile_iface}" ]]; then
   # IN-USE marks the connected AP; FREQ tells us which band it sits in.
-  wifi_line="$(nmcli -t -f IN-USE,SIGNAL,FREQ dev wifi list ifname "${profile_iface}" --rescan no 2>/dev/null \
-    | awk -F: '$1 == "*" { print $2 " " $3; exit }' || true)"
+  wifi_line=""
+  while IFS=: read -r in_use wifi_signal wifi_freq _; do
+    [[ "${in_use}" == "*" ]] || continue
+    wifi_line="${wifi_signal} ${wifi_freq}"
+    break
+  done < <(nmcli -t -f IN-USE,SIGNAL,FREQ dev wifi list ifname "${profile_iface}" --rescan no 2>/dev/null || true)
   signal="${wifi_line%% *}"
   freq="${wifi_line#* }"
   freq="${freq%% *}"
@@ -60,27 +74,36 @@ fi
 rx=""
 tx=""
 if [[ -n "${iface}" && -d "/sys/class/net/${iface}/statistics" ]]; then
-  rx="$(cat "/sys/class/net/${iface}/statistics/rx_bytes" 2>/dev/null || true)"
-  tx="$(cat "/sys/class/net/${iface}/statistics/tx_bytes" 2>/dev/null || true)"
+  read -r rx 2>/dev/null <"/sys/class/net/${iface}/statistics/rx_bytes" || true
+  read -r tx 2>/dev/null <"/sys/class/net/${iface}/statistics/tx_bytes" || true
 fi
 
 uuid=""
 autoconnect=""
 if command -v nmcli >/dev/null 2>&1 && [[ -n "${profile_iface}" ]]; then
-  uuid="$(nmcli -g GENERAL.CON-UUID device show "${profile_iface}" 2>/dev/null | head -n 1 || true)"
+  uuid="$(nmcli -g GENERAL.CON-UUID device show "${profile_iface}" 2>/dev/null || true)"
+  uuid="${uuid%%$'\n'*}"
   [[ "${uuid}" == -- ]] && uuid=""
-  [[ -n "${uuid}" ]] && autoconnect="$(nmcli -g connection.autoconnect connection show "${uuid}" 2>/dev/null | head -n 1 || true)"
+  if [[ -n "${uuid}" ]]; then
+    autoconnect="$(nmcli -g connection.autoconnect connection show "${uuid}" 2>/dev/null || true)"
+    autoconnect="${autoconnect%%$'\n'*}"
+  fi
 fi
 
 # Second sample: the first pays ARP plus the Wi-Fi radio waking, reading 20x high.
 latency() {
-  local host="$1"
+  local host="$1" line="" ms=null loss=null
   [[ -n "${host}" ]] || { printf '{"ms":null,"loss":null}'; return 0; }
-  LC_ALL=C ping -n -c 2 -i 0.2 -W 1 "${host}" 2>/dev/null \
-    | awk -F'time[=<]' '/time[=<]/ { split($2, part, " "); value = part[1] } /packet loss/ { match($0, /([0-9.]+)% packet loss/, parts); loss = parts[1] } END { printf "{\"ms\":%s,\"loss\":%s}", value == "" ? "null" : value, loss == "" ? "null" : loss }' || true
+  while IFS= read -r line; do
+    [[ "${line}" =~ time[=\<][[:space:]]*([^[:space:]]*) ]] && ms="${BASH_REMATCH[1]:-null}"
+    [[ "${line}" =~ ([0-9.]+)%\ packet\ loss ]] && loss="${BASH_REMATCH[1]}"
+  done < <(LC_ALL=C ping -n -c 2 -i 0.2 -W 1 "${host}" 2>/dev/null || true)
+  printf '{"ms":%s,"loss":%s}' "${ms}" "${loss}"
 }
-router_ms="$(latency "${gateway}")"
+exec {router_latency_fd}< <(latency "${gateway}")
 internet_ms="$(latency "${probe}")"
+IFS= read -r -d '' router_ms <&"${router_latency_fd}" || true
+exec {router_latency_fd}<&-
 
 jq -cn \
   --arg iface "${iface}" --arg address "${address}" --arg gateway "${gateway}" \
@@ -89,10 +112,10 @@ jq -cn \
   --arg rx "${rx}" --arg tx "${tx}" \
   --argjson router "${router_ms}" --argjson internet "${internet_ms}" \
   --arg uuid "${uuid}" --arg autoconnect "${autoconnect}" \
-  --argjson dns "${dns_json}" \
-  '{iface: $iface, profileIface: $profileIface, address: $address, gateway: $gateway, band: $band, dns: $dns,
+  '{iface: $iface, profileIface: $profileIface, address: $address, gateway: $gateway, band: $band, dns: $ARGS.positional,
     uuid: $uuid, autoconnect: ($autoconnect == "yes"),
     signal: (if $signal == "" then null else ($signal | tonumber) end),
     rx: (if $rx == "" then null else ($rx | tonumber) end),
     tx: (if $tx == "" then null else ($tx | tonumber) end),
-    ping: {router: $router.ms, internet: $internet.ms}, packetLoss: $internet.loss}'
+    ping: {router: $router.ms, internet: $internet.ms}, packetLoss: $internet.loss}' \
+  --args "${dns_servers[@]}"

@@ -18,6 +18,7 @@ from pyutils.bar_edge import bar_edge
 from pyutils.hyprctl import batch_json
 from pyutils.lock_paths import runtime_lock_path_ensure_parent
 from pyutils.shell_env import load_shell_assignments
+from notify.verification import dunst_rules
 
 PALETTE = palette_path()
 CONF_DIR = XDG_CONFIG_HOME / "dunst"
@@ -434,6 +435,7 @@ def resolve_font():
 
 def dunst_input_digest(colors: DunstColors, layout: DunstLayout, font: DunstFont):
     hasher = hashlib.sha256()
+    hasher.update(dunst_rules().encode())
     hasher.update(PALETTE.read_bytes())
     if BASE_CONF.is_file():
         hasher.update(BASE_CONF.read_bytes())
@@ -543,7 +545,8 @@ def render_config(base, colors, layout, font):
     format = "<span foreground='{colors.roles["accent-red"]}'>%s</span>\\n%b"
     foreground = "{colors.urgency["low"]["foreground"]}"
 
-{chr(10).join(workflow_background_rule(name, colors, alpha) for name, alpha in WORKFLOW_BACKGROUND_RULES.items())}"""
+{chr(10).join(workflow_background_rule(name, colors, alpha) for name, alpha in WORKFLOW_BACKGROUND_RULES.items())}
+{dunst_rules()}"""
 
 
 def render_roles(colors):

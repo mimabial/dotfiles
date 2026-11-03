@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 wallcache_acquire_lock() {
-  WALLPAPER_CACHE_LOCK="$(hypr_lock_path_ensure_parent wallpaper_cache)"
+  hypr_lock_path_into WALLPAPER_CACHE_LOCK wallpaper_cache
   exec {wallpaper_cache_lock_fd}>"${WALLPAPER_CACHE_LOCK}"
   flock "${wallpaper_cache_lock_fd}"
   trap 'wallcache_release_lock "$?"' EXIT

@@ -488,7 +488,7 @@ Item {
                 Text {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "Arrows: browse   Space: preview   Enter: select   T: test   R: reload   Esc: close"
+                    text: "Arrows Browse  Space Preview  Enter Select  T Test  R Reload  Esc Close"
                     color: root.muted
                     font.family: root.fontFamily
                     font.pixelSize: Commons.Style.font.bodySmall

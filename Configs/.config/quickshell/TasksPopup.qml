@@ -7,10 +7,11 @@ import "CalendarMath.js" as CalendarMath
 
 PopupCard {
     id: root
+    readonly property string agendaScript: root.shell.home + "/.local/lib/hypr/calendar/agenda.sh"
     popupName: "tasks"
-    keyboardHint: addField.activeFocus || editingId !== "" ? "Type task · Enter save · Esc cancel"
-        : searchField.activeFocus ? "Search titles and details · +category · @calendar · in:scope · Esc clear"
-        : "↑↓ move · Tab view · / search · S sort · F facets · Space done · ? help · Esc"
+    keyboardHint: addField.activeFocus || editingId !== "" ? "Type task  Enter Save  Esc Cancel"
+        : searchField.activeFocus ? "Search titles and details  +category  @calendar  in:scope  Esc Clear"
+        : "↑↓ Move  Tab View  / Search  S Sort  F Facets  Space Done  ? Help  Esc"
     contentWidth: Style.px(420) * (facetsOpen ? 4 / 3 : 1)
     contentHeight: Math.max(tasksColumn.implicitHeight,
         showHelp ? helpColumn.implicitHeight : 0) + padding * 2
@@ -379,7 +380,7 @@ PopupCard {
 
     function refresh() {
         readProcess.running = false
-        readProcess.command = ["hyprshell", "calendar/agenda", "--todos-all"]
+        readProcess.command = ["bash", root.agendaScript, "--todos-all"]
         readProcess.running = true
     }
     function run(args, laterSummary) {
@@ -387,7 +388,7 @@ PopupCard {
         editingId = ""
         readProcess.running = false
         laterAdd = laterSummary ? { summary: laterSummary, keys: todos.map(taskKey) } : null
-        readProcess.command = ["hyprshell", "calendar/agenda"].concat(args).concat(["--todos-all"])
+        readProcess.command = ["bash", root.agendaScript].concat(args).concat(["--todos-all"])
         readProcess.running = true
     }
     function complete(item) { run(["--todo-done", String(item.id)]) }

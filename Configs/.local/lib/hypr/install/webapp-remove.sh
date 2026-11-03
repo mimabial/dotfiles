@@ -26,14 +26,18 @@ collect_webapp_records() {
       app_name="$(read_desktop_field "Name" "$file")"
       icon_path="$(read_desktop_field "Icon" "$file")"
     elif grep -q '^Exec=.*hyprshell launch/webapp\.sh.*' "$file"; then
-      app_id="$(basename "${file%.desktop}")"
+      app_id="${file%.desktop}"
+      app_id="${app_id##*/}"
       app_name="$app_id"
       icon_path="$(read_desktop_field "Icon" "$file")"
     else
       continue
     fi
 
-    app_id="${app_id:-$(basename "${file%.desktop}")}"
+    if [[ -z "$app_id" ]]; then
+      app_id="${file%.desktop}"
+      app_id="${app_id##*/}"
+    fi
     app_name="${app_name:-$app_id}"
     printf '%s\t%s\t%s\t%s\n' "$app_id" "$app_name" "$icon_path" "$file"
   done < <(find "$DESKTOP_ENTRY_DIR" -maxdepth 1 -name '*.desktop' -print0)

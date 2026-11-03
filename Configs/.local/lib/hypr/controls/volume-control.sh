@@ -19,7 +19,7 @@ readonly PLAYER_UNMUTE_FALLBACK_VOLUME=0.5
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") -[device] <action> [step]
+Usage: ${0##*/} -[device] <action> [step]
 
 Devices:
   -i    Input device (default source)
@@ -55,14 +55,19 @@ playerctl_cmd() {
   fi
 }
 
-sink_volume_pct() {
-  local target="$1"
-  wpctl get-volume "${target}" 2>/dev/null | awk '{ printf "%.0f\n", $2 * 100 }'
+sink_volume_pct_into() {
+  local -n sink_volume_ref="$1"
+  local volume_output=""
+
+  volume_output="$(wpctl get-volume "$2" 2>/dev/null)"
+  sink_volume_ref="${volume_output:+0}"
+  [[ "${volume_output}" =~ ^Volume:\ ([0-9]+)\.([0-9][0-9]) ]] \
+    && sink_volume_ref=$((10#${BASH_REMATCH[1]} * 100 + 10#${BASH_REMATCH[2]}))
 }
 
 sink_is_muted() {
   local target="$1"
-  wpctl get-volume "${target}" 2>/dev/null | grep -q "MUTED"
+  [[ "$(wpctl get-volume "${target}" 2>/dev/null)" == *MUTED* ]]
 }
 
 notify_volume() {
@@ -87,7 +92,7 @@ notify_mute() {
   [[ "${muted}" == "true" ]] && prefix="muted"
 
   dunstify -a "Volume control" -r "${NOTIFY_ID_VOLUME}" -t "${NOTIFY_OSD_MS}" \
-    -e -i "$(media_icons_dir)/${prefix}-${icon_suffix}.svg" "${prefix}" "${label}"
+    -e -i "${MEDIA_ICONS_DIR}/${prefix}-${icon_suffix}.svg" "${prefix}" "${label}"
 }
 
 apply_sink_delta() {
@@ -158,14 +163,15 @@ toggle_player_mute() {
 }
 
 run_action() {
-  local device_kind="$1"
-  local target="$2"
-  local player_name="$3"
-  local action="$4"
-  local step="$5"
-  local boost_enabled="$6"
-  local notify_enabled="$7"
-  local label="$8"
+  local -n options_ref="$1"
+  local device_kind="${options_ref[device_kind]}"
+  local target="${options_ref[target]}"
+  local player_name="${options_ref[player_name]}"
+  local action="${options_ref[action]}"
+  local step="${options_ref[step]}"
+  local boost_enabled="${options_ref[boost]}"
+  local notify_enabled="${options_ref[notify]}"
+  local label="${options_ref[label]}"
   local delta="-"
   local volume_pct=""
   local muted=""
@@ -177,12 +183,12 @@ run_action() {
       case "${device_kind}" in
         sink)
           apply_sink_delta "${target}" "${delta}" "${step}" "${boost_enabled}"
-          volume_pct="$(sink_volume_pct "${target}")"
+          sink_volume_pct_into volume_pct "${target}"
           ;;
         source)
           [[ -n "${target}" ]] || return 0
           apply_source_delta "${target}" "${delta}" "${step}"
-          volume_pct="$(source_volume_pct "${target}")"
+          source_volume_pct_into volume_pct "${target}"
           ;;
         player)
           apply_player_delta "${player_name}" "${delta}" "${step}"
@@ -234,7 +240,7 @@ set_default_command() {
 parse_args() {
   local -n options_ref="$1"
   shift
-  local opt=""
+  local opt="" sink_label=""
   local OPTIND=1
 
   while getopts "iop:tq" opt; do
@@ -247,7 +253,8 @@ parse_args() {
       o)
         options_ref[device_kind]="sink"
         options_ref[target]="@DEFAULT_AUDIO_SINK@"
-        options_ref[label]="$(get_sink_label @DEFAULT_AUDIO_SINK@)"
+        get_sink_label_into sink_label @DEFAULT_AUDIO_SINK@
+        options_ref[label]="${sink_label}"
         ;;
       p)
         options_ref[device_kind]="player"
@@ -306,8 +313,7 @@ main() {
   require_device_commands "${options[device_kind]}" "${options[notify]}" || return 1
   validate_action "${options[action]}" "${options[step]}" || return 2
 
-  run_action "${options[device_kind]}" "${options[target]}" "${options[player_name]}" "${options[action]}" \
-    "${options[step]}" "${options[boost]}" "${options[notify]}" "${options[label]}"
+  run_action options
 }
 
 main "$@"

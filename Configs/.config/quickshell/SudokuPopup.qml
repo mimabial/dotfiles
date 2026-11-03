@@ -5,7 +5,7 @@ import "SudokuModel.js" as Game
 PopupCard {
     id: root
     popupName: "sudoku"
-    keyboardHint: "Arrows move · 1–9 place · P pencil · E erase · Esc"
+    keyboardHint: "Arrows Move  1–9 Place  P Pencil  E Erase  Esc"
     contentWidth: Style.px(360)
     contentHeight: contentColumn.implicitHeight + padding * 2
 

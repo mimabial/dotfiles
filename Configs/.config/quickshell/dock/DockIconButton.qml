@@ -36,8 +36,8 @@ Item {
   Shell.SymbolicIcon {
     anchors.centerIn: parent
     name: btn.icon
-    context: "categories"
-    color: Commons.Color.bar.text
+    context: "actions"
+    color: Commons.Color.foreground
     size: btn.dock.iconSize
     transformOrigin: btn.dock.floorTransformOrigin
     scale: btn.magnifyScale * (area.pressed ? 0.92 : 1.0)
@@ -61,9 +61,8 @@ Item {
 
   HoverTooltip {
     dock: btn.dock
+    target: btn
     text: btn.tooltip
     hovered: area.containsMouse
-    x: (btn.width - width) / 2
-    y: btn.dock.tipY(btn.height, height)
   }
 }

@@ -4,7 +4,12 @@
   "clock": "gnome",
   "mediaHistoryLocalOnly": true,
   "left": [
-    "gnome-activities"
+    {
+      "id": "gnome-activities",
+      "props": {
+        "fixedWorkspaceCount": 5
+      }
+    }
   ],
   "centerAnchor": "gnome-date-menu",
   "center": [

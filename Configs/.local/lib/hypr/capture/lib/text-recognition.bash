@@ -6,7 +6,7 @@ hypr_ocr_languages_into() {
   local -a unique=()
   local -A seen=()
 
-  if [[ "$(declare -p SCREENSHOT_OCR_TESSERACT_LANGUAGES 2>/dev/null)" == "declare -a"* ]]; then
+  if [[ "${SCREENSHOT_OCR_TESSERACT_LANGUAGES@a}" == *a* ]]; then
     languages_ref=("${SCREENSHOT_OCR_TESSERACT_LANGUAGES[@]}")
   else
     raw="${SCREENSHOT_OCR_LANGS:-eng}"

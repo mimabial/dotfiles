@@ -19,13 +19,14 @@ Column {
   readonly property var snap: service ? service.snapshot : ({})
   readonly property var power: snap.power || ({})
   readonly property var domains: Array.isArray(power.domains) ? power.domains : []
-  readonly property var devices: snap.gpu && Array.isArray(snap.gpu.devices) ? snap.gpu.devices : []
+  readonly property var devices: Model.gpuList(snap)
+  readonly property var total: Model.powerTotal(snap)
   readonly property var battery: snap.battery || ({})
-  readonly property var fine: service ? service.powerFine : ({ cpu: [], gpu: [] })
-  readonly property var hour: service ? service.powerHour : ({ cpu: [], gpu: [] })
-  readonly property var day: service ? service.powerDay : ({ cpu: [], gpu: [] })
-  readonly property var cpuSeries: historyRange === 2 ? day.cpu : historyRange === 1 ? hour.cpu : fine.cpu
-  readonly property var gpuSeries: historyRange === 2 ? day.gpu : historyRange === 1 ? hour.gpu : fine.gpu
+  readonly property var hist: !service ? Model.emptyHistory()
+    : historyRange === 0 ? service.powerFine : Model.peakHistoryView(service.history, service.historyHour, service.historyDay, historyRange)
+  readonly property var gpuPeaks: service ? service.gpuPowerPeaks : ({})
+  readonly property var gpuEnergy: service ? service.gpuEnergyWh : ({})
+  readonly property var poweredGpus: devices.filter(device => Model.gpuId(device) in gpuPeaks || Model.hasReading(hist.gpuPowers[Model.gpuId(device)]))
   readonly property color s1: service ? service.series1 : Commons.Color.accent
   readonly property color s2: service ? service.series2 : Commons.Color.accent
 
@@ -45,6 +46,30 @@ Column {
 
   width: parent ? parent.width : implicitWidth
   spacing: Commons.Style.space(10)
+
+  Card {
+    visible: root.hasWatts(root.total.watts)
+    foreground: root.foreground
+
+    CardHeader { title: "Total"; detail: root.total.detail; foreground: root.foreground; fontFamily: root.fontFamily }
+    BigStat {
+      width: parent.width
+      value: root.watts(root.total.watts)
+      unit: "W"
+      label: root.battery.present === true ? (root.battery.status === "Discharging" ? "On battery" : "On AC power") : ""
+      foreground: root.foreground
+      fontFamily: root.fontFamily
+    }
+    HistoryGraph {
+      width: parent.width
+      height: Commons.Style.space(56)
+      barWidth: Model.historyBarWidth(width, root.historyRange)
+      showGaps: root.historyRange > 0
+      series: [root.hist.powerTotal || []]
+      colors: [root.s1]
+      baselineColor: Commons.Util.alpha(root.foreground, 0.14)
+    }
+  }
 
   Card {
     foreground: root.foreground
@@ -83,6 +108,7 @@ Column {
         required property int index
         readonly property var device: root.devices[index] || ({})
         label: Model.gpuIcon(device.vendor) + "  " + Model.shortGpuName(device.name)
+        detail: device.asleep ? "asleep" : ""
         value: root.watts(device.power)
         unit: root.hasWatts(device.power) ? "W" : ""
         foreground: root.foreground
@@ -111,6 +137,7 @@ Column {
   }
 
   Card {
+    id: historyCard
     foreground: root.foreground
 
     CardHeader { title: "Draw history"; detail: "Peak in each time slot"; foreground: root.foreground; fontFamily: root.fontFamily }
@@ -121,20 +148,32 @@ Column {
       height: Commons.Style.space(56)
       barWidth: Model.historyBarWidth(width, root.historyRange)
       showGaps: root.historyRange > 0
-      series: [root.cpuSeries || []]
+      series: [root.hist.cpuPower || []]
       colors: [root.s1]
       baselineColor: Commons.Util.alpha(root.foreground, 0.14)
     }
 
-    SectionTitle { text: "GPU (selected) · session peak " + root.wattsLabel(root.service ? root.service.peakGpuPower : null); fontFamily: root.fontFamily }
-    HistoryGraph {
-      width: parent.width
-      height: Commons.Style.space(56)
-      barWidth: Model.historyBarWidth(width, root.historyRange)
-      showGaps: root.historyRange > 0
-      series: [root.gpuSeries || []]
-      colors: [root.s2]
-      baselineColor: Commons.Util.alpha(root.foreground, 0.14)
+    Repeater {
+      model: root.poweredGpus.length
+
+      delegate: Column {
+        id: gpuDraw
+        required property int index
+        readonly property var device: root.poweredGpus[index] || ({})
+        width: parent.width
+        spacing: historyCard.spacing
+
+        SectionTitle { text: Model.shortGpuName(gpuDraw.device.name) + " · session peak " + root.wattsLabel(root.gpuPeaks[Model.gpuId(gpuDraw.device)]); fontFamily: root.fontFamily }
+        HistoryGraph {
+          width: parent.width
+          height: Commons.Style.space(56)
+          barWidth: Model.historyBarWidth(width, root.historyRange)
+          showGaps: root.historyRange > 0
+          series: [root.hist.gpuPowers[Model.gpuId(gpuDraw.device)] || []]
+          colors: [root.s2]
+          baselineColor: Commons.Util.alpha(root.foreground, 0.14)
+        }
+      }
     }
   }
 
@@ -143,7 +182,20 @@ Column {
 
     CardHeader { title: "Session energy"; foreground: root.foreground; fontFamily: root.fontFamily }
     StatRow { label: "CPU package"; value: root.wattHoursText(root.service ? root.service.cpuEnergyWh : 0); unit: value === "—" ? "" : "Wh"; foreground: root.foreground; fontFamily: root.fontFamily }
-    StatRow { label: "GPU (selected)"; value: root.wattHoursText(root.service ? root.service.gpuEnergyWh : 0); unit: value === "—" ? "" : "Wh"; foreground: root.foreground; fontFamily: root.fontFamily }
+
+    Repeater {
+      model: root.poweredGpus.length
+
+      delegate: StatRow {
+        required property int index
+        readonly property var device: root.poweredGpus[index] || ({})
+        label: Model.shortGpuName(device.name)
+        value: root.wattHoursText(root.gpuEnergy[Model.gpuId(device)] || 0)
+        unit: value === "—" ? "" : "Wh"
+        foreground: root.foreground
+        fontFamily: root.fontFamily
+      }
+    }
 
     Text {
       width: parent.width

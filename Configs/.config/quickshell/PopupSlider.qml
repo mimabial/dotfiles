@@ -6,6 +6,10 @@ Item {
     id: root
     required property var shell
     property string label: ""
+    property var appearance: ({})
+    readonly property real trackHeight: appearance.trackHeight === undefined ? Style.trackHeight : Style.px(appearance.trackHeight)
+    readonly property real knobSize: appearance.knobSize === undefined ? Style.knobSize : Style.px(appearance.knobSize)
+    readonly property real horizontalPadding: appearance.padding === undefined ? Style.controlPaddingX : Style.px(appearance.padding)
     property string icon: ""
     property real value: 0
     readonly property real liveValue: pointerSlider.value
@@ -23,7 +27,7 @@ Item {
     signal released(real value)
     signal keyboardAdjusted(int direction)
     signal clicked(int button)
-    implicitHeight: (hasHeader ? labelText.implicitHeight + Style.md : 0) + Style.sliderHeight
+    implicitHeight: (hasHeader ? labelText.implicitHeight + Style.md : 0) + root.knobSize + Style.sm
 
     function syncExternalValue() {
         if (!pointerSlider.pressed) pointerSlider.value = value
@@ -46,7 +50,6 @@ Item {
         anchors.bottomMargin: -Style.xs
         visible: root.cursored
         color: root.shell.hoverFill()
-        border.color: root.shell.hoverEdge(.85)
         radius: root.shell.rounding
     }
 
@@ -56,8 +59,8 @@ Item {
         id: pointerSlider
         focusPolicy: Qt.NoFocus
         anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
-        anchors.leftMargin: Style.controlPaddingX; anchors.rightMargin: Style.controlPaddingX
-        height: Style.sliderHeight
+        anchors.leftMargin: root.horizontalPadding; anchors.rightMargin: root.horizontalPadding
+        height: root.knobSize + Style.sm
         from: root.minimum; to: root.maximum
         stepSize: root.step; snapMode: root.step > 0 ? Slider.SnapAlways : Slider.NoSnap
         onMoved: root.changed(value)
@@ -68,9 +71,9 @@ Item {
             function onValueChanged() { root.syncExternalValue() }
         }
         background: Rectangle {
-            implicitWidth: Style.px(100); implicitHeight: Style.trackHeight
+            implicitWidth: Style.px(100); implicitHeight: root.trackHeight
             x: pointerSlider.leftPadding; y: pointerSlider.topPadding + pointerSlider.availableHeight / 2 - height / 2
-            width: pointerSlider.availableWidth; height: Style.trackHeight; radius: Style.trackHeight / 2
+            width: pointerSlider.availableWidth; height: root.trackHeight; radius: root.trackHeight / 2
             color: root.shell.alpha(root.shell.foreground, .14)
             Rectangle { width: parent.width * pointerSlider.visualPosition; height: parent.height; radius: parent.radius; color: root.shell.role("act_br", root.shell.accent) }
             Repeater {
@@ -84,7 +87,17 @@ Item {
                 }
             }
         }
-        handle: Rectangle { implicitWidth: Style.knobSize; implicitHeight: Style.knobSize; x: pointerSlider.leftPadding + pointerSlider.visualPosition * (pointerSlider.availableWidth - width); y: pointerSlider.topPadding + pointerSlider.availableHeight / 2 - height / 2; width: Style.knobSize; height: Style.knobSize; radius: Style.knobSize / 2; color: root.shell.foreground }
+        handle: Rectangle {
+            implicitWidth: root.knobSize; implicitHeight: root.knobSize
+            x: pointerSlider.leftPadding + pointerSlider.visualPosition * (pointerSlider.availableWidth - width)
+            y: pointerSlider.topPadding + pointerSlider.availableHeight / 2 - height / 2
+            width: root.knobSize; height: root.knobSize; radius: width / 2; color: root.shell.foreground
+            Rectangle {
+                anchors.centerIn: parent; visible: root.appearance.knobInset !== undefined
+                width: parent.width - Style.px(root.appearance.knobInset ?? 0) * 2; height: width; radius: width / 2
+                color: root.shell.role("act_br", root.shell.accent)
+            }
+        }
     }
     PopupPointer { shell: root.shell; row: root }
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if ! declare -F hypr_ensure_runtime_root_dir >/dev/null 2>&1; then
+if ! declare -F hypr_ensure_runtime_dir_into >/dev/null 2>&1; then
   _hypr_lock_source_dir="${BASH_SOURCE[0]%/*}"
   [[ "${_hypr_lock_source_dir}" != "${BASH_SOURCE[0]}" ]] || _hypr_lock_source_dir=.
   # shellcheck source=/dev/null
@@ -8,11 +8,11 @@ if ! declare -F hypr_ensure_runtime_root_dir >/dev/null 2>&1; then
   unset _hypr_lock_source_dir
 fi
 
-hypr_lock_path_ensure_parent() {
-  local operation="$1"
-  local runtime_parent_dir=""
+hypr_lock_path_into() {
+  local -n lock_path_ref="$1"
+  local operation="$2"
 
   [[ -n "${operation}" ]] || return 1
-  runtime_parent_dir="$(hypr_ensure_runtime_root_dir)" || return 1
-  printf '%s/%s.lock\n' "${runtime_parent_dir}" "${operation//_/-}"
+  hypr_ensure_runtime_dir_into lock_path_ref || return 1
+  lock_path_ref+="/${operation//_/-}.lock"
 }

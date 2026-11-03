@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+declare -F hypr_monitors_json >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/geometry.bash" || return 1
+
 monitor_state_dir() {
   printf '%s\n' "${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}"
 }
@@ -102,7 +104,7 @@ monitor_fragment_exists() {
 monitor_reload() {
   if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl >/dev/null 2>&1; then
     hyprctl reload >/dev/null
-    declare -F hypr_monitors_invalidate >/dev/null 2>&1 && hypr_monitors_invalidate
+    hypr_monitors_invalidate
   fi
 }
 

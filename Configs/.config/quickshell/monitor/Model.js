@@ -93,30 +93,17 @@ function displayModelLabel(display, compact) {
   return monitor.internal === true ? "Internal · " + label : label
 }
 
-function displayDetailLabel(display) {
-  var monitor = display || {}
-  var mode = String(monitor.mode || "").trim()
-  var match = mode.match(/^(\d+)x(\d+)(?:@([\d.]+)Hz)?$/)
-  var parts = []
-  if (match) {
-    parts.push(match[1] + "×" + match[2])
-    if (match[3]) parts.push(Math.round(Number(match[3])) + " Hz")
-  } else if (mode !== "") {
-    parts.push(mode)
-  }
-  var scale = Number(monitor.scale || 1)
-  if (!isFinite(scale) || scale <= 0) scale = 1
-  parts.push(String(Math.round(scale * 100) / 100) + "x")
-  return parts.join(" · ")
+function modeLabel(mode) {
+  var text = String(mode || "").trim()
+  var match = text.match(/^(\d+)x(\d+)(?:@([\d.]+)Hz)?$/)
+  if (!match) return text
+  return match[1] + "×" + match[2] + (match[3] ? " · " + Math.round(Number(match[3])) + " Hz" : "")
 }
 
-function displayScaleLayoutLabel(display) {
+function placementLabel(display) {
   var monitor = display || {}
-  var scale = Number(monitor.scale || 1)
-  if (!isFinite(scale) || scale <= 0) scale = 1
-  var logicalWidth = Math.max(1, Math.round(Number(monitor.width || 1)))
-  var logicalHeight = Math.max(1, Math.round(Number(monitor.height || 1)))
-  return formatScale(scale) + "x = " + logicalWidth + "×" + logicalHeight
+  return formatScale(monitor.scale) + "x · " + monitor.width + "×" + monitor.height
+    + " at " + Number(monitor.x || 0) + "," + Number(monitor.y || 0)
 }
 
 function layoutBounds(displays) {
@@ -366,7 +353,7 @@ function modeOptions(editorDisplays, key) {
   var modes = metadata.available_modes instanceof Array ? metadata.available_modes : []
   return modes.map(function(mode) {
     var value = String(mode || "")
-    return { value: value, label: displayDetailLabel({ mode: value, scale: 1 }).replace(/ · 1x$/, "") }
+    return { value: value, label: modeLabel(value) }
   })
 }
 
@@ -732,15 +719,14 @@ function layoutMetrics(bounds, canvasWidth, canvasHeight, padding) {
   return { scale: Math.min(usableWidth / area.width, usableHeight / area.height) }
 }
 
-function workspaceText(plan, outputKey) {
+function workspaceIds(plan, outputKey) {
   var rows = plan instanceof Array ? plan : []
   for (var row of rows) {
     if (String((row || {}).output_key || "") === String(outputKey || "")) {
-      var workspaces = row.workspaces instanceof Array ? row.workspaces : []
-      return workspaces.join(", ")
+      return row.workspaces instanceof Array ? row.workspaces.map(String) : []
     }
   }
-  return ""
+  return []
 }
 
 function namedProfile(profile, name) {
@@ -770,8 +756,8 @@ if (typeof module !== "undefined") {
     hiddenDisplays: hiddenDisplays,
     layoutDisplays: layoutDisplays,
     displayModelLabel: displayModelLabel,
-    displayDetailLabel: displayDetailLabel,
-    displayScaleLayoutLabel: displayScaleLayoutLabel,
+    modeLabel: modeLabel,
+    placementLabel: placementLabel,
     layoutBounds: layoutBounds,
     layoutRect: layoutRect,
     clone: clone,
@@ -817,7 +803,7 @@ if (typeof module !== "undefined") {
     workspacePlanRows: workspacePlanRows,
     enabledOutputCount: enabledOutputCount,
     layoutMetrics: layoutMetrics,
-    workspaceText: workspaceText,
+    workspaceIds: workspaceIds,
     namedProfile: namedProfile,
     releaseVersion: releaseVersion,
     daemonNeedsRestart: daemonNeedsRestart

@@ -7,7 +7,7 @@
   "backgroundBlur": 1,
   "backgroundDim": 0,
   "hotCornerEnabled": true,
-  "hotCornerPosition": "top-right",
+  "hotCornerPosition": "bottom-right",
   "hotCornerDelay": 0,
   "initialWorkspaceScope": "all",
   "workspaceLabelStyle": "full",

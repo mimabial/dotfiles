@@ -120,7 +120,6 @@
                 "cavaBarWidth": 5,
                 "cavaGap": 2,
                 "cavaPosition": "bottom",
-                "cavaMode": "foobar",
                 "cavaFps": 30,
                 "cavaGain": 1,
                 "cavaSmoothing": 77
@@ -236,14 +235,6 @@
                 "index": 8,
                 "stringEntry": true
               }
-            },
-            {
-              "id": "altscape",
-              "trayPosition": {
-                "section": "right",
-                "index": 7,
-                "stringEntry": true
-              }
             }
           ],
           "centerAnchor": "datetime"
@@ -252,5 +243,9 @@
       "snapshots": []
     }
   },
-  "collapsed": {}
+  "collapsed": {
+    "winbar": {
+      "right": false
+    }
+  }
 }

@@ -94,7 +94,22 @@ BarButton {
         item.activate()
     }
     component Icon: SymbolicIcon {
+        id: statusIcon
+        property string popup: "controlcenter"
+        property string title: "Quick Settings"
         size: root.symbolSize; color: root.contentColor; directory: root.box.symbols ?? ""
+        enabled: root.popupsAllowed; activeFocusOnTab: true
+        Accessible.role: Accessible.Button; Accessible.name: title
+        Accessible.onPressAction: statusIcon.activateKeyboard()
+        function activateKeyboard() { root.shell.togglePopup(statusIcon.popup) }
+        Keys.onReturnPressed: statusIcon.activateKeyboard()
+        Keys.onEnterPressed: statusIcon.activateKeyboard()
+        Keys.onSpacePressed: statusIcon.activateKeyboard()
+        MouseArea {
+            anchors.fill: parent; anchors.leftMargin: -Style.sm / 2; anchors.rightMargin: -Style.sm / 2
+            cursorShape: Qt.PointingHandCursor
+            onClicked: statusIcon.activateKeyboard()
+        }
     }
     Row {
         id: indicators
@@ -104,22 +119,24 @@ BarButton {
         Icon { visible: Privacy.camera.length > 0; name: "camera-web"; context: "devices"; color: root.shell.role("warning", root.shell.foreground) }
         Icon {
             visible: Privacy.microphone.length > 0; color: root.shell.role("warning", root.shell.foreground)
+            popup: "microphone"; title: "Microphone"
             name: StatusSymbols.volume(root.source, !!root.source?.audio?.muted, "microphone-sensitivity")
         }
         Icon { visible: Privacy.location; name: "location-services-active" }
-        Icon { visible: root.nightLight; name: "night-light" }
-        Icon { visible: root.vpn.state === "connected"; name: "network-vpn" }
+        Icon { visible: root.nightLight; name: "night-light"; popup: "hyprsunset"; title: "Night Light" }
+        Icon { visible: root.vpn.state === "connected"; name: "network-vpn"; popup: "vpn"; title: "VPN" }
         Icon {
             visible: !!root.wired?.connected || !root.airplaneMode && !!root.wifi
+            popup: "network"; title: "Network"
             name: root.wired?.connected ? "network-wired" : StatusSymbols.wifi(Networking.wifiEnabled, root.network)
             context: root.wired?.connected ? "devices" : "status"
         }
-        Icon { visible: root.doNotDisturb; name: "notifications-disabled" }
-        Icon { visible: root.connectedBluetooth.length > 0; name: "bluetooth-active" }
+        Icon { visible: root.doNotDisturb; name: "notifications-disabled"; popup: "notifications"; title: "Notifications" }
+        Icon { visible: root.connectedBluetooth.length > 0; name: "bluetooth-active"; popup: "bluetooth"; title: "Bluetooth" }
         Icon { visible: root.airplaneMode && (!!root.wifi || !!root.adapter); name: "airplane-mode" }
-        Icon { name: StatusSymbols.volume(root.sink, !!root.sink?.audio?.muted) }
-        Icon { visible: !root.balanced; name: root.profileIcon }
-        Icon { visible: UPower.displayDevice.isPresent; name: StatusSymbols.battery(UPower.displayDevice, UPower.onBattery) }
+        Icon { name: StatusSymbols.volume(root.sink, !!root.sink?.audio?.muted); popup: "audio"; title: "Sound" }
+        Icon { visible: !root.balanced; name: root.profileIcon; popup: "power"; title: "Power Mode" }
+        Icon { visible: UPower.displayDevice.isPresent; name: StatusSymbols.battery(UPower.displayDevice, UPower.onBattery); popup: "power"; title: "Battery" }
     }
     component Action: PopupIconButton {
         id: action
@@ -177,8 +194,6 @@ BarButton {
         color: highlighted ? root.shell.hoverFill() : checked ? root.shell.selectedFill()
             : root.shell.alpha(root.shell.role("alt_bg", root.shell.background), Style.selectedFillAlpha)
         HoverHandler { id: tileHover; cursorShape: Qt.PointingHandCursor }
-        border.width: root.shell.borderWidth
-        border.color: highlighted ? root.shell.hoverEdge() : checked ? root.shell.selectedEdge() : "transparent"
         Accessible.role: Accessible.Button; Accessible.name: title; Accessible.checkable: true; Accessible.checked: checked
         SymbolicIcon {
             id: icon

@@ -2,7 +2,7 @@
 
 wallpaper_catalog_lock() {
   local lock_file=""
-  lock_file="$(hypr_lock_path_ensure_parent wallpaper_catalog)" || return 1
+  hypr_lock_path_into lock_file wallpaper_catalog || return 1
   exec {wallpaper_catalog_lock_fd}>"${lock_file}" || return 1
   flock "${wallpaper_catalog_lock_fd}"
 }
@@ -124,12 +124,12 @@ wallpaper_hashmap_cached_into() {
   local -A cache_hash=() cache_meta=()
   local cache_file="" regex_ext="" tmp_cache=""
   wallpaper_supported_extensions_into supported_extensions
-  cache_file="$(wallpaper_hashmap_cache_file "${wall_sources[@]}")"
-  mkdir -p "$(wallpaper_cache_root)/hashmap"
+  wallpaper_hashmap_cache_file_into cache_file "${wall_sources[@]}"
+  [[ -d "${cache_file%/*}" ]] || mkdir -p "${cache_file%/*}"
 
   wallpaper_catalog_write_meta "${cache_file}.meta" wall_sources supported_extensions
   wallpaper_catalog_load_index "${cache_file}" cache_hash cache_meta
-  regex_ext="$(wallpaper_extensions_regex "${supported_extensions[@]}")"
+  wallpaper_extensions_regex_into regex_ext "${supported_extensions[@]}"
 
   tmp_cache="${cache_file}.tmp"
   : >"${tmp_cache}"
@@ -158,7 +158,6 @@ wallpaper_catalog_load_file() {
   hash="$(wallpaper_file_hash "${path}")" || return 1
   wallpaper_paths=("${path}")
   wallpaper_hash_by_path=(["${path}"]="${hash}")
-  selected_wallpaper_index=0
 }
 
 wallpaper_list_into() {
@@ -181,7 +180,7 @@ wallpaper_list_into() {
   [[ ${#find_sources[@]} -eq 0 ]] && return 1
 
   local regex_ext=""
-  regex_ext="$(wallpaper_extensions_regex "${supported_extensions[@]}")"
+  wallpaper_extensions_regex_into regex_ext "${supported_extensions[@]}"
 
   local wall_file
   while IFS= read -r -d '' wall_file; do
@@ -203,7 +202,6 @@ wallpaper_list() {
 wallpaper_ensure_catalog() {
   [[ ${#wallpaper_paths[@]} -gt 0 ]] && return 0
 
-  selected_wallpaper_index=0
   if ! wallpaper_theme_sources; then
     print_log -err "wallpaper" "\"${HYPR_THEME_DIR}\" does not exist"
     exit 1

@@ -17,7 +17,7 @@ menu_render_options() {
     output+="${label}"$'\n'
     if [[ "${HYPR_MENU_KINDS["${key}"]}" == "submenu" ]]; then
       menu_descendant_depth "${target}"
-      glyph="$(menu_submenu_glyph "${HYPR_MENU_DEPTHS["${target}"]}")"
+      menu_submenu_glyph_into glyph "${HYPR_MENU_DEPTHS["${target}"]}"
       flagged+="1"$'\t'"${label}"$'\t'"${glyph}"$'\n'
     elif menu_item_active "${target}"; then
       ((active_row < 0)) && active_row=row
@@ -73,9 +73,15 @@ menu_show_menu() {
   local selection=""
   local rofi_exit=0
 
+  menu_fill_deferred "${menu_id}"
   menu_resolve_style
   menu_render_options "${menu_id}" options preselect
   MENU_PROMPT_GLYPH="${HYPR_MENU_GLYPHS["${menu_id}"]:-${MENU_ROOT_GLYPH}}"
+  if [[ "${menu_id}" == "main" ]]; then
+    MENU_PLACEHOLDER="${ROFI_HEADER_GREETING}"
+  else
+    menu_breadcrumb_into MENU_PLACEHOLDER "${menu_id}" "${prompt}"
+  fi
   selection="$(menu "${prompt}" "${options}" --select "${preselect}" --nav tree)"
   rofi_exit=$?
 

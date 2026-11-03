@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="62"
+   height="62"
+   version="1.1"
+   id="svg10"
+   sodipodi:docname="applications-ide.svg"
+   inkscape:version="1.4.4 (unknown)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs10">
+    <linearGradient
+       id="linearGradient11"
+       inkscape:collect="always">
+      <stop
+         style="stop-color:#214478;stop-opacity:1"
+         offset="0"
+         id="stop11" />
+      <stop
+         style="stop-color:#4a5e6f;stop-opacity:1;"
+         offset="1"
+         id="stop12" />
+    </linearGradient>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient11"
+       id="linearGradient12"
+       x1="30.978724"
+       y1="60"
+       x2="30.553192"
+       y2="5.9255319"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1,0,0,0.98245614,-1,-0.92982455)" />
+    <linearGradient
+       id="linear0"
+       gradientUnits="userSpaceOnUse"
+       x1="0"
+       y1="0"
+       x2="0"
+       y2="1"
+       gradientTransform="matrix(45.519013,0,0,27.811245,10.582532,20.833093)">
+      <stop
+         offset="0"
+         style="stop-color:rgb(100%,100%,100%);stop-opacity:1;"
+         id="stop2" />
+      <stop
+         offset="1"
+         style="stop-color:rgb(80.000001%,80.000001%,80.000001%);stop-opacity:1;"
+         id="stop3" />
+    </linearGradient>
+  </defs>
+  <sodipodi:namedview
+     id="namedview10"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="11.75"
+     inkscape:cx="26.808511"
+     inkscape:cy="30.680851"
+     inkscape:window-width="1920"
+     inkscape:window-height="994"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg10" />
+  <rect
+     style="opacity:0.2;stroke-width:0.991189"
+     width="56"
+     height="55.017544"
+     x="3"
+     y="3.9824562"
+     rx="16.799999"
+     ry="16.505262"
+     id="rect1" />
+  <rect
+     style="fill:url(#linearGradient12);stroke-width:0.991189"
+     width="56"
+     height="55.017544"
+     x="3"
+     y="3"
+     rx="16.799999"
+     ry="16.505262"
+     id="rect2" />
+  <path
+     style="opacity:0.1;fill:#ffffff;stroke-width:0.991189"
+     d="M 19.800781,3 C 10.493582,3 3,10.362116 3,19.50603 v 0.982457 C 3,11.344572 10.493582,3.9824562 19.800781,3.9824562 H 42.199219 C 51.506418,3.9824562 59,11.344572 59,20.488487 V 19.50603 C 59,10.362116 51.506418,3 42.199219,3 Z"
+     id="path9" />
+  <path
+     style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.857074"
+     d="m 47.023001,12.008494 c -0.578073,0.04696 -1.159517,0.338792 -1.62734,0.791629 l -10.472477,9.103726 c -0.451103,0.436073 -0.705064,1.049908 -0.705064,1.670464 0,0.295183 0.06678,0.566885 0.177102,0.835238 0.0035,0.01345 -0.007,0.0302 0,0.04365 -0.387619,0.828532 -0.263991,1.985795 -0.263991,4.484779 0,0.922459 -2.395908,1.89187 -2.994051,1.89187 -0.02673,0 -0.05681,0 -0.08688,0 -1.904707,0 -8.083263,0.281753 -9.987972,2.901509 -1.904681,2.619757 -9.062327,14.521022 -9.062327,16.26864 2.857048,0 23.618224,-10.368319 24.680848,-11.344431 1.28984,-1.180739 0.65829,-3.558967 -0.173762,-5.145587 0.0035,-0.007 -0.0035,-0.03351 0,-0.04368 0.02342,-0.05703 0.03008,-0.140896 -0.0434,-0.265002 -0.447784,-0.748021 -0.705081,-1.49939 -0.705081,-2.549303 0,-2.331278 0.243942,-3.615997 0.748519,-4.353958 1.122766,0.194555 2.750111,-0.35557 3.475219,-1.053281 l 9.196001,-8.751486 c 0.935628,-0.90233 1.156183,-2.260842 0.220529,-3.166514 l -0.74851,-0.748023 c -0.467832,-0.449482 -1.049263,-0.620554 -1.627363,-0.57024 z m 0,0"
+     id="path3" />
+</svg>

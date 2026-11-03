@@ -126,16 +126,16 @@ Item {
           wrapMode: Text.WordWrap
         }
 
-        Text {
-          width: parent.width
-          visible: root.busy || Boolean(root.errorMessage)
-          text: root.errorMessage || "Saving preference…"
-          textFormat: Text.PlainText
-          color: root.errorMessage ? Commons.Color.urgent : root.foreground
-          opacity: root.errorMessage ? 1 : 0.6
-          font.family: root.fontFamily
-          font.pixelSize: Commons.Style.font.caption
-          wrapMode: Text.WordWrap
+        PopupHint {
+            id: errorHint
+            shell: Commons.Style.shell; error: root.errorMessage !== ""
+            width: parent.width
+            visible: root.busy || Boolean(root.errorMessage)
+            text: root.errorMessage || "Saving preference…"
+            textFormat: Text.PlainText
+            color: errorHint.error ? errorHint.shell.foreground : root.foreground
+            opacity: root.errorMessage ? 1 : 0.6
+            horizontalAlignment: Text.AlignLeft; wrapMode: Text.Wrap
         }
 
         Item {

@@ -16,6 +16,7 @@ esac
 hyprshell util/state.sh clear 're*-required'
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash"
+declare -F hypr_wait_for >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/events.bash" || exit 1
 
 no_clients_left() {
   local count=""

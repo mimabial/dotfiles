@@ -2,7 +2,7 @@ local runtime = require("runtime")
 local vars = require("vars")
 
 vars.set("WORKFLOW_ICON", "󰽏")
-vars.set("WORKFLOW_DESCRIPTION", "Window-focused workspace // dwindle layout and winbar with effects disabled")
+vars.set("WORKFLOW_DESCRIPTION", "Window-focused workspace // dwindle layout and winbar")
 vars.set("WORKFLOW_QUICKSHELL_LAYOUT", "winbar")
 runtime.config("decoration.shadow.enabled", 0)
 runtime.config("decoration.blur.enabled", 0)
@@ -15,11 +15,6 @@ runtime.config("general.gaps_in", 3)
 runtime.config("general.gaps_out", 6)
 runtime.config("general.border_size", 2)
 runtime.config("animations.enabled", 1)
-hl.layer_rule({
-	["name"] = "workflow-windows-no-layer-animations",
-	["match"] = { ["namespace"] = "^(hypr-shell-bar|notifications|awww-daemon|rofi)$" },
-	["animation"] = "none",
-})
 hl.window_rule({
 	["name"] = "workflow-windows-translucent-apps",
 	["match"] = { ["class"] = "^(kitty|Alacritty|org\\.kde\\.dolphin)$" },

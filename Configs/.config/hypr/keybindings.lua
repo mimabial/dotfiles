@@ -73,6 +73,9 @@ local function submap_leader(name, modifiers, key, body, exit_on_unbound)
 		-- By default, unclaimed keys end the mode so a stray press cannot leave it
 		-- live while bare-letter binds fire window actions. Modmask 0: chords pass through.
 		if exit_on_unbound ~= false then
+			for _, key in ipairs({"SHIFT_L", "SHIFT_R", "CONTROL_L", "CONTROL_R", "ALT_L", "ALT_R", "SUPER_L", "SUPER_R"}) do
+				hl.bind(key, hl.dsp.no_op(), { release = true, ignore_mods = true, description = HIDDEN_MARKER .. name .. " modifier " .. key })
+			end
 			hl.bind(
 				"catchall",
 				hl.dsp.submap("reset"),
@@ -113,20 +116,48 @@ local function submap_cycle(key, description, command)
 	submap_repeat_action(key, description, hl.dsp.exec_cmd(command))
 end
 
+local function active_tiled_layout()
+	local workspace = hl.get_active_special_workspace() or hl.get_active_workspace()
+	return workspace and workspace.tiled_layout
+end
+
+local function announce_layout()
+	hl.dispatch(hl.dsp.event("layout"))
+end
+
 local function layout_action(layout, action)
 	return function()
-		local workspace = hl.get_active_special_workspace() or hl.get_active_workspace()
-		if not workspace or workspace.tiled_layout ~= layout then
+		if active_tiled_layout() ~= layout then
 			return
 		end
 		run_action(action)
-		hl.dispatch(hl.dsp.event("layout"))
+		announce_layout()
 	end
+end
+
+local LAYOUT_RATIO_STEP = 0.05
+local layouts_by_key = {}
+local function layout_submap_action(layout, key, name, action)
+	local layouts_on_key = layouts_by_key[key] or {}
+	layouts_by_key[key] = layouts_on_key
+	layouts_on_key[layout] = true
+	local description = "[Window Mode|" .. layout:gsub("^%l", string.upper) .. "] " .. name
+	local gated_action = layout_action(layout, action)
+	bind_actions[description] = gated_action
+	hl.bind(key, function()
+		local active = active_tiled_layout()
+		local other_layout_bind_acts = active ~= layout and layouts_on_key[active]
+		if other_layout_bind_acts then
+			return
+		end
+		hl.dispatch(hl.dsp.submap("reset"))
+		gated_action()
+	end, { description = description })
 end
 
 local function resize_column(direction)
 	local step = { [1] = "colresize +conf", [-1] = "colresize -conf" }
-	return layout_action("scrolling", function()
+	return function()
 		local window = hl.get_active_window()
 		local width = window and window.size.x
 		hl.dispatch(hl.dsp.layout(step[direction]))
@@ -137,7 +168,29 @@ local function resize_column(direction)
 			hl.dispatch(hl.dsp.layout(string.format("colresize %+f", (width - window.size.x) / usable_width)))
 		end
 		refill_scrolling_pair()
-	end)
+	end
+end
+
+local function cycle_monocle(step)
+	return function()
+		local workspace = hl.get_active_special_workspace() or hl.get_active_workspace()
+		local stack = {}
+		for _, window in ipairs(workspace:get_windows()) do
+			if window.mapped and not window.hidden and not window.floating then
+				stack[#stack + 1] = window
+			end
+		end
+		table.sort(stack, function(a, b)
+			return tonumber(a.stable_id) < tonumber(b.stable_id)
+		end)
+		for index, window in ipairs(stack) do
+			if window.visible then
+				local target = stack[(index - 1 + step) % #stack + 1]
+				hl.dispatch(hl.dsp.focus({ window = "address:" .. target.address }))
+				return
+			end
+		end
+	end
 end
 
 local function usable_area(monitor)
@@ -215,17 +268,18 @@ end
 exec(mod, "Q", "[Window Management] close panel or focused window", "hyprshell window/close-focused.sh")
 bind("ALT", "F4", "[Window Management] close focused window", hl.dsp.window.close())
 bind(mod .. " SHIFT", "Q", "[Window Management] force kill focused window", hl.dsp.window.kill())
-local toggle_fullscreen = hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" })
-bind(mod, "F", "[Window Management] toggle fullscreen", function()
+local native_fullscreen = hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" })
+local function toggle_fullscreen()
 	if vars.get("WORKFLOW") ~= "macos" then
-		hl.dispatch(toggle_fullscreen)
+		hl.dispatch(native_fullscreen)
 		return
 	end
 	local window = hl.get_active_window()
 	if window then
 		hl.dispatch(hl.dsp.exec_cmd("python3 " .. vars.get("scrPath") .. "/window/mac-spaces.py toggle " .. window.address))
 	end
-end)
+end
+bind(mod, "F", "[Window Management] toggle fullscreen", toggle_fullscreen)
 bind(
 	mod,
 	"M",
@@ -248,14 +302,7 @@ bind(mod, "RIGHT", "[Window Management|Focus] focus right", hl.dsp.focus({ direc
 bind(mod, "UP", "[Window Management|Focus] focus up or previous workspace in niri", niri_or(hl.dsp.focus({ workspace = "r-1" }), hl.dsp.focus({ direction = "up" })))
 bind(mod, "DOWN", "[Window Management|Focus] focus down or next workspace in niri", niri_or(hl.dsp.focus({ workspace = "r+1" }), hl.dsp.focus({ direction = "down" })))
 
-bind("ALT", "TAB", "[Window Management|Windows] focus next window", hl.dsp.event("altscape:next"))
-bind("ALT SHIFT", "TAB", "[Window Management|Windows] focus previous window", hl.dsp.event("altscape:prev"))
-for _, modifiers in ipairs({"ALT", "ALT SHIFT"}) do
-    for _, key in ipairs({"ALT_L", "ALT_R"}) do
-        bind(modifiers, key, HIDDEN_MARKER .. "Windows end window cycle " .. modifiers .. " " .. key, hl.dsp.event("altscape:release"), { release = true })
-    end
-end
-bind(mod .. " ALT SHIFT", "S", "[Launcher|Menus] Alt+Tab settings", hl.dsp.event("altscape:settings"))
+dofile(os.getenv("HOME") .. "/.config/hypr/switcher.lua")
 
 local WINDOW_STEP_PX = 30
 local WINDOW_STEPS = {
@@ -274,6 +321,7 @@ local function move_window(direction)
 		else
 			hl.dispatch(hl.dsp.window.move({ direction = direction }))
 		end
+		announce_layout()
 	end
 end
 
@@ -290,13 +338,13 @@ local function resize_window(direction)
 			local width = math.min(window.size.x + step.x, max_width)
 			local height = math.min(window.size.y + step.y, max_height)
 			hl.dispatch(hl.dsp.window.resize({ x = width, y = height, relative = false }))
-			return
+		else
+			hl.dispatch(hl.dsp.window.resize({ x = step.x, y = step.y, relative = true }))
+			if step.x ~= 0 then
+				refill_scrolling_pair()
+			end
 		end
-
-		hl.dispatch(hl.dsp.window.resize({ x = step.x, y = step.y, relative = true }))
-		if step.x ~= 0 then
-			refill_scrolling_pair()
-		end
+		announce_layout()
 	end
 end
 
@@ -317,7 +365,14 @@ bind(mod, "mouse:273", "[Window Management|Mouse] resize window", hl.dsp.window.
 hl.bind(chord(mod, "mouse:273"), refill_scrolling_pair, { drag = true })
 bind(mod, "Z", "[Window Management|Mouse] move window", hl.dsp.window.drag(), { mouse = true })
 bind(mod, "X", "[Window Management|Mouse] resize window", hl.dsp.window.resize(), { mouse = true })
-hl.bind(chord(mod, "X"), refill_scrolling_pair, { drag = true })
+hl.bind(chord(mod, "X"), function()
+	refill_scrolling_pair()
+	announce_layout()
+end, { drag = true })
+hl.bind(chord(mod, "Z"), announce_layout, { drag = true })
+for _, button in ipairs({ "mouse:272", "mouse:273" }) do
+	hl.bind(button, announce_layout, { drag = true, non_consuming = true, ignore_mods = true })
+end
 
 exec("CTRL ALT", "DELETE", "[Window Management] logout menu", "hyprshell logout-launch.sh")
 exec(mod, "ESCAPE", "[Window Management] logout menu", "hyprshell logout-launch.sh")
@@ -358,11 +413,10 @@ local function summon_app(class, workspace, command, focus_when_opened)
 			if window.class == class or window.initial_class == class then
 				local on_shown_scratchpad = scratchpad
 					and shown
-					and shown.name == workspace
 					and window.workspace
-					and window.workspace.name == workspace
+					and window.workspace.name == shown.name
 				if on_shown_scratchpad then
-					hl.dispatch(hl.dsp.workspace.toggle_special(scratchpad))
+					hl.dispatch(hl.dsp.workspace.toggle_special(shown.name:match("^special:(.*)$") or ""))
 				else
 					hl.dispatch(hl.dsp.focus({ window = "address:" .. window.address }))
 				end
@@ -381,6 +435,10 @@ local numbered_special_workspaces = {
 	[6] = {
 		description = "[Launcher|Apps] Signal",
 		action = summon_app("signal", "special:signal", "signal-desktop"),
+		workspace = "special:signal",
+		move_description = "[Workspaces] move window to Signal special workspace",
+		alt_description = "[Workspaces] move window silently to Signal special workspace",
+		alt_action = hl.dsp.window.move({ workspace = "special:signal", follow = false }),
 	},
 	[8] = {
 		description = "[Launcher|Apps] web browser",
@@ -429,49 +487,49 @@ exec("CTRL", "F2", "[Launcher|Menus] focus menu bar", "quickshell ipc call bar m
 exec(mod, "V", "[Launcher|Menus] clipboard", "quickshell ipc call bar popup cliphist")
 exec(mod, "S", "[Launcher|Menus] spotlight", "quickshell ipc call bar popup spotlight")
 
-exec(mod, "F10", "[Hardware|Audio] mute output", "hyprshell volume-control.sh -o m", { locked = true })
+exec(mod, "F10", "[Hardware|Audio] mute output", vars.get("scrPath") .. "/controls/volume-control.sh -o m", { locked = true })
 exec(mod .. " CTRL", "F10", "[Hardware|Audio] mute focused window", "hyprshell window-mute.py", { locked = true })
-exec("", "XF86AudioMute", "[Hardware|Audio] mute output", "hyprshell volume-control.sh -o m", { locked = true })
+exec("", "XF86AudioMute", "[Hardware|Audio] mute output", vars.get("scrPath") .. "/controls/volume-control.sh -o m", { locked = true })
 exec(
 	mod,
 	"F11",
 	"[Hardware|Audio] volume down",
-	"hyprshell volume-control.sh -o d",
+	vars.get("scrPath") .. "/controls/volume-control.sh -o d",
 	{ locked = true, repeating = true }
 )
-exec(mod, "F12", "[Hardware|Audio] volume up", "hyprshell volume-control.sh -o i", { locked = true, repeating = true })
-exec("", "XF86AudioMicMute", "[Hardware|Audio] mute microphone", "hyprshell volume-control.sh -i m", { locked = true })
+exec(mod, "F12", "[Hardware|Audio] volume up", vars.get("scrPath") .. "/controls/volume-control.sh -o i", { locked = true, repeating = true })
+exec("", "XF86AudioMicMute", "[Hardware|Audio] mute microphone", vars.get("scrPath") .. "/controls/volume-control.sh -i m", { locked = true })
 exec(
 	"",
 	"XF86AudioLowerVolume",
 	"[Hardware|Audio] volume down",
-	"hyprshell volume-control.sh -o d",
+	vars.get("scrPath") .. "/controls/volume-control.sh -o d",
 	{ locked = true, repeating = true }
 )
 exec(
 	"",
 	"XF86AudioRaiseVolume",
 	"[Hardware|Audio] volume up",
-	"hyprshell volume-control.sh -o i",
+	vars.get("scrPath") .. "/controls/volume-control.sh -o i",
 	{ locked = true, repeating = true }
 )
 
-exec("", "XF86AudioPlay", "[Hardware|Media] play or pause", "playerctl play-pause", { locked = true })
-exec("", "XF86AudioPause", "[Hardware|Media] play or pause", "playerctl play-pause", { locked = true })
-exec("", "XF86AudioNext", "[Hardware|Media] next", "playerctl next", { locked = true })
-exec("", "XF86AudioPrev", "[Hardware|Media] previous", "playerctl previous", { locked = true })
+exec("", "XF86AudioPlay", "[Hardware|Media] play or pause", "quickshell ipc call crmne.mpris playPause", { locked = true })
+exec("", "XF86AudioPause", "[Hardware|Media] play or pause", "quickshell ipc call crmne.mpris playPause", { locked = true })
+exec("", "XF86AudioNext", "[Hardware|Media] next", "quickshell ipc call crmne.mpris next", { locked = true })
+exec("", "XF86AudioPrev", "[Hardware|Media] previous", "quickshell ipc call crmne.mpris previous", { locked = true })
 exec(
 	"",
 	"XF86MonBrightnessUp",
 	"[Hardware|Brightness] increase",
-	"hyprshell brightness-control.sh i",
+	vars.get("scrPath") .. "/controls/brightness-control.sh i",
 	{ locked = true, repeating = true }
 )
 exec(
 	"",
 	"XF86MonBrightnessDown",
 	"[Hardware|Brightness] decrease",
-	"hyprshell brightness-control.sh d",
+	vars.get("scrPath") .. "/controls/brightness-control.sh d",
 	{ locked = true, repeating = true }
 )
 exec("", "XF86PowerOff", "[Hardware|Power] logout menu", "hyprshell logout-launch.sh")
@@ -490,6 +548,7 @@ exec(
 )
 -- Stays top-level and locked: the layout must be switchable on the lock screen.
 exec(mod, "K", "[Utilities] switch keyboard layout", "hyprshell keyboard-switch.sh", { locked = true })
+exec(mod, "L", "[Utilities|Session] lock screen", "hyprshell lock-screen.sh")
 
 submap_leader("window", mod, "W", function()
 	submap_action("LEFT", "[Window Mode|Focus] focus left", hl.dsp.focus({ direction = "left" }))
@@ -502,12 +561,13 @@ submap_leader("window", mod, "W", function()
 	submap_action("SHIFT + UP", "[Window Mode|Move] move up", move_window("up"))
 	submap_action("SHIFT + DOWN", "[Window Mode|Move] move down", move_window("down"))
 
-	submap_action("CTRL + LEFT", "[Window Mode|Resize] shrink width", resize_window("left"))
-	submap_action("CTRL + RIGHT", "[Window Mode|Resize] grow width", resize_window("right"))
-	submap_action("CTRL + UP", "[Window Mode|Resize] shrink height", resize_window("up"))
-	submap_action("CTRL + DOWN", "[Window Mode|Resize] grow height", resize_window("down"))
+	submap_action("ALT + LEFT", "[Window Mode|Resize] shrink width", resize_window("left"))
+	submap_action("ALT + RIGHT", "[Window Mode|Resize] grow width", resize_window("right"))
+	submap_action("ALT + UP", "[Window Mode|Resize] shrink height", resize_window("up"))
+	submap_action("ALT + DOWN", "[Window Mode|Resize] grow height", resize_window("down"))
 
-	submap_action("F", "[Window Mode|State] toggle floating", toggle_floating)
+	submap_action("F", "[Window Mode|State] toggle fullscreen", toggle_fullscreen)
+	submap_action("SHIFT + F", "[Window Mode|State] toggle floating", toggle_floating)
 	submap_action(
 		"M",
 		"[Window Mode|State] toggle maximize",
@@ -515,6 +575,8 @@ submap_leader("window", mod, "W", function()
 	)
 	submap_action("G", "[Window Mode|State] toggle group", hl.dsp.group.toggle())
 	submap_exec("P", "[Window Mode|State] toggle pin", "hyprshell window/windowpin.sh")
+	submap_exec("C", "[Window Mode|Placement] snap placement menu", vars.get("scrPath") .. "/window/snap.sh")
+	submap_exec("D", "[Window Mode|State] show desktop", "quickshell ipc call dock showDesktop")
 
 	for workspace = 1, 10 do
 		local code = workspace_code(workspace)
@@ -541,125 +603,45 @@ submap_leader("window", mod, "W", function()
 		"[Window Mode|Layout] cycle global layout backward",
 		"hyprshell window/layout-toggle.sh previous"
 	)
-	submap_exec("U", "[Window Mode|Layout] select global layout", menu("trigger_toggle_workspace_layout"))
-	submap_action(
-		"S",
-		"[Window Mode|Dwindle] toggle window split",
-		layout_action("dwindle", hl.dsp.layout("togglesplit"))
-	)
-	submap_action(
-		"H",
-		"[Window Mode|Scrolling] previous column",
-		layout_action("scrolling", hl.dsp.layout("move -col"))
-	)
-	submap_action("L", "[Window Mode|Scrolling] next column", layout_action("scrolling", hl.dsp.layout("move +col")))
-	submap_action(
-		"SHIFT + H",
-		"[Window Mode|Scrolling] swap column left",
-		layout_action("scrolling", hl.dsp.layout("swapcol l"))
-	)
-	submap_action(
-		"SHIFT + L",
-		"[Window Mode|Scrolling] swap column right",
-		layout_action("scrolling", hl.dsp.layout("swapcol r"))
-	)
-	submap_action(
-		"C",
-		"[Window Mode|Scrolling] focus previous column",
-		layout_action("scrolling", hl.dsp.layout("focus -col"))
-	)
-	submap_action(
-		"SHIFT + C",
-		"[Window Mode|Scrolling] focus next column",
-		layout_action("scrolling", hl.dsp.layout("focus +col"))
-	)
-	submap_action("E", "[Window Mode|Scrolling] shrink column", resize_column(-1))
-	submap_action("SHIFT + E", "[Window Mode|Scrolling] grow column", resize_column(1))
-	submap_action(
-		"X",
-		"[Window Mode|Scrolling] expand column",
-		layout_action("scrolling", hl.dsp.layout("fit expand"))
-	)
-	submap_action("V", "[Window Mode|Scrolling] promote window", layout_action("scrolling", hl.dsp.layout("promote")))
-	submap_action(
-		"B",
-		"[Window Mode|Scrolling] consume into column",
-		layout_action("scrolling", hl.dsp.layout("consume"))
-	)
-	submap_action(
-		"SHIFT + B",
-		"[Window Mode|Scrolling] expel from column",
-		layout_action("scrolling", hl.dsp.layout("expel"))
-	)
-	submap_action(
-		"I",
-		"[Window Mode|Scrolling] fit column into view",
-		layout_action("scrolling", hl.dsp.layout("fit_into_view"))
-	)
+	submap_exec("L", "[Window Mode|Layout] select global layout", menu("trigger_toggle_workspace_layout"))
+	layout_submap_action("dwindle", "S", "toggle window split", hl.dsp.layout("togglesplit"))
+	layout_submap_action("dwindle", "SHIFT + S", "swap split", hl.dsp.layout("swapsplit"))
+	layout_submap_action("dwindle", "R", "rotate split", hl.dsp.layout("rotatesplit"))
+	layout_submap_action("dwindle", "SHIFT + R", "move to root", hl.dsp.layout("movetoroot"))
+	layout_submap_action("dwindle", "Z", "grow parent split", hl.dsp.layout("splitratio +" .. LAYOUT_RATIO_STEP))
+	layout_submap_action("dwindle", "SHIFT + Z", "shrink parent split", hl.dsp.layout("splitratio -" .. LAYOUT_RATIO_STEP))
 
-	submap_action("SHIFT + S", "[Window Mode|Dwindle] swap split", layout_action("dwindle", hl.dsp.layout("swapsplit")))
-	submap_action("R", "[Window Mode|Dwindle] rotate split", layout_action("dwindle", hl.dsp.layout("rotatesplit")))
-	submap_action(
-		"SHIFT + R",
-		"[Window Mode|Dwindle] move to root",
-		layout_action("dwindle", hl.dsp.layout("movetoroot"))
-	)
-	submap_action(
-		"D",
-		"[Window Mode|Dwindle] shrink parent split",
-		layout_action("dwindle", hl.dsp.layout("splitratio -0.05"))
-	)
-	submap_action(
-		"SHIFT + D",
-		"[Window Mode|Dwindle] grow parent split",
-		layout_action("dwindle", hl.dsp.layout("splitratio +0.05"))
-	)
+	layout_submap_action("scrolling", "N", "focus next column", hl.dsp.layout("focus r"))
+	layout_submap_action("scrolling", "SHIFT + N", "focus previous column", hl.dsp.layout("focus l"))
+	layout_submap_action("scrolling", "J", "swap column right", hl.dsp.layout("swapcol r"))
+	layout_submap_action("scrolling", "SHIFT + J", "swap column left", hl.dsp.layout("swapcol l"))
+	layout_submap_action("scrolling", "C", "scroll view to next column", hl.dsp.layout("move +col"))
+	layout_submap_action("scrolling", "SHIFT + C", "scroll view to previous column", hl.dsp.layout("move -col"))
+	layout_submap_action("scrolling", "Z", "grow column", resize_column(1))
+	layout_submap_action("scrolling", "SHIFT + Z", "shrink column", resize_column(-1))
+	layout_submap_action("scrolling", "X", "expand column", hl.dsp.layout("fit expand"))
+	layout_submap_action("scrolling", "V", "promote window", hl.dsp.layout("promote"))
+	layout_submap_action("scrolling", "B", "consume into column", hl.dsp.layout("consume"))
+	layout_submap_action("scrolling", "SHIFT + B", "expel from column", hl.dsp.layout("expel"))
+	layout_submap_action("scrolling", "I", "fit column into view", hl.dsp.layout("fit_into_view"))
 
-	submap_action("W", "[Window Mode|Master] focus master", layout_action("master", hl.dsp.layout("focusmaster")))
-	submap_action(
-		"SHIFT + W",
-		"[Window Mode|Master] swap with master",
-		layout_action("master", hl.dsp.layout("swapwithmaster"))
-	)
-	submap_action("N", "[Window Mode|Master] focus next", layout_action("master", hl.dsp.layout("cyclenext")))
-	submap_action(
-		"SHIFT + N",
-		"[Window Mode|Master] focus previous",
-		layout_action("master", hl.dsp.layout("cycleprev"))
-	)
-	submap_action("J", "[Window Mode|Master] swap next", layout_action("master", hl.dsp.layout("swapnext")))
-	submap_action("SHIFT + J", "[Window Mode|Master] swap previous", layout_action("master", hl.dsp.layout("swapprev")))
-	submap_action("A", "[Window Mode|Master] add master", layout_action("master", hl.dsp.layout("addmaster")))
-	submap_action(
-		"SHIFT + A",
-		"[Window Mode|Master] remove master",
-		layout_action("master", hl.dsp.layout("removemaster"))
-	)
-	submap_action(
-		"O",
-		"[Window Mode|Master] cycle orientation",
-		layout_action("master", hl.dsp.layout("orientationcycle"))
-	)
-	submap_action(
-		"SHIFT + O",
-		"[Window Mode|Master] center orientation",
-		layout_action("master", hl.dsp.layout("orientationcenter"))
-	)
-	submap_action("K", "[Window Mode|Master] roll next", layout_action("master", hl.dsp.layout("rollnext")))
-	submap_action("SHIFT + K", "[Window Mode|Master] roll previous", layout_action("master", hl.dsp.layout("rollprev")))
-	submap_action("Z", "[Window Mode|Master] shrink master", layout_action("master", hl.dsp.layout("mfact -0.05")))
-	submap_action(
-		"SHIFT + Z",
-		"[Window Mode|Master] grow master",
-		layout_action("master", hl.dsp.layout("mfact +0.05"))
-	)
+	layout_submap_action("master", "W", "focus master", hl.dsp.layout("focusmaster"))
+	layout_submap_action("master", "SHIFT + W", "swap with master", hl.dsp.layout("swapwithmaster"))
+	layout_submap_action("master", "N", "focus next", hl.dsp.layout("cyclenext"))
+	layout_submap_action("master", "SHIFT + N", "focus previous", hl.dsp.layout("cycleprev"))
+	layout_submap_action("master", "J", "swap next", hl.dsp.layout("swapnext"))
+	layout_submap_action("master", "SHIFT + J", "swap previous", hl.dsp.layout("swapprev"))
+	layout_submap_action("master", "A", "add master", hl.dsp.layout("addmaster"))
+	layout_submap_action("master", "SHIFT + A", "remove master", hl.dsp.layout("removemaster"))
+	layout_submap_action("master", "O", "cycle orientation", hl.dsp.layout("orientationcycle"))
+	layout_submap_action("master", "SHIFT + O", "center orientation", hl.dsp.layout("orientationcenter"))
+	layout_submap_action("master", "K", "roll next", hl.dsp.layout("rollnext"))
+	layout_submap_action("master", "SHIFT + K", "roll previous", hl.dsp.layout("rollprev"))
+	layout_submap_action("master", "Z", "grow master", hl.dsp.layout("mfact +" .. LAYOUT_RATIO_STEP))
+	layout_submap_action("master", "SHIFT + Z", "shrink master", hl.dsp.layout("mfact -" .. LAYOUT_RATIO_STEP))
 
-	submap_action("Y", "[Window Mode|Monocle] focus next", layout_action("monocle", hl.dsp.layout("cyclenext")))
-	submap_action(
-		"SHIFT + Y",
-		"[Window Mode|Monocle] focus previous",
-		layout_action("monocle", hl.dsp.layout("cycleprev"))
-	)
+	layout_submap_action("monocle", "N", "focus next", cycle_monocle(1))
+	layout_submap_action("monocle", "SHIFT + N", "focus previous", cycle_monocle(-1))
 end)
 
 submap_leader("theming", mod, "T", function()
@@ -686,12 +668,12 @@ submap_leader("theming", mod, "T", function()
 	submap_exec("SHIFT + C", "[Theming] cycle bar layout backward", "hyprshell quickshell/layout previous")
 	submap_exec("H", "[Theming] toggle bar", "hyprshell quickshell/visibility toggle")
 	submap_exec("SHIFT + H", "[Theming] toggle floating bar", "quickshell ipc call bar floating")
-	submap_exec("V", "[Theming] look and feel", "hyprshell window/settings.sh")
+	submap_exec("L", "[Theming] look and feel", "hyprshell window/settings.sh")
 	submap_exec("A", "[Theming] select animation", menu("style_animations"))
 	submap_exec("S", "[Theming] select shader", menu("style_shaders"))
 	submap_exec("M", "[Theming] color mode", menu("style_color_mode"))
 	submap_exec("R", "[Theming] select rofi theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh -s")
-	submap_exec("L", "[Theming] select launcher style", "hyprshell rofi-launch.sh -s")
+	submap_exec("SHIFT + R", "[Theming] select launcher style", "hyprshell rofi-launch.sh -s")
 	submap_exec("K", "[Theming] select lock layout", "quickshell ipc call lockview open")
 	for workspace = 1, 10 do
 		local description, action = numbered_workspace_action(workspace)
@@ -706,17 +688,13 @@ end, false)
 submap_leader("open", mod, "O", function()
 	submap_exec("F", "[Open] File finder", "pkill -x rofi || hyprshell launch/file-finder.sh")
 	submap_exec("B", "[Open] Bookmarks", "quickshell ipc call bar bookmarks")
+	submap_exec("N", "[Open] Notifications", "quickshell ipc call bar popup notifications")
 	submap_exec("T", "[Open] Tray", "quickshell ipc call bar tray")
 	submap_exec("L", "[Open] Game launcher", "hyprshell gaming/launcher.sh")
 	submap_exec(
 		"SHIFT + L",
 		"[Open] Lutris",
 		"hyprshell launch/summon.sh --empty-workspace-if-occupied class:net.lutris.Lutris -- lutris"
-	)
-	submap_exec(
-		"S",
-		"[Open] Signal",
-		"hyprshell launch/summon.sh --empty-workspace-if-occupied class:signal -- signal-desktop"
 	)
 	submap_exec("V", "[Open] Bitwarden vault", "quickshell ipc call bar popup bitwarden")
 	submap_exec("SHIFT + V", "[Open] Bitwarden desktop", "hyprshell launch/summon.sh --align center bitwarden -- bitwarden-desktop")
@@ -802,10 +780,14 @@ local function magnify_by(factor)
 end
 
 submap_leader("utilities", mod, "U", function()
-	submap_exec("L", "[System] lock screen", "hyprshell lock-screen.sh")
+
+	submap_exec("B", "[Notifications] actions", "dunstctl context")
+	submap_exec("SHIFT + B", "[Notifications] dismiss all", "dunstctl close-all")
+	submap_exec("C", "[Notifications] copy latest verification code", "quickshell ipc call notifications copyLatest")
 	submap_exec("Q", "[System] close all windows", "hyprshell window/close-all.sh")
 	submap_exec("N", "[System] toggle nightlight", "hyprshell system/hyprsunset.sh -t")
 	submap_exec("A", "[System] toggle keep awake", "hyprshell session/toggle-keep-awake.sh")
+	submap_exec("SHIFT + A", "[System] toggle keep running with lid closed", "hyprshell session/toggle-system-keep-awake.sh")
 	submap_exec("W", "[System] select workflow", menu("style_workflow"))
 	submap_exec("O", "[System] audio output switcher", "hyprshell controls/volume-control.sh -t")
 	submap_exec("S", "[System] cycle monitor scale", "hyprshell system/monitor-scale.sh")

@@ -6,7 +6,7 @@ import "RemovableModel.js" as Model
 PopupCard {
     id: root
     popupName: "disks"
-    keyboardHint: "↑↓/Tab move · Enter select · Type action letter · Esc back/close"
+    keyboardHint: "↑↓/Tab Move  Enter Select  Type action letter  Esc Back/Close"
     contentWidth: Style.px(410)
     contentHeight: scroll.height + padding * 2
 
@@ -147,15 +147,10 @@ PopupCard {
                     font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
                 }
 
-                Text {
-                    visible: text !== ""
-                    width: parent.width
-                    textFormat: Text.PlainText
-                    text: Removable.lastError || Removable.actionStatus
-                    color: Removable.lastError ? root.shell.role("error", root.shell.foreground)
-                        : root.shell.mutedText
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-                    wrapMode: Text.WordWrap
+                PopupHint {
+                    shell: root.shell; error: Removable.lastError !== ""
+                    width: parent.width; text: Removable.lastError || Removable.actionStatus
+                    textFormat: Text.PlainText; wrapMode: Text.Wrap; horizontalAlignment: Text.AlignLeft
                 }
 
                 PopupRow {
@@ -760,9 +755,9 @@ PopupCard {
         onClicked: triggered()
         width: tileContent.implicitWidth + Style.px(18); height: Style.controlHeight
         radius: root.shell.rounding; opacity: enabled ? 1 : .35
-        color: root.shell.alpha(tint, tileArea.containsMouse ? (danger ? .18 : .12) : .04)
+        color: root.shell.alpha(tint, cursored || tileArea.containsMouse ? (danger ? .18 : .12) : .04)
         border.width: 1
-        border.color: cursored ? root.shell.hoverEdge(.85) : root.shell.alpha(tint, tileArea.containsMouse ? (danger ? .45 : .22) : danger ? .25 : .08)
+        border.color: root.shell.alpha(tint, danger ? .25 : .08)
         Behavior on color { ColorAnimation { duration: Style.duration(60) } }
         Row {
             id: tileContent; anchors.centerIn: parent; spacing: Style.px(6)
@@ -791,7 +786,7 @@ PopupCard {
         onClicked: triggered()
         width: Style.controlHeight; height: Style.controlHeight; radius: root.shell.rounding
         opacity: enabled ? 1 : .35
-        color: actionMouse.containsMouse || cursored ? root.shell.hoverFill(1.3) : "transparent"
+        color: actionMouse.containsMouse || cursored ? root.shell.hoverFill() : "transparent"
         Text {
             anchors.centerIn: parent; text: action.glyph
             color: action.danger && actionMouse.containsMouse ? root.shell.role("error", root.shell.foreground)

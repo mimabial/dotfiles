@@ -1,5 +1,6 @@
 pragma Singleton
 import QtQuick
+import ".." as Active
 
 QtObject {
     id: root
@@ -48,11 +49,11 @@ QtObject {
         border: root.alpha(root.role("alt_br", root.accent), 0.45)
         scrim: root.alpha(root.background, 0.72)
         selectedBackground:
-            root.shell ? root.shell.hoverFill(2)
-                       : root.alpha(root.role("hvr_bg", root.accent), 0.25)
+            root.shell ? root.shell.hoverFill()
+                       : root.alpha(root.role("hvr_br", root.accent), Active.Style.hoverFillAlpha)
         selectedText: root.role("hvr_fg", root.accent)
         selectedBorder:
             root.shell ? root.shell.hoverEdge(1)
-                       : root.alpha(root.role("hvr_br", root.accent), 0.55)
+                       : root.alpha(root.role("hvr_br", root.accent), Active.Style.hoverBorderAlpha)
     }
 }

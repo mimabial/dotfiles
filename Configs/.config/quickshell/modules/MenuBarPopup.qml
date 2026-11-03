@@ -47,6 +47,7 @@ PopupCard {
         path = path.slice(0, keyLevel)
     }
     function handleKey(event) {
+        shell.keyboardInput = true
         switch (event.key) {
         case Qt.Key_Down: case Qt.Key_Tab: move(1); return true
         case Qt.Key_Up: case Qt.Key_Backtab: move(-1); return true
@@ -83,7 +84,10 @@ PopupCard {
                     cursored: column.menu.keyRow === row
                     highlighted: column.menu.path[column.level]?.row === row
                     onHoveredChanged: if (hovered) column.menu.hover(column.level, row, item)
-                    onTriggered: item.submenu ? column.menu.hover(column.level, row, item) : column.menu.run(item)
+                    onTriggered: {
+                        column.menu.shell.keyboardInput = false
+                        item.submenu ? column.menu.hover(column.level, row, item) : column.menu.run(item)
+                    }
                 }
             }
         }

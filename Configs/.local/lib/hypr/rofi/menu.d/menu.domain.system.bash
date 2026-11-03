@@ -109,7 +109,7 @@ menu_register_domain_system() {
   menu_add_item remove_gaming "󰯉  RetroArch Game Launcher" action remove_gaming_retro_launcher
 
   menu_define update "Maintenance"
-  menu_add_item update "󰏗  Update system packages" action update_system
+  menu_add_item update "󰏗  System updates" submenu update_packages
   menu_add_item update "  Desktop processes" submenu update_process
   menu_add_item update "󰇅  Hardware recovery" submenu update_hardware
   menu_add_item update "  Update firmware" action update_firmware
@@ -139,10 +139,13 @@ menu_register_domain_system() {
   menu_add_item update_password "󰋊  Change drive encryption password" action update_password_drive
   menu_add_item update_password "󰀋  Change user password" action update_password_user
 
+  menu_define_deferred update_packages "System updates" "" update_fill_packages
+
   menu_define system "System"
   menu_add_item system "󱂬  Window Sessions" submenu system_session
   menu_add_item system "  Lock" action system_lock
   menu_add_item system "󰤄  Suspend" action system_suspend
+  menu_add_item system "󰛧  Lid Close" submenu system_lid
   menu_add_item system "󰍃  Logout" action system_logout
   menu_add_item system "󰜉  Restart" action system_restart
   menu_add_item system "󰐥  Shutdown" action system_shutdown
@@ -152,6 +155,36 @@ menu_register_domain_system() {
   menu_add_item system_session "󰚰  Restore Session" action system_session_restore
   menu_add_item system_session "󰩹  Delete Session" action system_session_delete
   menu_add_item system_session "󰋼  List Sessions" action system_session_list
+
+  menu_define_deferred system_lid "Lid Close" choice system_fill_lid_choices
+}
+
+system_fill_lid_choices() {
+  local active=""
+
+  active="$("${HYPR_LIB_DIR}/system/power-manager.sh" lid-choice)" || active=""
+  [[ -z "${active}" ]] || menu_mark_active "system_lid_${active}"
+  menu_add_item system_lid "󰌢  Do Nothing" action system_lid_keep-running
+  menu_add_item system_lid "󰤄  Sleep" action system_lid_suspend
+  menu_add_item system_lid "󰜗  Hibernate" action system_lid_hibernate
+  menu_add_item system_lid "󰐥  Shut Down" action system_lid_poweroff
+}
+
+update_fill_packages() {
+  local -A source_labels=([pacman]=Pacman [aur]=AUR [flatpak]=Flatpak)
+  local update_source="" count=""
+
+  source "${HYPR_LIB_DIR}/system/packages/update-cache.bash"
+  menu_add_item update_packages "󰑐  Check now" action update_check
+  while IFS=$'\t' read -r update_source count; do
+    menu_add_item update_packages "  Update ${source_labels[${update_source}]} (${count})" action "update_system_${update_source}"
+  done < <(jq -r '.packages | to_entries[] | select(.value | length > 0) | "\(.key)\t\(.value | length)"' "${update_cache_path}" 2>/dev/null)
+  menu_add_item update_packages "  Run all upgrades" action update_system
+}
+
+update_check_and_show() {
+  hyprshell system/system.update.sh --refresh >/dev/null || return
+  [[ "$(quickshell ipc call bar popupName)" == updates ]] || quickshell ipc call bar popup updates
 }
 
 menu_run_action_system() {
@@ -170,6 +203,8 @@ menu_run_action_system() {
     remove_gaming_retro_launcher) hyprshell gaming/retro-launcher.sh remove ;;
     remove_windows) menu_present_terminal hyprshell vm/windows.sh remove ;;
     update_system) hyprshell system/system.update.sh up ;;
+    update_system_*) hyprshell system/system.update.sh up "${action_id#update_system_}" ;;
+    update_check) update_check_and_show </dev/null >/dev/null 2>&1 & ;;
     update_firmware) menu_present_terminal hyprshell system/firmware.sh ;;
     update_timezone) menu_present_terminal hyprshell system/timezone.sh ;;
     update_time) menu_present_terminal hyprshell system/time.sh ;;
@@ -196,6 +231,7 @@ menu_run_action_system() {
     system_logout) hyprshell rofi/run-after-close.sh -- hyprshell session/logout-launch.sh ;;
     system_restart) hyprshell system/powerctl.sh reboot ;;
     system_shutdown) hyprshell system/powerctl.sh shutdown ;;
+    system_lid_*) hyprshell system/power-manager lid-set "${action_id#system_lid_}" ;;
     *) return "${MENU_ACTION_UNKNOWN}" ;;
   esac
 }

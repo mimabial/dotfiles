@@ -134,5 +134,13 @@
     }
   });
 
+  const titleElement = document.querySelector("title");
+  if (titleElement)
+    new MutationObserver(() => reportMediaState("title")).observe(titleElement, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+
   rescanMediaElements(true);
 })();

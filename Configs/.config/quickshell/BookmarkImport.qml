@@ -172,21 +172,20 @@ Item {
       width: parent.width
       spacing: Commons.Style.spacing.sm
 
-      Text {
-        width: parent.width
-        text: root.loading
-          ? "Reading and validating bookmarks…"
-          : root.error
-            ? root.error
-            : root.result
-              ? root.result.stats.ready + " unique URL bookmarks are ready"
+      PopupHint {
+          id: errorHint
+          shell: Commons.Style.shell; error: !root.loading && root.error !== ""
+          width: parent.width
+          text: root.loading
+              ? "Reading and validating bookmarks…"
+              : root.error ? root.error
+              : root.result ? root.result.stats.ready + " unique URL bookmarks are ready"
               : "Choose an exported bookmarks file"
-        textFormat: Text.PlainText
-        color: root.error ? Commons.Color.urgent : Commons.Color.menu.text
-        font.family: Commons.Style.font.menuFamily
-        font.pixelSize: Commons.Style.font.heading
-        font.weight: Font.Medium
-        wrapMode: Text.WordWrap
+          textFormat: Text.PlainText
+          color: errorHint.error ? errorHint.shell.foreground : Commons.Color.menu.text
+          font.pixelSize: errorHint.error ? Commons.Style.font.bodySmall : Commons.Style.font.heading
+          font.weight: errorHint.error ? Font.Normal : Font.Medium
+          horizontalAlignment: Text.AlignLeft; wrapMode: Text.Wrap
       }
 
       Text {

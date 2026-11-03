@@ -1,6 +1,6 @@
 # Lock screen and idle
 
-`Super + U`, then `L`, locks. `Super + Escape` or `Ctrl + Alt + Delete` opens the logout
+`Super + L` locks. `Super + Escape` or `Ctrl + Alt + Delete` opens the logout
 menu. Closing the lid locks and suspends unless automatic power management is
 enabled in the power popup with another lid action.
 
@@ -28,6 +28,17 @@ caffeine cancels the timer. The popup keeps these rules in
 `~/.config/quickshell/power-manager.json`.
 
 `Super + U` then `A` toggles keep-awake when you need none of that to happen.
+
+What closing the lid does is picked under System → Lid Close in the menu tree
+and the start menu: Do Nothing, Sleep, Hibernate or Shut Down. The screen locks
+first in every case. Sleep, Hibernate and Shut Down set the Power popup's lid
+rules for every power source; those rules apply whether or not automatic
+management is on.
+
+Do Nothing keeps the machine running for unattended work such as AI agents:
+closing the lid and idling still lock and blank the screen, but nothing sleeps.
+Explicit suspend and shutdown still work. `Super + U` then `Shift + A`, or "Keep
+running with the lid closed" in the Caffeine popup, toggles it.
 
 The idle manager also pauses hypridle while audio is playing when audio
 keep-awake is enabled, and for fullscreen windows or games when fullscreen

@@ -1,25 +1,21 @@
 #!/usr/bin/env bash
 
-_hypr_hash_cache_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-if ! declare -F hypr_ensure_runtime_subdir >/dev/null 2>&1; then
+_hypr_hash_cache_dir="${BASH_SOURCE[0]%/*}"
+[[ "${_hypr_hash_cache_dir}" != "${BASH_SOURCE[0]}" ]] || _hypr_hash_cache_dir=.
+if ! declare -F hypr_ensure_runtime_dir_into >/dev/null 2>&1; then
   # shellcheck source=/dev/null
   source "${_hypr_hash_cache_dir}/common.bash" || return 1 2>/dev/null || exit 1
 fi
 unset _hypr_hash_cache_dir
 
-hypr_hash_cache_command() {
-  local candidate="${HYPR_HASH_COMMAND:-xxh64sum}"
+hypr_hash_cache_command_into() {
+  local -n hash_command_ref="$1"
+  local candidate=""
 
-  if command -v "${candidate}" >/dev/null 2>&1; then
-    printf '%s\n' "${candidate}"
+  for candidate in "${HYPR_HASH_COMMAND:-xxh64sum}" md5sum sha256sum; do
+    command -v "${candidate}" >/dev/null 2>&1 || continue
+    hash_command_ref="${candidate}"
     return 0
-  fi
-
-  for candidate in md5sum sha256sum; do
-    if command -v "${candidate}" >/dev/null 2>&1; then
-      printf '%s\n' "${candidate}"
-      return 0
-    fi
   done
 
   return 1
@@ -28,7 +24,7 @@ hypr_hash_cache_command() {
 hypr_hash_cache_digest_files() {
   local hash_command="" digest
 
-  hash_command="$(hypr_hash_cache_command)" || return 1
+  hypr_hash_cache_command_into hash_command || return 1
   digest="$(cat "$@" 2>/dev/null | "$hash_command")" || return 1
   printf '%s\n' "${digest%% *}"
 }
@@ -36,7 +32,7 @@ hypr_hash_cache_digest_files() {
 hypr_hash_cache_digest_strings() {
   local hash_command="" digest
 
-  hash_command="$(hypr_hash_cache_command)" || return 1
+  hypr_hash_cache_command_into hash_command || return 1
   digest="$(printf '%s\n' "$@" | "$hash_command")" || return 1
   printf '%s\n' "${digest%% *}"
 }
@@ -46,7 +42,7 @@ hypr_hash_cache_runtime_file() {
   local runtime_dir=""
 
   [[ -n "${filename}" ]] || return 1
-  runtime_dir="$(hypr_ensure_runtime_subdir hypr)" || return 1
+  hypr_ensure_runtime_dir_into runtime_dir hypr || return 1
   printf '%s/%s\n' "${runtime_dir}" "${filename}"
 }
 

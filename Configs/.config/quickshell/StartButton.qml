@@ -6,18 +6,19 @@ import "dock/DockModel.js" as DockModel
 import "modules"
 import "StartMenuModel.js" as StartMenuModel
 
-BarButton {
+AppIconButton {
     id: root
+    readonly property string menutreeScript: root.shell.home + "/.local/lib/hypr/rofi/menutree.sh"
     property bool popupEnabled: true
     property bool dropdown: false
     property bool taskbarSettings: false
     property var recentItems: []
-    css: "menu"; text: ""
+    css: "menu"; text: root.icon ? "" : ""
     onDropdownChanged: menuTree.running = dropdown
     onClicked: button => {
         if (button === Qt.RightButton) {
             if (taskbarSettings) shell.togglePopup("winbar-settings")
-            else shell.run(["hyprshell", "menutree"])
+            else shell.run(["bash", root.menutreeScript])
         } else if (button === Qt.MiddleButton) shell.run([shell.terminal])
         else shell.togglePopup(dropdown ? "hyprmenu" : "start")
     }
@@ -33,6 +34,10 @@ BarButton {
                 run: () => root.shell.prefs.winbarHighlightLabels = !root.shell.prefs.winbarHighlightLabels},
             {text: "Limit label width", checked: root.shell.prefs.winbarLimitLabels,
                 run: () => root.shell.prefs.winbarLimitLabels = !root.shell.prefs.winbarLimitLabels},
+            {text: "Window previews", checked: root.shell.prefs.winbarPreviews,
+                run: () => root.shell.prefs.winbarPreviews = !root.shell.prefs.winbarPreviews},
+            root.symbolicIconItem("spotlight", "Symbolic search icon"),
+            root.symbolicIconItem("task-view", "Symbolic Task View icon"),
             {text: "Automatically hide taskbar", checked: root.shell.prefs.winbarAutoHide,
                 run: () => {
                     const enabled = !root.shell.prefs.winbarAutoHide
@@ -44,6 +49,11 @@ BarButton {
             {text: "Taskbar position", submenu: [["Bottom", "bottom"], ["Top", "top"]].map(([text, edge]) => ({text, checked: root.shell.barEdge === edge,
                 run: () => { root.shell.prefs.winbarEdge = edge; root.shell.run(["hyprshell", "render/dunst.py"]) }}))}
         ] : []
+    }
+    function symbolicIconItem(id, text) {
+        const entry = root.shell.barSections.reduce((entries, section) => entries.concat(root.shell.barLayout[section] || []), [])
+            .find(entry => (entry.id || entry) === id)
+        return { text, checked: !!entry?.props?.useSymbolic, run: entry ? () => root.shell.setModuleProps(id, { useSymbolic: !entry.props?.useSymbolic }) : null }
     }
     function forceQuitItems() {
         const windows = Hyprland.toplevels?.values ?? []
@@ -96,7 +106,7 @@ BarButton {
         }
         Process {
             id: menuTree
-            command: ["hyprshell", "rofi/menutree", "--dump-json"]
+            command: ["bash", root.menutreeScript, "--dump-json"]
             stdout: StdioCollector { waitForEnd: true; onStreamFinished: dropdownMenu.menus = JSON.parse(text) }
         }
         Process {

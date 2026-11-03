@@ -47,6 +47,8 @@ xkbcli how-to-type --layout fr '<char>'
 | `Super + Return` | terminal, in the current directory |
 | `Super + Shift + Return` | tmux session, in the current directory |
 | `Super + 6` | summon Signal |
+| `Super + Shift + 6` | move window to Signal's special workspace |
+| `Super + Alt + 6` | move it there silently |
 | `Super + 9` | summon the file manager |
 | `Super + Shift + 9` | move window to the file manager's special workspace |
 | `Super + Alt + 9` | file manager in the current directory |
@@ -91,6 +93,7 @@ app is either in front of you or out of the way.
 | `Super + G` | group |
 | `Super + Z` / `Super + LMB` | move window |
 | `Super + X` / `Super + RMB` | resize window |
+| `Super + L` | lock the screen |
 | `Super + Escape` | logout menu |
 | `Ctrl + Alt + Delete` | logout menu |
 
@@ -99,8 +102,8 @@ app is either in front of you or out of the way.
 | key | action |
 | --- | ------ |
 | `Super + 1`…`5`, `Super + 7` | go to that numbered workspace |
-| `Super + Shift + 1`…`7` | move window to that numbered workspace and follow |
-| `Super + Alt + 1`…`7` | move window there, stay put |
+| `Super + Shift + 1`…`5`, `7` | move window to that numbered workspace and follow |
+| `Super + Alt + 1`…`5`, `7` | move window there, stay put |
 | `Super + Tab` | next existing workspace |
 | `Super + Shift + Tab` | previous existing workspace |
 | `Super + scroll` | walk existing workspaces |
@@ -164,13 +167,13 @@ and utility zoom stay active and repeat; Escape leaves them.
 `W` select wallpaper · `Up`/`Down` previous/next wallpaper · `M` color mode ·
 `B` select bar layout · `C` / `Shift + C` cycle bar layout · `Shift + B` reload
 the bar · `H` toggle the bar · `Shift + H` floating bar · `F` select font ·
-`Shift + F` install a Nerd Font · `L` launcher style · `R` rofi theme ·
-`V` Settings · `A` animation preset · `S` shader · `K` lock layout
+`Shift + F` install a Nerd Font · `R` rofi theme · `Shift + R` launcher style ·
+`L` Settings · `A` animation preset · `S` shader · `K` lock layout
 
 ### Open — `Super + O`
 
 `F` file finder · `B` bookmarks · `T` tray · `V` Bitwarden vault ·
-`Shift + V` Bitwarden desktop · `S` Signal · `W` LibreOffice Writer ·
+`Shift + V` Bitwarden desktop · `W` LibreOffice Writer ·
 `G` Gimp · `E` Elisa · `M` Mullvad VPN · `Q` qBittorrent · `L` game launcher ·
 `Shift + L` Lutris
 
@@ -197,30 +200,35 @@ with desktop audio · `W` toggle webcam recording with desktop audio ·
 
 ### Utilities — `Super + U`
 
-`L` lock the screen · `W` select workflow · `O` audio output · `S` / `Shift + S` cycle monitor scale ·
+`B` notification actions · `Shift + B` dismiss all notifications · `C` copy the latest verification code ·
+`W` select workflow · `O` audio output · `S` / `Shift + S` cycle monitor scale ·
 `D` toggle the laptop display · `M` toggle mirroring · `N` toggle nightlight ·
 `A` keep awake · `Q` close all windows · `Z` zoom in · `Shift + Z` zoom out
 
 ### Window — `Super + W`
 
-Arrows focus, `Shift + Arrow` moves, `Ctrl + Arrow` resizes.
-`F` float · `M` maximize · `G` group · `P` pin · `T` / `Shift + T` cycle
-the global layout forward/backward · `U` select layout.
+Arrows focus, `Shift + Arrow` moves, `Alt + Arrow` resizes, as outside it.
+`F` fullscreen · `Shift + F` float · `M` maximize · `G` group · `P` pin · `T` / `Shift + T` cycle
+the global layout forward/backward · `L` select layout.
 Workspace keys work here too.
 
 Then the per-layout keys, which only fire in the layout they belong to:
 
 - **Dwindle** — `S` toggle split, `Shift + S` swap split, `R` rotate,
-  `Shift + R` move to root, `D` / `Shift + D` shrink and grow the split
-- **Scrolling** — `H` / `L` previous and next column, `Shift + H` / `Shift + L`
-  swap columns, `C` / `Shift + C` focus previous and next column,
-  `E` / `Shift + E` shrink and grow, `X` expand, `I` fit into view,
+  `Shift + R` move to root, `Z` / `Shift + Z` grow and shrink the split
+- **Scrolling** — `N` / `Shift + N` focus next and previous column, `J` / `Shift + J`
+  swap columns right and left, `C` / `Shift + C` scroll the view to the next and previous column,
+  `Z` / `Shift + Z` grow and shrink, `X` expand, `I` fit into view,
   `B` consume, `Shift + B` expel, `V` promote
 - **Master** — `W` focus master, `Shift + W` swap with master, `A` /
   `Shift + A` add and remove a master, `N` / `Shift + N` focus next and previous,
-  `J` / `Shift + J` swap, `K` / `Shift + K` roll, `Z` / `Shift + Z` shrink and
-  grow, `O` cycle orientation, `Shift + O` center
-- **Monocle** — `Y` / `Shift + Y` next and previous
+  `J` / `Shift + J` swap, `K` / `Shift + K` roll, `Z` / `Shift + Z` grow and
+  shrink, `O` cycle orientation, `Shift + O` center
+- **Monocle** — `N` / `Shift + N` next and previous
+
+A key means the same thing in every layout that has it: `Z` grows and
+`Shift + Z` shrinks, `N` and `Shift + N` walk the windows, `J` and `Shift + J`
+swap them.
 
 The bind registers unconditionally and the layout check happens at press time, so
 the hint filters on the layout you are in. You only ever see the rows that will

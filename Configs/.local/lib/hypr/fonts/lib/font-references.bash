@@ -2,68 +2,72 @@ REFERENCE_RANK_RADIX=10
 declare -gA REFERENCE_SCOPE_RANK=([active]=2 [config]=1 [installed-config]=0)
 declare -gA MATCH_KIND_RANK=([explicit]=2 [fallback]=1)
 
-normalize_name() {
-  printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]'
+normalize_name_into() {
+  local -n normalized_name_ref="$1"
+  normalized_name_ref="${2//[^a-zA-Z0-9]/}"
+  normalized_name_ref="${normalized_name_ref,,}"
 }
 
-regex_escape() {
-  sed 's/[][(){}.^$*+?|\\/]/\\&/g' <<<"$1"
+font_reference_regex_into() {
+  local -n reference_regex_ref="$1"
+  printf -v reference_regex_ref '(^|[^[:alnum:]])%s([^[:alnum:]]|$)' "${2//[][(){\}.^\$*+?|\\\/]/\\&}"
 }
 
-font_reference_regex() {
-  local escaped=""
-  escaped="$(regex_escape "$1")"
-  printf '(^|[^[:alnum:]])%s([^[:alnum:]]|$)' "${escaped}"
-}
+family_aliases_into() {
+  local -n family_aliases_ref="$1"
+  local family="$2"
+  local normalized alias key
+  local -A seen_aliases=()
 
-family_aliases() {
-  local family="$1"
-  local normalized compact alias key
-  declare -A seen_aliases=()
-
-  normalized=$(normalize_name "$family")
-  compact=$(printf '%s' "$family" | tr -d '[:space:]-_/')
-
-  for alias in "$family" "$compact" "$normalized"; do
+  family_aliases_ref=()
+  normalize_name_into normalized "${family}"
+  for alias in "${family}" "${family//[$' \t\n\v\f\r'\/_-]/}" "${normalized}"; do
     [[ -n "$alias" ]] || continue
     key="${alias,,}"
     [[ -n "${seen_aliases[$key]:-}" ]] && continue
     seen_aliases["$key"]=1
-    printf '%s\n' "$alias"
+    family_aliases_ref+=("$alias")
   done
 }
 
-classify_match_kind() {
-  local family="$1"
-  local match="$2"
+classify_match_kind_into() {
+  local -n match_kind_ref="$1"
+  local family="$2"
+  local match="$3"
   local content stack item family_norm item_norm
   local position=0
+  local -a stack_items=()
 
-  family_norm=$(normalize_name "$family")
+  match_kind_ref=explicit
+  normalize_name_into family_norm "$family"
   content="${match#*:*:}"
+  [[ "${content}" == *"font-family"* ]] || return 0
 
-  if [[ "${content}" == *"font-family"* ]]; then
-    stack="${content#*font-family}"
-    stack="${stack#*:}"
-    stack="${stack%%;*}"
+  stack="${content#*font-family}"
+  stack="${stack#*:}"
+  stack="${stack%%;*}"
+  IFS=, read -r -a stack_items <<<"${stack}"
+  for item in "${stack_items[@]}"; do
+    item="${item//[\"\']/}"
+    item="${item#"${item%%[![:space:]]*}"}"
+    item="${item%"${item##*[![:space:]]}"}"
+    [[ -n "${item}" ]] || continue
+    position=$((position + 1))
+    normalize_name_into item_norm "${item}"
+    if [[ "${item_norm}" == *"${family_norm}"* || "${family_norm}" == *"${item_norm}"* ]]; then
+      ((position == 1)) || match_kind_ref=fallback
+      return 0
+    fi
+  done
+}
 
-    while IFS= read -r item; do
-      item="$(printf '%s' "${item}" | sed 's/["'\'']//g; s/^[[:space:]]*//; s/[[:space:]]*$//')"
-      [[ -n "${item}" ]] || continue
-      position=$((position + 1))
-      item_norm=$(normalize_name "${item}")
-      if [[ "${item_norm}" == *"${family_norm}"* || "${family_norm}" == *"${item_norm}"* ]]; then
-        if ((position == 1)); then
-          printf 'explicit\n'
-        else
-          printf 'fallback\n'
-        fi
-        return 0
-      fi
-    done < <(printf '%s' "${stack}" | tr ',' '\n')
-  fi
+matches_ignoring_case() {
+  local status=1
 
-  printf 'explicit\n'
+  shopt -s nocasematch
+  [[ "$1" =~ $2 ]] && status=0
+  shopt -u nocasematch
+  return "${status}"
 }
 
 record_best_match() {
@@ -146,46 +150,87 @@ reference_scope() {
   esac
 }
 
-find_best_reference_for_family() {
-  local family="$1"
-  local alias alias_regex match key kind score
+collect_font_reference_lines() {
+  local pkg family alias alias_regex path line_number content reference_text=""
+  local -a aliases=() patterns=()
+  local -A seen_patterns=() reference_contents=()
+
+  FONT_REFERENCE_LINES=()
+  FONT_REFERENCE_CONTENT_FILE="$(mktemp)"
+  trap 'rm -f -- "${FONT_REFERENCE_CONTENT_FILE}"' EXIT
+
+  for pkg in "${INSTALLED_FONT_PACKAGES[@]}"; do
+    package_families "$pkg" >/dev/null
+  done
+  while IFS= read -r family; do
+    [[ -n "$family" ]] || continue
+    family_aliases_into aliases "$family"
+    for alias in "${aliases[@]}"; do
+      [[ ${#alias} -ge "${MIN_ALIAS_LENGTH}" ]] || continue
+      font_reference_regex_into alias_regex "${alias}"
+      [[ -z "${seen_patterns[$alias_regex]:-}" ]] || continue
+      seen_patterns["$alias_regex"]=1
+      patterns+=(-e "${alias_regex}")
+    done
+  done < <(printf '%s\n' "${PACKAGE_FAMILY_CACHE[@]}" "${LOCAL_FONT_FAMILIES[@]}")
+  ((${#patterns[@]})) || return 0
+
+  while IFS=$'\x1f' read -r path line_number content; do
+    reference_contents["${path}:${line_number}:${content}"]="${content}"
+  done < <(rg "${RG_ARGS[@]}" --field-match-separator=$'\x1f' "${patterns[@]}" -- "${ACTIVE_SEARCH_ROOTS[@]}" 2>/dev/null || true)
+  ((${#reference_contents[@]})) || return 0
+  mapfile -t FONT_REFERENCE_LINES < <(printf '%s\n' "${!reference_contents[@]}" | sort)
+  for content in "${FONT_REFERENCE_LINES[@]}"; do
+    reference_text+="${reference_contents[$content]}"$'\n'
+  done
+  printf '%s' "${reference_text}" >"${FONT_REFERENCE_CONTENT_FILE}"
+  reference_text="${reference_text//$'\u212a'/k}"
+  FONT_REFERENCE_CASEFOLDED_TEXT="${reference_text//$'\u017f'/s}"
+  FONT_REFERENCE_CASEFOLDED_TEXT="${FONT_REFERENCE_CASEFOLDED_TEXT,,}"
+}
+
+may_reference_alias() {
+  [[ "$1" == *[!\ -~]* || "${FONT_REFERENCE_CASEFOLDED_TEXT}" == *"${1,,}"* ]]
+}
+
+find_best_reference_for_family_into() {
+  local -n best_reference_ref="$1"
+  local family="$2"
+  local alias alias_regex match key kind score line_number
   local best_kind=""
   local best_match=""
   local best_score=0
+  local -a aliases=()
   local -A seen_matches=()
 
+  best_reference_ref=""
   [[ -n "$family" ]] || return 1
-  while IFS= read -r alias; do
+  family_aliases_into aliases "$family"
+  for alias in "${aliases[@]}"; do
     [[ ${#alias} -ge "${MIN_ALIAS_LENGTH}" ]] || continue
-    alias_regex="$(font_reference_regex "${alias}")"
+    font_reference_regex_into alias_regex "${alias}"
     for match in "${LIVE_FONT_REFS[@]:-}"; do
-      [[ -n "${match}" ]] || continue
-      if ! grep -Eqi -- "${alias_regex}" <<<"${match}"; then
-        continue
-      fi
+      [[ -n "${match}" ]] && matches_ignoring_case "${match}" "${alias_regex}" || continue
       key="${match}"
       [[ -n "${seen_matches[$key]:-}" ]] && continue
       seen_matches["$key"]=1
       record_best_match best_score best_kind best_match explicit "${match}"
     done
-    while IFS= read -r match; do
+    ((${#FONT_REFERENCE_LINES[@]})) && may_reference_alias "${alias}" || continue
+    while IFS=: read -r line_number _; do
+      match="${FONT_REFERENCE_LINES[line_number - 1]}"
       [[ -n "${match}" ]] || continue
       is_commented_match "${match}" && continue
       key="${match}"
       [[ -n "${seen_matches[$key]:-}" ]] && continue
       seen_matches["$key"]=1
-      record_best_match best_score best_kind best_match "$(classify_match_kind "$family" "$match")" "${match}"
-      # rg searches the roots in parallel, so equal-ranked references would
-      # otherwise be reported from whichever file happened to match first.
-    done < <({ rg "${RG_ARGS[@]}" -- "${alias_regex}" "${ACTIVE_SEARCH_ROOTS[@]}" 2>/dev/null || true; } | sort)
-  done < <(family_aliases "$family")
+      classify_match_kind_into kind "$family" "$match"
+      record_best_match best_score best_kind best_match "${kind}" "${match}"
+    done < <(rg -i -n --no-filename --color=never -e "${alias_regex}" -- "${FONT_REFERENCE_CONTENT_FILE}" 2>/dev/null || true)
+  done
 
-  if [[ -n "${best_match}" ]]; then
-    printf '%s\t%s\t%s\t%s\n' "${best_score}" "${best_kind}" "${family}" "${best_match}"
-    return 0
-  fi
-
-  return 1
+  [[ -n "${best_match}" ]] || return 1
+  printf -v best_reference_ref '%s\t%s\t%s\t%s' "${best_score}" "${best_kind}" "${family}" "${best_match}"
 }
 
 find_best_reference_for_package() {
@@ -198,8 +243,7 @@ find_best_reference_for_package() {
 
   while IFS= read -r family; do
     [[ -n "$family" ]] || continue
-    reference=$(find_best_reference_for_family "$family" || true)
-    [[ -n "${reference}" ]] || continue
+    find_best_reference_for_family_into reference "$family" || continue
     IFS=$'\t' read -r score match_kind match_family match_path <<<"$reference"
     if ((score > best_score)); then
       best_score=${score}
@@ -264,8 +308,7 @@ classify_local_families() {
 
   local family reference score match_kind match_family match_path match_scope
   for family in "${LOCAL_FONT_FAMILIES[@]}"; do
-    reference=$(find_best_reference_for_family "${family}" || true)
-    if [[ -z "${reference}" ]]; then
+    if ! find_best_reference_for_family_into reference "${family}"; then
       LOCAL_UNUSED_FAMILIES+=("${family}")
       UNUSED_LOCAL_FAMILY_MAP["${family}"]=1
       continue

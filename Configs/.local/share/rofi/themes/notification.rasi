@@ -48,7 +48,7 @@ listview {
     lines:                       5;
     cycle:                       true;
     dynamic:                     true;
-    scrollbar:                   false;
+    scrollbar:                   true;
     layout:                      vertical;
     reverse:                     false;
     expand:                      false;

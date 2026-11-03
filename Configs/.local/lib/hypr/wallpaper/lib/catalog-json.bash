@@ -2,7 +2,6 @@
 
 wallpaper_catalog_prepare_runtime() {
   local ensure_thumbs="${1:-0}"
-  selected_wallpaper_index=0
   if ! wallpaper_theme_sources; then
     echo "ERROR: \"${HYPR_THEME_DIR}\" does not exist"
     return 2
@@ -18,16 +17,17 @@ wallpaper_catalog_cache_paths() {
   local out_cache_file_name="$2"
   local out_json_cache_name="$3"
   local resolved_cache_home=""
-  local resolved_cache_file=""
-  local resolved_json_cache=""
+  local cache_key=""
 
-  resolved_cache_home="$(wallpaper_cache_root)"
-  resolved_cache_file="$(wallpaper_hashmap_cache_file "${wallpaper_source_paths[@]}" 2>/dev/null || true)"
-  resolved_json_cache="$(wallpaper_catalog_json_file "${wallpaper_source_paths[@]}" 2>/dev/null || true)"
-
+  wallpaper_cache_root_into resolved_cache_home
   printf -v "${out_cache_home_name}" '%s' "${resolved_cache_home}"
-  printf -v "${out_cache_file_name}" '%s' "${resolved_cache_file}"
-  printf -v "${out_json_cache_name}" '%s' "${resolved_json_cache}"
+  if wallpaper_hashmap_cache_key_into cache_key "${wallpaper_source_paths[@]}"; then
+    printf -v "${out_cache_file_name}" '%s' "${resolved_cache_home}/hashmap/${cache_key}.tsv"
+    printf -v "${out_json_cache_name}" '%s' "${resolved_cache_home}/catalog/${cache_key}.json"
+  else
+    printf -v "${out_cache_file_name}" '%s' ""
+    printf -v "${out_json_cache_name}" '%s' ""
+  fi
 }
 
 wallpaper_catalog_print_cached_json_if_current() {

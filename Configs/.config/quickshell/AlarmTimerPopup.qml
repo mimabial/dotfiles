@@ -10,7 +10,7 @@ import "Units.js" as Units
 PopupCard {
     id: root
     popupName: "timer"
-    keyboardHint: wantsKeyboard ? "Type value · Enter save · Esc cancel" : hintText()
+    keyboardHint: wantsKeyboard ? "Type value  Enter Save  Esc Cancel" : hintText()
     contentWidth: Style.px(400)
     contentHeight: timerColumn.implicitHeight + padding * 2
     property var entries: []
@@ -130,11 +130,11 @@ PopupCard {
     }
     function hintText() {
         if (mode === "alarm" || mode === "timer")
-            return "JK move · HL adjust · Enter edit · Space " + (mode === "alarm" ? "add" : "start") + " · Esc"
-        const action = clockwork.running ? "pause" : clockwork.completed ? "restart"
-            : clockwork.storedElapsedMs > 0 ? "resume" : "start"
-        if (mode === "stopwatch") return "Space " + action + (clockwork.running ? " · L lap" : "") + " · R reset · Esc"
-        return "1–6 mode · Space " + action + (mode === "pomodoro" && clockwork.running ? " · S skip" : "") + " · R reset · Esc"
+            return "JK Move  HL Adjust  Enter Edit  Space " + (mode === "alarm" ? "Add" : "Start") + "  Esc"
+        const action = clockwork.running ? "Pause" : clockwork.completed ? "Restart"
+            : clockwork.storedElapsedMs > 0 ? "Resume" : "Start"
+        if (mode === "stopwatch") return "Space " + action + (clockwork.running ? "  L Lap" : "") + "  R Reset  Esc"
+        return "1–6 Mode  Space " + action + (mode === "pomodoro" && clockwork.running ? "  S Skip" : "") + "  R Reset  Esc"
     }
     function startClockwork() {
         clockwork.startPause()
@@ -205,10 +205,8 @@ PopupCard {
         Keys.onBacktabPressed: { focus = false; Qt.callLater(() => { root.resumeKeyboard(); root.moveCursor(-1) }) }
         background: Rectangle {
             radius: root.shell.rounding
-            color: fieldInput.cursored ? root.shell.hoverFill() : root.shell.alpha(root.shell.foreground, .06)
-            border.width: fieldInput.cursored || fieldInput.activeFocus ? 2 : 1
-            border.color: fieldInput.cursored ? root.shell.hoverEdge(.85)
-                : root.shell.alpha(root.shell.foreground, fieldInput.activeFocus ? .45 : .18)
+            color: fieldInput.cursored || fieldInput.activeFocus ? root.shell.hoverFill() : root.shell.alpha(root.shell.foreground, Style.fieldFillAlpha)
+            border.color: root.shell.alpha(root.shell.foreground, Style.fieldBorderAlpha)
         }
     }
     component PresetButton: BarButton { keyboardEnabled: true; radius: shell.rounding; backgroundColor: shell.alpha(shell.accent, .18); borderColor: "transparent"; textColor: shell.accent }
@@ -263,7 +261,7 @@ PopupCard {
             Column { spacing: Style.sectionGap
                 Row { anchors.horizontalCenter: parent.horizontalCenter; spacing: Style.lg
                     PopupNumberField {
-                        width: Style.px(68); shell: root.shell; label: "H"; maximum: 99
+                        width: Style.px(68); shell: root.shell; popupController: root; label: "H"; maximum: 99
                         value: root.timerHours; onCommitted: value => root.timerHours = value
                     }
                     Text {
@@ -272,7 +270,7 @@ PopupCard {
                         font.pixelSize: Style.displayLarge; font.bold: true; verticalAlignment: Text.AlignBottom
                     }
                     PopupNumberField {
-                        width: Style.px(68); shell: root.shell; label: "M"; maximum: 59
+                        width: Style.px(68); shell: root.shell; popupController: root; label: "M"; maximum: 59
                         value: root.timerMinutes; onCommitted: value => root.timerMinutes = value
                     }
                     Text {
@@ -281,7 +279,7 @@ PopupCard {
                         font.pixelSize: Style.displayLarge; font.bold: true; verticalAlignment: Text.AlignBottom
                     }
                     PopupNumberField {
-                        width: Style.px(68); shell: root.shell; label: "S"; maximum: 59
+                        width: Style.px(68); shell: root.shell; popupController: root; label: "S"; maximum: 59
                         value: root.timerSeconds; onCommitted: value => root.timerSeconds = value
                     }
                 }
@@ -304,13 +302,13 @@ PopupCard {
                 }
             }
             ClockworkPage {
-                shell: root.shell; clockwork: root.clockwork
+                shell: root.shell; popupController: root; clockwork: root.clockwork
                 pageMode: root.clockwork.stopwatchMode
                 onStartRequested: root.startClockwork()
                 onResetRequested: root.resetClockwork()
             }
             ClockworkPage {
-                shell: root.shell; clockwork: root.clockwork
+                shell: root.shell; popupController: root; clockwork: root.clockwork
                 pageMode: root.clockwork.countdownMode
                 onStartRequested: root.startClockwork()
                 onResetRequested: root.resetClockwork()
@@ -319,7 +317,7 @@ PopupCard {
                 spacing: Style.sectionGap
                 Row { anchors.horizontalCenter: parent.horizontalCenter; spacing: Style.lg
                     PopupNumberField {
-                        width: Style.px(68); shell: root.shell; label: "H"; maximum: 23
+                        width: Style.px(68); shell: root.shell; popupController: root; label: "H"; maximum: 23
                         value: root.alarmHours
                         onCommitted: value => { root.alarmHours = value; root.error = "" }
                     }
@@ -329,7 +327,7 @@ PopupCard {
                         font.pixelSize: Style.displayLarge; font.bold: true; verticalAlignment: Text.AlignBottom
                     }
                     PopupNumberField {
-                        width: Style.px(68); shell: root.shell; label: "M"; maximum: 59
+                        width: Style.px(68); shell: root.shell; popupController: root; label: "M"; maximum: 59
                         value: root.alarmMinutes
                         onCommitted: value => { root.alarmMinutes = value; root.error = "" }
                     }
@@ -380,19 +378,22 @@ PopupCard {
                 }
             }
             ClockworkPage {
-                shell: root.shell; clockwork: root.clockwork
+                shell: root.shell; popupController: root; clockwork: root.clockwork
                 pageMode: root.clockwork.intervalsMode
                 onStartRequested: root.startClockwork()
                 onResetRequested: root.resetClockwork()
             }
             ClockworkPage {
-                shell: root.shell; clockwork: root.clockwork
+                shell: root.shell; popupController: root; clockwork: root.clockwork
                 pageMode: root.clockwork.pomodoroMode
                 onStartRequested: root.startClockwork()
                 onResetRequested: root.resetClockwork()
             }
         }
-        Text { visible: root.error !== ""; width: parent.width; text: root.error; color: root.shell.role("error", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+        PopupHint {
+            shell: root.shell; error: true
+            width: parent.width; text: root.error
+        }
         PopupSeparator { shell: root.shell }
         Column {
             width: parent.width; spacing: Style.sm

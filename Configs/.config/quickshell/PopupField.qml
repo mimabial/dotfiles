@@ -51,9 +51,8 @@ TextField {
 
     background: Rectangle {
         radius: root.shell.rounding
-        color: root.shell.alpha(root.shell.foreground, .06)
+        color: root.cursored || root.activeFocus ? root.shell.hoverFill() : root.shell.alpha(root.shell.foreground, Style.fieldFillAlpha)
         border.width: 1
-        border.color: root.cursored ? root.shell.hoverEdge(.85)
-            : root.shell.alpha(root.shell.foreground, root.activeFocus ? .45 : .18)
+        border.color: root.shell.alpha(root.shell.foreground, Style.fieldBorderAlpha)
     }
 }

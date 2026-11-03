@@ -9,6 +9,9 @@ Column {
     property int totalHeight: 200
     property string openSubId: ""
     property Item openRow: null
+    property int cursorIndex: -1
+    property bool cursorShown: false
+    onItemsChanged: cursorIndex = Math.min(cursorIndex, items.length - 1)
     signal action(string target)
     readonly property int unconstrainedHeight: menuHeader.height + root.spacing + menuList.contentHeight
     readonly property bool hovered: paneHover.hovered
@@ -30,6 +33,20 @@ Column {
     function labelIcon(label) { const m = label.match(/^(\S+)\s{2,}/); return m ? m[1] : "" }
     function labelText(label) { const m = label.match(/^\S+\s{2,}(.*)$/); return m ? m[1] : label }
     function reset() { openSubId = ""; openRow = null }
+    function moveCursor(step) {
+        cursorIndex = Math.max(0, Math.min(items.length - 1, cursorIndex + step))
+        menuList.positionViewAtIndex(cursorIndex, ListView.Contain)
+    }
+    function openCursorSubmenu() {
+        const item = items[cursorIndex]
+        if (!item || item.kind !== "submenu") return false
+        openSubId = item.target; openRow = menuList.itemAtIndex(cursorIndex)
+        return true
+    }
+    function activateCursor() {
+        const item = items[cursorIndex]
+        if (item && !openCursorSubmenu()) action(item.target)
+    }
 
     HoverHandler { id: paneHover }
     PopupSection { id: menuHeader; shell: root.shell; text: "MENU" }
@@ -41,9 +58,13 @@ Column {
         spacing: 2
         model: root.items
         ScrollBar.vertical: PopupScrollBar { shell: root.shell }
-        delegate: StartMenuRow {
+        delegate: PopupRow {
             id: row
             required property var modelData
+            required property int index
+            readonly property string cursorSection: "menu"
+            readonly property int cursorSlot: index
+            cursored: root.cursorShown && root.cursorIndex === index
             width: menuList.width; shell: root.shell
             rightInset: root.overflowing ? Style.md : 0
             icon: root.labelIcon(modelData.label)

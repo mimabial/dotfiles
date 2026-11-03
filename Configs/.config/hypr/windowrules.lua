@@ -27,6 +27,11 @@ hl.window_rule({
 	["opacity"] = "0.80 override 0.80 override 1",
 })
 hl.window_rule({
+	["name"] = "terminal-no-activation-focus",
+	["match"] = { ["class"] = "^(Alacritty|kitty|dropdown-terminal|org\\.(tui|agent|font|language)\\..*)$" },
+	["focus_on_activate"] = false,
+})
+hl.window_rule({
 	["name"] = "haruna-fullscreen",
 	["match"] = { ["class"] = "^(org\\.kde\\.haruna)$", ["initial_title"] = "^Haruna$" },
 	["fullscreen"] = true,
@@ -86,7 +91,7 @@ hl.window_rule({
 })
 hl.window_rule({
 	["name"] = "translucent-apps-relative",
-	["match"] = { ["class"] = "^(signal|org\\.pwmt\\.zathura|com\\.github\\.jeromerobert\\.pdfarranger)$" },
+	["match"] = { ["class"] = "^(signal|com\\.github\\.jeromerobert\\.pdfarranger)$" },
 	["opacity"] = "0.80 0.80",
 })
 hl.window_rule({
@@ -105,9 +110,9 @@ hl.window_rule({
 	["center"] = true,
 })
 hl.window_rule({
-	["name"] = "gwenview-fullscreen",
+	["name"] = "gwenview-maximized",
 	["match"] = { ["class"] = "^(org\\.kde\\.gwenview)$", ["modal"] = false },
-	["fullscreen"] = true,
+	["maximize"] = true,
 })
 hl.window_rule({
 	["name"] = "libreoffice-empty-workspace",

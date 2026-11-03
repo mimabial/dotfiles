@@ -20,7 +20,8 @@ def on_update(_conn, _sender, _path, _iface, _signal, params):
     entry = entries.setdefault(app, {})
     entry.update(props)
     count = entry.get("count", 0) if entry.get("count-visible") else 0
-    print(json.dumps({"app": app, "count": count}), flush=True)
+    progress = entry.get("progress", 0) if entry.get("progress-visible") else None
+    print(json.dumps({"app": app, "count": count, "progress": progress}), flush=True)
 
 
 ctypes.CDLL(None).prctl(PR_SET_PDEATHSIG, signal.SIGTERM)

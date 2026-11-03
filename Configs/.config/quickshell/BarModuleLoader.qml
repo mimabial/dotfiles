@@ -28,7 +28,8 @@ Loader {
     }
     Layout.fillWidth: spacer || !!(moduleProps && moduleProps.fillAvailableWidth)
     Layout.fillHeight: true
-    visible: moduleVisible(item)
+    Layout.rightMargin: (item as Item)?.Layout.rightMargin ?? 0
+    visible: moduleVisible(item) && !(shell.prefs.hiddenBarCollapsed && (shell.barLayout.hiddenBarItems || []).includes(moduleId))
     sourceComponent: spacer || customSource ? null : registry[moduleId] || (moduleEntry.exec ? commandModule : null)
     Component.onCompleted: {
         if (customSource) setSource(Qt.resolvedUrl(moduleEntry.source), Object.assign({ shell }, moduleProps || {}))

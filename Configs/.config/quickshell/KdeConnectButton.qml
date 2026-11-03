@@ -4,13 +4,14 @@ import qs as Bar
 
 Bar.BarButton {
     id: root
+    required property Bar.KdeConnect service
     property bool popupsAllowed: true
     property bool showBadge: true
-    readonly property int deviceCount: root.shell.kdeconnect.reachableDevices.count
+    readonly property int deviceCount: root.service.deviceCount
     css: "kdeconnect"
     text: "󰒗"
     tooltip: "KDE Connect"
     badgeText: showBadge && deviceCount ? root.countText(deviceCount) : ""
     onClicked: root.shell.togglePopup("kdeconnect")
-    Bar.KdeConnectPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }
+    Bar.KdeConnectPopup { service: root.service; anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }
 }

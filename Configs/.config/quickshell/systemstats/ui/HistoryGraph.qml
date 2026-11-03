@@ -8,6 +8,8 @@ Canvas {
 
   property var series: []
   property var colors: []
+  property var sampleColors: []
+  property real stackedSampleAlpha: 0.62
   property var ceiling
   property real minimumCeiling: 1
   property real headroom: 1.06
@@ -26,6 +28,7 @@ Canvas {
 
   onSeriesChanged: requestPaint()
   onColorsChanged: requestPaint()
+  onSampleColorsChanged: requestPaint()
   onCeilingChanged: requestPaint()
   onBarWidthChanged: requestPaint()
   onShowGapsChanged: requestPaint()
@@ -74,8 +77,11 @@ Canvas {
         var top = snap(y - h)
         var bottom = snap(y)
         if (bottom - top < 1 / dpr) top = bottom - 1 / dpr
-        ctx.fillStyle = root.colors[c] || Commons.Color.accent
+        var sampleColor = Array.isArray(root.sampleColors[c]) ? root.sampleColors[c][idx] : null
+        ctx.globalAlpha = c > 0 && sampleColor ? root.stackedSampleAlpha : 1
+        ctx.fillStyle = sampleColor || root.colors[c] || Commons.Color.accent
         ctx.fillRect(snap(x), top, Math.max(1 / dpr, snap(root.barWidth)), bottom - top)
+        ctx.globalAlpha = 1
         y -= h
       }
     }

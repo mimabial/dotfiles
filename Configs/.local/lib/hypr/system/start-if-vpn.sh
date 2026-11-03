@@ -3,6 +3,7 @@
 set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
+declare -F hypr_wait_for >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/events.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell system/start-if-vpn [--timeout SECONDS] [--workspace WS] [--] <argv...>
 Run argv in its own app unit once the VPN tunnel reports connected." "$@"

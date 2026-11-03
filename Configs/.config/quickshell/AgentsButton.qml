@@ -8,6 +8,7 @@ BarButton {
     property bool popupEnabled: true
     property var records: []
     property int selected: 0
+    readonly property string usageScript: Quickshell.env("HOME") + "/.local/lib/hypr/system/agent-usage.sh"
     readonly property real highestUsage: {
         let highest = 0
         for (const record of records)
@@ -43,8 +44,8 @@ BarButton {
     function refresh(force) {
         if (usageCollector.running) return
         usageCollector.command = force
-            ? ["hyprshell", "system/agent-usage", "--write", "--force"]
-            : ["hyprshell", "system/agent-usage", "--write"]
+            ? ["bash", root.usageScript, "--write", "--force"]
+            : ["bash", root.usageScript, "--write"]
         usageCollector.running = true
     }
 
@@ -58,7 +59,7 @@ BarButton {
             catch (error) { root.records = [] }
         }
     }
-    Process { id: usageCollector; command: ["hyprshell", "system/agent-usage", "--write"] }
+    Process { id: usageCollector; command: ["bash", root.usageScript, "--write"] }
     Timer { interval: 15 * CalendarMath.MS_PER_MINUTE; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
 
     AgentsPopup {

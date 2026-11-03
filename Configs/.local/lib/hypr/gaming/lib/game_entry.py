@@ -10,4 +10,5 @@ class Game:
     name: str
     icon: str
     argv: list[str]
+    last_played: int
 

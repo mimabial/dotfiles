@@ -59,7 +59,7 @@ apply_profile() {
   local dry_run="$2"
   local host_dir=""
   local rel=""
-  local applied=0
+  local handled=0
   local -a manifest_records=()
   local -a host_targets=()
 
@@ -78,16 +78,16 @@ apply_profile() {
 
   for rel in "${host_targets[@]}"; do
     if apply_target "${host_dir}" "${rel}" "${dry_run}"; then
-      applied=1
+      handled=1
     fi
   done
 
-  (( applied == 1 )) || printf 'No managed host files defined for %s\n' "${profile}"
+  (( handled == 1 )) || printf 'No managed host files defined for %s\n' "${profile}"
 }
 
 ensure_empty_target() {
   local dest="$1"
-  mkdir -p "$(dirname "${dest}")"
+  mkdir -p "${dest%/*}"
   if [[ -d "${dest}" && ! -L "${dest}" ]]; then
     rm -rf -- "${dest}"
   fi

@@ -80,19 +80,6 @@ hypr_runtime_require notify common lock_paths || { return 1 2>/dev/null || exit 
 hypr_runtime_load_desktop_environment() {
   hypr_runtime_require state || return 1
   state_load_runtime_environment || return 1
-  hypr_runtime_refresh_border_metrics
-}
-
-hypr_runtime_refresh_border_metrics() {
-  local runtime_border_radius=""
-  local runtime_border_width=""
-
-  if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
-    hypr_border_metrics_into runtime_border_radius runtime_border_width 2>/dev/null || true
-  fi
-
-  export HYPR_RUNTIME_BORDER_RADIUS="${runtime_border_radius:-${HYPR_BORDER_RADIUS:-${HYPR_FALLBACK_ROUNDING_PX}}}"
-  export HYPR_RUNTIME_BORDER_WIDTH="${runtime_border_width:-${HYPR_BORDER_WIDTH:-${HYPR_FALLBACK_BORDER_PX}}}"
 }
 
 hypr_runtime_load_shell_environment() {

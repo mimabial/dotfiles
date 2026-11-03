@@ -21,9 +21,6 @@ workflow_apply_selection() {
     [[ "${active_workflow_name}" == "${notification_rule%%_*}" ]] && notification_state=enable || notification_state=disable
     dunstctl rule "${notification_rule}" "${notification_state}" >/dev/null 2>&1 || true
   done
-  if [[ "${workflow_previous_name}" == presentation && "${active_workflow_name}" != presentation ]]; then
-    restore_presentation_side_effects
-  fi
   workflow_write_state
   workflow_write_layout_flags
   hyprctl reload config-only -q
@@ -32,8 +29,5 @@ workflow_apply_selection() {
   if [[ "${active_workflow_name}" == macos && "${workflow_previous_name}" != macos ]]; then
     state_set selected_color_source theme staterc
     "${HYPR_LIB_DIR}/theme/theme.switch.sh" --set Tundra --quiet
-  fi
-  if [[ "${workflow_previous_name}" != presentation && "${active_workflow_name}" == presentation ]]; then
-    apply_presentation_side_effects
   fi
 }

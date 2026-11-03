@@ -22,26 +22,26 @@ ThumbnailSplitterSizes=512,146
 MenuBar=Disabled
 
 [Recent Files]
-File1[$e]=$HOME/.config/hypr/themes/Old Fashion/wallpapers/wallhaven-3z2xz62.jpg
-File10[$e]=$HOME/Pictures/wallhaven-po81rj.jpg
-File2[$e]=$HOME/.config/hypr/themes/Old Fashion/wallpapers/wallhaven-3q286d.jpg
-File3[$e]=$HOME/.config/hypr/themes/Old Fashion/wallpapers/wallhaven-5y76q1.jpg
-File4[$e]=$HOME/.config/hypr/themes/Synth Wave/wallpapers/wallhaven-zpvj1g.png
-File5[$e]=$HOME/.config/hypr/themes/Synth Wave/wallpapers/wallhaven-je9lmw.png
-File6[$e]=$HOME/.config/hypr/themes/The Greek/wallpapers/BG2.jpg
-File7[$e]=$HOME/.config/hypr/themes/The Greek/wallpapers/BG3.jpg
-File8[$e]=$HOME/Pictures/wallhaven-nmozpy.jpg
-File9[$e]=$HOME/Pictures/wallhaven-vqo2yl.png
-Name1[$e]=wallhaven-3z2xz62.jpg
-Name10[$e]=wallhaven-po81rj.jpg
-Name2[$e]=wallhaven-3q286d.jpg
-Name3[$e]=wallhaven-5y76q1.jpg
-Name4[$e]=wallhaven-zpvj1g.png
-Name5[$e]=wallhaven-je9lmw.png
-Name6[$e]=BG2.jpg
-Name7[$e]=BG3.jpg
-Name8[$e]=wallhaven-nmozpy.jpg
-Name9[$e]=wallhaven-vqo2yl.png
+File1[$e]=$HOME/Pictures/wallhaven-vqo2yl.png
+File10[$e]=$HOME/Pictures/wallhaven-dgpdx3.jpg
+File2[$e]=$HOME/Pictures/wallhaven-po81rj.jpg
+File3[$e]=$HOME/.config/hypr/themes/Egg Yolk/wallpapers/wallhaven-yqklqd.jpg
+File4[$e]=$HOME/.config/hypr/themes/Red Stone/wallpapers/backiee-335899-landscape.jpg
+File5[$e]=$HOME/.config/hypr/themes/Melange/wallpapers/wallhaven-9ok5qw.jpg
+File6[$e]=$HOME/.config/hypr/themes/Melange/wallpapers/wallhaven-43gkp9.jpg
+File7[$e]=$HOME/.config/hypr/themes/Windows 11/wallpapers/windows-4.jpg
+File8[$e]=$HOME/Pictures/wallhaven-jelg7w.jpg
+File9[$e]=$HOME/Pictures/wallhaven-9dzl5x.jpg
+Name1[$e]=wallhaven-vqo2yl.png
+Name10[$e]=wallhaven-dgpdx3.jpg
+Name2[$e]=wallhaven-po81rj.jpg
+Name3[$e]=wallhaven-yqklqd.jpg
+Name4[$e]=backiee-335899-landscape.jpg
+Name5[$e]=wallhaven-9ok5qw.jpg
+Name6[$e]=wallhaven-43gkp9.jpg
+Name7[$e]=windows-4.jpg
+Name8[$e]=wallhaven-jelg7w.jpg
+Name9[$e]=wallhaven-9dzl5x.jpg
 
 [SideBar]
 InformationSplitterSizes=231,244

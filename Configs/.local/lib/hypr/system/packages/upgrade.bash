@@ -6,7 +6,7 @@ upgrade_lock_fd=""
 upgrade_acquire_lock() {
   local lock_file=""
 
-  lock_file="$(hypr_lock_path_ensure_parent system_update)" || return 1
+  hypr_lock_path_into lock_file system_update || return 1
   exec {upgrade_lock_fd}>"${lock_file}" || return 1
   flock -n "${upgrade_lock_fd}" && return 0
 

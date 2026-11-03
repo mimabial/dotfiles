@@ -2,6 +2,7 @@
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
+declare -F hypr_dbus_get >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/dbus.bash" || exit 1
 
 set -uo pipefail
 export LC_ALL=C

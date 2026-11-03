@@ -32,7 +32,7 @@ mainbox {
     padding:                     0.7em;
     orientation:                 horizontal;
     children:                    [ "inputbar" , "listbox" ];
-    background-color:            #0000000D;
+    background-color:            @background-alpha;
 }
 
 inputbar {
@@ -42,7 +42,7 @@ inputbar {
     padding:                     0em;
     children:                    [ "entry" ];
     expand:                      false;
-    background-color:            #0000001A;
+    background-color:            transparent;
     background-image:            url("~/.cache/hypr/wallpaper/current/wall.quad", width);
     border-radius:               1em 0em 0em 1em;
 }
@@ -54,7 +54,7 @@ listbox {
     spacing:                     0em;
     padding:                     0em;
     children:                    [ "dummy" , "listview" , "dummy" ];
-    background-color:            #0000001A;
+    background-color:            transparent;
     border-radius:               0em 1em 1em 0em;
 }
 listview {
@@ -65,7 +65,7 @@ listview {
     lines:                       8;
     cycle:                       true;
     dynamic:                     true;
-    scrollbar:                   false;
+    scrollbar:                   true;
     layout:                      vertical;
     reverse:                     false;
     expand:                      false;

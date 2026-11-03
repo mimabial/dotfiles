@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import Quickshell
+import Quickshell.Io
 import qs.Commons as Commons
 import qs.Ui
 import "../Model.js" as Model
@@ -53,10 +53,23 @@ Column {
   }
 
   function copy(text) {
-    if (!text) return
-    Quickshell.execDetached(["/usr/bin/wl-copy", "--", String(text)])
+    if (!text || copyProcess.running) return
+    copyProcess.text = String(text)
+    copyProcess.stdinEnabled = true
+    copyProcess.running = true
     copiedValue = text
     copiedTimer.restart()
+  }
+
+  Process {
+    id: copyProcess
+    property string text: ""
+    command: ["/usr/bin/wl-copy"]
+    onStarted: {
+      write(text)
+      stdinEnabled = false
+      text = ""
+    }
   }
 
   Timer {
@@ -172,7 +185,7 @@ Column {
         Text {
           anchors.left: icon.right
           anchors.leftMargin: Commons.Style.space(10)
-          anchors.right: state.left
+          anchors.right: linkState.left
           anchors.rightMargin: Commons.Style.space(8)
           anchors.verticalCenter: parent.verticalCenter
           textFormat: Text.PlainText
@@ -185,7 +198,7 @@ Column {
         }
 
         Text {
-          id: state
+          id: linkState
           textFormat: Text.PlainText
           anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter

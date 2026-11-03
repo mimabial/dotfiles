@@ -9,7 +9,8 @@ Item {
     property string selectedDevice: ""
     property var selectedFiles: []
     readonly property alias reachableDevices: reachable
-    readonly property var reachableIds: Array.from({length: reachable.count},
+    readonly property int deviceCount: reachable.count
+    readonly property var reachableIds: Array.from({length: deviceCount},
         (_, row) => reachable.data(reachable.index(row, 0), KDEConnect.DevicesModel.IdModelRole))
     readonly property string recipient: reachableIds.includes(selectedDevice) ? selectedDevice
         : reachableIds.length === 1 ? reachableIds[0] : ""

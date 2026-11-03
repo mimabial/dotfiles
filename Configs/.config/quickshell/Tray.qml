@@ -91,7 +91,7 @@ Item {
         }
     }
     function toggleFlyout() {
-        const reopen = !popupOwned && !popupHold
+        const reopen = !popupHold
         shell.closePopup()
         popupHold = reopen
     }
@@ -128,19 +128,19 @@ Item {
     readonly property bool popupOwned: ownsPopup()
     readonly property bool draggingContent: drawerEntries.some(entry => entry.key === shell.dragKey)
     readonly property bool draggingWidget: drawerEntries.some(entry => entry.widget && entry.key === shell.dragKey)
-    readonly property bool expanded: popupsAllowed && (popupHold || popupOwned || draggingContent)
+    readonly property bool expanded: popupsAllowed && (popupHold || draggingContent)
     onPopupsAllowedChanged: if (!popupsAllowed) popupHold = false
     implicitWidth: content.implicitWidth
     implicitHeight: Math.max(content.implicitHeight, scaledIcon + spanY)
 
-    Binding { target: root.shell; property: "trayOpen"; value: true; when: root.expanded }
+    Binding { target: root.shell; property: "trayOpen"; value: true; when: root.expanded || root.popupOwned }
     Connections {
         target: root.shell
         function onPopupNameChanged() {
             if (root.shell.popupName === "") root.popupHold = false
         }
         function onPopupCardChanged() {
-            if (root.shell.popupCard && !root.ownsPopup()) root.popupHold = false
+            if (root.shell.popupCard) root.popupHold = false
         }
         function onTrayToggleRequested() {
             if (!root.popupsAllowed) return
@@ -230,7 +230,7 @@ Item {
                     delegate: TrayIcon {
                         required property var modelData
                         trayItem: modelData
-                        implicitWidth: root.scaledIcon; implicitHeight: root.scaledIcon
+                        implicitWidth: Math.max(root.box.minWidth, root.scaledIcon); implicitHeight: root.scaledIcon
                     }
                 }
             }
@@ -241,6 +241,7 @@ Item {
     PanelWindow {
         id: overflow
         readonly property var bar: root.QsWindow.window
+        readonly property Item popupAnchorItem: chevron
         readonly property bool onTop: root.shell.barEdge === "top"
         property real anchorX: 0
         property point widgetDragPosition
@@ -256,7 +257,7 @@ Item {
             Qt.callLater(() => root.shell.moveBarModule(key, placement.section, placement.target, false))
         }
         screen: bar ? bar.screen : null
-        visible: root.expanded && root.drawerEntries.length > 0
+        visible: (root.expanded || root.popupOwned) && root.drawerEntries.length > 0
         onVisibleChanged: {
             if (!visible) { root.cursorKey = ""; return }
             anchorX = bar.margins.left + chevron.mapToItem(null, chevron.width / 2, 0).x
@@ -270,7 +271,7 @@ Item {
         WlrLayershell.keyboardFocus: root.cursorKey && root.shell.popupName === "" ? WlrKeyboardFocus.Exclusive
             : root.popupOwned ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         implicitHeight: (bar ? bar.height + bar.margins.top + bar.margins.bottom : 0) + Style.popupGap + card.height
-        mask: Region { item: card }
+        mask: Region { item: root.expanded ? card : null }
         // a popup anchored in here may get the keyboard instead of the bar; route it the same way
         Item {
             anchors.fill: parent
@@ -279,13 +280,14 @@ Item {
         }
         Rectangle {
             id: card
+            visible: root.expanded
             x: Math.max(Style.popupGap, Math.min(overflow.width - width - Style.popupGap, overflow.anchorX - width / 2))
             y: overflow.onTop ? overflow.height - height : 0
             width: overflowGrid.width + 2 * Style.lg; height: overflowGrid.height + 2 * Style.lg
             radius: root.shell.rounding
             color: root.shell.alpha(Style.popupTinted(root.shell.background), Style.popupSurfaceOpacity)
             border.color: root.shell.alpha(Style.popupBorder(root.shell.role("alt_br", root.shell.foreground)), Style.popupBorderOpacity)
-            border.width: root.shell.borderWidth
+            border.width: root.box.popupBorderWidth ?? root.shell.borderWidth
             Grid {
                 id: overflowGrid
                 anchors.centerIn: parent
@@ -337,7 +339,6 @@ Item {
             anchors.fill: parent
             visible: slot.cursored || hover.hovered && !slot.widget
             radius: root.radius; color: root.shell.hoverFill()
-            border.color: root.shell.hoverEdge(.85); border.width: slot.cursored ? 2 : 0
         }
         BarModuleLoader {
             id: host

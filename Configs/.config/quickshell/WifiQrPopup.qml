@@ -5,7 +5,7 @@ import Quickshell.Io
 PopupCard {
     id: root
     popupName: "wifiqr"
-    keyboardHint: "Tab move · Enter · Ctrl+Tab panel · Esc"
+    keyboardHint: "Tab Move  Enter  Ctrl+Tab Panel  Esc"
     contentWidth: Style.px(260)
     contentHeight: qrColumn.implicitHeight + padding * 2
 
@@ -103,15 +103,19 @@ PopupCard {
                 }
             }
         }
-        Text {
+        PopupHint {
+            shell: root.shell; error: root.error !== ""
             visible: root.rows.length === 0
-            width: parent.width; wrapMode: Text.Wrap
-            text: root.error || "Reading network credentials…"
-            color: root.shell.mutedText
-            font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+            width: parent.width; text: root.error || "Reading network credentials…"
+            wrapMode: Text.Wrap; horizontalAlignment: Text.AlignLeft
+            font.pixelSize: Style.bodySmall
         }
         PopupRow { visible: root.rows.length > 0 && root.security === "WPA"; width: parent.width; shell: root.shell; title: root.revealing ? "Hide password" : "Reveal password"; onClicked: root.togglePassword() }
         Text { visible: root.revealing; width: parent.width; text: root.passwordProcess.running ? "Reading password…" : root.password; textFormat: Text.PlainText; wrapMode: Text.WrapAnywhere; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
-        Text { visible: root.rows.length > 0 && root.error !== ""; width: parent.width; text: root.error; textFormat: Text.PlainText; wrapMode: Text.Wrap; color: root.shell.urgent; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+        PopupHint {
+            shell: root.shell; error: true
+            visible: root.rows.length > 0 && root.error !== ""
+            width: parent.width; text: root.error
+        }
     }
 }

@@ -12,7 +12,7 @@ Rectangle {
     signal clicked(int button)
     implicitWidth: Style.controlHeight; implicitHeight: Style.controlHeight
     radius: shell.rounding
-    color: cursored || (!shell.popupCard?.open && mouse.containsMouse) ? shell.hoverFill(3) : "transparent"
+    color: cursored || (!shell.popupCard?.open && mouse.containsMouse) ? shell.hoverFill() : "transparent"
 
     Text { anchors.centerIn: parent; text: root.glyph; color: root.glyphColor; font.family: root.shell.iconGlyphFont; font.pixelSize: Style.title }
     MouseArea { id: mouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.clicked(Qt.LeftButton) }

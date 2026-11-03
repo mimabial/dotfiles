@@ -3,6 +3,7 @@
   "edge": "top",
   "clock": "macos",
   "mediaHistoryLocalOnly": true,
+  "hiddenBarItems": ["vpn-menu", "nowplaying", "mirroring-menu", "display-menu", "bluetooth-menu", "sound-menu", "language-menu"],
   "left": [
     {
       "id": "menu",
@@ -26,6 +27,7 @@
         "popupEnabled": false
       }
     },
+    "hidden-bar",
     "vpn-menu",
     "nowplaying",
     "mirroring-menu",

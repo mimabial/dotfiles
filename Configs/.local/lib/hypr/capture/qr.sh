@@ -8,7 +8,7 @@ source "${hypr_lib}/capture/lib/selection.bash"
 usage() {
   cat <<USAGE
 
-	Usage: $(basename "$0")
+	Usage: ${0##*/}
 
 	Freeze the screen, select a region, and copy the QR code it contains.
 	The decoded value is copied as sensitive, so clipboard managers do not

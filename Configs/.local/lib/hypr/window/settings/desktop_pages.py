@@ -1,7 +1,7 @@
 import re
 
 from . import compose
-from .paths import CONFIG_DIR, LIB_DIR, library_command
+from .paths import CONFIG_DIR, library_command
 from .values import read_text, run_capture
 
 CONFIG = CONFIG_DIR.parent
@@ -67,7 +67,6 @@ def default_pages():
         {"title": "Compose", "rows": [
             item("compose_add", "Add sequence", "action", value="enter keys and text"),
         ]},
-        {"title": "Keybindings", "rows": []},
     ]
 
 
@@ -184,17 +183,6 @@ def load_compose_page(settings):
     settings.page("Compose")["rows"] = rows
 
 
-def load_keybindings_page(settings):
-    path = LIB_DIR / "keybinds/lib/keybinds_hint.py"
-    bindings = settings.read_json_command(["python3", str(path), "--format", "json"], [])
-    settings.page("Keybindings")["rows"] = [
-        item("binding_" + str(index), binding.get("displayed_keys", ""), "reading",
-             value=binding.get("description", ""))
-        for index, binding in enumerate(bindings)
-        if binding.get("description")
-    ]
-
-
 PAGE_LOADERS = {
     "Theme": load_theme_page,
     "Bar": load_bar_page,
@@ -206,6 +194,5 @@ PAGE_LOADERS = {
     "Bluetooth": load_bluetooth_page,
     "Power": load_power_page,
     "Compose": load_compose_page,
-    "Keybindings": load_keybindings_page,
 }
 

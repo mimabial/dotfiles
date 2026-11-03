@@ -1,24 +1,20 @@
 #!/usr/bin/env bash
 
 wallpaper_prepare_notification_payload() {
-  local wallpaper_path="${1:-${selected_wallpaper_path:-}}" wallpaper_hash=""
+  local wallpaper_path="${1:-}" wallpaper_hash=""
   if [[ -z "${wallpaper_path}" && -e "${active_wallpaper_link}" ]]; then
     wallpaper_path="$(wallpaper_resolve_path "${active_wallpaper_link}")"
   fi
   [[ -n "${wallpaper_path}" ]] || return 1
   wallpaper_ensure_hash wallpaper_hash_by_path "${wallpaper_path}" || return 1
   wallpaper_hash="${wallpaper_hash_by_path[${wallpaper_path}]}"
-  selected_wallpaper_path="${wallpaper_path}"
-  selected_wallpaper="${wallpaper_path##*/}"
-  selected_thumbnail="${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.sqre"
-  export selected_wallpaper selected_wallpaper_path selected_thumbnail
-  export HYPR_WALLPAPER_NOTIFY_NAME="${selected_wallpaper}"
-  export HYPR_WALLPAPER_NOTIFY_ICON="${selected_thumbnail}"
+  export HYPR_WALLPAPER_NOTIFY_NAME="${wallpaper_path##*/}"
+  export HYPR_WALLPAPER_NOTIFY_ICON="${WALLPAPER_THUMB_DIR}/${wallpaper_hash}.sqre"
 }
 
 wallpaper_action_emits_notification() {
   [[ "${wallpaper_notifications_disabled}" -ne 1 ]] || return 1
-  [[ "${wallpaper_action_sends_notification}" -eq 1 ]]
+  wallpaper_policy_notifies "${wallpaper_action}"
 }
 
 wallpaper_notify_send() {
@@ -48,8 +44,8 @@ wallpaper_notify_result() {
 }
 
 wallpaper_notify_emit() {
-  local notify_name="${1:-${HYPR_WALLPAPER_NOTIFY_NAME:-${selected_wallpaper:-}}}"
-  local notify_icon="${2:-${HYPR_WALLPAPER_NOTIFY_ICON:-${selected_thumbnail:-}}}"
+  local notify_name="${1:-${HYPR_WALLPAPER_NOTIFY_NAME:-}}"
+  local notify_icon="${2:-${HYPR_WALLPAPER_NOTIFY_ICON:-}}"
   local notify_body="${3:-${wallpaper_notify_body:-}}"
   local -a notify_args=()
   local notify_title="Wallpaper: ${notify_name}"
@@ -57,7 +53,7 @@ wallpaper_notify_emit() {
 
   # `notify` only re-displays the current wallpaper, so it applied nothing to time.
   if [[ -z "${notify_body}" && "${wallpaper_action}" != "notify" ]]; then
-    if elapsed_label="$(hypr_elapsed_label "${wallpaper_started_ms:-}" 2>/dev/null)"; then
+    if hypr_elapsed_label_into elapsed_label "${wallpaper_started_ms:-}"; then
       notify_body="Time: ${elapsed_label}"
     fi
   fi

@@ -7,22 +7,6 @@ source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/printers/queues.bash"
 
-transport_action="toggle"
-printer_name=""
-usb_uri=""
-network_uri=""
-target_printer=""
-current_uri=""
-current_transport=""
-printer_uri_hint=""
-safe_printer=""
-printer_state_dir=""
-printer_state_file=""
-stored_usb_uri=""
-stored_network_uri=""
-target_transport=""
-target_uri=""
-
 printer_usage() {
   cat <<'EOF'
 Usage: printer-transport.sh [toggle|usb|network|status] [options]
@@ -50,26 +34,28 @@ Examples:
 EOF
 }
 
-printer_parse_args() {
+printer_parse_args_into() {
+  local -n options_ref=$1
+  shift
   while [[ $# -gt 0 ]]; do
     case "$1" in
       toggle|usb|network|status)
-        transport_action="$1"
+        options_ref[action]="$1"
         shift
         ;;
       -p|--printer)
         [[ $# -lt 2 ]] && { echo "Error: --printer requires a value." >&2; exit 1; }
-        printer_name="$2"
+        options_ref[requested_printer]="$2"
         shift 2
         ;;
       --usb-uri)
         [[ $# -lt 2 ]] && { echo "Error: --usb-uri requires a value." >&2; exit 1; }
-        usb_uri="$2"
+        options_ref[usb_uri]="$2"
         shift 2
         ;;
       --network-uri)
         [[ $# -lt 2 ]] && { echo "Error: --network-uri requires a value." >&2; exit 1; }
-        network_uri="$2"
+        options_ref[network_uri]="$2"
         shift 2
         ;;
       -h|--help)
@@ -77,8 +63,8 @@ printer_parse_args() {
         exit 0
         ;;
       *)
-        if [[ -z "$printer_name" ]]; then
-          printer_name="$1"
+        if [[ -z "${options_ref[requested_printer]}" ]]; then
+          options_ref[requested_printer]="$1"
           shift
         else
           echo "Error: unexpected argument '$1'." >&2
@@ -91,10 +77,15 @@ printer_parse_args() {
 }
 
 main() {
-  printer_parse_args "$@"
+  local -A printer_context=(
+    [action]=toggle [requested_printer]="" [usb_uri]="" [network_uri]="" [printer]=""
+    [current_uri]="" [current_transport]="" [uri_hint]="" [state_dir]="" [state_file]=""
+    [stored_usb_uri]="" [stored_network_uri]="" [target_transport]="" [target_uri]=""
+  )
+  printer_parse_args_into printer_context "$@"
   printer_require_transport_tools
-  printer_load_printer_context
-  printer_run_with_state_lock
+  printer_load_printer_context printer_context
+  printer_run_with_state_lock printer_context
 }
 
 source "${BASH_SOURCE[0]%/*}/printers/transport-uris.bash"

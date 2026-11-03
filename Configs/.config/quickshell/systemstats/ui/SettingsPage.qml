@@ -5,6 +5,7 @@ import qs as ShellUi
 import qs.Commons as Commons
 import qs.Ui
 import "../Model.js" as Model
+import "../../Units.js" as Units
 
 Column {
   id: root
@@ -49,8 +50,44 @@ Column {
   }
   readonly property var snapshot: service ? service.snapshot : ({})
   readonly property var diskOptions: Model.diskOptions(snapshot)
+  readonly property var gpuOptions: Model.gpuList(snapshot)
+  readonly property var selectedGpuIds: Model.selectedGpus(snapshot, Model.settingValue(settings, "barGpus")).map(Model.gpuId)
+  readonly property var discreteGpuIds: Model.discreteGpus(snapshot).map(Model.gpuId)
+  readonly property var barDiskList: Model.barDisksHere(snapshot, settings).map(function(entry) {
+    return { disk: Model.stableDiskId(root.snapshot, entry.disk), show: entry.show }
+  })
   readonly property var sensorOptions: Model.sensorOptions(snapshot)
   readonly property var barSensorIds: Model.parseList(Model.settingValue(settings, "barSensors"))
+  readonly property bool lightTheme: foreground.hslLightness < 0.5
+  property int focusedColorEditors: 0
+
+  function gpuOrder(id) {
+    var at = gpuOptions.findIndex(function(card) { return Model.gpuId(card) === id })
+    return at === -1 ? gpuOptions.length : at
+  }
+
+  function setBarGpu(id, enabled) {
+    var list = selectedGpuIds.filter(function(known) { return root.gpuOrder(known) < root.gpuOptions.length && known !== id })
+    if (enabled) list.push(id)
+    list.sort(function(a, b) { return root.gpuOrder(a) - root.gpuOrder(b) })
+    if (list.length === 0) set("barGpus", "none")
+    else if (list.length === gpuOptions.length) set("barGpus", "all")
+    else if (list.join(",") === discreteGpuIds.join(",")) set("barGpus", "discrete")
+    else set("barGpus", list.join(","))
+  }
+
+  function diskIndex(disk) {
+    return barDiskList.findIndex(function(entry) { return entry.disk === disk })
+  }
+
+  function setBarDisk(disk, enabled, show) {
+    var list = barDiskList.filter(function(entry) { return entry.disk !== disk })
+    var at = diskIndex(disk)
+    if (enabled) list.push({ disk: disk, show: show || (at === -1 ? "speed" : barDiskList[at].show) })
+    var order = diskOptions.map(function(option) { return option.value })
+    list.sort(function(a, b) { return order.indexOf(a.disk) - order.indexOf(b.disk) })
+    set("barDisks", Model.barDisksText(list))
+  }
 
   function setBarSensor(id, enabled) {
     var list = barSensorIds.slice()
@@ -185,14 +222,67 @@ Column {
           onChanged: function(value) { root.set(moduleRow.moduleId + "Style", value) }
         }
 
-        ChoiceMenu {
+        Column {
           visible: moduleRow.moduleEnabled && moduleRow.moduleId === "disks"
           x: Commons.Style.space(12) + moduleSwitch.width + Commons.Style.space(12)
           width: parent.width - x
-          label: "Source"
-          options: root.diskOptions
-          value: String(Model.settingValue(root.settings, "disksSource") || "all")
-          onChanged: function(value) { root.set("disksSource", value) }
+          spacing: 0
+
+          Repeater {
+            model: moduleRow.moduleId === "disks" ? root.diskOptions.length : 0
+
+            delegate: Column {
+              id: diskRow
+              required property int index
+              readonly property var option: root.diskOptions[index] || ({})
+              readonly property string disk: String(option.value || "")
+              readonly property int position: root.diskIndex(disk)
+              width: parent ? parent.width : 0
+              spacing: 0
+
+              FlagRow {
+                label: String(diskRow.option.label || "")
+                checked: diskRow.position !== -1
+                onToggled: root.setBarDisk(diskRow.disk, !checked, "")
+              }
+
+              ChoiceRow {
+                visible: diskRow.position !== -1
+                indent: Commons.Style.space(14)
+                label: "Show"
+                options: Model.DISK_SHOWS
+                value: diskRow.position === -1 ? "speed" : root.barDiskList[diskRow.position].show
+                onChanged: function(value) { root.setBarDisk(diskRow.disk, true, value) }
+              }
+            }
+          }
+        }
+
+        Column {
+          visible: moduleRow.moduleEnabled && moduleRow.moduleId === "gpu" && root.gpuOptions.length > 1
+          x: Commons.Style.space(12) + moduleSwitch.width + Commons.Style.space(12)
+          width: parent.width - x
+          spacing: 0
+
+          Repeater {
+            model: moduleRow.moduleId === "gpu" ? root.gpuOptions.length : 0
+
+            delegate: FlagRow {
+              required property int index
+              readonly property var card: root.gpuOptions[index] || ({})
+              label: Model.gpuTitle(card)
+              checked: root.selectedGpuIds.indexOf(Model.gpuId(card)) !== -1
+              onToggled: root.setBarGpu(Model.gpuId(card), !checked)
+            }
+          }
+        }
+
+        FlagRow {
+          visible: moduleRow.moduleEnabled && moduleRow.moduleId === "gpu" && root.gpuOptions.some(function(card) { return Model.gpuMemoryPercent(card) !== null })
+          indent: Commons.Style.space(12) + moduleSwitch.width + Commons.Style.space(12)
+          label: "Show VRAM in bar"
+          checked: Model.flag(root.settings, "showGpuMemory")
+          onToggled: root.set("showGpuMemory", !checked)
         }
 
         Column {
@@ -269,6 +359,16 @@ Column {
           }
         }
 
+        ChoiceMenu {
+          visible: pageRow.pageEnabled && pageRow.pageId === "disks" && root.diskOptions.length > 1
+          x: Commons.Style.space(26)
+          width: parent.width - x
+          label: "Drive the page follows"
+          options: root.diskOptions
+          value: Model.stableDiskId(root.snapshot, Model.settingValue(root.settings, "disksSource"))
+          onChanged: function(value) { root.set("disksSource", value) }
+        }
+
         Repeater {
           model: pageRow.pageEnabled ? pageRow.choices.length : 0
 
@@ -301,7 +401,7 @@ Column {
 
     ChoiceRow {
       label: "Bar labels"
-      options: [{ value: "text", label: "Letters" }, { value: "icon", label: "Icons" }, { value: "none", label: "None" }]
+      options: [{ value: "text", label: "Letters" }, { value: "inline", label: "Inline" }, { value: "icon", label: "Icons" }, { value: "none", label: "None" }]
       value: String(Model.settingValue(root.settings, "barLabels"))
       onChanged: function(value) { root.set("barLabels", value) }
     }
@@ -317,6 +417,27 @@ Column {
       label: "Color temperature readouts"
       checked: Model.flag(root.settings, "colorTemperatureIcons")
       onToggled: root.set("colorTemperatureIcons", !checked)
+    }
+
+    FlagRow {
+      label: "Utilization colors"
+      checked: Model.flag(root.settings, "utilizationColors")
+      onToggled: root.set("utilizationColors", !checked)
+    }
+
+    Repeater {
+      model: Model.flag(root.settings, "utilizationColors") ? [
+        { key: "utilizationLowColor", label: "Low (<25%)" },
+        { key: "utilizationNormalColor", label: "Normal (25–59%)" },
+        { key: "utilizationWarningColor", label: "Warning (60–84%)" },
+        { key: "utilizationCriticalColor", label: "Critical (85%+)" }
+      ] : []
+
+      delegate: ColorRow {
+        required property var modelData
+        key: String(modelData.key)
+        label: String(modelData.label)
+      }
     }
 
     StepperRow {
@@ -337,10 +458,8 @@ Column {
     StepperRow {
       label: "Live history"
       value: root.num("historySeconds")
-      unit: "s"
-      minimum: 30
-      maximum: 3600
-      step: 30
+      stops: Model.HISTORY_STOPS_SECONDS
+      duration: true
       onChanged: function(value) { root.set("historySeconds", value) }
     }
 
@@ -528,12 +647,13 @@ Column {
     property real maximum: 100
     property real step: 1
     property var stops: []
+    property bool duration: false
 
     readonly property bool stepped: Array.isArray(stops) && stops.length > 0
-    readonly property int stopIndex: stepped ? Model.nearestStopIndex(value) : -1
+    readonly property int stopIndex: stepped ? Model.nearestStopIndex(value, stops) : -1
     readonly property bool canDecrease: stepped ? stopIndex > 0 : value > minimum
     readonly property bool canIncrease: stepped ? stopIndex < stops.length - 1 : value < maximum
-    readonly property string valueText: stepped ? Model.intervalText(value) : String(Math.round(value))
+    readonly property string valueText: duration ? Units.largestUnitText(value) || Math.round(value) + "s" : stepped ? Model.intervalText(value) : String(Math.round(value))
 
     signal changed(real value)
 
@@ -599,6 +719,90 @@ Column {
         size: Commons.Style.space(22)
         onClicked: stepper.nudge(1)
       }
+    }
+  }
+
+  component ColorRow: Item {
+    id: colorRow
+
+    property string key: ""
+    property string label: ""
+    property bool invalid: false
+    property string editStartText: ""
+    readonly property string settingColor: Model.utilizationSettingColor(root.settings, key, root.lightTheme)
+    onSettingColorChanged: if (!input.activeFocus) input.text = settingColor
+
+    width: parent ? parent.width : implicitWidth
+    height: Commons.Style.space(30) + (invalid ? Commons.Style.space(14) : 0)
+
+    Text {
+      textFormat: Text.PlainText
+      anchors.left: parent.left
+      anchors.right: input.left
+      anchors.rightMargin: Commons.Style.space(8)
+      anchors.verticalCenter: input.verticalCenter
+      text: colorRow.label
+      color: root.foreground
+      font.family: root.fontFamily
+      font.pixelSize: Commons.Style.font.bodySmall
+      elide: Text.ElideRight
+    }
+
+    Rectangle {
+      id: swatch
+      anchors.right: parent.right
+      anchors.verticalCenter: input.verticalCenter
+      width: Commons.Style.space(18)
+      height: width
+      radius: Commons.Style.space(3)
+      color: colorRow.settingColor
+      border.color: Commons.Util.alpha(root.foreground, 0.25)
+      border.width: Commons.Style.normalBorderWidth
+    }
+
+    KeyField {
+      id: input
+      anchors.right: swatch.left
+      anchors.rightMargin: Commons.Style.space(6)
+      anchors.top: parent.top
+      anchors.topMargin: Commons.Style.space(2)
+      width: Commons.Style.space(88)
+      height: Commons.Style.space(26)
+      text: colorRow.settingColor
+      placeholderText: "#RRGGBB"
+      maximumLength: 7
+      horizontalAlignment: Text.AlignRight
+      foreground: root.foreground
+      verticalPadding: Commons.Style.space(4)
+      font.pixelSize: Commons.Style.font.caption
+      onTextChanged: colorRow.invalid = false
+      onActiveFocusChanged: {
+        if (activeFocus) colorRow.editStartText = text
+        root.focusedColorEditors = Math.max(0, root.focusedColorEditors + (activeFocus ? 1 : -1))
+        if (root.host) root.host.searchActive = root.focusedColorEditors > 0
+      }
+      onEditingFinished: {
+        if (text === colorRow.editStartText) return
+        if (text === "" || Model.validHexColor(text)) {
+          root.set(colorRow.key, text.toLowerCase())
+          colorRow.editStartText = text
+        } else colorRow.invalid = true
+      }
+      Keys.onEscapePressed: function(event) {
+        focus = false
+        event.accepted = true
+      }
+    }
+
+    Text {
+      textFormat: Text.PlainText
+      visible: colorRow.invalid
+      anchors.left: parent.left
+      anchors.bottom: parent.bottom
+      text: "Use a six-digit hex color, or clear for the theme default."
+      color: Commons.Color.urgent
+      font.family: root.fontFamily
+      font.pixelSize: Commons.Style.font.caption
     }
   }
 }

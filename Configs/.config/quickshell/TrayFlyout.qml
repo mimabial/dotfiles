@@ -62,9 +62,8 @@ PopupWindow {
         }
     }
     function activateCursor() {
-        if (cursorIndex < 0) moveCursor(1)
         const menu = root.opener.children[cursorIndex]
-        if (!menu) return
+        if (!menu) { moveCursor(1); return }
         if (menu.hasChildren) {
             openSub = menu
             const entry = entries.itemAt(cursorIndex)
@@ -141,7 +140,6 @@ PopupWindow {
                         title: entry.modelData.text
                         iconSource: entry.modelData.icon
                         active: root.openSub === entry.modelData
-                        color: row.highlight
                         value: entry.modelData.hasChildren ? "›"
                             : entry.modelData.buttonType === QsMenuButtonType.CheckBox
                                 ? (entry.modelData.checkState === Qt.Checked ? "✓" : "")
@@ -151,6 +149,7 @@ PopupWindow {
                         opacity: entry.modelData.enabled ? 1 : .4
                         onHoveredChanged: {
                             if (!hovered || !entry.modelData.enabled) return
+                            root.cursorIndex = entry.index
                             root.openSub = entry.modelData.hasChildren ? entry.modelData : null
                             root.openRow = entry.modelData.hasChildren ? row : null
                         }
@@ -169,7 +168,7 @@ PopupWindow {
                 }
             }
             Text {
-                width: parent.width; text: "↑↓ move · → open · ← back · Esc"
+                width: parent.width; text: "↑↓ Move  → Open  ← Back  Esc"
                 wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter
                 fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Style.caption - 2)
                 color: root.shell.alpha(root.shell.foreground, .55)

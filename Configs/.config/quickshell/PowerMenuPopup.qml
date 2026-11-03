@@ -8,13 +8,14 @@ import "Units.js" as Units
 PopupCard {
     id: root
     popupName: "powermenu"
-    keyboardHint: pendingAction ? "←→/Tab choose · Enter confirm · Esc cancel" : "↑↓ move · 1–" + actions.length + " jump · Enter select · Esc"
+    keyboardHint: pendingAction ? "←→/Tab Choose  Enter Confirm  Esc Cancel" : "↑↓ Move  1–" + actions.length + " Jump  Enter Select  Esc"
     contentWidth: Style.px(330)
     contentHeight: menu.implicitHeight + padding * 2
     borderColor: shell.role("act_br", shell.accent)
     borderOpacity: .9
 
     property var pendingAction: null
+    property var actionAwaitingKeyRelease: null
     property var status: ({ suspend: true, hibernate: false, uptime: 0, user: Quickshell.env("USER"), host: "" })
     readonly property color dim: shell.mutedText
     readonly property color urgent: shell.role("error", shell.foreground)
@@ -41,7 +42,13 @@ PopupCard {
     function run(action) { shell.closePopup(); shell.run(action.command) }
     function activate(action) {
         if (action.destructive) { pendingAction = action; confirm.selectedIndex = 1 }
+        else if (shell.keyboardInput) actionAwaitingKeyRelease = action
         else run(action)
+    }
+    function handleKeyRelease(event) {
+        if (event.isAutoRepeat || !actionAwaitingKeyRelease) return false
+        run(actionAwaitingKeyRelease)
+        return true
     }
     function handleKey(event) {
         if (confirm.opened) return confirm.handleKey(event)
@@ -51,7 +58,10 @@ PopupCard {
         if (event.key === Qt.Key_Space) { activateCursor(); return true }
         return defaultKey(event)
     }
-    onOpenChanged: if (open && !statusProcess.running) statusProcess.running = true
+    onOpenChanged: {
+        actionAwaitingKeyRelease = null
+        if (open && !statusProcess.running) statusProcess.running = true
+    }
     Component.onCompleted: statusProcess.running = true
 
     component ActionRow: PopupRow {

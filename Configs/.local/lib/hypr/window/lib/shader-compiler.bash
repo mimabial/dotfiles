@@ -7,7 +7,7 @@ write_compiled_shader_from_files() {
   local version_directive=""
   local main_frag_file="${files[-1]}"
 
-  mkdir -p "${shaders_cache_dir}" || return
+  [[ -d "${shaders_cache_dir}" ]] || mkdir -p "${shaders_cache_dir}" || return
 
   if [[ -f "${main_frag_file}" ]]; then
     if ! version_directive=$(grep -m1 -E '^\s*#version\s+' "${main_frag_file}"); then

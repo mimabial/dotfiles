@@ -15,7 +15,7 @@ PopupCard {
   readonly property int seekStepSeconds: 5
   readonly property int resumeMinSeconds: 5
   popupName: "media"
-  keyboardHint: "Tab move · Space play · ↑↓ vol · ←→ seek · / search · Esc"
+  keyboardHint: "Tab Move  Space Play  ↑↓ Volume  ←→ Seek  / Search  Esc"
   padding: 0
   contentWidth: Commons.Style.space(400)
   contentHeight: Math.min(mainColumn.implicitHeight + Commons.Style.space(16), Commons.Style.space(560))
@@ -65,7 +65,10 @@ PopupCard {
   property var playlistsList: []
   property var queueItems: []
   property string queueSource: "cliamp"
-  readonly property var queueList: MediaModel.displayQueue(root.queueSource, root.queueItems, {
+  property string queueError: ""
+  readonly property var queueEvents: ["playlist-count", "playlist-pos", "loop-playlist"]
+  readonly property bool queueLoading: queueProcess.running
+  readonly property var queueList: MediaModel.displayQueue(root.queueSource, root.queueItems, root.externalMedia ? null : {
     state: root.playbackState, title: root.currentTrack, artist: root.currentArtist,
     url: root.currentUrl, art: root.artPath
   })
@@ -102,8 +105,7 @@ PopupCard {
     "peaks", "stereo", "correlation", "ascii",
     "wave", "sine", "mirror",
     "soundcloud_wave", "telegram_wave",
-    "daw_wave", "led_scrubber", "heatmap_wave", "grounded_wave",
-    "matrix", "mosaic",
+    "led_scrubber", "heatmap_wave", "grounded_wave",
     "scatter", "butterfly",
     "plasma", "cyber_tunnel", "red_sector"
   ]
@@ -411,16 +413,20 @@ PopupCard {
 
   function doResume() { enqueuePlaybackCommand(["resume"]); root.resumeVisible = false; root.loadingVid = "" }
 
-  function playUrl(url, title, artist, keepQueue) {
-    if (!url || !url.trim()) return
+  function showBuffering(url, title, artist) {
     const active = root.mprisPlayer
     if (active && active.isPlaying && active.canPause) active.pause()
-    var target = url.trim()
-    root.loadingVid = target
+    root.loadingVid = url
     root.currentTrack = title || "Buffering..."
     root.currentArtist = artist || ""
     root.playbackState = "buffering"
-    enqueuePlaybackCommand([keepQueue ? "play_item" : "play_replace", target, title || "", artist || ""])
+  }
+
+  function playUrl(url, title, artist) {
+    if (!url || !url.trim()) return
+    const target = url.trim()
+    showBuffering(target, title, artist)
+    enqueuePlaybackCommand(["play_replace", target, title || "", artist || ""])
     root.urlInputText = ""
   }
 
@@ -459,6 +465,7 @@ PopupCard {
   }
 
   function startQueueLoad() {
+    root.queueError = ""
     queueProcess.command = ["python3", Qt.resolvedUrl("cliamp/cliamp_ctl.py").toString().replace("file://", ""), "queue_list", queueContext()]
     queueProcess.running = true
   }
@@ -474,9 +481,8 @@ PopupCard {
     if (item.backend === "youtube" && root.mprisPlayer) {
       root.mprisPlayer.openUri(item.url); Media.select(root.mprisPlayer); return
     }
-    if (!item.url || !item.url.trim()) return
-    playUrl(item.url, item.title, item.artist, true)
-    removeFromQueue(item.queueIndex)
+    showBuffering(item.url, item.title, item.artist)
+    enqueuePlaybackCommand(["queue_play", String(item.playlist_id)])
   }
 
   function clearQueue() {
@@ -484,8 +490,8 @@ PopupCard {
     enqueuePlaybackCommand(["queue_clear"])
   }
 
-  function removeFromQueue(idx) {
-    enqueuePlaybackCommand(["queue_remove", String(idx)])
+  function removeFromQueue(playlistId) {
+    enqueuePlaybackCommand(["queue_remove", String(playlistId)])
   }
 
   function searchTracks(query) {
@@ -621,7 +627,6 @@ PopupCard {
           root.currentArtist = newArtist
           root.currentUrl = newUrl
           root.artPath = String(data.art_path || "")
-          if (trackChanged && root.open && root.selectedTab === "queue") root.loadQueue()
           if (trackChanged && root.open) root.loadHistory()
           if (trackChanged && playerComp.lyricsVisible && playerComp.lyricsTrackKey !== playerComp.lyricsKey()) {
             playerComp.fetchLyrics()
@@ -676,11 +681,13 @@ PopupCard {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        if (root.queueReloadPending) return
         try {
-          const data = JSON.parse(text || "{}")
+          const data = JSON.parse(text)
           root.queueSource = data.source || "cliamp"
           root.queueItems = data.items || []
-        } catch (e) { root.queueSource = "cliamp"; root.queueItems = [] }
+          root.queueError = String(data.error || "")
+        } catch (e) { root.queueError = "Queue response could not be read." }
         trackList.queueUpdated()
       }
     }
@@ -799,9 +806,15 @@ PopupCard {
     onRunningChanged: if (!running && root.open && !root.externalMedia) root.refresh()
     stdout: SplitParser { onRead: line => {
         const event = JSON.parse(line)
-        if (event.name === "time-pos") root.updatePosition(event.data)
-        else root.refresh()
+        if (event.name === "time-pos") return root.updatePosition(event.data)
+        if (root.queueEvents.includes(event.name) && root.selectedTab === "queue") root.loadQueue()
+        if (!event.name.startsWith("playlist-")) root.refresh()
     } }
+  }
+  Process {
+    command: root.playbackHelperCommand(["watch_mpd"])
+    running: root.open && root.selectedTab === "queue" && root.queueSource === "mpd"
+    stdout: SplitParser { onRead: root.loadQueue() }
   }
   Instantiator {
     model: ["vis_mode.txt", "vis_bg.txt", "vis_bg_pulse.txt", "audio_fx.json", "eq.json"]

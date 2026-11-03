@@ -52,6 +52,14 @@ rofi_picker_rasi_args() {
   [[ -n "${position_override}" ]] && out_ref+=(-theme-str "${position_override}")
 }
 
+rofi_picker_header_args_into() {
+  local -n picker_header_args_ref="$1"
+
+  picker_header_args_ref+=(-theme-str "@import \"$(rofi_resolve_theme shared/header)\"")
+  picker_header_args_ref+=(-theme-str 'mainbox {children: [ "inputbar", "listbox", "message" ];}')
+  rofi_header_args_into "$@"
+}
+
 rofi_picker_index_to_line() {
   local raw_file="$1"
   local index="$2"

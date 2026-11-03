@@ -1,7 +1,3 @@
-vpn_mullvad_status() {
-  mullvad status 2>&1
-}
-
 vpn_parse_mullvad_status_into() {
   local -n parsed_status_ref="$1"
   local line="" value="" field_index=0

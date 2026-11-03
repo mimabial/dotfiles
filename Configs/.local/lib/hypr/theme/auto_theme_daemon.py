@@ -464,7 +464,7 @@ class AutoThemeDaemon:
         if self._signal_events:
             self.wake_event.set()
         self._start_file_watcher()
-        self._apply_computed_mode()
+        self._apply_refresh()
 
         try:
             while self.running:

@@ -9,15 +9,6 @@ weather_fields_cache_max_age_seconds=3600
 weather_fields_state_home="${XDG_STATE_HOME:-$HOME/.local/state}"
 weather_fields_state_path="${weather_fields_state_home}/hypr/staterc"
 weather_fields_overrides_path="${weather_fields_state_home}/hypr/env-overrides"
-force_weather_fields_refresh=false
-requested_weather_fields=()
-weather_country=""
-weather_city=""
-weather_location_query=""
-weather_condition_code=""
-weather_description=""
-weather_temperature_celsius=""
-weather_condition_icon=""
 
 weather_fields_show_usage() {
   cat <<EOF
@@ -45,28 +36,30 @@ EXAMPLES:
 EOF
 }
 
-weather_fields_parse_args() {
+weather_fields_parse_args_into() {
+  local -n requested_fields_ref=$1 force_refresh_ref=$2
   local arg="" var=""
+  shift 2
 
   for arg in "$@"; do
     case "$arg" in
-      -f) force_weather_fields_refresh=true ;;
+      -f) force_refresh_ref=true ;;
       -h|--help)
         weather_fields_show_usage
         exit 0
         ;;
-      -c) requested_weather_fields+=("CITY") ;;
-      -l) requested_weather_fields+=("COUNTRY") ;;
-      -i) requested_weather_fields+=("WEATHER_ICON") ;;
-      -d) requested_weather_fields+=("WEATHER_DESC") ;;
-      -t) requested_weather_fields+=("TEMP") ;;
+      -c) requested_fields_ref+=("CITY") ;;
+      -l) requested_fields_ref+=("COUNTRY") ;;
+      -i) requested_fields_ref+=("WEATHER_ICON") ;;
+      -d) requested_fields_ref+=("WEATHER_DESC") ;;
+      -t) requested_fields_ref+=("TEMP") ;;
       --*)
         var="${arg#--}"
         var="${var//-/_}"
         var="${var^^}"
-        requested_weather_fields+=("$var")
+        requested_fields_ref+=("$var")
         ;;
-      *) requested_weather_fields+=("$arg") ;;
+      *) requested_fields_ref+=("$arg") ;;
     esac
   done
 }
@@ -75,28 +68,33 @@ weather_fields_print_output() {
   local output=()
   local var=""
 
-  if [ ${#requested_weather_fields[@]} -eq 0 ]; then
+  if [ $# -eq 0 ]; then
     [ -f "$weather_location_cache_path" ] && cat "$weather_location_cache_path"
     [ -f "$weather_fields_cache_path" ] && cat "$weather_fields_cache_path"
     return 0
   fi
 
-  for var in "${requested_weather_fields[@]}"; do
+  for var in "$@"; do
     output+=("$(weather_fields_read_cached_value "$var")")
   done
   echo "${output[*]}"
 }
 
 main() {
+  local -a requested_fields=()
+  local force_refresh=false
+  local -A weather=(
+    [country]="" [city]="" [location_query]="" [condition_code]="" [description]="" [temperature]="" [icon]=""
+  )
   weather_fields_load_env_file "${weather_fields_state_path}"
   weather_fields_load_env_file "${weather_fields_overrides_path}"
-  weather_fields_parse_args "$@"
+  weather_fields_parse_args_into requested_fields force_refresh "$@"
 
-  if [ "$force_weather_fields_refresh" = true ] || ! weather_fields_cache_is_fresh; then
-    weather_fields_refresh_cache || exit 1
+  if [ "$force_refresh" = true ] || ! weather_fields_cache_is_fresh; then
+    weather_fields_refresh_cache weather || exit 1
   fi
 
-  weather_fields_print_output
+  weather_fields_print_output "${requested_fields[@]}"
 }
 
 WEATHER_REQUEST_TIMEOUT_SECONDS=5

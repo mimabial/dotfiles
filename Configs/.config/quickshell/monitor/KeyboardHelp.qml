@@ -135,7 +135,7 @@ Item {
 
             Row {
               required property var modelData
-              width: parent.width
+              width: bindingGroup.width
               spacing: Commons.Style.space(14)
 
               Text {

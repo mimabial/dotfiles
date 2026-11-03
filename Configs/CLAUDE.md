@@ -13,7 +13,7 @@ Guidance for Claude Code when working in this home directory.
 - Keep the line count low: build on existing primitives and prefer the smaller correct design, including when porting.
 - No magic numbers: derive a value from its source (theme vars, `Style`, font size, palette) or name it once where it is defined.
 - Follow YAGNI: no speculative flags, options, parameters, fallbacks, validation layers or abstractions for a case that does not exist yet.
-- Write self-documenting code: names and structure carry all the meaning. Add no comments, not even for reasoning the code cannot show: rename until the code says it, and put the rest in the reply or in memory. Existing comments may stay. `~/.claude/hooks/comment_guard.py` enforces this: it rejects edits that add a comment line to a dotfiles-tracked tree, and at the end of a turn it flags any added by other means (Bash, scripts).
+- Write self-documenting code: names and structure carry all the meaning. Add no comments, not even for reasoning the code cannot show: rename until the code says it, and put the rest in the reply or in memory. Existing comments may stay. `~/.claude/hooks/comment_guard.py` enforces this: it rejects edits that add a comment line to a dotfiles-tracked tree, and at the end of a turn it flags any added by other means (Bash, scripts). Rewording an existing comment in place passes: a comment line replacing a comment line in the same diff hunk is not new, so keep a stale comment accurate instead of deleting it.
 
 ## Critical Safety Rules
 
@@ -94,13 +94,13 @@ The compositor config is **Lua**, not hyprlang `.conf` (a Hyprland Lua plugin ev
 
 1. **Shared core** — `require("core")`, resolved from `~/.local/share/hypr/` (`core.lua`: global `hl.config` defaults, env exports, animation curves, startup `hl.on("hyprland.start")`); `core` pulls in `vars.lua` (static defaults + `vars.get`/`vars.set`) and `runtime.lua` (`runtime.load`).
 2. **Theme/runtime** — `themes/theme.lua` (generated; `vars.set`s CURSOR_THEME/FONT/…), `userfonts.lua`, `gpu.lua`, `$XDG_STATE_HOME/hypr/animations.lua`, `$XDG_STATE_HOME/hypr/shaders.lua`. Every state fragment is optional: an absent one means nothing was selected, and `animations.sh`/`shaders.sh`/`util/workflows --set` write them.
-3. **User overrides** — `windowrules.lua`, `userprefs.lua`, `keyboard.lua` (optional).
+3. **User overrides** — `windowrules.lua`, `userprefs.lua`, `keyboard.lua` (optional), then `$XDG_STATE_HOME/hypr/input.lua` (optional; the Settings TUI's Mouse & Touchpad rows, saved apart from the per-theme Look & Feel files so a theme switch keeps them).
 4. **Look & Feel** — `$XDG_STATE_HOME/hypr/looknfeel.lua` (optional; written by `window/looknfeel.sh`, see `window/LOOKNFEEL.md`). Deliberately **last of the visual layers**, so panel edits win over both the theme pack and hand-written prefs.
 5. **Cursor** — `hl.env` XCURSOR/HYPRCURSOR and `cursor.enable_hyprcursor` are set *after* Look & Feel, so its per-theme `CURSOR_*` variables feed the same path as the theme pack's defaults. `enable_hyprcursor` is computed: a theme with no `manifest.hl` stays on xcursor.
 6. **Keybindings** — `keybindings.lua`.
 7. **Monitors/state** — `monitors.lua`, `$XDG_STATE_HOME/hypr/monitor-toggles.lua`, `$XDG_STATE_HOME/hypr/touchpads-disabled.lua` (present only while `controls/touchpad-toggle` has the touchpads off), `$XDG_STATE_HOME/hypr/window-layout.lua`, `$XDG_STATE_HOME/hypr/workflows.lua`, then `gestures.lua` (touchpad; after the workflow so it reads the final `WORKSPACE_SWIPE_AXIS`, which the `vertical` animation preset and the niri workflow set to `vertical`).
 8. **Workspaces** — `workspaces.lua`.
-9. **Generated monitor rules** — `hyprmoncfg-monitors.lua`, `dofile`d dead last so nothing before it can override the applied layout.
+9. **Generated monitor rules** — `hyprmoncfg-monitors.lua`, `dofile`d dead last so nothing before it can override the applied layout. `hyprmoncfg unmanage` deletes it (so `monitors.lua` decides) and `manage` re-renders it.
 
 User overrides load after the shared/theme layers, so they win on conflicts. Variables follow the same order — `vars.lua` defaults, then `theme.lua`, `userfonts.lua`, `userprefs.lua`, each `vars.set` beating the last — and the readers outside Hyprland apply it identically: `core/config-layers.bash` (shell, with `theme.meta` standing in for `theme.lua`), `render/dunst.py`, and `shell.qml`'s `hyprVarLoadOrder`. `themes/colors.lua` (generated palette) is loaded from within `core.lua`. Use `hyprshell service/list-managed-domains [domain...]` to list each refresh domain's managed paths.
 
@@ -181,10 +181,7 @@ is enabled by its exec bit** — clearing it silently drops that app from themin
 In theme mode each renderer also picks up a per-pack override: `render_job_into <job> <palette> <app> <out>
 [<basename>]` (`render/_render_job.bash`) looks for `~/.config/hypr/themes/<pack>/<basename>`,
 defaulting to `<app>.theme`, and records it as `render_job[pack_override]`. That is what the
-`*.theme` files in each pack are for, and why `theme/lib/pack.overrides.bash` skips the
-renderer-owned basenames instead of materializing them (its skip list is literal:
-`hypr` `kitty` `rofi` `quickshell` `alacritty` `tmux` `dunst`, so a pack
-`*.theme` for any other renderer falls through to the target-path path and warns). `render/dunst.py` does the same in Python via
+`*.theme` files in each pack are for. `render/dunst.py` does the same in Python via
 `load_pack_overrides()`. `render/chrome.sh` opts out by passing an empty basename.
 
 Each `<app>.theme` is written in that app's own config syntax, so the renderer can mostly
@@ -249,7 +246,7 @@ State lives under `~/.local/state/hypr/`. Treat all of it as generated and use h
 | File                                                | Purpose                                                                         |
 | --------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `staterc`                                           | Primary key/value state store (theme, wallpaper, mode, etc.)                    |
-| `animations.lua`, `shaders.lua`, `workflows.lua`, `monitor-toggles.lua`, `touchpads-disabled.lua`, `window-layout.lua`, `looknfeel.lua` | Hyprland-loaded state fragments (`runtime.load`); see the load order above for where each lands |
+| `animations.lua`, `shaders.lua`, `workflows.lua`, `monitor-toggles.lua`, `touchpads-disabled.lua`, `window-layout.lua`, `looknfeel.lua`, `input.lua` | Hyprland-loaded state fragments (`runtime.load`); see the load order above for where each lands |
 | `looknfeel.d/`                                      | Look & Feel panel presets behind `window/looknfeel.sh` (`window/LOOKNFEEL.md`) |
 | `active-palette.json`                               | Palette every `render/` renderer is run against                                |
 | `auto_theme_state.json`                             | Auto-theme daemon state                                                         |
@@ -299,13 +296,13 @@ accepts `category/name`, `name.sh` and `name.py` too.
 | `capture/`   | Screenshot, screenrecord, QR decode                | `screenshot.sh`, `screenrecord.sh`, `qr.sh`, `lib/selection.bash`                 |
 | `clipboard/` | Clipboard history behind the bar popup             | `cliphist.sh`                                                                     |
 | `controls/`  | Hardware controls                                  | `brightness-control.sh`, `volume-control.sh`, `window-mute.py`                    |
-| `core/`      | Shared foundations                                 | `common.bash` (sources `services` `lua` `events` `processes` `dbus` `cli` `math` `paths` `config-layers` `geometry`), `state.bash`, `notify.bash`, `rofi.bash` |
+| `core/`      | Shared foundations                                 | `common.bash` (sources `lua` `processes` `cli` `math` `paths`; a file calling `services` `events` `dbus` `config-layers` `geometry` sources that module itself behind `declare -F <fn> \|\|`), `state.bash`, `notify.bash`, `rofi.bash` |
 | `fonts/`     | Font management                                    | `font-set.sh`, `font-list.sh`, `font-get.sh`, `find-unused.sh`                    |
 | `gaming/`    | Game support                                       | `gamemode-hook.sh`, `launcher.sh`, `install-steam.sh`                             |
 | `install/`   | Installer/setup flows                              | `tui.sh`, `webapp.sh`, `dev-env.sh`, `dns.sh`, `fido2.sh`, `fingerprint.sh`       |
 | `keybinds/`  | Keybinding hints                                   | `keybinds_hint.sh`, `submap-hint.sh`, `lib/keybinds_hint.py`                      |
 | `launch/`    | App launchers                                      | `browser.sh`, `editor.sh`, `focus.sh`, `summon.sh`, `terminal-present.sh`         |
-| `media/`     | Media/lyrics control                               | `mediaplayer.py`, `lyrics_runtime.sh`, `autotag.py`, `fftab-bridge/`              |
+| `media/`     | Lyrics, tagging, library moves                     | `lyrics_runtime.sh`, `autotag.py`, `media_move.py`, `fftab-bridge/`               |
 | `notify/`    | Notification helpers + archive store               | `archive.sh`, `open.sh`, `history.sh`, `notifications.py`                          |
 | `pyutils/`   | Shared Python modules                              | `hyprctl.py`, `lock_paths.py`, `shell_env.py`, `managed_venv.py`               |
 | `quickshell/`| Active bar layout/style/visibility helpers         | `layout.sh`, `style-map.py`, `style-map-watch.sh`, `visibility.sh`                |
@@ -316,7 +313,7 @@ accepts `category/name`, `name.sh` and `name.py` too.
 | `session/`   | Lock, idle, logout                                 | `lock-screen.sh`, `idle-manager.sh`, `hyprlock.sh`                                |
 | `setup/`     | First-run defaults, one-time migrations            | `default-app.sh`, `migrate.sh`                                                    |
 | `shell/lib/` | hyprshell internals                                | `hyprshell.commands.bash`, `hyprshell.completion.bash`, `hyprshell.dispatch.bash`   |
-| `sysinfo/`   | System info                                        | `gpuinfo.sh`, `battery.sh`, `battery-notify.sh`                                  |
+| `sysinfo/`   | System info                                        | `battery.sh`, `battery-notify.sh`                                                |
 | `system/`    | System, package, power, monitor management         | `pm.sh`, `system.update.sh`, `app2unit.sh`, `powerctl.sh`, `powerprofiles.auto.sh` |
 | `theme/`     | Theme/color pipeline + auto-theme daemon           | `theme.switch.sh`, `theme.apply.sh`, `color-mode.sh`, `auto_theme.py`          |
 | `util/`      | Miscellaneous                                      | `workflows.sh`, `weather.py`, `keyboard-switch.sh`                                 |
@@ -358,7 +355,7 @@ hyprshell quickshell/layout next
 # Soft Quickshell reload (reuses the engine; see "Reload Behavior")
 quickshell ipc call bar reload
 
-# Switch workflow profile. Selectable: default, editing, windows, presentation, niri, macos, gnome.
+# Switch workflow profile. Selectable: default, editing, windows, niri, macos, gnome.
 # gaming and powersaver exist but are automatic (GameMode / power-saver profile)
 # and are excluded from the menutree Style → Workflow submenu (mod+U W); while one
 # owns the workflow, --set fails.
@@ -449,7 +446,8 @@ generation with fresh `pragma Singleton` instances, so no singleton state carrie
 that holds a reference into its generation's shell re-evaluates against the half-destroyed
 object and logs "Unable to assign [undefined]". That is why `shell.qml` sets
 `Commons.Style.shell`/`Commons.Color.shell` in `onCompleted` and clears them in `onDestruction`. It also keeps serving the
-first-compiled version of a file loaded by URL through a `Loader` (`lockview/LockView.qml`)
+first-compiled version of a file loaded by URL through a `Loader` (`lockview/LockView.qml`,
+and `dock/Dock.qml` with every file under `dock/`)
 or through a relative directory import (`import "ui" as UI` → `systemstats/ui/BarReadout.qml`,
 whose edits do not even trigger the watcher): neither the watcher's reload nor `bar reload`
 picks it up, and `quickshell ipc call bar reloadHard` does. When a change appears
@@ -524,12 +522,12 @@ Invariants that are easy to break:
 - **A submap leader is found by its `[Submap] ` description marker**, not by hyprctl. The Lua plugin reports every bind as dispatcher `__lua`, so `hyprctl binds` never reports `submap`. The marker string is duplicated as `SUBMAP_MARKER` in `keybinds/lib/binding_metadata.py`; change both together.
 - **`[Hidden] ` is the same kind of marker**, for binds a submap re-exposes from the global set: they work inside the submap but stay out of its hint. Duplicated as `HIDDEN_MARKER` in `keybindings.lua` and `keybinds/lib/submap_bindings.py`; change both together.
 - **`{locked = true}` binds work on the lock screen** and cannot move into a submap (the leader is unreachable there). `mod K` (keyboard layout) depends on this.
-- **`layout_action(layout, …)` gates the dispatch, not the bind.** The bind registers unconditionally; the layout check runs at press time inside the Lua closure, which hyprctl cannot see. So the sub-category header must name the layout — `[Window Mode|Scrolling]` for `layout_action("scrolling", …)` — because `LAYOUT_HEADERS` in `keybinds/lib/submap_bindings.py` filters the hint on that header. A mismatch shows a bind that silently no-ops, or hides a working one.
+- **Layout-specific window-mode keys go through `layout_submap_action(layout, key, name, action)`.** The bind registers unconditionally; the layout check runs at press time inside the Lua closure, which hyprctl cannot see. The helper writes the `[Window Mode|<Layout>]` header itself, because `LAYOUT_HEADERS` in `keybinds/lib/submap_bindings.py` filters the hint on it; `LAYOUT_ROW_RULES` there is keyed on `(<Layout>, name)`, so rename both together. A key may carry one bind per layout and must mean the same thing in each (`Z`/`Shift+Z` grow/shrink in dwindle, scrolling and master; `N`/`Shift+N` walk master, monocle and scrolling; `J`/`Shift+J` swap in master and scrolling): a non-active layout's closure returns without leaving the submap, so exactly one bind exits and acts.
 
 **When re-binding an existing key:**
 
 1. Find the existing binding: `grep -n '"F"' ~/.config/hypr/keybindings.lua`
-2. **Edit that entry's dispatcher in place** — do not add a second `bind`/`exec` for the same chord (duplicates stack, they don't replace). `hl.unbind(chord)` exists but is not used here.
+2. **Edit that entry's dispatcher in place** — do not add a second `bind`/`exec` for the same chord (duplicates stack, they don't replace). The one deliberate stack is `layout_submap_action`'s one-bind-per-layout, below. `hl.unbind(chord)` exists but is not used here.
 3. Inform the user what the key was previously bound to.
 
 ```lua
@@ -609,9 +607,9 @@ checked once, and the result stands.
   - **Use `/usr/lib/qt6/bin/qmllint`, not bare `qmllint`.** `$PATH` resolves to the qt5-declarative build, which resolves no types and exits 0 on anything that merely parses — it passed `Item { property int x: undefinedThing.foo }`. The Qt6 binary catches that.
   - Pass import paths or it resolves nothing: `-I /usr/lib/qt6/qml -I ~/.config/quickshell -I ~/.cache/qmllint`. The last one holds a `qs` symlink to the config root (`ln -sfn ~/.config/quickshell ~/.cache/qmllint/qs`); without it every `import qs.Commons` fails and the file's members go unchecked.
   - `Type PanelWindow is not creatable` (Quickshell types) is pre-existing noise, not your change. Filter it, then compare what is left against an untouched neighbour file.
-  - Every directory of QML declares its types in a `qmldir` (root, `modules/`, `dock/`, `expose/`, `cliamp/`, `lockview/`, `monitor/`, `monitor/Ui/`, `Commons/`, `Ui/`), so `Style` and the other singletons resolve and a wrong member is a real finding. **Add a new component to its directory's `qmldir`** — with a qmldir present, an undeclared file is not a type, and lint stops resolving it.
+  - Every directory of QML declares its types in a `qmldir` (root, `modules/`, `dock/`, `expose/`, `cliamp/`, `lockview/`, `minimap/`, `monitor/`, `monitor/Ui/`, `Commons/`, `Ui/`), so `Style` and the other singletons resolve and a wrong member is a real finding. **Add a new component to its directory's `qmldir`** — with a qmldir present, an undeclared file is not a type, and lint stops resolving it.
   - `qs` maps to the config root, so `qs.Commons` is `~/.config/quickshell/Commons`. A root-level file that imports `qs.Commons` unqualified gets *two* `Style` types in scope — the module's and the root's, which is a facade over it exposing a different member set. Import it as `import qs.Commons as Commons` and qualify the uses, the way every file that imports it does; unqualified, lint and the runtime disagree about which `Style` wins. **Since Qt 6.12 this applies in every directory, not just the root:** `QtQuick` exports its own `Color` singleton (`QQuickColor`), and it beats an unqualified `qs.Commons` `Color` whatever the import order. qmllint still resolves the bare name to `qs.Commons` and reports nothing. At runtime `Color.accent` is `undefined` ("Unable to assign [undefined] to QColor"), `Color.popups.text` throws "Cannot read property 'text' of undefined", `Color.alpha(...)` throws "Property 'alpha' of object QQuickColor is not a function", and `Color.shell = …` never reaches the Commons singleton.
-  - **`pragma ComponentBehavior: Bound` is on 168 of the 287 QML files, all of which lint free of `[unqualified]`, and must stay that way.** It is what lets a delegate reach outer ids, and it is why those files report no `[unqualified]`. Under it, an unqualified access is a **runtime break, not a style nit**: `RotationAnimator { running: visible }` in `cliamp/TrackList.qml` resolved to `[undefined]`, and `BluetoothPopup.qml` threw `property of null` across its whole device list. Both were silent until the view had data.
+  - **`pragma ComponentBehavior: Bound` is on 175 of the 296 QML files, all of which lint free of `[unqualified]`, and must stay that way.** It is what lets a delegate reach outer ids, and it is why those files report no `[unqualified]`. Under it, an unqualified access is a **runtime break, not a style nit**: `RotationAnimator { running: visible }` in `cliamp/TrackList.qml` resolved to `[undefined]`, and `BluetoothPopup.qml` threw `property of null` across its whole device list. Both were silent until the view had data.
   - So the rule is: **add the pragma only to a file lint reports clean, and if adding it leaves any `[unqualified]`, either qualify every one or leave the pragma off.** The 8 files still carrying `[unqualified]` deliberately have no pragma; do not add one without clearing them first. The rest of the non-pragma files are already `[unqualified]`-free and are simply candidates. Delegates that read `modelData`/`index` must declare `required property var modelData` / `required property int index` — under the pragma, context injection no longer reaches them.
   - Lint cannot prove a delegate works: it only sees the file. A view whose model is empty at reload renders nothing, so a broken delegate leaves a clean log. Exercise it with data — instantiate the component against a mock model through `quickshell -p <a throwaway .qml inside the config dir>` (the config root must be the real one, or `qs.*` will not resolve) and diff the warnings against the same run on the pre-change file. A bare Qt harness is the opposite: `qmlscene`/`qml` must run the throwaway from **outside** the config dir, since the implicit same-directory import drags in every type there and dies on `module "Quickshell" plugin "quickshell-coreplugin" not found`. Use that for probes needing no `qs.*` (plain QML semantics, property checks).
   - **Qt swallows QML console output unless you ask for it:** `QT_ASSUME_STDERR_HAS_CONSOLE=1 QT_FORCE_STDERR_LOGGING=1 QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qml <file>`. Use `qml`, not `qmlscene`: `qmlscene` ignores `Qt.quit()` and never exits. Without those, `console.log`/`print` produce nothing at all and the run just looks silent; `QT_LOGGING_RULES="*.debug=true"` does not fix it.

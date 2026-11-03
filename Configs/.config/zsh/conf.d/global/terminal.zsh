@@ -60,10 +60,6 @@ _load_compinit() {
   _comp_options+=(globdots)
 }
 
-_load_prompt() {
-  [[ -r "$ZDOTDIR/conf.d/global/prompt.zsh" ]] && source "$ZDOTDIR/conf.d/global/prompt.zsh"
-}
-
 _defer_zinit_after_prompt_before_input() {
   [[ -z ${_ZSH_DEFERRED_INIT_DONE-} ]] || { zle -D zle-line-init 2>/dev/null; return; }
   typeset -g _ZSH_DEFERRED_INIT_DONE=1
@@ -77,21 +73,8 @@ _defer_zinit_after_prompt_before_input() {
   (( ${+functions[_zsh_autosuggest_start]} )) && _zsh_autosuggest_start
 }
 
-_load_deferred_plugin_system() {
-  [[ "$ZSH_DEFER" == 1 ]] || { unfunction _load_deferred_plugin_system; return; }
-  if [[ -n ${DEFER_ZINIT_LOAD-} ]]; then
-    unset DEFER_ZINIT_LOAD
-    zle -N zle-line-init _defer_zinit_after_prompt_before_input
-  fi
-  bindkey '\e[H' beginning-of-line
-  bindkey '\e[F' end-of-line
-}
-
-ZSH_DEFER=1
-ZSH_PROMPT=1
-ZSH_NO_PLUGINS=0
 ZSH_AUTOSUGGEST_STRATEGY=(history completion)
-mkdir -p "$ZSH_STATE_DIR" "$ZSH_CACHE_DIR"
+[[ -d $ZSH_STATE_DIR && -d $ZSH_CACHE_DIR ]] || mkdir -p "$ZSH_STATE_DIR" "$ZSH_CACHE_DIR"
 
 HISTFILE=${HISTFILE:-$ZDOTDIR/.zsh_history}
 if [[ -f $HOME/.zsh_history && ! -f $HISTFILE ]]; then
@@ -104,21 +87,10 @@ export HISTFILE ZSH_AUTOSUGGEST_STRATEGY HISTSIZE SAVEHIST
 
 PM_COMMAND=("$HOME/.local/lib/hypr/system/package-manager.sh")
 
-if [[ $ZSH_NO_PLUGINS != 1 ]]; then
-  if [[ $ZSH_DEFER == 1 ]]; then
-    typeset -g DEFER_ZINIT_LOAD=1
-    _load_deferred_plugin_system
-    _load_prompt
-  else
-    _init_zinit
-    fpath=("$ZDOTDIR/completions" $fpath)
-    _load_compinit
-    _load_prompt
-    _load_functions
-    _refresh_hyprshell_completion
-    _load_completions
-  fi
-fi
+zle -N zle-line-init _defer_zinit_after_prompt_before_input
+bindkey '\e[H' beginning-of-line
+bindkey '\e[F' end-of-line
+[[ -r "$ZDOTDIR/conf.d/global/prompt.zsh" ]] && source "$ZDOTDIR/conf.d/global/prompt.zsh"
 
 __package_manager() { "${PM_COMMAND[@]}" "$@"; }
 

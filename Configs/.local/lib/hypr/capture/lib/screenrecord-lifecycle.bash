@@ -6,16 +6,17 @@ ensure_screen_recorder_available() {
 }
 
 start_recording() {
+  local -n options_ref="$1"
   local filename=""
   local audio_args=()
-  local resolution="${RESOLUTION:-$(screenrecord_default_resolution)}"
+  local resolution="${options_ref[resolution]:-$(screenrecord_default_resolution)}"
   local -a rec_args=()
 
-  filename="$OUTPUT_DIR/screenrecord-$(date +'%Y-%m-%d_%H-%M-%S').mp4"
+  printf -v filename '%s/screenrecord-%(%Y-%m-%d_%H-%M-%S)T.mp4' "$OUTPUT_DIR" -1
   ensure_screen_recorder_available || return 1
-  screenrecord_audio_args audio_args
-  screenrecord_maybe_force_display_gpu
-  screenrecord_capture_args rec_args "$resolution" || return 1
+  screenrecord_audio_args audio_args "$1"
+  screenrecord_maybe_force_display_gpu "$1"
+  screenrecord_capture_args rec_args "$1" "$resolution" || return 1
 
   : >"${SCREENRECORD_LOG_FILE}" || return 1
 
@@ -26,7 +27,7 @@ start_recording() {
   disown "$pid" 2>/dev/null || true
 
   write_recording_state_and_refresh_bar "$pid" "$filename"
-  if screenrecord_bypasses_portal; then
+  if screenrecord_bypasses_portal "$1"; then
     screenrecord_notify "Recording started" "" "media-record" "normal" "${NOTIFY_MS}" "screenrec"
   else
     screenrecord_notify "Choose what to record" "" "media-record" "normal" "${NOTIFY_MS}" "screenrec"
@@ -34,8 +35,9 @@ start_recording() {
 }
 
 screenrecord_start_flow() {
-  [[ "$WEBCAM" == true ]] && start_webcam_overlay
-  start_recording || {
+  local -n options_ref="$1"
+  [[ "${options_ref[webcam]}" == true ]] && start_webcam_overlay "${options_ref[webcam_device]}"
+  start_recording "$1" || {
     cleanup_webcam
     return 1
   }
@@ -100,6 +102,6 @@ screenrecord_toggle_flow() {
   if screenrecord_cleanup_state_and_check_active; then
     stop_recording
   else
-    screenrecord_start_flow
+    screenrecord_start_flow "$1"
   fi
 }

@@ -9,11 +9,12 @@ wallpaper_path="${1:-"${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME:-${XDG_CACHE_HO
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/lock_paths.bash"
 
 if [[ -n "${wallpaper_outputs}" ]]; then
-  exec {wallpaper_switch_fd}>"$(hypr_lock_path_ensure_parent wallpaper_switch)"
+  hypr_lock_path_into wallpaper_switch_lock wallpaper_switch
+  exec {wallpaper_switch_fd}>"${wallpaper_switch_lock}"
   flock "${wallpaper_switch_fd}"
 fi
 
-AWWW_LOCK="$(hypr_lock_path_ensure_parent wallpaper_awww)"
+hypr_lock_path_into AWWW_LOCK wallpaper_awww
 exec {awww_lock_fd}>"${AWWW_LOCK}"
 if ! flock -n "${awww_lock_fd}"; then
   if [[ "${WALLPAPER_WAIT_FOR_LOCK:-0}" -eq 1 ]]; then
@@ -34,6 +35,7 @@ trap 'wallpaper_awww_release_lock "$?"' EXIT
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require wallpaper_catalog || exit 1
+declare -F hypr_wait_for >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/events.bash" || exit 1
 
 wallpaper_awww_socket_path() {
   printf '%s\n' "${XDG_RUNTIME_DIR:-/run/user/${UID}}/${WAYLAND_DISPLAY:-}-awww-daemon.sock"

@@ -9,7 +9,8 @@
         "compactStyle": false,
         "activeOnly": true,
         "showAll": false,
-        "numerals": "roman"
+        "numerals": "dots",
+        "minimap": true
       }
     },
     "systemstats"
@@ -44,7 +45,6 @@
         "cavaBarWidth": 5,
         "cavaGap": 2,
         "cavaPosition": "bottom",
-        "cavaMode": "foobar",
         "cavaFps": 30,
         "cavaGain": 1,
         "cavaSmoothing": 77
@@ -57,7 +57,12 @@
     "display",
     "vpn",
     "wifi",
-    { "id": "kdeconnect", "props": { "showBadge": false } },
+    {
+      "id": "kdeconnect",
+      "props": {
+        "showBadge": false
+      }
+    },
     {
       "id": "bluetooth",
       "props": {
@@ -113,6 +118,7 @@
         "stringEntry": true
       }
     },
+    "themerotation",
     {
       "id": "tasks",
       "trayPosition": {
@@ -158,14 +164,6 @@
       "trayPosition": {
         "section": "right",
         "index": 8,
-        "stringEntry": true
-      }
-    },
-    {
-      "id": "altscape",
-      "trayPosition": {
-        "section": "right",
-        "index": 7,
         "stringEntry": true
       }
     },

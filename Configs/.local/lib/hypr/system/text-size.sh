@@ -131,7 +131,7 @@ apply() {
   set_terminal_size "$(term_pt_for "${size}")"
   set_rofi_size "$(rofi_pt_for "${size}")"
   set_qt_fonts
-  hyprshell render/dunst.py >/dev/null 2>&1 || true
+  "${HYPR_LIB_DIR}/render/dunst.py" >/dev/null 2>&1 || true
   print_log -sec "text-size" -stat "applied" "${size}px"
 }
 

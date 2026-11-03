@@ -10,7 +10,7 @@ source "${hypr_lib}/capture/lib/text-recognition.bash"
 usage() {
   cat <<USAGE
 
-	Usage: $(basename "$0") [option] [destination]
+	Usage: ${0##*/} [option] [destination]
 	Options:
 		p       Print all outputs
 		smart   Smart selection (auto-detects windows, prevents tiny screenshots)
@@ -71,15 +71,15 @@ case "${mode}" in
 esac
 
 save_dir="${save_dir_arg:-${XDG_SCREENSHOTS_DIR:-$XDG_PICTURES_DIR/Screenshots}}"
-save_file=$(date +'%y%m%d_%Hh%Mm%Ss_screenshot.png')
-save_text_file=$(date +'%y%m%d_%Hh%Mm%Ss_ocr.txt')
+printf -v save_file '%(%y%m%d_%Hh%Mm%Ss)T_screenshot.png' -1
+printf -v save_text_file '%(%y%m%d_%Hh%Mm%Ss)T_ocr.txt' -1
 annotation_tool="swappy"
 annotation_args=(
   "--file" "${temp_screenshot}"
   "--output-file" "${save_dir}/${save_file}"
 )
 
-mkdir -p "$save_dir"
+[[ -d "$save_dir" ]] || mkdir -p "$save_dir"
 
 [[ -n "${SCREENSHOT_ANNOTATION_ARGS[*]:-}" ]] && annotation_args+=("${SCREENSHOT_ANNOTATION_ARGS[@]}")
 

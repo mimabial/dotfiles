@@ -48,6 +48,8 @@ def value_text(row, value):
         return "%.*f" % (max(MIN_FLOAT_DECIMALS, step_decimals), float(value))
     if row["type"] == "bool":
         return "on" if value is True else "off"
+    if isinstance(row.get("options"), dict):
+        return row["options"].get(value, str(value))
     return str(value)
 
 

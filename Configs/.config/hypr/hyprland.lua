@@ -39,6 +39,7 @@ end
 require("windowrules")
 require("userprefs")
 runtime.load(config_home .. "/hypr/keyboard.lua", true)
+runtime.load(state_home .. "/hypr/input.lua", true)
 -- Last of the visual layers, so panel edits win over the theme pack and over
 -- hand-written prefs. Resolves the active theme's file itself.
 runtime.load(state_home .. "/hypr/looknfeel.lua", true)

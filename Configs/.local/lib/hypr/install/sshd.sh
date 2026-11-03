@@ -2,6 +2,7 @@
 set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
+declare -F hypr_svc_user >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/services.bash" || exit 1
 
 usage() {
   printf 'Usage: hyprshell install/sshd.sh [--key PUBLIC_KEY | --gh-keys USERNAME]\n'
@@ -82,4 +83,4 @@ if [[ -n "${github_user}" ]]; then
 else
   authorize_ssh_public_key "${key}"
 fi
-printf 'SSHD is running; connect with: ssh %s@%s\n' "${USER}" "$(hostname)"
+printf 'SSHD is running; connect with: ssh %s@%s\n' "${USER}" "${HOSTNAME}"

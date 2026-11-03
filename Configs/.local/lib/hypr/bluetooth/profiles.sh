@@ -9,7 +9,8 @@ if (( $# != 0 )); then
 fi
 
 set -o pipefail
-script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+script_dir=${BASH_SOURCE[0]%/*}
+[[ $script_dir != "${BASH_SOURCE[0]}" ]] || script_dir=.
 
 "$script_dir/audio-cards.sh" | jq -c '
   def normalized_address:

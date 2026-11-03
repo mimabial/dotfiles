@@ -34,5 +34,6 @@
   "success": "#7fdbca",
   "background": "#08060f",
   "foreground": "#e9d5ff",
-  "fg_selected": "#ff6677"
+  "fg_selected": "#ff6677",
+  "minimap": { "animStyle": "cyberpunk" }
 }

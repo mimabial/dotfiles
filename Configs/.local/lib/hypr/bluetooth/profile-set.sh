@@ -12,7 +12,8 @@ if (( $# != 2 )) || [[ ! $address =~ ^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$ || -z 
 fi
 
 set -euo pipefail
-script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+script_dir=${BASH_SOURCE[0]%/*}
+[[ $script_dir != "${BASH_SOURCE[0]}" ]] || script_dir=.
 
 card=$("$script_dir/profiles.sh" | jq -r --arg address "$address" --arg profile "$profile" '
   def normalized_address:

@@ -28,7 +28,7 @@ test_actions() (
     wallpaper_action="${action}"
     wallpaper_wait_for_lock=0
     wallpaper_configure_action
-    declare -F "${wallpaper_action_handler}" >/dev/null
+    declare -F "wallpaper_action_${wallpaper_action}" >/dev/null
   done
 )
 
@@ -71,7 +71,7 @@ test_trash_selection() (
   print_log() { :; }
   wallpaper_resolve_path() { readlink -f -- "$1"; }
   wallpaper_catalog_load_file() { chosen="$1"; }
-  wallpaper_apply_selected() { ln -sfn "${chosen}" "${active_wallpaper_link}"; }
+  wallpaper_apply_selected() { [[ "$1" == "${chosen}" ]] && ln -sfn "$1" "${active_wallpaper_link}"; }
   wallpaper_apply_backend() { backend_calls=$((backend_calls + 1)); }
   gio() {
     [[ "$1" == trash && "$2" == -- ]] || return 1
@@ -143,27 +143,27 @@ test_select_adjacent() (
   # stubs must follow the sources, or the libraries redefine them
   print_log() { :; }
   wallpaper_resolve_path() { printf '%s\n' "${current_link_target}"; }
-  wallpaper_apply_selected() { applied="${wallpaper_paths[selected_wallpaper_index]}"; }
+  wallpaper_apply_selected() { applied="$1"; }
 
-  local active_wallpaper_link=/unused applied="" selected_wallpaper_index=0 current_link_target=""
+  local active_wallpaper_link=/unused applied="" current_link_target=""
   local -a wallpaper_paths=(/w/a.jpg /w/b.jpg /w/c.jpg)
 
   current_link_target=/w/b.jpg
   wallpaper_select_adjacent n
-  [[ "${selected_wallpaper_index}:${applied}" == 2:/w/c.jpg ]]
+  [[ "${applied}" == /w/c.jpg ]]
 
   current_link_target=/w/c.jpg
   wallpaper_select_adjacent n
-  [[ "${selected_wallpaper_index}:${applied}" == 0:/w/a.jpg ]]
+  [[ "${applied}" == /w/a.jpg ]]
 
   current_link_target=/w/a.jpg
   wallpaper_select_adjacent p
-  [[ "${selected_wallpaper_index}:${applied}" == 2:/w/c.jpg ]]
+  [[ "${applied}" == /w/c.jpg ]]
 
   # unknown current wallpaper falls back to the first entry
   current_link_target=/w/gone.jpg
   wallpaper_select_adjacent n
-  [[ "${selected_wallpaper_index}:${applied}" == 0:/w/a.jpg ]]
+  [[ "${applied}" == /w/a.jpg ]]
 )
 
 test_parser
@@ -200,20 +200,6 @@ test_prune_unreferenced() (
 
 test_prune_unreferenced
 
-test_selected_path_is_the_only_catalog_read() (
-  source "${WALLPAPER_DIR%/wallpaper}/core/wallpaper.catalog.bash"
-  source "${WALLPAPER_DIR}/lib/catalog.bash"
-  source "${WALLPAPER_DIR}/lib/apply.bash"
-  local -a wallpaper_paths=(/w/a.jpg /w/b.jpg /w/c.jpg)
-  local selected_wallpaper_index=1
-  [[ "$(wallpaper_selected_path)" == /w/b.jpg ]]
-  selected_wallpaper_index=2
-  [[ "$(wallpaper_selected_path)" == /w/c.jpg ]]
-  # an empty catalog yields nothing rather than failing
-  local -a empty=(); wallpaper_paths=("${empty[@]}"); selected_wallpaper_index=0
-  [[ -z "$(wallpaper_selected_path)" ]]
-)
-
 test_ensure_hash_names_the_map_it_writes() (
   source "${WALLPAPER_DIR}/lib/apply.bash"
   wallpaper_file_hash() { printf 'hash-of-%s\n' "${1##*/}"; }
@@ -244,7 +230,7 @@ test_link_selected_uses_the_path_it_is_given() (
   : >"${dir}/chosen.png"
 
   # deliberately disagrees with the catalog: the argument must win
-  local -a wallpaper_paths=(/w/ignored.jpg); local selected_wallpaper_index=0
+  local -a wallpaper_paths=(/w/ignored.jpg)
   wallpaper_link_selected "${dir}/chosen.png"
 
   [[ "$(readlink "${active_wallpaper_link}")" == "${dir}/chosen.png" ]]
@@ -269,7 +255,6 @@ test_theme_catalog_repairs_wall_link() (
   [[ "$(readlink "${HYPR_CONFIG_HOME}/themes/Pack/wall.set")" == "${wall}" ]]
 )
 
-test_selected_path_is_the_only_catalog_read
 test_ensure_hash_names_the_map_it_writes
 test_link_selected_uses_the_path_it_is_given
 test_theme_catalog_repairs_wall_link
@@ -278,10 +263,8 @@ test_notification_follows_replacement_path() (
   source "${WALLPAPER_DIR}/lib/apply.bash"
   source "${WALLPAPER_DIR}/lib/notifications.bash"
   local -A wallpaper_hash_by_path=([/w/first.jpg]=aaa [/w/replacement.jpg]=bbb)
-  local WALLPAPER_THUMB_DIR=/thumbs selected_wallpaper_path=/w/first.jpg
-  local selected_wallpaper=first.jpg selected_thumbnail=/thumbs/aaa.sqre
+  local WALLPAPER_THUMB_DIR=/thumbs HYPR_WALLPAPER_NOTIFY_NAME=first.jpg HYPR_WALLPAPER_NOTIFY_ICON=/thumbs/aaa.sqre
   wallpaper_prepare_notification_payload /w/replacement.jpg
-  [[ "${selected_wallpaper_path}" == /w/replacement.jpg ]]
   [[ "${HYPR_WALLPAPER_NOTIFY_NAME}" == replacement.jpg ]]
   [[ "${HYPR_WALLPAPER_NOTIFY_ICON}" == /thumbs/bbb.sqre ]]
 )

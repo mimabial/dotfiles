@@ -4,7 +4,7 @@ source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/applications/desktop-exec.
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") <url> [browser-args...]
+Usage: ${0##*/} <url> [browser-args...]
 EOF
 }
 

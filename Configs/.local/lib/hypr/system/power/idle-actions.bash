@@ -74,6 +74,7 @@ power_wait_idle() {
   exec {idle_lock}>&-
   [[ "$wait_status" == 124 ]] || return 0
   power_manager_enabled || return 0
+  power_sleep_held && return 0
   read -r current_pid < <(hypr_user_pgrep -x hypridle) || return 0
   [[ "$current_pid" == "$daemon_pid" ]] || return 0
   "$0" perform "$action"

@@ -49,7 +49,7 @@ def lutris_rows(db_path: Path) -> list[dict]:
             cols = table_columns(cursor, table)
             if not {"name", "slug"} <= cols:
                 continue
-            selected = [col for col in ("id", "name", "slug", "runner", "icon", "prefix", "path") if col in cols]
+            selected = [col for col in ("id", "name", "slug", "runner", "icon", "prefix", "path", "lastplayed") if col in cols]
             cursor.execute(f"SELECT {', '.join(selected)} FROM {table}")
             rows = [dict(row) for row in cursor.fetchall()]
             if rows:
@@ -92,6 +92,7 @@ def lutris_games() -> list[Game]:
                     name=name,
                     icon=lutris_icon(slug),
                     argv=["xdg-open", f"lutris:rungame/{slug}"],
+                    last_played=int(row.get("lastplayed") or 0),
                 )
             )
         return games

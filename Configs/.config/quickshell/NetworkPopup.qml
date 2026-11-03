@@ -11,7 +11,7 @@ PopupCard {
     property string qrPopupName: "wifiqr"
     contentWidth: Style.px(440)
     contentHeight: networkColumn.implicitHeight + padding * 2
-    keyboardHint: "↑↓/Tab move · Enter select · R refresh · Ctrl+Tab panel · Esc"
+    keyboardHint: "↑↓/Tab Move  Enter Select  R Refresh  Ctrl+Tab Panel  Esc"
     property var pendingNetwork: null
     property var actionNetwork: null
     property var chosenNetwork: null
@@ -222,7 +222,10 @@ PopupCard {
             PopupIconButton { id: qrAction; shell: root.shell; implicitHeight: wifiRow.implicitHeight; glyph: "󰐲"; hint: "Show QR code"; onClicked: root.shell.togglePopup(root.qrPopupName) }
         }
         PopupRow { visible: root.portal; width: parent.width; shell: root.shell; icon: "󰖟"; title: "Open captive portal"; detail: "Sign in to access the internet"; onClicked: { root.shell.closePopup(); root.shell.run(["xdg-open", "http://ping.archlinux.org/nm-check.txt"]) } }
-        Text { visible: root.actionError !== ""; width: parent.width; text: root.actionError; textFormat: Text.PlainText; wrapMode: Text.Wrap; color: root.shell.urgent; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+        PopupHint {
+            shell: root.shell; error: true
+            width: parent.width; text: root.actionError
+        }
         Column {
             visible: root.active !== null || !!root.status.address
             width: parent.width; spacing: Style.sm
@@ -289,7 +292,10 @@ PopupCard {
             width: parent.width; spacing: Style.sm
             PopupRow { width: parent.width; shell: root.shell; icon: "󰓅"; title: root.speedProcess.running ? "Cancel speed test" : "Run speed test"; detail: root.speedProcess.running ? "Measuring " + root.speedResult.phase : "Download and upload · Cloudflare"; onClicked: { if (root.speedProcess.running) root.speedProcess.running = false; else { root.speedResult = ({}); root.speedProcess.running = true } } }
             InfoDuo { visible: root.speedResult.download != null || root.speedResult.upload != null; label1: "Download"; value1: root.speedResult.download == null ? "" : root.speedResult.download + " Mbps"; label2: "Upload"; value2: root.speedResult.upload == null ? "" : root.speedResult.upload + " Mbps" }
-            Text { visible: !!root.speedResult.error; width: parent.width; text: String(root.speedResult.error || ""); wrapMode: Text.Wrap; color: root.shell.urgent; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+            PopupHint {
+                shell: root.shell; error: true
+                width: parent.width; text: String(root.speedResult.error || "")
+            }
         }
 
         Column {

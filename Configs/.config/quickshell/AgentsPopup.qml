@@ -9,7 +9,7 @@ PopupCard {
     id: root
     readonly property real alarmUsage: 0.9
     popupName: "agents"
-    keyboardHint: "↑↓/Tab move · Enter details · R refresh · Esc close"
+    keyboardHint: "↑↓/Tab Move  Enter Details  R Refresh  Esc Close"
     contentWidth: Style.px(380)
     contentHeight: agentsViewport.height + padding * 2
 

@@ -13,11 +13,9 @@ Item {
     readonly property real leftWidth: box?.borderLeftWidth || 0
     readonly property bool hasSides: topWidth > 0 || rightWidth > 0 || bottomWidth > 0 || leftWidth > 0
     readonly property bool replacesBorder: hasSides && !box.borderColor
-    property bool hovered: false
     readonly property real radius: box?.borderRadius !== undefined ? box.borderRadius : host.radius !== undefined ? host.radius : shell.moduleRadius
     function sideColor(side) {
-        const key = "border" + side + "Color"
-        const spec = hovered && box.hover && key in box.hover ? box.hover[key] : box[key]
+        const spec = box["border" + side + "Color"]
         return spec ? shell.styleColor(spec, shell.foreground) : "transparent"
     }
     readonly property var segments: {

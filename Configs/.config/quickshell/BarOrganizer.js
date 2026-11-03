@@ -2,7 +2,6 @@
 
 var SECTIONS = ["left", "center", "right", "tray"]
 var LABELS = { left: "Left", center: "Center", right: "Right", tray: "Tray" }
-var WIDGET_NAMES = { altscape: "Alt+Tab" }
 var DESCRIPTIONS = {
     "menu": "Apps and system actions",
     "taskbar": "Running and pinned apps",
@@ -27,6 +26,7 @@ var DESCRIPTIONS = {
     "notifications": "Notification history and quiet mode",
     "tasks": "To-do lists and progress",
     "wallpaper": "Wallpaper selection and rotation",
+    "themerotation": "Timed theme pack rotation",
     "colormode": "Light and dark theme modes",
     "barlayout": "Bar layout and desktop options",
     "windowlayout": "Window tiling and orientation",
@@ -72,13 +72,13 @@ var SNAPSHOT_LIMIT = 5
 function entryId(entry) { return typeof entry === "string" ? entry : String(entry.id || "") }
 function clone(value) { return JSON.parse(JSON.stringify(value)) }
 function hintFor(row, armed) {
-    if (armed) return "Enter again to restore · Esc cancel"
+    if (armed) return "Enter again to restore  Esc Cancel"
     if (!row) return ""
     if (row.type === "header") return "← → or Enter fold"
-    if (row.type === "widget") return row.canToggle ? "Space toggle · 1 2 3 4 section · ← section header" : "Stays on the bar · 1 2 3 4 section"
-    if (row.type === "available") return "Space switch on · 1 2 3 4 into a section"
-    if (row.type === "layout") return row.slot === "mine" ? "Enter twice restore · S save" : "Enter twice restore"
-    if (row.type === "icon") return "Space toggle · P pin"
+    if (row.type === "widget") return row.canToggle ? "Space Toggle  1 2 3 4 Section  ← Section Header" : "Stays on the bar  1 2 3 4 Section"
+    if (row.type === "available") return "Space Switch On  1 2 3 4 Into a Section"
+    if (row.type === "layout") return row.slot === "mine" ? "Enter twice to restore  S Save" : "Enter twice to restore"
+    if (row.type === "icon") return "Space Toggle  P Pin"
     return "Space toggle"
 }
 
@@ -92,14 +92,14 @@ function buildRows(layout, registry, collapsed, keyFor, saved, icons) {
             var id = entryId(entries[index])
             placed.add(id)
             if (collapsed[section] || id.startsWith("icon:")) continue
-            rows.push({ type: "widget", key: keyFor(section, entries[index]), id, name: WIDGET_NAMES[id] || id, section, index,
+            rows.push({ type: "widget", key: keyFor(section, entries[index]), id, name: id, section, index,
                 sectionSize: entries.length, canToggle: !["tray", "taskbar", "spacer"].includes(id), canMove: id !== "tray" })
         }
     }
     var available = Object.keys(registry).filter(id => !placed.has(id)).sort()
     rows.push({ type: "header", key: "available", section: "available", name: "Available", count: available.length, collapsed: !!collapsed.available })
     if (!collapsed.available) for (var id of available)
-        rows.push({ type: "available", key: "available:" + id, id, name: WIDGET_NAMES[id] || id, canToggle: true, canMove: true })
+        rows.push({ type: "available", key: "available:" + id, id, name: id, canToggle: true, canMove: true })
     var layouts = [{ slot: "initial", name: "Initial layout", saved: saved.initial }, { slot: "mine", name: "My layout", saved: saved.mine }]
         .concat((saved.snapshots || []).map((item, index) => ({ slot: "snapshot:" + index, name: item.name, saved: item })))
     rows.push({ type: "header", key: "layouts", section: "layouts", name: "Layouts", count: layouts.length, collapsed: !!collapsed.layouts })

@@ -9,6 +9,7 @@ from pyutils.xdg_base_dirs import xdg_runtime_dir
 
 RUNTIME = str(xdg_runtime_dir() or "/run/user/%d" % os.getuid())
 SIGNATURE = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE", "")
+SYNTHETIC_OUTPUT = "FALLBACK"
 
 
 def _ipc_dir() -> str:
@@ -26,7 +27,7 @@ def hyprctl(*args: str, timeout: float = 4.0) -> str:
 
 def monitors() -> list[dict]:
     """Disabled ones included."""
-    return json.loads(hyprctl("monitors", "all", "-j"))
+    return [m for m in json.loads(hyprctl("monitors", "all", "-j")) if m.get("name") != SYNTHETIC_OUTPUT]
 
 
 def reload() -> None:

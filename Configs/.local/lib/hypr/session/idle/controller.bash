@@ -1,3 +1,5 @@
+declare -F hypr_svc_user >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/services.bash" || return 1
+
 IDLE_MANAGER_SERVICE=hyprland-idle-manager.service
 IDLE_DAEMON_SERVICE=hyprland-hypridle
 IDLE_DAEMON_PID=""

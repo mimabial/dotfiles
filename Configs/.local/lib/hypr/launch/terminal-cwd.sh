@@ -9,13 +9,14 @@ hypr_help_guard "Usage: hyprshell launch/terminal-cwd
 Print the best working directory for terminal-launch keybinds." "$@"
 
 active_window_json="$(hyprctl activewindow -j 2>/dev/null || true)"
-read -r active_class terminal_pid < <(
-  printf '%s' "${active_window_json}" \
-    | jq -r '[.class // "", (.pid // "")] | @tsv' 2>/dev/null || true
-)
+active_class=""
+terminal_pid=""
+[[ "${active_window_json}" =~ \"class\":\ \"([^\"]*)\" ]] && active_class="${BASH_REMATCH[1]}"
+[[ "${active_window_json}" =~ \"pid\":\ (-?[0-9]+) ]] && terminal_pid="${BASH_REMATCH[1]}"
 shell_pid=""
 cwd=""
 shell_path=""
+shell_entry=""
 kitty_cwd=""
 
 if [[ "${active_class}" == "kitty" ]] && command -v kitty >/dev/null 2>&1; then
@@ -41,15 +42,19 @@ fi
   exit 0
 }
 
-shell_pid="$(pgrep -P "${terminal_pid}" | tail -n1 || true)"
+mapfile -t child_pids < <(pgrep -P "${terminal_pid}")
+shell_pid="${child_pids[-1]:-}"
 
 if [[ -n "${shell_pid}" ]]; then
-  cwd="$(cd -P "/proc/${shell_pid}/cwd" 2>/dev/null && pwd -P || true)"
+  if cd -P "/proc/${shell_pid}/cwd" 2>/dev/null; then cwd="${PWD}"; fi
   shell_path="$(readlink "/proc/${shell_pid}/exe" 2>/dev/null || true)"
 
-  if [[ -d "${cwd}" && -n "${shell_path}" ]] && grep -qsxF -- "${shell_path}" /etc/shells; then
-    printf '%s\n' "${cwd}"
-    exit 0
+  if [[ -d "${cwd}" && -n "${shell_path}" && -r /etc/shells ]]; then
+    while IFS= read -r shell_entry || [[ -n "${shell_entry}" ]]; do
+      [[ "${shell_entry}" == "${shell_path}" ]] || continue
+      printf '%s\n' "${cwd}"
+      exit 0
+    done </etc/shells
   fi
 fi
 

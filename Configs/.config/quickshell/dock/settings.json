@@ -18,7 +18,6 @@
   "urgentSoundName": "message-new-instant",
   "revealDelay": 160,
   "tooltipDelay": 450,
-  "appGroups": [],
   "pinnedFolders": [
     {
       "path": "~/Downloads",
@@ -30,8 +29,8 @@
   "iconSize": 36,
   "recentApps": [
     "blueman-manager",
-    "org.pulseaudio.pavucontrol",
-    "org.tui.Calc"
+    "org.kde.elisa",
+    "mpv"
   ],
   "showRecents": true,
   "showIndicators": true

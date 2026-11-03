@@ -4,12 +4,12 @@ nightlight_apply_signed_step() {
   local direction="$3"
 
   if [ "${options_ref[color_mode]}" = "gamma" ]; then
-    state_ref[new_gamma_percent]="$(hypr_clamp "$((state_ref[gamma_percent] + (direction * options_ref[gamma_step_percent])))" "${MIN_GAMMA_PERCENT}" "${MAX_GAMMA_PERCENT}")"
+    hypr_clamp_into "state_ref[new_gamma_percent]" "$((state_ref[gamma_percent] + (direction * options_ref[gamma_step_percent])))" "${MIN_GAMMA_PERCENT}" "${MAX_GAMMA_PERCENT}"
     state_ref[gamma_percent]="${state_ref[new_gamma_percent]}"
     return 0
   fi
 
-  state_ref[new_temperature_kelvin]="$(hypr_clamp "$((state_ref[temperature_kelvin] + (direction * options_ref[temperature_step_kelvin])))" "${MIN_TEMPERATURE_KELVIN}" "${MAX_TEMPERATURE_KELVIN}")"
+  hypr_clamp_into "state_ref[new_temperature_kelvin]" "$((state_ref[temperature_kelvin] + (direction * options_ref[temperature_step_kelvin])))" "${MIN_TEMPERATURE_KELVIN}" "${MAX_TEMPERATURE_KELVIN}"
   state_ref[temperature_kelvin]="${state_ref[new_temperature_kelvin]}"
 }
 
@@ -20,13 +20,13 @@ nightlight_resolve_set_action() {
   if [ "${options_ref[color_mode]}" = "gamma" ]; then
     nightlight_validate_int_range "${options_ref[custom_step]}" "${MIN_GAMMA_PERCENT}" "${MAX_GAMMA_PERCENT}" \
       "Error: Gamma value must be an integer between ${MIN_GAMMA_PERCENT} and ${MAX_GAMMA_PERCENT}" || return 1
-    state_ref[new_gamma_percent]="$(hypr_clamp "${options_ref[custom_step]}" "${MIN_GAMMA_PERCENT}" "${MAX_GAMMA_PERCENT}")"
+    hypr_clamp_into "state_ref[new_gamma_percent]" "${options_ref[custom_step]}" "${MIN_GAMMA_PERCENT}" "${MAX_GAMMA_PERCENT}"
     return 0
   fi
 
   nightlight_validate_int_range "${options_ref[custom_step]}" "${MIN_TEMPERATURE_KELVIN}" "${MAX_TEMPERATURE_KELVIN}" \
     "Error: Temperature must be an integer between ${MIN_TEMPERATURE_KELVIN} and ${MAX_TEMPERATURE_KELVIN}" || return 1
-  state_ref[new_temperature_kelvin]="$(hypr_clamp "${options_ref[custom_step]}" "${MIN_TEMPERATURE_KELVIN}" "${MAX_TEMPERATURE_KELVIN}")"
+  hypr_clamp_into "state_ref[new_temperature_kelvin]" "${options_ref[custom_step]}" "${MIN_TEMPERATURE_KELVIN}" "${MAX_TEMPERATURE_KELVIN}"
 }
 
 nightlight_resolve_step_action() {

@@ -18,9 +18,9 @@ BarButton {
     readonly property bool windowHolding: shell.keepAwakeFullscreen && (fullscreenActive || gameActive)
     readonly property bool awake: shell.keepAwakeManual || audioHolding || windowHolding
     css: "caffeine"
-    active: awake
-    visible: !activeOnly || awake
-    text: shell.keepAwakeManual ? "󰅶" : audioHolding ? "󰎆" : gameActive && windowHolding ? "󰊴" : windowHolding ? "󰊓" : "󰛊"
+    active: awake || shell.keepAwakeSystem
+    visible: !activeOnly || active
+    text: shell.keepAwakeManual ? "󰅶" : audioHolding ? "󰎆" : gameActive && windowHolding ? "󰊴" : windowHolding ? "󰊓" : shell.keepAwakeSystem ? "󰌢" : "󰛊"
     onClicked: button => button === Qt.RightButton
         ? shell.run(["hyprshell", "session/toggle-keep-awake.sh"])
         : shell.togglePopup("caffeine")

@@ -8,7 +8,7 @@ PopupCard {
     popupName: "power"
     contentWidth: Style.px(480)
     contentHeight: panel.implicitHeight + padding * 2
-    keyboardHint: "↑↓/Tab move · 1–4 tabs · Enter · Esc"
+    keyboardHint: "↑↓/Tab Move  1–4 Tabs  Enter  Esc"
 
     property string tab: "overview"
     property int cycles: -1
@@ -206,7 +206,7 @@ PopupCard {
         }
         PopupNumberField {
             id: field
-            width: Style.px(110); shell: root.shell
+            width: Style.px(110); shell: root.shell; popupController: root
             value: Number(root.setting(rule.settingKey, rule.fallback))
             minimum: rule.minimum; maximum: rule.maximum
             onCommitted: value => root.setSetting(rule.settingKey, value)
@@ -321,7 +321,10 @@ PopupCard {
                     interactive: !chargeLimitToggle.running
                     onClicked: root.toggleChargeLimit()
                 }
-                Text { visible: root.limitMessage !== ""; width: parent.width; text: root.limitMessage; color: root.shell.role("error", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
+                PopupHint {
+                    shell: root.shell; error: true
+                    width: parent.width; text: root.limitMessage
+                }
             }
             PopupSeparator { shell: root.shell }
             Column {

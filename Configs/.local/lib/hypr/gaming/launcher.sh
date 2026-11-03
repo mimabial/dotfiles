@@ -8,43 +8,40 @@ source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash" || exit 1
 
 backend="all"
 style="${ROFI_GAMELAUNCHER_STYLE:-steam_deck}"
+font_scale_request="${ROFI_GAMELAUNCHER_SCALE:-}"
+font_name_request="${ROFI_GAMELAUNCHER_FONT:-${ROFI_FONT:-}}"
 emit_json=0
 game_catalog_script="${HYPR_LIB_DIR}/gaming/lib/game_catalog.py"
-FALLBACK_MONITOR_WIDTH=1920
-FALLBACK_MONITOR_HEIGHT=1080
-LAUNCHER_SCREEN_PERCENT=80
-STEAMDECK_SCREEN_INSET_VERTICAL_PERCENT=17
-STEAMDECK_SCREEN_INSET_HORIZONTAL_PERCENT=18
+gamepad_keys_script="${HYPR_LIB_DIR}/gaming/lib/gamepad_keys.py"
+steam_deck_layout() {
+  local columns=6 rows=2 content_gaps=4 line_steps=4
+  local control_padding_y="$1" control_padding_x="$2" font_name font_scale font_description width height radius border_width
+  local font_height unit inset card_gap tabs_height hints_height chrome_height tile_width cover_width cover_height cover_radius grid_width
 
-steam_deck_theme_override() {
-  local source_image="${HOME}/.local/share/rofi/assets/steamdeck_holographic.png"
-  local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/rofi"
-  local logical_width logical_height launcher_width launcher_height cache_image
-  local background_rule=""
+  font_name="$(rofi_effective_font_name "${font_name_request}")"
+  font_scale="$(rofi_effective_font_scale "${font_scale_request}")"
+  font_description="$(rofi_font_description "${font_name}" "${font_scale}")"
+  read -r width height < <(rofi_focused_monitor_logical_size)
+  IFS=$'\t' read -r radius border_width < <(rofi_default_border_metrics)
+  radius=$((radius * ROFI_IMAGE_TILE_RADIUS_MULTIPLIER))
+  font_height="$(rofi_font_text_height_px "${font_name}" "${font_scale}")" || return
+  font_height=$((($(rofi_decimal_milli "${font_height}") + ROFI_MILLI - 1) / ROFI_MILLI))
+  unit=$(((font_height + line_steps - 1) / line_steps))
+  inset=$((2 * unit))
+  card_gap=$((2 * unit))
+  tabs_height=$((font_height + 2 * control_padding_y))
+  hints_height=${font_height}
+  chrome_height=$((tabs_height + hints_height + 2 * inset + content_gaps * unit))
+  tile_width=$(((width - 2 * inset - (columns - 1) * card_gap) / columns))
+  cover_width=$((tile_width - 2 * border_width))
+  cover_height=$(((height - chrome_height - (rows - 1) * card_gap) / rows - 2 * border_width))
+  cover_radius=$((radius > border_width ? radius - border_width : 0))
+  grid_width=$((columns * tile_width + (columns - 1) * card_gap))
+  deck_cover_args="--cover-size ${cover_width}x${cover_height} --cover-radius ${cover_radius} --title-font \"${font_description}\" --title-padding ${control_padding_x}x${control_padding_y} --title-margin ${inset} --title-radius ${radius}"
 
-  read -r logical_width logical_height <<<"$(rofi_focused_monitor_logical_size)"
-  [[ "${logical_width}" =~ ^[1-9][0-9]*$ ]] || logical_width="${FALLBACK_MONITOR_WIDTH}"
-  [[ "${logical_height}" =~ ^[1-9][0-9]*$ ]] || logical_height="${FALLBACK_MONITOR_HEIGHT}"
-  launcher_width=$((logical_width * LAUNCHER_SCREEN_PERCENT / 100))
-  launcher_height=$((logical_height * LAUNCHER_SCREEN_PERCENT / 100))
-
-  if [[ -f "${source_image}" ]] && command -v magick >/dev/null 2>&1; then
-    mkdir -p "${cache_dir}"
-    cache_image="${cache_dir}/steamdeck_holographic_${launcher_width}x${launcher_height}.png"
-    if [[ ! -f "${cache_image}" || "${source_image}" -nt "${cache_image}" ]]; then
-      magick "${source_image}" \
-        -resize "${launcher_width}x${launcher_height}" \
-        -background none \
-        -gravity center \
-        -extent "${launcher_width}x${launcher_height}" \
-        "${cache_image}" >/dev/null 2>&1 || cache_image=""
-    fi
-    [[ -f "${cache_image}" ]] && background_rule="background-image: url(\"${cache_image}\", width);"
-  fi
-
-  printf 'window {width: %spx; height: %spx; %s} mainbox {padding: %s%% %s%%;} element-icon {border-radius: 0px;}\n' \
-    "${launcher_width}" "${launcher_height}" "${background_rule}" \
-    "${STEAMDECK_SCREEN_INSET_VERTICAL_PERCENT}" "${STEAMDECK_SCREEN_INSET_HORIZONTAL_PERCENT}"
+  printf -v deck_theme '* {font: "%s";\n element-border-radius: %spx; deck-gap: %spx; deck-card-gap: %spx; deck-inset: %spx; deck-border: %spx; deck-cover-height: %spx; deck-grid-width: %spx; deck-columns: %s; deck-rows: %s;}\n' \
+    "${font_description}" "${radius}" "${unit}" "${card_gap}" "${inset}" \
+    "${border_width}" "${cover_height}" "${grid_width}" "${columns}" "${rows}"
 }
 
 usage() {
@@ -88,30 +85,40 @@ if ((emit_json)); then
   exec python3 "${game_catalog_script}" --backend "${backend}" --json
 fi
 
-declare -A launcher_style=()
-rofi_resolve_style_into launcher_style \
-  "${ROFI_GAMELAUNCHER_SCALE:-}" "${ROFI_GAMELAUNCHER_FONT:-${ROFI_FONT:-}}" listview same
-
-launcher_style_override=""
-launcher_rofi_args=()
 case "${style}" in
   steam_deck | gamelauncher_5 | 5)
-    launcher_style_override="$(steam_deck_theme_override)"
-    launcher_rofi_args=(-show-icons)
+    rofi_hypr_snapshot
+    monitor_args=()
+    rofi_monitor_args_into monitor_args
+    popup_theme="$(rofi_popup_theme)"
+    [[ "${popup_theme}" =~ control-padding:\ ([0-9]+)px\ ([0-9]+)px ]]
+    steam_deck_layout "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+    library_modes=""
+    for library_backend in all steam lutris; do
+      library_modes+="${library_modes:+,}${library_backend}:python3 \"${game_catalog_script}\" --backend ${library_backend} --rofi ${deck_cover_args}"
+    done
+    python3 "${gamepad_keys_script}" "$$" &
+    exec rofi "${monitor_args[@]}" -show "${backend}" -modes "${library_modes}" \
+      -theme "$(rofi_resolve_theme steam_deck)" \
+      -theme-str "${deck_theme}" \
+      -theme-str "${popup_theme}"
     ;;
 esac
+
+declare -A launcher_style=()
+rofi_resolve_style_into launcher_style "${font_scale_request}" "${font_name_request}" listview same
 
 selection="$(
   python3 "${game_catalog_script}" --backend "${backend}" --rofi \
     | rofi_with_background_theme -dmenu -i -markup-rows \
-      "${launcher_rofi_args[@]}" \
+      -no-custom \
       -p Games \
       -display-columns 1 \
       -display-column-separator $'\t' \
       -config "$(rofi_resolve_theme "${style}")" \
       -theme-str "${launcher_style[font_theme]}" \
       -theme-str "${launcher_style[window_theme]}" \
-      ${launcher_style_override:+-theme-str "${launcher_style_override}"}
+      -theme-str "$(rofi_window_position_theme)"
 )"
 
 [[ -n "${selection}" ]] || exit 0

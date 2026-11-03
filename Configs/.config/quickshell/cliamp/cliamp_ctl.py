@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import sys
 import os
+import contextlib
+import random
 import subprocess
 import json
 import socket
@@ -33,6 +35,7 @@ except Exception:
 
 SOCK_PATH = os.path.join(RUN_DIR, "mpv.sock")
 START_LOCK = os.path.join(RUN_DIR, "mpv.lock")
+MIRROR_LOCK = os.path.join(RUN_DIR, "mpv_playlist.lock")
 SPECTRUM_LOCK = os.path.join(RUN_DIR, "spectrum.lock")
 SPECTRUM_PID_FILE = os.path.join(RUN_DIR, "spectrum.pid")
 SPECTRUM_TARGET_FILE = os.path.join(RUN_DIR, "spectrum-target.json")
@@ -49,9 +52,14 @@ HISTORY_PLAYLIST_LIMIT = 99
 NOW_PLAYING_PATH = os.path.join(CACHE_DIR, "now_playing.json")
 RESUME_CHECKPOINT_SECONDS = 10
 RESUME_MIN_SECONDS = 5
-QUEUE_PATH = os.path.join(CACHE_DIR, "queue.json")
+MIRROR_PATH = os.path.join(CACHE_DIR, "mpv_playlist.json")
+MIRROR_SYNC_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sync_mirror.lua")
+LAST_STARTED_PATH = os.path.join(CACHE_DIR, "mpv_last_started")
+REPEAT_LOOPS = {"off": ("no", "no"), "track": ("inf", "no"), "all": ("no", "inf")}
 EXTERNAL_QUEUE_CACHE_PATH = os.path.join(CACHE_DIR, "external_queue.json")
 EXTERNAL_QUEUE_CACHE_SECONDS = 600
+MPD_ADDRESS = ("127.0.0.1", 6600)
+YOUTUBE_REQUEST_SECONDS = 12
 HISTORY_TAIL_BYTES = 2048
 DEFAULT_VOLUME = 80
 FOLDER_TRACK_LIMIT = 500
@@ -250,19 +258,23 @@ def launch_prefetch(kind, *args):
     except Exception:
         pass
 
-def read_queue():
-    if os.path.exists(QUEUE_PATH):
-        try:
-            with open(QUEUE_PATH, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return []
+@contextlib.contextmanager
+def mirror_lock():
+    with open(MIRROR_LOCK, "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
 
-def save_queue(q_list):
+def read_mirror():
     try:
-        with open(QUEUE_PATH, "w", encoding="utf-8") as f:
-            json.dump(q_list, f, indent=2)
+        with open(MIRROR_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"current": None, "looping": False, "entries": []}
+
+def save_mirror(mirror):
+    try:
+        with open(MIRROR_PATH, "w", encoding="utf-8") as f:
+            json.dump(mirror, f, indent=2)
     except Exception:
         pass
 
@@ -270,74 +282,145 @@ def youtube_id(url):
     match = YOUTUBE_ID.search(str(url or ""))
     return match.group(1) if match else ""
 
-
-def add_to_queue(url, title=None, artist=None, playlist_id=None):
-    real_url, final_title, final_artist = resolve_track_url(url, title, artist)
-    if not real_url or playlist_id is None:
-        return {"success": False, "error": "Unable to resolve track"}
-    queue = read_queue()
-    video_id = youtube_id(real_url)
+def queue_entry(url, title, artist, playlist_id=None):
+    video_id = youtube_id(url)
     thumb = os.path.join(AUDIO_CACHE_DIR, f"{video_id}.jpg") if video_id else ""
-    if thumb and not os.path.exists(thumb):
-        thumb = ""
-    queue.append({
-        "url": real_url,
-        "title": final_title,
-        "artist": final_artist,
-        "thumb": thumb,
-        "playlist_id": playlist_id
-    })
-    save_queue(queue)
-    return {"success": True, "queue": queue}
+    return {"url": url, "title": title, "artist": artist,
+            "thumb": thumb if thumb and os.path.exists(thumb) else "", "playlist_id": playlist_id}
 
-def drop_mpv_queue_entry(i):
-    pos = (send_mpv_cmd(["get_property", "playlist-pos"]) or {}).get("data")
-    if not isinstance(pos, int) or pos < 0:
-        return
-    send_mpv_cmd(["playlist-remove", pos + 1 + int(i)])
+def foreign_entry(entry):
+    stem = os.path.splitext(os.path.basename(entry["filename"]))[0]
+    return queue_entry(entry["filename"], entry.get("title") or stem, "", entry["id"])
 
-def remove_from_queue(idx):
-    queue = read_queue()
+def by_append_order(entry):
+    return entry["playlist_id"]
+
+def mpv_values(*names):
+    return [(response or {}).get("data") for response in send_mpv_cmds([["get_property", name] for name in names])]
+
+def current_index(playlist):
+    return next((index for index, entry in enumerate(playlist) if entry.get("current")), None)
+
+def upcoming(mirror):
+    entries = mirror["entries"]
+    ids = [entry["playlist_id"] for entry in entries]
+    if mirror["current"] not in ids:
+        return entries
+    position = ids.index(mirror["current"])
+    return entries[position + 1:] + (entries[:position] if mirror["looping"] else [])
+
+def last_started_id():
     try:
-        i = int(idx)
-        if 0 <= i < len(queue):
-            queue.pop(i)
-            save_queue(queue)
-            drop_mpv_queue_entry(i)
-            return {"success": True, "queue": queue}
-    except Exception:
-        pass
-    return {"success": False}
+        with open(LAST_STARTED_PATH, "r", encoding="utf-8") as f:
+            return int(f.read())
+    except (OSError, ValueError):
+        return None
 
-def clear_queue():
-    save_queue([])
-    send_mpv_cmd(["stop"])
+def sync_mirror():
+    with mirror_lock():
+        mirror = read_mirror()
+        playlist, looping = mpv_values("playlist", "loop-playlist")
+        position = current_index(playlist or [])
+        known = {entry["playlist_id"]: entry for entry in mirror["entries"]}
+        if position is not None:
+            synced = {"current": playlist[position]["id"], "looping": bool(looping),
+                      "entries": [known.get(entry["id"]) or foreign_entry(entry) for entry in playlist]}
+        else:
+            started = last_started_id()
+            synced = dict(mirror, current=started) if started in known else mirror
+        if synced == mirror:
+            return mirror
+        save_mirror(synced)
+    if synced["current"] != mirror["current"]:
+        playing = next(entry for entry in synced["entries"] if entry["playlist_id"] == synced["current"])
+        save_now_playing(playing["title"], playing["artist"], playing["url"])
+    return synced
+
+def append_entries(entries):
+    responses = send_mpv_cmds([loadfile_command(entry["url"], "append", entry["title"], entry["artist"]) for entry in entries])
+    appended = [dict(entry, playlist_id=loaded_entry_id(response)) for entry, response in zip(entries, responses)]
+    return [entry for entry in appended if entry["playlist_id"] is not None]
+
+def queue_tracks(tracks):
+    start_mpv_daemon()
+    with mirror_lock():
+        mirror = read_mirror()
+        appended = append_entries([queue_entry(*track) for track in tracks])
+        mirror["entries"] += appended
+        save_mirror(mirror)
+    return appended
+
+def remove_from_queue(playlist_id):
+    with mirror_lock():
+        ids = [entry["id"] for entry in mpv_values("playlist")[0] or []]
+        if playlist_id in ids:
+            send_mpv_cmd(["playlist-remove", ids.index(playlist_id)])
+        mirror = read_mirror()
+        mirror["entries"] = [entry for entry in mirror["entries"] if entry["playlist_id"] != playlist_id]
+        save_mirror(mirror)
     return {"success": True}
 
-def reconcile_queue():
-    queue = read_queue()
-    if not queue:
-        return queue
-    res = send_mpv_cmd(["get_property", "playlist"])
-    playing_id = next((entry["id"] for entry in (res or {}).get("data", []) if entry.get("current")), None)
-    if playing_id is None:
-        return queue
-    for i, track in enumerate(queue):
-        if playing_id != track.get("playlist_id"):
-            continue
-        queue = queue[i + 1:]
-        save_queue(queue)
-        save_now_playing(track.get("title"), track.get("artist"), track.get("url"))
-        break
-    return queue
+def clear_queue():
+    with mirror_lock():
+        send_mpv_cmd(["playlist-clear"])
+        mirror = read_mirror()
+        mirror["entries"] = [entry for entry in mirror["entries"] if entry["playlist_id"] == mirror["current"]]
+        save_mirror(mirror)
+    return {"success": True}
 
-def play_next_in_queue(queue=None):
-    queue = reconcile_queue() if queue is None else queue
-    if queue:
-        next_track = queue.pop(0)
-        save_queue(queue)
-        return play_item(next_track["url"], next_track.get("title"), next_track.get("artist"))
-    return {"success": False, "error": "Queue empty"}
+def play_queued(playlist_id):
+    playlist = mpv_values("playlist")[0] or []
+    ids = [entry["id"] for entry in playlist]
+    position = current_index(playlist)
+    if position is not None and playlist_id in ids:
+        send_mpv_cmds([["playlist-move", ids.index(playlist_id), position + 1], ["playlist-next"], ["set_property", "pause", False]])
+        return {"success": True}
+    with mirror_lock():
+        mirror = read_mirror()
+        entry = next((entry for entry in upcoming(mirror) if entry["playlist_id"] == playlist_id), None)
+        if entry is None:
+            return {"success": False, "error": "Not queued"}
+        mirror["entries"].remove(entry)
+        save_mirror(mirror)
+    return play_item(entry["url"], entry["title"], entry["artist"])
+
+def play_next_in_queue():
+    if current_index(mpv_values("playlist")[0] or []) is not None:
+        send_mpv_cmds([["playlist-next"], ["set_property", "pause", False]])
+        return {"success": True}
+    queued = upcoming(read_mirror())
+    return play_queued(queued[0]["playlist_id"]) if queued else {"success": False, "error": "Queue empty"}
+
+def reorder_commands(ids, order, offset):
+    ids, commands = list(ids), []
+    for target, playlist_id in enumerate(order):
+        source = ids.index(playlist_id)
+        if source != target:
+            commands.append(["playlist-move", offset + source, offset + target])
+            ids.insert(target, ids.pop(source))
+    return commands
+
+def arrange_upcoming(shuffled):
+    playlist = mpv_values("playlist")[0] or []
+    position = current_index(playlist)
+    first = len(playlist) if position is None else position + 1
+    queued = [entry["id"] for entry in playlist[first:]]
+    order = random.sample(queued, len(queued)) if shuffled else sorted(queued)
+    send_mpv_cmds(reorder_commands(queued, order, first) + [["set_property", "shuffle", shuffled]])
+    return {"success": True}
+
+def toggle_shuffle():
+    return arrange_upcoming(mpv_values("shuffle")[0] is not True)
+
+def repeat_mode(loop_file, loop_playlist):
+    return "track" if loop_file else "all" if loop_playlist else "off"
+
+def cycle_repeat():
+    modes = list(REPEAT_LOOPS)
+    following = modes[(modes.index(repeat_mode(*mpv_values("loop-file", "loop-playlist"))) + 1) % len(modes)]
+    loop_file, loop_playlist = REPEAT_LOOPS[following]
+    send_mpv_cmds([["set_property", "loop-file", loop_file], ["set_property", "loop-playlist", loop_playlist]])
+    return {"success": True}
 
 def embedded_cover_cache_path(track):
     try:
@@ -423,17 +506,12 @@ def dir_tracks(rel="", limit=FOLDER_TRACK_LIMIT):
             tracks.append((os.path.join(walk_root, name), title, artist))
     return tracks
 
-def append_tracks(tracks):
-    for full, title, artist in tracks:
-        appended = queue_item(full, title, artist)
-        add_to_queue(full, title, artist, appended.get("playlist_id"))
-
 def queue_dir(rel="", limit=FOLDER_TRACK_LIMIT):
     tracks = dir_tracks(rel, limit)
     if tracks is None:
         return {"success": False, "error": "Not a directory"}
-    append_tracks(tracks)
-    return {"success": True, "added": len(tracks), "truncated": len(tracks) >= limit, "queue": read_queue()}
+    queue_tracks(tracks)
+    return {"success": True, "added": len(tracks), "truncated": len(tracks) >= limit}
 
 def play_dir(rel="", limit=FOLDER_TRACK_LIMIT):
     tracks = dir_tracks(rel, limit)
@@ -441,11 +519,9 @@ def play_dir(rel="", limit=FOLDER_TRACK_LIMIT):
         return {"success": False, "error": "Not a directory"}
     if not tracks:
         return {"success": False, "error": "No tracks in folder"}
-    save_queue([])
-    first, rest = tracks[0], tracks[1:]
-    result = play_item(first[0], first[1], first[2])
-    append_tracks(rest)
-    return {"success": result.get("success", True), "added": len(tracks), "queue": read_queue()}
+    result = play_item(*tracks[0], keep_queue=False)
+    queue_tracks(tracks[1:])
+    return {"success": result.get("success", True), "added": len(tracks)}
 
 def browse_library(rel=""):
     base = MUSIC_DIR
@@ -497,6 +573,18 @@ def read_mpd_queue():
     except Exception:
         return []
 
+def watch_mpd_queue():
+    try:
+        with socket.create_connection(MPD_ADDRESS) as peer, peer.makefile("rb") as stream:
+            for line in stream:
+                if line.startswith(b"OK"):
+                    peer.sendall(b"idle playlist\n")
+                elif line.startswith(b"changed:"):
+                    sys.stdout.buffer.write(line)
+                    sys.stdout.buffer.flush()
+    except OSError:
+        pass
+
 def save_now_playing(title, artist, url="", pos=0):
     try:
         cur = read_now_playing()
@@ -544,7 +632,7 @@ def send_mpv_cmds(commands, timeout=1.0):
 def send_mpv_cmd(cmd_list, timeout=1.0):
     return send_mpv_cmds([cmd_list], timeout)[0]
 
-def load_mpv(url, mode, title, artist="", start=None):
+def loadfile_command(url, mode, title, artist="", start=None):
     target, options = url, {"force-media-title": title or ""}
     if start:
         options["start"] = str(start)
@@ -552,8 +640,13 @@ def load_mpv(url, mode, title, artist="", start=None):
         save_youtube_meta(url, title, artist)
         target = get_cached_stream_url(url) or url
         options["ytdl-format"] = "18/best"
-    result = send_mpv_cmd(["loadfile", target, mode, -1, options]) or {}
-    return (result.get("data") or {}).get("playlist_entry_id")
+    return ["loadfile", target, mode, -1, options]
+
+def loaded_entry_id(response):
+    return ((response or {}).get("data") or {}).get("playlist_entry_id")
+
+def load_mpv(url, mode, title, artist="", start=None):
+    return loaded_entry_id(send_mpv_cmd(loadfile_command(url, mode, title, artist, start)))
 
 def is_mpv_running(timeout=0.2):
     if not os.path.exists(SOCK_PATH):
@@ -626,6 +719,9 @@ def start_mpv_daemon():
             "--ao=pipewire,pulse,alsa",
             "--audio-client-name=CLIamp",
             f"--input-ipc-server={SOCK_PATH}",
+            f"--script={MIRROR_SYNC_SCRIPT}",
+            f"--script-opts-append=sync_mirror-cliamp_ctl={os.path.abspath(__file__)}",
+            f"--script-opts-append=sync_mirror-last_started={LAST_STARTED_PATH}",
             "--title=CLIamp",
             "--keep-open=yes",
             f"--volume={DEFAULT_VOLUME}",
@@ -801,8 +897,12 @@ def toggle_liked(url, title, artist):
 
 def youtube_tracks(url, limit=100):
     list_id = urllib.parse.parse_qs(urllib.parse.urlparse(url).query).get("list", [""])[0]
-    result = subprocess.run(["yt-dlp", "--flat-playlist", "--playlist-end", str(limit), "--print",
-        "%(id)s\t%(title)s\t%(uploader)s\t%(duration_string)s", "--", url], capture_output=True, text=True, timeout=12.0)
+    result = subprocess.run(["yt-dlp", "--flat-playlist", "--lazy-playlist", "--socket-timeout", str(YOUTUBE_REQUEST_SECONDS),
+        "--playlist-end", str(limit), "--print", "%(id)s\t%(title)s\t%(uploader)s\t%(duration_string)s", "--", url],
+        capture_output=True, text=True)
+    if result.returncode:
+        errors = (result.stderr or "").strip().splitlines()
+        raise RuntimeError(errors[-1] if errors else "YouTube playlist lookup failed")
     tracks = []
     for line in (result.stdout or "").splitlines():
         vid, title, artist, duration = (line.split("\t") + ["", "", "", ""])[:4]
@@ -813,32 +913,38 @@ def youtube_tracks(url, limit=100):
     return tracks
 
 def read_youtube_queue(url):
+    playing_id = urllib.parse.parse_qs(urllib.parse.urlparse(url).query).get("v", [""])[0]
+    queue = cached_youtube_queue(url)
+    return dict(queue, items=[dict(item, current=item["id"] == playing_id) for item in queue["items"]])
+
+def cached_youtube_queue(url):
     query = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
     list_id = query.get("list", [""])[0]
+    result = {"source": "youtube", "items": []}
     if not list_id or not is_youtube_url(url):
-        return []
+        return result
     cache_key = list_id + (":" + query.get("v", [""])[0] if list_id.startswith("RD") else "")
-    stale = []
     try:
         with open(EXTERNAL_QUEUE_CACHE_PATH, "r", encoding="utf-8") as f:
             cached = json.load(f)
         if cached.get("key") == cache_key:
-            stale = cached.get("items", [])
+            result["items"] = cached.get("items", [])
             if time.time() - cached.get("saved_at", 0) < EXTERNAL_QUEUE_CACHE_SECONDS:
-                return stale
+                return result
     except Exception:
         pass
     try:
         items = [dict(track, backend="youtube") for track in youtube_tracks(url)]
-    except Exception:
-        items = []
+    except (OSError, RuntimeError) as error:
+        return dict(result, error=str(error))
     if items:
         try:
             with open(EXTERNAL_QUEUE_CACHE_PATH, "w", encoding="utf-8") as f:
                 json.dump({"key": cache_key, "saved_at": time.time(), "items": items}, f)
         except Exception:
             pass
-    return items or stale
+    result["items"] = items or result["items"]
+    return result
 
 def import_playlist(url, custom_name=None):
     if not url or not is_safe_url(url):
@@ -948,8 +1054,7 @@ VIS_MODES = {
     "peaks", "stereo", "correlation", "ascii",
     "wave", "sine", "mirror",
     "soundcloud_wave", "telegram_wave",
-    "daw_wave", "led_scrubber", "heatmap_wave", "grounded_wave",
-    "matrix", "mosaic",
+    "led_scrubber", "heatmap_wave", "grounded_wave",
     "scatter", "butterfly",
     "plasma", "cyber_tunnel", "red_sector",
 }
@@ -1088,7 +1193,8 @@ def set_eq(preset_name):
     return apply_audio_fx(preset_name=preset_name)
 
 def watch_status():
-    properties = ("time-pos", "duration", "pause", "media-title", "volume", "speed", "idle-active", "path", "af")
+    properties = ("time-pos", "duration", "pause", "media-title", "volume", "speed", "idle-active", "path", "af",
+                  "playlist-count", "playlist-pos", "loop-file", "loop-playlist", "shuffle")
     last_checkpoint = None
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as peer:
@@ -1136,9 +1242,10 @@ def get_status():
         }
 
     try:
-        queue = reconcile_queue()
-        properties = ("time-pos", "duration", "pause", "media-title", "volume", "speed", "idle-active")
-        pos_res, dur_res, pause_res, title_res, vol_res, speed_res, idle_res = send_mpv_cmds(
+        sync_mirror()
+        properties = ("time-pos", "duration", "pause", "media-title", "volume", "speed", "idle-active",
+                      "shuffle", "loop-file", "loop-playlist")
+        pos_res, dur_res, pause_res, title_res, vol_res, speed_res, idle_res, shuffle_res, loop_file_res, loop_playlist_res = send_mpv_cmds(
             [["get_property", name] for name in properties])
 
         is_idle = idle_res.get("data") is True if idle_res else False
@@ -1212,9 +1319,8 @@ def get_status():
             "volume_db": round((vol / 100.0) * 36.0 - 30.0, 1),
             "volume_pct": vol,
             "speed": round(float(speed_res.get("data") or 1.0), 2) if speed_res else 1.0,
-            "shuffle": False,
-            "repeat": "all",
-            "queue_count": len(queue),
+            "shuffle": (shuffle_res or {}).get("data") is True,
+            "repeat": repeat_mode((loop_file_res or {}).get("data"), (loop_playlist_res or {}).get("data")),
             "eq": cur_fx.get("eq", "Flat"),
             "audio_fx": cur_fx,
             "vis_mode": get_vis_mode(),
@@ -1590,20 +1696,24 @@ def resolve_track_url(url, title=None, artist=None):
     
     return None, title, artist
 
-def play_item(url, title=None, artist=None, start=None):
+def play_item(url, title=None, artist=None, start=None, keep_queue=True):
     real_url, final_title, final_artist = resolve_track_url(url, title, artist)
     if not real_url:
         return {"success": False, "error": "Unable to resolve track"}
     start_mpv_daemon()
     start_spectrum_daemon()
-    if load_mpv(real_url, "replace", final_title, final_artist, start) is None:
-        return {"success": False, "error": "Unable to load track"}
+    with mirror_lock():
+        mirror = read_mirror()
+        queued = sorted(upcoming(mirror), key=by_append_order) if keep_queue else []
+        current = load_mpv(real_url, "replace", final_title, final_artist, start)
+        if current is None:
+            return {"success": False, "error": "Unable to load track"}
+        mirror.update(current=current, entries=[queue_entry(real_url, final_title, final_artist, current)] + append_entries(queued))
+        save_mirror(mirror)
+    if queued and mpv_values("shuffle")[0]:
+        arrange_upcoming(True)
     record_history(final_title, final_artist, real_url, 0)
     save_now_playing(final_title, final_artist, real_url)
-    queue = read_queue()
-    for queued in queue:
-        queued["playlist_id"] = load_mpv(queued["url"], "append", queued.get("title"), queued.get("artist"))
-    save_queue(queue)
     if final_title:
         launch_prefetch("lyrics", final_title, final_artist, real_url)
     send_mpv_cmd(["set_property", "pause", False])
@@ -1615,23 +1725,14 @@ def resume_playback(toggle=False):
                       for prop in ("idle-active", "eof-reached"))
     if not needs_track:
         return send_mpv_cmd(["cycle", "pause"] if toggle else ["set_property", "pause", False])
-    queue = reconcile_queue()
-    if queue:
-        return play_next_in_queue(queue)
+    if upcoming(sync_mirror()):
+        return play_next_in_queue()
     current = read_now_playing()
     if current.get("url"):
         return play_item(current["url"], current.get("title"), current.get("artist"))
     recent = parse_history(1)
     recent = recent[0] if recent else {}
     return play_item(recent["path"], recent.get("title"), recent.get("artist")) if recent.get("path") else {"success": False}
-
-def queue_item(url, title=None, artist=None):
-    real_url, final_title, final_artist = resolve_track_url(url, title, artist)
-    if not real_url:
-        return {"success": False, "error": "Unable to resolve track"}
-    start_mpv_daemon()
-    playlist_id = load_mpv(real_url, "append", final_title, final_artist)
-    return {"success": playlist_id is not None, "playlist_id": playlist_id}
 
 def stop_daemon():
     terminate_tracked_pid(SPECTRUM_PID_FILE, expected_signature="spectrum.py")
@@ -1663,6 +1764,8 @@ if __name__ == "__main__":
         print(json.dumps(get_status()))
     elif action == "watch":
         watch_status()
+    elif action == "watch_mpd":
+        watch_mpd_queue()
     elif action == "history":
         limit = int(sys.argv[2]) if len(sys.argv) > 2 else 30
         print(json.dumps(parse_history(limit, "--local-only" in sys.argv[3:])))
@@ -1734,22 +1837,24 @@ if __name__ == "__main__":
     elif action in ["get_eq", "list_eq"]:
         print(json.dumps({"current": get_current_eq(), "presets": list(EQ_PRESETS.keys())}))
     elif action == "stop":
+        sync_mirror()
         pos_res = send_mpv_cmd(["get_property", "time-pos"])
         now_playing = read_now_playing()
         if now_playing.get("url") and pos_res and pos_res.get("data"):
             save_now_playing(now_playing.get("title", ""), now_playing.get("artist", ""), now_playing.get("url", ""), int(float(pos_res["data"])))
         send_mpv_cmd(["stop"])
         print(json.dumps({"success": True}))
+    elif action == "sync":
+        sync_mirror()
     elif action == "next":
-        queue = reconcile_queue()
-        if queue:
-            print(json.dumps(play_next_in_queue(queue)))
-        else:
-            send_mpv_cmd(["playlist-next"])
-            print(json.dumps({"success": True}))
+        print(json.dumps(play_next_in_queue()))
     elif action == "prev":
         send_mpv_cmd(["playlist-prev"])
         print(json.dumps({"success": True}))
+    elif action == "shuffle":
+        print(json.dumps(toggle_shuffle()))
+    elif action == "repeat":
+        print(json.dumps(cycle_repeat()))
     elif action == "seek":
         sec = float(sys.argv[2]) if len(sys.argv) > 2 else 0.0
         send_mpv_cmd(["seek", sec, "absolute"])
@@ -1758,23 +1863,20 @@ if __name__ == "__main__":
         volume = float(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_VOLUME
         send_mpv_cmd(["set_property", "volume", volume])
         print(json.dumps({"success": True}))
-    elif action in ["play_item", "play_replace"]:
+    elif action == "play_replace":
         url, title, artist = (sys.argv[2:5] + ["", "", ""])[:3]
-        if action == "play_replace":
-            save_queue([])
-        print(json.dumps(play_item(url, title, artist)))
+        print(json.dumps(play_item(url, title, artist, keep_queue=False)))
     elif action in ["queue", "queue_add"]:
-        url, title, artist = (sys.argv[2:5] + ["", "", ""])[:3]
-        appended = queue_item(url, title, artist)
-        print(json.dumps(add_to_queue(url, title, artist, appended.get("playlist_id"))))
+        track = resolve_track_url(*(sys.argv[2:5] + ["", "", ""])[:3])
+        print(json.dumps({"success": bool(track[0] and queue_tracks([track]))}))
     elif action in ["queue_list", "get_queue"]:
         source = sys.argv[2] if len(sys.argv) > 2 else ""
         if source == "mpd":
             print(json.dumps({"source": "mpd", "items": read_mpd_queue()}))
         elif "list=" in source and is_youtube_url(source):
-            print(json.dumps({"source": "youtube", "items": read_youtube_queue(source)}))
+            print(json.dumps(read_youtube_queue(source)))
         else:
-            print(json.dumps({"source": "cliamp", "items": reconcile_queue()}))
+            print(json.dumps({"source": "cliamp", "items": upcoming(sync_mirror())}))
     elif action == "files":
         print(json.dumps(browse_library(sys.argv[2] if len(sys.argv) > 2 else "")))
     elif action == "queue_dir":
@@ -1784,9 +1886,10 @@ if __name__ == "__main__":
     elif action == "mpd_play":
         subprocess.run(["rmpc", "play", str(int(sys.argv[2]))], timeout=2.0)
         print(json.dumps({"success": True}))
+    elif action == "queue_play":
+        print(json.dumps(play_queued(int(sys.argv[2]))))
     elif action == "queue_remove":
-        idx = sys.argv[2] if len(sys.argv) > 2 else "0"
-        print(json.dumps(remove_from_queue(idx)))
+        print(json.dumps(remove_from_queue(int(sys.argv[2]))))
     elif action == "queue_clear":
         print(json.dumps(clear_queue()))
     elif action == "start_daemon":

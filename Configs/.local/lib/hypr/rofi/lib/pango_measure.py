@@ -55,7 +55,11 @@ def mode_extents(description):
         height = max(height, row_height)
     if width <= 0 or height <= 0:
         sys.exit(1)
-    print(width, height)
+    markup_width = markup_height = 0
+    if markup := os.environ.get("MARKUP"):
+        layout.set_markup(markup, -1)
+        markup_width, markup_height = layout.get_pixel_size()
+    print(width, height, markup_width, markup_height)
 
 
 def mode_align(description):

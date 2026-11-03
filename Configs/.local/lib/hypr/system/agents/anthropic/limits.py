@@ -7,6 +7,7 @@ from agents.usage_records import MILLISECOND_EPOCH_THRESHOLD
 from agents.usage_records import rounded_token_count
 from pathlib import Path
 from typing import Any
+from typing import NamedTuple
 import datetime as dt
 import json
 import re
@@ -17,16 +18,23 @@ AUTH_HELP = "Run `claude auth login` to restore authoritative usage."
 USAGE_ENDPOINT = "https://api.anthropic.com/api/oauth/usage"
 PROBE_MIN_INTERVAL_SECONDS = 15
 
-def oauth_login(claude_dir: Path) -> tuple[str, int, str]:
+class OAuthLogin(NamedTuple):
+  access_token: str = ""
+  expires_at_ms: int = 0
+  plan: str = ""
+
+def oauth_login(claude_dir: Path) -> OAuthLogin:
   try:
     data = json.loads((claude_dir / ".credentials.json").read_text(encoding="utf-8"))
   except Exception:
-    return "", 0, ""
+    return OAuthLogin()
   login = data.get("claudeAiOauth")
   if not isinstance(login, dict):
-    return "", 0, ""
-  plan = plan_label(str(login.get("rateLimitTier") or ""), str(login.get("subscriptionType") or ""))
-  return str(login.get("accessToken") or ""), rounded_token_count(login.get("expiresAt")), plan
+    return OAuthLogin()
+  return OAuthLogin(
+    access_token=str(login.get("accessToken") or ""),
+    expires_at_ms=rounded_token_count(login.get("expiresAt")),
+    plan=plan_label(str(login.get("rateLimitTier") or ""), str(login.get("subscriptionType") or "")))
 
 
 def plan_label(tier: str, subscription: str) -> str:

@@ -38,21 +38,24 @@ weather_fields_resolve_theme_coordinates() {
 }
 
 weather_fields_update_location_from_cache() {
+  local -n weather_ref=$1
   [[ -f "$weather_location_cache_path" ]] || return 0
-  weather_country=$(grep "^COUNTRY=" "$weather_location_cache_path" 2>/dev/null | cut -d'=' -f2-)
-  weather_city=$(grep "^CITY=" "$weather_location_cache_path" 2>/dev/null | cut -d'=' -f2-)
+  weather_ref[country]=$(grep "^COUNTRY=" "$weather_location_cache_path" 2>/dev/null | cut -d'=' -f2-)
+  weather_ref[city]=$(grep "^CITY=" "$weather_location_cache_path" 2>/dev/null | cut -d'=' -f2-)
 }
 
 weather_fields_resolve_location() {
-  local rc=0
+  local -n weather_ref=$1
+  local rc=0 coordinates=""
 
   if [ -n "${WEATHER_LOCATION:-}" ]; then
-    weather_city="$WEATHER_LOCATION"
-    weather_location_query="$weather_city"
+    weather_ref[city]="$WEATHER_LOCATION"
+    weather_ref[location_query]="$WEATHER_LOCATION"
     return 0
   fi
 
-  if weather_location_query="$(weather_fields_resolve_theme_coordinates)"; then
+  if coordinates="$(weather_fields_resolve_theme_coordinates)"; then
+    weather_ref[location_query]="$coordinates"
     return 0
   else
     rc=$?
@@ -61,36 +64,40 @@ weather_fields_resolve_location() {
     return "${rc}"
   fi
 
-  if [ -z "$weather_location_query" ]; then
-    weather_fields_update_location_from_cache
-    [ -n "$weather_city" ] && weather_location_query="$weather_city"
+  if [ -z "${weather_ref[location_query]}" ]; then
+    weather_fields_update_location_from_cache "$1"
+    [ -n "${weather_ref[city]}" ] && weather_ref[location_query]="${weather_ref[city]}"
   fi
 
-  if [ -z "$weather_location_query" ] && weather_fields_env_flag "${WEATHER_ALLOW_AUTO_GEOLOCATION:-false}"; then
-    weather_fields_geolocate
+  if [ -z "${weather_ref[location_query]}" ] && weather_fields_env_flag "${WEATHER_ALLOW_AUTO_GEOLOCATION:-false}"; then
+    weather_fields_geolocate "$1"
   fi
 
-  if [ -n "$weather_location_query" ]; then
+  if [ -n "${weather_ref[location_query]}" ]; then
     return 0
   fi
-  if [ -n "$weather_city" ]; then
-    weather_location_query="$weather_city"
+  if [ -n "${weather_ref[city]}" ]; then
+    weather_ref[location_query]="${weather_ref[city]}"
   else
-    weather_location_query="Paris"
+    weather_ref[location_query]="Paris"
   fi
 }
 
 weather_fields_geolocate() {
-  local ipinfo_json=""
+  local -n weather_ref=$1
+  local ipinfo_json="" country="" city="" location_query=""
   local IFS=$'\t'
 
   ipinfo_json=$(curl -fsS --max-time "${WEATHER_REQUEST_TIMEOUT_SECONDS}" "https://ipinfo.io/json" 2>/dev/null)
-  read -r weather_country weather_city weather_location_query < <(
+  read -r country city location_query < <(
     jq -r '[(.country // ""), (.city // ""), (.loc // .city // "")] | @tsv' <<<"$ipinfo_json" 2>/dev/null
   )
 
-  [ "$weather_country" = "null" ] && weather_country=""
-  [ "$weather_city" = "null" ] && weather_city=""
-  [ "$weather_location_query" = "null" ] && weather_location_query=""
+  [ "$country" = "null" ] && country=""
+  [ "$city" = "null" ] && city=""
+  [ "$location_query" = "null" ] && location_query=""
+  weather_ref[country]="$country"
+  weather_ref[city]="$city"
+  weather_ref[location_query]="$location_query"
   return 0
 }

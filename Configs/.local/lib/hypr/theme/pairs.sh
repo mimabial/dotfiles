@@ -37,11 +37,11 @@ theme_polarities_into() {
   done < <(grep -H -m1 -E '^[[:space:]]*\$COLOR_SCHEME[[:space:]]*=' "${files[@]}" 2>/dev/null)
 }
 
-_pairs_trim() {
-  local value="$1"
-  value="${value#"${value%%[![:space:]]*}"}"
-  value="${value%"${value##*[![:space:]]}"}"
-  printf '%s' "${value}"
+_pairs_trim_into() {
+  local -n trimmed_ref="$1"
+  local untrimmed="$2"
+  untrimmed="${untrimmed#"${untrimmed%%[![:space:]]*}"}"
+  trimmed_ref="${untrimmed%"${untrimmed##*[![:space:]]}"}"
 }
 
 _pairs_load() {
@@ -53,8 +53,8 @@ _pairs_load() {
   while IFS= read -r line || [[ -n "${line}" ]]; do
     line="${line%%#*}"
     [[ "${line}" == *=* ]] || continue
-    key="$(_pairs_trim "${line%%=*}")"
-    value="$(_pairs_trim "${line#*=}")"
+    _pairs_trim_into key "${line%%=*}"
+    _pairs_trim_into value "${line#*=}"
     [[ -n "${key}" && -n "${value}" ]] || continue
     case "${key}" in
       default-dark) _PAIRS_DEFAULT_DARK="${value}" ;;
@@ -71,13 +71,16 @@ theme_pair_for() {
   local theme="${1:-}"
   local target="${2:-}"
   local paired_theme="" default_theme=""
+  local -A polarity=()
 
   [[ "${target}" =~ ^(dark|light)$ ]] || { echo "${theme}"; return 1; }
-  [[ "$(theme_polarity "${theme}")" == "${target}" ]] && { echo "${theme}"; return 0; }
+  [[ -n "${theme}" ]] && theme_polarities_into polarity "${theme}"
+  [[ "${polarity[${theme:-_}]:-dark}" == "${target}" ]] && { echo "${theme}"; return 0; }
 
   _pairs_load
   paired_theme="${_PAIRS_MAP[${theme}]:-}"
-  if [[ -n "${paired_theme}" && "$(theme_polarity "${paired_theme}")" == "${target}" ]]; then
+  [[ -n "${paired_theme}" ]] && theme_polarities_into polarity "${paired_theme}"
+  if [[ -n "${paired_theme}" && "${polarity[${paired_theme}]}" == "${target}" ]]; then
     echo "${paired_theme}"
     return 0
   fi

@@ -35,13 +35,11 @@ Item {
   property bool alertDetailHeld: false
   property var alertStates: ({})
   property var driveLevels: ({})
-  property var powerFine: ({ cpu: [], gpu: [] })
-  property var powerHour: ({ slots: [], cpu: [], gpu: [] })
-  property var powerDay: ({ slots: [], cpu: [], gpu: [] })
+  property var powerFine: ({ cpuPower: [], gpuPowers: {}, powerTotal: [] })
   property real peakCpuPower: -1
-  property real peakGpuPower: -1
+  property var gpuPowerPeaks: ({})
   property real cpuEnergyWh: 0
-  property real gpuEnergyWh: 0
+  property var gpuEnergyWh: ({})
 
   readonly property var themeColors: ({
     red: shell.role("c1", shell.urgent),
@@ -59,7 +57,7 @@ Item {
   readonly property color danger: statsPalette.danger
   readonly property color good: statsPalette.good
 
-  readonly property bool hasGpu: !!(snapshot && snapshot.gpu)
+  readonly property bool hasGpu: Model.gpuList(snapshot).length > 0
   readonly property bool hasBattery: !!(snapshot && snapshot.battery && snapshot.battery.present)
   readonly property string samplerPath: Qt.resolvedUrl("systemstats_sampler.py").toString().replace(/^file:\/\//, "")
 
@@ -80,41 +78,19 @@ Item {
     var mem = data.mem || {}
     var net = data.net || {}
     var disks = data.disks || {}
-    var gpu = data.gpu
     var battery = data.battery
-    var power = data.power || {}
-    var domains = Array.isArray(power.domains) ? power.domains : []
-    var cpuPower = null
-    for (const domain of domains) {
-      if (/^package/.test(String(domain.name)) && domain.watts !== null && isFinite(Number(domain.watts)))
-        cpuPower = (cpuPower || 0) + Number(domain.watts)
-    }
-    var gpuPower = gpu && gpu.power !== null && gpu.power !== undefined && isFinite(Number(gpu.power)) ? Number(gpu.power) : null
+    var cpuPower = Model.cpuPackageWatts(data)
+    var powerTotal = Model.powerTotal(data).watts
     var elapsed = Number(data.elapsed)
-    if (isFinite(elapsed) && elapsed > 0 && elapsed <= Math.max(1, Number(data.interval) * 2)) {
-      if (cpuPower !== null) cpuEnergyWh += cpuPower * elapsed / 3600
-      if (gpuPower !== null) gpuEnergyWh += gpuPower * elapsed / 3600
-    }
+    var integrable = isFinite(elapsed) && elapsed > 0 && elapsed <= Math.max(1, Number(data.interval) * 2)
+    if (integrable && cpuPower !== null) cpuEnergyWh += cpuPower * elapsed / 3600
     if (cpuPower !== null) peakCpuPower = Math.max(peakCpuPower, cpuPower)
-    if (gpuPower !== null) peakGpuPower = Math.max(peakGpuPower, gpuPower)
     var fineLength = Math.min(1200, Math.max(12, Math.ceil(120 / Math.max(0.1, Number(data.interval) || 1))))
-    powerFine = {
-      cpu: Model.pushHistory(powerFine.cpu, cpuPower, fineLength),
-      gpu: Model.pushHistory(powerFine.gpu, gpuPower, fineLength)
-    }
-    var minute = Math.floor(Number(data.t) / 60)
-    var priorMinute = powerHour.slots.length ? powerHour.slots[powerHour.slots.length - 1] : -1
-    powerHour = Model.powerBucket(powerHour, minute, cpuPower, gpuPower, 60)
-    powerDay = Model.powerBucket(powerDay, Math.floor(minute / 24), cpuPower, gpuPower, 60)
-    if (minute !== priorMinute && (cpuPower !== null || gpuPower !== null || priorMinute >= 0))
-      powerFile.setText(JSON.stringify({ hour: powerHour, day: powerDay }) + "\n")
     var memPercent = mem.total > 0 ? mem.used / mem.total * 100 : null
-    var gpuPercent = gpu && gpu.util !== null && gpu.util !== undefined ? gpu.util : null
-    var gpuTemp = gpu && gpu.temp !== null && gpu.temp !== undefined ? gpu.temp : null
-    var vramPercent = gpu && gpu.memTotal > 0 ? gpu.memUsed / gpu.memTotal * 100 : null
+    var gpuTemp = Model.sensorGpuTemp(data)
     var values = {
       cpuUser: cpu.user, cpuSystem: cpu.system, cpuTotal: cpu.total, cpuTemp: cpu.temp,
-      gpu: gpuPercent, gpuTemp: gpuTemp, vram: vramPercent,
+      gpuTemp: gpuTemp, cpuPower: cpuPower, powerTotal: powerTotal, ioPressure: disks.pressureSome,
       memUsed: memPercent, memPressure: mem.pressureSome,
       netRx: net.rx, netTx: net.tx, diskRead: disks.read, diskWrite: disks.write,
       batteryEmpty: battery && battery.present && battery.percent !== null && battery.percent !== undefined ? 100 - Number(battery.percent) : null,
@@ -133,28 +109,33 @@ Item {
     }
     var gpuHistory = {}
     var gpuTempHistory = {}, vramHistory = {}
-    var gpuDevices = gpu && Array.isArray(gpu.devices) ? gpu.devices : []
-    for (var device of gpuDevices) {
-      var vendor = String(device.vendor || "")
-      if (vendor) {
-        var deviceVram = device.memTotal > 0 ? device.memUsed / device.memTotal * 100 : null
-        gpuHistory[vendor] = Model.pushHistory(history.gpus && history.gpus[vendor], device.util, historyLength)
-        gpuTempHistory[vendor] = Model.pushHistory(history.gpuTemps && history.gpuTemps[vendor], device.temp, historyLength)
-        vramHistory[vendor] = Model.pushHistory(history.vrams && history.vrams[vendor], deviceVram, historyLength)
-        values["gpu/" + vendor] = device.util
-        values["gpuTemp/" + vendor] = device.temp
-        values["vram/" + vendor] = deviceVram
-      }
+    var gpuPowerFine = {}, gpuPeaks = Object.assign({}, gpuPowerPeaks), gpuEnergy = Object.assign({}, gpuEnergyWh)
+    for (var device of Model.gpuList(data)) {
+      var id = Model.gpuId(device)
+      var deviceVram = Model.gpuMemoryPercent(device)
+      gpuHistory[id] = Model.pushHistory(history.gpus && history.gpus[id], device.util, historyLength)
+      gpuTempHistory[id] = Model.pushHistory(history.gpuTemps && history.gpuTemps[id], device.temp, historyLength)
+      vramHistory[id] = Model.pushHistory(history.vrams && history.vrams[id], deviceVram, historyLength)
+      values["gpu/" + id] = device.util
+      values["gpuTemp/" + id] = device.temp
+      values["vram/" + id] = deviceVram
+      var watts = Model.peakValue(device.power)
+      values["gpuPower/" + id] = watts
+      gpuPowerFine[id] = Model.pushHistory(powerFine.gpuPowers[id], watts, fineLength)
+      if (watts !== null) gpuPeaks[id] = Math.max(gpuPeaks[id] || 0, watts)
+      if (watts !== null && integrable) gpuEnergy[id] = (gpuEnergy[id] || 0) + watts * elapsed / 3600
     }
+    gpuPowerPeaks = gpuPeaks
+    gpuEnergyWh = gpuEnergy
+    powerFine = { cpuPower: Model.pushHistory(powerFine.cpuPower, cpuPower, fineLength), gpuPowers: gpuPowerFine, powerTotal: Model.pushHistory(powerFine.powerTotal, powerTotal, fineLength) }
 
     root.history = {
       cpuUser: Model.pushHistory(history.cpuUser, cpu.user, historyLength),
       cpuSystem: Model.pushHistory(history.cpuSystem, cpu.system, historyLength),
       cpuTotal: Model.pushHistory(history.cpuTotal, cpu.total, historyLength),
       cpuTemp: Model.pushHistory(history.cpuTemp, cpu.temp, historyLength),
-      gpu: Model.pushHistory(history.gpu, gpuPercent, historyLength),
+      ioPressure: Model.pushHistory(history.ioPressure, disks.pressureSome, historyLength),
       gpuTemp: Model.pushHistory(history.gpuTemp, gpuTemp, historyLength),
-      vram: Model.pushHistory(history.vram, vramPercent, historyLength),
       gpus: gpuHistory,
       gpuTemps: gpuTempHistory,
       vrams: vramHistory,
@@ -284,12 +265,13 @@ Item {
   }
 
   function contextLines(data, drive) {
-    var cpu = data.cpu || {}, gpu = data.gpu || {}, mem = data.mem || {}, procs = data.procs || {}
+    var cpu = data.cpu || {}, mem = data.mem || {}, procs = data.procs || {}
+    var gpuUsage = Model.alertReading(data, "gpuUsage").value, gpuTemp = Model.alertReading(data, "gpuTemp").value
     var lines = []
     if (isFinite(Number(cpu.total)) && cpu.total !== null) lines.push("CPU " + Math.round(cpu.total) + "%")
     if (isFinite(Number(cpu.temp)) && cpu.temp !== null) lines.push("CPU temp " + Math.round(cpu.temp) + "°C")
-    if (isFinite(Number(gpu.util)) && gpu.util !== null) lines.push("GPU " + Math.round(gpu.util) + "%")
-    if (isFinite(Number(gpu.temp)) && gpu.temp !== null) lines.push("GPU temp " + Math.round(gpu.temp) + "°C")
+    if (gpuUsage !== null) lines.push("GPU " + Math.round(gpuUsage) + "%")
+    if (gpuTemp !== null) lines.push("GPU temp " + Math.round(gpuTemp) + "°C")
     var vram = Model.alertReading(data, "vram").value
     if (vram !== null && vram !== undefined && isFinite(Number(vram))) lines.push("VRAM " + Math.round(vram) + "%")
     if (mem.total > 0) lines.push("Memory " + Math.round(mem.used / mem.total * 100) + "%")
@@ -338,7 +320,7 @@ Item {
         fireAlert(def.id, def.label, message, data, null)
       }
     }
-    var temps = data.sensors && Array.isArray(data.sensors.temps) ? data.sensors.temps : []
+    var temps = Model.sensorTemps(data)
     var seenSensors = {}
     for (var sensor of temps) {
       var sensorId = String(sensor.alertId || "")
@@ -438,12 +420,6 @@ Item {
     else publicIpPending = true
   }
 
-  function selectGpu(vendor) {
-    var kind = String(vendor || "").toLowerCase()
-    if (["amd", "intel", "nvidia"].indexOf(kind) === -1) return
-    shell.run(["hyprshell", "gpuinfo", "--use", kind], function() { root.send("gpu " + kind) })
-  }
-
   function configure(refreshSeconds, requestedHistorySeconds) {
     var interval = Model.clamp(refreshSeconds, Model.MIN_REFRESH_SECONDS, Model.MAX_REFRESH_SECONDS)
     var seconds = Model.clamp(requestedHistorySeconds, 30, 3600)
@@ -508,7 +484,7 @@ Item {
       memoryPercent: mem.total > 0 ? Math.round(mem.used / mem.total * 1000) / 10 : 0,
       download: net.rx,
       upload: net.tx,
-      gpu: current.gpu ? current.gpu.util : null,
+      gpu: Model.alertReading(current, "gpuUsage").value,
       battery: current.battery && current.battery.present ? current.battery.percent : null,
       error: samplerError
     }
@@ -530,20 +506,6 @@ Item {
       root.historyLoaded = true
     }
     onLoadFailed: root.historyLoaded = true
-  }
-
-  FileView {
-    id: powerFile
-    path: root.shell.home + "/.local/state/quickshell/systemstats-power.json"
-    atomicWrites: true
-    printErrors: false
-    onLoaded: {
-      try {
-        var saved = JSON.parse(text())
-        if (saved.hour && Array.isArray(saved.hour.slots) && Array.isArray(saved.hour.cpu) && Array.isArray(saved.hour.gpu)) root.powerHour = saved.hour
-        if (saved.day && Array.isArray(saved.day.slots) && Array.isArray(saved.day.cpu) && Array.isArray(saved.day.gpu)) root.powerDay = saved.day
-      } catch (error) {}
-    }
   }
 
   FileView {

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+declare -F hypr_wait_for >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/events.bash" || return 1
 TRIGGER_ROFI_CLOSE_WAIT_S=3
 
 trigger_rofi_gone() {
@@ -16,8 +17,6 @@ trigger_spawn_detached() {
 }
 
 menu_register_domain_trigger() {
-  local name="" icon="" label=""
-
   menu_define trigger_insert "Insert"
   menu_add_item trigger_insert "  Emoji" action trigger_insert_emoji
   menu_add_item trigger_insert "  Glyph" action trigger_insert_glyph
@@ -57,13 +56,24 @@ menu_register_domain_trigger() {
 
   menu_define trigger_toggle "Toggle"
   menu_add_item trigger_toggle "󰔎  Nightlight" action trigger_toggle_nightlight
-  menu_add_item trigger_toggle "󱫖  Keep Awake" action trigger_toggle_keep_awake
+  menu_add_item trigger_toggle "󱫖  Caffeine" submenu trigger_caffeine
   menu_add_item trigger_toggle "󰹬  Notifications" action trigger_toggle_notifications
   menu_add_item trigger_toggle "󰍜  Menu Bar" action trigger_toggle_bar
   menu_add_item trigger_toggle "󱂬  Workspace Layout" submenu trigger_toggle_workspace_layout
   menu_add_item trigger_toggle "󰊥  Window Gaps" action trigger_toggle_window_gaps
 
-  menu_define trigger_toggle_workspace_layout "Workspace Layout" choice
+  menu_define trigger_caffeine "Caffeine"
+  menu_add_item trigger_caffeine "󰅶  Keep Awake" action trigger_toggle_keep_awake
+  menu_add_item trigger_caffeine "󰌢  Keep Running with Lid Closed" action trigger_toggle_system_keep_awake
+  menu_add_item trigger_caffeine "󰝚  Stay Awake While Audio Plays" action trigger_toggle_audio_keep_awake
+  menu_add_item trigger_caffeine "󰍹  Stay Awake for Fullscreen Apps and Games" action trigger_toggle_fullscreen_keep_awake
+
+  menu_define_deferred trigger_toggle_workspace_layout "Workspace Layout" choice trigger_fill_workspace_layouts
+}
+
+trigger_fill_workspace_layouts() {
+  local name="" icon="" label=""
+
   while IFS=$'\t' read -r name icon label; do
     menu_add_item trigger_toggle_workspace_layout "${icon}  ${label}" action "trigger_toggle_workspace_layout_${name}"
   done < <("${HYPR_LIB_DIR}/util/window-layout.sh" --list)
@@ -93,6 +103,9 @@ menu_run_action_trigger() {
     trigger_insert_boxdraw) hyprshell rofi/run-after-close.sh -- hyprshell rofi/boxdraw-picker.sh ;;
     trigger_toggle_nightlight) hyprshell hyprsunset --toggle ;;
     trigger_toggle_keep_awake) hyprshell session/toggle-keep-awake.sh ;;
+    trigger_toggle_system_keep_awake) hyprshell session/toggle-system-keep-awake.sh ;;
+    trigger_toggle_audio_keep_awake) hyprshell session/toggle-audio-keep-awake.sh ;;
+    trigger_toggle_fullscreen_keep_awake) hyprshell session/toggle-fullscreen-keep-awake.sh ;;
     trigger_toggle_notifications) hyprshell notify/notifications --toggle ;;
     trigger_toggle_bar) hyprshell quickshell/visibility.sh toggle ;;
     trigger_toggle_workspace_layout_*) hyprshell util/window-layout --set "${action_id#trigger_toggle_workspace_layout_}" ;;
@@ -115,6 +128,9 @@ menu_active_trigger() {
   case "${target}" in
     trigger_toggle_nightlight) menu_cached_state_reply HYPRSUNSET_ENABLED state_get HYPRSUNSET_ENABLED 0 && [[ "${REPLY}" == 1 ]] ;;
     trigger_toggle_keep_awake) menu_cached_state_reply HYPR_KEEP_AWAKE state_get HYPR_KEEP_AWAKE 0 && [[ "${REPLY}" == 1 ]] ;;
+    trigger_toggle_system_keep_awake) menu_cached_state_reply HYPR_KEEP_AWAKE_SYSTEM state_get HYPR_KEEP_AWAKE_SYSTEM 0 && [[ "${REPLY}" == 1 ]] ;;
+    trigger_toggle_audio_keep_awake) menu_cached_state_reply HYPR_KEEP_AWAKE_AUDIO state_get HYPR_KEEP_AWAKE_AUDIO 1 && [[ "${REPLY}" != 0 ]] ;;
+    trigger_toggle_fullscreen_keep_awake) menu_cached_state_reply HYPR_KEEP_AWAKE_FULLSCREEN state_get HYPR_KEEP_AWAKE_FULLSCREEN 0 && [[ "${REPLY}" == 1 ]] ;;
     trigger_toggle_notifications) menu_cached_state_reply notifications_paused dunstctl is-paused && [[ "${REPLY}" == false ]] ;;
     trigger_toggle_window_gaps) menu_cached_state_reply gaps_out rofi_option_json general:gaps_out && [[ "${REPLY}" =~ ${gaps_on} ]] ;;
     trigger_toggle_workspace_layout_*) menu_choice_matches "${target}" trigger_toggle_workspace_layout_ trigger_workspace_layout ;;

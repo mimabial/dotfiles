@@ -22,6 +22,7 @@
 | Quickshell audio routing and device profiles | [ssupt/omarchy-audio-control](https://github.com/ssupt/omarchy-audio-control) | — | MIT |
 | Quickshell Bluetooth audio controls | [ssupt/omarchy-bluetooth-audio](https://github.com/ssupt/omarchy-bluetooth-audio) | — | MIT |
 | Quickshell media player | [crmne/omarchy-mpris](https://github.com/crmne/omarchy-mpris) | — | MIT |
+| Quickshell workspace minimap | [jgarza9788/minimap](https://github.com/jgarza9788/minimap) | 1.1.0 | MIT; © 2026 jgarza |
 | Screenshot helper (Grimblast) | [hyprwm/contrib](https://github.com/hyprwm/contrib/tree/main/grimblast), Misterio77; based on [grimshot](https://github.com/swaywm/sway/blob/master/contrib/grimshot) | — | MIT; © 2022 Hypr Development |
 | GTK theme source and Kitty color snippet (Sweet) | [EliverLara/Sweet](https://github.com/EliverLara/Sweet) | — | [GPL-3.0](https://github.com/EliverLara/Sweet/blob/master/LICENSE) |
 | XDG base directory helper | [srstevenson/xdg-base-dirs](https://github.com/srstevenson/xdg-base-dirs) | — | ISC; © Scott Stevenson |
@@ -41,6 +42,8 @@ Copyright (c) 2026 Carmine Paolino
 Copyright (c) 2026 Saikomantisu
 
 Copyright (c) 2026 l3aro
+
+Copyright (c) 2026 jgarza
 
 Copyright (c) 2022 Hypr Development
 

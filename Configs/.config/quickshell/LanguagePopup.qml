@@ -10,7 +10,7 @@ import "Ui" as Ui
 PopupCard {
     id: root
     popupName: "language"
-    keyboardHint: deleteDialog.opened ? "←→/Tab choose · Enter confirm · Esc cancel" : view === "main" ? "↑↓/Tab move · Enter select · Esc close" : "Type to filter · ↑↓ move · Enter select · Esc back"
+    keyboardHint: deleteDialog.opened ? "←→/Tab Choose  Enter Confirm  Esc Cancel" : view === "main" ? "↑↓/Tab Move  Enter Select  Esc Close" : "Type to filter  ↑↓ Move  Enter Select  Esc Back"
     contentWidth: Style.px(390)
     contentHeight: panelColumn.implicitHeight + padding * 2
     signal moduleRefreshRequested()
@@ -310,7 +310,7 @@ PopupCard {
                     interactive: contentHeight > height
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
-                    ScrollBar.vertical: ScrollBar { policy: configuredScroll.interactive ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
+                    ScrollBar.vertical: Ui.PanelScrollBar { policy: configuredScroll.interactive ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
 
                     Column {
                         id: configuredColumn
@@ -480,7 +480,7 @@ PopupCard {
                 model: root.filteredOptions
                 currentIndex: root.optionIndex
                 boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: ScrollBar { policy: pickerList.contentHeight > pickerList.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
+                ScrollBar.vertical: Ui.PanelScrollBar { policy: pickerList.contentHeight > pickerList.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
 
                 delegate: PopupRow {
                     id: pickerRow
@@ -513,15 +513,10 @@ PopupCard {
             }
         }
 
-        Text {
-            visible: root.statusText !== ""
-            width: parent.width
-            text: root.statusText
-            color: root.statusError ? root.shell.role("error", root.shell.foreground)
-                : root.shell.mutedText
-            font.family: root.shell.fontFamily
-            font.pixelSize: Style.caption
-            wrapMode: Text.WordWrap
+        PopupHint {
+            shell: root.shell; error: root.statusError
+            width: parent.width; text: root.statusText
+            textFormat: Text.PlainText; wrapMode: Text.Wrap; horizontalAlignment: Text.AlignLeft
         }
     }
 

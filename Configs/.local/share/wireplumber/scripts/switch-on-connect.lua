@@ -1,3 +1,5 @@
+local cutils = require("common-utils")
+
 SimpleEventHook {
   name = "custom/switch-on-connect",
   interests = {
@@ -13,8 +15,7 @@ SimpleEventHook {
     },
   },
   execute = function (event)
-    local default_metadata = event:get_source ():call ("get-object-manager", "metadata")
-        :lookup { Constraint { "metadata.name", "=", "default" } }
+    local default_metadata = cutils.get_default_metadata_object ()
     default_metadata:set (0, "default.configured.audio.sink", "Spa:String:JSON",
         Json.Object { name = event:get_subject ().properties ["node.name"] }:to_string ())
   end

@@ -1,0 +1,20 @@
+{
+  "defaultTextSize": 12,
+  "popupPadding": 14,
+  "sectionGap": 14,
+  "rowGap": 8,
+  "controlGap": 8,
+  "controlPaddingX": 10,
+  "controlPaddingY": 6,
+  "scrollbarWidth": 4,
+  "scrollbarAlpha": 0.02,
+  "controlHeight": 28,
+  "popupRowHeight": 28,
+  "defaultSurfaceOpacity": 0.55,
+  "borderOpacity": 0.45,
+  "hoverFillAlpha": 0.2,
+  "selectedFillAlpha": 0.3,
+  "fieldFillAlpha": 0.06,
+  "fieldBorderAlpha": 0.18,
+  "mutedTextAlpha": 0.55
+}

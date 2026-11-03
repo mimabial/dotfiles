@@ -7,4 +7,4 @@ vars.set("WORKFLOW_QUICKSHELL_LAYOUT", "macos")
 
 local layout = vars.get("WORKFLOW_LAYOUT_OVERRIDE", "")
 runtime.config("general.layout", layout ~= "" and layout or "master")
-hl.animation({ leaf = "windowsIn", enabled = true, speed = 4, bezier = "winIn", style = "popin 80%" })
+require("animations.macos")

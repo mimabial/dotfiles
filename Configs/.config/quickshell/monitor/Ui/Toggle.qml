@@ -31,10 +31,9 @@ BorderSurface {
   radius: Commons.Style.cornerRadius
 
   readonly property bool inputHighlighted: hasCursor || mouse.containsMouse
-  readonly property var stateBorderSpec: Commons.Border.controlSpec(activeFocus ? "focus" : (inputHighlighted ? "hover-cursor" : "normal"), foreground, accent)
 
   color: Commons.Style.controlFill(activeFocus, inputHighlighted, foreground, accent)
-  borderSpec: stateBorderSpec
+  borderSpec: Commons.Border.controlSpec("normal", foreground, accent)
 
   Behavior on color { ColorAnimation { duration: 100 } }
 

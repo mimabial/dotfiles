@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+declare -F hypr_monitors_json >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/geometry.bash" || return 1
+
 rofi_hypr_snapshot() {
   [[ -n "${ROFI_HYPR_SNAPSHOT_READY:-}" ]] && return 0
   local -a data=()
@@ -6,19 +8,21 @@ rofi_hypr_snapshot() {
     hyprctl --batch -j 'monitors all;cursorpos;getoption decoration:rounding;getoption general:border_size;getoption decoration:active_opacity;getoption general:gaps_out;layers' 2>/dev/null |
       jq -cs '.[]' 2>/dev/null
   )
-  declare -g ROFI_HYPR_SNAPSHOT_READY=1 ROFI_MONITORS_JSON_CACHE="${data[0]:-[]}" ROFI_CURSOR_JSON_CACHE="${data[1]:-{}}"
+  declare -g ROFI_HYPR_SNAPSHOT_READY=1 ROFI_CURSOR_JSON_CACHE="${data[1]:-{}}"
   declare -gA ROFI_OPTION_JSON_CACHE
   ROFI_OPTION_JSON_CACHE[decoration:rounding]="${data[2]:-{}}"
   ROFI_OPTION_JSON_CACHE[general:border_size]="${data[3]:-{}}"
   ROFI_OPTION_JSON_CACHE[decoration:active_opacity]="${data[4]:-{}}"
   ROFI_OPTION_JSON_CACHE[general:gaps_out]="${data[5]:-{}}"
   declare -g ROFI_LAYERS_JSON_CACHE="${data[6]:-{}}"
-  declare -g HYPR_MONITORS_JSON_CACHE_READY=1 HYPR_MONITORS_JSON_CACHE="${ROFI_MONITORS_JSON_CACHE}"
+  hypr_monitors_json_prime "${data[0]:-[]}"
+  hypr_gaps_out_json_prime "${data[5]:-{}}"
+  hypr_load_border_metrics_from_json "${data[2]:-}${data[3]:-}"
 }
 
 rofi_monitors_json() {
   rofi_hypr_snapshot
-  printf '%s\n' "${ROFI_MONITORS_JSON_CACHE}"
+  hypr_monitors_json
 }
 
 rofi_option_json() {

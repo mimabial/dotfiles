@@ -26,10 +26,11 @@ Examples:
 EOF
 }
 
-brightness_percent() {
-  local _device _class _raw percent _max
-  IFS=, read -r _device _class _raw percent _max <<<"$1"
-  printf '%s\n' "$((10#${percent%%%}))"
+brightness_percent_into() {
+  local -n brightness_percent_ref="$1"
+  local _device _class _raw percent_field _max
+  IFS=, read -r _device _class _raw percent_field _max <<<"$2"
+  brightness_percent_ref="$((10#${percent_field%%%}))"
 }
 
 notify_unavailable() {
@@ -40,28 +41,32 @@ notify_unavailable() {
 
 notify_brightness() {
   local notify_enabled="$1"
-  local info=""
+  local info="$2"
+  local percent=""
 
   is_true "${notify_enabled}" || return 0
   command -v dunstify >/dev/null 2>&1 || return 0
 
-  info="$(brightnessctl -m 2>/dev/null)" || return 0
-  notify_level "Brightness control" "${NOTIFY_ID_BRIGHTNESS}" "$(brightness_percent "${info}")" "${info%%,*}"
+  [[ -n "${info}" ]] || info="$(brightnessctl -m 2>/dev/null)" || return 0
+  brightness_percent_into percent "${info}"
+  notify_level "Brightness control" "${NOTIFY_ID_BRIGHTNESS}" "${percent}" "${info%%,*}"
 }
 
 apply_increase() {
-  local step="$1" current="$2"
+  local -n applied_info_ref="$1"
+  local step="$2" current="$3"
   ((current < BRIGHTNESS_LOW_THRESHOLD)) && step=${BRIGHTNESS_FINE_STEP}
-  brightnessctl set +"${step}%" >/dev/null
+  applied_info_ref="$(brightnessctl -m set +"${step}%")"
 }
 
 apply_decrease() {
-  local step="$1" current="$2"
+  local -n applied_info_ref="$1"
+  local step="$2" current="$3"
   ((current <= BRIGHTNESS_LOW_THRESHOLD)) && step=${BRIGHTNESS_FINE_STEP}
   if ((current <= BRIGHTNESS_VERY_LOW_THRESHOLD)); then
-    brightnessctl set "${step}%" >/dev/null
+    applied_info_ref="$(brightnessctl -m set "${step}%")"
   else
-    brightnessctl set "${step}%-" >/dev/null
+    applied_info_ref="$(brightnessctl -m set "${step}%-")"
   fi
 }
 
@@ -78,7 +83,7 @@ main() {
     notify_unavailable
     return 0
   fi
-  current="$(brightness_percent "${info}")"
+  brightness_percent_into current "${info}"
 
   if [[ ! "${step}" =~ ^[0-9]+$ ]]; then
     print_log -sec "brightness" -err "step" "Invalid step: ${step}"
@@ -88,12 +93,12 @@ main() {
 
   case "${action}" in
     i | -i)
-      apply_increase "${step}" "${current}"
-      notify_brightness "${notify_enabled}"
+      apply_increase info "${step}" "${current}"
+      notify_brightness "${notify_enabled}" "${info}"
       ;;
     d | -d)
-      apply_decrease "${step}" "${current}"
-      notify_brightness "${notify_enabled}"
+      apply_decrease info "${step}" "${current}"
+      notify_brightness "${notify_enabled}" "${info}"
       ;;
     *)
       usage >&2

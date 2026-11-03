@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 # shellcheck source=/dev/null
-source "${SCRIPT_DIR}/lib/window-launch.bash"
+source "${BASH_SOURCE[0]%/*}/lib/window-launch.bash"
 
 usage() {
   cat <<EOF
@@ -34,7 +33,7 @@ main() {
 
   window_address="$(launch_resolve_window_address "${window_pattern}")"
   if [[ -n "${window_address}" ]]; then
-    launch_source_core_common || return 1
+    source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || return 1
     hypr_lua_dispatch "hl.dsp.focus({window=$(hypr_lua_quote "address:${window_address}")})" >/dev/null 2>&1
     return $?
   fi

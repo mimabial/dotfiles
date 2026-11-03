@@ -1,6 +1,6 @@
 {
   ".modules-right": { "margin": [0.0, 8.0, 0.0, 0.0], "padding": [0.0, 8.0, 0.0, 0.0] },
-  "wallpaper, volume, removable, powerprofile, hyprsunset, privacy, display, vpn, microphone, wifi, bluetooth, tasks, notifications": {
+  "wallpaper, themerotation, volume, removable, powerprofile, hyprsunset, privacy, display, vpn, microphone, wifi, bluetooth, tasks, notifications": {
     "margin": [0.0, 8.0, 0.0, 8.0],
     "symbolSize": 18
   },

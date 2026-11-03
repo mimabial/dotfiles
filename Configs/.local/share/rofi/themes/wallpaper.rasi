@@ -80,7 +80,7 @@ element {
     padding:                     0em;
     orientation:                 vertical;
     cursor:                      pointer;
-    background-color:            @background;
+    background-color:            @background-alpha;
     text-color:                  @foreground;
 }
 element selected.normal {

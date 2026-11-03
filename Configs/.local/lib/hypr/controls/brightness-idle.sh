@@ -12,8 +12,11 @@ usage() {
   printf 'Usage: %s <dim|restore>\n' "${0##*/}"
 }
 
-read_current_brightness_raw() {
-  brightnessctl -m 2>/dev/null | awk -F, 'NR == 1 { print $3; exit }'
+read_current_brightness_raw_into() {
+  local -n brightness_raw_ref="$1"
+  local _device _class
+
+  IFS=, read -r _device _class brightness_raw_ref _ < <(brightnessctl -m 2>/dev/null)
 }
 
 save_idle_brightness() {
@@ -22,7 +25,7 @@ save_idle_brightness() {
   local current_brightness=""
 
   [[ -e "${state_file}" ]] && return 0
-  current_brightness="$(read_current_brightness_raw)"
+  read_current_brightness_raw_into current_brightness
   [[ "${current_brightness}" =~ ^[0-9]+$ ]] || return 1
 
   mkdir -p "${runtime_dir}"

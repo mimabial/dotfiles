@@ -1,0 +1,32 @@
+#!/bin/bash
+
+CHARGE_TIER_FLOORS=(95 80 65 50 35 20 6 0)
+CHARGE_TIER_ICONS=('' '' '' '' '' '' '' '')
+CHARGE_TIER_COLORS=('#{@theme_green}' '#{@theme_green}' '#{@theme_green}' '#{@theme_yellow}' '#{@theme_yellow}' '#{@theme_yellow}' '#{@theme_red}' '#{@theme_red}')
+
+percentage="" state=""
+while read -r key value _; do
+  case $key in
+    percentage:) percentage=$value ;;
+    state:) state=$value ;;
+  esac
+done < <(upower -i /org/freedesktop/UPower/devices/DisplayDevice 2>/dev/null)
+
+if [[ $percentage == *,* ]]; then percentage=${percentage%,*}
+elif [[ $percentage == *.* ]]; then percentage=${percentage%.*}
+else percentage=${percentage//%}
+fi
+[[ $percentage != 0 ]] || exit 0
+
+case $state in
+  discharging)
+    for tier in "${!CHARGE_TIER_FLOORS[@]}"; do
+      (( ${percentage:-100} >= CHARGE_TIER_FLOORS[tier] )) && break
+    done
+    icon=${CHARGE_TIER_ICONS[tier]} color=${CHARGE_TIER_COLORS[tier]} ;;
+  fully-charged) icon='󱈑' color='#{@theme_green}' ;;
+  charging) icon='󰂄' color='#{@theme_accent}' ;;
+  *) icon='󰂑' color='#{@theme_gray}' ;;
+esac
+
+printf '#[nobold,fg=%s]%s %s#[default]\n' "$color" "$icon" "${percentage:+$percentage%}"

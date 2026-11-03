@@ -9,7 +9,6 @@ import Quickshell.Wayland
 import Quickshell.Services.UPower
 import qs.systemstats
 import qs.Commons as Commons
-import "altscape" as Altscape
 import "ClockFormats.js" as ClockFormats
 import "Opacity.js" as Opacity
 import "Units.js" as Units
@@ -27,6 +26,7 @@ ShellRoot {
     property bool keepAwakeManual: false
     property bool keepAwakeAudio: true
     property bool keepAwakeFullscreen: false
+    property bool keepAwakeSystem: false
     property bool notificationsPaused: false
     property string animation: "default"
     property string colorSource: "theme"
@@ -44,6 +44,7 @@ ShellRoot {
     readonly property bool barShown: (mode === "horizontal" || mode === "winbar") && !userHidden
         && (mode !== "winbar" || !prefs.winbarAutoHide || barRevealed || popupName !== "")
     property string popupName: ""
+    property bool keyboardInput: false
     property var menuBarHeadings: []
     property string dragKey: ""
     property var barLayout: ({})
@@ -170,8 +171,8 @@ ShellRoot {
     readonly property var activeTimers: activeEntries.filter(item => item.kind === "timer")
     readonly property alias clockwork: clockworkState
     readonly property alias kdeconnect: kdeconnectService
-    readonly property alias altscape: altscapeService
     readonly property alias bitwarden: bitwardenVault
+    readonly property alias themeRotation: themeRotationService
     readonly property alias systemStats: systemStatsService
     readonly property var wallpaper: Wallpaper
     readonly property var monitorPreviewCoordinator: monitorPreviewGuardLoader.item
@@ -257,9 +258,11 @@ ShellRoot {
             property string winbarEdge: ""
             property bool winbarHighlightLabels: false
             property bool winbarLimitLabels: false
+            property bool winbarPreviews: false
             property string trayHidden: "[]"
             property string trayPinned: "[]"
             property bool trayShowIcons: true
+            property bool hiddenBarCollapsed: false
         }
     }
     readonly property var exposeDefaults: ({
@@ -292,8 +295,8 @@ ShellRoot {
 
     ClockworkState { id: clockworkState; shell: shellRoot }
     KdeConnect { id: kdeconnectService; shell: shellRoot }
-    Altscape.Service { id: altscapeService; shell: shellRoot }
     Bitwarden { id: bitwardenVault; shell: shellRoot }
+    ThemeRotation { id: themeRotationService; shell: shellRoot }
     SystemStatsService { id: systemStatsService; shell: shellRoot }
 
     function alpha(color, opacity) { return Qt.rgba(color.r, color.g, color.b, opacity) }
@@ -339,12 +342,24 @@ ShellRoot {
     }
     property var mediaPopup: null
     function run(command, onExited) {
-        if (!onExited) return Quickshell.execDetached(command)
-        const process = exitWatcher.createObject(shellRoot, { command: ["setsid", "-fw"].concat(command) })
+        const environment = { ROFI_INPUT_SOURCE: keyboardInput ? "keyboard" : "mouse" }
+        if (!onExited) return Quickshell.execDetached({ command, environment })
+        const process = exitWatcher.createObject(shellRoot, { command: ["setsid", "-fw"].concat(command), environment })
         process.exited.connect(() => { onExited(); process.destroy() })
         process.running = true
     }
     Component { id: exitWatcher; Process {} }
+    function dispatchWithoutWarp(dispatchers) {
+        Quickshell.execDetached(["hyprctl", "eval", "local w=hl.get_config('cursor.no_warps');hl.config({cursor={no_warps=true}});hl.exec_scheduled_prop_refresh_immediately();"
+            + dispatchers.map(dispatcher => "hl.dispatch(" + dispatcher + ");").join("") + "hl.config({cursor={no_warps=w}})"])
+    }
+    function setModuleProps(id, changes) {
+        const layout = editableBarLayout()
+        for (const section of barSections) if (Array.isArray(layout[section]))
+            layout[section] = layout[section].map(entry => (entry.id || entry) !== id ? entry
+                : Object.assign(typeof entry === "string" ? { id: entry } : entry, { props: Object.assign({}, entry.props, changes) }))
+        return saveMovedBarLayout(layout)
+    }
     function refreshIndicators(target) {
         indicatorRefreshTarget = String(target || "all")
         ++indicatorRefreshSerial
@@ -397,6 +412,8 @@ ShellRoot {
             style_bar_blur: prefs.barBlur, style_bar_floating: prefs.barFloating,
             style_dock_blur: !!dock?.blurred,
             trigger_toggle_nightlight: sunsetEnabled === "1", trigger_toggle_keep_awake: keepAwakeManual,
+            trigger_toggle_system_keep_awake: keepAwakeSystem, trigger_toggle_audio_keep_awake: keepAwakeAudio,
+            trigger_toggle_fullscreen_keep_awake: keepAwakeFullscreen,
             trigger_toggle_notifications: !notificationsPaused, trigger_toggle_bar: !userHidden, trigger_toggle_window_gaps: barFloatGap > 0
         }
         const choices = {
@@ -459,6 +476,7 @@ ShellRoot {
         keepAwakeManual = value("HYPR_KEEP_AWAKE", "0") === "1"
         keepAwakeAudio = value("HYPR_KEEP_AWAKE_AUDIO", "1") !== "0"
         keepAwakeFullscreen = value("HYPR_KEEP_AWAKE_FULLSCREEN", "0") === "1"
+        keepAwakeSystem = value("HYPR_KEEP_AWAKE_SYSTEM", "0") === "1"
         animation = value("HYPR_ANIMATION", "default")
         colorSource = value("selected_color_source", "theme")
         colorMode = ({ 1: "auto", 2: "dark", 3: "light" })[value("selected_color_mode", "2")] ?? ""
@@ -475,9 +493,9 @@ ShellRoot {
         return Qt.rgba(parseInt(hex.slice(0, 2), 16) / 255, parseInt(hex.slice(2, 4), 16) / 255, parseInt(hex.slice(4, 6), 16) / 255, hex.length > 6 ? parseInt(hex.slice(6, 8), 16) / 255 : 1)
     }
     function role(name, fallback) { return color(palette[name] || fallback) }
-    function hoverFill(strength) { return alpha(role("hvr_bg", accent), Style.hoverFillAlpha * (strength === undefined ? 1 : strength)) }
+    function hoverFill(strength) { return alpha(role("hvr_br", accent), Style.hoverFillAlpha * (strength === undefined ? 1 : strength)) }
     function hoverEdge(strength) { return alpha(role("hvr_br", foreground), Style.hoverBorderAlpha * (strength === undefined ? 1 : strength)) }
-    function selectedFill() { return alpha(role("act_bg", accent), Style.selectedFillAlpha) }
+    function selectedFill() { return alpha(role("act_br", accent), Style.selectedFillAlpha) }
     function selectedEdge() { return alpha(role("act_br", accent), Style.selectedBorderAlpha) }
     function hyprVar(name, fallback) {
         let value = fallback
@@ -539,6 +557,11 @@ ShellRoot {
     LazyLoader {
         active: shellRoot.workflow !== "gaming"
         AltGrHints { shell: shellRoot }
+    }
+    Loader {
+        id: switcherLoader
+        asynchronous: true
+        Component.onCompleted: switcherLoader.setSource(Qt.resolvedUrl("switcher/Switcher.qml"), { shell: shellRoot })
     }
     Loader {
         id: overviewLoader

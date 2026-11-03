@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import json
 import os
 import re
@@ -17,9 +18,27 @@ CLK_TCK = os.sysconf("SC_CLK_TCK")
 PAGE_SIZE = os.sysconf("SC_PAGE_SIZE")
 REAL_FS = {
     "ext2", "ext3", "ext4", "xfs", "btrfs", "f2fs", "vfat", "exfat", "ntfs",
-    "ntfs3", "fuseblk", "zfs", "jfs", "reiserfs", "nfs", "nfs4", "cifs",
-    "smb3", "apfs", "hfsplus", "bcachefs",
+    "ntfs3", "fuseblk", "zfs", "jfs", "reiserfs", "apfs", "hfsplus", "bcachefs", "msdos",
 }
+NETWORK_FS = {
+    "nfs", "nfs4", "cifs", "smb3", "smbfs", "ceph", "glusterfs", "9p", "fuse.sshfs",
+    "fuse.rclone", "davfs",
+}
+FAT_SLOW_MOUNT_FLAGS = ("flush", "sync", "dirsync")
+UDISKS_MOUNT_ROOTS = ("/run/media/", "/media/")
+CRYPT_DM_UUID_PREFIX = "CRYPT-"
+LUKS2_DM_UUID_PREFIX = "CRYPT-LUKS2-"
+LVM_DM_UUID_PREFIX = "LVM-"
+NETWORK_STATVFS_TIMEOUT = 0.8
+DRIVE_FD_LIMIT = 256
+PROCESS_WARM_UP_SECONDS = 0.25
+NVIDIA_READ_WINDOW_SECONDS = 0.5
+NVIDIA_SUSPEND_MARGIN_SECONDS = 1.0
+NVIDIA_SUSPEND_DELAY_SECONDS = 5.0
+BY_ID_PREFIX_RANKS = ("nvme-", "ata-", "usb-", "mmc-", "virtio-", "scsi-")
+BY_ID_BUS_RANK = len(BY_ID_PREFIX_RANKS)
+BY_ID_FALLBACK_RANK = BY_ID_BUS_RANK + 1
+SECTOR_BYTES = 512
 CPU_TEMP_PREFERENCE = ("k10temp", "zenpower", "coretemp", "cpu_thermal", "soc_thermal", "acpitz")
 GPU_TEMP_HWMON = ("amdgpu", "nouveau", "i915", "xe", "radeon")
 PROC_LIMIT = 6
@@ -56,6 +75,7 @@ SLOW_SAMPLE_SECONDS = 0.95
 MIN_INTERVAL_SECONDS = 0.1
 MAX_INTERVAL_SECONDS = 30.0
 TOOL_DIRS = ("/usr/bin", "/bin")
+PCI_IDS_PATH = "/usr/share/hwdata/pci.ids"
 
 
 def encode_payload(payload: dict) -> bytes:
@@ -234,6 +254,16 @@ def bounded_lines(stream, limit: int):
             yield raw.rstrip(b"\r\n").decode("utf-8")
         except UnicodeDecodeError:
             yield ""
+
+
+def parse_pressure(resource: str) -> tuple[float, float]:
+    some = full = 0.0
+    for kind, value in re.findall(r"^(some|full)\s+avg10=([0-9.]+)", read_text(f"/proc/pressure/{resource}"), re.M):
+        if kind == "some":
+            some = float(value)
+        else:
+            full = float(value)
+    return some, full
 
 
 def rate(now: float | None, prev: float | None, elapsed: float) -> float:
@@ -442,70 +472,235 @@ class RaplSampler:
         return {"domains": domains, "restricted": restricted}
 
 
+def runtime_state(device: str) -> float | str:
+    if read_text(f"{device}/power/control") != "auto":
+        return "on"
+    status = read_text(f"{device}/power/runtime_status")
+    if status in ("suspended", "suspending"):
+        return "suspended"
+    if not status:
+        return "on"
+    milliseconds = read_int(f"{device}/power/autosuspend_delay_ms")
+    return milliseconds / 1000 if milliseconds is not None and milliseconds >= 0 else NVIDIA_SUSPEND_DELAY_SECONDS
+
+
+def nvidia_access(states: list, opened: float | None, now: float) -> tuple[str, bool]:
+    if "suspended" in states:
+        return "rest", False
+    delays = [state for state in states if not isinstance(state, str)]
+    if not delays:
+        return "stream", False
+    age = None if opened is None else now - opened
+    if age is not None and age < NVIDIA_READ_WINDOW_SECONDS:
+        return "query", False
+    if age is not None and age < min(delays) + NVIDIA_SUSPEND_MARGIN_SECONDS:
+        return "rest", False
+    return "query", True
+
+
+def normalize_slot(bus: str) -> str:
+    parts = str(bus).strip().lower().split(":")
+    if len(parts) == 3 and len(parts[0]) > 4:
+        parts[0] = parts[0][-4:]
+    return ":".join(parts)
+
+
+def fdinfo_size(raw: str) -> int | None:
+    parts = raw.split()
+    if not parts or not parts[0].isdigit():
+        return None
+    scale = {None: 1, "KiB": 1 << 10, "MiB": 1 << 20, "GiB": 1 << 30}.get(parts[1] if len(parts) > 1 else None)
+    return int(parts[0]) * scale if scale else None
+
+
+def parse_drm_fdinfo(text: str) -> dict | None:
+    client: dict = {"pdev": "", "id": "", "engines": {}, "regions": {}}
+    legacy: dict[str, int] = {}
+
+    def engine(name: str) -> dict:
+        return client["engines"].setdefault(name, {"busy": 0, "total": None, "capacity": 1})
+
+    for line in text.splitlines():
+        key, separator, value = line.partition(":")
+        if not separator:
+            continue
+        value = value.strip()
+        if key == "drm-pdev":
+            client["pdev"] = value
+        elif key == "drm-client-id":
+            client["id"] = value
+        elif key.startswith("drm-engine-capacity-"):
+            engine(key[20:])["capacity"] = max(1, read_number(value) or 1)
+        elif key.startswith("drm-engine-"):
+            engine(key[11:])["busy"] = read_number(value.removesuffix("ns")) or 0
+        elif key.startswith("drm-total-cycles-"):
+            engine(key[17:])["total"] = read_number(value)
+        elif key.startswith("drm-cycles-"):
+            engine(key[11:])["busy"] = read_number(value) or 0
+        elif key.startswith(("drm-resident-", "drm-memory-")):
+            size = fdinfo_size(value)
+            if size is not None:
+                (client["regions"] if key.startswith("drm-resident-") else legacy)[key.split("-", 2)[2]] = size
+    if not client["pdev"] or not client["id"]:
+        return None
+    client["regions"] = client["regions"] or legacy
+    return client
+
+
+def read_number(raw: str) -> int | None:
+    try:
+        return int(raw.strip())
+    except ValueError:
+        return None
+
+
+def client_memory(client: dict, integrated: bool) -> int:
+    shared = ("gtt", "system", "stolen") if integrated else ()
+    return sum(size for region, size in client["regions"].items() if region.startswith(("vram", "local") + shared))
+
+
+def engine_shares(now: dict[str, dict], before: dict[str, dict], elapsed: float) -> dict[str, float]:
+    shares: dict[str, float] = {}
+    for name, counter in now.items():
+        prev = before.get(name)
+        if prev is None:
+            continue
+        busy = max(0, counter["busy"] - prev["busy"])
+        if counter["total"] is not None and prev["total"] is not None:
+            span = counter["total"] - prev["total"]
+            share = busy / span if span > 0 else 0.0
+        elif counter["total"] is None and prev["total"] is None and elapsed > 0:
+            share = busy / (elapsed * 1e9)
+        else:
+            continue
+        shares[name] = share / counter["capacity"] * 100
+    return shares
+
+
+def process_name(pid: int) -> str:
+    stat = read_text(f"/proc/{pid}/stat")
+    open_paren, close = stat.find("("), stat.rfind(")")
+    return display_name(pid, stat[open_paren + 1:close]) if 0 <= open_paren < close else f"pid {pid}"
+
+
+def parse_pmon(out: str, slots: dict[str, str]) -> list[dict]:
+    columns: list[str] = []
+    rows: list[dict] = []
+    for line in out.splitlines():
+        if line.startswith("#"):
+            columns = columns or line[1:].split()
+            continue
+        parts = line.split()
+        cell = {name: parts[index] for index, name in enumerate(columns) if index < len(parts)}
+        slot = slots.get(cell.get("gpu", ""))
+        pid = read_number(cell.get("pid", ""))
+        if slot is None or pid is None:
+            continue
+        rows.append({
+            "slot": slot, "pid": pid, "name": bounded_text(cell.get("command", "")),
+            "util": read_number(cell.get("sm", "")) or 0, "mem": (read_number(cell.get("fb", "")) or 0) * 1024 * 1024,
+        })
+    return rows
+
+
+def pci_name(device: str) -> str:
+    vendor = read_text(f"{device}/vendor").removeprefix("0x")
+    product = read_text(f"{device}/device").removeprefix("0x")
+    in_vendor = False
+    try:
+        with open(PCI_IDS_PATH, encoding="utf-8", errors="replace") as ids:
+            for line in ids:
+                if line.startswith("#"):
+                    continue
+                if not line.startswith("\t"):
+                    in_vendor = line.startswith(f"{vendor}  ")
+                elif in_vendor and line.startswith(f"\t{product}  "):
+                    name = line.strip()[len(product):].strip()
+                    bracket = re.findall(r"\[([^\]]+)\]", name)
+                    return bounded_text(bracket[-1] if bracket else name)
+    except OSError:
+        pass
+    return ""
+
+
+class GpuCard:
+    def __init__(self, kind: str, device: str) -> None:
+        self.kind = kind
+        self.device = device
+        self.slot = os.path.basename(os.path.realpath(device))
+        self.boot_vga = read_text(f"{device}/boot_vga") == "1"
+        self.integrated = kind == "intel" and self.slot.startswith("0000:00:")
+        self.hwmon = next((f"{device}/hwmon/{hw}" for hw in bounded_directory_names(f"{device}/hwmon")), None)
+        self.name = pci_name(device) or kind.upper()
+
+
 class GpuSampler:
 
     QUERY = (
-        "name,utilization.gpu,memory.used,memory.total,temperature.gpu,"
+        "pci.bus_id,name,utilization.gpu,memory.used,memory.total,temperature.gpu,"
         "power.draw,clocks.gr,clocks.max.gr,fan.speed"
     )
+    VENDORS = {"0x1002": "amd", "0x8086": "intel", "0x10de": "nvidia"}
 
     def __init__(self) -> None:
-        self.kind: str | None = None
-        self.latest: dict | None = None
+        self.latest: dict[str, dict] = {}
         self.lock = threading.Lock()
         self.proc: subprocess.Popen | None = None
-        self.devices: dict[str, str] = {}
-        self.names: dict[str, str] = {}
-        self.hwmons: dict[str, str] = {}
-        self.slots: dict[str, str] = {}
+        self.querying = False
+        self.opened: float | None = None
+        self.asleep: set[str] = set()
+        self.nvidia_slots: dict[str, str] | None = None
         self.drm_fds: dict[str, tuple[int, list[str]]] = {}
-        self.intel_busy: dict[tuple[str, str], int] = {}
-        self.intel_stamp: int | None = None
-        self.intel_util: float | None = None
-        self._detect()
+        self.clients: dict[tuple[str, str], tuple[int, dict]] = {}
+        self.clients_stamp: int | None = None
+        self.engine_load: dict[str, float] | None = None
+        self.client_usage: dict[tuple[str, int], list[float]] = {}
+        cards: dict[str, GpuCard] = {}
+        for card in bounded_directory_names("/sys/class/drm"):
+            device = f"/sys/class/drm/{card}/device"
+            kind = self.VENDORS.get(read_text(f"{device}/vendor").lower()) if re.fullmatch(r"card\d+", card) else None
+            if kind:
+                entry = GpuCard(kind, device)
+                cards.setdefault(entry.slot, entry)
+        self.cards = sorted(cards.values(), key=lambda card: (not card.boot_vga, card.slot))
+        if self._nvidia_gate() == "query":
+            self._query_nvidia()
 
-    def _detect(self) -> None:
-        drm = "/sys/class/drm"
-        for card in bounded_directory_names(drm):
-            if not re.fullmatch(r"card\d+", card):
-                continue
-            device = f"{drm}/{card}/device"
-            vendor = read_text(f"{device}/vendor").lower()
-            kind = {"0x1002": "amd", "0x8086": "intel", "0x10de": "nvidia"}.get(vendor)
-            if kind and kind not in self.devices:
-                self.devices[kind] = device
-        preferred = self._preferred_kind()
-        self.kind = preferred if preferred in self.devices else next((kind for kind in ("amd", "intel", "nvidia") if kind in self.devices), None)
-        for kind, device in self.devices.items():
-            self.slots[kind] = os.path.basename(os.path.realpath(device))
-            self.names[kind] = self._pci_name(self.slots[kind]) or kind.upper()
-            for hw in bounded_directory_names(f"{device}/hwmon"):
-                self.hwmons[kind] = f"{device}/hwmon/{hw}"
-                break
-        self._sync_nvidia()
+    def _nvidia_gate(self) -> str:
+        nvidia = [card for card in self.cards if card.kind == "nvidia"]
+        if not nvidia or trusted_helper_path("nvidia-smi") is None:
+            return "rest"
+        now = time.monotonic()
+        states = [runtime_state(card.device) for card in nvidia]
+        self.asleep = {card.slot for card, state in zip(nvidia, states) if state == "suspended"}
+        access, reopen = nvidia_access(states, self.opened, now)
+        if reopen:
+            self.opened = now
+        if access != "stream":
+            self.stop()
+        elif not (self.proc and self.proc.poll() is None):
+            self._start_nvidia()
+        return access
 
-    @staticmethod
-    def _preferred_kind() -> str | None:
-        paths = (f"/tmp/hypr-{os.getuid()}-gpuinfo", os.path.expanduser("~/.local/state/hypr/staterc"))
-        for path in paths:
-            match = re.search(r'^GPUINFO_PRIORITY=["\']?GPUINFO_(NVIDIA|AMD|INTEL)_ENABLE', read_text(path), re.MULTILINE)
-            if match:
-                return match.group(1).lower()
-        return None
+    def _query_nvidia(self) -> None:
+        with self.lock:
+            if self.querying:
+                return
+            self.querying = True
 
-    @staticmethod
-    def _pci_name(slot: str) -> str:
-        for line in run(["lspci", "-mm", "-s", slot]).splitlines():
-            fields = re.findall(r'"([^"]*)"', line)
-            if len(fields) >= 3:
-                name = fields[2]
-                bracket = re.findall(r"\[([^\]]+)\]", name)
-                return bounded_text(bracket[-1] if bracket else name)
-        return ""
+        def query() -> None:
+            try:
+                for line in run(["nvidia-smi", f"--query-gpu={self.QUERY}", "--format=csv,noheader,nounits"]).splitlines():
+                    self._store_nvidia(line)
+            finally:
+                with self.lock:
+                    self.querying = False
+
+        threading.Thread(target=query, daemon=True).start()
 
     def _start_nvidia(self) -> None:
+        executable = trusted_helper_path("nvidia-smi")
         try:
-            executable = trusted_helper_path("nvidia-smi")
             if executable is None:
                 raise FileNotFoundError("nvidia-smi")
             self.proc = subprocess.Popen(
@@ -520,45 +715,41 @@ class GpuSampler:
             return
         threading.Thread(target=self._read_nvidia, args=(self.proc,), daemon=True).start()
 
-    def _sync_nvidia(self) -> None:
-        if self.kind != "nvidia":
-            self.stop()
-        elif not (self.proc and self.proc.poll() is None):
-            self._start_nvidia()
-
     def _read_nvidia(self, proc: subprocess.Popen) -> None:
         assert proc.stdout
         for line in bounded_lines(proc.stdout, STREAM_LINE_LIMIT):
-            parts = [p.strip() for p in line.strip().split(",")]
-            if len(parts) < 9:
-                continue
+            self._store_nvidia(line)
 
-            def num(value: str) -> float | None:
-                try:
-                    return float(value)
-                except ValueError:
-                    return None
+    def _store_nvidia(self, line: str) -> None:
+        parts = [part.strip() for part in line.strip().split(",")]
+        if len(parts) < 10:
+            return
 
-            mem_used = num(parts[2])
-            mem_total = num(parts[3])
-            snapshot = {
-                "name": bounded_text(parts[0]),
-                "vendor": "nvidia",
-                "util": num(parts[1]),
-                "memUsed": mem_used * 1024 * 1024 if mem_used is not None else None,
-                "memTotal": mem_total * 1024 * 1024 if mem_total is not None else None,
-                "temp": num(parts[4]),
-                "power": num(parts[5]),
-                "mhz": num(parts[6]),
-                "maxMhz": num(parts[7]),
-                "fan": num(parts[8]),
-            }
-            with self.lock:
-                if self.proc is proc:
-                    self.latest = snapshot
+        def num(value: str) -> float | None:
+            try:
+                return float(value)
+            except ValueError:
+                return None
 
-    def _hwmon_value(self, kind: str, prefix: str, labels: tuple[str, ...]) -> float | None:
-        hwmon = self.hwmons.get(kind)
+        mem_used = num(parts[3])
+        mem_total = num(parts[4])
+        snapshot = {
+            "name": bounded_text(parts[1]),
+            "vendor": "nvidia",
+            "util": num(parts[2]),
+            "memUsed": mem_used * 1024 * 1024 if mem_used is not None else None,
+            "memTotal": mem_total * 1024 * 1024 if mem_total is not None else None,
+            "temp": num(parts[5]),
+            "power": num(parts[6]),
+            "mhz": num(parts[7]),
+            "maxMhz": num(parts[8]),
+            "fan": num(parts[9]),
+        }
+        with self.lock:
+            self.latest[normalize_slot(parts[0])] = snapshot
+
+    @staticmethod
+    def _hwmon_value(hwmon: str | None, prefix: str, labels: tuple[str, ...]) -> float | None:
         if not hwmon:
             return None
         chosen = None
@@ -569,9 +760,7 @@ class GpuSampler:
                     chosen = entry
                     if label in labels:
                         break
-        if not chosen:
-            return None
-        return read_float(f"{hwmon}/{chosen}")
+        return read_float(f"{hwmon}/{chosen}") if chosen else None
 
     def _drm_fdinfos(self) -> list[str]:
         fds = {}
@@ -587,79 +776,93 @@ class GpuSampler:
         self.drm_fds = fds
         return [path for _, paths in fds.values() for path in paths]
 
-    def _intel_utilization(self) -> float | None:
-        busy: dict[tuple[str, str], int] = {}
+    def _sample_clients(self) -> None:
+        clients: dict[tuple[str, str], tuple[int, dict]] = {}
         for path in self._drm_fdinfos():
-            info = read_text(path)
-            fields = dict(re.findall(r"^(drm-[\w-]+):\t(.*)$", info, re.M))
-            if fields.get("drm-pdev") == self.slots["intel"]:
-                for engine, ns in re.findall(r"^drm-engine-([\w-]+):\t(\d+) ns$", info, re.M):
-                    busy[fields["drm-client-id"], engine] = int(ns)
+            client = parse_drm_fdinfo(read_text(path))
+            if client is not None:
+                clients.setdefault((client["pdev"], client["id"]), (int(path.split("/")[2]), client))
         now = time.monotonic_ns()
-        busy_by_engine: dict[str, int] = {}
-        for (client, engine), ns in busy.items():
-            last = self.intel_busy.get((client, engine))
-            if last is not None:
-                busy[client, engine] = max(ns, last)
-                busy_by_engine[engine] = busy_by_engine.get(engine, 0) + busy[client, engine] - last
-        stamp, self.intel_busy, self.intel_stamp = self.intel_stamp, busy, now
-        if stamp is None:
-            return None
-        return round(min(100.0, max(busy_by_engine.values(), default=0) * 100 / (now - stamp)), 1)
+        elapsed = (now - self.clients_stamp) / 1e9 if self.clients_stamp is not None else 0.0
+        usable = 0.0 < elapsed < MAX_RATE_GAP_SECONDS
+        integrated = {card.slot for card in self.cards if card.integrated}
+        engines: dict[str, dict[str, float]] = {}
+        usage: dict[tuple[str, int], list[float]] = {}
+        for key, (pid, client) in clients.items():
+            previous = self.clients.get(key)
+            shares = engine_shares(client["engines"], previous[1]["engines"], elapsed) if usable and previous else {}
+            for engine, share in shares.items():
+                card = engines.setdefault(client["pdev"], {})
+                card[engine] = card.get(engine, 0.0) + share
+            total = usage.setdefault((client["pdev"], pid), [0.0, 0.0])
+            total[0] += min(100.0, max(shares.values(), default=0.0))
+            total[1] += client_memory(client, client["pdev"] in integrated)
+        self.clients, self.clients_stamp, self.client_usage = clients, now, usage
+        self.engine_load = {slot: round(min(100.0, max(loads.values(), default=0.0)), 1) for slot, loads in engines.items()} if usable else None
 
-    def _sysfs_sample(self, kind: str) -> dict:
-        card = self.devices[kind]
-        util = self.intel_util if kind == "intel" else read_float(f"{card}/gpu_busy_percent")
-        mem_used = read_float(f"{card}/mem_info_vram_used")
-        mem_total = read_float(f"{card}/mem_info_vram_total")
-        temp = self._hwmon_value(kind, "temp", ("edge", "junction"))
-        power = self._hwmon_value(kind, "power", ("ppt", "power"))
-        freq = self._hwmon_value(kind, "freq", ("sclk",))
-        base = os.path.dirname(card)
-        mhz = freq / 1_000_000 if freq else read_float(f"{base}/gt_cur_freq_mhz") or read_float(f"{base}/gt/gt0/rps_cur_freq_mhz")
-        max_mhz = read_float(f"{base}/gt_max_freq_mhz") or read_float(f"{base}/gt_RP0_freq_mhz")
+    def _sample_card(self, card: GpuCard) -> dict:
+        if card.kind == "nvidia":
+            with self.lock:
+                reading = self.latest.get(card.slot)
+            if card.slot in self.asleep:
+                return {"id": card.slot, "name": (reading or {}).get("name") or card.name, "vendor": "nvidia", "integrated": False, "asleep": True, "util": None}
+            return dict(reading or {"name": card.name, "vendor": "nvidia", "util": None}, id=card.slot, integrated=False)
+        if card.kind == "intel":
+            util = None if self.engine_load is None else self.engine_load.get(card.slot, 0.0)
+        else:
+            util = read_float(f"{card.device}/gpu_busy_percent")
+        temp = self._hwmon_value(card.hwmon, "temp", ("edge", "junction"))
+        power = self._hwmon_value(card.hwmon, "power", ("ppt", "power"))
+        freq = self._hwmon_value(card.hwmon, "freq", ("sclk",))
+        base = os.path.dirname(card.device)
         return {
-            "name": self.names[kind], "vendor": kind, "util": util,
-            "memUsed": mem_used, "memTotal": mem_total,
+            "id": card.slot, "name": card.name, "vendor": card.kind, "integrated": card.integrated, "util": util,
+            "memUsed": read_float(f"{card.device}/mem_info_vram_used"),
+            "memTotal": read_float(f"{card.device}/mem_info_vram_total"),
             "temp": temp / 1000 if temp else None,
             "power": power / 1_000_000 if power else None,
-            "mhz": mhz, "maxMhz": max_mhz, "fan": None,
+            "mhz": freq / 1_000_000 if freq else read_float(f"{base}/gt_cur_freq_mhz") or read_float(f"{base}/gt/gt0/rps_cur_freq_mhz"),
+            "maxMhz": read_float(f"{base}/gt_max_freq_mhz") or read_float(f"{base}/gt_RP0_freq_mhz"),
+            "fan": None,
         }
 
-    def sample(self, slow: bool) -> dict | None:
-        if slow and "intel" in self.devices:
-            self.intel_util = self._intel_utilization()
-        snapshots = []
-        for kind in ("nvidia", "amd", "intel"):
-            if kind not in self.devices:
-                continue
-            if kind == "nvidia":
-                with self.lock:
-                    data = dict(self.latest) if self.latest else {"name": self.names[kind], "vendor": kind, "util": None}
-            else:
-                data = self._sysfs_sample(kind)
-            data["active"] = kind == self.kind
-            snapshots.append(data)
-        if not snapshots:
-            return None
-        selected = next((gpu for gpu in snapshots if gpu["active"]), snapshots[0])
-        result = dict(selected)
-        result["devices"] = snapshots
-        return result
+    def sample(self, slow: bool, processes: bool = False) -> list[dict]:
+        if slow and (processes or any(card.kind == "intel" for card in self.cards)):
+            self._sample_clients()
+        if self._nvidia_gate() == "query":
+            self._query_nvidia()
+        return [self._sample_card(card) for card in self.cards]
 
-    def select(self, kind: str | None = None) -> None:
-        preferred = kind or self._preferred_kind()
-        if preferred in self.devices:
-            self.kind = preferred
-        self._sync_nvidia()
+    def processes(self) -> dict[str, list[dict]]:
+        rows = [(slot, pid, process_name(pid), util, mem) for (slot, pid), (util, mem) in self.client_usage.items()]
+        if self._nvidia_gate() != "rest":
+            if self.nvidia_slots is None:
+                self.nvidia_slots = {}
+                for line in run(["nvidia-smi", "--query-gpu=index,pci.bus_id", "--format=csv,noheader"]).splitlines():
+                    index, _, bus = line.partition(",")
+                    if bus:
+                        self.nvidia_slots[index.strip()] = normalize_slot(bus)
+            for row in parse_pmon(run(["nvidia-smi", "pmon", "-c", "1", "-s", "um"]), self.nvidia_slots):
+                name = process_name(row["pid"]) if os.path.exists(f"/proc/{row['pid']}") else row["name"]
+                rows.append((row["slot"], row["pid"], name, row["util"], row["mem"]))
+        groups: dict[str, dict[str, dict]] = {}
+        for slot, pid, name, util, mem in rows:
+            group = groups.setdefault(slot, {}).setdefault(name, {"name": name, "pid": pid, "count": 0, "util": 0.0, "mem": 0.0})
+            group["count"] += 1
+            group["util"] = min(100.0, group["util"] + util)
+            group["mem"] += mem
+        return {
+            slot: [dict(group, util=round(group["util"], 1)) for group in sorted(
+                (group for group in by_name.values() if group["util"] > 0 or group["mem"] > 0),
+                key=lambda group: (-group["util"], -group["mem"], group["name"]))[:PROC_LIMIT]]
+            for slot, by_name in groups.items()
+        }
 
     def stop(self) -> None:
         if self.proc and self.proc.poll() is None:
             kill_process_group(self.proc)
             self.proc.wait()
-        with self.lock:
-            self.proc = None
-            self.latest = None
+        self.proc = None
 
 
 def sample_memory() -> dict:
@@ -686,15 +889,7 @@ def sample_memory() -> dict:
             if len(fields) >= 3:
                 zram_orig += int(fields[0])
                 zram_compr += int(fields[1])
-    pressure_some = 0.0
-    pressure_full = 0.0
-    for line in read_text("/proc/pressure/memory").splitlines():
-        match = re.match(r"(some|full)\s+avg10=([0-9.]+)", line)
-        if match:
-            if match.group(1) == "some":
-                pressure_some = float(match.group(2))
-            else:
-                pressure_full = float(match.group(2))
+    pressure_some, pressure_full = parse_pressure("memory")
     return {
         "total": total,
         "free": free,
@@ -712,9 +907,191 @@ def sample_memory() -> dict:
     }
 
 
+ZPOOL_VDEV_CLASSES = ("logs", "cache", "spare", "special", "dedup")
+
+
+def zfs_pool(fstype: str, device: str) -> str | None:
+    return device.split("/")[0] or None if fstype == "zfs" and "@" not in device else None
+
+
+def parse_zfs_space(raw: str) -> dict[str, tuple[int, int]]:
+    space: dict[str, tuple[int, int]] = {}
+    for line in raw.splitlines():
+        fields = line.split("\t")
+        if len(fields) >= 3 and fields[0] and fields[1].isdigit() and fields[2].isdigit():
+            space[bounded_text(fields[0], PATH_TEXT_LIMIT)] = (int(fields[1]), int(fields[2]))
+    return space
+
+
+def parse_zpool_leaves(raw: str) -> dict[str, str]:
+    leaves: dict[str, str] = {}
+    pool = None
+    for line in raw.splitlines():
+        name = line.strip()
+        if not name:
+            continue
+        if name in ZPOOL_VDEV_CLASSES:
+            pool = None
+        elif not line[0].isspace():
+            pool = name
+        elif pool and name.startswith("/"):
+            leaves.setdefault(pool, name)
+    return leaves
+
+
+def by_id_rank(link: str) -> int | None:
+    if "-part" in link or link.startswith(("dm-", "md-", "lvm-")):
+        return None
+    if link.startswith(("nvme-eui.", "nvme-nvme.")):
+        return BY_ID_BUS_RANK
+    return next((rank for rank, prefix in enumerate(BY_ID_PREFIX_RANKS) if link.startswith(prefix)), BY_ID_FALLBACK_RANK)
+
+
+def scan_disk_ids() -> dict[str, str]:
+    best: dict[str, tuple[int, int, str]] = {}
+    for link in bounded_directory_names("/dev/disk/by-id"):
+        rank = by_id_rank(link)
+        try:
+            disk = os.path.basename(os.readlink(f"/dev/disk/by-id/{link}"))
+        except OSError:
+            continue
+        candidate = (rank, len(link), bounded_text(link)) if rank is not None else None
+        if candidate and (disk not in best or candidate < best[disk]):
+            best[disk] = candidate
+    return {disk: link for disk, (_, _, link) in best.items()}
+
+
+def unescape_mount(raw: str) -> str:
+    return re.sub(rb"\\([0-3][0-7]{2})", lambda match: bytes([int(match.group(1), 8)]), raw.encode()).decode("utf-8", "replace")
+
+
+def parse_mountinfo(raw: str) -> list[dict]:
+    mounts = []
+    for line in raw.splitlines():
+        head, separator, tail = line.partition(" - ")
+        head_parts, tail_parts = head.split(" "), tail.split(" ")
+        if not separator or len(head_parts) < 6 or len(tail_parts) < 2 or not head_parts[0].isdigit():
+            continue
+        mounts.append({
+            "id": int(head_parts[0]),
+            "mount": bounded_text(unescape_mount(head_parts[4]), PATH_TEXT_LIMIT),
+            "fstype": bounded_text(tail_parts[0], FIELD_TEXT_LIMIT),
+            "source": bounded_text(unescape_mount(tail_parts[1]), PATH_TEXT_LIMIT),
+            "options": [option for option in head_parts[5].split(",") + (tail_parts[2] if len(tail_parts) > 2 else "").split(",") if option],
+        })
+    return mounts
+
+
+def is_external(disk: str) -> bool:
+    real = os.path.realpath(f"/sys/block/{disk}")
+    if read_int(f"/sys/block/{disk}/removable", 0) == 1 or "/usb" in real:
+        return True
+    while real.startswith("/sys/devices/"):
+        if read_text(f"{real}/removable") == "removable":
+            return True
+        real = os.path.dirname(real)
+    return False
+
+
+STUCK_MOUNTS: set[str] = set()
+
+
+def statvfs_bounded(path: str):
+    if path in STUCK_MOUNTS:
+        return None
+    result: list = []
+
+    def probe() -> None:
+        try:
+            result.append(os.statvfs(path))
+        except OSError:
+            result.append(None)
+        STUCK_MOUNTS.discard(path)
+
+    STUCK_MOUNTS.add(path)
+    thread = threading.Thread(target=probe, daemon=True)
+    thread.start()
+    thread.join(NETWORK_STATVFS_TIMEOUT)
+    return result[0] if result else None
+
+
+def dm_chain(device: str) -> list[tuple[str, str]]:
+    name = os.path.basename(os.path.realpath(device))
+    chain = []
+    for _ in range(MAX_DEVICE_STACK_DEPTH):
+        lower = next(iter(bounded_directory_names(f"/sys/block/{name}/slaves")), None) if name.startswith("dm-") else None
+        if not lower:
+            break
+        chain.append((name, lower))
+        name = lower
+    return chain
+
+
+def discard_max(name: str) -> int | None:
+    value = read_int(f"/sys/block/{name}/queue/discard_max_bytes")
+    return read_int(f"/sys/class/block/{name}/../queue/discard_max_bytes") if value is None else value
+
+
+def device_uuid(device: str) -> str | None:
+    real = os.path.realpath(device)
+    return next((uuid for uuid in bounded_directory_names("/dev/disk/by-uuid") if os.path.realpath(f"/dev/disk/by-uuid/{uuid}") == real), None)
+
+
+def plain_name(value: str | None) -> bool:
+    return bool(value) and len(value) <= 128 and ".." not in value and re.fullmatch(r"[A-Za-z0-9._:/-]+", value) is not None
+
+
+def volume_checks(volume: dict, options: list[str]) -> list[dict]:
+    checks: list[dict] = []
+    if volume["kind"] == "network":
+        return checks
+    for dm, lower in dm_chain(volume["device"]):
+        if discard_max(dm) == 0 and discard_max(lower):
+            name, uuid = read_text(f"/sys/block/{dm}/dm/name"), read_text(f"/sys/block/{dm}/dm/uuid")
+            if uuid.startswith(LVM_DM_UUID_PREFIX):
+                below = read_text(f"/sys/block/{lower}/dm/name")
+                fixable = plain_name(below)
+                checks.append({"id": "trim-stale", "layer": bounded_text(below or lower), "fix": "reload-volumes" if fixable else None, "args": [below] if fixable else []})
+            elif uuid.startswith(CRYPT_DM_UUID_PREFIX):
+                fixable = uuid.startswith(LUKS2_DM_UUID_PREFIX) and plain_name(name)
+                checks.append({"id": "trim-blocked", "layer": bounded_text(name), "fix": "allow-discards" if fixable else None, "args": [name] if fixable else []})
+            break
+    slow = [flag for flag in FAT_SLOW_MOUNT_FLAGS if flag in options]
+    if volume["fstype"] in ("vfat", "msdos") and slow:
+        uuid = device_uuid(volume["device"])
+        fixable = volume["mount"].startswith(UDISKS_MOUNT_ROOTS) and plain_name(uuid) and plain_name(volume["device"])
+        checks.append({"id": "fat-flush", "flags": slow, "fix": "udisks-no-flush" if fixable else None, "args": [uuid, volume["device"]] if fixable else []})
+    return checks
+
+
+def parse_diskstats(parts: list[str]) -> tuple[int, int, int, int, int, int]:
+    def field(index: int) -> int:
+        return int(parts[index]) if index < len(parts) and parts[index].isdigit() else 0
+    return (
+        field(5) * SECTOR_BYTES,
+        field(9) * SECTOR_BYTES,
+        field(3) + field(7) + field(14) + field(18),
+        field(6) + field(10) + field(17) + field(19),
+        field(12),
+        field(13),
+    )
+
+
+def disk_load(prev: tuple, now: tuple, elapsed: float) -> dict:
+    requests = max(0, now[2] - prev[2])
+    window = max(1.0, elapsed * 1000)
+    return {
+        "latency": round(max(0, now[3] - prev[3]) / requests, 2) if requests else None,
+        "queue": round(max(0, now[5] - prev[5]) / window, 2),
+        "busy": round(min(100.0, max(0, now[4] - prev[4]) / window * 100), 1),
+    }
+
+
 class DiskSampler:
     def __init__(self) -> None:
-        self.prev: dict[str, tuple[int, int]] = {}
+        self.prev: dict[str, tuple[int, int, int, int, int, int]] = {}
+        self.ids: dict[str, str] = {}
+        self.mount_keys: dict[int, str] = {}
         self.volumes_cache: list[dict] = []
         self.volumes_stamp = 0.0
         self.drive_temps: dict[str, str] = {}
@@ -778,58 +1155,78 @@ class DiskSampler:
 
     def _volumes(self) -> list[dict]:
         volumes: dict[str, dict] = {}
-        for line in read_text("/proc/self/mounts").splitlines():
-            parts = line.split()
-            if len(parts) < 3:
+        options: dict[str, list[str]] = {}
+        mount_keys: dict[int, str] = {}
+        mounts = parse_mountinfo(read_text("/proc/self/mountinfo"))
+        zfs_space: dict[str, tuple[int, int]] = {}
+        zfs_leaves: dict[str, str] = {}
+        if any(zfs_pool(mount["fstype"], mount["source"]) for mount in mounts):
+            zfs_space = parse_zfs_space(run(["zfs", "list", "-Hp", "-d", "0", "-o", "name,used,avail"]))
+            zfs_leaves = parse_zpool_leaves(run(["zpool", "list", "-HPv", "-o", "name"]))
+        drives: dict[str, tuple[str, bool, bool, bool]] = {}
+        for entry in mounts:
+            device, mount, fstype = entry["source"], entry["mount"], entry["fstype"]
+            network = fstype in NETWORK_FS
+            pool = zfs_pool(fstype, device)
+            if fstype not in REAL_FS and not network:
                 continue
-            device = bounded_text(parts[0], PATH_TEXT_LIMIT)
-            mount = bounded_text(parts[1].replace("\\040", " "), PATH_TEXT_LIMIT)
-            fstype = bounded_text(parts[2], FIELD_TEXT_LIMIT)
-            if fstype not in REAL_FS or not device.startswith("/"):
+            if not device or (pool is None and not network and not device.startswith("/")):
                 continue
             if mount.startswith(("/proc", "/sys", "/dev", "/run/user", "/var/lib/docker", "/snap")):
                 continue
+            device = pool or device
+            if network:
+                disk = ""
+            elif pool is None:
+                disk = self.whole_disk_name(device)
+            else:
+                disk = self.whole_disk_name(zfs_leaves[pool]) if pool in zfs_leaves else ""
+            key = disk or device
+            mount_keys[entry["id"]] = key
+            existing = volumes.get(device)
+            if (existing and len(existing["mount"]) <= len(mount)) or (existing is None and len(volumes) >= VOLUME_LIMIT):
+                continue
             try:
-                stat = os.statvfs(mount)
+                stat = statvfs_bounded(mount) if network else os.statvfs(mount)
             except OSError:
+                stat = None
+            if stat is None:
                 continue
             size = stat.f_blocks * stat.f_frsize
-            if size < MIN_VOLUME_BYTES:
-                continue
             avail = stat.f_bavail * stat.f_frsize
             used = size - stat.f_bfree * stat.f_frsize
-            key = device
-            existing = volumes.get(key)
-            if existing and len(existing["mount"]) <= len(mount):
+            if pool in zfs_space:
+                used, avail = zfs_space[pool]
+                size = used + avail
+            if size < MIN_VOLUME_BYTES:
                 continue
-            if existing is None and len(volumes) >= VOLUME_LIMIT:
-                continue
-            disk = self.whole_disk_name(device)
-            model = bounded_text(
-                read_text(f"/sys/block/{disk}/device/model")
-                or read_text(f"/sys/block/{disk}/device/name")
-            )
-            rotational = read_int(f"/sys/block/{disk}/queue/rotational", 0) == 1
-            volumes[key] = {
-                "mount": mount,
-                "device": device,
-                "fstype": fstype,
-                "size": size,
-                "used": used,
-                "avail": avail,
-                "disk": disk,
-                "model": re.sub(r"\s+", " ", model).strip(),
-                "rotational": rotational,
-                "removable": read_int(f"/sys/block/{disk}/removable", 0) == 1,
+            if disk not in drives:
+                model = read_text(f"/sys/block/{disk}/device/model") or read_text(f"/sys/block/{disk}/device/name") if disk else ""
+                drives[disk] = (
+                    re.sub(r"\s+", " ", bounded_text(model)).strip(),
+                    bool(disk) and read_int(f"/sys/block/{disk}/queue/rotational", 0) == 1,
+                    bool(disk) and read_int(f"/sys/block/{disk}/removable", 0) == 1,
+                    bool(disk) and is_external(disk),
+                )
+            model, rotational, removable, external = drives[disk]
+            options[device] = entry["options"]
+            volumes[device] = {
+                "mount": mount, "device": device, "fstype": fstype,
+                "size": size, "used": used, "avail": avail,
+                "disk": disk, "key": key,
+                "kind": "network" if network else ("external" if external else "internal"),
+                "model": model, "rotational": rotational, "removable": removable,
             }
-        result = sorted(volumes.values(), key=lambda v: (v["mount"] != "/", v["mount"]))
-        return result
+        for volume in volumes.values():
+            volume["checks"] = volume_checks(volume, options.get(volume["device"], []))
+        self.mount_keys = mount_keys
+        return sorted(volumes.values(), key=lambda volume: (volume["mount"] != "/", volume["mount"]))
 
     def sample(self, elapsed: float, now: float) -> dict:
         if now - self.volumes_stamp > 10:
             self.volumes_cache = self._volumes()
             self.volumes_stamp = now
-        current: dict[str, tuple[int, int]] = {}
+        current: dict[str, tuple[int, int, int, int, int, int]] = {}
         for line in read_text("/proc/diskstats").splitlines():
             parts = line.split()
             if len(parts) < 14:
@@ -839,35 +1236,37 @@ class DiskSampler:
                 continue
             if (read_int(f"/sys/block/{name}/size", 0) or 0) <= 0:
                 continue
-            current[name] = (int(parts[5]) * 512, int(parts[9]) * 512)
+            current[name] = parse_diskstats(parts)
+        if current.keys() != self.prev.keys():
+            self.ids = scan_disk_ids()
         per_disk: dict[str, dict] = {}
         total_read = 0.0
         total_write = 0.0
-        for name, (read_bytes, write_bytes) in current.items():
+        for name, counters in current.items():
             prev = self.prev.get(name)
-            read_rate = rate(read_bytes, prev[0] if prev else None, elapsed)
-            write_rate = rate(write_bytes, prev[1] if prev else None, elapsed)
+            read_rate = rate(counters[0], prev[0] if prev else None, elapsed)
+            write_rate = rate(counters[1], prev[1] if prev else None, elapsed)
             temp_path = self.drive_temps.get(name)
             temp = read_int(temp_path) if temp_path else None
             per_disk[name] = {
+                "id": self.ids.get(name, name),
                 "read": read_rate,
                 "write": write_rate,
                 "temp": round(temp / 1000, 1) if temp else None,
+                **(disk_load(prev, counters, elapsed) if prev else {"latency": None, "queue": None, "busy": None}),
             }
             total_read += read_rate
             total_write += write_rate
         self.prev = current
-        volumes = []
-        for volume in self.volumes_cache:
-            entry = dict(volume)
-            activity = per_disk.get(volume["disk"], {})
-            entry["temp"] = activity.get("temp")
-            volumes.append(entry)
+        volumes = [dict(volume, temp=per_disk.get(volume["disk"], {}).get("temp")) for volume in self.volumes_cache]
+        pressure_some, pressure_full = parse_pressure("io")
         return {
             "volumes": volumes,
             "read": total_read,
             "write": total_write,
             "perDisk": per_disk,
+            "pressureSome": pressure_some,
+            "pressureFull": pressure_full,
         }
 
 
@@ -1081,8 +1480,11 @@ class SensorSampler:
             device_link = f"{path}/device"
             device_id = (os.path.realpath(device_link) if os.path.exists(device_link)
                          else os.path.dirname(os.path.dirname(os.path.realpath(path))))
+            device_name = os.path.basename(device_id) if os.path.exists(device_link) else ""
+            if re.fullmatch(r"nvme\d+", device_name):
+                device_name = os.path.basename(os.path.dirname(os.path.dirname(device_id)))
             chips.append({"name": name, "path": path, "temps": temps, "fans": fans,
-                          "device_id": device_id,
+                          "device_id": device_id, "device": bounded_text(device_name),
                           "labelled": any(t["label"] for t in temps) or any(f["label"] for f in fans)})
         self.chips = self.deduplicate_sensor_channels(chips)
         self.gpu_temp_path = None
@@ -1136,15 +1538,17 @@ class SensorSampler:
             self._scan()
             self.stamp = now
         temps, fans = [], []
-        name_counts: dict[str, int] = {}
+        siblings: dict[str, list[str]] = {}
         for chip in self.chips:
-            name_counts[chip["name"]] = name_counts.get(chip["name"], 0) + 1
-        name_seen: dict[str, int] = {}
+            siblings.setdefault(chip["name"], []).append(chip["device"])
+        for devices in siblings.values():
+            devices.sort()
         for chip in self.chips:
             chip_label = self._pretty_chip(chip["name"])
-            if name_counts[chip["name"]] > 1:
-                name_seen[chip["name"]] = name_seen.get(chip["name"], 0) + 1
-                chip_label = f"{chip_label} {name_seen[chip['name']]}"
+            shared = len(siblings[chip["name"]]) > 1
+            prefix = f"{chip['name']}@{chip['device']}" if shared and chip["device"] else chip["name"]
+            if shared:
+                chip_label = f"{chip_label} {siblings[chip['name']].index(chip['device']) + 1}"
             for temp in chip["temps"]:
                 raw = read_int(temp["path"])
                 if raw is None or raw <= 0 or raw >= MAX_PLAUSIBLE_MILLIDEGREES:
@@ -1152,7 +1556,7 @@ class SensorSampler:
                 label = temp["label"] or (chip_label if len(chip["temps"]) == 1 else f"{chip_label} {temp['key'][4:]}")
                 temps.append({
                     "chip": chip_label,
-                    "id": f"{chip['name']}/{temp['key']}",
+                    "id": f"{prefix}/{temp['key']}",
                     "alertId": f"{chip['name']}|{chip['device_id']}|{temp['key']}",
                     "label": label,
                     "value": round(raw / 1000, 1),
@@ -1165,7 +1569,7 @@ class SensorSampler:
                     continue
                 fans.append({
                     "chip": chip_label,
-                    "id": f"{chip['name']}/{fan['key']}",
+                    "id": f"{prefix}/{fan['key']}",
                     "label": fan["label"] or f"Fan {fan['key'][3:]}",
                     "rpm": raw,
                 })
@@ -1293,7 +1697,16 @@ class ProcessSampler:
         self.prev = {}
         self.names = {}
 
-    def sample(self, elapsed: float, full: bool = False) -> dict:
+    @staticmethod
+    def open_mounts(pid: int) -> set[int]:
+        mounts: set[int] = set()
+        for fd in bounded_directory_names(f"/proc/{pid}/fdinfo", FD_SCAN_LIMIT)[:DRIVE_FD_LIMIT]:
+            match = re.search(r"^mnt_id:\s*(\d+)", read_text(f"/proc/{pid}/fdinfo/{fd}"), re.M)
+            if match:
+                mounts.add(int(match.group(1)))
+        return mounts
+
+    def sample(self, elapsed: float, full: bool = False, drives: dict[int, str] | None = None) -> dict:
         current: dict[int, tuple[int, int, int, int]] = {}
         by_name: dict[str, dict] = {}
         names: dict[int, str] = {}
@@ -1336,7 +1749,9 @@ class ProcessSampler:
             names[pid] = name
             agg = by_name.get(name)
             if agg is None:
-                agg = by_name[name] = {"name": name, "pid": pid, "cpu": 0.0, "mem": 0, "read": 0.0, "write": 0.0, "count": 0}
+                agg = by_name[name] = {"name": name, "pid": pid, "cpu": 0.0, "mem": 0, "read": 0.0, "write": 0.0, "count": 0, "drives": set()}
+            if drives is not None and io_read + io_write > 0:
+                agg["drives"].update(drives[mount] for mount in self.open_mounts(pid) if mount in drives)
             agg["cpu"] += max(0.0, cpu)
             agg["mem"] += rss
             agg["read"] += io_read
@@ -1346,40 +1761,35 @@ class ProcessSampler:
         self.names = names
         groups = list(by_name.values())
 
+        def row(item: dict) -> dict:
+            return {
+                "name": item["name"], "pid": item["pid"], "count": item["count"],
+                "cpu": round(item["cpu"], 1), "mem": item["mem"],
+                "read": item["read"], "write": item["write"],
+            }
+
         def trim(items: list[dict], key: str) -> list[dict]:
-            out = []
-            for item in items[:PROC_LIMIT]:
-                if item[key] <= 0:
-                    break
-                out.append({
-                    "name": item["name"], "pid": item["pid"], "count": item["count"],
-                    "cpu": round(item["cpu"], 1), "mem": item["mem"],
-                    "read": item["read"], "write": item["write"],
-                })
-            return out
+            return [row(item) for item in itertools.takewhile(lambda item: item[key] > 0, items[:PROC_LIMIT])]
+
+        by_io = [group for group in sorted(groups, key=lambda group: group["read"] + group["write"], reverse=True) if group["read"] + group["write"] > 0]
 
         by_cpu = sorted(groups, key=lambda g: g["cpu"], reverse=True)
         result = {
             "cpu": trim(by_cpu, "cpu"),
             "mem": trim(sorted(groups, key=lambda g: g["mem"], reverse=True), "mem"),
             "total": len(groups),
-            "io": [
-                {
-                    "name": g["name"], "pid": g["pid"], "count": g["count"],
-                    "read": g["read"], "write": g["write"], "cpu": round(g["cpu"], 1), "mem": g["mem"],
-                }
-                for g in sorted(groups, key=lambda g: g["read"] + g["write"], reverse=True)[:PROC_LIMIT]
-                if g["read"] + g["write"] > 0
-            ],
+            "io": [row(group) for group in by_io[:PROC_LIMIT]],
         }
+        if drives is not None:
+            by_drive: dict[str, list[dict]] = {}
+            for group in by_io:
+                for drive in group["drives"]:
+                    rows = by_drive.setdefault(drive, [])
+                    if len(rows) < PROC_LIMIT:
+                        rows.append(row(group))
+            result["ioByDrive"] = by_drive
         if full:
-            result["all"] = [
-                {
-                    "name": g["name"], "pid": g["pid"], "count": g["count"],
-                    "cpu": round(g["cpu"], 1), "mem": g["mem"], "read": g["read"], "write": g["write"],
-                }
-                for g in by_cpu[:FULL_LIMIT]
-            ]
+            result["all"] = [row(group) for group in by_cpu[:FULL_LIMIT]]
         return result
 
     def network_usage(self, full: bool = False) -> list[dict]:
@@ -1427,11 +1837,7 @@ class ProcessSampler:
                 if ino not in sockets:
                     continue
                 if name is None:
-                    name = self.names.get(pid)
-                    if name is None:
-                        stat = read_text(f"/proc/{pid}/stat")
-                        open_paren, close = stat.find("("), stat.rfind(")")
-                        name = display_name(pid, stat[open_paren + 1:close]) if 0 <= open_paren < close else f"pid {pid}"
+                    name = self.names.get(pid) or process_name(pid)
                 owner[ino] = (pid, name)
 
         now = time.monotonic()
@@ -1485,8 +1891,8 @@ class Controller:
         self.focus = ""
         self.lock = threading.Lock()
         self.public_ip_requested = False
-        self.gpu_selection: str | None = None
         self.stop = False
+        self.wake = threading.Event()
 
     def listen(self) -> None:
         for line in bounded_lines(sys.stdin.buffer, CONTROL_LINE_LIMIT):
@@ -1505,11 +1911,13 @@ class Controller:
                         pass
                 elif parts[0] == "pubip":
                     self.public_ip_requested = True
-                elif parts[0] == "gpu":
-                    self.gpu_selection = parts[1] if len(parts) > 1 else ""
                 elif parts[0] == "quit":
                     self.stop = True
-                    return
+                else:
+                    continue
+            self.wake.set()
+            if self.stop:
+                return
 
 
 def main() -> int:
@@ -1547,6 +1955,7 @@ def main() -> int:
     last = time.monotonic()
     seq = 0
     cpu.sample()
+    gpu.sample(True)
     disks.sample(1.0, time.time())
     net.sample(1.0, time.time(), controller.detail != DETAIL_NONE)
     if controller.detail != DETAIL_NONE:
@@ -1559,27 +1968,36 @@ def main() -> int:
     battery_cache: dict | None = None
     procs_cache: dict | None = None
     connections_cache: list | None = None
+    gpu_procs_cache: dict | None = None
+    network_primed = False
 
     while not controller.stop:
-        now_mono = time.monotonic()
-        elapsed = max(0.02, now_mono - last)
-        last = now_mono
-        now = time.time()
         with controller.lock:
             detail = controller.detail
             focus = controller.focus
             want_public = controller.public_ip_requested
             controller.public_ip_requested = False
-            gpu_selection = controller.gpu_selection
-            controller.gpu_selection = None
             current_interval = controller.interval
-        if gpu_selection is not None:
-            gpu.select(gpu_selection or None)
+        want_network = detail != DETAIL_NONE and focus == "network"
+        want_gpu = detail != DETAIL_NONE and focus == "gpu"
+        cold_procs = detail != DETAIL_NONE and last_procs is None
+        cold_network = want_network and not network_primed
+        if cold_procs or cold_network:
+            if cold_procs:
+                procs.sample(1.0, False)
+                last_procs = time.monotonic()
+            if cold_network:
+                procs.network_usage(False)
+            time.sleep(PROCESS_WARM_UP_SECONDS)
+        now_mono = time.monotonic()
+        elapsed = max(0.02, now_mono - last)
+        last = now_mono
+        now = time.time()
         if want_public:
             net.fetch_public_ip()
 
         payload: dict = {"seq": seq, "t": now, "elapsed": round(elapsed, 3), "interval": current_interval, "errors": []}
-        slow_due = last_slow is None or now_mono - last_slow >= SLOW_SAMPLE_SECONDS
+        slow_due = cold_procs or cold_network or last_slow is None or now_mono - last_slow >= SLOW_SAMPLE_SECONDS
         if slow_due:
             try:
                 sensors_cache = sensors.sample(now)
@@ -1594,7 +2012,7 @@ def main() -> int:
             if detail != DETAIL_NONE:
                 since = elapsed if last_procs is None else max(0.05, now_mono - last_procs)
                 try:
-                    procs_cache = procs.sample(since, detail == DETAIL_ALL_PROCESSES)
+                    procs_cache = procs.sample(since, detail == DETAIL_ALL_PROCESSES, disks.mount_keys if focus == "disks" else None)
                 except Exception as error:  
                     procs_cache = None
                     payload["errors"].append(f"procs: {error}")
@@ -1604,7 +2022,8 @@ def main() -> int:
                 procs_cache = None
                 last_procs = None
             connections_cache = None
-            if detail != DETAIL_NONE and focus == "network":
+            network_primed = want_network
+            if want_network:
                 try:
                     connections_cache = procs.network_usage(detail == DETAIL_ALL_PROCESSES)
                 except Exception as error:  
@@ -1613,7 +2032,7 @@ def main() -> int:
         for key, fn in (
             ("cpu", cpu.sample),
             ("power", lambda: power.sample(elapsed)),
-            ("gpu", lambda: gpu.sample(slow_due)),
+            ("gpus", lambda: gpu.sample(slow_due, want_gpu)),
             ("mem", sample_memory),
             ("disks", lambda: disks.sample(elapsed, now)),
             ("net", lambda: net.sample(elapsed, now, detail != DETAIL_NONE)),
@@ -1623,6 +2042,17 @@ def main() -> int:
             except Exception as error:  
                 payload[key] = None
                 payload["errors"].append(f"{key}: {error}")
+        if slow_due:
+            try:
+                gpu_procs_cache = gpu.processes() if want_gpu else None
+            except Exception as error:  
+                gpu_procs_cache = None
+                payload["errors"].append(f"gpu processes: {error}")
+        cards = payload.get("gpus") or []
+        if gpu_procs_cache is not None:
+            for card in cards:
+                card["procs"] = gpu_procs_cache.get(card["id"], [])
+        payload["gpu"] = cards[0] if cards else None
         if isinstance(payload.get("net"), dict):
             payload["net"]["procs"] = connections_cache
         payload["sensors"] = sensors_cache
@@ -1636,8 +2066,8 @@ def main() -> int:
         seq += 1
         if once:
             break
-        spent = time.monotonic() - now_mono
-        time.sleep(max(0.02, current_interval - spent))
+        controller.wake.wait(max(0.02, current_interval - (time.monotonic() - now_mono)))
+        controller.wake.clear()
 
     gpu.stop()
     return 0

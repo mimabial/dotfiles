@@ -6,19 +6,20 @@ printer_read_state_uri() {
 }
 
 printer_load_state_paths() {
-  safe_printer="$(printf '%s' "$target_printer" | sed 's/[^A-Za-z0-9_.-]/_/g')"
-  printer_state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
-  printer_state_file="${printer_state_dir}/printer.connection.${safe_printer}.state"
+  local -n printer_ref=$1
+  local safe_printer
+  safe_printer="$(printf '%s' "${printer_ref[printer]}" | sed 's/[^A-Za-z0-9_.-]/_/g')"
+  printer_ref[state_dir]="${XDG_STATE_HOME:-$HOME/.local/state}/hypr"
+  printer_ref[state_file]="${printer_ref[state_dir]}/printer.connection.${safe_printer}.state"
 }
 
 printer_acquire_state_lock() {
-  local fd_name="$1"
-  local -n fd_ref="${fd_name}"
+  local -n printer_ref=$1 fd_ref=$2
   local lock_file=""
   local lock_timeout="${PRINTER_STATE_LOCK_TIMEOUT:-5}"
 
-  mkdir -p "$printer_state_dir"
-  lock_file="${printer_state_file}.lock"
+  mkdir -p "${printer_ref[state_dir]}"
+  lock_file="${printer_ref[state_file]}.lock"
 
   if ! exec {fd_ref}>"${lock_file}"; then
     echo "Error: failed to open printer state lock '${lock_file}'." >&2
@@ -26,7 +27,7 @@ printer_acquire_state_lock() {
   fi
 
   if ! flock -w "${lock_timeout}" "${fd_ref}"; then
-    echo "Error: printer state lock busy for '${target_printer}'." >&2
+    echo "Error: printer state lock busy for '${printer_ref[printer]}'." >&2
     exec {fd_ref}>&-
     fd_ref=""
     return 1
@@ -44,33 +45,33 @@ printer_release_state_lock() {
 }
 
 printer_load_stored_uris() {
-  stored_usb_uri="$(printer_read_state_uri "$printer_state_file" "usb")"
-  stored_network_uri="$(printer_read_state_uri "$printer_state_file" "network")"
-  stored_usb_uri="$(printer_normalize_print_uri "$stored_usb_uri")"
-  stored_network_uri="$(printer_normalize_print_uri "$stored_network_uri")"
+  local -n printer_ref=$1
+  printer_ref[stored_usb_uri]="$(printer_normalize_print_uri "$(printer_read_state_uri "${printer_ref[state_file]}" "usb")")"
+  printer_ref[stored_network_uri]="$(printer_normalize_print_uri "$(printer_read_state_uri "${printer_ref[state_file]}" "network")")"
 }
 
 printer_persist_state() {
+  local -n printer_ref=$1
   local tmp_file=""
 
-  if [[ "$target_transport" == "usb" ]]; then
-    usb_uri="$target_uri"
-  elif [[ "$target_transport" == "network" ]]; then
-    network_uri="$target_uri"
+  if [[ "${printer_ref[target_transport]}" == "usb" ]]; then
+    printer_ref[usb_uri]="${printer_ref[target_uri]}"
+  elif [[ "${printer_ref[target_transport]}" == "network" ]]; then
+    printer_ref[network_uri]="${printer_ref[target_uri]}"
   fi
 
-  mkdir -p "$printer_state_dir"
-  tmp_file="${printer_state_file}.tmp.$$"
+  mkdir -p "${printer_ref[state_dir]}"
+  tmp_file="${printer_ref[state_file]}.tmp.$$"
   {
-    printf 'usb=%s\n' "$usb_uri"
-    printf 'network=%s\n' "$network_uri"
+    printf 'usb=%s\n' "${printer_ref[usb_uri]}"
+    printf 'network=%s\n' "${printer_ref[network_uri]}"
   } > "$tmp_file"
 
-  if mv -f "$tmp_file" "$printer_state_file"; then
+  if mv -f "$tmp_file" "${printer_ref[state_file]}"; then
     return 0
   fi
 
   rm -f "$tmp_file" 2>/dev/null || true
-  echo "Error: failed to persist printer state for '$target_printer'." >&2
+  echo "Error: failed to persist printer state for '${printer_ref[printer]}'." >&2
   return 1
 }

@@ -121,8 +121,8 @@ Column {
     width: parent.width
     implicitHeight: Commons.Style.space(26)
     radius: Commons.Style.cornerRadius
-    color: Commons.Color.popups.background
-    borderSpec: Commons.Border.controlSpec(urlInput.activeFocus ? "focused" : "normal", root.controller.foreground, Commons.Color.accent)
+    color: urlInput.activeFocus ? Commons.Style.focusFillFor(root.controller.foreground, Commons.Color.accent) : Commons.Color.popups.background
+    borderSpec: Commons.Border.controlSpec("normal", root.controller.foreground, Commons.Color.accent)
     clip: true
 
     Item {
@@ -233,7 +233,7 @@ Column {
     contentHeight: listCol.implicitHeight
     clip: true
     boundsBehavior: Flickable.StopAtBounds
-    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+    ScrollBar.vertical: PanelScrollBar { policy: ScrollBar.AsNeeded }
 
     Column {
       id: listCol
@@ -325,8 +325,13 @@ Column {
         }
       }
       Placeholder {
-        visible: root.controller.selectedTab === "queue" && root.controller.queueList.length === 0
-        text: root.controller.queueSource === "mpd" ? "MPD queue is empty"
+        visible: root.controller.selectedTab === "queue" && (root.controller.queueError !== "" || root.controller.queueList.length === 0)
+        height: Math.max(Commons.Style.space(40), implicitHeight)
+        textFormat: Text.PlainText
+        wrapMode: Text.Wrap
+        text: root.controller.queueError ? "Could not load queue.\n" + root.controller.queueError + "\nSelect Queue to retry."
+          : root.controller.queueLoading ? "Loading queue…"
+          : root.controller.queueSource === "mpd" ? "MPD queue is empty"
           : root.controller.queueSource === "youtube" ? "No playlist entries found"
           : "Queue is empty\nClick '+' on any song to add to queue"
       }
@@ -367,11 +372,15 @@ Column {
           meta: modelData.plays ? modelData.plays + "×" : modelData.duration || ""
         }
       }
-      Placeholder {
-        visible: root.controller.selectedTab === "playlists" && root.controller.activePlaylist === null
-          && (root.controller.isImportingPl || root.controller.plImportError !== "")
-        text: root.controller.isImportingPl ? "Importing playlist tracks..." : root.controller.plImportError
-        color: root.controller.isImportingPl ? root.controller.dim : root.controller.urgent
+      Shell.PopupHint {
+          id: errorHint
+          shell: root.controller.shell; error: !root.controller.isImportingPl && root.controller.plImportError !== ""
+          width: parent.width
+          height: errorHint.error ? errorHint.implicitHeight : Commons.Style.space(40)
+          visible: root.controller.selectedTab === "playlists" && root.controller.activePlaylist === null
+              && (root.controller.isImportingPl || root.controller.plImportError !== "")
+          text: root.controller.isImportingPl ? "Importing playlist tracks..." : root.controller.plImportError
+          verticalAlignment: Text.AlignVCenter
       }
       Repeater {
         model: root.controller.selectedTab === "playlists" ? root.controller.playlistsList : []

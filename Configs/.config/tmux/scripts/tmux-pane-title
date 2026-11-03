@@ -4,7 +4,6 @@ set -euo pipefail
 LABEL_MAX_CHARS=18
 HOST_MAX_CHARS=14
 AGENT_TITLE_MAX_CHARS=24
-FIELD_SEPARATOR=$'\034'
 
 plain=0
 if [[ ${1:-} == --plain ]]; then plain=1; shift; fi
@@ -12,66 +11,82 @@ cmd="${1:-}"
 tty="${2:-}"
 pane_title="${3:-}"
 
-trim() {
-  local value="${1:-}" max="${2:-$LABEL_MAX_CHARS}"
+trim_into() {
+  local -n trimmed_ref="$1"
+  local value="${2:-}" max="${3:-$LABEL_MAX_CHARS}"
   value="${value#"${value%%[![:space:]]*}"}"
   value="${value%"${value##*[![:space:]]}"}"
-  ((${#value} <= max)) && printf '%s\n' "$value" || printf '%s\n' "${value:0:max}"
+  trimmed_ref="${value:0:max}"
+}
+
+basename_into() {
+  local -n base_ref="$1"
+  local path="$2" suffix="${3:-}"
+  if [[ $path == -?* ]]; then
+    base_ref="$(basename "$path" ${suffix:+"$suffix"} 2>/dev/null || printf '%s' "$path")"
+    return
+  fi
+  [[ $path =~ ^/+$ ]] && { base_ref=/; return; }
+  path="${path%"${path##*[!/]}"}"
+  path="${path##*/}"
+  [[ -n $suffix && $path != "$suffix" ]] && path="${path%"$suffix"}"
+  base_ref="$path"
+}
+
+foreground_process_into() {
+  local -n proc_ref="$1" args_ref="$2"
+  local stat="" fields=() last_proc="" last_args=""
+  while read -r -a fields; do
+    stat="${fields[0]}" last_proc="${fields[1]:-}" last_args="${fields[*]:2}"
+    [[ $stat =~ ^[^TXZ\ ]*\+ ]] && break
+  done < <(ps -t "$1" -o stat= -o comm= -o args= 2>/dev/null)
+  proc_ref="${last_proc##*/}" args_ref="$last_args"
 }
 
 resolve_process() {
-  local tty="$1" fallback="$2" record proc args script
-  [[ -n $tty ]] || { printf '%s\n' "${fallback:-shell}"; return; }
-  record="$(ps -t "$tty" -o stat= -o comm= -o args= 2>/dev/null | awk -v field_separator="$FIELD_SEPARATOR" '
-    {
-      stat=$1; comm=$2; $1=$2=""; sub(/^[[:space:]]+/, "")
-      row=comm field_separator $0
-      last=row
-      if (stat ~ /^[^TXZ ]*\+/) { found=1; print row; exit }
-    }
-    END { if (!found && last != "") print last }
-  ')"
-  IFS="$FIELD_SEPARATOR" read -r proc args <<< "$record"
-  proc="${proc##*/}"
-  [[ -n $proc || -n $args ]] || { printf '%s\n' "${fallback:-shell}"; return; }
+  local tty="$1" fallback="$2" proc="" args="" script=""
+  [[ -n $tty ]] || { resolved="${fallback:-shell}"; return; }
+  foreground_process_into proc args "$tty"
+  [[ -n $proc || -n $args ]] || { resolved="${fallback:-shell}"; return; }
 
   if [[ $args =~ (^|[[:space:]/])(codex|claude|anthropic|aider)([[:space:]]|$) ]]; then
-    printf '%s\n' "${BASH_REMATCH[2]}"
+    resolved="${BASH_REMATCH[2]}"
   elif [[ $args =~ (^|[[:space:]])(g?(view|n?vim?x?)(diff)?)([[:space:]]|$) ]]; then
-    printf 'nvim\n'
+    resolved=nvim
   elif [[ $proc == node && $args =~ node([[:space:]]+[^[:space:]-][^[:space:]]*) ]]; then
-    script="${BASH_REMATCH[1]}"
-    script="$(trim "$script")"
-    script="$(basename "$script" .js 2>/dev/null || printf '%s' "$script")"
-    case "$script" in npm | npx | yarn | pnpm | bun) printf '%s\n' "$script" ;; *) trim "$script" ;; esac
+    trim_into script "${BASH_REMATCH[1]}"
+    basename_into script "$script" .js
+    case "$script" in npm | npx | yarn | pnpm | bun) resolved="$script" ;; *) trim_into resolved "$script" ;; esac
   elif [[ $proc =~ ^python || $proc == uv ]]; then
     if [[ $args =~ python[^[:space:]]*[[:space:]]+-m[[:space:]]+([^[:space:]]+) ]]; then
-      trim "${BASH_REMATCH[1]}"
+      trim_into resolved "${BASH_REMATCH[1]}"
     elif [[ $args =~ (^|[[:space:]])([^[:space:]]+\.py)([[:space:]]|$) ]]; then
-      script="$(basename "${BASH_REMATCH[2]}" .py 2>/dev/null || printf '%s' "${BASH_REMATCH[2]}")"
-      trim "$script"
+      basename_into script "${BASH_REMATCH[2]}" .py
+      trim_into resolved "$script"
     else
-      printf 'python\n'
+      resolved=python
     fi
   elif [[ $proc =~ ^(bash|zsh|sh|fish)$ && $args =~ ${proc}[[:space:]]+([^[:space:]-][^[:space:]]*) ]]; then
-    script="$(basename "${BASH_REMATCH[1]}" 2>/dev/null || printf '%s' "${BASH_REMATCH[1]}")"
+    basename_into script "${BASH_REMATCH[1]}"
     script="${script%.sh}"; script="${script%.bash}"; script="${script%.zsh}"
-    if [[ $script =~ ^(\.|config|rc|profile)$ || -z $script ]]; then trim "$proc"; else trim "$script"; fi
+    if [[ $script =~ ^(\.|config|rc|profile)$ || -z $script ]]; then trim_into resolved "$proc"; else trim_into resolved "$script"; fi
   elif [[ $proc =~ ^(ssh|mosh)$ && $args =~ ${proc}[[:space:]]+([^[:space:]]+@)?([^[:space:]]+) ]]; then
-    printf '%s:%s\n' "$proc" "$(trim "${BASH_REMATCH[2]}" "$HOST_MAX_CHARS")"
+    trim_into script "${BASH_REMATCH[2]}" "$HOST_MAX_CHARS"
+    resolved="$proc:$script"
   elif [[ $args =~ /nix/store/[^/]+/bin/([^[:space:]]+) ]]; then
-    trim "${BASH_REMATCH[1]}"
+    trim_into resolved "${BASH_REMATCH[1]}"
   else
-    trim "${proc:-${fallback:-shell}}"
+    trim_into resolved "${proc:-${fallback:-shell}}"
   fi
 }
 
-resolved="$(resolve_process "$tty" "$cmd" 2>/dev/null || true)"
+resolved=""
+resolve_process "$tty" "$cmd" 2>/dev/null || true
 [[ -n $resolved ]] && cmd="$resolved"
 
 case "$cmd" in
   codex | claude | anthropic | aider)
-    icon=󰚩; label="$(trim "$pane_title")"; label="${label:-$cmd}"; label="$(trim "$label" "$AGENT_TITLE_MAX_CHARS")" ;;
+    icon=󰚩; trim_into label "$pane_title"; trim_into label "${label:-$cmd}" "$AGENT_TITLE_MAX_CHARS" ;;
   nvim | vim | vi | view) icon=; label=nvim ;;
   zsh | bash | fish | sh) icon=; label="$cmd" ;;
   ssh:* | mosh:*) icon=󰣀; label="${cmd#*:}" ;;

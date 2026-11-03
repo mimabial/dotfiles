@@ -15,6 +15,7 @@ Singleton {
     readonly property var players: Mpris.players ? Mpris.players.values : []
     readonly property var sourcePlayers: availablePlayers()
     readonly property var player: chooseActivePlayer()
+    readonly property var controlTarget: player || players.find(candidate => playerKey(candidate) === selectedPlayer) || null
     readonly property bool hasMedia: player !== null
         && player.playbackState !== MprisPlaybackState.Stopped && hasTrack(player)
     readonly property string title: player ? String(player.trackTitle || "") : ""
@@ -76,7 +77,7 @@ Singleton {
         if (key && key !== selectedPlayer) { selectedPlayer = key; selection.setText(JSON.stringify({ player: key, updated_at: Date.now() / 1000 }) + "\n") }
     }
     function ended(player) { return player.canSeek && player.lengthSupported && player.positionSupported && player.length - player.position < endTolerance }
-    function playPause(target = player) {
+    function playPause(target = controlTarget) {
         if (!target) return false
         if (target.isPlaying && target.canPause) target.pause()
         else if (!target.isPlaying && target.canPlay) { if (ended(target)) target.position = 0; target.play() }
@@ -85,14 +86,17 @@ Singleton {
         select(target)
         return true
     }
-    function previous() {
-        if (!player || !player.canGoPrevious) return false
-        player.previous()
-        select(player)
+    function previous(target = controlTarget) {
+        if (!target || !target.canGoPrevious) return false
+        target.previous()
+        select(target)
         return true
     }
-    function canNext(target = player) { return !!target && (MediaModel.isCliampPlayer(target) ? cliampQueued : target.canGoNext) }
-    function next(target = player) {
+    function canNext(target = controlTarget) {
+        if (!target) return false
+        return MediaModel.isCliampPlayer(target) && target.playbackState === MprisPlaybackState.Stopped ? cliampQueued : target.canGoNext
+    }
+    function next(target = controlTarget) {
         if (!canNext(target)) return false
         if (MediaModel.isCliampPlayer(target)) Quickshell.execDetached(["python3", cliampCtl, "next"])
         else target.next()
@@ -131,9 +135,9 @@ Singleton {
     }
 
     FileView {
-        path: Quickshell.env("HOME") + "/.cache/cliamp/queue.json"; watchChanges: true; printErrors: false
+        path: Quickshell.env("HOME") + "/.cache/cliamp/mpv_playlist.json"; watchChanges: true; printErrors: false
         onFileChanged: reload()
-        onLoaded: { try { root.cliampQueued = JSON.parse(text()).length > 0 } catch (error) {} }
+        onLoaded: { try { root.cliampQueued = MediaModel.hasUpcoming(JSON.parse(text())) } catch (error) {} }
     }
     FileView {
         id: selection

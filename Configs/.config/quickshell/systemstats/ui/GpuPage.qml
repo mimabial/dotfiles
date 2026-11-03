@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import qs.Commons as Commons
-import qs.Ui as Ui
 import "../Model.js" as Model
 import "../../Units.js" as Units
 
@@ -20,8 +19,8 @@ Column {
 
   readonly property var snap: service ? service.snapshot : ({})
   readonly property var hist: service ? Model.peakHistoryView(service.history, service.historyHour, service.historyDay, historyRange) : Model.emptyHistory()
-  readonly property var gpu: snap.gpu || null
-  readonly property var devices: gpu && Array.isArray(gpu.devices) ? gpu.devices : []
+  readonly property var devices: Model.gpuList(snap)
+  readonly property bool lightTheme: foreground.hslLightness < 0.5
 
   function headerDetail(device) {
     var parts = []
@@ -44,31 +43,6 @@ Column {
   width: parent ? parent.width : implicitWidth
   spacing: Commons.Style.space(10)
 
-  Card {
-    visible: root.devices.length > 1
-    foreground: root.foreground
-
-    SectionTitle { text: "Activity source"; fontFamily: root.fontFamily }
-
-    Repeater {
-      model: root.devices.length
-
-      delegate: Ui.Button {
-        required property int index
-        readonly property var device: root.devices[index] || ({})
-        readonly property bool active: device.active === true
-        width: parent.width
-        text: (active ? "Selected · " : "Select · ") + Model.gpuIcon(device.vendor) + "  " + Model.shortGpuName(device.name)
-        selected: active
-        bordered: true
-        foreground: root.foreground
-        accent: Commons.Color.accent
-        fontFamily: root.fontFamily
-        onClicked: if (!active && root.service) root.service.selectGpu(device.vendor)
-      }
-    }
-  }
-
   Repeater {
     model: root.devices.length
 
@@ -77,61 +51,72 @@ Column {
       required property int index
       readonly property var device: root.devices[index] || ({})
       readonly property color seriesColor: root.graphColor(index)
+      readonly property string gpuKey: Model.gpuId(device)
+      readonly property bool awake: device.asleep !== true
+      readonly property var utilHistory: root.hist.gpus && root.hist.gpus[gpuKey] || []
+      readonly property var tempHistory: root.hist.gpuTemps && root.hist.gpuTemps[gpuKey] || []
+      readonly property var vramHistory: root.hist.vrams && root.hist.vrams[gpuKey] || []
+      readonly property bool showTemps: Model.hasReading(tempHistory)
+      readonly property bool showVram: Model.hasReading(vramHistory)
       foreground: root.foreground
 
       CardHeader {
         title: Model.gpuIcon(gpuCard.device.vendor) + "  " + Model.shortGpuName(gpuCard.device.name)
-        detail: root.headerDetail(gpuCard.device)
+        detail: gpuCard.awake ? root.headerDetail(gpuCard.device) : "Asleep"
         foreground: root.foreground
         fontFamily: root.fontFamily
       }
 
       HistoryGraph {
+        visible: Model.hasReading(gpuCard.utilHistory)
         width: parent.width
         height: Commons.Style.space(56)
         barWidth: Model.historyBarWidth(width, root.historyRange)
         showGaps: root.historyRange > 0
-        series: [root.hist.gpus && root.hist.gpus[gpuCard.device.vendor] || []]
+        series: [gpuCard.utilHistory]
         colors: [gpuCard.seriesColor]
+        sampleColors: [Model.utilizationHistoryColors(gpuCard.utilHistory, root.settings, root.lightTheme)]
         ceiling: 100
         baselineColor: Commons.Util.alpha(root.foreground, 0.14)
       }
 
       SectionTitle {
-        visible: Model.hasReading(root.hist.gpuTemps && root.hist.gpuTemps[gpuCard.device.vendor])
+        visible: gpuCard.showTemps
         text: "Temperature"
         fontFamily: root.fontFamily
       }
       HistoryGraph {
-        visible: Model.hasReading(root.hist.gpuTemps && root.hist.gpuTemps[gpuCard.device.vendor])
+        visible: gpuCard.showTemps
         width: parent.width
         height: Commons.Style.space(44)
         barWidth: Model.historyBarWidth(width, root.historyRange)
         showGaps: root.historyRange > 0
-        series: [root.hist.gpuTemps && root.hist.gpuTemps[gpuCard.device.vendor] || []]
+        series: [gpuCard.tempHistory]
         colors: [gpuCard.seriesColor]
         minimumCeiling: Model.TEMPERATURE_SCALE_FLOOR
         baselineColor: Commons.Util.alpha(root.foreground, 0.14)
       }
 
       SectionTitle {
-        visible: Model.hasReading(root.hist.vrams && root.hist.vrams[gpuCard.device.vendor])
+        visible: gpuCard.showVram
         text: "VRAM usage"
         fontFamily: root.fontFamily
       }
       HistoryGraph {
-        visible: Model.hasReading(root.hist.vrams && root.hist.vrams[gpuCard.device.vendor])
+        visible: gpuCard.showVram
         width: parent.width
         height: Commons.Style.space(44)
         barWidth: Model.historyBarWidth(width, root.historyRange)
         showGaps: root.historyRange > 0
-        series: [root.hist.vrams && root.hist.vrams[gpuCard.device.vendor] || []]
+        series: [gpuCard.vramHistory]
         colors: [gpuCard.seriesColor]
+        sampleColors: [Model.utilizationHistoryColors(gpuCard.vramHistory, root.settings, root.lightTheme)]
         ceiling: 100
         baselineColor: Commons.Util.alpha(root.foreground, 0.14)
       }
 
       StatRow {
+        visible: gpuCard.awake
         label: "Utilization"
         dot: gpuCard.seriesColor
         value: gpuCard.device.util !== null && isFinite(Number(gpuCard.device.util)) ? String(Math.round(gpuCard.device.util)) : "—"
@@ -169,6 +154,18 @@ Column {
         fontFamily: root.fontFamily
       }
 
+      ProcessList {
+        visible: Model.flag(root.settings, "showProcesses") && gpuCard.awake
+        expandable: false
+        items: Array.isArray(gpuCard.device.procs) ? gpuCard.device.procs : []
+        columns: [
+          { key: "util", kind: "percent", title: "Load" },
+          { key: "mem", kind: "bytes", title: gpuCard.device.integrated ? "Memory" : "VRAM" }
+        ]
+        emptyText: Array.isArray(gpuCard.device.procs) ? "Nothing using this GPU" : "Measuring…"
+        foreground: root.foreground
+        fontFamily: root.fontFamily
+      }
     }
   }
 }

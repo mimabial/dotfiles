@@ -13,7 +13,7 @@ vpn_detect_mullvad_into() {
   fi
 
   detected_status_ref[provider_configured_or_detected]=true
-  if ! mullvad_status="$(vpn_mullvad_status)"; then
+  if ! mullvad_status="$(mullvad status 2>&1)"; then
     detected_status_ref[connection]=error
     detected_status_ref[tooltip]="<b>Mullvad VPN Error</b>\nFailed to get status\n${mullvad_status}"
     return 0

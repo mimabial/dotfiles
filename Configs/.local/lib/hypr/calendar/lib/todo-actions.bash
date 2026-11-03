@@ -17,7 +17,7 @@ emit_todos() {
     args+=(--status ANY)
     carry_mode=read
   fi
-  mkdir -p "${TODO_CARRY_STATE_FILE%/*}"
+  [[ -d "${TODO_CARRY_STATE_FILE%/*}" ]] || mkdir -p "${TODO_CARRY_STATE_FILE%/*}"
   (
     flock -x 9
     python3 "${calendar_library}/todo_carry.py" \

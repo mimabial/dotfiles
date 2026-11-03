@@ -2,7 +2,7 @@
 
 menu_collect_search_rows() {
   local menu_id="$1" path="$6" depth="${7:-0}"
-  local label="" key="" kind="" target="" next_path=""
+  local label="" key="" kind="" target=""
   local label_markup="" path_display="${path}" path_markup="" row=""
   local -n direct_rows_ref="$2" deeper_rows_ref="$3" direct_item_keys_ref="$4" deeper_item_keys_ref="$5"
 
@@ -13,6 +13,7 @@ menu_collect_search_rows() {
 
   menu_escape_markup_reply "${path_display}"
   path_markup="${REPLY}"
+  menu_fill_deferred "${menu_id}"
 
   while IFS= read -r label; do
     [[ -n "${label}" ]] || continue
@@ -35,11 +36,8 @@ menu_collect_search_rows() {
     fi
 
     [[ "${kind}" == "submenu" ]] || continue
-    next_path="${label}"
-    if [[ "${label}" =~ ^[^\ -~][[:space:]]+(.+)$ ]]; then
-      next_path="${BASH_REMATCH[1]}"
-    fi
-    menu_collect_search_rows "${target}" "$2" "$3" "$4" "$5" "${path} › ${next_path}" $((depth + 1))
+    menu_label_text_reply "${label}"
+    menu_collect_search_rows "${target}" "$2" "$3" "$4" "$5" "${path} › ${REPLY}" $((depth + 1))
   done <<<"${HYPR_MENU_LABELS["${menu_id}"]:-}"
 }
 
@@ -74,7 +72,8 @@ menu_show_search() {
   options="$(IFS="${MENU_ROW_SEP}"; printf '%s' "${rows[*]}")"
 
   MENU_PROMPT_GLYPH="${HYPR_MENU_GLYPHS[search_all]:-}"
-  selection="$(menu "Search" "${options}" --nav search --rows detail)"
+  menu_breadcrumb_into MENU_PLACEHOLDER "${menu_id}" Search
+  selection="$(menu Search "${options}" --nav search --rows detail)"
   rofi_exit=$?
 
   if ((rofi_exit == MENU_EXIT_BACK)); then

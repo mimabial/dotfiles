@@ -44,8 +44,8 @@ def main() -> int:
   if opencode is not None:
     stats = merge_stats(stats, opencode)
 
-  access_token, expires_at_ms, plan = oauth_login(claude_dir)
-  limits = collect_limits(access_token, expires_at_ms)
+  login = oauth_login(claude_dir)
+  limits = collect_limits(login.access_token, login.expires_at_ms)
 
   record = {
     "schemaVersion": 1,
@@ -54,7 +54,7 @@ def main() -> int:
     "updatedAt": dt.datetime.now(dt.timezone.utc).isoformat(),
     "ready": rounded_token_count(stats.get("totalPrompts")) > 0 or len(limits["limits"]) > 0,
     "hasLocalStats": True,
-    "tierLabel": plan,
+    "tierLabel": login.plan,
     "usageStatusText": limits["usageStatusText"],
     "authHelpText": limits["authHelpText"],
     "limits": limits["limits"],

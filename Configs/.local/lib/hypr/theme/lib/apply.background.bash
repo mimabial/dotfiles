@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Architecture: ../PHASES.md
+declare -F hypr_svc_user >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/services.bash" || return 1
 
 theme_apply_background_log_dir=""
 
@@ -7,9 +8,9 @@ theme_apply_prepare_background_log_dir() {
   local log_root="${XDG_CACHE_HOME:-$HOME/.cache}/hypr/theme.apply.phase-d"
 
   [[ -n "${theme_apply_background_log_dir}" && -d "${theme_apply_background_log_dir}" ]] && return 0
-  mkdir -p "${log_root}" || return 1
+  [[ -d "${log_root}" ]] || mkdir -p "${log_root}" || return 1
   theme_apply_background_log_dir="${log_root}/${theme_apply_generation:-0}.$$"
-  mkdir -p "${theme_apply_background_log_dir}" || return 1
+  [[ -d "${theme_apply_background_log_dir}" ]] || mkdir -p "${theme_apply_background_log_dir}" || return 1
 }
 
 theme_apply_background_handle_dir() {
@@ -45,7 +46,7 @@ theme_apply_cancel_previous_background_jobs() {
   local handle=""
 
   handle_dir="$(theme_apply_background_handle_dir)" || return 0
-  mkdir -p "${handle_dir}" || return 0
+  [[ -d "${handle_dir}" ]] || mkdir -p "${handle_dir}" || return 0
 
   while IFS= read -r -d '' handle_file; do
     base="${handle_file##*/}"
@@ -95,7 +96,7 @@ theme_apply_start_background_updates() {
 
   theme_apply_prepare_background_log_dir || return 1
   handle_dir="$(theme_apply_background_handle_dir)" || return 1
-  mkdir -p "${handle_dir}" || return 1
+  [[ -d "${handle_dir}" ]] || mkdir -p "${handle_dir}" || return 1
   handle_file="${handle_dir}/${theme_apply_generation}-envelope.unit"
   log_file="${theme_apply_background_log_dir}/envelope.log"
 
@@ -183,7 +184,7 @@ theme_apply_run_background_updates_cli() {
     printf 'pid:%s\n' "$$" >"${handle_file}" 2>/dev/null || true
   fi
   theme_apply_preserve_job_logs=1
-  mkdir -p "${log_dir}" || return 1
+  [[ -d "${log_dir}" ]] || mkdir -p "${log_dir}" || return 1
   theme_apply_quiet="${quiet}"
   export theme_apply_quiet
 

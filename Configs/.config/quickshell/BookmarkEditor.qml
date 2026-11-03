@@ -322,20 +322,13 @@ Item {
 
     Item {
       width: parent.width
-      height: Commons.Style.space(32)
+      height: Math.max(Commons.Style.space(32), childrenRect.height)
 
-      Text {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.verticalCenter: parent.verticalCenter
-
-        text: root.validationError
-        textFormat: Text.PlainText
-        visible: text !== ""
-        color: Commons.Color.urgent
-        font.family: Commons.Style.font.menuFamily
-        font.pixelSize: Commons.Style.font.caption
-        elide: Text.ElideRight
+      PopupHint {
+          shell: Commons.Style.shell; error: true
+          anchors.left: parent.left; anchors.right: parent.right
+          anchors.verticalCenter: parent.verticalCenter
+          text: root.validationError
       }
     }
 

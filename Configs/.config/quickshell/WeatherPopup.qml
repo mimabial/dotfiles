@@ -6,8 +6,9 @@ import "CalendarMath.js" as CalendarMath
 
 PopupCard {
     id: root
+    readonly property string locationScript: root.shell.home + "/.local/lib/hypr/util/weather-location.sh"
     popupName: "weather"
-    keyboardHint: searching ? "Type city · ↑↓ suggestions · Enter select · Esc" : "←→ forecast · ↑↓ day · U units · R refresh · S city · Esc"
+    keyboardHint: searching ? "Type city  ↑↓ Suggestions  Enter Select  Esc" : "←→ Forecast  ↑↓ Day  U Units  R Refresh  S City  Esc"
     contentWidth: Style.px(420)
     contentHeight: weatherColumn.implicitHeight + 32
     readonly property var conditions: Weather.data.current_condition ? Weather.data.current_condition[0] : ({})
@@ -146,7 +147,7 @@ PopupCard {
     }
     function pick(place) {
         const label = place.name + (place.country ? ", " + place.country : "")
-        shell.run(["hyprshell", "util/weather-location", "--pin",
+        shell.run(["bash", root.locationScript, "--pin",
                    place.latitude + "," + place.longitude, label], root.readPinnedCity)
         suggestions = []
         cityField.text = ""
@@ -184,12 +185,12 @@ PopupCard {
     }
 
     property Process pinnedCityProcess: Process {
-        command: ["hyprshell", "util/weather-location"]
+        command: ["bash", root.locationScript]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.pinnedCity = String(text).trim() }
     }
 
     function setLocation(name) {
-        shell.run(["hyprshell", "util/weather-location", name], root.readPinnedCity)
+        shell.run(["bash", root.locationScript, name], root.readPinnedCity)
     }
 
     function value(list, fallback) { return list && list.length ? list[0].value : fallback }
@@ -370,9 +371,7 @@ PopupCard {
                     required property int index
                     readonly property bool cursored: root.suggestionIndex === index
                     width: parent.width; height: Style.popupRowHeight; radius: root.shell.rounding
-                    color: (pickMouse.containsMouse || cursored) ? root.shell.hoverFill(1.5) : "transparent"
-                    border.width: cursored ? 1 : 0
-                    border.color: root.shell.hoverEdge(.85)
+                    color: (pickMouse.containsMouse || cursored) ? root.shell.hoverFill() : "transparent"
                     Text {
                         anchors.left: parent.left; anchors.leftMargin: Style.px(6)
                         anchors.verticalCenter: parent.verticalCenter
@@ -414,9 +413,7 @@ PopupCard {
                     readonly property bool cursored: root.cardIndex === index
                     width: (forecast.width - forecast.spacing * 4) / 5; height: forecast.height
                     radius: root.shell.rounding
-                    color: (dayMouse.containsMouse || cursored) ? root.shell.hoverFill(1.5) : root.shell.alpha(root.shell.foreground, .045)
-                    border.width: cursored ? 1 : 0
-                    border.color: root.shell.hoverEdge(.85)
+                    color: (dayMouse.containsMouse || cursored) ? root.shell.hoverFill() : root.shell.alpha(root.shell.foreground, .045)
                     Column {
                         anchors.centerIn: parent; spacing: Style.xxs
                         Text {

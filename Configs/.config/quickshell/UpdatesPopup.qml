@@ -120,11 +120,10 @@ PopupCard {
             PopupSection { shell: root.shell; text: "CHECK ERRORS" }
             Repeater {
                 model: root.errors
-                Text {
+                PopupHint {
                     required property var modelData
-                    width: updatesColumn.width; text: modelData; wrapMode: Text.Wrap
-                    color: root.shell.role("error", root.shell.foreground)
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                    shell: root.shell; error: true
+                    width: updatesColumn.width; text: modelData
                 }
             }
         }

@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import math
 import os
+import signal
 import socket
 import subprocess
+import sys
 import threading
 import time
 
@@ -21,6 +23,9 @@ PROTOCOL_VERSION = 1
 # recomputed rather than written straight through.
 DERIVED_OUTPUT_FIELDS = ("width", "height", "refresh")
 EDIT_DIRECTIVES = ("output_key", "snap_distance", "snap_beside")
+HYPRLAND_SCALE_STEPS = 120
+MAX_SCALE = 4
+SCALE_DECIMALS = 5
 
 
 def log(message: str) -> None:
@@ -51,7 +56,7 @@ def _save_state(state: dict) -> None:
     os.replace(tmp, STATE_PATH)
 
 
-def apply_mode(output: dict) -> None:
+def split_mode_fields(output: dict) -> None:
     mode = str(output.get("mode", ""))
     body = mode[:-2] if mode.endswith("Hz") else mode
     geometry, _, refresh = body.partition("@")
@@ -69,6 +74,16 @@ def logical_size(output: dict) -> tuple[int, int]:
     scale = float(output.get("scale") or 1)
     width, height = (max(1, round(output.get(side, 1) / scale)) for side in ("width", "height"))
     return (height, width) if int(output.get("transform", 0)) % 2 else (width, height)
+
+
+def sharp_scales(width: int, height: int) -> list[float]:
+    if not (width and height):
+        return []
+    return [
+        round(steps / HYPRLAND_SCALE_STEPS, SCALE_DECIMALS)
+        for steps in range(HYPRLAND_SCALE_STEPS, MAX_SCALE * HYPRLAND_SCALE_STEPS + 1)
+        if not (HYPRLAND_SCALE_STEPS * width % steps or HYPRLAND_SCALE_STEPS * height % steps)
+    ]
 
 
 def placed(profile: dict) -> list[dict]:
@@ -114,7 +129,10 @@ def snap_beside(profile: dict, key: str, direction: str) -> None:
     anchors = [o for o in outputs if o is not target]
     if not target or not anchors:
         raise ValueError("No other enabled display is available for snapping.")
-    anchor = min(anchors, key=lambda o: math.dist(centre(o), centre(target)))
+    place_beside(target, min(anchors, key=lambda o: math.dist(centre(o), centre(target))), direction)
+
+
+def place_beside(target: dict, anchor: dict, direction: str) -> None:
     (width, height), (anchor_width, anchor_height) = logical_size(target), logical_size(anchor)
     x, y = anchor.get("x", 0), anchor.get("y", 0)
     centred_x, centred_y = x + (anchor_width - width) // 2, y + (anchor_height - height) // 2
@@ -124,6 +142,39 @@ def snap_beside(profile: dict, key: str, direction: str) -> None:
         "up": (centred_x, y - height),
         "down": (centred_x, y + anchor_height),
     }[direction]
+
+
+def right_edge(output: dict) -> int:
+    return output.get("x", 0) + logical_size(output)[0]
+
+
+def extend_with_unknown_outputs(profile: dict, monitors: list[dict]) -> None:
+    connected = {hypr.monitor_key(m) for m in monitors}
+    known = {profiles.match_key(o) for o in profile["outputs"]}
+    for monitor in monitors:
+        key = hypr.monitor_key(monitor)
+        if key in known or monitor.get("disabled") or not monitor.get("width"):
+            continue
+        known.add(key)
+        output = profiles.output_from_monitor(monitor, monitors)
+        anchors = [o for o in placed(profile) if profiles.match_key(o) in connected]
+        if anchors:
+            place_beside(output, max(anchors, key=right_edge), "right")
+        profile["outputs"].append(output)
+
+
+def clamshell(profile: dict, monitors: list[dict]) -> None:
+    lit = {hypr.monitor_key(m) for m in monitors if not m.get("disabled") and m.get("width")}
+    outputs = profile["outputs"]
+    if any(o.get("enabled", True) and not hypr.is_internal(o) and profiles.match_key(o) in lit for o in outputs):
+        for output in outputs:
+            if hypr.is_internal(output):
+                output["enabled"] = False
+
+
+def lights_a_connected_display(profile: dict, monitors: list[dict]) -> bool:
+    connected = {hypr.monitor_key(m) for m in monitors}
+    return any(o.get("enabled", True) and profiles.match_key(o) in connected for o in profile["outputs"])
 
 
 def edit_profile(profile: dict, edit: dict) -> dict:
@@ -144,7 +195,7 @@ def edit_profile(profile: dict, edit: dict) -> dict:
         if field not in EDIT_DIRECTIVES + DERIVED_OUTPUT_FIELDS:
             output[field] = value
     if "mode" in edit:
-        apply_mode(output)
+        split_mode_fields(output)
     if edit.get("snap_distance"):
         snap(draft, key, float(edit["snap_distance"]))
     if edit.get("snap_beside"):
@@ -160,7 +211,6 @@ class Daemon:
         self.state = _load_state()
         self.preview: dict | None = None
         self.monitors: list[dict] = []
-        self.refresh_monitors()
 
     @property
     def unmanaged(self) -> bool:
@@ -252,14 +302,13 @@ class Daemon:
         return entry
 
     def display_entry(self, monitor: dict) -> dict:
-        scales = [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3]
         return {
             "key": hypr.monitor_key(monitor),
             "name": monitor.get("name", ""),
             "description": monitor.get("description", ""),
             "serial": monitor.get("serial", ""),
             "available_modes": monitor.get("availableModes", []),
-            "scale_options": scales,
+            "scale_options": sharp_scales(int(monitor.get("width", 0)), int(monitor.get("height", 0))),
             "physical_width": int(monitor.get("physicalWidth", 0)),
             "physical_height": int(monitor.get("physicalHeight", 0)),
             "internal": monitor.get("name", "").startswith(("eDP", "LVDS", "DSI")),
@@ -306,8 +355,20 @@ class Daemon:
                 except OSError:
                     self.clients.remove(client)
 
+    def effective(self, profile: dict) -> dict:
+        draft = json.loads(json.dumps(profile))
+        extend_with_unknown_outputs(draft, self.monitors)
+        if hypr.lid_closed():
+            clamshell(draft, self.monitors)
+        return draft
+
     def activate(self, profile: dict, remember: bool = True) -> None:
-        render.apply(profile)
+        if self.unmanaged:
+            raise ValueError("Monitor management is off; run hyprmoncfg manage first")
+        effective = self.effective(profile)
+        if not lights_a_connected_display(effective, self.monitors):
+            raise ValueError("%s would leave every connected display dark" % (profile.get("name") or "This layout"))
+        render.apply(effective)
         if remember and (command := profile.get("exec")):
             hypr.exec_command(command)
         if remember:
@@ -328,15 +389,19 @@ class Daemon:
         if self.unmanaged or not self.auto or self.preview:
             return
         self.refresh_monitors()
-        match = profiles.best(self.available_monitors())
-        if not match or match["name"] == self.state.get("active_profile"):
+        ranked = profiles.rank(self.available_monitors())
+        profile = profiles.by_name(ranked[0]["name"]) if ranked else None
+        if not profile:
             return
-        profile = profiles.by_name(match["name"])
-        if profile:
-            log("best profile %r score=%d lid=%s" % (
-                match["name"], match["match_score"], "closed" if hypr.lid_closed() else "open"))
-            self.activate(profile)
-            log("applied profile: %s" % match["name"])
+        switching = profile["name"] != self.state.get("active_profile")
+        try:
+            self.activate(profile, remember=switching)
+        except (RuntimeError, ValueError) as error:
+            log("monitor change not applied: %s" % error)
+            return
+        if switching:
+            log("applied profile %r score=%d lid=%s" % (
+                profile["name"], ranked[0]["match_score"], "closed" if hypr.lid_closed() else "open"))
 
     def start_preview(self, params: dict) -> dict:
         if self.preview:
@@ -348,6 +413,7 @@ class Daemon:
             raise ValueError("No profile to preview")
 
         timeout = max(1, int(params.get("timeout_seconds", 10) or 10))
+        self.refresh_monitors()
         # The rollback target is live state, not the stored profile: whatever is
         # on screen now is what the user gets back if they do nothing.
         live_rollback_profile = profiles.capture("__previous__", self.monitors)
@@ -360,8 +426,8 @@ class Daemon:
             "profile": profile,
             "rollback_profile": live_rollback_profile,
         }
-        self.preview = transaction
         self.activate(profile, remember=False)
+        self.preview = transaction
         expiry = threading.Timer(timeout, self.expire_preview, (transaction["id"],))
         expiry.daemon = True
         expiry.start()
@@ -429,6 +495,7 @@ class Daemon:
         profile = profiles.by_name(name)
         if not profile:
             raise ValueError("No saved profile called %s" % name)
+        self.refresh_monitors()
         self.activate(profile)
         return {"applied": name}, True
 
@@ -448,13 +515,21 @@ class Daemon:
             self.auto_switch()
         return {"enabled": self.auto}, True
 
+    def set_managed(self, managed: bool) -> None:
+        if managed:
+            self.set_state(unmanaged=False)
+            self.auto_switch()
+            return
+        self.preview = None
+        self.set_state(unmanaged=True, active_profile="", auto=True)
+        render.release()
+
     def rpc_manage(self, params: dict, client: socket.socket):
-        self.set_state(unmanaged=False)
-        self.auto_switch()
+        self.set_managed(True)
         return {"unmanaged": False}, True
 
     def rpc_unmanage(self, params: dict, client: socket.socket):
-        self.set_state(unmanaged=True)
+        self.set_managed(False)
         return {"unmanaged": True}, True
 
     RPC_METHODS = {
@@ -526,33 +601,25 @@ class Daemon:
             self.broadcast()
 
     def apply_monitor_change(self) -> None:
-        try:
-            with self.lock:
-                self.auto_switch()
-                self.refresh_monitors()
-        except RuntimeError as error:
-            log("monitor change not applied: %s" % error)
-            return
+        with self.lock:
+            self.auto_switch()
+            self.refresh_monitors()
         self.broadcast()
 
-    def watch_hyprland(self) -> None:
-        while True:
-            try:
-                conn = hypr.connect_events()
-            except (OSError, RuntimeError) as error:
-                log("Hyprland event socket unavailable (%s); hotplug watching stopped" % error)
-                return
-            try:
-                for event, _payload in hypr.read_events(conn):
-                    if event in ("monitoraddedv2", "monitorremovedv2"):
-                        self.apply_monitor_change()
-            except OSError as error:
-                log("Hyprland event stream failed (%s); reconnecting" % error)
+    def watch_hyprland(self, events: socket.socket) -> None:
+        try:
+            for event, _payload in hypr.read_events(events):
+                if event in ("monitoraddedv2", "monitorremovedv2"):
+                    self.apply_monitor_change()
+        except OSError as error:
+            log("Hyprland event stream failed (%s); exiting" % error)
+            return
+        log("Hyprland closed its event socket; exiting")
 
     def watch_lid(self) -> None:
         logind = subprocess.Popen(
-            ["gdbus", "monitor", "--system", "--dest", "org.freedesktop.login1",
-             "--object-path", "/org/freedesktop/login1"],
+            ["setpriv", "--pdeathsig", "TERM", "gdbus", "monitor", "--system",
+             "--dest", "org.freedesktop.login1", "--object-path", "/org/freedesktop/login1"],
             stdout=subprocess.PIPE, text=True)
         for line in logind.stdout:
             if "'LidClosed'" not in line:
@@ -563,6 +630,7 @@ class Daemon:
             self.broadcast()
 
     def run(self) -> None:
+        self.refresh_monitors()
         if os.path.exists(SOCKET_PATH):
             os.unlink(SOCKET_PATH)
         server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -571,11 +639,19 @@ class Daemon:
         server.listen(8)
 
         log("starting daemon")
-        for target in (self.watch_hyprland, self.watch_lid):
-            threading.Thread(target=target, daemon=True).start()
+        events = hypr.connect_events()
+        signal.signal(signal.SIGTERM, lambda *_: sys.exit())
+        threading.Thread(target=self.accept_clients, args=(server,), daemon=True).start()
+        threading.Thread(target=self.watch_lid, daemon=True).start()
         log("lid state: %s" % ("closed" if hypr.lid_closed() else "open"))
-        self.auto_switch()
+        try:
+            self.auto_switch()
+            self.watch_hyprland(events)
+        finally:
+            if transaction := self.preview:
+                self.expire_preview(transaction["id"])
 
+    def accept_clients(self, server: socket.socket) -> None:
         while True:
             client, _ = server.accept()
             threading.Thread(target=self.serve_client, args=(client,), daemon=True).start()

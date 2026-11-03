@@ -12,7 +12,7 @@ PopupCard {
     wantsKeyboard: true
     contentWidth: Commons.Style.space(280)
     contentHeight: actionHost.implicitHeight + padding * 2
-    keyboardHint: "↑↓ move · Enter select · ←/Esc back"
+    keyboardHint: "↑↓ Move  Enter Select  ←/Esc Back"
     padding: Commons.Style.space(4)
     background: Commons.Color.menu.background
     borderColor: Commons.Color.menu.border
@@ -20,6 +20,9 @@ PopupCard {
     property var recentFiles: []
     property int selectedWindowIdx: -1
     readonly property var actionWindows: record ? taskbar.windowsFor(record) : []
+    readonly property var selectedWindow: actionWindows[selectedWindowIdx]
+        || actionWindows.find(window => window.address === taskbar.activeAddress && !taskbar.windowParked(window))
+        || actionWindows.find(window => !taskbar.windowParked(window)) || null
     readonly property var desktopActions: {
         const entry = record ? taskbar.entryFor(record) : null
         return entry && entry.actions ? entry.actions : []
@@ -42,9 +45,7 @@ PopupCard {
         resumeKeyboard()
     }
     function minimizeSelected() {
-        const visible = actionWindows.filter(window => !taskbar.windowParked(window))
-        const selected = actionWindows[selectedWindowIdx]
-        const target = selected || visible.find(window => window.address === taskbar.activeAddress) || visible[0]
+        const target = root.selectedWindow
         if (target && shell.dock) shell.dock.minimizeToplevel(target.address)
         shell.closePopup()
     }
@@ -126,6 +127,16 @@ PopupCard {
                 disabled: (root.selectedWindowIdx >= 0 && root.taskbar.windowParked(root.actionWindows[root.selectedWindowIdx]))
                     || !root.actionWindows.some(window => !root.taskbar.windowParked(window))
                 onTriggered: root.minimizeSelected()
+            }
+            ContextRow {
+                visible: root.actionWindows.length > 0
+                text: "Snap Placement…"
+                disabled: !root.selectedWindow || root.taskbar.windowParked(root.selectedWindow)
+                onTriggered: {
+                    const address = root.selectedWindow.address
+                    root.shell.closePopup()
+                    root.shell.run([root.shell.home + "/.local/lib/hypr/window/snap.sh", address])
+                }
             }
             ContextRow {
                 visible: root.actionWindows.length > 0

@@ -28,8 +28,9 @@ DEV_ENV_RUNTIMES=(
 )
 
 print_usage() {
-  local runtime_list=""
-  runtime_list="$(printf '%s\n' "${DEV_ENV_RUNTIMES[@]%%|*}" | paste -sd'|' -)"
+  local runtime_names=("${DEV_ENV_RUNTIMES[@]%%|*}")
+  local IFS='|'
+  local runtime_list="${runtime_names[*]}"
   printf 'Usage: hyprshell install/dev-env.sh <%s>\n' "${runtime_list}"
 }
 

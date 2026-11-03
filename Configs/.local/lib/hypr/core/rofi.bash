@@ -1,76 +1,61 @@
 #!/usr/bin/env bash
 
-rofi_user_dir() {
-  printf '%s\n' "${XDG_CONFIG_HOME:-$HOME/.config}/rofi"
-}
+declare -F hypr_monitors_json >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/geometry.bash" || return 1
 
-rofi_shared_dir() {
-  printf '%s\n' "${XDG_DATA_HOME:-$HOME/.local/share}/rofi"
-}
+rofi_lookup_dirs_into() {
+  local -n lookup_dirs_ref="$1"
+  local user_dir="${XDG_CONFIG_HOME:-$HOME/.config}/rofi" shared_dir="${XDG_DATA_HOME:-$HOME/.local/share}/rofi"
 
-rofi_lookup_dirs() {
-  case "${1}" in
-    theme)
-      printf '%s\n' \
-        "$(rofi_user_dir)/themes" \
-        "$(rofi_user_dir)" \
-        "$(rofi_shared_dir)/themes" \
-        "$(rofi_shared_dir)"
-      ;;
-    asset)
-      printf '%s\n' \
-        "$(rofi_user_dir)/assets" \
-        "$(rofi_user_dir)" \
-        "$(rofi_shared_dir)/assets" \
-        "$(rofi_shared_dir)"
-      ;;
-    *)
-      return 1
-      ;;
+  case "$2" in
+    theme | asset) lookup_dirs_ref=("${user_dir}/${2}s" "${user_dir}" "${shared_dir}/${2}s" "${shared_dir}") ;;
+    *) return 1 ;;
   esac
 }
 
-rofi_resolve_file() {
-  local kind="$1"
-  local ref="$2"
+rofi_resolve_file_into() {
+  local -n resolved_file_ref="$1"
+  local kind="$2"
+  local ref="$3"
   local dir=""
   local candidate=""
   local -a lookup_dirs=()
 
+  resolved_file_ref=""
   [[ -n "${ref}" ]] || return 1
   [[ -f "${ref}" ]] && {
-    printf '%s\n' "${ref}"
+    resolved_file_ref="${ref}"
     return 0
   }
 
-  mapfile -t lookup_dirs < <(rofi_lookup_dirs "${kind}")
+  rofi_lookup_dirs_into lookup_dirs "${kind}" || return 1
   for dir in "${lookup_dirs[@]}"; do
-    [[ -n "${dir}" ]] || continue
     case "${kind}" in
       theme)
         for candidate in "${dir}/${ref}.rasi" "${dir}/${ref}"; do
           [[ -f "${candidate}" ]] || continue
-          printf '%s\n' "${candidate}"
+          resolved_file_ref="${candidate}"
           return 0
         done
         ;;
       asset)
         candidate="${dir}/${ref}"
         [[ -f "${candidate}" ]] || continue
-        printf '%s\n' "${candidate}"
+        resolved_file_ref="${candidate}"
         return 0
-        ;;
-      *)
-        return 1
         ;;
     esac
   done
 
-  case "${kind}" in
-    theme) printf '%s\n' "$(rofi_shared_dir)/themes/${ref}.rasi" ;;
-    asset) printf '%s\n' "$(rofi_shared_dir)/assets/${ref}" ;;
-  esac
+  resolved_file_ref="${lookup_dirs[2]}/${ref}"
+  [[ "${kind}" != theme ]] || resolved_file_ref+=.rasi
   return 1
+}
+
+rofi_resolve_file() {
+  local resolved_file="" rc=0
+  rofi_resolve_file_into resolved_file "$1" "$2" || rc=$?
+  [[ -z "${resolved_file}" ]] || printf '%s\n' "${resolved_file}"
+  return "${rc}"
 }
 
 rofi_list_files() {
@@ -79,23 +64,19 @@ rofi_list_files() {
   local dir=""
   local file=""
   local base=""
+  local -a lookup_dirs=()
   local -A seen=()
 
-  while IFS= read -r dir; do
+  rofi_lookup_dirs_into lookup_dirs "${kind}" || return 1
+  for dir in "${lookup_dirs[0]}" "${lookup_dirs[2]}"; do
     [[ -d "${dir}" ]] || continue
     while IFS= read -r file; do
-      base="$(basename "${file}")"
+      base="${file##*/}"
       [[ -n "${seen[${base}]:-}" ]] && continue
       seen["${base}"]=1
       printf '%s\n' "${file}"
     done < <(find -L "${dir}" -maxdepth 1 -type f -name "${pattern}" | sort)
-  done < <(
-    case "${kind}" in
-      theme) printf '%s\n%s\n' "$(rofi_user_dir)/themes" "$(rofi_shared_dir)/themes" ;;
-      asset) printf '%s\n%s\n' "$(rofi_user_dir)/assets" "$(rofi_shared_dir)/assets" ;;
-      *) return 1 ;;
-    esac
-  )
+  done
 }
 
 rofi_resolve_theme() {
@@ -117,10 +98,8 @@ rofi_list_asset_files() {
 rofi_resolve_monitors_json() {
   if declare -F rofi_monitors_json >/dev/null 2>&1; then
     rofi_monitors_json
-  elif declare -F hypr_monitors_json >/dev/null 2>&1; then
-    hypr_monitors_json
   else
-    hyprctl -j monitors all 2>/dev/null || true
+    hypr_monitors_json
   fi
 }
 
@@ -198,6 +177,11 @@ rofi_window_position_theme() {
   local edge_padding=0 usable_width=0 usable_height=0
   local max_x=0 max_y=0 x_off=0 y_off=0
 
+  if [[ "${ROFI_INPUT_SOURCE:-keyboard}" != mouse ]]; then
+    printf 'window{location:center;anchor:center;x-offset:0px;y-offset:0px;}\n'
+    return 0
+  fi
+
   rofi_default_window_size window_width window_height
   IFS=$'\t' read -r cursor_x cursor_y < <(rofi_cursor_position)
   rofi_monitor_under_cursor_into monitor "${cursor_x}" "${cursor_y}" || return 1
@@ -214,8 +198,8 @@ rofi_window_position_theme() {
   ((max_y < edge_padding)) && max_y="${edge_padding}"
 
   # cursorpos and monitor x/y are logical; only width/height need descaling
-  x_off="$(hypr_clamp $((cursor_x - monitor[logical_x_px] - monitor[reserved_left_px] + ROFI_CURSOR_GAP_PX)) "${edge_padding}" "${max_x}")"
-  y_off="$(hypr_clamp $((cursor_y - monitor[logical_y_px] - monitor[reserved_top_px] + ROFI_CURSOR_GAP_PX)) "${edge_padding}" "${max_y}")"
+  hypr_clamp_into x_off $((cursor_x - monitor[logical_x_px] - monitor[reserved_left_px] + ROFI_CURSOR_GAP_PX)) "${edge_padding}" "${max_x}"
+  hypr_clamp_into y_off $((cursor_y - monitor[logical_y_px] - monitor[reserved_top_px] + ROFI_CURSOR_GAP_PX)) "${edge_padding}" "${max_y}"
   printf 'window{location:%s %s;anchor:%s %s;x-offset:%spx;y-offset:%spx;}\n' \
     west north west north "${x_off}" "${y_off}"
 }

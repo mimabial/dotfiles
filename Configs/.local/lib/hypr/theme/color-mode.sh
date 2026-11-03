@@ -4,6 +4,7 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state system || exit 1
+declare -F hypr_svc_user >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/services.bash" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR}/theme/pairs.sh"
 state_load_runtime_environment
@@ -15,12 +16,13 @@ hypr_help_guard "${color_mode_usage}" "$@"
 color_mode_values=("${STATE_COLOR_MODE_DARK}" "${STATE_COLOR_MODE_LIGHT}" "${STATE_COLOR_MODE_AUTO}")
 MODE_SWITCH_LOCK_FD=""
 color_mode_notify=1
-selected_color_mode="$(state_get selected_color_mode)"
-selected_color_source="$(state_resolve_color_source "$(state_get selected_color_source)" "${selected_color_mode}")"
-selected_color_mode="$(state_resolve_color_mode "${selected_color_mode}" "${BACKGROUND_MODE:-}")"
+state_get_into selected_color_mode selected_color_mode
+state_get_into selected_color_source selected_color_source
+state_resolve_color_source_into selected_color_source "${selected_color_source}" "${selected_color_mode}"
+state_resolve_color_mode_into selected_color_mode "${selected_color_mode}" "${BACKGROUND_MODE:-}"
 
 acquire_mode_switch_lock() {
-  MODE_SWITCH_LOCK="$(hypr_lock_path_ensure_parent mode_switch)"
+  hypr_lock_path_into MODE_SWITCH_LOCK mode_switch
   exec {MODE_SWITCH_LOCK_FD}>"${MODE_SWITCH_LOCK}"
   ! flock -n "${MODE_SWITCH_LOCK_FD}" && {
     print_log -sec "color-mode" -stat "wait" "Another mode operation in progress, waiting..."
@@ -100,21 +102,16 @@ auto_theme_supervised() {
   [[ "$(hypr_detect_init_system)" != "other" ]]
 }
 
-start_auto_theme_service() {
+refresh_or_start_auto_theme_service() {
   if ! auto_theme_supervised; then
     print_log -sec "color-mode" -warn "auto" "no service manager (systemd/runit) for auto-theme"
     return 1
   fi
 
-  hypr_svc_user start auto-theme || {
-    print_log -sec "color-mode" -warn "auto" "failed to start auto-theme service"
+  hypr_svc_user_signal_or_start auto-theme USR2 || {
+    print_log -sec "color-mode" -warn "auto" "failed to refresh or start auto-theme service"
     return 1
   }
-}
-
-refresh_auto_theme_service() {
-  auto_theme_supervised || return 0
-  hypr_svc_user_signal auto-theme USR2 || true
 }
 
 stop_auto_theme_service() {
@@ -146,7 +143,7 @@ apply_color_policy() {
     return 1
   }
 
-  target_mode="$(state_resolve_color_variant "${target_color_mode}")"
+  state_resolve_color_variant_into target_mode "${target_color_mode}"
 
   if [[ "${target_color_source}" == "theme" ]]; then
     if [[ "$(theme_polarity "${HYPR_THEME}")" != "${target_mode}" ]]; then
@@ -219,8 +216,7 @@ revert_failed_auto_mode() {
 
 apply_auto_mode() {
   persist_color_policy
-  start_auto_theme_service || revert_failed_auto_mode
-  refresh_auto_theme_service
+  refresh_or_start_auto_theme_service || revert_failed_auto_mode
 }
 
 apply_manual_mode() {
@@ -231,8 +227,7 @@ apply_manual_mode() {
     target_color_mode="${previous_color_mode}"
     persist_color_policy
     if [[ "${previous_color_mode}" == "${STATE_COLOR_MODE_AUTO}" ]]; then
-      start_auto_theme_service || true
-      refresh_auto_theme_service
+      refresh_or_start_auto_theme_service || true
     fi
     exit 1
   fi

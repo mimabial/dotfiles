@@ -1,0 +1,10 @@
+AppIcon 1.0 AppIcon.qml
+Appearance 1.0 Appearance.qml
+Switcher 1.0 Switcher.qml
+FieldSurface 1.0 FieldSurface.qml
+FieldView 1.0 FieldView.qml
+RecencyTracker 1.0 RecencyTracker.qml
+SoundingLine 1.0 SoundingLine.qml
+WindowPlane 1.0 WindowPlane.qml
+WorkspaceCard 1.0 WorkspaceCard.qml
+WorkspaceMap 1.0 WorkspaceMap.qml

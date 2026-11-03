@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="62"
+   height="62"
+   viewBox="0 0 62 62"
+   version="1.1"
+   id="svg2"
+   sodipodi:docname="ardis-builder.svg"
+   inkscape:version="1.4.4 (unknown)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview2"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="5.9140625"
+     inkscape:cx="36.015852"
+     inkscape:cy="34.240423"
+     inkscape:window-width="1920"
+     inkscape:window-height="994"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg2" />
+  <defs
+     id="defs2">
+    <linearGradient
+       id="linear0"
+       gradientUnits="userSpaceOnUse"
+       x1="-0.0030925013"
+       y1="0.088104427"
+       x2="0"
+       y2="1"
+       gradientTransform="matrix(55.992188,0,0,56,4.003906,4)">
+      <stop
+         offset="0"
+         style="stop-color:#aa87de;stop-opacity:1"
+         id="stop1" />
+      <stop
+         offset="1"
+         style="stop-color:#7137c8;stop-opacity:1"
+         id="stop2" />
+    </linearGradient>
+    <filter
+       style="color-interpolation-filters:sRGB"
+       inkscape:label="Diffuse Light"
+       id="filter184"
+       x="-0.040891846"
+       y="-0.056705122"
+       width="1.0817837"
+       height="1.1134102">
+      <feGaussianBlur
+         in="SourceGraphic"
+         stdDeviation="1"
+         result="blur"
+         id="feGaussianBlur174" />
+      <feDiffuseLighting
+         diffuseConstant="1"
+         surfaceScale="10"
+         lighting-color="#ffffff"
+         result="diffuse"
+         id="feDiffuseLighting178">
+        <feDistantLight
+           elevation="8"
+           azimuth="235"
+           id="feDistantLight176" />
+      </feDiffuseLighting>
+      <feComposite
+         in="diffuse"
+         in2="diffuse"
+         operator="arithmetic"
+         k1="1"
+         result="composite1"
+         id="feComposite180"
+         k2="0"
+         k3="0"
+         k4="0" />
+      <feComposite
+         in="composite1"
+         in2="SourceGraphic"
+         k1="1"
+         operator="arithmetic"
+         k3="1"
+         result="composite2"
+         id="feComposite182"
+         k2="0"
+         k4="0" />
+    </filter>
+  </defs>
+  <g
+     id="surface1"
+     style="filter:url(#filter184)"
+     transform="matrix(0.97651013,0,0,0.97651013,-0.29981887,-0.4180693)">
+    <path
+       style="fill:url(#linear0);fill-rule:nonzero;stroke:none"
+       d="M 17.648438,11.011719 2.707031,53.335938 h 9.671875 l 3.066406,-10.03125 h 15.433594 l 3.066406,10.03125 h 9.671876 L 28.621094,11.011719 Z M 32.125,11.09375 c 2.808594,7.929688 5.621094,15.859375 8.425781,23.789062 h 4 c 5.019531,0 7.53125,1.746094 7.53125,5.246094 0,1.941406 -0.585937,3.382813 -1.769531,4.328125 -1.175781,0.945313 -3.003906,1.414063 -5.472656,1.414063 h -0.398438 c 0.871094,2.449218 1.738282,4.902344 2.605469,7.351562 4.226563,-0.167968 7.617187,-1.234375 10.15625,-3.199218 2.800781,-2.15625 4.195313,-5.152344 4.195313,-9 0,-2.707032 -0.59375,-4.878907 -1.792969,-6.515626 C 58.429688,32.875 56.503906,31.761719 53.816406,31.167969 v -0.289063 c 1.972656,-0.328125 3.539063,-1.300781 4.714844,-2.914062 1.199219,-1.617188 1.800781,-3.679688 1.800781,-6.199219 0,-3.707031 -1.359375,-6.410156 -4.082031,-8.101563 C 53.550781,11.949219 49.191406,11.09375 43.1875,11.09375 Z m -8.945312,6.460938 c 0.160156,0.6875 0.402343,1.632812 0.75,2.828124 0.367187,1.191407 1.96875,6.328126 4.804687,15.421876 H 17.707031 c 3.015625,-9.707032 4.835938,-15.789063 5.472657,-18.25 z m 15.808593,0.863281 h 4.722657 c 2.566406,0 4.4375,0.359375 5.613281,1.070312 1.199219,0.691407 1.796875,1.84375 1.796875,3.460938 0,1.730469 -0.546875,2.964843 -1.648438,3.714843 -1.078125,0.746094 -2.832031,1.125 -5.269531,1.125 h -5.214844 z m 0,0"
+       id="path2" />
+  </g>
+</svg>

@@ -10,7 +10,7 @@ declare -gA wallpaper_hash_by_path=()
 declare -ga wallpaper_paths=()
 declare -ga wallpaper_source_paths=()
 
-wallpaper_started_ms="$(hypr_now_ms)"
+hypr_now_ms_into wallpaper_started_ms
 wallpaper_lock_fd=""
 
 wallpaper_release_lock() {

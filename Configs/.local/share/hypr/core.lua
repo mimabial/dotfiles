@@ -23,6 +23,7 @@ hl.config({
     master = {new_status = "master"},
     scrolling = {column_width = 0.5},
     misc = {
+        focus_on_activate = true,
         vrr = 0,
         disable_hyprland_logo = true,
         disable_splash_rendering = true,
@@ -183,7 +184,7 @@ hl.config({
     },
 })
 
-hl.exec_cmd("mkdir -p '" .. (vars.get("XDG_RUNTIME_DIR") or "") .. "/hypr' '" .. config_home .. "/hypr' '" .. data_home .. "/hypr' '" .. state_home .. "/hypr' && python3 '" .. vars.get("scrPath") .. "/keybinds/lib/keybinds_hint.py' --format rofi > '" .. (vars.get("XDG_RUNTIME_DIR") or "") .. "/hypr/keybinds_hint.rofi'")
+os.remove(vars.get("XDG_RUNTIME_DIR") .. "/hypr/keybinds_hint.rofi")
 
 local startup = {
     "dbus-update-activation-environment --systemd --all",
@@ -203,7 +204,6 @@ local startup = {
     vars.get("start.QUICKSHELL"),
     vars.get("start.STYLE_MAP"),
     vars.get("start.NOTIFICATIONS"),
-    vars.get("start.WORKFLOW_RECONCILE"),
     "hyprshell app -t service xsettingsd",
     vars.get("start.TEXT_CLIPBOARD"),
     vars.get("start.IMAGE_CLIPBOARD"),

@@ -34,7 +34,6 @@ Item {
         height: Style.popupRowHeight
         radius: root.shell.rounding
         color: root.cursored ? root.shell.hoverFill() : "transparent"
-        border.color: root.cursored ? root.shell.hoverEdge(.85) : "transparent"
 
         IconImage {
             id: iconImage
@@ -89,7 +88,7 @@ Item {
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             cursorShape: Qt.PointingHandCursor
             onPositionChanged: mouse => root.pointerMoved(pointerArea.mapToGlobal(mouse.x, mouse.y))
-            onClicked: mouse => root.clicked(mouse.button)
+            onClicked: mouse => { root.shell.keyboardInput = false; root.clicked(mouse.button) }
         }
     }
 }

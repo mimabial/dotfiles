@@ -14,7 +14,7 @@ ensure_notification_archive() {
 
 with_archive_lock() {
   local lock_file=""
-  lock_file="$(hypr_lock_path_ensure_parent notify_archive 2>/dev/null)" || lock_file="${store}/.lock"
+  hypr_lock_path_into lock_file notify_archive 2>/dev/null || lock_file="${store}/.lock"
   (
     exec {archive_lock_fd}>"${lock_file}"
     flock "${archive_lock_fd}"
@@ -22,9 +22,10 @@ with_archive_lock() {
   )
 }
 
-read_archive_seen_timestamp() {
-  local value=""
-  value="$(cat -- "${seen_file}" 2>/dev/null || echo 0)"
-  [[ "${value}" =~ ^[0-9]+$ ]] || value=0
-  printf '%s' "${value}"
+read_archive_seen_timestamp_into() {
+  local -n seen_timestamp_ref="$1"
+
+  seen_timestamp_ref=0
+  [[ -r "${seen_file}" ]] && { IFS= read -r seen_timestamp_ref <"${seen_file}" || true; }
+  [[ "${seen_timestamp_ref}" =~ ^[0-9]+$ ]] || seen_timestamp_ref=0
 }

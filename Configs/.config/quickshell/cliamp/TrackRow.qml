@@ -31,7 +31,7 @@ MediaRow {
     else if (!queued) controller.queueUrl(url, title, subtitle)
   }
   function dequeue() {
-    if (removable) controller.removeFromQueue(modelData.queueIndex)
+    if (removable) controller.removeFromQueue(modelData.playlist_id)
   }
 
   RowGlyph {

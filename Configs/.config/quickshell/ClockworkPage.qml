@@ -5,6 +5,7 @@ import QtQuick
 Column {
     id: root
     required property var shell
+    required property PopupCard popupController
     required property var clockwork
     required property string pageMode
     signal startRequested
@@ -27,7 +28,7 @@ Column {
             visible: root.canEditMajorTime
             anchors.horizontalCenter: parent.horizontalCenter; spacing: Style.lg
             PopupNumberField {
-                shell: root.shell
+                shell: root.shell; popupController: root.popupController
                 width: Style.px(68); label: "M"; maximum: 999
                 value: root.clockwork.countdownMinutes
                 onCommitted: value => root.clockwork.setCountdownMinutes(value)
@@ -38,7 +39,7 @@ Column {
                 font.pixelSize: Style.displayLarge; font.bold: true; verticalAlignment: Text.AlignBottom
             }
             PopupNumberField {
-                shell: root.shell
+                shell: root.shell; popupController: root.popupController
                 width: Style.px(68); label: "S"; maximum: 59
                 value: root.clockwork.countdownSeconds
                 onCommitted: value => root.clockwork.setCountdownSeconds(value)
@@ -95,19 +96,19 @@ Column {
         Row {
             width: parent.width; spacing: Style.sm
             PopupNumberField {
-                shell: root.shell
+                shell: root.shell; popupController: root.popupController
                 width: (parent.width - parent.spacing * 2) / 3; label: "R"
                 value: root.clockwork.intervalRounds; minimum: 1; enabled: !root.clockwork.running
                 onCommitted: value => root.clockwork.setIntervalRounds(value)
             }
             PopupNumberField {
-                shell: root.shell
+                shell: root.shell; popupController: root.popupController
                 width: (parent.width - parent.spacing * 2) / 3; label: "M"
                 value: root.clockwork.intervalMinutes; enabled: !root.clockwork.running
                 onCommitted: value => root.clockwork.setIntervalMinutes(value)
             }
             PopupNumberField {
-                shell: root.shell
+                shell: root.shell; popupController: root.popupController
                 width: (parent.width - parent.spacing * 2) / 3; label: "S"
                 value: root.clockwork.intervalSeconds; maximum: 59; enabled: !root.clockwork.running
                 onCommitted: value => root.clockwork.setIntervalSeconds(value)
@@ -129,25 +130,25 @@ Column {
         Grid {
             width: parent.width; columns: 2; spacing: Style.sm
             PopupNumberField {
-                shell: root.shell
+                shell: root.shell; popupController: root.popupController
                 width: (parent.width - parent.spacing) / 2; label: "Focus minutes"
                 value: root.clockwork.pomodoroWorkMinutes; minimum: 1; enabled: root.canEditPomodoro
                 onCommitted: value => root.clockwork.setPomodoroWorkMinutes(value)
             }
             PopupNumberField {
-                shell: root.shell
+                shell: root.shell; popupController: root.popupController
                 width: (parent.width - parent.spacing) / 2; label: "Short break"
                 value: root.clockwork.pomodoroShortBreakMinutes; minimum: 1; enabled: root.canEditPomodoro
                 onCommitted: value => root.clockwork.setPomodoroShortBreakMinutes(value)
             }
             PopupNumberField {
-                shell: root.shell
+                shell: root.shell; popupController: root.popupController
                 width: (parent.width - parent.spacing) / 2; label: "Cycles"
                 value: root.clockwork.pomodoroCycles; minimum: 1; maximum: 99; enabled: root.canEditPomodoro
                 onCommitted: value => root.clockwork.setPomodoroCycles(value)
             }
             PopupNumberField {
-                shell: root.shell
+                shell: root.shell; popupController: root.popupController
                 width: (parent.width - parent.spacing) / 2; label: "Long break"
                 value: root.clockwork.pomodoroLongBreakMinutes; minimum: 1; enabled: root.canEditPomodoro
                 onCommitted: value => root.clockwork.setPomodoroLongBreakMinutes(value)

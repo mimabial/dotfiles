@@ -1,6 +1,5 @@
 [Unit]
 Description=Auto Theme Daemon (sunrise/sunset)
-Documentation=man:auto_theme.py
 After=graphical-session.target
 
 [Service]
@@ -9,8 +8,6 @@ ExecStart=%h/.local/state/hypr/pip_env/bin/python %h/.local/lib/hypr/theme/auto_
 ExecReload=/bin/kill -USR2 $MAINPID
 Restart=on-failure
 RestartSec=5
-
-# Environment
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONPYCACHEPREFIX=%C/hypr/pycache
 

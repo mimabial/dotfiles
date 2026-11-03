@@ -14,8 +14,7 @@ Rectangle {
     implicitWidth: label.implicitWidth + (glyph.visible ? glyph.implicitWidth + content.spacing : 0) + Style.controlPaddingX * 2
     implicitHeight: Style.controlHeight
     radius: shell.rounding
-    color: selected ? shell.selectedFill() : cursored || (!shell.popupCard?.open && mouse.containsMouse) ? shell.hoverFill() : "transparent"
-    border.color: cursored ? shell.hoverEdge(.85) : selected ? shell.selectedEdge() : "transparent"
+    color: cursored || (!shell.popupCard?.open && mouse.containsMouse) ? shell.hoverFill() : selected ? shell.selectedFill() : "transparent"
     Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
 
     Row {

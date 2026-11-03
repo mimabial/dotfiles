@@ -142,11 +142,9 @@ Column {
         selectedIndex: root.inputs.findIndex(input => String(input.id) === root.device)
         onActivated: index => root.shell.store.webcamDevice = String(root.inputs[index].id)
     }
-    Text {
-        visible: text !== ""
-        width: parent.width; text: camera.errorString || root.error; wrapMode: Text.Wrap
-        color: root.shell.role("error", root.shell.foreground)
-        font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+    PopupHint {
+        shell: root.shell; error: true
+        width: parent.width; text: camera.errorString || root.error
     }
     ListView {
         id: list

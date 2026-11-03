@@ -1,5 +1,10 @@
-get_sink_label() {
-  wpctl inspect "$1" 2>/dev/null | awk -F'"' '/node.description = / { print $2; exit }'
+get_sink_label_into() {
+  local -n sink_label_ref="$1"
+  local inspect_output=""
+
+  sink_label_ref=""
+  inspect_output="$(wpctl inspect "$2" 2>/dev/null)"
+  [[ "${inspect_output}" =~ node\.description\ =\ \"([^\"]*) ]] && sink_label_ref="${BASH_REMATCH[1]}"
 }
 
 get_default_sink_id() {
@@ -70,11 +75,11 @@ set_default_output() {
   local old_sink=""
 
   old_sink=$(pactl get-default-sink 2>/dev/null || true)
-  sink_label="$(get_sink_label "${sink_id}")"
+  get_sink_label_into sink_label "${sink_id}"
 
   if wpctl set-default "${sink_id}"; then
     move_application_streams "${old_sink}" "${sink_name}"
-    dunstify -t "${NOTIFY_OSD_MS}" -i "$(media_icons_dir)/unmuted-speaker.svg" \
+    dunstify -t "${NOTIFY_OSD_MS}" -i "${MEDIA_ICONS_DIR}/unmuted-speaker.svg" \
       -r "${NOTIFY_ID_VOLUME}" -u low "Activated: ${sink_label:-${sink_name}}"
   else
     dunstify -t "${NOTIFY_OSD_MS}" -r "${NOTIFY_ID_VOLUME}" -u critical \

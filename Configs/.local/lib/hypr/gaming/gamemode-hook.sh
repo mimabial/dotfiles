@@ -5,17 +5,15 @@ action="${1:-}"
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state || exit 1
+declare -F hypr_dbus_get >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/dbus.bash" || exit 1
 
 state_dir="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/gaming"
 previous_workflow_file="${state_dir}/gamemode-previous-workflow"
 workflows_script="${HYPR_LIB_DIR}/util/workflows.sh"
-mkdir -p "${state_dir}" || exit 1
+[[ -d "${state_dir}" ]] || mkdir -p "${state_dir}" || exit 1
 exec {lock_fd}>"${state_dir}/gamemode-hook.lock" || exit 1
 flock "${lock_fd}" || exit 1
 
-read_current_workflow() {
-  state_get HYPR_WORKFLOW default 2>/dev/null || printf 'default\n'
-}
 
 set_gamemode_workflow() {
   local output=""
@@ -27,7 +25,7 @@ set_gamemode_workflow() {
 
 enter_gaming_workflow() {
   local current_workflow
-  current_workflow="$(read_current_workflow)"
+  state_get_into current_workflow HYPR_WORKFLOW default
   if [[ "${current_workflow}" == gaming ]]; then
     [[ -s "${previous_workflow_file}" ]] || printf 'default\n' >"${previous_workflow_file}"
     return
@@ -38,7 +36,7 @@ enter_gaming_workflow() {
 
 restore_previous_workflow() {
   local current_workflow previous_workflow=default
-  current_workflow="$(read_current_workflow)"
+  state_get_into current_workflow HYPR_WORKFLOW default
   if [[ "${current_workflow}" == gaming ]]; then
     [[ ! -s "${previous_workflow_file}" ]] || read -r previous_workflow <"${previous_workflow_file}"
     [[ -n "${previous_workflow}" ]] || previous_workflow=default

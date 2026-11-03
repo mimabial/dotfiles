@@ -133,7 +133,7 @@ PanelWindow {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: Math.max(Style.popupPadding / 2, Style.sm)
-        text: root.actions.map(action => action.key.toUpperCase() + " " + action.text.toLowerCase()).join(" · ") + " · ←→↑↓/Tab move · Enter select · Esc"
+        text: root.actions.map(action => action.key.toUpperCase() + " " + action.text).join("  ") + "  ←→↑↓/Tab Move  Enter Select  Esc"
         color: root.shell.mutedText
         font.family: root.shell.fontFamily
         font.pixelSize: Style.caption

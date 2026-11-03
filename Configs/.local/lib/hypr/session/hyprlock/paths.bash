@@ -12,6 +12,7 @@ hyprlock_paths_into() {
   paths_ref[icon]="${XDG_DATA_HOME}/icons/Hypr-Icon/hypr.png"
   paths_ref[face_icon]="$HOME/.face.icon"
   paths_ref[artwork_lock]="${XDG_RUNTIME_DIR}/hypr/hyprlock-art.lock"
+  paths_ref[mpris_snapshot]="${XDG_RUNTIME_DIR}/hypr/hyprlock-mpris"
   paths_ref[wallpaper_cache]="${WALLPAPER_CACHE_DIR:-${paths_ref[cache]}/wallpaper}"
   paths_ref[wallpaper_current]="${WALLPAPER_CURRENT_DIR:-${paths_ref[wallpaper_cache]}/current}"
   paths_ref[wallpaper_video]="${WALLPAPER_VIDEO_DIR:-${paths_ref[wallpaper_current]}/thumbnails}"

@@ -272,17 +272,22 @@ def folder_hints(path: Path, root: Path) -> tuple[str, str]:
     return (parts[0], "") if len(parts) == 1 else (parts[-2], parts[-1])
 
 
-def album_context(path: Path, tags, root: Path) -> tuple[str, tuple]:
+class AlbumContext(NamedTuple):
+    album: str
+    key: tuple
+
+
+def album_context(path: Path, tags, root: Path) -> AlbumContext:
     directory_artist, directory_album = folder_hints(path, root)
     album = directory_album or existing(tags, "album")
     if not album:
-        return "", ()
+        return AlbumContext(album="", key=())
     owner = (
         directory_artist
         or existing(tags, "albumartist")
         or primary_artist("", existing(tags, "artist"))
     )
-    return album, (tuple(normalize_identity_tokens(owner)), tuple(normalize_identity_tokens(album)))
+    return AlbumContext(album=album, key=(tuple(normalize_identity_tokens(owner)), tuple(normalize_identity_tokens(album))))
 
 
 def candidate_key(artist: str, title: str) -> tuple[tuple[str, ...], tuple[str, ...]]:

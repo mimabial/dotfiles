@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 
-# MemAvailable is absent on very old kernels, hence the MemTotal fallback.
 hypr_read_host_capacity() {
   local -n capacity_cores_ref="$1" capacity_mem_mb_ref="$2"
-  local mem_kb=""
+  local meminfo_key="" mem_kb=""
 
   capacity_cores_ref="$(nproc --all 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)"
   [[ "${capacity_cores_ref}" =~ ^[0-9]+$ ]] || capacity_cores_ref=1
 
-  mem_kb="$(awk '/MemAvailable/ {print $2; exit}' /proc/meminfo 2>/dev/null)"
-  [[ -n "${mem_kb}" ]] || mem_kb="$(awk '/MemTotal/ {print $2; exit}' /proc/meminfo 2>/dev/null)"
+  while read -r meminfo_key mem_kb _; do
+    [[ "${meminfo_key}" == MemAvailable: ]] && break
+    mem_kb=""
+  done </proc/meminfo
   [[ "${mem_kb}" =~ ^[0-9]+$ ]] || mem_kb=0
   capacity_mem_mb_ref=$((mem_kb / 1024))
 }
@@ -28,15 +29,15 @@ hypr_export_magick_limits() {
 
   if [[ ! "${WALLPAPER_MAGICK_MEM_MB:-}" =~ ^[0-9]+$ ]]; then
     if ((mem_avail_mb > 0)); then
-      WALLPAPER_MAGICK_MEM_MB="$(hypr_clamp $((mem_avail_mb / MAGICK_MEM_SHARE)) "${MAGICK_MEM_MIN_MB}" "${MAGICK_MEM_MAX_MB}")"
+      hypr_clamp_into WALLPAPER_MAGICK_MEM_MB $((mem_avail_mb / MAGICK_MEM_SHARE)) "${MAGICK_MEM_MIN_MB}" "${MAGICK_MEM_MAX_MB}"
     else
       WALLPAPER_MAGICK_MEM_MB="${MAGICK_MEM_FALLBACK_MB}"
     fi
   fi
   [[ "${WALLPAPER_MAGICK_MAP_MB:-}" =~ ^[0-9]+$ ]] \
-    || WALLPAPER_MAGICK_MAP_MB="$(hypr_clamp $((WALLPAPER_MAGICK_MEM_MB * MAGICK_MAP_MEM_RATIO)) "${MAGICK_MAP_MIN_MB}" "${MAGICK_MAP_MAX_MB}")"
+    || hypr_clamp_into WALLPAPER_MAGICK_MAP_MB $((WALLPAPER_MAGICK_MEM_MB * MAGICK_MAP_MEM_RATIO)) "${MAGICK_MAP_MIN_MB}" "${MAGICK_MAP_MAX_MB}"
   [[ "${WALLPAPER_MAGICK_THREADS:-}" =~ ^[0-9]+$ ]] \
-    || WALLPAPER_MAGICK_THREADS="$(hypr_clamp "${cores}" 1 "${MAGICK_MAX_THREADS}")"
+    || hypr_clamp_into WALLPAPER_MAGICK_THREADS "${cores}" 1 "${MAGICK_MAX_THREADS}"
   export WALLPAPER_MAGICK_MEM_MB WALLPAPER_MAGICK_MAP_MB WALLPAPER_MAGICK_THREADS
 }
 

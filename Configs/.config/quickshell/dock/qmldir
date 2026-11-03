@@ -4,11 +4,13 @@ DockContextMenu 1.0 DockContextMenu.qml
 DockMenuRow 1.0 DockMenuRow.qml
 DockMenuDivider 1.0 DockMenuDivider.qml
 HoverTooltip 1.0 HoverTooltip.qml
+DockTooltip 1.0 DockTooltip.qml
+DockPopup 1.0 DockPopup.qml
 AppTooltipContent 1.0 AppTooltipContent.qml
 DockItem 1.0 DockItem.qml
 DockIconButton 1.0 DockIconButton.qml
 DockSeparator 1.0 DockSeparator.qml
 FileStackRow 1.0 FileStackRow.qml
 DockFolderItem 1.0 DockFolderItem.qml
-DockAppGroupItem 1.0 DockAppGroupItem.qml
-AppGroupPopup 1.0 AppGroupPopup.qml
+DockBadge 1.0 DockBadge.qml
+FolderStack 1.0 FolderStack.qml

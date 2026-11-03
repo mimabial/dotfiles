@@ -79,8 +79,6 @@ todo_done=""
 todo_delete=""
 todo_open=""
 todo_edit=""
-calendar_table_cache=""
-calendar_title_filters_file="${KHAL_FILTERS:-${XDG_CONFIG_HOME:-$HOME/.config}/khal/filters.json}"
 
 parse_agenda_options() {
   while (($#)); do

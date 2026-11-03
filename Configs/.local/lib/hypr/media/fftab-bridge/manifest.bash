@@ -10,7 +10,7 @@ fftab_write_manifest() {
   local host_path="$2"
   local ext_id="$3"
 
-  mkdir -p "$(dirname "${manifest}")" || return 1
+  [[ -d "${manifest%/*}" ]] || mkdir -p "${manifest%/*}" || return 1
   cat >"${manifest}" <<JSON
 {
   "name": "fftab_bridge",

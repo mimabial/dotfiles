@@ -8,6 +8,7 @@ Usage: hyprshell system/printers [option]
   --report        JSON: {"printers":[{name,state,reason,default,transport}],
                          "jobs":[{id,printer,user,size}],"pending":n,"stopped":n}
   --bar           Bar JSON: text, class, tooltip
+  --watch         Print one line per CUPS printer or job event, until the parent exits
   --enable NAME   Resume a stopped queue
   --disable NAME  Stop a queue, leaving its jobs held
   --default NAME  Make it the default destination
@@ -30,6 +31,41 @@ queue_names() {
   ATTR naturalLanguage attributes-natural-language en
   ATTR keyword requested-attributes printer-name
   DISPLAY printer-name
+}
+IPP
+}
+
+subscribe_dbus_events() {
+  local recipients=""
+  recipients="$(ipptool -c ipp://localhost/ /dev/stdin 2>/dev/null <<'IPP'
+{
+  OPERATION Get-Subscriptions
+  GROUP operation-attributes-tag
+  ATTR charset attributes-charset utf-8
+  ATTR naturalLanguage attributes-natural-language en
+  ATTR uri printer-uri ipp://localhost/
+  ATTR name requesting-user-name $user
+  ATTR keyword requested-attributes notify-recipient-uri
+  STATUS successful-ok
+  STATUS client-error-not-found
+  DISPLAY notify-recipient-uri
+}
+IPP
+)" || return 1
+  [[ $'\n'"${recipients}"$'\n' == *$'\n'dbus://$'\n'* ]] && return 0
+  ipptool -q ipp://localhost/ /dev/stdin <<'IPP'
+{
+  OPERATION Create-Printer-Subscriptions
+  GROUP operation-attributes-tag
+  ATTR charset attributes-charset utf-8
+  ATTR naturalLanguage attributes-natural-language en
+  ATTR uri printer-uri ipp://localhost/
+  ATTR name requesting-user-name $user
+  GROUP subscription-attributes-tag
+  ATTR uri notify-recipient-uri dbus://
+  ATTR keyword notify-events printer-added,printer-deleted,printer-modified,printer-state-changed,job-created,job-completed,job-state-changed
+  ATTR integer notify-lease-duration 0
+  STATUS successful-ok
 }
 IPP
 }
@@ -106,6 +142,10 @@ case "${1:---report}" in
     ;;
   --bar)
     report_json bar
+    ;;
+  --watch)
+    subscribe_dbus_events
+    exec setpriv --pdeathsig TERM dbus-monitor --system --profile "type='signal',interface='org.cups.cupsd.Notifier'" 2>/dev/null
     ;;
   --enable)
     [[ -n "${2:-}" ]] || { usage >&2; exit 1; }

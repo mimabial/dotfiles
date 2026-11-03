@@ -36,13 +36,13 @@ function alertDef(id) {
 
 function alertReading(snapshot, id) {
   snapshot = snapshot || {}
-  var cpu = snapshot.cpu || {}, gpu = snapshot.gpu || {}, mem = snapshot.mem || {}
+  var cpu = snapshot.cpu || {}, mem = snapshot.mem || {}
   var disks = snapshot.disks || {}, battery = snapshot.battery || {}
   if (id === "cpuUsage") return { value: cpu.total, subject: "" }
   if (id === "cpuTemp") return { value: cpu.temp, subject: "" }
-  if (id === "gpuUsage") return { value: gpu.util, subject: String(gpu.name || "") }
-  if (id === "gpuTemp") return { value: gpu.temp, subject: String(gpu.name || "") }
-  if (id === "vram") return { value: gpu.memTotal > 0 ? gpu.memUsed / gpu.memTotal * 100 : null, subject: String(gpu.name || "") }
+  if (id === "gpuUsage") return highestGpu(snapshot, function(card) { return card.util })
+  if (id === "gpuTemp") return highestGpu(snapshot, function(card) { return card.temp })
+  if (id === "vram") return highestGpu(snapshot, gpuMemoryPercent)
   if (id === "memory") return { value: mem.total > 0 ? mem.used / mem.total * 100 : null, subject: "" }
   if (id === "batteryLow") return { value: battery.present && battery.status === "Discharging" && battery.percent !== null && battery.percent !== undefined ? battery.percent : null, subject: "" }
   if (id === "diskUsage") {
@@ -66,6 +66,15 @@ function alertReading(snapshot, id) {
   return { value: null, subject: "" }
 }
 
+function highestGpu(snapshot, reading) {
+  var highest = { value: null, subject: "" }
+  for (var card of gpuList(snapshot)) {
+    var value = reading(card)
+    if (finiteValue(value) && (highest.value === null || Number(value) > highest.value)) highest = { value: Number(value), subject: gpuTitle(card) }
+  }
+  return highest
+}
+
 function nextAlertState(previous, above, now) {
   var old = previous || { count: 0, active: false, last: 0 }
   if (!above) return { count: 0, active: false, last: old.last || 0, fire: false }
@@ -84,9 +93,14 @@ var SETTINGS = {
   graphWidth: 36,
   barLabels: "text",
   disksSource: "all",
+  barDisks: "",
+  barGpus: "discrete",
+  showGpuMemory: false,
   barSensors: "cpu",
   temperatureUnit: "Celsius",
   colorTemperatureIcons: true,
+  utilizationColors: false,
+  utilizationLowColor: "", utilizationNormalColor: "", utilizationWarningColor: "", utilizationCriticalColor: "",
   refreshSeconds: 1,
   historySeconds: 240,
   historySpan: "live",
@@ -137,6 +151,7 @@ var DETAIL_TOP_PROCESSES = 1
 var DETAIL_ALL_PROCESSES = 2
 
 var REFRESH_STOPS_SECONDS = [0.1, 0.2, 0.5, 1, 2, 5, 10]
+var HISTORY_STOPS_SECONDS = [30, 60, 120, 240, 300, 600, 900, 1800, 3600]
 var MIN_REFRESH_SECONDS = 0.1
 var MAX_REFRESH_SECONDS = 30
 var TEMPERATURE_SCALE_FLOOR = 30
@@ -144,6 +159,13 @@ var NETWORK_SCALE_FLOOR = 10 * 1024
 var DISK_SCALE_FLOOR = 256 * 1024
 var DISK_WARN = 0.8
 var DISK_DANGER = 0.92
+var PRESSURE_WARN_PERCENT = 10
+var PRESSURE_DANGER_PERCENT = 40
+var STALL_BUSY_PERCENT = 90
+var STALL_PRESSURE_PERCENT = 20
+var SLOW_BUSY_PERCENT = 50
+var SLOW_SSD_LATENCY_MS = 20
+var SLOW_HDD_LATENCY_MS = 100
 var SENSOR_WARN = 0.78
 var SENSOR_DANGER = 0.92
 var SENSOR_FALLBACK_CRITICAL = 95
@@ -158,12 +180,12 @@ var SENSOR_ALERT_STEP = 5
 var ALERT_CONFIRMATIONS = 3
 var ALERT_REPEAT_MS = 5 * 60 * 1000
 
-function nearestStopIndex(value) {
+function nearestStopIndex(value, stops) {
   var requested = Number(value)
-  var best = 3
+  var best = 0
   var bestDistance = Infinity
-  for (var i = 0; i < REFRESH_STOPS_SECONDS.length; i++) {
-    var distance = Math.abs(Math.log(REFRESH_STOPS_SECONDS[i]) - Math.log(isFinite(requested) && requested > 0 ? requested : 1))
+  for (var i = 0; i < stops.length; i++) {
+    var distance = Math.abs(Math.log(stops[i]) - Math.log(isFinite(requested) && requested > 0 ? requested : 1))
     if (distance < bestDistance) { bestDistance = distance; best = i }
   }
   return best
@@ -183,7 +205,47 @@ function parseList(raw) {
   return out
 }
 
+function finiteValue(value) {
+  return value !== null && value !== undefined && value !== "" && isFinite(Number(value))
+}
+
+function primarySensorGpu(snapshot) {
+  for (var card of discreteGpus(snapshot)) if (finiteValue(card.temp)) return card
+  return null
+}
+
+function sensorTemps(snapshot) {
+  var sensors = (snapshot || {}).sensors || {}
+  var out = Array.isArray(sensors.temps) ? sensors.temps.slice() : []
+  for (var card of gpuList(snapshot)) {
+    if (card.vendor === "nvidia" && finiteValue(card.temp))
+      out.push({ chip: "GPU", id: "gpu:" + gpuId(card), alertId: "gpu:" + gpuId(card), label: gpuTitle(card), title: gpuTitle(card), value: Number(card.temp), max: 0 })
+  }
+  return out
+}
+
+function sensorFans(snapshot) {
+  var sensors = (snapshot || {}).sensors || {}
+  var out = Array.isArray(sensors.fans) ? sensors.fans.slice() : []
+  for (var card of gpuList(snapshot)) {
+    if (finiteValue(card.fan)) out.push({ chip: "GPU", id: "gpufan:" + gpuId(card), label: gpuTitle(card) + " fan", percent: Number(card.fan) })
+  }
+  return out
+}
+
+function fanParts(fan) {
+  if (fan && finiteValue(fan.percent)) return num(fan.percent) > 0 ? { value: String(Math.round(fan.percent)), unit: "%" } : { value: "Off", unit: "" }
+  var rpm = num(fan ? fan.rpm : 0)
+  return rpm > 0 ? { value: String(Math.round(rpm)), unit: "rpm" } : { value: "Off", unit: "" }
+}
+
+function fanFraction(fan) {
+  if (fan && finiteValue(fan.percent)) return clamp(num(fan.percent) / 100, 0, 1)
+  return Math.min(1, num(fan ? fan.rpm : 0) / FAN_FULL_SCALE_RPM)
+}
+
 function sensorLabel(temp) {
+  if (temp.title) return String(temp.title)
   var chip = String(temp.chip || "")
   var label = String(temp.label || "")
   if (!label || label === chip) return chip
@@ -195,16 +257,11 @@ function sensorLabel(temp) {
 function sensorOptions(snapshot) {
   snapshot = snapshot || {}
   var cpu = snapshot.cpu || {}
-  var gpu = snapshot.gpu || null
-  var sensors = snapshot.sensors || {}
   var out = []
-  if (isFinite(Number(cpu.temp)) && cpu.temp !== null) out.push({ value: "cpu", label: "CPU temperature", kind: "temp" })
-  var gpuTemp = gpu && gpu.temp !== null && isFinite(Number(gpu.temp)) ? gpu.temp : sensors.gpuTemp
-  if (gpuTemp !== null && gpuTemp !== undefined && isFinite(Number(gpuTemp))) out.push({ value: "gpu", label: "GPU temperature", kind: "temp" })
-  var temps = Array.isArray(sensors.temps) ? sensors.temps : []
-  for (var temp of temps) out.push({ value: String(temp.id), label: sensorLabel(temp), kind: "temp" })
-  var fans = Array.isArray(sensors.fans) ? sensors.fans : []
-  for (var fan of fans) out.push({ value: String(fan.id), label: String(fan.label || "Fan"), kind: "fan" })
+  if (finiteValue(cpu.temp)) out.push({ value: "cpu", label: "CPU temperature", kind: "temp" })
+  if (finiteValue(sensorGpuTemp(snapshot))) out.push({ value: "gpu", label: "GPU temperature", kind: "temp" })
+  for (var temp of sensorTemps(snapshot)) out.push({ value: String(temp.id), label: sensorLabel(temp), kind: "temp" })
+  for (var fan of sensorFans(snapshot)) out.push({ value: String(fan.id), label: String(fan.label || "Fan"), kind: "fan" })
   return out
 }
 
@@ -212,34 +269,35 @@ function sensorOptions(snapshot) {
 function sensorReading(snapshot, id, unit) {
   snapshot = snapshot || {}
   var cpu = snapshot.cpu || {}
-  var gpu = snapshot.gpu || null
-  var sensors = snapshot.sensors || {}
   if (id === "cpu") {
     if (!(isFinite(Number(cpu.temp)) && cpu.temp !== null)) return null
     var cpuParts = tempParts(cpu.temp, unit)
     return { icon: "󰻠", short: "CPU", label: "CPU", text: cpuParts.value, unit: cpuParts.unit, kind: "temp", celsius: cpu.temp }
   }
   if (id === "gpu") {
-    var gpuTemp = gpu && gpu.temp !== null && isFinite(Number(gpu.temp)) ? gpu.temp : sensors.gpuTemp
-    if (gpuTemp === null || gpuTemp === undefined || !isFinite(Number(gpuTemp))) return null
+    var gpuTemp = sensorGpuTemp(snapshot)
+    if (!finiteValue(gpuTemp)) return null
     var gpuParts = tempParts(gpuTemp, unit)
     return { icon: "󰢮", short: "GPU", label: "GPU", text: gpuParts.value, unit: gpuParts.unit, kind: "temp", celsius: gpuTemp }
   }
-  var temps = Array.isArray(sensors.temps) ? sensors.temps : []
-  for (var temp of temps) {
+  for (var temp of sensorTemps(snapshot)) {
     if (String(temp.id) === id) {
-      var parts = tempParts(temp.value, unit)
-      return { icon: "󰔏", short: "TMP", label: sensorLabel(temp), text: parts.value, unit: parts.unit, kind: "temp", celsius: temp.value, critical: temp.critical }
+      var reading = tempParts(temp.value, unit)
+      return { icon: "󰔏", short: temp.chip === "GPU" ? gpuShort(gpuById(snapshot, id.slice(4))) : "TMP", label: sensorLabel(temp), text: reading.value, unit: reading.unit, kind: "temp", celsius: temp.value, critical: temp.critical }
     }
   }
-  var fans = Array.isArray(sensors.fans) ? sensors.fans : []
-  for (var fan of fans) {
+  for (var fan of sensorFans(snapshot)) {
     if (String(fan.id) === id) {
-      var rpm = num(fan.rpm)
-      return { icon: "󰈐", short: "FAN", label: String(fan.label || "Fan"), text: rpm > 0 ? String(Math.round(rpm)) : "Off", unit: rpm > 0 ? "rpm" : "", kind: "fan", rpm: rpm }
+      var parts = fanParts(fan)
+      return { icon: "󰈐", short: "FAN", label: String(fan.label || "Fan"), text: parts.value, unit: parts.unit, kind: "fan", rpm: num(fan.rpm) }
     }
   }
   return null
+}
+
+function sensorGpuTemp(snapshot) {
+  var card = primarySensorGpu(snapshot)
+  return card ? card.temp : ((snapshot || {}).sensors || {}).gpuTemp
 }
 
 function diskOptions(snapshot) {
@@ -253,7 +311,249 @@ function diskOptions(snapshot) {
   var names = Object.keys(perDisk).sort()
   for (var name of names) {
     var model = models[name] ? " · " + String(models[name]).slice(0, 22) : ""
-    out.push({ value: name, label: name + model })
+    out.push({ value: diskId(snapshot, name), label: name + model })
+  }
+  return out
+}
+
+function diskId(snapshot, name) {
+  var entry = (((snapshot || {}).disks || {}).perDisk || {})[name]
+  return entry && entry.id ? String(entry.id) : String(name || "")
+}
+
+function resolveDisk(snapshot, value) {
+  var saved = String(value || "")
+  if (!saved || saved === "all") return "all"
+  var perDisk = ((snapshot || {}).disks || {}).perDisk || {}
+  for (var name in perDisk) if (perDisk[name] && String(perDisk[name].id) === saved) return name
+  return perDisk[saved] ? saved : ""
+}
+
+function stableDiskId(snapshot, value) {
+  var name = resolveDisk(snapshot, value)
+  return name === "" ? String(value || "") : (name === "all" ? "all" : diskId(snapshot, name))
+}
+
+function stableSettings(settings, snapshot) {
+  var perDisk = ((snapshot || {}).disks || {}).perDisk || {}
+  if (Object.keys(perDisk).length === 0) return null
+  var out = {}, changed = false
+  var raw = String(settingValue(settings, "barDisks") || "").trim()
+  if (raw && raw.toLowerCase() !== "none") {
+    var list = barDisks(settings)
+    var text = barDisksText(list.map(function(entry) { return { disk: stableDiskId(snapshot, entry.disk), show: entry.show } }))
+    if (text !== barDisksText(list)) { out.barDisks = text; changed = true }
+  }
+  var source = String(settingValue(settings, "disksSource") || "").trim()
+  if (source && stableDiskId(snapshot, source) !== source) { out.disksSource = stableDiskId(snapshot, source); changed = true }
+  return changed ? out : null
+}
+
+var DISK_SHOWS = [
+  { value: "speed", label: "Speed" },
+  { value: "used", label: "Used" },
+  { value: "both", label: "Both" }
+]
+
+function normalizeDiskShow(value) {
+  var show = String(value || "").toLowerCase()
+  for (var option of DISK_SHOWS) if (option.value === show) return show
+  return ""
+}
+
+function barDisks(settings) {
+  var raw = String(settingValue(settings, "barDisks") || "").trim()
+  if (raw.toLowerCase() === "none") return []
+  if (!raw) {
+    var style = moduleStyle(settings, "disks")
+    return [{ disk: String(settingValue(settings, "disksSource") || "all").trim() || "all", show: style === "ring" || style === "ring-text" ? "used" : "speed" }]
+  }
+  var out = [], seen = []
+  for (var part of parseList(raw)) {
+    var at = part.lastIndexOf(":")
+    var show = at === -1 ? "" : normalizeDiskShow(part.slice(at + 1))
+    var disk = show ? part.slice(0, at) : part
+    if (disk.toLowerCase() === "all") disk = "all"
+    if (!disk || seen.indexOf(disk) !== -1) continue
+    seen.push(disk)
+    out.push({ disk: disk, show: show || "speed" })
+  }
+  return out
+}
+
+function barDisksHere(snapshot, settings) {
+  var list = barDisks(settings)
+  var perDisk = ((snapshot || {}).disks || {}).perDisk || {}
+  if (list.length === 0 || Object.keys(perDisk).length === 0) return list
+  for (var entry of list) if (resolveDisk(snapshot, entry.disk) !== "") return list
+  return [{ disk: "all", show: list[0].show }]
+}
+
+function barDisksText(list) {
+  if (!list || list.length === 0) return "none"
+  return list.map(function(entry) { return entry.disk + ":" + entry.show }).join(",")
+}
+
+function diskShort(disk) {
+  var name = String(disk || "")
+  if (!name || name === "all") return "DSK"
+  var match = name.match(/^nvme(\d+)n\d+$/) || name.match(/^mmcblk(\d+)$/)
+  if (match) return (name.indexOf("nvme") === 0 ? "NV" : "MC") + match[1]
+  return name.replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase() || "DSK"
+}
+
+function diskUsage(snapshot, disk) {
+  var disks = (snapshot || {}).disks || {}
+  var perDisk = disks.perDisk || {}
+  var volumes = Array.isArray(disks.volumes) ? disks.volumes : []
+  var used = 0, size = 0
+  for (var volume of volumes) {
+    if (disk === "all" ? !perDisk[volume.disk] && volume.fstype !== "zfs" : volume.disk !== disk) continue
+    used += num(volume.used)
+    size += num(volume.size)
+  }
+  if (size <= 0 && disk === "all") {
+    for (var root of volumes) if (root.mount === "/") { used = num(root.used); size = num(root.size) }
+  }
+  return { used: used, size: size, fraction: size > 0 ? clamp(used / size, 0, 1) : 0 }
+}
+
+function pressureColor(percent, calm, warn, danger) {
+  var share = num(percent)
+  return share >= PRESSURE_DANGER_PERCENT ? danger : (share >= PRESSURE_WARN_PERCENT ? warn : calm)
+}
+
+var VOLUME_KINDS = [
+  { kind: "internal", title: "Internal" },
+  { kind: "external", title: "External" },
+  { kind: "network", title: "Network" }
+]
+
+function volumeGroups(volumes) {
+  var list = Array.isArray(volumes) ? volumes : []
+  var out = []
+  for (var group of VOLUME_KINDS) {
+    var items = list.filter(function(volume) { return String(volume.kind || "internal") === group.kind })
+    if (items.length) out.push({ kind: group.kind, title: group.title, items: items })
+  }
+  return out
+}
+
+function volumeKey(volume) {
+  return volume ? String(volume.key || volume.disk || volume.device || "") : ""
+}
+
+function latencyText(milliseconds) {
+  var value = Number(milliseconds)
+  if (milliseconds === null || milliseconds === undefined || !isFinite(value)) return "—"
+  if (value < 1) return (Math.round(value * 100) / 100) + " ms"
+  if (value < 10) return (Math.round(value * 10) / 10) + " ms"
+  return Math.round(value) + " ms"
+}
+
+function driveHealth(load, pressureFull, rotational) {
+  if (!load) return { level: "", text: "" }
+  var busy = num(load.busy)
+  var latency = finiteValue(load.latency) ? Number(load.latency) : NaN
+  if (busy >= STALL_BUSY_PERCENT && num(pressureFull) >= STALL_PRESSURE_PERCENT)
+    return { level: "danger", text: "Stalling the system: busy " + Math.round(busy) + "% of the time while every task waits on I/O" }
+  if (isFinite(latency) && busy >= SLOW_BUSY_PERCENT && latency >= (rotational ? SLOW_HDD_LATENCY_MS : SLOW_SSD_LATENCY_MS))
+    return { level: "warn", text: "Slow to answer: " + latencyText(latency) + " per request" }
+  return { level: "", text: "" }
+}
+
+function checkText(check) {
+  var current = check || {}
+  if (current.id === "trim-blocked") return {
+    title: "TRIM never reaches this drive",
+    detail: "The encrypted volume " + (current.layer || "") + " was unlocked without allowing discards, so fstrim can't trim it "
+      + "and the SSD is never told which blocks are free. It slows down as it fills and wears faster."
+      + (current.fix ? "" : " Unlock it with discards allowed (allow-discards in crypttab, or rd.luks.options=discard)."),
+    fixLabel: "Allow TRIM"
+  }
+  if (current.id === "trim-stale") return {
+    title: "TRIM still stops at the LVM volumes",
+    detail: "TRIM now passes through " + (current.layer || "") + ", but the LVM volumes on top of it were set up before that and still drop it."
+      + (current.fix ? " Reloading them picks it up without a restart." : " They pick it up at the next boot; run sudo fstrim -av after restarting."),
+    fixLabel: "Reload volumes"
+  }
+  if (current.id === "fat-flush") {
+    var flags = Array.isArray(current.flags) ? current.flags.join(", ") : "flush"
+    return {
+      title: "Every file written waits for the drive",
+      detail: "Mounted with " + flags + ": closing each written file waits for the drive, so copying many small files crawls."
+        + (current.fix ? " The fix mounts it without that option from now on; eject it before unplugging." : " Mount it without " + flags + " to fix it."),
+      fixLabel: "Mount without flush"
+    }
+  }
+  return { title: String(current.id || "Check"), detail: "", fixLabel: "Fix" }
+}
+
+var FIX_SCRIPTS = {
+  "allow-discards": {
+    args: 1,
+    body: 'echo "Let TRIM pass through the encrypted volume $1 to the SSD."\n'
+      + 'echo "This runs: sudo cryptsetup refresh --allow-discards --persistent $1"\n'
+      + 'echo "The setting is stored in the LUKS header, so it lasts across reboots."\n'
+      + 'on_top=$(volumes_on "$1")\n'
+      + 'if [ -n "$on_top" ]; then echo "Then it reloads the volumes on top of it so they pass TRIM too:" $on_top; fi\n'
+      + 'confirm || exit 1\n'
+      + 'sudo cryptsetup refresh --allow-discards --persistent "$1" || exit 1\n'
+      + 'reload_volumes $on_top || exit 1\n'
+      + 'echo "Trimming free space now:"\n'
+      + 'sudo fstrim -av\n'
+  },
+  "reload-volumes": {
+    args: 1,
+    body: 'on_top=$(volumes_on "$1")\n'
+      + 'echo "Reload the volumes on top of $1 so they pass TRIM:" $on_top\n'
+      + 'echo "Each one pauses for an instant while its unchanged table is loaded again."\n'
+      + 'confirm || exit 1\n'
+      + 'reload_volumes $on_top || exit 1\n'
+      + 'echo "Trimming free space now:"\n'
+      + 'sudo fstrim -av\n'
+  },
+  "udisks-no-flush": {
+    args: 2,
+    body: 'conf=/etc/udisks2/mount_options.conf\n'
+      + 'echo "Mount the FAT drive $2 without flush from now on, so small writes are fast."\n'
+      + 'echo "This adds a section for it to $conf, then unmounts and mounts it again."\n'
+      + 'confirm || exit 1\n'
+      + 'if ! grep -qsF "[/dev/disk/by-uuid/$1]" "$conf"; then\n'
+      + '  printf \'\\n[/dev/disk/by-uuid/%s]\\nvfat_defaults=uid=$UID,gid=$GID,shortname=mixed,utf8=1,showexec\\n\' "$1" | sudo tee -a "$conf" >/dev/null || exit 1\n'
+      + 'fi\n'
+      + 'udisksctl unmount -b "$2" && udisksctl mount -b "$2"\n'
+  }
+}
+
+var FIX_PRELUDE = 'confirm() { printf "Continue? [y/N] "; read -r answer; [ "$answer" = y ] || [ "$answer" = Y ]; }\n'
+  + 'volumes_on() { for name in "/sys/class/block/$(basename "$(readlink -f "/dev/mapper/$1")")"/holders/*/dm/name; do [ -e "$name" ] && cat "$name"; done; }\n'
+  + 'reload_volumes() { for volume; do echo "Reloading $volume"; table=$(sudo dmsetup table "$volume") && printf "%s\\n" "$table" | sudo dmsetup reload "$volume" && sudo dmsetup resume "$volume" || return 1; done; }\n'
+var FIX_EPILOGUE = 'status=$?\necho\nif [ "$status" -eq 0 ]; then echo "Done."; else echo "Nothing changed, or it failed (status $status)."; fi\n'
+  + 'printf "Press Enter to close. "; read -r _\n'
+
+function fixArgOk(value) {
+  var text = String(value === undefined || value === null ? "" : value)
+  return text.length > 0 && text.length <= 128 && /^[A-Za-z0-9._:\/-]+$/.test(text) && text.indexOf("..") === -1
+}
+
+function fixCommand(check) {
+  var current = check || {}
+  var spec = FIX_SCRIPTS[String(current.fix || "")]
+  var args = Array.isArray(current.args) ? current.args : []
+  if (!spec || args.length !== spec.args || !args.every(fixArgOk)) return null
+  return ["tui-terminal-exec", "--title", "System stats fix", "--", "sh", "-c", FIX_PRELUDE + "(\n" + spec.body + ")\n" + FIX_EPILOGUE, "systemstats-fix"].concat(args.map(String))
+}
+
+function driveChecks(volumes, key) {
+  var out = [], byProblem = {}
+  for (var volume of (Array.isArray(volumes) ? volumes : [])) {
+    if (key && key !== "all" && volumeKey(volume) !== key) continue
+    for (var check of (Array.isArray(volume.checks) ? volume.checks : [])) {
+      var problem = JSON.stringify([check.id, check.layer, check.args])
+      if (!byProblem[problem]) out.push(byProblem[problem] = { check: check, names: [] })
+      byProblem[problem].names.push(volumeName(volume.mount))
+    }
   }
   return out
 }
@@ -285,6 +585,35 @@ function historyRange(value) {
   return value === "1h" ? 1 : value === "24h" ? 2 : 0
 }
 
+function utilizationGrade(value) {
+  if (!finiteValue(value)) return -1
+  var percent = Math.round(clamp(value, 0, 100))
+  return percent < 25 ? 0 : (percent < 60 ? 1 : (percent < 85 ? 2 : 3))
+}
+
+function validHexColor(value) {
+  return typeof value === "string" && /^#[0-9A-Fa-f]{6}$/.test(value)
+}
+
+var UTILIZATION_KEYS = ["utilizationLowColor", "utilizationNormalColor", "utilizationWarningColor", "utilizationCriticalColor"]
+var UTILIZATION_DARK = ["#72ca9b", "#759cd1", "#da9c6c", "#d67471"]
+var UTILIZATION_LIGHT = ["#277944", "#3569aa", "#9c6019", "#af4444"]
+
+function utilizationSettingColor(settings, key, lightTheme) {
+  var chosen = settingValue(settings, key)
+  return validHexColor(chosen) ? chosen : (lightTheme ? UTILIZATION_LIGHT : UTILIZATION_DARK)[UTILIZATION_KEYS.indexOf(key)]
+}
+
+function utilizationColor(settings, value, lightTheme) {
+  var grade = utilizationGrade(value)
+  return flag(settings, "utilizationColors") && grade >= 0 ? utilizationSettingColor(settings, UTILIZATION_KEYS[grade], lightTheme) : null
+}
+
+function utilizationHistoryColors(values, settings, lightTheme) {
+  if (!flag(settings, "utilizationColors")) return []
+  return (Array.isArray(values) ? values : []).map(function(value) { return utilizationColor(settings, value, lightTheme) })
+}
+
 function truthy(value, fallback) {
   if (typeof value === "boolean") return value
   if (typeof value === "number") return value !== 0
@@ -314,6 +643,11 @@ function normalizeStyle(value) {
 function styleOptions(module) {
   var def = moduleDef(module)
   var out = []
+  if (module === "disks") return [
+    { value: "graph", label: "Graph or ring" },
+    { value: "text", label: "Figure" },
+    { value: "both", label: "Graph or ring, and figure" }
+  ]
   if (def.graph) out.push({ value: "graph", label: "Graph" })
   if (def.ring) out.push({ value: "ring", label: "Ring" })
   out.push({ value: "text", label: "Figure" })
@@ -348,7 +682,7 @@ function pageFile(tab) {
   return moduleDef(tab).page
 }
 
-function tabFor(module) { return module }
+function tabFor(module) { return module === "gpuMemory" ? "gpu" : module }
 
 function parseModules(raw) {
   var text = Array.isArray(raw) ? raw.join(",") : String(raw || "")
@@ -476,6 +810,79 @@ function shortGpuName(name) {
     .replace(/\s+Graphics$/i, "")
 }
 
+function gpuList(snapshot) {
+  var cards = (snapshot || {}).gpus
+  return Array.isArray(cards) ? cards : []
+}
+
+function gpuId(card) {
+  return card && card.id !== undefined && card.id !== null ? String(card.id) : ""
+}
+
+function gpuById(snapshot, id) {
+  for (var card of gpuList(snapshot)) if (gpuId(card) === id) return card
+  return null
+}
+
+function discreteGpus(snapshot) {
+  var cards = gpuList(snapshot)
+  var discrete = cards.filter(function(card) { return !card.integrated })
+  return discrete.length > 0 ? discrete : cards
+}
+
+function selectedGpus(snapshot, raw) {
+  var text = String(raw === undefined || raw === null ? SETTINGS.barGpus : raw).trim().toLowerCase()
+  if (!text || text === "discrete") return discreteGpus(snapshot)
+  if (text === "all") return gpuList(snapshot)
+  if (text === "none") return []
+  var picked = parseList(text).map(function(id) { return gpuById(snapshot, id) }).filter(function(card) { return !!card })
+  return picked.length > 0 ? picked : discreteGpus(snapshot)
+}
+
+function gpuShort(card) {
+  var vendor = card ? String(card.vendor || "") : ""
+  return vendor === "nvidia" ? "NVD" : vendor === "amd" ? "AMD" : vendor === "intel" ? "INT" : "GPU"
+}
+
+function gpuTitle(card) {
+  return shortGpuName(card ? card.name : "") || gpuShort(card)
+}
+
+function gpuHasUtil(card) {
+  return !!card && finiteValue(card.util)
+}
+
+function gpuMemoryPercent(card) {
+  if (!card || !finiteValue(card.memUsed) || !finiteValue(card.memTotal) || Number(card.memTotal) <= 0) return null
+  return Math.min(100, Number(card.memUsed) / Number(card.memTotal) * 100)
+}
+
+function compactFreq(mhz) {
+  var megahertz = Number(mhz)
+  if (!isFinite(megahertz) || megahertz <= 0) return "—"
+  return megahertz >= 1000 ? (megahertz / 1000).toFixed(1) + "G" : Math.round(megahertz) + "M"
+}
+
+function cpuPackageWatts(snapshot) {
+  var domains = (((snapshot || {}).power || {}).domains) || []
+  var total = null
+  for (var domain of domains) if (/^package/.test(String(domain.name)) && finiteValue(domain.watts)) total = (total || 0) + Number(domain.watts)
+  return total
+}
+
+function powerTotal(snapshot) {
+  var battery = (snapshot || {}).battery || {}
+  var domains = (((snapshot || {}).power || {}).domains) || []
+  var platform = domains.find(function(domain) { return String(domain.name) === "psys" && finiteValue(domain.watts) })
+  if (battery.present && battery.status === "Discharging" && num(battery.power) > 0)
+    return { watts: Number(battery.power), detail: "Drawn from the battery" }
+  if (platform) return { watts: Number(platform.watts), detail: "Platform, measured by RAPL" }
+  var cpu = cpuPackageWatts(snapshot), gpu = null
+  for (var card of gpuList(snapshot)) if (!card.integrated && finiteValue(card.power)) gpu = (gpu || 0) + Number(card.power)
+  if (cpu === null && gpu === null) return { watts: null, detail: "" }
+  return { watts: (cpu || 0) + (gpu || 0), detail: gpu !== null ? "CPU and GPUs only" : "CPU package only" }
+}
+
 function batteryIcon(percent, charging) {
   if (charging) return "󰂄"
   var icons = ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
@@ -508,8 +915,8 @@ function linkSpeedText(iface) {
 
 function emptyHistory() {
   return {
-    cpuUser: [], cpuSystem: [], cpuTotal: [], cpuTemp: [],
-    gpu: [], gpuTemp: [], vram: [], gpus: {}, gpuTemps: {}, vrams: {},
+    cpuUser: [], cpuSystem: [], cpuTotal: [], cpuTemp: [], cpuPower: [], powerTotal: [], ioPressure: [],
+    gpuTemp: [], gpus: {}, gpuTemps: {}, gpuPowers: {}, vrams: {},
     memUsed: [], memPressure: [],
     netRx: [], netTx: [], diskRead: [], diskWrite: [], disks: {},
     battery: [], batteryCharging: []
@@ -520,14 +927,14 @@ function emptyPeakBucket() { return { slots: [], series: {} } }
 
 var PEAK_SERIES_LIMIT = 128
 var PEAK_HISTORY_KEYS = [
-  "cpuUser", "cpuSystem", "cpuTotal", "cpuTemp", "gpu", "gpuTemp", "vram",
-  "memUsed", "memPressure", "netRx", "netTx", "diskRead", "diskWrite",
+  "cpuUser", "cpuSystem", "cpuTotal", "cpuTemp", "cpuPower", "gpuTemp",
+  "memUsed", "memPressure", "netRx", "netTx", "diskRead", "diskWrite", "powerTotal", "ioPressure",
   "batteryEmpty", "batteryCharging"
 ]
 
 function validPeakKey(key) {
   return PEAK_HISTORY_KEYS.indexOf(key) !== -1
-    || /^(gpu|gpuTemp|vram)\/(amd|intel|nvidia)$/.test(key)
+    || /^(gpu|gpuTemp|gpuPower|vram)\/[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-9a-f]$/.test(key)
     || /^disk\/[A-Za-z0-9_-]{1,64}\/(read|write)$/.test(key)
 }
 
@@ -613,6 +1020,7 @@ function peakHistoryView(live, hour, day, range) {
     if (key === "batteryEmpty") view.battery = series[key].map(function(value) { return value === null ? null : 100 - value })
     else if (key.indexOf("gpu/") === 0) view.gpus[key.slice(4)] = series[key]
     else if (key.indexOf("gpuTemp/") === 0) view.gpuTemps[key.slice(8)] = series[key]
+    else if (key.indexOf("gpuPower/") === 0) view.gpuPowers[key.slice(9)] = series[key]
     else if (key.indexOf("vram/") === 0) view.vrams[key.slice(5)] = series[key]
     else if (key.indexOf("disk/") === 0) {
       var match = /^disk\/([^/]+)\/(read|write)$/.exec(key)
@@ -641,29 +1049,6 @@ function pushHistory(arr, value, max) {
   var out = list.length > keep ? list.slice(list.length - keep) : list.slice()
   out.push(value === null || value === undefined || !isFinite(Number(value)) ? null : Number(value))
   return out
-}
-
-function powerBucket(previous, slot, cpu, gpu, limit) {
-  var old = previous || {}, previousSlots = Array.isArray(old.slots) ? old.slots : [], end = previousSlots.length - 1
-  if (previousSlots[end] === slot && previousSlots.length <= limit && Array.isArray(old.cpu) && Array.isArray(old.gpu)
-      && !raisesPeak(old.cpu[end], cpu) && !raisesPeak(old.gpu[end], gpu)) return old
-  var slots = previousSlots.slice()
-  var cpus = Array.isArray(old.cpu) ? old.cpu.slice() : []
-  var gpus = Array.isArray(old.gpu) ? old.gpu.slice() : []
-  var last = slots.length ? slots[slots.length - 1] : slot - 1
-  if (last > slot) { slots = []; cpus = []; gpus = []; last = slot - 1 }
-  if (last === slot) {
-    if (raisesPeak(cpus[end], cpu)) cpus[end] = peakValue(cpu)
-    if (raisesPeak(gpus[end], gpu)) gpus[end] = peakValue(gpu)
-  } else {
-    for (var next = Math.max(last + 1, slot - limit + 1); next <= slot; next++) {
-      slots.push(next)
-      cpus.push(next === slot ? peakValue(cpu) : null)
-      gpus.push(next === slot ? peakValue(gpu) : null)
-    }
-  }
-  if (slots.length > limit) { var excess = slots.length - limit; slots.splice(0, excess); cpus.splice(0, excess); gpus.splice(0, excess) }
-  return { slots: slots, cpu: cpus, gpu: gpus }
 }
 
 function maxOf(arr, count) {

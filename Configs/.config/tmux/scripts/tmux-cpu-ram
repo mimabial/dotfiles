@@ -1,0 +1,41 @@
+#!/bin/bash
+
+CPU_SAMPLE="${XDG_RUNTIME_DIR:-/tmp}/tmux-cpu-sample"
+SAMPLE_REFRESH_CENTISECONDS=100
+MEDIUM_LOAD_PERCENT=30
+HIGH_LOAD_PERCENT=80
+CPU_LEVEL_STYLES=('#[fg=#{@theme_green}]' '#[fg=#{@theme_yellow}]' '#[fg=#{@theme_red}]')
+RAM_LEVEL_STYLES=('#[fg=green]' '#[fg=yellow]' '#[fg=red]')
+RAM_LEVEL_ICONS=('=' '≡' '≣')
+
+load_level_into() {
+  local -n level_ref="$1"
+  local value="$2" scale="$3"
+  level_ref=0
+  (( value >= MEDIUM_LOAD_PERCENT * scale )) && level_ref=1
+  (( value >= HIGH_LOAD_PERCENT * scale )) && level_ref=2
+}
+
+read -r uptime _ < /proc/uptime
+now=${uptime/./}
+sample_time=0 sample_idle=0 sample_total=0 cpu=0
+[[ -r $CPU_SAMPLE ]] && read -r sample_time sample_idle sample_total cpu < "$CPU_SAMPLE"
+(( now >= sample_time )) || sample_time=0 sample_idle=0 sample_total=0
+if (( now - sample_time >= SAMPLE_REFRESH_CENTISECONDS )); then
+  read -r _ user nice system idle iowait irq softirq steal _ < /proc/stat
+  total=$((user + nice + system + idle + iowait + irq + softirq + steal))
+  cpu=$(( (200 * (total - sample_total - idle + sample_idle) / (total - sample_total) + 1) / 2 ))
+  printf '%s %s %s %s\n' "$now" "$idle" "$total" "$cpu" > "$CPU_SAMPLE"
+fi
+
+while read -r key value _; do
+  case $key in
+    MemTotal:) mem_total=$value ;;
+    MemAvailable:) mem_available=$value; break ;;
+  esac
+done < /proc/meminfo
+ram_permille=$(( (2000 * (mem_total - mem_available) / mem_total + 1) / 2 ))
+
+load_level_into cpu_level "$cpu" 1
+load_level_into ram_level "$ram_permille" 10
+printf '%s#[nobold,italics]%3d%% #[bold]%s%s\n' "${CPU_LEVEL_STYLES[cpu_level]}" "$cpu" "${RAM_LEVEL_STYLES[ram_level]}" "${RAM_LEVEL_ICONS[ram_level]}"

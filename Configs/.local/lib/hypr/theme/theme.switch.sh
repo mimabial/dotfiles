@@ -4,20 +4,22 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state system wallpaper_catalog || exit 1
+declare -F hypr_svc_user >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/services.bash" || exit 1
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR}/theme/pairs.sh" || exit 1
 
 if [[ "${HYPR_WORKFLOW_TRANSITION:-0}" != 1 ]]; then
-  exec {theme_switch_workflow_lock_fd}>"$(hypr_lock_path_ensure_parent workflow)"
+  hypr_lock_path_into theme_switch_workflow_lock workflow
+  exec {theme_switch_workflow_lock_fd}>"${theme_switch_workflow_lock}"
   flock "${theme_switch_workflow_lock_fd}"
 fi
 
-THEME_SWITCH_LOCK="$(hypr_lock_path_ensure_parent theme_switch)"
+hypr_lock_path_into THEME_SWITCH_LOCK theme_switch
 exec {theme_switch_lock_fd}>"${THEME_SWITCH_LOCK}"
 if ! flock -n "${theme_switch_lock_fd}"; then
   for theme_switch_arg in "$@"; do
-    [[ "${theme_switch_arg}" == "--from-auto" ]] || continue
+    [[ "${theme_switch_arg}" =~ ^(--from-auto|-r|--rotate)$ ]] || continue
     print_log -sec "theme.switch" -stat "drop" "A newer theme operation is already in progress"
     exit 0
   done
@@ -115,6 +117,28 @@ select_adjacent_theme() {
   selected_theme="${theme_names[selected_theme_index]}"
 }
 
+select_rotation_theme() {
+  local order="$1" index="" name="" step=0
+  local count="${#theme_names[@]}"
+  local -a candidates=()
+  local -A polarity=()
+
+  [[ "${order}" =~ ^(next|random)$ ]] || { theme_switch_usage >&2; exit 1; }
+  theme_polarities_into polarity "${HYPR_THEME}" "${theme_names[@]}"
+  index="$(catalog_index_of theme_names "${HYPR_THEME}")" || index=-1
+  for ((step = 1; step <= count; step++)); do
+    name="${theme_names[(index + step) % count]}"
+    [[ "${name}" != "${HYPR_THEME}" && "${polarity[${name}]}" == "${polarity[${HYPR_THEME}]}" ]] && candidates+=("${name}")
+  done
+  if ((${#candidates[@]} == 0)); then
+    print_log -sec "theme.switch" -stat "skip" "No other ${polarity[${HYPR_THEME}]} theme to rotate to"
+    exit 0
+  fi
+  [[ "${order}" == next ]] && selected_theme="${candidates[0]}" || selected_theme="${candidates[RANDOM % ${#candidates[@]}]}"
+  theme_switch_selection_requested=1
+  theme_switch_rotate=1
+}
+
 theme_notify_finish() {
   local exit_code="$1"
   local theme_name="${selected_theme:-${HYPR_THEME}}"
@@ -163,8 +187,7 @@ cleanup_theme_switch() {
   fi
   if [[ "${exit_code}" -ne 0 ]] && [[ "${theme_switch_auto_mode_changed}" -eq 1 ]]; then
     state_set "selected_color_mode" "${theme_switch_previous_color_mode}" "staterc" || true
-    hypr_svc_user start auto-theme || true
-    hypr_svc_user_signal auto-theme USR2 || true
+    hypr_svc_user_signal_or_start auto-theme USR2 || true
   fi
   [[ -n "${theme_switch_metadata_file}" && -e "${theme_switch_metadata_file}" ]] && rm -f -- "${theme_switch_metadata_file}"
   theme_notify_finish "${exit_code}"
@@ -178,6 +201,7 @@ quiet=false
 selected_theme=""
 theme_switch_selection_requested=0
 theme_switch_from_auto=0
+theme_switch_rotate=0
 theme_switch_cache_args=()
 
 theme_switch_usage() {
@@ -189,6 +213,8 @@ Options:
   -n, --next              Set next theme
   -p, --previous          Set previous theme
   -s, --set THEME         Set theme by name
+  -r, --rotate ORDER      Set another theme of the active theme's polarity
+                          (ORDER: next or random), keeping auto mode
   -q, --quiet             Suppress nonessential output
       --regen             Regenerate colors and refresh cache
       --force-regenerate  Alias for --regen
@@ -213,6 +239,7 @@ parse_theme_switch_args() {
         selected_theme="$1"
         ;;
       -s?*) theme_switch_selection_requested=1; selected_theme="${1#-s}" ;;
+      -r | --rotate) shift; select_rotation_theme "${1:-}" ;;
       -q | --quiet) quiet=true ;;
       --regen | --force-regenerate) theme_switch_cache_args+=(--force-regenerate) ;;
       --no-cache) theme_switch_cache_args+=(--no-cache) ;;
@@ -287,7 +314,7 @@ set_active_theme() {
 
 prepare_active_theme_config() {
   [[ -r "${HYPR_THEME_DIR}/hypr.theme" ]] || return 0
-  mkdir -p "${HYPR_CACHE_HOME}" || return 1
+  [[ -d "${HYPR_CACHE_HOME}" ]] || mkdir -p "${HYPR_CACHE_HOME}" || return 1
   theme_switch_metadata_file="$(mktemp "${HYPR_CACHE_HOME}/theme.meta.XXXXXX")" || return 1
   sanitize_hypr_theme "${HYPR_THEME_DIR}/hypr.theme" "${theme_switch_metadata_file}"
 }
@@ -301,7 +328,7 @@ theme_switch_reconcile_color_mode() {
   [[ "${polarity}" == "light" ]] && desired="${STATE_COLOR_MODE_LIGHT}" || desired="${STATE_COLOR_MODE_DARK}"
 
   if [[ "${mode}" == "${STATE_COLOR_MODE_AUTO}" ]]; then
-    [[ "${theme_switch_selection_requested}" -eq 1 && "${theme_switch_from_auto}" -eq 0 ]] || return 0
+    [[ "${theme_switch_selection_requested}" -eq 1 && "${theme_switch_from_auto}" -eq 0 && "${theme_switch_rotate}" -eq 0 ]] || return 0
     theme_switch_auto_mode_changed=1
     hypr_svc_user stop auto-theme || true
   fi

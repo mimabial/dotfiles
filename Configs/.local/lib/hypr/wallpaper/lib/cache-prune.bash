@@ -110,7 +110,7 @@ wallpaper_prune_orphaned_thumbnails() {
 
 wallpaper_prune_hashmap_caches() {
   local cache_root=""
-  cache_root="$(wallpaper_cache_root)"
+  wallpaper_cache_root_into cache_root
 
   local cache_dir="${cache_root}/hashmap"
   [[ -d "${cache_dir}" ]] || return 0

@@ -6,8 +6,9 @@ import "Ui" as Ui
 
 PopupCard {
     id: root
+    readonly property string cliphistScript: root.shell.home + "/.local/lib/hypr/clipboard/cliphist.sh"
     popupName: "cliphist"
-    keyboardHint: wipeDialog.opened ? "←→/Tab choose · Enter confirm · Esc cancel" : "Type to search · ↑↓ move · Enter copy · Del remove · Esc close"
+    keyboardHint: wipeDialog.opened ? "←→/Tab Choose  Enter Confirm  Esc Cancel" : "Type to search  ↑↓ Move  Enter Copy  Del Remove  Esc Close"
     contentWidth: Style.px(430)
     contentHeight: Style.px(470)
 
@@ -76,7 +77,7 @@ PopupCard {
         return defaultKey(event)
     }
     function refresh() { if (!listProcess.running) listProcess.running = true }
-    function act(args) { shell.run(["hyprshell", "cliphist"].concat(args), root.refresh) }
+    function act(args) { shell.run(["bash", root.cliphistScript].concat(args), root.refresh) }
     function actAndClose(args) { shell.closePopup(); act(args) }
     function copyRow(row) { actAndClose([row.favorite ? "--panel-fav-copy" : "--panel-copy", String(row.key)]) }
     function deleteRow(row) {
@@ -97,7 +98,7 @@ PopupCard {
     }
 
     property Process listProcess: Process {
-        command: ["hyprshell", "cliphist", "--panel-json"]
+        command: ["bash", root.cliphistScript, "--panel-json"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             try {
                 const payload = JSON.parse(text) || ({})
@@ -202,9 +203,7 @@ PopupCard {
                 width: ListView.view.width
                 height: Style.popupRowHeight
                 radius: root.shell.rounding
-                color: cursored ? root.shell.hoverFill(2) : "transparent"
-                border.width: cursored ? 1 : 0
-                border.color: root.shell.hoverEdge(1)
+                color: cursored ? root.shell.hoverFill() : "transparent"
                 Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
                 onClicked: root.copyRow(modelData)
 

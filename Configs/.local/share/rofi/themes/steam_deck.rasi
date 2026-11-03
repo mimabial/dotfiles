@@ -1,86 +1,182 @@
 configuration {
-    modi:                        "drun";
     show-icons:                  true;
-    drun-display-format:         "{name}";
-    kb-row-up:                   "k,Up";
-    kb-row-down:                 "j,Down";
-    kb-move-char-forward:        "l,Right";
-    kb-move-char-back:           "h,Left";
-    kb-cancel:                   "q,Escape";
+    sidebar-mode:                true;
+    hover-select:                true;
+    kb-row-left:                 "Left";
+    kb-row-right:                "Right";
+    kb-move-char-forward:        "Control+f";
+    kb-move-char-back:           "Control+b";
+    kb-mode-next:                "Tab,Control+Tab,Shift+Right";
+    kb-mode-previous:            "ISO_Left_Tab,Control+ISO_Left_Tab,Shift+Left";
+    kb-element-next:             "";
+    kb-element-prev:             "";
+    kb-cancel:                   "Escape";
+    display-all:                 "<span size=\"small\">ALL</span>";
+    display-steam:               "<span size=\"small\">STEAM</span>";
+    display-lutris:              "<span size=\"small\">LUTRIS</span>";
 }
 
 @theme "~/.config/rofi/colors.rasi"
 
+* {
+    background-color:            transparent;
+    text-color:                  @foreground;
+}
+
 window {
     enabled:                     true;
-    fullscreen:                  false;
+    fullscreen:                  true;
+    width:                       100%;
+    height:                      100%;
     transparency:                "real";
     cursor:                      "default";
+    border:                      0px;
+    border-radius:               0px;
     background-color:            transparent;
 }
 
 mainbox {
     enabled:                     true;
-    children:                    [ "listview" ];
-    background-color:            transparent;
+    children:                    [ "library" ];
+    orientation:                 vertical;
+}
+
+library {
+    children:                    [ "spacer", "content", "spacer" ];
     orientation:                 horizontal;
+    padding:                     @deck-inset;
+    spacing:                     0px;
+    background-color:            @background-alpha;
+}
+
+content {
+    children:                    [ "header", "message", "spacer", "listview", "spacer", "footer" ];
+    orientation:                 vertical;
+    spacing:                     @deck-gap;
+    expand:                      false;
+    width:                       @deck-grid-width;
+}
+
+header {
+    children:                    [ "mode-switcher", "entry" ];
+    orientation:                 horizontal;
+    expand:                      false;
+    border-radius:               @element-border-radius;
+    background-color:            @field-background;
+}
+
+mode-switcher {
+    expand:                      false;
+    spacing:                     @deck-gap;
+}
+
+entry {
+    padding:                     @control-padding;
+    horizontal-align:            1;
+    vertical-align:              0.5;
+    cursor-color:                transparent;
+}
+
+button {
+    expand:                      false;
+    padding:                     @control-padding;
+    border:                      0px;
+    border-radius:               @element-border-radius;
+    markup:                      true;
+    vertical-align:              0.5;
+    text-color:                  @separator;
+    cursor:                      pointer;
+}
+
+button selected.normal {
+    background-color:            @active;
+    text-color:                  @foreground;
 }
 
 listview {
     enabled:                     true;
     show-icons:                  true;
-    columns:                     3;
-    lines:                       2;
+    columns:                     @deck-columns;
+    lines:                       @deck-rows;
     flow:                        horizontal;
-    spacing:                     1.2em;
-    padding:                     3em 4em 2em 4em;
+    spacing:                     @deck-card-gap;
     cycle:                       true;
-    dynamic:                     true;
+    dynamic:                     false;
     fixed-height:                true;
     fixed-columns:               true;
     scrollbar:                   false;
+    expand:                      false;
     reverse:                     false;
-    background-color:            @background-alpha;
-    text-color:                  @foreground;
-    border-radius:               0.4em;
 }
 
 element {
     enabled:                     true;
-    children:                    [ "element-icon", "element-text" ];
+    children:                    [ "element-icon" ];
     orientation:                 vertical;
-    spacing:                     0em;
-    padding:                     0.3em;
-    border-radius:               0.4em;
+    padding:                     0px;
+    border:                      @deck-border;
+    border-radius:               @element-border-radius;
+    border-color:                transparent;
     cursor:                      pointer;
-    background-color:            transparent;
+    background-color:            @background-alpha;
     text-color:                  @foreground;
 }
 
 element selected.normal {
     background-color:            @selected-background;
-    text-color:                  @selected-foreground;
+    border-color:                @accent;
 }
 
 element-icon {
     enabled:                     true;
-    size:                        10em;
-    width:                       10em;
+    size:                        @deck-cover-height;
+    squared:                     false;
     padding:                     0;
     margin:                      0;
     border:                      0;
     cursor:                      inherit;
     background-color:            transparent;
     text-color:                  inherit;
+    expand:                      false;
 }
 
-element-text {
-    vertical-align:              0.5;
-    horizontal-align:            0.5;
+message {
     expand:                      false;
-    spacing:                     0em;
-    padding:                     0.4em 0em 0em 0em;
-    cursor:                      inherit;
-    background-color:            transparent;
-    text-color:                  inherit;
+    padding:                     @control-padding;
+}
+
+footer {
+    children:                    [ "spacer", "textbox-navigate", "button-libraries", "button-play", "button-back", "spacer" ];
+    orientation:                 horizontal;
+    expand:                      false;
+    spacing:                     @control-gap;
+    padding:                     0px;
+}
+
+textbox-navigate, button-libraries, button-play, button-back {
+    padding:                     0px;
+    vertical-align:              0.5;
+    expand:                      false;
+    border:                      0px;
+    markup:                      true;
+    text-color:                  @separator;
+}
+
+textbox-navigate {
+    content:                     "<span size=\"small\">↑↓←→ / 󰊖 Navigate</span>";
+}
+
+button-libraries {
+    content:                     "<span size=\"small\">Tab / LB RB Library</span>";
+    action:                      "kb-mode-next";
+}
+
+button-play {
+    content:                     "<span size=\"small\">Enter / 󰯬 Play</span>";
+    action:                      "kb-accept-entry";
+}
+
+button-back {
+    content:                     "<span size=\"small\">Esc / 󰯯 Back</span>";
+    action:                      "kb-cancel";
 }

@@ -22,7 +22,7 @@ for theme_apply_lib in \
 done
 unset theme_apply_lib
 
-THEME_UPDATE_LOCK="$(hypr_lock_path_ensure_parent theme_update)"
+hypr_lock_path_into THEME_UPDATE_LOCK theme_update
 
 theme_apply_lock_fd=""
 theme_apply_lock_owned=0
@@ -60,10 +60,10 @@ theme_apply_timed_call() {
   local end_ms=""
   local rc=0
 
-  start_ms="$(hypr_now_ms)"
+  hypr_now_ms_into start_ms
   "$@"
   rc=$?
-  end_ms="$(hypr_now_ms)"
+  hypr_now_ms_into end_ms
   theme_apply_log_timing "${name}" "$((end_ms - start_ms))" "${rc}"
   return "${rc}"
 }
@@ -114,7 +114,7 @@ theme_apply_commit_theme_metadata() {
   local converter="${HYPR_LIB_DIR}/util/hypr-to-lua.py"
 
   [[ -n "${staged_file}" && -f "${staged_file}" ]] || return 0
-  mkdir -p "${live_file%/*}" || return 1
+  [[ -d "${live_file%/*}" ]] || mkdir -p "${live_file%/*}" || return 1
 
   if [[ -f "${live_file}" ]] && cmp -s "${staged_file}" "${live_file}"; then
     rm -f -- "${staged_file}" || return 1
@@ -157,7 +157,7 @@ theme_apply_write_dunst_runtime() {
 theme_apply_prepare_job_log_dir() {
   [[ -n "${theme_apply_job_log_dir}" && -d "${theme_apply_job_log_dir}" ]] && return 0
 
-  mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/hypr" || return 1
+  [[ -d "${XDG_CACHE_HOME:-$HOME/.cache}/hypr" ]] || mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/hypr" || return 1
   theme_apply_job_log_dir="$(mktemp -d "${XDG_CACHE_HOME:-$HOME/.cache}/hypr/theme.apply.jobs.XXXXXX")"
 }
 
@@ -171,7 +171,7 @@ theme_apply_next_generation() {
   local current_generation=""
   local next_generation=1
 
-  current_generation="$(state_get "theme_apply_generation" "0" 2>/dev/null || printf '0')"
+  state_get_into current_generation theme_apply_generation 0
   [[ "${current_generation}" =~ ^[0-9]+$ ]] || current_generation=0
   next_generation=$((current_generation + 1))
   state_set "theme_apply_generation" "${next_generation}" "staterc" || return 1
@@ -184,7 +184,7 @@ theme_apply_generation_is_current() {
   local current_generation=""
 
   [[ -n "${theme_apply_generation}" ]] || return 0
-  current_generation="$(state_get "theme_apply_generation" "0" 2>/dev/null || printf '0')"
+  state_get_into current_generation theme_apply_generation 0
   [[ "${current_generation}" == "${theme_apply_generation}" ]]
 }
 
@@ -207,10 +207,10 @@ theme_apply_start_job() {
     local end_ms=""
     local rc=0
 
-    start_ms="$(hypr_now_ms)"
+    hypr_now_ms_into start_ms
     "${fn}" "$@"
     rc=$?
-    end_ms="$(hypr_now_ms)"
+    hypr_now_ms_into end_ms
     {
       printf 'rc=%s\n' "${rc}"
       printf 'duration_ms=%s\n' "$((end_ms - start_ms))"
@@ -325,7 +325,7 @@ theme_apply_notify_wallpaper_detached() {
   local notify_body="Theme: ${HYPR_THEME}"
   local elapsed_label=""
 
-  if elapsed_label="$(hypr_elapsed_label "${theme_apply_started_ms:-}" 2>/dev/null)"; then
+  if hypr_elapsed_label_into elapsed_label "${theme_apply_started_ms:-}"; then
     notify_body+=$'\n'"Time: ${elapsed_label}"
   fi
 
@@ -383,7 +383,7 @@ theme_apply_run_color_sync() {
     return
   fi
 
-  variant="$(state_resolve_color_variant "${selected_color_mode}")"
+  state_resolve_color_variant_into variant "${selected_color_mode}"
 
   state_set "BACKGROUND_MODE" "${variant}" "staterc" || return 1
   state_set_color_variant "${variant}" || return 1
@@ -440,7 +440,7 @@ while (($#)); do
 done
 theme_apply_quiet="${quiet}"
 export theme_apply_quiet
-theme_apply_started_ms="$(hypr_now_ms)"
+hypr_now_ms_into theme_apply_started_ms
 
 wallpaper_path=""
 if [[ "${selected_color_source}" == "theme" ]]; then

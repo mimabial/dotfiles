@@ -37,6 +37,7 @@ if [[ "${1:-}" == "--dump-json" ]]; then
 elif [[ "${1:-}" == "--action" ]]; then
   [[ -n "${2:-}" ]] || { printf 'ERROR: --action requires an action id\n' >&2; exit 2; }
   BACK_TO_EXIT=true
+  menu_fill_all_deferred
   menu_run_action "$2"
 elif [[ "${1:-}" == "--menu-id" || "${1:-}" == "--search-all" ]]; then
   menu_open_argument "$@"

@@ -36,10 +36,10 @@ ComboBox {
         color: root.shell.mutedText; font.pixelSize: Style.subtitle
     }
     background: Rectangle {
-        radius: root.shell.rounding; color: root.shell.alpha(root.shell.foreground, .06)
-        border.color: root.cursored ? root.shell.hoverEdge(.85)
-            : root.shell.alpha(root.shell.role(root.down ? "act_br" : "br", root.shell.foreground), root.down ? .55 : .3)
-        Behavior on border.color { ColorAnimation { duration: Style.hoverDuration } }
+        radius: root.shell.rounding
+        color: root.cursored ? root.shell.hoverFill() : root.down ? root.shell.selectedFill() : root.shell.alpha(root.shell.foreground, Style.fieldFillAlpha)
+        border.color: root.shell.alpha(root.shell.role("br", root.shell.foreground), .3)
+        Behavior on color { ColorAnimation { duration: Style.hoverDuration } }
     }
     delegate: ItemDelegate {
         id: option

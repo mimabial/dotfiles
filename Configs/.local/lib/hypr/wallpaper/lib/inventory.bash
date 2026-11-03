@@ -27,11 +27,9 @@ wallpaper_inventory_sources_into() {
 }
 
 wallpaper_inventory_signature_file() {
-  printf '%s\n' "$(wallpaper_cache_root)/.inventory.signature"
-}
-
-wallpaper_inventory_lock_file() {
-  hypr_lock_path_ensure_parent wallpaper_inventory
+  local cache_root=""
+  wallpaper_cache_root_into cache_root
+  printf '%s\n' "${cache_root}/.inventory.signature"
 }
 
 wallpaper_inventory_signature() {
@@ -42,7 +40,7 @@ wallpaper_inventory_signature() {
   wallpaper_inventory_sources_into wall_sources || return 1
   wallpaper_supported_extensions_into supported_extensions
 
-  regex_ext="$(wallpaper_extensions_regex "${supported_extensions[@]}")"
+  wallpaper_extensions_regex_into regex_ext "${supported_extensions[@]}"
 
   {
     printf '[sources]\n'
@@ -124,8 +122,7 @@ wallpaper_refresh_inventory_and_prune_async() {
   local lock_file=""
   [[ "${WALLPAPER_INVENTORY_REFRESHED:-0}" -eq 1 ]] && return 0
 
-  lock_file="$(wallpaper_inventory_lock_file)"
-  mkdir -p "${lock_file%/*}"
+  hypr_lock_path_into lock_file wallpaper_inventory
 
   wallpaper_run_detached wallpaper_refresh_inventory_and_prune_exclusive "${lock_file}"
 }

@@ -64,12 +64,15 @@ emoji_clipboard_dmenu() {
   local -n picker_layout_ref="$3"
   local prompt="$1"
   local placeholder="$2"
+  local -a header_args=()
+
+  rofi_picker_header_args_into header_args "${prompt}" "󰞅" "$3" "${placeholder}"
 
   rofi_with_background_theme -dmenu -i -p "${prompt}" -no-show-icons \
-    -theme-str "entry { placeholder: \"${placeholder}\";} ${picker_layout_ref[position_theme]} ${picker_layout_ref[window_theme]}" \
+    -theme-str "${picker_layout_ref[position_theme]} ${picker_layout_ref[window_theme]}" \
     -theme-str "${picker_layout_ref[font_theme]}" \
     -theme-str "${picker_layout_ref[size_theme]}" \
-    -theme "$(rofi_resolve_theme clipboard)"
+    -theme "$(rofi_resolve_theme clipboard)" "${header_args[@]}"
 }
 
 emoji_filtered_rofi_args() {
@@ -99,7 +102,8 @@ emoji_selection_menu_args() {
 emoji_rofi_selection_index() {
   local -n picker_layout_ref="$2"
   local display_file="$1"
-  local -a rofi_config_args=()
+  local layout_name="$2"
+  local -a rofi_config_args=() header_args=()
   shift 2
 
   if [[ -n ${use_rofile} ]]; then
@@ -113,12 +117,14 @@ emoji_rofi_selection_index() {
     return
   fi
 
+  rofi_picker_header_args_into header_args Emoji "󰞅" "${layout_name}"
   rofi_with_background_theme -dmenu -i -format 'i' "$@" \
     -no-show-icons \
     -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
-    -theme-str "entry { placeholder: \" 󰞅 Emoji\";} ${picker_layout_ref[position_theme]} ${picker_layout_ref[window_theme]}" \
+    -theme-str "${picker_layout_ref[position_theme]} ${picker_layout_ref[window_theme]}" \
     -theme-str "${picker_layout_ref[font_theme]}" \
     -theme-str "${picker_layout_ref[size_theme]}" \
+    "${header_args[@]}" \
     -no-custom <"${display_file}"
 }
 
@@ -191,13 +197,16 @@ emoji_pick_category() {
   local style_type="${emoji_style:-${ROFI_EMOJI_STYLE:-2}}"
   local rofi_base_opts=()
   local style_menu_args=()
+  local -a header_args=()
   emoji_category_menu_args "${style_type}" rofi_base_opts style_menu_args "$2"
+  rofi_picker_header_args_into header_args "${category}" "󰞅" "$2"
 
   selected=$(rofi_with_background_theme -dmenu -i "${style_menu_args[@]}" \
     -no-show-icons "${rofi_base_opts[@]}" \
     -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
-    -theme-str "entry { placeholder: \"📂 ${category}\";} ${picker_layout_ref[position_theme]} ${picker_layout_ref[window_theme]}" \
+    -theme-str "${picker_layout_ref[position_theme]} ${picker_layout_ref[window_theme]}" \
     -theme-str "${picker_layout_ref[font_theme]}" \
+    "${header_args[@]}" \
     -no-custom <"${workspace[menu_file]}")
 
   rm -rf -- "${workspace[directory]}"

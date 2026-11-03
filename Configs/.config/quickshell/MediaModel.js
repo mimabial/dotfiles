@@ -35,14 +35,16 @@ function queueContext(override, player) {
   return url.indexOf("list=") !== -1 && /youtu(?:be\.com|\.be)\//.test(url) ? url : ""
 }
 
+function hasUpcoming(mirror) {
+  var current = mirror.entries.findIndex(function(entry) { return entry.playlist_id === mirror.current })
+  return mirror.entries.length > current + 1 || mirror.looping && mirror.entries.length > 1
+}
 function displayQueue(source, items, playing) {
-  var queue = (items || []).map(function(item, index) {
-    return Object.assign({ queueIndex: index }, item)
-  })
-  if (source !== "cliamp" || playing.state === "stopped" || playing.title === "No track loaded")
+  var queue = items || []
+  if (source !== "cliamp" || !playing || playing.state === "stopped" || playing.title === "No track loaded")
     return queue
   return [{
-    current: true, queueIndex: -1, url: playing.url, title: playing.title,
+    current: true, url: playing.url, title: playing.title,
     artist: playing.artist, thumb: playing.art
   }].concat(queue)
 }

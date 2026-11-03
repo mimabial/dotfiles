@@ -172,7 +172,7 @@ Column {
       font.pixelSize: Commons.Style.font.caption
     }
 
-    TextField {
+    KeyField {
       width: parent.width
       text: root.service ? String(root.service.alertConfig.alertCommand || "") : ""
       placeholderText: "No command configured"

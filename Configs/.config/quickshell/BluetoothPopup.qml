@@ -13,7 +13,8 @@ PopupCard {
     readonly property int operationTimeoutMs: 45000
     readonly property int deviceStateTimeoutMs: 6000
     popupName: "bluetooth"
-    keyboardHint: page === "map" ? "↑↓ scroll · Tab move · ←→ adjust · Enter select · Esc close" : (page === "bluetooth" ? "↑↓/Tab move · ←→ adjust · X forget · Enter select" : "↑↓/Tab move · ←→ adjust · Enter select") + " · Esc back"
+    keyboardHint: page === "devices" ? "↑↓ Scroll  Tab Move  ←→ Expand  Enter Connect  X Forget  Esc Close"
+        : (page === "pair" ? "↑↓/Tab Move  Enter Pair" : "↑↓/Tab Move  ←→ Adjust  Enter Select") + "  Esc Back"
     contentWidth: Style.px(440)
     contentHeight: Style.px(570)
 
@@ -34,20 +35,29 @@ PopupCard {
     readonly property var knownRows: knownDevices.map(Model.deviceSnapshot)
     readonly property var discoveredRows: discoveredDevices.map(Model.deviceSnapshot)
     readonly property var adapters: Bluetooth.adapters ? Bluetooth.adapters.values : []
-    property var mapHardware: ({})
-    property string mapError: ""
-    property bool mapRefreshPending: false
-    readonly property bool mapWanted: open && page === "map"
+    property var hardware: ({})
+    property string hardwareError: ""
+    property bool hardwareRefreshPending: false
+    readonly property bool hardwareWanted: open && page === "devices"
     property bool showHiddenDevices: false
     property var expandedDevices: ({})
-    readonly property var allMonitorDevices: Model.monitoringDevices(BluetoothMonitor.snapshot.devices || [], connectedRows.concat(knownRows), mapHardware)
-    readonly property var shownMonitorDevices: allMonitorDevices.filter(device => !isMonitorHidden(device))
+    readonly property var allMonitorDevices: Model.monitoringDevices(BluetoothMonitor.snapshot.devices || [], connectedRows.concat(knownRows), hardware)
+    readonly property var shownMonitorDevices: allMonitorDevices.filter(device => !isMonitorHidden(device) || deviceConnected(device))
     readonly property var monitorDevices: showHiddenDevices ? allMonitorDevices : shownMonitorDevices
     readonly property int hiddenDeviceCount: allMonitorDevices.length - shownMonitorDevices.length
-    readonly property int monitorOnlineCount: shownMonitorDevices.filter(device => device.online).length
-    readonly property var connectionLinks: Model.connectionLinks(adapters, monitorDevices, mapHardware, BluetoothMonitor.snapshot.receivers || [])
+    readonly property int connectedCount: shownMonitorDevices.filter(device => deviceConnected(device)).length
+    readonly property var connectedEntries: monitorDevices.filter(device => deviceConnected(device))
+    readonly property var pairedEntries: monitorDevices.filter(device => !deviceConnected(device))
+    readonly property var connectionLinks: Model.connectionLinks(adapters, monitorDevices, hardware, BluetoothMonitor.snapshot.receivers || [])
+    readonly property bool showConnectionTree: connectionLinks.length > 1
+    readonly property FontMetrics treeMetrics: FontMetrics { font.family: root.shell.fontFamily; font.pixelSize: Style.body }
 
     function isMonitorHidden(device) { return !!(BluetoothMonitor.snapshot.hidden || {})[Model.monitorKey(device)] }
+    function treeLineColor(lit) { return lit ? root.shell.accent : root.shell.alpha(root.shell.foreground, Style.faintTextAlpha) }
+    function deviceConnected(device) {
+        const live = deviceByAddress(device.address)
+        return live ? live.connected : !!device.connected
+    }
     function toggleExpandedDevice(device) {
         const next = Model.cloneMap(expandedDevices)
         next[device.id] = !next[device.id]
@@ -56,15 +66,15 @@ PopupCard {
     }
     onMonitorDevicesChanged: Qt.callLater(root.rebuildRows)
 
-    function refreshConnectionMap() {
-        if (!mapWanted) return
-        if (mapProcess.running) mapRefreshPending = true
-        else mapProcess.running = true
+    function refreshHardware() {
+        if (!hardwareWanted) return
+        if (hardwareProcess.running) hardwareRefreshPending = true
+        else hardwareProcess.running = true
     }
 
-    property string page: "map"
+    property string page: "devices"
     property string selectedAddress: ""
-    property string devicePage: "map"
+    property string devicePage: "devices"
     readonly property var selectedRow: rowByAddress(selectedAddress)
     property bool renameEditing: false
     property string actionError: ""
@@ -90,7 +100,7 @@ PopupCard {
     property bool connectionBaselineReady: false
     property var policyQueue: ({})
     property bool owesDiscoveryStop: false
-    readonly property bool scanWanted: open && page === "bluetooth" && adapter && adapter.enabled
+    readonly property bool scanWanted: open && page === "pair" && adapter && adapter.enabled
 
     readonly property var audioPolicies: {
         try {
@@ -227,10 +237,6 @@ PopupCard {
         actionError = ""
         powerProcess.command = ["hyprshell", "bluetooth/power", adapter.enabled ? "off" : "on"]
         powerProcess.running = true
-    }
-    function retryDevice(device) {
-        const failure = device ? actionFailure(device.address) : null
-        if (failure) runDeviceAction(device, String(failure.action || "connect"))
     }
     function cancelPairing(device) {
         if (!device || !activeDeviceAction || activeDeviceAction.action !== "pair"
@@ -464,11 +470,11 @@ PopupCard {
         return cursorIndex >= 0 && cursorIndex < navigableRows.length ? navigableRows[cursorIndex] : null
     }
     function handleKey(event) {
-        if (event.key === Qt.Key_Escape && page !== "map") { showPage(page === "bluetooth" ? "map" : devicePage); return true }
-        if (page === "map" && (event.key === Qt.Key_Up || event.key === Qt.Key_K
+        if (event.key === Qt.Key_Escape && page !== "devices") { showPage(page === "pair" ? "devices" : devicePage); return true }
+        if (page === "devices" && (event.key === Qt.Key_Up || event.key === Qt.Key_K
                 || event.key === Qt.Key_Down || event.key === Qt.Key_J)) {
-            mapScroll.contentY = Math.max(0, Math.min(mapScroll.contentHeight - mapScroll.height,
-                mapScroll.contentY + (event.key === Qt.Key_Up || event.key === Qt.Key_K ? -1 : 1) * Style.popupRowHeight))
+            devicesScroll.contentY = Math.max(0, Math.min(devicesScroll.contentHeight - devicesScroll.height,
+                devicesScroll.contentY + (event.key === Qt.Key_Up || event.key === Qt.Key_K ? -1 : 1) * Style.popupRowHeight))
             return true
         }
         if (event.key === Qt.Key_J) { moveCursor(1); return true }
@@ -479,10 +485,11 @@ PopupCard {
             if (row && row.adjustKeyboard) row.adjustKeyboard(event.key === Qt.Key_H || event.key === Qt.Key_Left ? -1 : 1)
             return true
         }
-        if (event.key === Qt.Key_X && page === "bluetooth") {
+        if (event.key === Qt.Key_X && page === "devices") {
             const row = currentNavigableRow()
-            if (row && row.dev && (row.dev.paired || row.dev.bonded || row.dev.trusted || row.dev.connected)) {
-                openDetails(deviceByAddress(row.dev.address)); forgetConfirmation = true
+            const live = row ? row.live : null
+            if (live && (live.paired || live.bonded || live.trusted || live.connected)) {
+                openDetails(live); forgetConfirmation = true
             }
             return true
         }
@@ -492,7 +499,7 @@ PopupCard {
     onPageChanged: { clearCursor(); Qt.callLater(primeCursor) }
     onOpenChanged: {
         if (open) {
-            showPage("map")
+            showPage("devices")
             actionError = ""
             refreshAudioProfiles()
             Qt.callLater(primeCursor)
@@ -514,8 +521,8 @@ PopupCard {
     onAudioProfileBusyChanged: if (!audioProfileBusy) Qt.callLater(root.applyPolicies)
     onScanWantedChanged: syncDiscovery()
     onAdapterChanged: syncDiscovery()
-    onAdaptersChanged: refreshConnectionMap()
-    onMapWantedChanged: if (mapWanted) refreshConnectionMap()
+    onAdaptersChanged: refreshHardware()
+    onHardwareWantedChanged: if (hardwareWanted) refreshHardware()
 
     Component.onCompleted: {
         BluetoothMonitor.users++
@@ -579,27 +586,27 @@ PopupCard {
     Timer { id: policyDeadline; onTriggered: { root.expirePolicies(); root.armPolicyDeadline() } }
 
     Process {
-        id: mapProcess
+        id: hardwareProcess
         command: ["python3", root.shell.home + "/.local/lib/hypr/bluetooth/connection-map.py"]
-        stdout: StdioCollector { id: mapStdout; waitForEnd: true }
-        stderr: StdioCollector { id: mapStderr; waitForEnd: true }
+        stdout: StdioCollector { id: hardwareStdout; waitForEnd: true }
+        stderr: StdioCollector { id: hardwareStderr; waitForEnd: true }
         onExited: code => {
-            root.mapError = ""
-            if (code !== 0) root.mapError = String(mapStderr.text || "Could not read connection hardware.").trim()
+            root.hardwareError = ""
+            if (code !== 0) root.hardwareError = String(hardwareStderr.text || "Could not read connection hardware.").trim()
             else {
-                try { root.mapHardware = JSON.parse(mapStdout.text) }
-                catch (error) { root.mapError = "Connection hardware returned invalid data." }
+                try { root.hardware = JSON.parse(hardwareStdout.text) }
+                catch (error) { root.hardwareError = "Connection hardware returned invalid data." }
             }
-            if (root.mapRefreshPending) {
-                root.mapRefreshPending = false
-                Qt.callLater(root.refreshConnectionMap)
+            if (root.hardwareRefreshPending) {
+                root.hardwareRefreshPending = false
+                Qt.callLater(root.refreshHardware)
             }
         }
     }
     Process {
         command: ["stdbuf", "-oL", "udevadm", "monitor", "--kernel", "--subsystem-match=bluetooth", "--subsystem-match=power_supply"]
-        running: root.mapWanted
-        stdout: SplitParser { onRead: line => { if (String(line).startsWith("KERNEL[")) root.refreshConnectionMap() } }
+        running: root.hardwareWanted
+        stdout: SplitParser { onRead: line => { if (String(line).startsWith("KERNEL[")) root.refreshHardware() } }
     }
 
     Process {
@@ -700,35 +707,6 @@ PopupCard {
         onClicked: root.togglePower()
     }
 
-    component DeviceList: Column {
-        id: deviceLists
-        width: parent.width; spacing: Style.sectionGap
-        Column {
-            width: parent.width; spacing: Style.sm
-            PopupSection { visible: root.connectedRows.length > 0; shell: root.shell; text: "CONNECTED" }
-            Repeater { model: root.connectedRows; DeviceRow { required property var modelData; dev: modelData; sectionName: "connected"; width: deviceLists.width } }
-        }
-        PopupSeparator { visible: root.connectedRows.length > 0 && root.knownRows.length > 0; shell: root.shell }
-        Column {
-            width: parent.width; spacing: Style.sm
-            PopupSection { visible: root.knownRows.length > 0; shell: root.shell; text: "PAIRED" }
-            Repeater { model: root.knownRows; DeviceRow { required property var modelData; dev: modelData; sectionName: "known"; width: deviceLists.width } }
-        }
-        PopupSeparator { visible: (root.connectedRows.length || root.knownRows.length) && root.discoveredRows.length > 0; shell: root.shell }
-        Column {
-            width: parent.width; spacing: Style.sm
-            PopupSection { visible: root.adapter && root.adapter.enabled; shell: root.shell; text: "AVAILABLE"; value: root.adapter && root.adapter.discovering ? "scanning" : "" }
-            Repeater { model: root.scanWanted && root.adapter.discovering ? root.discoveredRows : []; DeviceRow { required property var modelData; dev: modelData; sectionName: "discovered"; width: deviceLists.width } }
-            Text {
-                visible: !root.adapter || !root.adapter.enabled || !root.connectedRows.length && !root.knownRows.length && !root.discoveredRows.length
-                width: parent.width
-                text: !root.adapter ? "No Bluetooth controller" : !root.adapter.enabled ? "Turn Bluetooth on to scan" : "Scanning for devices…"
-                color: root.shell.mutedText; font.family: root.shell.fontFamily
-                font.pixelSize: Style.bodySmall; horizontalAlignment: Text.AlignHCenter
-            }
-        }
-    }
-
     component PolicyRow: PopupRow {
         required property string address
         shell: root.shell
@@ -741,73 +719,29 @@ PopupCard {
         function adjustKeyboard(direction) { root.stepPolicy(address, direction) }
     }
 
-    component DeviceRow: Rectangle {
+    component AvailableDeviceRow: Rectangle {
         id: row
         required property var dev
-        required property string sectionName
         property bool cursored: false
-        readonly property bool navigable: true
-        property int actionIndex: -1
-        readonly property var device: root.deviceByAddress(dev.address)
+        readonly property var live: root.deviceByAddress(dev.address)
         readonly property var failure: root.actionFailure(dev.address)
         readonly property string pending: root.pendingAction(dev.address)
-        readonly property string recovery: failure ? "retry"
-            : pending === "pairing" && root.activeDeviceAction
-                && Model.normalizedAddress(root.activeDeviceAction.address) === Model.normalizedAddress(dev.address)
-                ? "cancel" : ""
-        readonly property var sink: root.bluetoothAudioSink(dev)
-        readonly property var source: root.bluetoothAudioSource(dev)
-        readonly property var profiles: root.profileOptions(dev.address)
-        readonly property var actions: {
-            const values = []
-            if (recovery) values.push(recovery)
-            else if (dev.connected && sink) values.push("audio")
-            values.push("details")
-            if (!recovery && dev.connected && profiles.length > 1) values.push("profile")
-            return values
-        }
-        readonly property string status: {
-            if (failure) return String(failure.message || "Bluetooth operation failed")
-            if (dev.blocked) return "Blocked"
-            if (pending) return pending.charAt(0).toUpperCase() + pending.slice(1) + "…"
-            if (dev.connected) {
-                const values = []
-                if (root.usingForAudio(dev)) values.push("Default audio")
-                const codec = root.currentCodec(dev.address)
-                if (codec) values.push(codec)
-                if (dev.batteryAvailable) values.push(Math.round(dev.battery * 100) + "%")
-                return values.join(" · ") || "Connected"
-            }
-            if (dev.paired || dev.bonded || dev.trusted) return "Paired"
-            return dev.pairing ? "Pairing…" : ""
-        }
+        readonly property bool cancellable: pending === "pairing" && !!root.activeDeviceAction
+            && Model.normalizedAddress(root.activeDeviceAction.address) === Model.normalizedAddress(dev.address)
+        readonly property bool navigable: !!live && (!root.deviceActionBusy || cancellable)
+        readonly property string status: failure ? String(failure.message || "Bluetooth operation failed")
+            : dev.blocked ? "Blocked"
+            : pending ? pending.charAt(0).toUpperCase() + pending.slice(1) + "…"
+            : dev.pairing ? "Pairing…" : ""
         signal clicked(int button)
-        onClicked: button => trigger(actionIndex >= 0 && actionIndex < actions.length ? actions[actionIndex] : "", button)
-        onCursoredChanged: if (!cursored) actionIndex = -1
-
-        function adjustKeyboard(direction) {
-            if (!actions.length) return
-            if (direction > 0 && actionIndex < actions.length - 1) actionIndex++
-            else if (direction < 0 && actionIndex >= 0) actionIndex--
-        }
-        function trigger(action, button) {
-            const live = row.device
-            if (!live) return
-            if (button === Qt.RightButton || action === "details") root.openDetails(live)
-            else if (action === "retry") root.retryDevice(live)
-            else if (action === "cancel") root.cancelPairing(live)
-            else if (action === "audio") root.useDeviceForAudio(live)
-            else if (action === "profile") root.openProfiles(live)
+        onClicked: button => {
+            if (button === Qt.RightButton) root.openDetails(live)
+            else if (cancellable) root.cancelPairing(live)
             else root.activateDevice(live)
         }
 
         implicitHeight: Math.max(Style.popupRowHeight, labels.implicitHeight + Style.controlPaddingY * 2)
-        color: cursored ? root.shell.hoverFill()
-            : dev.connected ? root.shell.selectedFill()
-            : rowMouse.containsMouse ? root.shell.hoverFill() : "transparent"
-        border.color: cursored ? root.shell.hoverEdge(.85)
-            : dev.connected ? root.shell.selectedEdge()
-            : rowMouse.containsMouse ? root.shell.hoverEdge(.6) : "transparent"
+        color: cursored || rowMouse.containsMouse ? root.shell.hoverFill() : "transparent"
         radius: root.shell.rounding
 
         MouseArea {
@@ -815,9 +749,9 @@ PopupCard {
             anchors.fill: parent
             hoverEnabled: true
             acceptedButtons: Qt.LeftButton | Qt.RightButton
-            enabled: !!row.device && (!root.deviceActionBusy || row.recovery === "cancel")
+            enabled: row.navigable
             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-            onClicked: event => row.trigger("", event.button)
+            onClicked: event => row.clicked(event.button)
         }
         Text {
             id: deviceIcon
@@ -828,50 +762,15 @@ PopupCard {
             color: row.failure || row.dev.blocked ? root.shell.urgent : root.shell.foreground
             font.family: root.shell.iconGlyphFont; font.pixelSize: Style.title + 3
         }
-        Row {
-            id: actionButtons
-            anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: Style.xs
-            Ui.PanelActionButton {
-                visible: row.recovery !== ""
-                size: Style.controlHeight; iconText: row.recovery === "cancel" ? "󰅙" : "󰑐"
-                foreground: root.shell.foreground; hoverColor: row.recovery === "retry" ? root.shell.urgent : root.shell.foreground
-                fontFamily: root.shell.iconGlyphFont
-                hasCursor: row.cursored && row.actions[row.actionIndex] === row.recovery
-                onClicked: row.trigger(row.recovery, Qt.LeftButton)
-            }
-            Ui.PanelActionButton {
-                visible: row.recovery === "" && row.dev.connected && !!row.sink
-                size: Style.controlHeight; iconText: root.usingForAudio(row.dev) ? "󰄬" : "󰓃"
-                foreground: root.usingForAudio(row.dev) ? root.shell.accent : root.shell.foreground
-                hoverColor: root.shell.foreground; fontFamily: root.shell.iconGlyphFont
-                hasCursor: row.cursored && row.actions[row.actionIndex] === "audio"
-                onClicked: row.trigger("audio", Qt.LeftButton)
-            }
-            Ui.PanelActionButton {
-                size: Style.controlHeight; iconText: "󰒓"; foreground: root.shell.foreground
-                hoverColor: root.shell.foreground; fontFamily: root.shell.iconGlyphFont
-                hasCursor: row.cursored && row.actions[row.actionIndex] === "details"
-                onClicked: row.trigger("details", Qt.LeftButton)
-            }
-            Ui.PanelActionButton {
-                visible: row.recovery === "" && row.dev.connected && row.profiles.length > 1
-                size: Style.controlHeight; iconText: "󰅀"; foreground: root.shell.foreground
-                hoverColor: root.shell.foreground; fontFamily: root.shell.iconGlyphFont
-                hasCursor: row.cursored && row.actions[row.actionIndex] === "profile"
-                onClicked: row.trigger("profile", Qt.LeftButton)
-            }
-        }
         Column {
             id: labels
             anchors.left: deviceIcon.right; anchors.leftMargin: Style.controlPaddingX
-            anchors.right: actionButtons.left; anchors.rightMargin: Style.sm
+            anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX
             anchors.verticalCenter: parent.verticalCenter; spacing: 1
             Text {
                 width: parent.width; text: root.displayName(row.dev); textFormat: Text.PlainText
                 color: root.shell.foreground; font.family: root.shell.fontFamily
-                font.pixelSize: Style.subtitle; font.bold: row.dev.connected; elide: Text.ElideRight
+                font.pixelSize: Style.subtitle; elide: Text.ElideRight
             }
             Text {
                 visible: text !== ""; width: parent.width; text: row.status; textFormat: Text.PlainText
@@ -881,8 +780,150 @@ PopupCard {
         }
     }
 
+    component TreeDashes: Item {
+        id: dashes
+        property bool lit
+        property bool horizontal
+        property bool junctionAtEnd
+        property bool touchesFarEnd
+        readonly property real length: horizontal ? width : height
+        readonly property real gap: lit ? 0 : Style.xxs
+        readonly property real targetDash: Math.round(root.treeMetrics.height) - gap
+        readonly property real farGap: touchesFarEnd ? 0 : junctionAtEnd ? Math.ceil(gap / 2) : Math.floor(gap / 2)
+        readonly property real span: length - farGap
+        readonly property int fewerDashes: Math.max(1, Math.floor(span / (targetDash + gap)))
+        readonly property int count: span <= gap ? 0
+            : Math.abs(dashFor(fewerDashes) - targetDash) <= Math.abs(dashFor(fewerDashes + 1) - targetDash) ? fewerDashes : fewerDashes + 1
+        readonly property real dash: dashFor(count)
+        function dashFor(dashCount) { return dashCount ? (span - gap * dashCount) / dashCount : 0 }
+        Repeater {
+            model: dashes.count
+            Rectangle {
+                required property int index
+                readonly property real start: Math.round(dashes.gap + index * (dashes.dash + dashes.gap))
+                readonly property real end: Math.round(dashes.gap + index * (dashes.dash + dashes.gap) + dashes.dash)
+                readonly property real along: dashes.junctionAtEnd ? dashes.length - end : start
+                x: dashes.horizontal ? along : 0
+                y: dashes.horizontal ? 0 : along
+                width: dashes.horizontal ? end - start : dashes.width
+                height: dashes.horizontal ? dashes.height : end - start
+                color: root.treeLineColor(dashes.lit)
+            }
+        }
+    }
+    component TreeNode: Item {
+        id: node
+        property real stemX
+        property real branchY
+        property real lineTop
+        property real lineBottom
+        property bool hasDown
+        property bool upLit
+        property bool downLit
+        property bool rightLit
+        readonly property int lineWidth: 1
+        readonly property int cellWidth: Math.round(root.treeMetrics.advanceWidth("│"))
+        readonly property int cellHeight: Math.round(root.treeMetrics.height)
+        readonly property int verticalArm: Math.floor((cellHeight - lineWidth) / 2)
+        readonly property int horizontalArm: Math.floor((cellWidth - lineWidth) / 2)
+        readonly property real lineX: Math.round(stemX - lineWidth / 2)
+        readonly property real armY: Math.round(branchY - lineWidth / 2)
+        readonly property real junctionTop: armY - verticalArm
+        readonly property real junctionBottom: armY + lineWidth + verticalArm
+        readonly property real cellRight: lineX + lineWidth + horizontalArm
+        readonly property real childX: cellRight + cellWidth
+        TreeDashes {
+            x: node.lineX; y: node.lineTop
+            width: node.lineWidth; height: node.junctionTop - y
+            junctionAtEnd: true; lit: node.upLit
+        }
+        Rectangle {
+            x: node.lineX; y: node.junctionTop
+            width: node.lineWidth; height: node.armY + node.lineWidth - y
+            color: root.treeLineColor(node.upLit)
+        }
+        Rectangle {
+            visible: node.hasDown
+            x: node.lineX; y: node.armY + node.lineWidth
+            width: node.lineWidth; height: node.junctionBottom - y
+            color: root.treeLineColor(node.downLit)
+        }
+        TreeDashes {
+            visible: node.hasDown
+            x: node.lineX; y: node.junctionBottom
+            width: node.lineWidth; height: node.lineBottom - y
+            lit: node.downLit
+        }
+        Rectangle {
+            x: node.lineX + node.lineWidth; y: node.armY
+            width: node.cellRight - x; height: node.lineWidth
+            color: root.treeLineColor(node.rightLit)
+        }
+        TreeDashes {
+            horizontal: true; touchesFarEnd: true
+            x: node.cellRight; y: node.armY
+            width: node.childX - x; height: node.lineWidth
+            lit: node.rightLit
+        }
+    }
+    component DeviceCard: BluetoothDeviceCard {
+        id: deviceCard
+        readonly property var live: root.deviceByAddress(device.address)
+        readonly property string pending: root.pendingAction(device.address)
+        readonly property var failure: root.actionFailure(device.address)
+        readonly property bool cancellable: pending === "pairing" && !!root.activeDeviceAction
+            && Model.normalizedAddress(root.activeDeviceAction.address) === Model.normalizedAddress(device.address)
+        readonly property var sink: connected && live ? root.bluetoothAudioSink(live) : null
+        readonly property var profiles: connected && live ? root.profileOptions(device.address) : []
+        readonly property bool canChooseAudioMode: profiles.length > 1
+        readonly property bool canToggleHidden: hiddenDevice || !connected
+        shell: root.shell
+        hasActions: !!sink || canChooseAudioMode || canToggleHidden || !!live
+        connected: live ? live.connected : !!device.connected
+        blocked: live ? live.blocked : !!device.blocked
+        connectable: !!live && (cancellable || !pending && !root.deviceActionBusy && !root.devicePropertyBusy && !root.audioProfileBusy)
+        pendingText: pending ? pending + "…" : ""
+        failureText: failure ? String(failure.message || "Bluetooth operation failed") : ""
+        audioStatus: [sink && root.usingForAudio(live) ? "Default audio" : "", connected ? root.currentCodec(device.address) : ""].filter(Boolean).join(" · ")
+        hiddenDevice: root.isMonitorHidden(device)
+        expanded: root.expandedDevices[device.id] === true
+        settingsEnabled: BluetoothMonitor.ready
+        onExpandedToggled: root.toggleExpandedDevice(device)
+        onSettingChanged: (key, value) => BluetoothMonitor.send({cmd: "set", device: device.id, key: key, value: value})
+        onConnectionToggled: cancellable ? root.cancelPairing(live) : root.activateDevice(live)
+        onDetailsRequested: root.openDetails(live)
+        PopupRow {
+            visible: !!deviceCard.sink
+            width: parent.width; shell: root.shell; icon: "󰓃"; title: "Use for audio"
+            detail: root.bluetoothAudioSource(deviceCard.live) ? "Output and microphone" : "Output"
+            active: root.usingForAudio(deviceCard.live)
+            onClicked: root.useDeviceForAudio(deviceCard.live)
+        }
+        PopupRow {
+            visible: deviceCard.canChooseAudioMode
+            width: parent.width; shell: root.shell; icon: "󰎈"; title: "Audio mode"
+            value: root.currentCodec(deviceCard.device.address)
+            onClicked: root.openProfiles(deviceCard.live)
+        }
+        PopupRow {
+            visible: deviceCard.canToggleHidden
+            width: parent.width; shell: root.shell
+            icon: deviceCard.hiddenDevice ? "󰈈" : "󰈉"; title: deviceCard.hiddenDevice ? "Show in list" : "Hide from list"
+            interactive: BluetoothMonitor.ready
+            onClicked: {
+                BluetoothMonitor.send({cmd: "hide", key: Model.monitorKey(deviceCard.device), value: !deviceCard.hiddenDevice})
+                root.resumeKeyboard()
+            }
+        }
+        PopupRow {
+            visible: !!deviceCard.live
+            width: parent.width; shell: root.shell; icon: "󰒓"; title: "Details"; value: "󰁔"
+            onClicked: root.openDetails(deviceCard.live)
+        }
+    }
+
     Item {
-        visible: root.page === "map"
+        visible: root.page === "devices"
         anchors.fill: parent
         Column {
             anchors.fill: parent; spacing: Style.sectionGap
@@ -890,8 +931,8 @@ PopupCard {
                 width: parent.width; height: monitorHero.implicitHeight
                 PopupHero {
                     id: monitorHero
-                    width: parent.width - hiddenToggle.width - (hiddenToggle.visible ? Style.md : 0); shell: root.shell; title: "Connection map"
-                    status: root.monitorOnlineCount + " connected · " + root.adapters.length + " adapter" + (root.adapters.length === 1 ? "" : "s")
+                    width: parent.width - hiddenToggle.width - (hiddenToggle.visible ? Style.md : 0); shell: root.shell; title: "Bluetooth"
+                    status: root.connectedCount + " connected"
                 }
                 Ui.Button {
                     id: hiddenToggle
@@ -912,37 +953,60 @@ PopupCard {
             }
             PowerRow { width: parent.width }
             PopupRow {
-                width: parent.width; shell: root.shell; title: "Pair and connect"; value: "󰁔"
-                onClicked: root.showPage("bluetooth")
+                width: parent.width; shell: root.shell; title: "Pair new device"; value: "󰁔"
+                onClicked: root.showPage("pair")
             }
             PopupRow {
                 visible: (BluetoothMonitor.snapshot.denied || []).length > 0
                 width: parent.width; shell: root.shell; icon: "󰌾"; title: "Allow Logitech access"
                 detail: "Enable pointer, wheel and Fn-key settings"
-                onClicked: root.shell.run(["pkexec", root.shell.home + "/.local/share/omarchy-bluetooth-monitor/scripts/allow-access.sh"])
+                onClicked: { root.shell.closePopup(); root.shell.run(["pkexec", root.shell.home + "/.local/lib/hypr/bluetooth/allow-access.sh"]) }
             }
-            Text {
-                visible: root.actionError !== ""; width: parent.width
-                text: root.actionError; textFormat: Text.PlainText; wrapMode: Text.WordWrap
-                color: root.shell.urgent; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+            PopupHint {
+                shell: root.shell; error: true
+                width: parent.width; text: root.actionError
             }
             PopupSeparator { shell: root.shell }
-            Text {
-                visible: text !== ""; width: parent.width
-                text: root.mapError || BluetoothMonitor.error; textFormat: Text.PlainText; wrapMode: Text.WordWrap
-                color: root.shell.urgent; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+            PopupHint {
+                shell: root.shell; error: true
+                width: parent.width; text: root.hardwareError || BluetoothMonitor.error
             }
             Flickable {
-                id: mapScroll
+                id: devicesScroll
                 width: parent.width; height: parent.height - y
-                contentWidth: width; contentHeight: mapTree.implicitHeight
+                contentWidth: width; contentHeight: deviceList.implicitHeight
                 clip: true; boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: ScrollBar { policy: mapScroll.contentHeight > mapScroll.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
+                ScrollBar.vertical: Ui.PanelScrollBar { policy: devicesScroll.contentHeight > devicesScroll.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
                 Column {
-                    id: mapTree
-                    width: mapScroll.width; spacing: Style.rowGap
-                    PopupSection { shell: root.shell; text: "CONNECTIONS" }
+                    id: deviceList
+                    width: devicesScroll.width; spacing: Style.rowGap
+                    Column {
+                        visible: !root.showConnectionTree && root.connectedEntries.length > 0
+                        width: parent.width; spacing: Style.sm
+                        PopupSection { shell: root.shell; text: "CONNECTED" }
+                        Repeater {
+                            model: root.showConnectionTree ? [] : root.connectedEntries
+                            DeviceCard { required property var modelData; device: modelData; width: deviceList.width }
+                        }
+                    }
+                    Column {
+                        visible: !root.showConnectionTree && root.pairedEntries.length > 0
+                        width: parent.width; spacing: Style.sm
+                        PopupSection { shell: root.shell; text: "PAIRED" }
+                        Repeater {
+                            model: root.showConnectionTree ? [] : root.pairedEntries
+                            DeviceCard { required property var modelData; device: modelData; width: deviceList.width }
+                        }
+                    }
+                    Text {
+                        visible: !root.showConnectionTree && !root.monitorDevices.length; width: parent.width
+                        text: root.adapters.length ? "No paired devices" : "No Bluetooth controller"
+                        color: root.shell.mutedText; font.family: root.shell.fontFamily
+                        font.pixelSize: Style.bodySmall; horizontalAlignment: Text.AlignHCenter
+                    }
+                    PopupSection { visible: root.showConnectionTree; shell: root.shell; text: "CONNECTIONS" }
                     Item {
+                        visible: root.showConnectionTree
                         width: parent.width; height: Style.controlHeight
                         Rectangle {
                             id: pcBadge
@@ -956,14 +1020,16 @@ PopupCard {
                         Text {
                             anchors.left: pcBadge.right; anchors.leftMargin: Style.controlPaddingX
                             anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                            text: "This PC" + (root.mapHardware.host ? " · " + root.mapHardware.host : "")
+                            text: "This PC" + (root.hardware.host ? " · " + root.hardware.host : "")
                             textFormat: Text.PlainText; elide: Text.ElideRight
                             color: root.shell.foreground; font.family: root.shell.fontFamily
                             font.pixelSize: Style.subtitle; font.bold: true
                         }
                     }
                     Repeater {
-                        model: root.connectionLinks
+                        id: linkRows
+                        readonly property int lastLiveIndex: root.connectionLinks.reduce((last, link, index) => link.online > 0 ? index : last, -1)
+                        model: root.showConnectionTree ? root.connectionLinks : []
                         delegate: Item {
                             id: linkRow
                             required property var modelData
@@ -971,101 +1037,83 @@ PopupCard {
                             readonly property bool live: modelData.online > 0
                             readonly property color lineColor: live ? root.shell.accent : root.shell.mutedText
                             readonly property real trunkX: Style.controlHeight / 2
-                            width: mapTree.width
-                            height: Math.max(linkHead.height, deviceChips.implicitHeight)
-                            Rectangle {
-                                x: linkRow.trunkX; y: -mapTree.spacing
-                                width: Style.px(1)
-                                height: (linkRow.index === root.connectionLinks.length - 1 ? linkHead.height / 2 : linkRow.height) + mapTree.spacing
-                                color: root.shell.mutedText
-                            }
-                            Rectangle {
-                                x: linkRow.trunkX; y: linkHead.height / 2
-                                width: linkHead.x - x; height: Style.px(1); color: linkRow.lineColor
-                            }
-                            Item {
-                                id: linkHead
-                                x: Style.controlHeight + Style.lg
-                                width: (linkRow.width - x - Style.md) / 2
-                                height: Math.max(adapterBadge.height, adapterLabels.implicitHeight)
-                                Rectangle {
-                                    id: adapterBadge
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: Style.controlHeight; height: width; radius: root.shell.rounding
-                                    color: linkRow.live ? root.shell.selectedFill() : "transparent"
-                                    border.color: linkRow.lineColor
-                                    Text {
-                                        anchors.centerIn: parent; text: Model.connectionIcon(linkRow.modelData.type); color: linkRow.lineColor
-                                        font.family: root.shell.iconGlyphFont; font.pixelSize: Style.title
-                                    }
-                                }
-                                Column {
-                                    id: adapterLabels
-                                    anchors.left: adapterBadge.right; anchors.leftMargin: Style.md
-                                    anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                                    spacing: Style.xxs
-                                    Text {
-                                        width: parent.width; text: linkRow.modelData.label
-                                        textFormat: Text.PlainText; wrapMode: Text.WordWrap
-                                        color: linkRow.lineColor; font.family: root.shell.fontFamily
-                                        font.pixelSize: Style.bodySmall; font.bold: true
-                                    }
-                                    Text {
-                                        width: parent.width; text: linkRow.modelData.detail
-                                        textFormat: Text.PlainText; wrapMode: Text.WordWrap
-                                        color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-                                    }
-                                    Text {
-                                        visible: !linkRow.modelData.enabled; text: "Turned off"
-                                        color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-                                    }
-                                }
+                            width: deviceList.width
+                            height: linkColumn.implicitHeight
+                            TreeNode {
+                                id: trunkNode
+                                stemX: linkRow.trunkX; branchY: linkHead.height / 2
+                                lineTop: linkRow.index === 0 ? -deviceList.spacing : -deviceList.spacing / 2; lineBottom: linkRow.height + deviceList.spacing / 2
+                                hasDown: linkRow.index < root.connectionLinks.length - 1
+                                upLit: linkRow.index <= linkRows.lastLiveIndex
+                                downLit: linkRow.index < linkRows.lastLiveIndex
+                                rightLit: linkRow.live
                             }
                             Column {
-                                id: deviceChips
-                                x: linkHead.x + linkHead.width + Style.md
+                                id: linkColumn
+                                x: trunkNode.childX
                                 width: linkRow.width - x; spacing: Style.sm
+                                Item {
+                                    id: linkHead
+                                    width: parent.width
+                                    height: Math.max(adapterBadge.height, adapterLabels.implicitHeight)
+                                    Rectangle {
+                                        id: adapterBadge
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: Style.controlHeight; height: width; radius: root.shell.rounding
+                                        color: linkRow.live ? root.shell.selectedFill() : "transparent"
+                                        border.color: linkRow.lineColor
+                                        Text {
+                                            anchors.centerIn: parent; text: Model.connectionIcon(linkRow.modelData.type); color: linkRow.lineColor
+                                            font.family: root.shell.iconGlyphFont; font.pixelSize: Style.title
+                                        }
+                                    }
+                                    Column {
+                                        id: adapterLabels
+                                        anchors.left: adapterBadge.right; anchors.leftMargin: Style.md
+                                        anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                                        spacing: Style.xxs
+                                        Text {
+                                            width: parent.width; text: linkRow.modelData.label
+                                            textFormat: Text.PlainText; wrapMode: Text.WordWrap
+                                            color: linkRow.lineColor; font.family: root.shell.fontFamily
+                                            font.pixelSize: Style.bodySmall; font.bold: true
+                                        }
+                                        Text {
+                                            visible: !!text; width: parent.width; text: linkRow.modelData.detail
+                                            textFormat: Text.PlainText; wrapMode: Text.WordWrap
+                                            color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                                        }
+                                        Text {
+                                            visible: !linkRow.modelData.enabled; text: "Turned off"
+                                            color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                                        }
+                                    }
+                                }
                                 Repeater {
+                                    id: linkDevices
+                                    readonly property int lastConnectedIndex: linkRow.modelData.devices.reduce((last, device, index) => root.deviceConnected(device) ? index : last, -1)
                                     model: linkRow.modelData.devices
                                     delegate: Item {
-                                        id: chip
+                                        id: deviceSlot
                                         required property var modelData
-                                        readonly property var device: root.deviceByAddress(modelData.address)
-                                        readonly property bool connected: device ? device.connected : !!modelData.connected
-                                        readonly property string pending: root.pendingAction(modelData.address)
-                                        readonly property var failure: root.actionFailure(modelData.address)
-                                        width: deviceChips.width; height: chipBox.implicitHeight
-                                        opacity: root.isMonitorHidden(modelData) ? Style.mutedTextAlpha : 1
-                                        Row {
-                                            id: radioDots
-                                            anchors.verticalCenter: parent.verticalCenter; spacing: Style.xs
-                                            Repeater {
-                                                model: Math.floor(Style.controlPaddingX / (Style.xxs + radioDots.spacing))
-                                                Rectangle {
-                                                    width: Style.xxs; height: width; radius: width / 2
-                                                    color: chip.connected ? root.shell.accent : root.shell.mutedText
-                                                }
-                                            }
+                                        required property int index
+                                        readonly property real stemX: adapterBadge.width / 2
+                                        readonly property real stemTop: linkColumn.spacing + (index === 0 ? (linkHead.height - adapterBadge.height) / 2 : 0)
+                                        width: linkColumn.width; height: slotCard.height
+                                        TreeNode {
+                                            id: slotNode
+                                            stemX: deviceSlot.stemX; branchY: deviceSlot.height / 2
+                                            lineTop: deviceSlot.index === 0 ? -deviceSlot.stemTop : -linkColumn.spacing / 2; lineBottom: deviceSlot.height + linkColumn.spacing / 2
+                                            hasDown: deviceSlot.index < linkDevices.count - 1
+                                            upLit: deviceSlot.index <= linkDevices.lastConnectedIndex
+                                            downLit: deviceSlot.index < linkDevices.lastConnectedIndex
+                                            rightLit: slotCard.connected
                                         }
-                                        PopupRow {
-                                            id: chipBox
-                                            x: radioDots.width + Style.sm; width: parent.width - x
-                                            shell: root.shell; active: chip.connected
-                                            interactive: !!chip.device && !chip.pending && !root.deviceActionBusy
-                                                && !root.devicePropertyBusy && !root.audioProfileBusy
-                                            icon: Model.monitorKindIcon(chip.modelData.kind)
-                                            iconColor: chip.connected ? root.shell.foreground : root.shell.mutedText
-                                            title: root.displayName(chip.modelData)
-                                            titleColor: iconColor
-                                            detail: chip.failure ? String(chip.failure.message || "Bluetooth operation failed")
-                                                : chip.pending ? chip.pending.charAt(0).toUpperCase() + chip.pending.slice(1) + "…"
-                                                : chip.connected ? Model.connectionBattery(chip.modelData, root.mapHardware) || "Connected"
-                                                : (chip.device ? chip.device.blocked : chip.modelData.blocked) ? "Blocked" : "Disconnected"
-                                            detailColor: chip.failure ? root.shell.urgent : root.shell.mutedText
-                                            onClicked: button => {
-                                                if (button === Qt.RightButton) root.openDetails(chip.device)
-                                                else if (button === Qt.LeftButton) root.activateDevice(chip.device)
-                                            }
+                                        DeviceCard {
+                                            id: slotCard
+                                            x: slotNode.childX
+                                            width: deviceSlot.width - x
+                                            device: deviceSlot.modelData
                                         }
                                     }
                                 }
@@ -1078,33 +1126,9 @@ PopupCard {
                         }
                     }
                     Text {
-                        visible: root.adapters.length === 0; width: parent.width
+                        visible: root.showConnectionTree && root.adapters.length === 0; width: parent.width
                         text: "No Bluetooth controller"; color: root.shell.mutedText
                         font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
-                    }
-                    Text {
-                        width: parent.width; text: "Solid lines: hardware connection · Dotted lines: wireless"
-                        textFormat: Text.PlainText; wrapMode: Text.WordWrap
-                        color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-                    }
-                    PopupSeparator { shell: root.shell }
-                    PopupSection { shell: root.shell; text: "DEVICES" }
-                    Repeater {
-                        model: root.monitorDevices.length
-                        BluetoothDeviceCard {
-                            required property int index
-                            device: root.monitorDevices[index] || ({id: "", name: "", online: false})
-                            width: mapTree.width; shell: root.shell
-                            hiddenDevice: root.isMonitorHidden(device)
-                            expanded: root.expandedDevices[device.id] === true
-                            settingsEnabled: BluetoothMonitor.ready
-                            onHiddenToggled: value => {
-                                BluetoothMonitor.send({cmd: "hide", key: Model.monitorKey(device), value: value})
-                                root.resumeKeyboard()
-                            }
-                            onExpandedToggled: root.toggleExpandedDevice(device)
-                            onSettingChanged: (key, value) => BluetoothMonitor.send({cmd: "set", device: device.id, key: key, value: value})
-                        }
                     }
                 }
             }
@@ -1112,29 +1136,43 @@ PopupCard {
     }
 
     Item {
-        visible: root.page === "bluetooth"
+        visible: root.page === "pair"
         anchors.fill: parent
         Column {
             anchors.fill: parent; spacing: Style.sectionGap
             PopupHero {
-                shell: root.shell; title: "Bluetooth"
-                status: root.adapter ? root.adapter.enabled ? root.connectedDevices.length ? root.connectedDevices.length + " connected" : "scanning" : "turned off" : "no controller"
+                shell: root.shell; title: "Pair new device"
+                status: root.adapter ? root.adapter.enabled ? "scanning" : "turned off" : "no controller"
             }
             PowerRow { width: parent.width }
-            PopupRow { width: parent.width; shell: root.shell; icon: "󰁍"; title: "Connection map"; onClicked: root.showPage("map") }
-            Text {
-                visible: root.actionError !== ""; width: parent.width
-                text: root.actionError; textFormat: Text.PlainText; wrapMode: Text.WordWrap
-                color: root.shell.urgent; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+            PopupRow { width: parent.width; shell: root.shell; icon: "󰁍"; title: "Back to devices"; onClicked: root.showPage("devices") }
+            PopupHint {
+                shell: root.shell; error: true
+                width: parent.width; text: root.actionError
             }
             PopupSeparator { shell: root.shell }
             Flickable {
-                id: bluetoothScroll
+                id: pairScroll
                 width: parent.width; height: parent.height - y
-                contentWidth: width; contentHeight: bluetoothLists.implicitHeight
+                contentWidth: width; contentHeight: availableList.implicitHeight
                 clip: true; boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: ScrollBar { policy: bluetoothScroll.contentHeight > bluetoothScroll.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
-                DeviceList { id: bluetoothLists; width: bluetoothScroll.width }
+                ScrollBar.vertical: Ui.PanelScrollBar { policy: pairScroll.contentHeight > pairScroll.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
+                Column {
+                    id: availableList
+                    width: pairScroll.width; spacing: Style.sm
+                    PopupSection { visible: root.adapter && root.adapter.enabled; shell: root.shell; text: "AVAILABLE"; value: root.adapter && root.adapter.discovering ? "scanning" : "" }
+                    Repeater {
+                        model: root.scanWanted && root.adapter.discovering ? root.discoveredRows : []
+                        AvailableDeviceRow { required property var modelData; dev: modelData; width: availableList.width }
+                    }
+                    Text {
+                        visible: !root.adapter || !root.adapter.enabled || !root.discoveredRows.length
+                        width: parent.width
+                        text: !root.adapter ? "No Bluetooth controller" : !root.adapter.enabled ? "Turn Bluetooth on to scan" : "Scanning for devices…"
+                        color: root.shell.mutedText; font.family: root.shell.fontFamily
+                        font.pixelSize: Style.bodySmall; horizontalAlignment: Text.AlignHCenter
+                    }
+                }
             }
         }
     }
@@ -1153,7 +1191,7 @@ PopupCard {
                 width: parent.width; height: parent.height - y
                 contentWidth: width; contentHeight: detailsColumn.implicitHeight
                 clip: true; boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: ScrollBar { policy: detailsScroll.contentHeight > detailsScroll.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
+                ScrollBar.vertical: Ui.PanelScrollBar { policy: detailsScroll.contentHeight > detailsScroll.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
                 Column {
                     id: detailsColumn
                     width: detailsScroll.width; spacing: Style.rowGap
@@ -1204,12 +1242,12 @@ PopupCard {
                         active: root.selectedRow && root.selectedRow.wakeAllowed
                         interactive: !root.devicePropertyBusy; onClicked: root.toggleProperty("wakeAllowed")
                     }
-                    Text {
+                    PopupHint {
+                        shell: root.shell; error: root.propertyError !== ""
                         visible: root.devicePropertyBusy || root.propertyError !== ""
                         width: parent.width; text: root.devicePropertyBusy ? "Applying device setting…" : root.propertyError
-                        textFormat: Text.PlainText; wrapMode: Text.WordWrap
-                        color: root.propertyError ? root.shell.urgent : root.shell.mutedText
-                        font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+                        wrapMode: Text.Wrap; horizontalAlignment: Text.AlignLeft
+                        font.pixelSize: Style.bodySmall
                     }
                     PopupSeparator { shell: root.shell }
                     PopupSection { shell: root.shell; text: "IDENTITY" }
@@ -1260,13 +1298,13 @@ PopupCard {
                     onClicked: root.setAudioProfile(root.selectedAddress, modelData.value, "")
                 }
             }
-            Text {
+            PopupHint {
                 id: profileMessage
+                shell: root.shell; error: root.profileError !== ""
                 width: parent.width
                 text: root.profileError || (!root.profileOptions(root.selectedAddress).length ? "No switchable audio modes are currently available." : "Mode changes preserve volume and mute state.")
-                textFormat: Text.PlainText; wrapMode: Text.WordWrap
-                color: root.profileError ? root.shell.urgent : root.shell.mutedText
-                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+                wrapMode: Text.Wrap; horizontalAlignment: Text.AlignLeft
+                font.pixelSize: Style.bodySmall
             }
         }
     }

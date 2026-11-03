@@ -53,6 +53,19 @@ render_read_palette_into() {
   done
 }
 
+render_palette_roles() {
+  local -n job_ref="$1"
+  local palette_roles=""
+  if [[ -n "${job_ref[pack_override]}" ]]; then
+    palette_roles="$(jq -ce 'with_entries(select(.value | type == "string"))' "${job_ref[pack_override]}" 2>/dev/null || true)"
+  fi
+  if [[ -n "${palette_roles}" && "${palette_roles}" != '{}' ]]; then
+    printf '%s\n' "${palette_roles}"
+  else
+    jq -c "${RENDER_PALETTE_ROLES_JQ} + {background: .bg, foreground: .fg}${RENDER_PALETTE_NUMBERED_JQ}" "${job_ref[palette_file]}"
+  fi
+}
+
 render_input_digest() {
   local -n job_ref="$1"
   local -a inputs=("${job_ref[palette_file]}")

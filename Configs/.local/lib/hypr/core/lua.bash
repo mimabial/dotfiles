@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
 
 hypr_lua_quote() {
-  jq -Rn --arg value "${1:-}" '$value'
+  local value="${1:-}"
+
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\t'/\\t}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\b'/\\b}"
+  value="${value//$'\f'/\\f}"
+  printf '"%s"\n' "${value}"
 }
 
 hypr_lua_dispatch() {

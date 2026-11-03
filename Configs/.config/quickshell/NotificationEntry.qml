@@ -17,12 +17,17 @@ Rectangle {
     property bool unread: false
     property bool showBody: true
     property bool showPreview: true
+    property string archiveKey: ""
+    property var verification: ({})
+    property bool copyBusy: false
+    readonly property var codes: verification.codes || []
 
     readonly property bool navigable: true
     property bool cursored: false
     readonly property bool hovered: rowArea.containsMouse
     signal clicked(int button)
     signal removeRequested
+    signal codeCopyRequested(int index)
 
     readonly property bool critical: urgency === "CRITICAL"
     readonly property string avatarPath: showPreview && previewPath !== ""
@@ -59,9 +64,7 @@ Rectangle {
     width: ListView.view ? ListView.view.width : implicitWidth
     implicitHeight: content.implicitHeight + Style.controlPaddingX
     radius: root.shell.rounding
-    color: root.cursored || rowArea.containsMouse ? root.shell.hoverFill(2) : root.shell.styleColor(root.box.backgroundColor, "transparent")
-    border.width: root.cursored ? 1 : 0
-    border.color: root.shell.hoverEdge(1)
+    color: root.cursored || rowArea.containsMouse ? root.shell.hoverFill() : root.shell.styleColor(root.box.backgroundColor, "transparent")
     Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
 
     MouseArea {
@@ -179,6 +182,24 @@ Rectangle {
                 wrapMode: Text.WordWrap
                 maximumLineCount: 2
                 elide: Text.ElideRight
+            }
+            Flow {
+                visible: root.codes.length > 0
+                width: parent.width
+                spacing: Style.sm
+                Repeater {
+                    model: root.codes
+                    delegate: PopupTab {
+                        id: codeAction
+                        required property var modelData
+                        required property int index
+                        shell: root.shell
+                        enabled: !root.copyBusy
+                        text: root.verification.copied === codeAction.index ? "Copied"
+                            : root.codes.length > 1 ? "Copy " + String(codeAction.modelData) : "Copy code"
+                        onClicked: root.codeCopyRequested(codeAction.index)
+                    }
+                }
             }
         }
     }

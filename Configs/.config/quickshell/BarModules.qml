@@ -15,23 +15,17 @@ Item {
     readonly property bool winbar: shell.mode === "winbar"
     readonly property bool horizontal: shell.mode === "horizontal"
     readonly property real appIconSize: winbar ? shell.style.box("taskbar").iconSize ?? 0 : 0
-    readonly property real controlIconSize: appIconSize ? appIconSize - shell.style.box("taskbar").spacing : 0
-    readonly property real controlButtonStep: {
-        if (!controlIconSize) return 0
-        const box = shell.style.box("#taskbar button")
-        return controlIconSize + box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3]
-            + 2 * Math.max(box.borderWidth, box.borderBottomWidth || 0) + shell.style.box("taskbar").spacing
-    }
+    readonly property real appButtonGap: winbar ? shell.style.box("taskbar").spacing ?? 0 : 0
     readonly property var registry: ({
         "menu": mod_menu, "taskbar": mod_taskbar, "workspaces": mod_workspaces, "submap": mod_submap,
-        "tray": mod_tray, "altscape": mod_altscape,
+        "tray": mod_tray,
         "mediaplayer": mod_media, "datetime": mod_datetime,
         "weather": catalog.winbar ? mod_winbar_weather : mod_weather,
         "systemstats": mod_systemstats, "agents": mod_agents,
         "wifi": mod_wifi, "bluetooth": mod_bluetooth, "kdeconnect": mod_kdeconnect, "vpn": mod_vpn,
         "printers": mod_printers, "removable": mod_removable, "volume": mod_volume, "microphone": mod_microphone,
         "display": mod_display, "updates": mod_updates, "notifications": mod_notifications, "tasks": mod_tasks,
-        "wallpaper": mod_wallpaper, "colormode": mod_colormode, "barlayout": mod_barlayout, "windowlayout": mod_windowlayout, "workflows": mod_workflows,
+        "wallpaper": mod_wallpaper, "themerotation": mod_themerotation, "colormode": mod_colormode, "barlayout": mod_barlayout, "windowlayout": mod_windowlayout, "workflows": mod_workflows,
         "colorpicker": mod_colorpicker, "powerprofile": mod_powerprofile, "powerbutton": mod_powerbutton,
         "bitwarden": mod_bitwarden, "privacy": mod_privacy, "language": mod_language,
         "hyprsunset": mod_hyprsunset, "caffeine": mod_caffeine, "screenrecord": mod_screenrecord,
@@ -39,11 +33,11 @@ Item {
         "sudoku": mod_sudoku, "games": mod_games,
         "appmenu": mod_appmenu, "battery": mod_battery, "spotlight": mod_spotlight, "controlcenter": mod_controlcenter, "gnome-activities": mod_gnome_activities, "gnome-date-menu": mod_gnome_date, "gnome-quick-settings": mod_gnome_settings, "gnome-screen-record": mod_gnome_record, "nowplaying": mod_nowplaying, "sound-menu": mod_sound,
         "wifi-menu": mod_wifi_menu, "bluetooth-menu": mod_bluetooth_menu, "vpn-menu": mod_vpn_menu, "language-menu": mod_language_menu, "mirroring-menu": mod_mirroring_menu, "display-menu": mod_display_menu,
-        "notification-center": mod_notification_center,
-        "task-view": mod_task_view, "launcher-strip": mod_launcher_strip
+        "notification-center": mod_notification_center, "windows-quick-settings": mod_windows_settings,
+        "task-view": mod_task_view, "launcher-strip": mod_launcher_strip, "hidden-bar": mod_hidden_bar
     })
 
-    Component { id: mod_menu; StartButton { shell: catalog.shell; iconSize: catalog.appIconSize; fixedWidth: iconSize ? iconSize + horizontalInsets : 0; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_menu; StartButton { shell: catalog.shell; iconSize: catalog.appIconSize; fixedWidth: iconSize ? iconSize + box.padding[1] + box.padding[3] : 0; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_taskbar; WindowList { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; availableWidth: catalog.taskbarAvailableWidth; Layout.fillHeight: true } }
     Component { id: mod_workspaces; Workspaces { shell: catalog.shell; activeOnly: !catalog.winbar; hideActive: catalog.winbar; popupEnabled: !catalog.winbar && catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_submap; SubmapButton { shell: catalog.shell; alt: true; baseColor: catalog.shell.alpha(catalog.shell.role("br", catalog.shell.foreground), .7); Layout.fillHeight: true } }
@@ -54,8 +48,7 @@ Item {
     Component { id: mod_systemstats; SystemStats { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_agents; AgentsButton { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_wifi; WifiButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
-    Component { id: mod_altscape; AltscapeButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
-    Component { id: mod_kdeconnect; KdeConnectButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_kdeconnect; KdeConnectButton { service: catalog.shell.kdeconnect; shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_bluetooth; BluetoothButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_vpn; VpnButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_printers; PrintersButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
@@ -67,9 +60,10 @@ Item {
     Component { id: mod_notifications; NotificationButton { shell: catalog.shell; popupEnabled: catalog.popupsAllowed; indicator: "dnd"; polling: false; showBadge: false; Layout.fillHeight: true; Component.onCompleted: refresh() } }
     Component { id: mod_tasks; TasksButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_wallpaper; WallpaperButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_themerotation; ThemeRotationButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_colormode; ScriptButton {
         id: colorButton; shell: catalog.shell; css: "colormode"; tooltip: ""; Layout.fillHeight: true
-        command: ["hyprshell", "quickshell/color-mode"]; polling: false; refreshKey: catalog.shell.palette
+        command: ["bash", catalog.shell.home + "/.local/lib/hypr/quickshell/color-mode.sh"]; polling: false; refreshKey: catalog.shell.palette
         Component.onCompleted: refresh()
         onClicked: button => button === Qt.LeftButton
             ? catalog.shell.togglePopup("colormode")
@@ -85,7 +79,7 @@ Item {
     Component { id: mod_windowlayout; WindowLayoutButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_workflows; ScriptButton {
         shell: catalog.shell; css: "workflows"; opensPopup: true; Layout.fillHeight: true
-        command: ["hyprshell", "util/workflows", "--bar"]; polling: false; refreshKey: catalog.shell.workflow
+        command: ["bash", catalog.shell.home + "/.local/lib/hypr/util/workflows.sh", "--bar"]; polling: false; refreshKey: catalog.shell.workflow
         Component.onCompleted: refresh()
         onClicked: catalog.shell.togglePopup("desktop")
     } }
@@ -105,8 +99,8 @@ Item {
     Component { id: mod_games; GameButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_appmenu; AppMenu { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_battery; BatteryButton { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
-    Component { id: mod_spotlight; BarButton { shell: catalog.shell; css: "spotlight"; text: "󰍉"; symbol: "system-search"; symbolContext: "actions"; fixedWidth: catalog.controlButtonStep; Layout.fillHeight: true; onClicked: catalog.shell.togglePopup("spotlight", true) } }
-    Component { id: mod_task_view; BarButton { shell: catalog.shell; css: "task-view"; text: ""; symbol: "focus-windows"; symbolContext: "actions"; tooltip: "Task view"; fixedWidth: catalog.controlButtonStep; Layout.fillHeight: true; onClicked: catalog.shell.expose?.open() } }
+    Component { id: mod_spotlight; AppIconButton { shell: catalog.shell; css: "spotlight"; iconSize: icon ? catalog.appIconSize : 0; fixedWidth: icon ? iconSize + box.padding[1] + box.padding[3] : box.fixedWidth ?? 0; text: icon ? "" : "󰍉"; symbol: icon ? "" : "system-search"; symbolContext: "actions"; Layout.rightMargin: icon ? catalog.appButtonGap : 0; Layout.fillHeight: true; onClicked: catalog.shell.togglePopup("spotlight", true) } }
+    Component { id: mod_task_view; AppIconButton { shell: catalog.shell; css: "task-view"; iconSize: icon ? catalog.appIconSize : 0; fixedWidth: icon ? iconSize + box.padding[1] + box.padding[3] : box.fixedWidth ?? 0; text: icon ? "" : ""; symbol: icon ? "" : "focus-windows"; symbolContext: "actions"; Layout.rightMargin: icon ? catalog.appButtonGap : 0; Layout.fillHeight: true; onClicked: catalog.shell.expose?.open() } }
     Component { id: mod_gnome_activities; GnomeActivities { shell: catalog.shell; Layout.fillHeight: true } }
     Component { id: mod_gnome_date; GnomeDateMenu { shell: catalog.shell; kind: catalog.shell.clockKind; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_gnome_settings; GnomeQuickSettings { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
@@ -140,6 +134,7 @@ Item {
         }
     } }
     Component { id: mod_controlcenter; ControlCenter { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
+    Component { id: mod_windows_settings; WindowsQuickSettings { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_nowplaying; NowPlaying { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_sound; SoundMenu { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
     Component { id: mod_wifi_menu; WifiMenu { shell: catalog.shell; popupsAllowed: catalog.popupsAllowed; Layout.fillHeight: true } }
@@ -164,7 +159,17 @@ Item {
     Component { id: mod_launcher_strip; BarButton {
         readonly property bool shown: true
         shell: catalog.shell; css: "launcher-strip"; Layout.fillHeight: true
-        onHoveredChanged: if (hovered) catalog.shell.run([catalog.shell.home + "/.local/lib/hypr/rofi/rofi-launch.sh", "d"])
+        onHoveredChanged: if (hovered) { catalog.shell.keyboardInput = false; catalog.shell.run([catalog.shell.home + "/.local/lib/hypr/rofi/rofi-launch.sh", "d"]) }
+    } }
+    Component { id: mod_hidden_bar; BarButton {
+        shell: catalog.shell; css: "hidden-bar"; Layout.fillHeight: true
+        text: catalog.shell.prefs.hiddenBarCollapsed ? "󰅂" : "󰅁"
+        tooltip: (catalog.shell.prefs.hiddenBarCollapsed ? "Show menu bar items" : "Hide menu bar items") + "\nRight-click: Toggle desktop"
+        Accessible.name: tooltip
+        onClicked: button => {
+            if (button === Qt.LeftButton) { catalog.shell.closePopup(); catalog.shell.prefs.hiddenBarCollapsed = !catalog.shell.prefs.hiddenBarCollapsed }
+            else if (button === Qt.RightButton) { catalog.shell.closePopup(); catalog.shell.dock?.toggleDesktop() }
+        }
     } }
     Component { id: mod_notification_center; NotificationCenter { shell: catalog.shell; kind: catalog.shell.clockKind; css: "datetime"; popupEnabled: catalog.popupsAllowed; Layout.fillHeight: true } }
 

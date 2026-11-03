@@ -3,7 +3,11 @@ hyprlock_queue_artwork_update() {
   local lock="${queued_paths_ref[artwork_lock]}" lock_fd fd path
   [[ -d "${lock%/*}" ]] || mkdir -m 700 "${lock%/*}" || return 1
   exec {lock_fd}>"${lock}"
-  if ! flock -n "${lock_fd}" || hyprlock_artwork_is_cached "$1" "$2"; then
+  local -n queued_media_ref="$2"
+  local art_url=""
+  ! mpris_status_is_active "${queued_media_ref[status]}" ||
+    mpris_artwork_url_into art_url "${queued_media_ref[art_url]}" "${queued_media_ref[url]}"
+  if ! flock -n "${lock_fd}" || hyprlock_artwork_is_cached "$1" "${art_url}"; then
     exec {lock_fd}>&-
     return 0
   fi
@@ -17,7 +21,7 @@ hyprlock_queue_artwork_update() {
     source "${BASH_SOURCE[0]%/*}/process.bash"
     source "${BASH_SOURCE[0]%/*}/images.bash"
     hyprlock_init_magick
-    hyprlock_render_artwork "$1" "$2"
+    hyprlock_render_artwork "$1" "${queued_media_ref[player]}"
   ) >/dev/null 2>&1 &
   exec {lock_fd}>&-
 }
@@ -27,11 +31,8 @@ MPRIS_ART_RENDER_VERSION="v2:"
 
 hyprlock_artwork_is_cached() {
   local -n cached_paths_ref="$1"
-  local artwork_base="${cached_paths_ref[artwork_base]}" cache_key=fallback cached_key="" art_url=""
-  if mpris_status_is_active "$(mpris_player_status "$2" || true)"; then
-    art_url="$(mpris_artwork_url "$2")"
-    [[ -z "${art_url}" ]] || cache_key="${MPRIS_ART_RENDER_VERSION}${art_url}"
-  fi
+  local artwork_base="${cached_paths_ref[artwork_base]}" cache_key=fallback cached_key=""
+  [[ -z "$2" ]] || cache_key="${MPRIS_ART_RENDER_VERSION}$2"
   IFS= read -r cached_key 2>/dev/null <"${artwork_base}.lnk" || true
   [[ "${cache_key}" == "${cached_key}" && -s "${artwork_base}.png" ]] || return 1
   [[ "${cache_key}" != fallback ]] || {
@@ -111,8 +112,9 @@ hyprlock_update_artwork() (
   [[ -d "${lock%/*}" ]] || mkdir -m 700 "${lock%/*}" || return 1
   exec {lock_fd}>"${lock}"
   flock -n "${lock_fd}" || return 0
-  local player="${2:-$(mpris_selected_player)}"
-  hyprlock_artwork_is_cached "$1" "${player}" && return 0
+  local player="${2:-$(mpris_selected_player)}" art_url=""
+  ! mpris_status_is_active "$(mpris_player_status "${player}" || true)" || art_url="$(mpris_artwork_url "${player}")"
+  hyprlock_artwork_is_cached "$1" "${art_url}" && return 0
   hyprlock_render_artwork "$1" "${player}"
 )
 

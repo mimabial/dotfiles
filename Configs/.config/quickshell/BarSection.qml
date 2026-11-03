@@ -30,7 +30,7 @@ Item {
     readonly property bool stretches: modules.some(entry => (entry.id || entry) === "spacer" || !!(entry.props && entry.props.fillAvailableWidth))
     readonly property real widthBesideTaskbar: Array.from(content.children)
         .filter(child => "moduleId" in child && child.moduleId !== "taskbar" && child.visible)
-        .reduce((width, child) => width + child.implicitWidth + content.spacing, 0)
+        .reduce((width, child) => width + child.implicitWidth + child.Layout.rightMargin + content.spacing, 0)
     implicitWidth: content.implicitWidth + leftInset + rightInset
     implicitHeight: content.implicitHeight + topInset + bottomInset
     RowLayout {

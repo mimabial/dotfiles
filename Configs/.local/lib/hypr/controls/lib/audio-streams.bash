@@ -11,9 +11,13 @@ get_default_source_target() {
   pactl list short sources 2>/dev/null | awk '$2 !~ /\.monitor$/ {print $2; exit}'
 }
 
-source_volume_pct() {
-  local target="$1"
-  pactl get-source-volume "${target}" 2>/dev/null | awk 'match($0,/[0-9]+%/){print substr($0,RSTART,RLENGTH-1); exit}'
+source_volume_pct_into() {
+  local -n source_volume_ref="$1"
+  local volume_output=""
+
+  source_volume_ref=""
+  volume_output="$(pactl get-source-volume "$2" 2>/dev/null)"
+  [[ "${volume_output}" =~ ([0-9]+)% ]] && source_volume_ref="${BASH_REMATCH[1]}"
 }
 
 source_is_muted() {

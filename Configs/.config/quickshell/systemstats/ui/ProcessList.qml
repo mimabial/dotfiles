@@ -126,7 +126,7 @@ Column {
     wrapMode: Text.WordWrap
   }
 
-  TextField {
+  KeyField {
     id: search
     visible: root.expanded
     width: parent.width

@@ -18,7 +18,6 @@ Switch the active workflow profile, or report the one the bar should show.
 
 Options:
     --set               Set the given workflow
-    --reconcile         Restore the active workflow's runtime side effects
     --list              List selectable workflows as name, icon and description
     --bar               Get workflow info for the active bar
     --help   | -h       Show this help message
@@ -31,7 +30,7 @@ if [[ -z "${*}" ]]; then
   exit 1
 fi
 
-workflow_long_options="set:,reconcile,list,bar,help"
+workflow_long_options="set:,list,bar,help"
 workflow_short_options="h"
 workflow_parsed_arguments=$(getopt --options "${workflow_short_options}" --longoptions "${workflow_long_options}" --name "$0" -- "$@") || exit 2
 eval set -- "${workflow_parsed_arguments}"
@@ -50,12 +49,13 @@ while true; do
         exit 1
       fi
       workflow_locked "${workflow_name}" && exit 1
-      exec {workflow_lock_fd}>"$(hypr_lock_path_ensure_parent workflow)"
+      hypr_lock_path_into workflow_lock_file workflow
+      exec {workflow_lock_fd}>"${workflow_lock_file}"
       flock "${workflow_lock_fd}"
       trap 'flock -u "${workflow_lock_fd}"' EXIT
-      workflow_previous_name="$(state_get HYPR_WORKFLOW default)"
-      workflow_previous_layout_changed="$(state_get WORKFLOW_LAYOUT_CHANGED)"
-      workflow_previous_theme_override="$(state_get WORKFLOW_THEME_OVERRIDE)"
+      state_get_into workflow_previous_name HYPR_WORKFLOW default
+      state_get_into workflow_previous_layout_changed WORKFLOW_LAYOUT_CHANGED
+      state_get_into workflow_previous_theme_override WORKFLOW_THEME_OVERRIDE
       export HYPR_WORKFLOW_TRANSITION=1
       source "${BASH_SOURCE[0]%/*}/workflows/windows.bash"
       if [[ "${workflow_name}" == windows && "${workflow_previous_name}" != windows ]]; then windows_enter || exit 1; fi
@@ -66,17 +66,10 @@ while true; do
       fi
       state_set "HYPR_WORKFLOW" "${workflow_name}" "staterc"
       source "${BASH_SOURCE[0]%/*}/workflows/bar-layout.bash"
-      # shellcheck source=/dev/null
-      source "${BASH_SOURCE[0]%/*}/workflows/presentation.bash"
       source "${BASH_SOURCE[0]%/*}/workflows/selection.bash"
       refresh_hypr_instance_signature
       export HYPRLAND_INSTANCE_SIGNATURE
       workflow_apply_selection
-      exit 0
-      ;;
-    --reconcile)
-      source "${BASH_SOURCE[0]%/*}/workflows/presentation.bash"
-      reconcile_workflow_side_effects
       exit 0
       ;;
     --help | -h)

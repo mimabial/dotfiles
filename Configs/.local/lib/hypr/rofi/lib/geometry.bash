@@ -1,19 +1,12 @@
 #!/usr/bin/env bash
-ROFI_WINDOW_RADIUS_PERCENT=150
+
+ROFI_IMAGE_TILE_RADIUS_MULTIPLIER=2
+ROFI_USER_NAME="${USER:-user}"
+ROFI_HEADER_GREETING="Hello ${ROFI_USER_NAME^}!"
 
 rofi_default_border_metrics() {
-  local fallback_border="${1:-0}"
-  local fallback_width="${2:-0}"
-  local border="${hypr_border:-${HYPR_RUNTIME_BORDER_RADIUS:-${HYPR_BORDER_RADIUS:-}}}"
-  local width="${hypr_width:-${HYPR_RUNTIME_BORDER_WIDTH:-${HYPR_BORDER_WIDTH:-}}}"
-
-  if [[ ! "${border}" =~ ^[0-9]+$ || ! "${width}" =~ ^[0-9]+$ ]]; then
-    border="$(rofi_option_json decoration:rounding | jq -r '.int // empty' 2>/dev/null || true)"
-    width="$(rofi_option_json general:border_size | jq -r '.int // empty' 2>/dev/null || true)"
-  fi
-  [[ "${border}" =~ ^[0-9]+$ ]] || border="${fallback_border}"
-  [[ "${width}" =~ ^[0-9]+$ ]] || width="${fallback_width}"
-
+  local border width
+  read -r border width < <(python3 "${BASH_SOURCE[0]%/*}/popup_style.py" geometry) || return
   printf '%s\t%s\n' "${border}" "${width}"
 }
 
@@ -41,18 +34,13 @@ rofi_container_radius_override() {
 
 rofi_window_override() {
   local theme_file="$1"
-  local fallback_border="${2:-10}"
-  local fallback_width="${3:-2}"
-  local base_border_radius="" hypr_width="" theme_name=""
-  local window_radius=0 elem_border=0 element_radius=0
+  local base_border_radius="" hypr_width=""
+  local window_radius=0 element_radius=0
   local container_override=""
 
-  IFS=$'\t' read -r base_border_radius hypr_width < <(rofi_default_border_metrics "${fallback_border}" "${fallback_width}")
-  theme_name="${theme_file##*/}"
-  theme_name="${theme_name%.rasi}"
-  window_radius=$((base_border_radius * ROFI_WINDOW_RADIUS_PERCENT / 100))
-  [[ "${base_border_radius}" -ne 0 ]] && elem_border=$((base_border_radius * 2))
-  element_radius="${elem_border}"
+  IFS=$'\t' read -r base_border_radius hypr_width < <(rofi_default_border_metrics)
+  window_radius="${base_border_radius}"
+  element_radius="${base_border_radius}"
 
   if rofi_theme_is_fullscreen "${theme_file}" 2>/dev/null; then
     hypr_width="0"
@@ -60,19 +48,16 @@ rofi_window_override() {
     base_border_radius="0"
   fi
 
-  case "${theme_name}" in
-    style_11) element_radius="${base_border_radius}" ;;
-  esac
   container_override="$(rofi_container_radius_override "${theme_file}" "${base_border_radius}")"
 
   printf 'window {border: %spx; border-radius: %spx;} %s element {border-radius: %spx;} button {border-radius: %spx;}' \
-    "${hypr_width}" "${window_radius}" "${container_override}" "${element_radius}" "${elem_border}"
+    "${hypr_width}" "${window_radius}" "${container_override}" "${element_radius}" "${element_radius}"
 }
 
 rofi_default_border_radius() {
   local fallback="${1:-0}"
   local border=""
-  IFS=$'\t' read -r border _ < <(rofi_default_border_metrics "${fallback}" 0)
+  IFS=$'\t' read -r border _ < <(rofi_default_border_metrics)
   [[ "${border}" =~ ^[0-9]+$ ]] || border="${fallback}"
   printf '%s\n' "${border}"
 }
@@ -82,14 +67,10 @@ rofi_standard_window_theme() {
   local elem_mode="${2:-same}"
   local border_radius border_width window_radius elem_radius
 
-  IFS=$'\t' read -r border_radius border_width < <(rofi_default_border_metrics 0 0)
-  window_radius=$((border_radius * ROFI_WINDOW_RADIUS_PERCENT / 100))
+  IFS=$'\t' read -r border_radius border_width < <(rofi_default_border_metrics)
+  window_radius="${border_radius}"
 
   case "${elem_mode}" in
-    min5)
-      elem_radius="${border_radius}"
-      [[ "${elem_radius}" -eq 0 ]] && elem_radius=5
-      ;;
     same)
       elem_radius="${border_radius}"
       ;;
@@ -99,8 +80,8 @@ rofi_standard_window_theme() {
       ;;
   esac
 
-  printf 'window{border:%spx;border-radius:%spx;}%s{border-radius:%spx;} element{border-radius:%spx;}\n' \
-    "${border_width}" "${window_radius}" "${container_name}" "${elem_radius}" "${elem_radius}"
+  printf '*{element-border-radius:%spx;}window{border:%spx;border-radius:%spx;}%s{border-radius:%spx;} element{border-radius:%spx;}\n' \
+    "${elem_radius}" "${border_width}" "${window_radius}" "${container_name}" "${elem_radius}" "${elem_radius}"
 }
 
 rofi_resolve_style_into() {
@@ -115,66 +96,40 @@ rofi_resolve_style_into() {
   style_ref[window_theme]="$(rofi_standard_window_theme "${container_name}" "${elem_mode}")"
 }
 
-rofi_window_position_for_size() {
-  local width="$1" height="$2" font_name="$3" font_scale="$4"
-  local em_px width_px height_px
+rofi_header_args_into() {
+  local -n header_args_ref="$1" header_style_ref="$4"
+  local prompt="$2" glyph="$3" placeholder="${5-${ROFI_HEADER_GREETING}}"
+  # Propo reports each icon's real width, so the glyph box fits the glyph and centring lands on it
+  local glyph_font="$(rofi_font_description "${header_style_ref[font_name]%% Nerd Font*} Nerd Font Propo" "${header_style_ref[font_scale]}")"
 
-  em_px="$(rofi_font_text_height_px "${font_name}" "${font_scale}" 2>/dev/null || true)"
-  [[ "${em_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || { rofi_window_position_theme; return; }
-  read -r width_px height_px < <(awk -v width="${width}" -v height="${height}" -v em="${em_px}" '
-    function pixels(value) {
-      if (value ~ /^[0-9]+([.][0-9]+)?px$/) return int(value + 0.5)
-      if (value ~ /^[0-9]+([.][0-9]+)?em$/) return int(value * em + 0.5)
-      return 0
-    }
-    BEGIN { print pixels(width), pixels(height) }
-  ')
-  if ((width_px > 0 && height_px > 0)); then
-    rofi_window_position_theme "${width_px}" "${height_px}"
-  else
-    rofi_window_position_theme
-  fi
+  # rofi's lexer runs a quoted value to the last quote on its line, so each one gets its own -theme-str
+  header_args_ref+=(-theme-str "textbox-prompt-colon {str: \"${glyph}\";}")
+  header_args_ref+=(-theme-str "textbox-prompt-label {str: \"${prompt}\";}")
+  header_args_ref+=(-theme-str "textbox-prompt-label {font: \"$(rofi_font_description "${header_style_ref[font_name]} Bold" "${header_style_ref[font_scale]}")\";}")
+  header_args_ref+=(-theme-str "textbox-prompt-colon {font: \"${glyph_font}\";}")
+  header_args_ref+=(-theme-str "entry {placeholder: \"${placeholder}\";}")
 }
 
 rofi_build_standard_menu_args() {
-  local out_name="$1"
-  local prompt="$2"
-  local placeholder="$3"
-  local theme_ref="${4:-clipboard}"
-  local requested_scale="${5:-}"
-  local requested_font="${6:-}"
-  local container_name="${7:-wallbox}"
-  local elem_mode="${8:-same}"
-  local position_override="${9:-}"
-  local window_width="${10:-}" window_height="${11:-}"
-  local font_scale font_name
-
-  local -n rofi_menu_args_ref="${out_name}"
-  rofi_menu_args_ref=()
+  local -n rofi_menu_args_ref="$1"
+  local prompt="$2" placeholder="$3" theme_ref="${4:-clipboard}" container_name="${5:-wallbox}"
+  local font_scale font_name position_theme
 
   rofi_hypr_snapshot
-  font_scale="$(rofi_effective_font_scale "${requested_scale}")"
-  font_name="$(rofi_effective_font_name "${requested_font}")"
-  if [[ -z "${position_override}" ]]; then
-    if [[ -n "${window_width}" && -n "${window_height}" ]]; then
-      position_override="$(rofi_window_position_for_size "${window_width}" "${window_height}" "${font_name}" "${font_scale}")"
-    else
-      position_override="$(rofi_window_position_theme)"
-    fi
-  fi
-
-  rofi_menu_args_ref+=(
+  font_scale="$(rofi_effective_font_scale)"
+  font_name="$(rofi_effective_font_name)"
+  position_theme="$(rofi_window_position_theme)"
+  rofi_menu_args_ref=(
     -dmenu
     -i
     -p "${prompt}"
     -theme "${theme_ref}"
     -theme-str "$(rofi_font_override "${font_name}" "${font_scale}")"
-    -theme-str "$(rofi_standard_window_theme "${container_name}" "${elem_mode}")"
+    -theme-str "$(rofi_standard_window_theme "${container_name}")"
   )
 
-  [[ -n "${window_width}" && -n "${window_height}" ]] && rofi_menu_args_ref+=(-theme-str "window { width: ${window_width}; height: ${window_height}; }")
   [[ -n "${placeholder}" ]] && rofi_menu_args_ref+=(-theme-str "entry { placeholder: \"${placeholder}\"; }")
-  [[ -n "${position_override}" ]] && rofi_menu_args_ref+=(-theme-str "${position_override}")
+  [[ -n "${position_theme}" ]] && rofi_menu_args_ref+=(-theme-str "${position_theme}")
   return 0
 }
 
@@ -280,20 +235,27 @@ rofi_theme_window_height_px() {
   return 1
 }
 
-rofi_background_theme() {
-  local colors="" base_rgb="" base_alpha=0 opacity_milli=0
+rofi_popup_theme() {
+  python3 "${BASH_SOURCE[0]%/*}/popup_style.py"
+}
 
-  read -rd '' colors <"$(rofi_user_dir)/colors.rasi" || true
-  [[ "${colors}" =~ background-alpha:[[:space:]]*(#[[:xdigit:]]{6})([[:xdigit:]]{2}) ]] || return 0
-  base_rgb="${BASH_REMATCH[1]}"
-  base_alpha=$((16#${BASH_REMATCH[2]}))
-  [[ "$(rofi_option_json decoration:active_opacity)" =~ \"float\":[[:space:]]*([0-9.]+) ]] || return 0
-  opacity_milli="$(rofi_decimal_milli "${BASH_REMATCH[1]}")" || return 0
-  printf '* { background-alpha: %s%02X; }\n' "${base_rgb}" $(((base_alpha * opacity_milli + ROFI_MILLI / 2) / ROFI_MILLI))
+rofi_popup_metrics() {
+  python3 "${BASH_SOURCE[0]%/*}/popup_style.py" metrics
+}
+
+rofi_monitor_args_into() {
+  local -n monitor_args_ref="$1"
+  monitor_args_ref=()
+  [[ "${ROFI_INPUT_SOURCE:-keyboard}" == mouse ]] ||
+    monitor_args_ref=(-monitor "$(rofi_monitors_json | jq -r 'first(.[] | select(.focused == true)).name')")
+  return 0
 }
 
 rofi_with_background_theme() {
-  command rofi -theme-str "$(rofi_background_theme)" "$@"
+  rofi_hypr_snapshot
+  local -a monitor_args=()
+  rofi_monitor_args_into monitor_args
+  command rofi "${monitor_args[@]}" "$@" -theme-str "$(rofi_popup_theme)"
 }
 
 ROFI_CHEATSHEET_PX_PER_WIDTH_EM_PER_SCALE=3.26
@@ -326,8 +288,8 @@ rofi_cheatsheet_layout_override() {
 
   lines="${ROFI_KEYBIND_HINT_LINE:-}"
   if [[ ! "${lines}" =~ ^[0-9]+$ ]]; then
-    lines="$(hypr_clamp $((logical_height / (font_scale * ROFI_CHEATSHEET_PX_PER_LINE_PER_SCALE))) \
-      "${ROFI_CHEATSHEET_LINES_MIN}" "${ROFI_CHEATSHEET_LINES_MAX}")"
+    hypr_clamp_into lines $((logical_height / (font_scale * ROFI_CHEATSHEET_PX_PER_LINE_PER_SCALE))) \
+      "${ROFI_CHEATSHEET_LINES_MIN}" "${ROFI_CHEATSHEET_LINES_MAX}"
     ((entry_count > 0 && lines > entry_count)) && lines=${entry_count}
   fi
 

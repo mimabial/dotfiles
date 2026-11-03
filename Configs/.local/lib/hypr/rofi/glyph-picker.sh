@@ -9,7 +9,7 @@ declare -A picker_paths=()
 rofi_picker_paths_into picker_paths glyph
 glyph_data="${picker_paths[data_file]}"
 recent_data="${picker_paths[recent_file]}"
-GLYPH_HINT='<span size="x-small">[←↑→↓] Navigate · [Enter] Copy Glyph · [Alt+N] Copy Name · [Esc] Close</span>'
+GLYPH_HINT='<span size="x-small">←↑→↓ Navigate  Enter Copy Glyph  Alt+N Copy Name  Esc Close</span>'
 GLYPH_EXIT_COPY_NAME=10
 # A cell stacks glyph, prefix and the name split over two lines, across six
 # reserved rows (~6.5em) against the ~2.1em a plain row costs.
@@ -117,13 +117,14 @@ glyph_build_rofi_args_into() {
     -sep '\0'
     -eh "${GLYPH_CELL_ROWS}"
     -theme "$(rofi_resolve_theme "${ROFI_GLYPH_STYLE:-clipboard}")"
-    -theme-str "entry { placeholder: \"   Glyph\";} ${picker_layout_ref[position_theme]}"
+    -theme-str "${picker_layout_ref[position_theme]}"
     -theme-str "${picker_layout_ref[font_theme]}"
     -theme-str "listview {flow: horizontal; fixed-columns: true;} element {padding: 0.25em 0.5em;} element-text {horizontal-align: 0.5;}"
-    -theme-str 'mainbox {children: [ "wallbox", "listbox", "message" ];} listview {scrollbar: false; spacing: 5px;} message {enabled: true; margin: 12px 0px 0px 0px; padding: 0px; border: 0px solid; border-radius: 0px; border-color: @border; background-color: transparent; text-color: @separator;} textbox {padding: 6px; border: 0px solid; border-radius: 8px; border-color: @border; background-color: transparent; text-color: inherit; vertical-align: 0.5; horizontal-align: 0.5;}'
+    -theme-str 'listview {scrollbar: false; spacing: 5px;} message {enabled: true; margin: 12px 0px 0px 0px; padding: 0px; border: 0px solid; border-radius: 0px; border-color: @border; background-color: transparent; text-color: @separator;} textbox {padding: 6px; border: 0px solid; border-radius: 8px; border-color: @border; background-color: transparent; text-color: inherit; vertical-align: 0.5; horizontal-align: 0.5;}'
     -theme-str "${picker_layout_ref[size_theme]}"
     -theme-str "${picker_layout_ref[window_theme]}"
   )
+  rofi_picker_header_args_into "$1" Glyph "" "$2"
 }
 
 glyph_pick_menu_record() {

@@ -40,6 +40,12 @@ Item {
   property bool isDragging: false
   property bool _dragJustEnded: false
   property real dragStartMain: 0
+  property real dragStartCross: 0
+  property point dragOffset: Qt.point(0, 0)
+  property real windowTop: 0
+  z: item.isDragging ? 1 : 0
+  property real liftProgress: item.isDragging ? 1 : 0
+  Behavior on liftProgress { NumberAnimation { duration: 140; easing.type: Easing.OutQuad } }
   property real bounceOffset: 0
   property real homeCenter: 0
   property real magnifyScale: {
@@ -111,19 +117,14 @@ Item {
     NumberAnimation { from: 0.35; to: 1.0; duration: 650; easing.type: Easing.InOutQuad }
   }
 
-  opacity: item.isDragging ? 0.35 : 1.0
-  Behavior on opacity {
-    NumberAnimation { duration: 120 }
-  }
-
   readonly property bool bouncing: (item.starting && item.dock.launchBounce) || (item.urgent && item.dock.showUrgentHint)
   onBouncingChanged: if (!item.bouncing) item.bounceOffset = 0
 
   SequentialAnimation on bounceOffset {
     running: item.bouncing
     loops: Animation.Infinite
-    NumberAnimation { from: 0; to: -Commons.Style.space(13); duration: 260; easing.type: Easing.OutQuad }
-    NumberAnimation { from: -Commons.Style.space(13); to: 0; duration: 260; easing.type: Easing.OutBounce }
+    NumberAnimation { from: 0; to: -item.dock.bounceHeight; duration: 260; easing.type: Easing.OutQuad }
+    NumberAnimation { from: -item.dock.bounceHeight; to: 0; duration: 260; easing.type: Easing.OutBounce }
     PauseAnimation { duration: item.urgent ? 380 : 220 }
   }
 
@@ -134,6 +135,8 @@ Item {
     scale: area.pressed ? 0.92 : 1.0
     transformOrigin: item.dock.floorTransformOrigin
     Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutQuad } }
+    opacity: item.isDragging ? 0.35 : 1.0
+    Behavior on opacity { NumberAnimation { duration: 120 } }
 
     transform: Translate { y: item.dock.awaySign * item.bounceOffset }
 
@@ -154,31 +157,68 @@ Item {
       mipmap: true
       smooth: true
 
-      Rectangle {
-        id: badge
-        readonly property int count: item.dock.badgeCountFor(item.appId)
-        visible: badge.count > 0
+      DockBadge {
+        id: countBadge
         anchors.top: parent.top
         anchors.right: parent.right
-        anchors.topMargin: -badge.height / 4
-        anchors.rightMargin: -badge.height / 4
+        anchors.topMargin: -height / 4
+        anchors.rightMargin: -height / 4
         height: Math.round(iconImg.height * 0.4)
-        width: Math.max(badge.height, badgeLabel.implicitWidth + badge.height / 2)
-        radius: badge.height / 2
+        text: item.launcherEntry && item.launcherEntry.count > 0 ? String(item.launcherEntry.count) : ""
         color: Commons.Color.urgent
+      }
 
-        Text {
-          id: badgeLabel
-          anchors.centerIn: parent
-          text: String(badge.count)
-          color: Commons.Color.bar.background
-          font.family: Commons.Style.font.family
-          font.pixelSize: Math.round(badge.height * 0.75)
-          font.bold: true
+      DockBadge {
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.topMargin: -height / 4
+        anchors.leftMargin: -height / 4
+        height: countBadge.height
+        text: item.recording ? "" : item.playing ? "" : ""
+        color: item.recording ? Commons.Color.urgent : Commons.Color.bar.active
+      }
+
+      Rectangle {
+        visible: item.progress !== null
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: Commons.Style.space(4)
+        height: Commons.Style.space(4)
+        radius: height / 2
+        color: Commons.Util.alpha(Commons.Color.bar.background, 0.85)
+
+        Rectangle {
+          width: parent.width * (item.progress || 0)
+          height: parent.height
+          radius: parent.radius
+          color: Commons.Color.bar.active
         }
       }
     }
   }
+
+  Image {
+    readonly property real size: item.dock.iconSize * (1 + (item.dock.zoomPeak - 1) * item.liftProgress)
+    readonly property real lift: item.dock.awaySign * item.dock.bounceHeight * item.liftProgress
+    visible: item.isDragging
+    z: indicatorRow.z + 1
+    source: iconImg.source
+    sourceSize: iconImg.sourceSize
+    width: size
+    height: size
+    x: (item.width - size) / 2 + item.dragOffset.x
+    y: Math.max(-item.windowTop, Math.min(item.Window.height - item.windowTop - size,
+      iconImg.y + (iconImg.height - size) / 2 + item.dragOffset.y - lift))
+    opacity: item.dock.dragRemove ? 0.5 : 1
+    smooth: true
+    mipmap: true
+  }
+
+  readonly property var launcherEntry: item.dock.launcherEntryFor(item.appId)
+  readonly property var progress: item.launcherEntry ? item.launcherEntry.progress : null
+  readonly property bool playing: item.dock.appListed(item.dock.playingAppIds, item.appId)
+  readonly property bool recording: item.dock.appListed(item.dock.recordingAppIds, item.appId)
 
   readonly property bool isFocused: {
     if (item.appId && item.dock.activeId && DockModel.isAppMatch(item.appId, item.dock.activeId)) return true
@@ -318,6 +358,7 @@ Item {
     onPressed: function(mouse) {
       if (mouse.button === Qt.LeftButton) {
         item.dragStartMain = mouse.x
+        item.dragStartCross = mouse.y
         item.isDragging = false
         item._dragJustEnded = false
       }
@@ -328,10 +369,12 @@ Item {
         var main = mouse.x
         var dist = Math.abs(main - item.dragStartMain)
         if (!item.isDragging && dist > 8) {
+          item.windowTop = item.mapToItem(null, 0, 0).y
           item.isDragging = true
           item.dragStarted(item.appId)
         }
         if (item.isDragging) {
+          item.dragOffset = Qt.point(mouse.x - item.dragStartMain, mouse.y - item.dragStartCross)
           var point = item.mapToItem(item.card, mouse.x, mouse.y)
           var away = !!point && (point.y < -item.dock.iconSlot || point.y > item.card.height + item.dock.iconSlot)
           item.dragMoved(item.appId, point ? point.x : main, away)
@@ -395,21 +438,16 @@ Item {
     }
   }
 
-  BorderSurface {
+  DockTooltip {
     id: itemTooltip
+    dock: item.dock
+    target: item
+    gap: Commons.Style.space(10)
+    padding: Commons.Style.space(6)
     property bool shown: false
     readonly property bool wanted: area.containsMouse && !item.isDragging
       && item.name !== "" && item.dock.showTooltips && item.dock.contextAppId === ""
     visible: itemTooltip.shown && itemTooltip.wanted
-    z: item.dock.tooltipZ
-    color: Commons.Util.alpha(Commons.Style.popupTinted(Commons.Color.tooltip.background), Commons.Style.popupSurfaceOpacity)
-    borderSpec: Commons.Border.surfaceSpec("tooltip", "border", Commons.Style.popupBorder(Commons.Color.tooltip.border), 1)
-    radius: Commons.Style.cornerRadius
-    padding: Commons.Style.space(6)
-    x: (item.width - width) / 2
-    y: item.dock.tipY(item.height, height, Commons.Style.space(10))
-    width: tooltipContent.implicitWidth + contentLeftInset + contentRightInset
-    height: tooltipContent.implicitHeight + contentTopInset + contentBottomInset
 
     onWantedChanged: {
       if (itemTooltip.wanted) tooltipDwell.restart()
@@ -438,16 +476,13 @@ Item {
       windowFocused: function(window) { return item.isWinActive(window) }
       windowParked: function(window) { return item.dock.isWinParkedLive(window) }
       windowLabel: function(window) { return item.dock.windowRowLabel(window) }
-      x: parent.contentLeftInset
-      y: parent.contentTopInset
     }
   }
 
   HoverTooltip {
     dock: item.dock
+    target: item
     text: "Remove"
     shown: item.isDragging && item.dock.dragRemove
-    x: (item.width - width) / 2
-    y: item.dock.tipY(item.height, height)
   }
 }

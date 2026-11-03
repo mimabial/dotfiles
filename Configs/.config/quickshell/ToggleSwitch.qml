@@ -15,11 +15,9 @@ Rectangle {
     }
     readonly property int trackHeight: Math.round(Style.caption * 1.5)
     width: Math.round(trackHeight * 1.9); height: trackHeight; radius: shell.rounding
-    color: checked ? shell.alpha(shell.role("act_bg", shell.accent), .55)
-        : shell.alpha(shell.foreground, .12)
-    border.color: cursored ? shell.hoverEdge(.85)
-        : shell.alpha(shell.foreground, !shell.popupCard?.open && mouse.containsMouse ? .45 : .22)
-    border.width: cursored ? 2 : 1
+    color: Qt.tint(checked ? shell.alpha(shell.role("act_bg", shell.accent), .55) : shell.alpha(shell.foreground, .12),
+        cursored || !shell.popupCard?.open && mouse.containsMouse ? shell.hoverFill() : "transparent")
+    border.color: shell.alpha(shell.foreground, .22)
     Behavior on color { ColorAnimation { duration: Style.hoverDuration } }
     Rectangle {
         readonly property int pad: 2

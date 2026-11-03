@@ -66,6 +66,8 @@ def render_animation(animation):
         parts.append("speed = " + render_number(speed))
     if animation.get("bezier"):
         parts.append("bezier = " + render_value(animation["bezier"]))
+    if animation.get("spring"):
+        parts.append("spring = " + render_value(animation["spring"]))
     if animation.get("style"):
         parts.append("style = " + render_value(animation["style"]))
     return "hl.animation({ " + ", ".join(parts) + " })"
@@ -128,6 +130,7 @@ def parse_records(text):
                 "speed": 0 if speed == "" else _as_number(speed),
                 "bezier": _field(fields, 4),
                 "style": _field(fields, 5),
+                "spring": _field(fields, 6),
             })
     return {"keys": keys, "variables": variables, "animations": animations}
 

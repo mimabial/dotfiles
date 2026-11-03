@@ -15,8 +15,6 @@ BorderSurface {
 
   component ContextRow: DockMenuRow { menuWidth: contextMenu.rowWidth }
   component MenuDivider: DockMenuDivider { menuWidth: contextMenu.rowWidth }
-  visible: contextMenu.dock.contextAppId !== ""
-  z: contextMenu.dock.popoverZ
   color: Commons.Util.alpha(Commons.Style.popupTinted(Commons.Color.menu.background), Commons.Style.popupSurfaceOpacity)
   borderSpec: Commons.Border.surfaceSpec("menu", "border",
     Commons.Util.alpha(Commons.Style.popupBorder(Commons.Color.menu.border), Commons.Style.popupBorderOpacity), 1)
@@ -50,9 +48,6 @@ BorderSurface {
   height: contextMenu.dock.contextAppId !== ""
     ? menuColumn.implicitHeight + contentTopInset + contentBottomInset
     : 0
-
-  x: contextMenu.dock.panelX(width, contextMenu.dock.contextAnchor)
-  y: contextMenu.dock.panelY(height)
 
   Column {
     id: menuColumn
@@ -106,46 +101,9 @@ BorderSurface {
         }
 
         ContextRow {
-          text: "App Groups ›"
-          onTriggered: contextMenu.dock.settingsSubmenu = "app_groups"
-        }
-
-        ContextRow {
           text: "Position: " + contextMenu.dock.edgeLabel(contextMenu.dock.edge) + " ›"
           visible: !contextMenu.dock.barShown
           onTriggered: contextMenu.dock.settingsSubmenu = "position"
-        }
-      }
-
-      Column {
-        spacing: Commons.Style.space(1)
-        visible: contextMenu.dock.settingsSubmenu === "app_groups"
-
-        ContextRow {
-          text: "‹ Back"
-          textColor: Commons.Color.bar.active
-          onTriggered: contextMenu.dock.settingsSubmenu = ""
-        }
-        ContextRow { text: "App Groups"; isHeader: true }
-        ContextRow {
-          text: "+ Group Running Apps"
-          textColor: Commons.Color.bar.active
-          onTriggered: {
-            contextMenu.dock.createAppGroupFromRunning()
-            contextMenu.dock.closeContext()
-          }
-        }
-        MenuDivider { visible: contextMenu.dock.appGroups.length > 0 }
-        Repeater {
-          model: contextMenu.dock.appGroups.map(function(group) {
-            return { group: group, dock: contextMenu.dock }
-          })
-          delegate: ContextRow {
-            required property var modelData
-            text: "Ungroup " + String(modelData.group.name || "Applications")
-            danger: true
-            onTriggered: modelData.dock.ungroupAppGroup(modelData.group.id)
-          }
         }
       }
 
@@ -805,7 +763,7 @@ BorderSurface {
       ContextRow {
         text: "Open in File Manager"
         onTriggered: {
-          Commons.Util.execDetached("uwsm-app -- xdg-open " + Commons.Util.shellQuote(contextMenu.dock.contextFolderPath.replace(/^~/, Quickshell.env("HOME"))))
+          contextMenu.dock.openInFileManager(contextMenu.dock.contextFolderPath)
           contextMenu.dock.closeContext()
         }
       }
@@ -902,35 +860,6 @@ BorderSurface {
         danger: true
         onTriggered: {
           contextMenu.dock.closeContextTile()
-          contextMenu.dock.closeContext()
-        }
-      }
-    }
-
-    Column {
-      spacing: Commons.Style.space(2)
-      visible: contextMenu.dock.contextAppId === "__app_group_context__"
-
-      ContextRow {
-        text: contextMenu.dock.contextAppGroupData
-          ? String(contextMenu.dock.contextAppGroupData.name || "Applications") : "Applications"
-        isHeader: true
-      }
-      ContextRow {
-        text: "Open Group"
-        onTriggered: {
-          var group = contextMenu.dock.contextAppGroupData
-          var anchor = contextMenu.dock.contextAnchor
-          contextMenu.dock.closeContext()
-          contextMenu.dock.openAppGroup(group, anchor)
-        }
-      }
-      MenuDivider {}
-      ContextRow {
-        text: "Ungroup"
-        danger: true
-        onTriggered: {
-          contextMenu.dock.ungroupAppGroup(contextMenu.dock.contextAppGroupData.id)
           contextMenu.dock.closeContext()
         }
       }
@@ -1112,7 +1041,7 @@ BorderSurface {
       }
     }
     Text {
-      width: parent.width; text: "↑↓ move · Enter select · ←/Esc back"
+      width: parent.width; text: "↑↓ Move  Enter Select  ←/Esc Back"
       wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter
       fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Commons.Style.font.caption - 2)
       color: Commons.Util.alpha(Commons.Color.menu.text, .55)

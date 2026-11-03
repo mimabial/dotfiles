@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [--app-id ID] [--title TITLE] -- <command>
+Usage: ${0##*/} [--app-id ID] [--title TITLE] -- <command>
 EOF
 }
 
@@ -31,7 +31,7 @@ if [[ "${#cmd[@]}" -eq 0 ]]; then
   usage >&2
   exit 2
 fi
-[[ -n "${app_id}" ]] || app_id="org.tui.$(basename "${cmd[0]}")"
+[[ -n "${app_id}" ]] || app_id="org.tui.${cmd[0]##*/}"
 
 launch_args=(--hypr-profile tui --app-id "${app_id}")
 [[ -n "${title}" ]] && launch_args+=(--title "${title}")

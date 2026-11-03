@@ -62,7 +62,7 @@ def cache_resolution(
         if not field.startswith("_")
     }
     candidates = derive_candidates(path, tags, root)
-    album, _ = album_context(path, tags, root)
+    album = album_context(path, tags, root).album
     cache.put(
         resolution_cache_key(
             path,
@@ -225,7 +225,7 @@ class Resolver:
             tags = read_tags(path)
         candidates = derive_candidates(path, tags, root)
         fallback_candidates = first_artist_fallbacks(candidates)
-        album, _ = album_context(path, tags, root)
+        album = album_context(path, tags, root).album
         single_release = bool(
             album
             and not folder_hints(path, root)[1]

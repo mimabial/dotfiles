@@ -64,12 +64,12 @@ select_window_rectangle() {
 }
 
 screenrecord_audio_args() {
-  local -n audio_args_ref="$1"
+  local -n audio_args_ref="$1" options_ref="$2"
   local audio_devices=""
 
   audio_args_ref=()
-  [[ "$DESKTOP_AUDIO" == true ]] && audio_devices+="default_output"
-  if [[ "$MICROPHONE_AUDIO" == true ]]; then
+  [[ "${options_ref[desktop_audio]}" == true ]] && audio_devices+="default_output"
+  if [[ "${options_ref[microphone_audio]}" == true ]]; then
     [[ -n "$audio_devices" ]] && audio_devices+="|"
     audio_devices+="default_input"
   fi
@@ -93,11 +93,13 @@ screenrecord_formatted_region() {
 }
 
 screenrecord_bypasses_portal() {
-  [[ "$USE_REGION" == true || "$USE_SMART" == true || "$USE_OUTPUT" == true || "$USE_WINDOW" == true ]]
+  local -n options_ref="$1"
+  [[ "${options_ref[use_region]}" == true || "${options_ref[use_smart]}" == true \
+    || "${options_ref[use_output]}" == true || "${options_ref[use_window]}" == true ]]
 }
 
 screenrecord_maybe_force_display_gpu() {
-  screenrecord_bypasses_portal || return 0
+  screenrecord_bypasses_portal "$1" || return 0
   [[ -z "$(gpu-screen-recorder --list-monitors 2>/dev/null)" ]] || return 0
 
   local output_name card mesa_vendor
@@ -166,16 +168,17 @@ screenrecord_output_args() {
 
 screenrecord_capture_args() {
   local out_args_name="$1"
-  local resolution="$2"
+  local -n options_ref="$2"
+  local resolution="$3"
 
   screenrecord_target_args "${out_args_name}" "portal" "$resolution"
-  if [[ "$USE_WINDOW" == true ]]; then
+  if [[ "${options_ref[use_window]}" == true ]]; then
     screenrecord_window_args "${out_args_name}" "$resolution"
-  elif [[ "$USE_SMART" == true ]]; then
+  elif [[ "${options_ref[use_smart]}" == true ]]; then
     screenrecord_smart_args "${out_args_name}" "$resolution"
-  elif [[ "$USE_REGION" == true ]]; then
+  elif [[ "${options_ref[use_region]}" == true ]]; then
     screenrecord_region_args "${out_args_name}" "$resolution"
-  elif [[ "$USE_OUTPUT" == true ]]; then
+  elif [[ "${options_ref[use_output]}" == true ]]; then
     screenrecord_output_args "${out_args_name}" "$resolution"
   fi
 }

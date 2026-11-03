@@ -3,37 +3,46 @@
 HYPR_FALLBACK_GAPS_OUT_PX=5
 HYPR_FALLBACK_BORDER_PX=2
 HYPR_FALLBACK_ROUNDING_PX=2
+HYPR_BORDER_METRICS_QUERY='getoption decoration:rounding;getoption general:border_size'
 
-hypr_border_metrics_into() {
-  local radius_name="${1:-}"
-  local width_name="${2:-}"
-  local metrics=""
+hypr_border_metrics_parse_into() {
+  local -n parsed_radius_ref="$1"
+  local -n parsed_width_ref="$2"
 
-  [[ -n "${radius_name}" && -n "${width_name}" ]] || return 1
-  command -v hyprctl >/dev/null 2>&1 || return 1
-  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] || return 1
+  [[ "$3" =~ \"int\":[[:space:]]*(-?[0-9]+).*\"int\":[[:space:]]*(-?[0-9]+) ]] || return 1
+  parsed_radius_ref="${BASH_REMATCH[1]}"
+  parsed_width_ref="${BASH_REMATCH[2]}"
+  [[ "${parsed_radius_ref}" =~ ^[0-9]+$ && "${parsed_width_ref}" =~ ^[0-9]+$ ]]
+}
 
-  local -n radius_ref="${radius_name}"
-  local -n width_ref="${width_name}"
+hypr_load_border_metrics() {
+  local metrics_json=""
 
-  radius_ref=""
-  width_ref=""
-  metrics="$(hyprctl --batch -j 'getoption decoration:rounding;getoption general:border_size' 2>/dev/null | jq -sr '[(.[0].int // ""), (.[1].int // "")] | @tsv')" || return 1
-  IFS=$'\t' read -r radius_ref width_ref <<<"${metrics}"
-  [[ "${radius_ref}" =~ ^[0-9]+$ && "${width_ref}" =~ ^[0-9]+$ ]]
+  [[ -z "${HYPR_BORDER_METRICS_LOADED:-}" ]] || return 0
+  [[ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] || metrics_json="$(hyprctl --batch -j "${HYPR_BORDER_METRICS_QUERY}" 2>/dev/null)" || metrics_json=""
+  hypr_load_border_metrics_from_json "${metrics_json}"
+}
+
+hypr_load_border_metrics_from_json() {
+  local live_radius=""
+  local live_width=""
+
+  [[ -z "${HYPR_BORDER_METRICS_LOADED:-}" ]] || return 0
+  hypr_border_metrics_parse_into live_radius live_width "$1" || true
+  HYPR_BORDER_METRICS_LOADED=1
+  HYPR_RUNTIME_BORDER_RADIUS="${live_radius:-${HYPR_BORDER_RADIUS:-${HYPR_FALLBACK_ROUNDING_PX}}}"
+  HYPR_RUNTIME_BORDER_WIDTH="${live_width:-${HYPR_BORDER_WIDTH:-${HYPR_FALLBACK_BORDER_PX}}}"
+}
+
+hypr_gaps_out_json_prime() {
+  declare -g HYPR_GAPS_OUT_JSON_CACHE="$1"
 }
 
 hypr_resolved_gaps_out() {
-  local gaps_out="${hypr_gaps_out:-}"
+  local gaps_out="${HYPR_FALLBACK_GAPS_OUT_PX}"
 
-  if [[ ! "${gaps_out}" =~ ^[0-9]+$ ]] && command -v hyprctl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
-    gaps_out="$(
-      if declare -F rofi_option_json >/dev/null 2>&1; then rofi_option_json general:gaps_out; else hyprctl -j getoption general:gaps_out 2>/dev/null; fi |
-        jq -r '.int // ((.css // .custom // "") | split(" ")[0]) // empty' 2>/dev/null
-    )"
-  fi
-
-  [[ "${gaps_out}" =~ ^[0-9]+$ ]] || gaps_out="${HYPR_FALLBACK_GAPS_OUT_PX}"
+  [[ -v HYPR_GAPS_OUT_JSON_CACHE ]] || hypr_gaps_out_json_prime "$(hyprctl -j getoption general:gaps_out 2>/dev/null)"
+  [[ "${HYPR_GAPS_OUT_JSON_CACHE}" =~ \"(int|css|custom)\":[[:space:]]*\"?([0-9]+) ]] && gaps_out="${BASH_REMATCH[2]}"
   printf '%s\n' "${gaps_out}"
 }
 
@@ -49,7 +58,7 @@ hypr_monitors_json() {
 }
 
 hypr_monitors_invalidate() {
-  unset HYPR_MONITORS_JSON_CACHE_READY HYPR_MONITORS_JSON_CACHE ROFI_HYPR_SNAPSHOT_READY
+  unset HYPR_MONITORS_JSON_CACHE_READY HYPR_MONITORS_JSON_CACHE
 }
 
 hypr_select_monitor_geometry_into() {
@@ -102,17 +111,11 @@ hypr_monitor_geometry_into() {
 }
 
 hypr_window_edge_padding_px() {
-  local gaps_out="" ignored_border="" border_width=""
+  local gaps_out="" border_width=""
 
   gaps_out="$(hypr_resolved_gaps_out 2>/dev/null)"
+  [[ -n "${hypr_width:-}" ]] || hypr_load_border_metrics
   border_width="${hypr_width:-${HYPR_RUNTIME_BORDER_WIDTH:-${HYPR_BORDER_WIDTH:-}}}"
-  if [[ ! "${border_width}" =~ ^[0-9]+$ ]]; then
-    if declare -F rofi_option_json >/dev/null 2>&1; then
-      border_width="$(rofi_option_json general:border_size | jq -r '.int // empty' 2>/dev/null || true)"
-    else
-      hypr_border_metrics_into ignored_border border_width 2>/dev/null || true
-    fi
-  fi
   [[ "${border_width}" =~ ^[0-9]+$ ]] || border_width="${HYPR_FALLBACK_BORDER_PX}"
 
   printf '%s\n' "$((gaps_out * 2 + border_width))"

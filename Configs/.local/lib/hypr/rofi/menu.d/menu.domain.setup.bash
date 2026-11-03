@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+declare -F hypr_dbus_get >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/dbus.bash" || return 1
+
 setup_pick_input_language() {
   local layouts="" selection="" layout="" variant=""
 
@@ -12,10 +14,13 @@ setup_pick_input_language() {
 }
 
 setup_register_power_profiles() {
+  menu_define_deferred setup_power_profile "Power Profile" choice setup_fill_power_profiles
+}
+
+setup_fill_power_profiles() {
   local profile="" profile_label=""
   local -A profile_icons=([power-saver]="󰌪" [balanced]="󰗑" [performance]="󱐋")
 
-  menu_define setup_power_profile "Power Profile" choice
   for profile in $("${HYPR_LIB_DIR}/system/powerprofiles.sh"); do
     profile_label="${profile//-/ }"
     menu_add_item setup_power_profile "${profile_icons[${profile}]:-}  ${profile_label^}" action "setup_power_profile_${profile}"
@@ -23,15 +28,18 @@ setup_register_power_profiles() {
 }
 
 setup_register_monitors() {
-  local scale=""
-
   menu_define setup_monitors "Monitors"
   menu_add_item setup_monitors "󱇧  Edit Config" action setup_monitors_config
   menu_add_item setup_monitors "󰩨  Set Scale" submenu setup_monitor_scale
   menu_add_item setup_monitors "󰌢  Toggle Laptop Display" action setup_monitor_laptop_toggle
   menu_add_item setup_monitors "󰍺  Toggle Mirroring" action setup_monitor_mirror_toggle
 
-  menu_define setup_monitor_scale "Scale" choice
+  menu_define_deferred setup_monitor_scale "Scale" choice setup_fill_monitor_scales
+}
+
+setup_fill_monitor_scales() {
+  local scale=""
+
   for scale in $(bash "${HYPR_LIB_DIR}/system/monitor-scale.sh" --list); do
     menu_add_item setup_monitor_scale "󰍹  ${scale}x" action "setup_monitor_scale_${scale}"
   done

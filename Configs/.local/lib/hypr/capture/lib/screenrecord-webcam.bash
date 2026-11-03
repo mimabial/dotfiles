@@ -1,5 +1,5 @@
 screenrecord_webcam_device() {
-  local device="${WEBCAM_DEVICE}"
+  local device="${1:-}"
   if [[ -n "$device" ]]; then
     printf '%s\n' "$device"
     return 0
@@ -25,7 +25,7 @@ screenrecord_webcam_video_size_arg() {
   local device="$1"
   local preferred_resolutions=("640x360" "1280x720" "1920x1080")
   local video_size_arg=""
-  local available_formats
+  local available_formats resolution
   available_formats=$(v4l2-ctl --list-formats-ext -d "$device" 2>/dev/null)
 
   for resolution in "${preferred_resolutions[@]}"; do
@@ -39,12 +39,13 @@ screenrecord_webcam_video_size_arg() {
 }
 
 start_webcam_overlay() {
+  local requested_device="${1:-}"
   cleanup_webcam
 
   local device=""
   local target_width=""
   local video_size_arg=""
-  device="$(screenrecord_webcam_device)" || return 1
+  device="$(screenrecord_webcam_device "${requested_device}")" || return 1
   target_width="$(screenrecord_webcam_target_width)"
   video_size_arg="$(screenrecord_webcam_video_size_arg "$device")"
 

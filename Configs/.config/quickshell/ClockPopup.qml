@@ -6,11 +6,12 @@ import "CalendarMath.js" as CalendarMath
 
 PopupCard {
     id: root
+    readonly property string agendaScript: root.shell.home + "/.local/lib/hypr/calendar/agenda.sh"
     readonly property int minLocationQuery: 3
     popupName: "clock"
-    keyboardHint: "Arrows day · PgUp/PgDn month · Home today · W week · Esc"
-    readonly property int calendarWidth: Style.px(440) - padding * 2
-    readonly property int agendaWidth: calendarWidth
+    keyboardHint: "Arrows Day  PgUp/PgDn Month  Home Today  W Week  Esc"
+    readonly property int calendarWidth: weekNumberColumnWidth + 7 * (dayCellWidth + monthGrid.spacing)
+    readonly property int agendaWidth: Style.px(440) - padding * 2
     readonly property int choiceColumn: Style.px(84)
     readonly property int paneGap: Style.px(16)
     property bool agendaVisible: false
@@ -35,8 +36,9 @@ PopupCard {
         return (first - weekStart + 7) % 7
     }
 
-    readonly property int weekNumberColumnWidth: 26
-    readonly property real dayCellWidth: (calendar.width - weekNumberColumnWidth - 14) / 7
+    readonly property int weekNumberColumnWidth: Style.px(26)
+    readonly property int dayCellWidth: Style.px(36)
+    readonly property int weekdayHeaderHeight: Style.px(18)
 
     function moveMonth(delta) { visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + delta, 1) }
     function moveYear(delta) { visibleMonth = new Date(visibleMonth.getFullYear() + delta, visibleMonth.getMonth(), 1) }
@@ -198,19 +200,19 @@ PopupCard {
     function loadSelectedDay() {
         if (!open) return
         selectedDayProcess.running = false
-        selectedDayProcess.command = ["hyprshell", "calendar/agenda", "--day", CalendarMath.isoDay(selectedDate)]
+        selectedDayProcess.command = ["bash", root.agendaScript, "--day", CalendarMath.isoDay(selectedDate)]
         selectedDayProcess.running = true
     }
     function loadVisibleMonth() {
         if (!open) return
         visibleMonthProcess.running = false
-        visibleMonthProcess.command = ["hyprshell", "calendar/agenda", "--month", Qt.formatDate(visibleMonth, "yyyy-MM")]
+        visibleMonthProcess.command = ["bash", root.agendaScript, "--month", Qt.formatDate(visibleMonth, "yyyy-MM")]
         visibleMonthProcess.running = true
     }
     function loadSelectedWeek() {
         if (!open || agendaMode !== "week") return
         selectedWeekProcess.running = false
-        selectedWeekProcess.command = ["hyprshell", "calendar/agenda", "--week", selectedWeekStart]
+        selectedWeekProcess.command = ["bash", root.agendaScript, "--week", selectedWeekStart]
         selectedWeekProcess.running = true
     }
     onSelectedWeekStartChanged: loadSelectedWeek()
@@ -252,7 +254,7 @@ PopupCard {
         const uid = String(event.uid || "")
         if (!uid) return
         eventDetailsProcess.running = false
-        eventDetailsProcess.command = ["hyprshell", "calendar/agenda", "--show", uid]
+        eventDetailsProcess.command = ["bash", root.agendaScript, "--show", uid]
         root.requestedEventUid = uid
         root.requestedEventCalendar = String(event.calendar || "")
         root.requestedEventReadOnly = root.eventIsReadOnly(event)
@@ -393,14 +395,14 @@ PopupCard {
 
         eventEditorError = ""
         saveEventProcess.running = false
-        saveEventProcess.command = ["hyprshell", "calendar/agenda"].concat(args)
+        saveEventProcess.command = ["bash", root.agendaScript].concat(args)
         saveEventProcess.running = true
     }
 
     function deleteEvent(uid) {
         if (!uid) return
         deleteEventProcess.running = false
-        deleteEventProcess.command = ["hyprshell", "calendar/agenda", "--delete", String(uid), "--day", CalendarMath.isoDay(selectedDate)]
+        deleteEventProcess.command = ["bash", root.agendaScript, "--delete", String(uid), "--day", CalendarMath.isoDay(selectedDate)]
         deleteEventProcess.running = true
     }
     property Process deleteEventProcess: Process {
@@ -455,7 +457,7 @@ PopupCard {
     }
     function loadCalendars() {
         calendarMetadataProcess.running = false
-        calendarMetadataProcess.command = ["hyprshell", "calendar/agenda", "--calendars"]
+        calendarMetadataProcess.command = ["bash", root.agendaScript, "--calendars"]
         calendarMetadataProcess.running = true
     }
 
@@ -531,9 +533,9 @@ PopupCard {
             width: parent.width; height: monthGrid.implicitHeight
 
             Rectangle {
-                x: root.weekNumberColumnWidth + 2
-                y: 18 + monthGrid.spacing
-                width: 1; height: monthGrid.implicitHeight - 18 - monthGrid.spacing
+                x: root.weekNumberColumnWidth + monthGrid.spacing
+                y: root.weekdayHeaderHeight + monthGrid.spacing
+                width: 1; height: monthGrid.implicitHeight - root.weekdayHeaderHeight - monthGrid.spacing
                 color: root.shell.alpha(root.shell.foreground, .1)
             }
 
@@ -542,8 +544,8 @@ PopupCard {
             width: parent.width; columns: 8; spacing: 2
 
             Rectangle {
-                width: root.weekNumberColumnWidth; height: Style.px(18); radius: root.shell.rounding
-                color: weekStartMouse.containsMouse ? root.shell.hoverFill(1.5) : "transparent"
+                width: root.weekNumberColumnWidth; height: root.weekdayHeaderHeight; radius: root.shell.rounding
+                color: weekStartMouse.containsMouse ? root.shell.hoverFill() : "transparent"
                 Text {
                     anchors.centerIn: parent; text: "W"
                     color: weekStartMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : Qt.darker(root.shell.foreground, 1.9)
@@ -560,7 +562,7 @@ PopupCard {
                 model: root.weekdayLabels
                 Text {
                     required property var modelData
-                    width: root.dayCellWidth; height: Style.px(18); text: modelData
+                    width: root.dayCellWidth; height: root.weekdayHeaderHeight; text: modelData
                     color: root.shell.faintText
                     font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
                     horizontalAlignment: Text.AlignHCenter
@@ -584,11 +586,8 @@ PopupCard {
 
                     width: isWeek ? root.weekNumberColumnWidth : root.dayCellWidth
                     height: Style.px(31); radius: root.shell.rounding
-                    color: current ? root.shell.selectedFill()
-                        : hovered ? root.shell.alpha(root.shell.foreground, .12) : "transparent"
-                    border.color: current ? root.shell.selectedEdge()
-                        : focused ? root.shell.alpha(root.shell.foreground, .45)
-                        : hovered ? root.shell.alpha(root.shell.foreground, .2) : "transparent"
+                    color: hovered || focused ? root.shell.hoverFill()
+                        : current ? root.shell.selectedFill() : "transparent"
                     Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
 
                     MouseArea {

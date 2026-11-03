@@ -19,13 +19,7 @@ BorderSurface {
   radius: Commons.Style.cornerRadius
 
   color: hasCursor ? fill : (current ? currentFill : "transparent")
-  borderSpec: root.hasCursor
-    ? Commons.Border.controlSpec("hover-cursor", root.foreground, root.accent)
-    : (root.current
-      ? Commons.Border.controlSpec("selected", root.foreground, root.accent)
-      : (root.bordered
-        ? Commons.Border.controlSpec("normal", root.foreground, root.accent)
-        : Commons.Border.none()))
+  borderSpec: root.bordered ? Commons.Border.controlSpec("normal", root.foreground, root.accent) : Commons.Border.none()
 
   Behavior on color {
     ColorAnimation { duration: 60 }

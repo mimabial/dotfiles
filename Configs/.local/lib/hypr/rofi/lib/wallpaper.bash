@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+declare -F hypr_monitors_json >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/geometry.bash" || return 1
+
 # The window tracks the wallpaper's aspect ratio, so a 16:9 wallpaper gives a
 # 16:9 window. Themes that show no wallpaper use a fixed 16:9 instead.
 ROFI_MILLION=1000000
@@ -145,7 +147,7 @@ rofi_wallpaper_width_override() {
   local font_name="$2"
   local font_scale="$3"
   local theme_name="" theme_height_px="" theme_height_unit="" font_px=""
-  local ratio_million="" theme_height_milli="" font_px_milli="" width_em_milli="" listbox_override=""
+  local ratio_million="" theme_height_milli="" font_px_milli="" width_em_milli="" listbox_override="" position_theme=""
   local width_milli=0
 
   [[ -n "${theme_file}" ]] || return 0
@@ -163,12 +165,13 @@ rofi_wallpaper_width_override() {
 
   rofi_wallpaper_width_for_height_milli width_milli "${theme_height_milli}" "${ratio_million}"
   rofi_wallpaper_clamp_width_milli width_milli "${theme_name}" || return 1
+  position_theme="$(rofi_window_position_theme "$(((width_milli + ROFI_MILLI / 2) / ROFI_MILLI))" "$(((theme_height_milli + ROFI_MILLI / 2) / ROFI_MILLI))")"
   if rofi_wallpaper_theme_splits_listbox "${theme_name}" && ((ratio_million < ROFI_WALLPAPER_SPLIT_BELOW_RATIO_MILLION)); then
     listbox_override=' listbox { width: 50%; } mainbox { children: [ "listbox", "inputbox" ]; }'
   fi
 
   if [[ "${theme_height_unit}" == "px" ]]; then
-    printf 'window { width: %spx; }%s\n' "$(rofi_milli_to_fixed2 "${width_milli}")" "${listbox_override}"
+    printf 'window { width: %spx; }%s %s\n' "$(rofi_milli_to_fixed2 "${width_milli}")" "${listbox_override}" "${position_theme}"
     return 0
   fi
 
@@ -176,5 +179,5 @@ rofi_wallpaper_width_override() {
   [[ "${font_px_milli}" =~ ^-?[0-9]+$ ]] || return 0
   width_em_milli="$(rofi_divide_milli "${width_milli}" "${font_px_milli}" 2>/dev/null || true)"
   [[ "${width_em_milli}" =~ ^-?[0-9]+$ ]] || return 0
-  printf 'window { width: %sem; }%s\n' "$(rofi_milli_to_fixed2 "${width_em_milli}")" "${listbox_override}"
+  printf 'window { width: %sem; }%s %s\n' "$(rofi_milli_to_fixed2 "${width_em_milli}")" "${listbox_override}" "${position_theme}"
 }

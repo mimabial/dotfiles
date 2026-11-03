@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+declare -F hypr_monitors_json >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/geometry.bash" || return 1
+
 # Icon size in em at each measured monitor scale, interpolated linearly between
 # the points and extrapolated past both ends.
 WALLPAPER_ICON_EM_BY_SCALE="1.0:53 1.25:41 1.5:33 1.67:29 2.0:23"
@@ -60,6 +62,7 @@ wallpaper_select_theme_override() {
   local font_name="$2"
   local monitor_width_px="" monitor_height_px="" border_radius=0 column_count=0 icon_em=""
 
+  hypr_load_border_metrics
   border_radius="${HYPR_RUNTIME_BORDER_RADIUS:-${HYPR_BORDER_RADIUS:-0}}"
   [[ "${border_radius}" =~ ^[0-9]+$ ]] || border_radius=0
   [[ "${font_scale}" =~ ^[1-9][0-9]*$ ]] || font_scale=1
@@ -164,7 +167,7 @@ wallpaper_trash_selected() {
 
   printf '%s\n' "${remaining_json}" >"${wall_json_file}"
   if ((active_selected)); then
-    wallpaper_apply_selected
+    wallpaper_apply_selected "${replacement}"
     wallpaper_apply_backend
   fi
 
@@ -172,13 +175,14 @@ wallpaper_trash_selected() {
   [[ "${wallpaper_notifications_disabled}" -eq 1 ]] || wallpaper_notify_send "${NOTIFY_BRIEF_MS}" -i user-trash "Wallpaper moved to Trash" "${selected_path##*/}"
 }
 
-wallpaper_pick() {
+wallpaper_pick_into() {
+  local -n picked_path_ref="$1"
   hypr_runtime_require rofi || return 1
   if ! declare -F rofi_effective_font_scale >/dev/null 2>&1; then
     # shellcheck source=/dev/null
     source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/rofi/rofi.lib.bash"
   fi
-  local font_scale="" font_name="" selected_entry="" wall_json_file="" selected_row="" rofi_status=0 entry_count=0 deleted=0
+  local font_scale="" font_name="" selected_entry="" selected_path="" wall_json_file="" selected_row="" rofi_status=0 entry_count=0 deleted=0
   wall_json_file="$(mktemp)" || return 1
   font_scale="$(rofi_effective_font_scale "${ROFI_WALLPAPER_SCALE}")"
   font_name="$(rofi_effective_font_name "${ROFI_WALLPAPER_FONT:-$ROFI_FONT}")"
@@ -197,15 +201,15 @@ wallpaper_pick() {
       exit 0
     fi
 
-    IFS=$'\t' read -r selected_wallpaper selected_wallpaper_path selected_thumbnail < <(wallpaper_selected_fields "${wall_json_file}" "${selected_entry}")
-    if [[ -z "${selected_wallpaper_path}" ]]; then
+    IFS=$'\t' read -r _ selected_path _ < <(wallpaper_selected_fields "${wall_json_file}" "${selected_entry}")
+    if [[ -z "${selected_path}" ]]; then
       rm -f "${wall_json_file}"
       print_log -err "wallpaper" "Invalid wallpaper selection: ${selected_entry}"
       return 1
     fi
 
     if ((rofi_status == WALLPAPER_EXIT_DELETE)); then
-      if wallpaper_trash_selected "${wall_json_file}" "${selected_wallpaper_path}"; then
+      if wallpaper_trash_selected "${wall_json_file}" "${selected_path}"; then
         entry_count=$((entry_count - 1))
         selected_row=$((selected_entry < entry_count ? selected_entry : entry_count - 1))
         deleted=1
@@ -215,7 +219,7 @@ wallpaper_pick() {
 
     rm -f "${wall_json_file}"
     ((deleted)) && wallpaper_refresh_inventory_and_prune_async
-    export selected_wallpaper selected_wallpaper_path selected_thumbnail
+    picked_path_ref="${selected_path}"
     return 0
   done
 }

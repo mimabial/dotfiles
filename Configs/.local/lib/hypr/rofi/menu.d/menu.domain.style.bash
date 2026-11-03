@@ -124,9 +124,12 @@ style_register_presets() {
 }
 
 style_register_text_sizes() {
+  menu_define_deferred style_text_size "Text Size" choice style_fill_text_sizes
+}
+
+style_fill_text_sizes() {
   local size=""
 
-  menu_define style_text_size "Text Size" choice
   for size in $("${HYPR_LIB_DIR}/system/text-size.sh" --list); do
     menu_add_item style_text_size "  ${size} px" action "style_text_size_${size}"
   done

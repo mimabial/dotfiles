@@ -32,7 +32,7 @@ fi
 
 if [[ "${calendars_mode}" -eq 1 ]] || [[ -n "${show_uid}" ]] ||
   [[ -n "${delete_uid}" ]] || [[ "${add}" -eq 1 ]]; then
-  calendar_table_cache="$(read_khal_calendar_table)"
+  load_khal_calendar_table
 fi
 
 if [[ "${calendars_mode}" -eq 1 ]]; then
@@ -109,7 +109,7 @@ if [[ -n "${delete_uid}" ]]; then
   while IFS= read -r file; do
     [[ -n "${file}" ]] || continue
     owner="$(readonly_calendar_for_directory "${file%/*}")"
-    [[ -z "${owner}" ]] || exit_with_readonly_calendar_error "${owner}"
+    [[ -z "${owner}" ]] || exit_with_readonly_calendar_error "${day}" "${owner}"
     rm -f -- "${file}" && removed=1
   done < <(find_event_files_by_uid "${delete_uid}")
   if [[ "${removed}" -eq 0 ]]; then
@@ -123,7 +123,7 @@ if [[ "${add}" -eq 1 ]]; then
   # pieces before it must all parse as dates, times or a timezone.
   if [[ -n "${calendar}" ]]; then
     [[ "$(cached_khal_calendar_table | jq -r --arg name "${calendar}" '.calendars[$name].readonly // false')" == "false" ]] ||
-      exit_with_readonly_calendar_error "${calendar}"
+      exit_with_readonly_calendar_error "${day}" "${calendar}"
   else
     calendar="$(cached_khal_calendar_table | jq -r '
       .calendars as $all

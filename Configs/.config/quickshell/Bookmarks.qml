@@ -1117,9 +1117,11 @@ Item {
           }
         }
 
-        Text {
+        PopupHint {
+          id: errorHint
+          shell: Commons.Style.shell; error: store.error !== ""
           width: parent.width
-          height: Commons.Style.space(48)
+          height: errorHint.error ? Math.max(Commons.Style.space(48), errorHint.implicitHeight) : Commons.Style.space(48)
 
           text:
             store.error
@@ -1135,15 +1137,16 @@ Item {
                       : "Enter Open  Ctrl+C Copy  Ctrl+T Window  Ctrl+Tab Browser\nTab Tags  Ctrl+V Paste  Ctrl+I Import  Ctrl+N Add  Ctrl+E Edit  Ctrl+, Web"
           textFormat: Text.PlainText
 
-          color: store.error ? Commons.Color.urgent : Commons.Color.menu.text
+          color: errorHint.error ? errorHint.shell.foreground : Commons.Color.menu.text
           opacity: store.error ? 1 : 0.48
 
           font.family: Commons.Style.font.menuFamily
-          font.pixelSize: Commons.Style.font.caption
+          font.pixelSize: errorHint.error ? Commons.Style.font.bodySmall : Commons.Style.font.caption
           lineHeight: 1.35
 
-          horizontalAlignment: Text.AlignHCenter
+          horizontalAlignment: errorHint.error ? Text.AlignLeft : Text.AlignHCenter
           verticalAlignment: Text.AlignVCenter
+          wrapMode: errorHint.error ? Text.Wrap : Text.NoWrap
         }
       }
 

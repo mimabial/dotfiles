@@ -9,6 +9,7 @@ Item {
   property var items: []
   property color foreground: Commons.Color.popups.text
   property string fontFamily: Commons.Style.font.family
+  readonly property real gap: Commons.Style.space(12)
 
   width: parent ? parent.width : implicitWidth
   implicitHeight: Commons.Style.space(18)
@@ -16,7 +17,7 @@ Item {
 
   Row {
     anchors.fill: parent
-    spacing: Commons.Style.space(12)
+    spacing: root.gap
 
     Repeater {
       model: root.items.length
@@ -26,7 +27,7 @@ Item {
         required property int index
         readonly property var modelData: root.items[index] || ({})
         readonly property int count: Math.max(1, root.items.length)
-        width: (root.width - Commons.Style.space(12) * (count - 1)) / count
+        width: (root.width - root.gap * (count - 1)) / count
         height: root.height
 
         Row {

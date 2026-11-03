@@ -35,8 +35,8 @@ USAGE
 
 hypr_runtime_require state >/dev/null 2>&1 || true
 
-archive_setting() { state_get "$1" "$2" 2>/dev/null || printf '%s\n' "$2"; }
-archive_timestamp_ms() { date +%s%3N; }
+archive_setting_into() { state_get_into "$1" "$2" "$3" 2>/dev/null || printf -v "$1" '%s' "$3"; }
+archive_timestamp_ms_into() { printf -v "$1" '%s' "$((${EPOCHREALTIME/./} / 1000))"; }
 
 source "${BASH_SOURCE[0]%/*}/lib/archive-storage.bash"
 source "${BASH_SOURCE[0]%/*}/lib/archive-images.bash"

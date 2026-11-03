@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
+declare -F hypr_config_value_from_layers_into >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/config-layers.bash" || return 1
+
 font_sync_ensure_runtime() {
-  if declare -F hypr_config_value_from_layers >/dev/null 2>&1; then
+  if declare -F hypr_runtime_require >/dev/null 2>&1; then
     return 0
   fi
 
@@ -17,29 +19,27 @@ font_sync_resolve_font_value() {
   local menu_font=""
   local terminal_font=""
 
-  font_sync_ensure_runtime || return 1
-
   case "${kind}" in
     mono)
-      mono_font="$(hypr_config_value_from_layers "MONOSPACE_FONT" 2>/dev/null || true)"
+      hypr_config_value_from_layers_into mono_font MONOSPACE_FONT 2>/dev/null || true
       printf '%s\n' "${mono_font:-monospace}"
       ;;
     bar)
-      bar_font="$(hypr_config_value_from_layers "BAR_FONT" 2>/dev/null || true)"
+      hypr_config_value_from_layers_into bar_font BAR_FONT 2>/dev/null || true
       printf '%s\n' "${bar_font:-monospace}"
       ;;
     bar-icon)
-      bar_icon_font="$(hypr_config_value_from_layers "BAR_ICON_FONT" 2>/dev/null || true)"
+      hypr_config_value_from_layers_into bar_icon_font BAR_ICON_FONT 2>/dev/null || true
       printf '%s\n' "${bar_icon_font:-CaskaydiaCove Nerd Font}"
       ;;
     menu)
-      menu_font="$(hypr_config_value_from_layers "MENU_FONT" 2>/dev/null || true)"
+      hypr_config_value_from_layers_into menu_font MENU_FONT 2>/dev/null || true
       printf '%s\n' "${menu_font:-monospace}"
       ;;
     terminal)
       # Packs that predate $TERMINAL_FONT still carry $MONOSPACE_FONT.
-      terminal_font="$(hypr_config_value_from_layers "TERMINAL_FONT" 2>/dev/null || true)"
-      [[ -n "${terminal_font}" ]] || terminal_font="$(hypr_config_value_from_layers "MONOSPACE_FONT" 2>/dev/null || true)"
+      hypr_config_value_from_layers_into terminal_font TERMINAL_FONT 2>/dev/null || true
+      [[ -n "${terminal_font}" ]] || hypr_config_value_from_layers_into terminal_font MONOSPACE_FONT 2>/dev/null || true
       printf '%s\n' "${terminal_font:-monospace}"
       ;;
     *) return 1 ;;

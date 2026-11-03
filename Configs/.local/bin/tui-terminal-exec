@@ -211,8 +211,10 @@ resize_alacritty_window() {
   local pid="$1" width="$2" height="$3" address="" window_lua=""
   [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] || return 0
   [[ -n "${width}" && -n "${height}" && "${width}" != *c && "${height}" != *c ]] || return 0
-  load_window_lib launch_source_core_common || return 0
-  launch_source_core_common || return 0
+  declare -F hypr_lua_quote hypr_lua_batch >/dev/null \
+    || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/lua.bash" || return 0
+  declare -F hypr_wait_for >/dev/null \
+    || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/events.bash" || return 0
   address="$(hypr_wait_for "${WINDOW_OPEN_TIMEOUT_SECONDS}" 'openwindow>>*' alacritty_window_address "${pid}")" || return 0
   window_lua="$(hypr_lua_quote "address:${address}")"
   hypr_lua_batch \
@@ -221,14 +223,9 @@ resize_alacritty_window() {
     >/dev/null 2>&1 || true
 }
 
-terminate_child() {
-  kill -TERM "$1" 2>/dev/null || true
-}
-
 main() {
   local -A options=([profile]="" [width]="" [height]="" [app_id]="" [title]="")
   local -a terminal_args=() command=() launch_command=()
-  local terminal_pid exit_code=0
 
   parse_args options terminal_args command "$@"
   if app_requires_kitty "${options[app_id]}"; then
@@ -241,15 +238,9 @@ main() {
   validate_exec_command command || return $?
   build_terminal_command options terminal_args command launch_command
 
-  "${launch_command[@]}" &
-  terminal_pid=$!
-
-  trap 'terminate_child "${terminal_pid}"' INT TERM HUP
   [[ "${TERMINAL_TUI##*/}" != alacritty ]] \
-    || resize_alacritty_window "${terminal_pid}" "${options[width]}" "${options[height]}"
-  wait "${terminal_pid}" || exit_code=$?
-
-  return "${exit_code}"
+    || (resize_alacritty_window "$$" "${options[width]}" "${options[height]}" &)
+  exec "${launch_command[@]}"
 }
 
 main "$@"

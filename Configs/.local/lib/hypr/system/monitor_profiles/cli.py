@@ -146,15 +146,15 @@ def cmd_apply(args) -> int:
         print(f"No saved profile called {args.name}", file=sys.stderr)
         return 1
     reply = request("apply", {"profile_name": args.name})
-    if reply is None:
-        render.apply(profile)
-        if command := profile.get("exec"):
-            hypr.exec_command(command)
-        state = daemon._load_state()
-        state.update(active_profile=args.name, applied_workspaces=profile.get("workspaces", {}))
-        daemon._save_state(state)
-    elif "error" in reply:
-        print(reply["error"]["message"], file=sys.stderr)
+    try:
+        if reply is None:
+            controller = daemon.Daemon()
+            controller.refresh_monitors()
+            controller.activate(profile)
+        elif "error" in reply:
+            raise ValueError(reply["error"]["message"])
+    except ValueError as error:
+        print(error, file=sys.stderr)
         return 1
     print(f"Applied profile {args.name}")
     return 0
@@ -172,9 +172,7 @@ def _set_managed(unmanaged: bool) -> int:
     method = "unmanage" if unmanaged else "manage"
     reply = request(method)
     if reply is None:
-        state = daemon._load_state()
-        state["unmanaged"] = unmanaged
-        daemon._save_state(state)
+        daemon.Daemon().set_managed(not unmanaged)
     elif "error" in reply:
         print(reply["error"]["message"], file=sys.stderr)
         return 1

@@ -16,19 +16,21 @@ Item {
     property bool popupEnabled: true
     property bool pins: false
     property bool dash: false
+    property bool previews: false
     property var pinned: []
     readonly property bool ungroup: shell.layoutName === "winbar" && shell.prefs.winbarCombine === "never"
     readonly property bool highlightLabels: ungroup && shell.prefs.winbarHighlightLabels
     readonly property int activeDashWidth: Math.round(scaledIcon * 3 / 4)
     readonly property int runningDashWidth: Math.round(scaledIcon / 4)
     readonly property real dashThickness: shell.windowBorderWidth
+    readonly property color inactiveColor: shell.alpha(shell.foreground, .5)
     readonly property var box: shell.style.box("taskbar")
     property int iconSize: 18
     readonly property int scaledIcon: Math.round(box.iconSize !== undefined ? box.iconSize : iconSize)
     readonly property int slotSpacing: box.spacing !== undefined ? box.spacing : 2
     readonly property var buttonBox: shell.style.box("#taskbar button")
     readonly property real buttonInset: Math.max(buttonBox.borderWidth, buttonBox.borderBottomWidth || 0)
-    readonly property real buttonWidth: Math.max(Style.px(24), scaledIcon + buttonBox.margin[1] + buttonBox.margin[3] + buttonBox.padding[1] + buttonBox.padding[3] + 2 * buttonInset)
+    readonly property real buttonWidth: Style.taskbarButtonWidth(scaledIcon, buttonBox)
     readonly property real labelCap: Math.min(fittedLabelCap(), shell.prefs.winbarLimitLabels ? scaledIcon * 5 : Infinity)
     readonly property real buttonHeight: scaledIcon + buttonBox.margin[0] + buttonBox.margin[2] + buttonBox.padding[0] + buttonBox.padding[2] + 2 * buttonInset
     readonly property real spanX: box.margin[1] + box.margin[3] + box.padding[1] + box.padding[3] + 2 * box.borderWidth
@@ -42,10 +44,7 @@ Item {
     property var slots: []
     property int windowSerial: 0
     readonly property var windows: windowDescriptors()
-    readonly property string activeAddress: (shell.dock && shell.dock.activeWindowAddress)
-        || DockModel.windowAddress(Hyprland.activeToplevel)
-    readonly property string activeAppId: ToplevelManager.activeToplevel
-        ? String(ToplevelManager.activeToplevel.appId || "").toLowerCase() : ""
+    property var activeAddress: null
     property string lastFingerprint: "\u0000"
     FontMetrics { id: labelMetrics; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall }
     FontMetrics { id: boldLabelMetrics; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; font.bold: true }
@@ -138,12 +137,21 @@ Item {
         printErrors: false
         onLoaded: { try { root.pinned = JSON.parse(text()) } catch (error) { root.pinned = [] } }
     }
+    Process {
+        running: true
+        command: ["hyprctl", "-j", "activewindow"]
+        stdout: StdioCollector {
+            waitForEnd: true
+            onStreamFinished: if (root.activeAddress === null) root.activeAddress = DockModel.windowAddress(JSON.parse(text))
+        }
+    }
     Component.onCompleted: refreshSlots()
 
     Connections {
         target: Hyprland
         function onRawEvent(event) {
             const name = String(event.name || "")
+            if (name === "activewindowv2") root.activeAddress = DockModel.hyprAddress(event.data)
             if (name.includes("window") || name === "configreloaded") root.windowSerial++
         }
     }
@@ -188,7 +196,7 @@ Item {
         if (/^(0x)?[0-9a-f]+$/i.test(address)) {
             if (windowParked(window) && shell.dock && shell.dock.restoreWindow(address, "")) return
             const selector = "address:" + (address.startsWith("0x") ? address : "0x" + address)
-            Quickshell.execDetached(["hyprctl", "eval", "local w=hl.get_config('cursor.no_warps');hl.config({cursor={no_warps=true}});hl.exec_scheduled_prop_refresh_immediately();hl.dispatch(hl.dsp.focus({window='" + selector + "'}));hl.config({cursor={no_warps=w}})"])
+            shell.dispatchWithoutWarp(["hl.dsp.focus({window='" + selector + "'})"])
         } else if (window.toplevel && window.toplevel.wayland) window.toplevel.wayland.activate()
     }
     function activate(record) {
@@ -244,14 +252,11 @@ Item {
                 property bool wasDragged: false
                 readonly property bool running: matched.length > 0
                 readonly property bool labeled: running && root.ungroup
+                readonly property real groupInset: root.dash && matched.length > 1 ? Style.xs : 0
                 readonly property string buttonLabel: root.buttonLabel(modelData, matched)
-                readonly property bool active: matched.some(window => window.address === root.activeAddress)
-                    || (!modelData.address && !!root.activeAppId && String(modelData.desktopId || "").toLowerCase() === root.activeAppId)
+                readonly property bool active: !!root.activeAddress && matched.some(window => window.address === root.activeAddress)
                 readonly property bool urgent: !active && !!root.shell.dock && matched.some(window => root.shell.dock.urgentMap[window.address])
-                readonly property bool minimized: root.shell.layoutName === "winbar" && running && matched.every(window => root.windowParked(window))
-                readonly property color stateColor: urgent ? root.shell.urgent : minimized ? root.shell.role("info", root.shell.foreground)
-                    : mouse.containsMouse ? root.shell.role("hvr_br", root.shell.accent)
-                    : active ? root.shell.accent : root.shell.alpha(root.shell.foreground, .5)
+                readonly property color stateColor: urgent ? root.shell.urgent : active ? root.shell.accent : root.inactiveColor
                 property real pulse: 1
                 SequentialAnimation on pulse {
                     running: slot.urgent
@@ -261,29 +266,37 @@ Item {
                 }
                 readonly property var box: root.shell.style.box(active ? "#taskbar button.active" : "#taskbar button")
                 readonly property real borderInset: Math.max(box.borderWidth, box.borderBottomWidth || 0)
-                function boxColor(key, hoverKey, fallback) {
-                    const hovered = mouse.containsMouse && box.hover && hoverKey in box.hover
-                    const spec = hovered ? box.hover[hoverKey] : box[key]
-                    if (!spec) return "transparent"
-                    return Array.isArray(spec) ? root.shell.alpha(root.shell.role(spec[0], fallback), spec[1] ?? 1) : root.shell.role(spec, fallback)
+                function boxColor(key, fallback) {
+                    const state = mouse.containsMouse ? box.hover : active ? box.open : null
+                    const spec = state && key in state ? state[key] : box[key]
+                    return spec ? root.shell.styleColor(spec, fallback) : "transparent"
                 }
                 width: root.buttonWidth + (slot.labeled ? Style.sm + root.labelWidth(slot.buttonLabel) : 0)
                 height: viewport.height
                 Rectangle {
                     id: frame
                     anchors.fill: parent
-                    anchors.topMargin: slot.box.margin[0]; anchors.rightMargin: slot.box.margin[1]
+                    anchors.topMargin: slot.box.margin[0]; anchors.rightMargin: slot.box.margin[1] + slot.groupInset
                     anchors.bottomMargin: slot.box.margin[2]; anchors.leftMargin: slot.box.margin[3]
                     radius: slot.box.borderRadius ?? root.shell.moduleRadius
-                    color: slot.boxColor("backgroundColor", "backgroundColor", root.shell.background)
-                    border.color: slot.boxColor("borderColor", "borderColor", root.shell.foreground)
+                    color: slot.boxColor("backgroundColor", root.shell.background)
+                    border.color: slot.box.borderColor ? root.shell.styleColor(slot.box.borderColor, root.shell.foreground) : "transparent"
                     border.width: taskSideBorder.replacesBorder ? 0 : slot.box.borderWidth
                 }
-                SideBorder { id: taskSideBorder; shell: root.shell; host: slot; hovered: mouse.containsMouse }
+                SideBorder { id: taskSideBorder; shell: root.shell; host: slot }
+                Rectangle {
+                    visible: slot.groupInset > 0
+                    anchors.right: parent.right; anchors.rightMargin: slot.box.margin[1]
+                    anchors.verticalCenter: frame.verticalCenter
+                    width: Style.xxs
+                    height: Math.max(0, frame.height - 2 * frame.radius)
+                    radius: width / 2
+                    color: frame.color
+                }
                 IconImage {
                     id: icon
-                    x: slot.labeled ? slot.box.margin[3] + slot.box.padding[3] : (slot.width - width) / 2
-                    y: (slot.height - height + slot.box.margin[0] - slot.box.margin[2] + (root.highlightLabels ? 0 : slot.box.padding[0] - slot.box.padding[2])) / 2
+                    x: slot.labeled ? slot.box.margin[3] + slot.box.padding[3] : (slot.width - width - slot.groupInset) / 2
+                    y: (slot.height - height) / 2 + Style.taskbarIconOffset(slot.box, root.highlightLabels)
                     width: root.scaledIcon; height: root.scaledIcon
                     source: root.iconFor(slot.modelData)
                 }
@@ -302,9 +315,10 @@ Item {
                 }
                 Rectangle {
                     visible: root.dash && slot.running && !root.highlightLabels
-                    anchors.horizontalCenter: frame.horizontalCenter
+                    anchors.horizontalCenter: icon.horizontalCenter
                     anchors.bottom: frame.bottom; anchors.bottomMargin: Style.xxs
-                    width: slot.active ? root.activeDashWidth : root.runningDashWidth; height: root.dashThickness; radius: height / 2
+                    width: slot.active ? root.activeDashWidth : root.runningDashWidth; height: root.dashThickness
+                    radius: height / 2
                     color: slot.stateColor
                     opacity: slot.urgent ? 0.4 + 0.6 * slot.pulse : 1
                     Behavior on width { NumberAnimation { duration: 140; easing.type: Easing.OutQuad } }
@@ -433,6 +447,7 @@ Item {
                     advanced: !root.shell.dock || root.shell.dock.advancedTooltips
                     delay: root.shell.dock ? root.shell.dock.tooltipDelay : 450
                     selectedIndex: slot.selectedWindowIdx
+                    showPreview: root.previews && root.shell.prefs.winbarPreviews
                     windowFocused: function(window) { return window.address === root.activeAddress }
                     windowParked: function(window) { return root.windowParked(window) }
                     windowLabel: function(window) { return root.windowRowLabel(window) }

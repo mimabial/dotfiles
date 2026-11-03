@@ -5,21 +5,15 @@ MENU_SUBMENU_GLYPH_1="${MENU_SUBMENU_GLYPH_1:-󰅂}"
 MENU_SUBMENU_GLYPH_2="${MENU_SUBMENU_GLYPH_2:-󰄾}"
 MENU_SUBMENU_GLYPH_3="${MENU_SUBMENU_GLYPH_3:-󰶻}"
 MENU_CHECK_GLYPH="${MENU_CHECK_GLYPH:-✓}"
-MENU_NAV_HINT="${MENU_NAV_HINT:-<span size=\"x-small\">  ← Back · → Open 
-[Tab] Search · [Esc] Close</span>}"
-MENU_SEARCH_HINT="${MENU_SEARCH_HINT:-<span size=\"x-small\">← Back · [Enter] Open · [Esc] Close</span>}"
-MENU_COPY_HINT="${MENU_COPY_HINT:-<span size=\"x-small\">[Enter] Apply · [Alt+C] Copy</span>}"
-MENU_MULTI_HINT="${MENU_MULTI_HINT:-<span size=\"x-small\">[Shift+Enter] Mark · [Enter] Confirm</span>}"
+MENU_NAV_HINT="${MENU_NAV_HINT:-<span size=\"x-small\">← Back  → Open  Tab Search  Esc Close</span>}"
+MENU_SEARCH_HINT="${MENU_SEARCH_HINT:-<span size=\"x-small\">← Back  Enter Open  Esc Close</span>}"
+MENU_COPY_HINT="${MENU_COPY_HINT:-<span size=\"x-small\">Enter Apply  Alt+C Copy</span>}"
+MENU_MULTI_HINT="${MENU_MULTI_HINT:-<span size=\"x-small\">Shift+Enter Mark  Enter Confirm</span>}"
 
 MENU_MULTI_BALLOT_ON="${MENU_MULTI_BALLOT_ON:-■}"
 MENU_MULTI_BALLOT_OFF="${MENU_MULTI_BALLOT_OFF:-□}"
 
-# Pixel costs from menutree.rasi.
-MENU_CONTENT_INNER_CHROME_PX=89
 MENU_WINDOW_BORDER_PX=2
-MENU_VERTICAL_CHROME_PX=117
-MENU_ROW_CHROME_PX=25
-MENU_FOOTER_CHROME_PX=24
 MENU_FALLBACK_WIDTH=295px
 MENU_FALLBACK_RADIUS_PX=2
 MENU_MAX_WIDTH_PERCENT=60
@@ -46,6 +40,7 @@ declare -gA HYPR_MENU_PROMPTS=()
 declare -gA HYPR_MENU_CHOICES=()
 declare -gA HYPR_MENU_LABELS=()
 declare -gA HYPR_MENU_PARENTS=()
+declare -gA HYPR_MENU_PARENT_LABELS=()
 declare -gA HYPR_MENU_GLYPHS=()
 declare -gA HYPR_MENU_KINDS=()
 declare -gA HYPR_MENU_TARGETS=()
@@ -55,8 +50,10 @@ declare -ga HYPR_MENU_ACTION_HANDLERS=()
 declare -ga HYPR_MENU_ACTIVE_CHECKS=()
 declare -gA HYPR_MENU_MARKED=()
 declare -gA MENU_STATE_CACHE=()
-MENU_ROOT_GLYPH=""
+declare -gA HYPR_MENU_DEFERRED_FILLERS=()
+MENU_ROOT_GLYPH=""
 MENU_PROMPT_GLYPH=""
+MENU_PLACEHOLDER=""
 
 declare -gA MENU_STYLE=([font_scale]="" [font_name]="" [width_theme]="" [radius_px]="" [window_theme]="")
 
@@ -69,6 +66,30 @@ menu_define() {
   HYPR_MENU_PROMPTS["${menu_id}"]="${prompt}"
   [[ "${kind}" == choice ]] && HYPR_MENU_CHOICES["${menu_id}"]=1
   : "${HYPR_MENU_LABELS["${menu_id}"]:=}"
+}
+
+menu_define_deferred() {
+  local menu_id="$1" filler="$4"
+
+  menu_define "${menu_id}" "$2" "$3" || return
+  HYPR_MENU_DEFERRED_FILLERS["${menu_id}"]="${filler}"
+  HYPR_MENU_DEPTHS["${menu_id}"]=1
+}
+
+menu_fill_deferred() {
+  local filler="${HYPR_MENU_DEFERRED_FILLERS["$1"]:-}"
+
+  [[ -n "${filler}" ]] || return 0
+  unset "HYPR_MENU_DEFERRED_FILLERS[$1]" "HYPR_MENU_DEPTHS[$1]"
+  "${filler}"
+}
+
+menu_fill_all_deferred() {
+  local menu_id=""
+
+  for menu_id in "${!HYPR_MENU_DEFERRED_FILLERS[@]}"; do
+    menu_fill_deferred "${menu_id}"
+  done
 }
 
 menu_add_item() {
@@ -88,6 +109,7 @@ menu_add_item() {
 
   if [[ "${kind}" == "submenu" && -z "${HYPR_MENU_PARENTS["${target}"]:-}" ]]; then
     HYPR_MENU_PARENTS["${target}"]="${menu_id}"
+    HYPR_MENU_PARENT_LABELS["${target}"]="${label}"
   fi
 }
 
@@ -129,6 +151,24 @@ menu_choice_matches() {
   [[ "${target#"${prefix}"}" == "${REPLY}" ]]
 }
 
+menu_label_text_reply() {
+  REPLY="$1"
+  [[ "$1" =~ ^[^\ -~][[:space:]]+(.+)$ ]] && REPLY="${BASH_REMATCH[1]}"
+  return 0
+}
+
+menu_breadcrumb_into() {
+  local -n breadcrumb_ref="$1"
+  local screen_menu="$2" screen_title="$3" menu_id="$2"
+
+  breadcrumb_ref=""
+  while [[ -v HYPR_MENU_PARENTS["${menu_id}"] ]]; do
+    menu_label_text_reply "${HYPR_MENU_PARENT_LABELS["${menu_id}"]}"
+    [[ "${menu_id}" == "${screen_menu}" && "${REPLY}" == "${screen_title}" ]] || breadcrumb_ref="${REPLY}${breadcrumb_ref:+ › ${breadcrumb_ref}}"
+    menu_id="${HYPR_MENU_PARENTS["${menu_id}"]}"
+  done
+}
+
 menu_escape_markup_reply() {
   REPLY="${1//&/\&amp;}"
   REPLY="${REPLY//</\&lt;}"
@@ -166,11 +206,12 @@ menu_descendant_depth() {
   HYPR_MENU_DEPTHS["${menu_id}"]="${depth}"
 }
 
-menu_submenu_glyph() {
-  case "$1" in
-    1) printf '%s' "${MENU_SUBMENU_GLYPH_1}" ;;
-    2) printf '%s' "${MENU_SUBMENU_GLYPH_2}" ;;
-    *) printf '%s' "${MENU_SUBMENU_GLYPH_3}" ;;
+menu_submenu_glyph_into() {
+  local -n submenu_glyph_ref="$1"
+  case "$2" in
+    1) submenu_glyph_ref="${MENU_SUBMENU_GLYPH_1}" ;;
+    2) submenu_glyph_ref="${MENU_SUBMENU_GLYPH_2}" ;;
+    *) submenu_glyph_ref="${MENU_SUBMENU_GLYPH_3}" ;;
   esac
 }
 
@@ -197,6 +238,7 @@ menu_run_action() {
   local status=0
 
   MENU_PROMPT_GLYPH="${HYPR_MENU_GLYPHS["${action_id}"]:-}"
+  MENU_PLACEHOLDER=""
   for handler in "${HYPR_MENU_ACTION_HANDLERS[@]}"; do
     status=0
     "${handler}" "${action_id}" || status=$?
@@ -209,6 +251,7 @@ menu_run_action() {
 menu_dump_json() {
   local menu_id="" label="" key="" target="" chevron="" checked=""
 
+  menu_fill_all_deferred
   for menu_id in "${!HYPR_MENU_PROMPTS[@]}"; do
     while IFS= read -r label; do
       [[ -n "${label}" ]] || continue
@@ -217,7 +260,7 @@ menu_dump_json() {
       chevron=""
       if [[ "${HYPR_MENU_KINDS["${key}"]}" == "submenu" ]]; then
         menu_descendant_depth "${target}"
-        chevron="$(menu_submenu_glyph "${HYPR_MENU_DEPTHS["${target}"]}")"
+        menu_submenu_glyph_into chevron "${HYPR_MENU_DEPTHS["${target}"]}"
       fi
       checked=0
       [[ -v HYPR_MENU_MARKED["${target}"] ]] && checked=1

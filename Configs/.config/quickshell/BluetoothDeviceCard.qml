@@ -10,37 +10,55 @@ Rectangle {
     id: card
     required property var shell
     required property var device
+    default property alias actions: actionList.data
+    property bool connected: !!device.online
+    property bool blocked: false
+    property bool connectable: false
+    property string pendingText: ""
+    property string failureText: ""
+    property string audioStatus: ""
     property bool hiddenDevice: false
     property bool expanded: false
     property bool settingsEnabled: true
+    property bool hasActions: false
     property bool cursored: false
-    readonly property var rule: shell.style.box("bluetooth.card" + (device.online ? ".connected" : ""))
+    readonly property var rule: shell.style.box("bluetooth.card" + (connected ? ".connected" : ""))
     readonly property real pad: Active.Style.px(rule.cardPadding ?? Active.Style.controlPaddingX / Active.Style.uiScale)
     readonly property bool hasSettings: !!(device.dpi || device.smartshift || device.wheel || device.fnswap)
-    readonly property bool isOpen: expanded && !!device.online && hasSettings
-    readonly property bool navigable: settingsEnabled && !!device.online && hasSettings
-    readonly property int lowBatteryPercent: 25
-    readonly property int criticalBatteryPercent: 10
+    readonly property bool expandable: hasSettings || hasActions
+    readonly property bool navigable: true
     readonly property int dpiFallbackStep: 50
     readonly property var smartshiftLimits: ({minimum: 1, maximum: 50, step: 1, defaultValue: 10})
-    signal hiddenToggled(bool value)
     signal expandedToggled()
     signal settingChanged(string key, var value)
+    signal connectionToggled()
+    signal detailsRequested()
     signal clicked(int button)
-    onClicked: if (navigable) expandedToggled()
+    onClicked: button => {
+        if (button === Qt.RightButton) detailsRequested()
+        else if (connectable) connectionToggled()
+        else if (expandable) expandedToggled()
+    }
+    function adjustKeyboard(direction) {
+        if (!expandable || (direction > 0) === expanded) return false
+        expandedToggled()
+    }
     implicitHeight: cardColumn.implicitHeight + pad * 2
     radius: shell.rounding
     opacity: hiddenDevice ? rule.hiddenOpacity ?? Active.Style.mutedTextAlpha : 1
-    color: shell.styleColor(cardHover.hovered ? rule.cardHoverFill : rule.cardFill, "transparent")
+    color: cursored ? shell.hoverFill() : shell.styleColor(cardHover.hovered ? rule.cardHoverFill : rule.cardFill, "transparent")
     border.width: Commons.Style.normalBorderWidth
-    border.color: cursored ? shell.hoverEdge() : shell.styleColor(rule.cardBorder, "transparent")
+    border.color: shell.styleColor(rule.cardBorder, "transparent")
     HoverHandler { id: cardHover }
 
     function statusLine() {
         const dev = card.device
+        if (card.failureText) return card.failureText
         let where = Model.connectionIcon(dev.receiver ? "dongle" : dev.connection) + " " + Model.connectionName(dev.connection)
         if (dev.slot) where += " · slot " + dev.slot
-        if (!dev.online) return where + " · not connected"
+        if (card.pendingText) return where + " · " + card.pendingText
+        if (!card.connected) return where + (card.blocked ? " · blocked" : " · not connected")
+        if (card.audioStatus) where += " · " + card.audioStatus
         const battery = dev.battery
         if (battery && battery.charging) return where + " · charging"
         if (battery && String(battery.status).toLowerCase() === "full" && battery.external_power) return where + " · charged"
@@ -59,12 +77,9 @@ Rectangle {
         const battery = card.device.battery
         if (!battery) return card.shell.mutedText
         if (battery.charging) return card.shell.role("success", card.shell.accent)
-        const level = String(battery.level || "").toLowerCase()
-        const knownPercent = battery.percent !== null && battery.percent !== undefined
-        if (knownPercent ? battery.percent <= criticalBatteryPercent : ["critical", "empty"].includes(level))
-            return card.shell.urgent
-        if (knownPercent ? battery.percent <= lowBatteryPercent : level === "low")
-            return card.shell.role("warning", card.shell.foreground)
+        const alert = Model.batteryAlert(battery)
+        if (alert === "critical") return card.shell.urgent
+        if (alert === "low") return card.shell.role("warning", card.shell.foreground)
         return card.shell.foreground
     }
 
@@ -80,11 +95,11 @@ Rectangle {
                 anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
                 width: Active.Style.px(card.rule.badgeSize ?? (Active.Style.controlHeight + Active.Style.controlPaddingY) / Active.Style.uiScale)
                 height: width; radius: card.shell.rounding > 0 ? width / 2 : 0
-                color: card.device.online ? card.shell.accent : card.shell.styleColor(card.rule.badgeFill, "transparent")
+                color: card.connected ? card.shell.accent : card.shell.styleColor(card.rule.badgeFill, "transparent")
                 Text {
                     anchors.centerIn: parent; textFormat: Text.PlainText
                     text: Model.monitorKindIcon(card.device.kind)
-                    color: card.device.online ? card.shell.background : card.shell.mutedText
+                    color: card.connected ? card.shell.background : card.shell.mutedText
                     font.family: card.shell.iconGlyphFont; font.pixelSize: Commons.Style.font.icon
                 }
             }
@@ -96,20 +111,21 @@ Rectangle {
                 Text {
                     width: parent.width; textFormat: Text.PlainText; elide: Text.ElideRight
                     text: card.device.name || "Logitech device"
-                    color: card.device.online ? card.shell.foreground : card.shell.mutedText
+                    color: card.connected ? card.shell.foreground : card.shell.mutedText
                     font.family: card.shell.fontFamily; font.pixelSize: Active.Style.body; font.bold: true
                 }
                 Text {
                     width: parent.width; textFormat: Text.PlainText; elide: Text.ElideRight
                     text: card.statusLine() + (card.hiddenDevice ? " · hidden" : "")
-                    color: card.shell.mutedText; font.family: card.shell.fontFamily; font.pixelSize: Active.Style.caption
+                    color: card.failureText ? card.shell.urgent : card.shell.mutedText
+                    font.family: card.shell.fontFamily; font.pixelSize: Active.Style.caption
                 }
             }
             Row {
                 id: batteryBox
-                anchors.right: hideButton.left; anchors.rightMargin: Active.Style.md
+                anchors.right: chevron.left; anchors.rightMargin: Active.Style.md
                 anchors.verticalCenter: parent.verticalCenter; spacing: Active.Style.sm
-                visible: card.device.online && !!card.device.battery
+                visible: card.connected && !!Model.batteryText(card.device.battery)
                 width: visible ? implicitWidth : 0
                 Text {
                     anchors.verticalCenter: parent.verticalCenter; textFormat: Text.PlainText
@@ -122,37 +138,35 @@ Rectangle {
                     font.family: card.shell.fontFamily; font.pixelSize: Active.Style.caption; font.bold: true
                 }
             }
-            Ui.PanelActionButton {
-                id: hideButton
-                anchors.right: chevron.left; anchors.rightMargin: Active.Style.sm
-                anchors.verticalCenter: parent.verticalCenter; z: 1
-                size: Active.Style.body + Active.Style.xs * 2; fontSize: Active.Style.body
-                iconText: card.hiddenDevice ? "󰈈" : "󰈉"; foreground: card.shell.foreground
-                fontFamily: card.shell.iconGlyphFont; enabled: card.settingsEnabled
-                opacity: card.hiddenDevice || cardHover.hovered || cursored ? 1 : card.rule.eyeIdleOpacity ?? Active.Style.faintTextAlpha
-                tooltipText: card.hiddenDevice ? "Show in list" : "Hide from list"
-                onClicked: card.hiddenToggled(!card.hiddenDevice)
-            }
             Text {
                 id: chevron
-                anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                width: Active.Style.xxxl; horizontalAlignment: Text.AlignRight; textFormat: Text.PlainText
-                text: card.device.online && card.hasSettings ? card.isOpen ? "󰅀" : "󰅂" : ""
-                color: headerMouse.containsMouse ? card.shell.foreground : card.shell.mutedText
+                anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; z: 1
+                visible: card.expandable
+                width: visible ? Active.Style.xxxl : 0; horizontalAlignment: Text.AlignRight; textFormat: Text.PlainText
+                rightPadding: chevronInk.tightBoundingRect.right - chevronInk.advanceWidth
+                text: card.expanded ? "󰅀" : "󰅂"
+                color: chevronMouse.containsMouse ? card.shell.foreground : card.shell.mutedText
                 font.family: card.shell.iconGlyphFont; font.pixelSize: Active.Style.body
+                TextMetrics { id: chevronInk; font: chevron.font; text: chevron.text }
+                MouseArea {
+                    id: chevronMouse
+                    anchors.fill: parent; hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: card.expandedToggled()
+                }
             }
             MouseArea {
-                id: headerMouse
-                anchors.fill: parent; enabled: card.navigable; hoverEnabled: true
-                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                onClicked: card.expandedToggled()
+                anchors.fill: parent; hoverEnabled: true
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                cursorShape: Qt.PointingHandCursor
+                onClicked: mouse => card.clicked(mouse.button)
             }
         }
 
-        Active.PopupSeparator { visible: card.isOpen; shell: card.shell; width: parent.width }
+        Active.PopupSeparator { visible: card.expanded && card.expandable; shell: card.shell; width: parent.width }
         Active.PopupSlider {
             id: dpiSlider
-            visible: card.isOpen && !!card.device.dpi && card.device.dpi.max > 0
+            visible: card.expanded && !!card.device.dpi && card.device.dpi.max > 0
             width: parent.width; shell: card.shell; enabled: card.settingsEnabled
             label: "Pointer speed (DPI)"; valueText: Math.round(liveValue) + (card.device.dpi && Math.round(liveValue) === card.device.dpi.default ? " · default" : "")
             minimum: card.device.dpi ? card.device.dpi.min : 0
@@ -166,7 +180,7 @@ Rectangle {
             }
         }
         Column {
-            visible: card.isOpen && !!card.device.smartshift
+            visible: card.expanded && !!card.device.smartshift
             width: parent.width; spacing: Active.Style.md
             Text {
                 text: "Scroll wheel mode"; color: card.shell.foreground
@@ -182,6 +196,7 @@ Rectangle {
                 ]
                 readonly property bool navigable: card.settingsEnabled
                 property bool cursored: false
+                readonly property color buttonAccent: cursored ? card.shell.accent : card.shell.foreground
                 signal clicked(int button)
                 onClicked: adjustKeyboard(1)
                 function adjustKeyboard(direction) {
@@ -195,8 +210,7 @@ Rectangle {
                         width: (wheelModes.width - wheelModes.spacing * (wheelModes.options.length - 1)) / wheelModes.options.length
                         text: modelData.label; bordered: true
                         selected: !!card.device.smartshift && card.device.smartshift.mode === modelData.value
-                        foreground: card.shell.foreground; fontFamily: card.shell.fontFamily; fontSize: Active.Style.caption
-                        enabled: card.settingsEnabled; accent: wheelModes.cursored ? card.shell.accent : card.shell.foreground
+                        enabled: card.settingsEnabled; accent: wheelModes.buttonAccent
                         ToolTip.visible: wheelModeHover.hovered; ToolTip.text: modelData.tooltip; ToolTip.delay: Active.Style.tooltipDelay
                         HoverHandler { id: wheelModeHover }
                         onClicked: card.settingChanged("smartshift", modelData.value)
@@ -219,25 +233,31 @@ Rectangle {
             }
         }
         Active.PopupToggleRow {
-            visible: card.isOpen && !!card.device.wheel
+            visible: card.expanded && !!card.device.wheel
             width: parent.width; shell: card.shell; enabled: card.settingsEnabled
             title: "Natural scrolling"; detail: "Content follows the wheel, like on a touchpad"
             checked: !!card.device.wheel && card.device.wheel.invert
             onToggled: card.settingChanged("invert", !(card.device.wheel && card.device.wheel.invert))
         }
         Active.PopupToggleRow {
-            visible: card.isOpen && !!card.device.wheel
+            visible: card.expanded && !!card.device.wheel
             width: parent.width; shell: card.shell; enabled: card.settingsEnabled
             title: "High-resolution scrolling"; detail: "Smoother, finer steps in apps that support it"
             checked: !!card.device.wheel && card.device.wheel.hires
             onToggled: card.settingChanged("hires", !(card.device.wheel && card.device.wheel.hires))
         }
         Active.PopupToggleRow {
-            visible: card.isOpen && !!card.device.fnswap
+            visible: card.expanded && !!card.device.fnswap
             width: parent.width; shell: card.shell; enabled: card.settingsEnabled
             title: "Swap Fn keys"; detail: card.device.fnswap && card.device.fnswap.on ? "On: top row gives media and special functions, hold Fn for F1–F12" : "Off: top row gives F1–F12, hold Fn for media and special functions"
             checked: !!card.device.fnswap && card.device.fnswap.on
             onToggled: card.settingChanged("fnswap", !(card.device.fnswap && card.device.fnswap.on))
+        }
+        Active.PopupSeparator { visible: card.expanded && card.hasSettings && card.hasActions; shell: card.shell; width: parent.width }
+        Column {
+            id: actionList
+            visible: card.expanded
+            width: parent.width; spacing: Active.Style.rowGap
         }
     }
 }

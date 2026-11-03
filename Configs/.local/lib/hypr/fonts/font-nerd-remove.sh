@@ -14,11 +14,12 @@ detect_used_fonts() {
   local kind variable font_name
 
   used_fonts=()
+  hypr_config_layer_cache_load
   for kind in mono bar bar-icon menu terminal; do
     used_fonts+=("$(font_sync_resolve_font_value "${kind}")")
   done
   for variable in FONT DOCUMENT_FONT; do
-    font_name="$(hypr_config_value_from_layers "${variable}" 2>/dev/null || true)"
+    hypr_config_value_from_layers_into font_name "${variable}" 2>/dev/null || true
     [[ -n "${font_name}" ]] && used_fonts+=("${font_name}")
   done
   if [[ -f "${kitty_conf}" ]]; then

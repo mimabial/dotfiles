@@ -46,7 +46,9 @@ GSETTINGS_FONT_KEYS=(
   "org.gnome.desktop.wm.preferences titlebar-font"
 )
 SKIP_PACKAGES_REGEX='^(fontconfig|lib32-fontconfig|libfontenc|libxfont2|xorg-fonts-encodings)$'
-declare -gA PACKAGE_FAMILY_CACHE=()
+declare -ga ACTIVE_SEARCH_ROOTS=() RG_ARGS=() LIVE_FONT_REFS=() INSTALLED_FONT_PACKAGES=() LOCAL_FONT_FAMILIES=()
+declare -gA PACKAGE_FAMILY_CACHE=() PACKAGE_FONT_FILES=()
+declare -ga FONT_REFERENCE_LINES=()
 declare -gA LOCAL_FAMILY_FILES=()
 declare -gA LOCAL_FILE_FAMILIES=()
 declare -ga ACTIVE_PACKAGES=() INSTALLED_CONFIG_PACKAGES=() FALLBACK_PACKAGES=()
@@ -64,12 +66,13 @@ main() {
   require_cmd rg
   require_cmd fc-scan
 
-  collect_search_roots
-  build_rg_args
-  collect_live_font_refs
-  collect_installed_font_packages
+  collect_search_roots_into ACTIVE_SEARCH_ROOTS
+  build_rg_args_into RG_ARGS
+  collect_live_font_refs_into LIVE_FONT_REFS
+  collect_installed_font_packages_into INSTALLED_FONT_PACKAGES PACKAGE_FONT_FILES
   print_header
-  collect_local_font_families
+  collect_local_font_families_into LOCAL_FONT_FAMILIES LOCAL_FAMILY_FILES LOCAL_FILE_FAMILIES
+  collect_font_reference_lines
 
   classify_packages
   classify_local_families

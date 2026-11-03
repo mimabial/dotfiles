@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
+import "Ui" as Ui
 
 PopupCard {
     id: root
@@ -71,7 +72,7 @@ PopupCard {
                 interactive: contentHeight > height
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: ScrollBar { policy: gridScroll.interactive ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
+                ScrollBar.vertical: Ui.PanelScrollBar { policy: gridScroll.interactive ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
 
                 Flow {
                     id: wallFlow
@@ -201,14 +202,10 @@ PopupCard {
                 onClicked: Wallpaper.applyNext()
             }
 
-            Text {
-                visible: text !== ""
-                width: parent.width
-                text: Wallpaper.lastError !== "" ? Wallpaper.lastError : Wallpaper.lastAction
-                color: Wallpaper.lastError !== "" ? root.shell.role("error", root.shell.foreground)
-                    : root.shell.mutedText
-                font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-                wrapMode: Text.WordWrap
+            PopupHint {
+                shell: root.shell; error: Wallpaper.lastError !== ""
+                width: parent.width; text: Wallpaper.lastError !== "" ? Wallpaper.lastError : Wallpaper.lastAction
+                textFormat: Text.PlainText; wrapMode: Text.Wrap; horizontalAlignment: Text.AlignLeft
             }
 
             Text {

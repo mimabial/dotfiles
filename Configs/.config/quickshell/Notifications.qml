@@ -9,9 +9,28 @@ Singleton {
     readonly property string archiveDirectory: Quickshell.env("HOME") + "/.local/state/hypr/notifications/"
     property var report: ({ entries: [], unread: 0, seen: 0, paused: false })
     property bool refreshPending: false
+    property string copyError: ""
+    readonly property bool copying: codeCopy.running
+    function copyCode(key, index) {
+        if (codeCopy.running) return
+        copyError = ""
+        codeCopy.command = ["python3", Quickshell.env("HOME") + "/.local/lib/hypr/notify/verification.py", "copy"]
+            .concat(key ? [key, String(index)] : [])
+        codeCopy.running = true
+    }
     function refresh() {
         if (history.running) refreshPending = true
         else history.running = true
+    }
+    IpcHandler {
+        target: "notifications"
+        function refresh(): void { root.refresh() }
+        function copyLatest(): void { root.copyCode("", 0) }
+    }
+    Process {
+        id: codeCopy
+        stderr: StdioCollector { waitForEnd: true; onStreamFinished: if (text.trim()) root.copyError = text.trim() }
+        onExited: root.refresh()
     }
     FileView {
         path: root.archiveDirectory + "archive.jsonl"; watchChanges: true; printErrors: false

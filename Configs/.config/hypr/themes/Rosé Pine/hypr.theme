@@ -4,10 +4,12 @@ $CURSOR_THEME = capitaine-cursors-light
 $CURSOR_SIZE = 30
 $ICON_THEME = Tela-pink-dark
 $COLOR_SCHEME = prefer-dark
+
 $NVIM_SCHEME = rose-pine
 $NVIM_VARIANT = main
 $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
+
 $FONT = CaskaydiaCove Nerd Font
 $BAR_FONT = CaskaydiaCove Nerd Font
 $MENU_FONT = CaskaydiaCove Nerd Font

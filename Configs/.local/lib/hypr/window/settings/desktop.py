@@ -169,7 +169,7 @@ class DesktopSettings(VisualSettings):
             self.search = self.read_terminal_answer("Search (empty clears): ").strip()
             self.section_index = self.row_index = self.row_offset = self.section_offset = 0
             if self.search:
-                for title in ("Bluetooth", "Compose", "Keybindings"):
+                for title in ("Bluetooth", "Compose"):
                     self.load_page(title)
             return True
         if key == ord("r"):

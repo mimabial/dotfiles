@@ -84,15 +84,12 @@ Item {
     opacity: card.controller.previewIndex < 0 || previewed ? 1 : 0.28
 
     MouseArea {
+        id: cardPointer
         anchors.fill: parent
         enabled: card.controller.previewIndex < 0 || card.previewed
         hoverEnabled: true
         onEnabledChanged: if (!enabled) card.hovered = false
-        onEntered: {
-            card.hovered = true;
-            if (card.acceptsKeyboard)
-                card.controller.selectedIndex = card.slot;
-        }
+        onEntered: card.hovered = true
         onExited: card.hovered = false
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
         onClicked: function(mouse) {
@@ -100,6 +97,14 @@ Item {
                 card.controller.requestClose(card.modelData);
             else
                 card.controller.activate(card.modelData);
+        }
+
+        HoverHandler {
+            enabled: cardPointer.enabled
+            onPointChanged: {
+                if (card.controller.pointerMovedTo(point.scenePosition) && card.acceptsKeyboard)
+                    card.controller.selectedIndex = card.slot;
+            }
         }
     }
 

@@ -14,21 +14,20 @@ paused=false
 waiting=0
 displayed=0
 
-if command -v dunstctl >/dev/null 2>&1; then
-  [[ "$(dunstctl is-paused 2>/dev/null)" == "true" ]] && paused=true
-  counts="$(dunstctl count 2>/dev/null || true)"
-  while IFS=: read -r key value; do
-    case "${key}" in
-      *Waiting) waiting="${value}" ;;
-      *"Currently displayed") displayed="${value}" ;;
-    esac
-  done <<<"${counts}"
-fi
+while read -r property _ _ value; do
+  case "${property}" in
+    paused) paused="${value}" ;;
+    waitingLength) waiting="${value}" ;;
+    displayedLength) displayed="${value}" ;;
+  esac
+done < <(dbus-send --session --print-reply=literal --dest=org.freedesktop.Notifications /org/freedesktop/Notifications \
+  org.freedesktop.DBus.Properties.GetAll string:org.dunstproject.cmd0 2>/dev/null)
 
 jq -cn \
+  --argjson verification "$(python3 "${HYPR_LIB_DIR}/notify/verification.py" list)" \
   --argjson paused "${paused}" \
   --argjson waiting "${waiting:-0}" \
   --argjson displayed "${displayed:-0}" \
   --argjson archive "${snapshot}" \
-  '{paused: $paused, waiting: $waiting, displayed: $displayed,
+  '{paused: $paused, waiting: $waiting, displayed: $displayed, verification: $verification,
     unread: $archive.unread, seen: $archive.seen, entries: $archive.entries}'

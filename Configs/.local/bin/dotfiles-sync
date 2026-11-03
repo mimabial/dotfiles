@@ -13,7 +13,7 @@ declare -a SYNC_MANIFEST_RECORDS=()
 
 usage() {
   cat <<USAGE
-Usage: $(basename "$0") [options]
+Usage: ${0##*/} [options]
 Options:
   --dry-run   Preview actual sync changes without writing
   --list      List configured sync mappings only
@@ -51,13 +51,6 @@ path_is_within_root() {
   [[ "${path}" == "${root}" || "${path}" == "${root}/"* ]]
 }
 
-relative_path_from() {
-  local base_dir="$1"
-  local target_path="$2"
-
-  realpath -m --relative-to="${base_dir}" "${target_path}"
-}
-
 normalize_synced_symlink() {
   local src_root="$1"
   local dest_root="$2"
@@ -72,7 +65,7 @@ normalize_synced_symlink() {
   path_is_within_root "${link_target}" "${src_root}" || return 0
 
   mapped_target="${dest_root}${link_target#"${src_root}"}"
-  relative_target="$(relative_path_from "$(dirname -- "${dest_link}")" "${mapped_target}")"
+  relative_target="$(realpath -m --relative-to="${dest_link%/*}" "${mapped_target}")"
   ln -snf -- "${relative_target}" "${dest_link}"
 }
 
@@ -212,9 +205,7 @@ sync_host_profile_files() {
   done
 
   log_section "host profile '${profile}'"
-  for rel_path in "${host_paths[@]}"; do
-    sync_mapped_path file "${HOME}/${rel_path}" "${host_root}/${rel_path}" "hosts/${profile}/${rel_path}"
-  done
+  sync_file_paths "${HOME}" "${host_root}" "hosts/${profile}/" "${host_paths[@]}"
 
   purge_orphaned_host_files "${host_root}" "${host_paths[@]}"
 }
@@ -237,6 +228,12 @@ sync_directory_path() {
   shift 3
   local -a rsync_args=(-a --mkpath --delete --delete-excluded)
 
+  if [[ "${SYNC_MODE}" == "list" ]]; then
+    plan_copy_path dir "$src" "$dest" "$@"
+    return
+  fi
+  [[ -e "$src" ]] || { log_warn "Skipping $name (not found: $src)"; return; }
+  [[ -d "$src" ]] || { log_warn "Skipping $name (not a directory: $src)"; return; }
   for exclude_pattern in "${ALWAYS_EXCLUDED_PATTERNS[@]}" "$@"; do
     rsync_args+=(--exclude="${exclude_pattern}")
   done
@@ -249,46 +246,43 @@ sync_directory_path() {
   emit_apply_result "$name" "$transfer_output"
 }
 
-sync_file_path() {
-  local src="$1" dest="$2" name="$3" transfer_output=""
+sync_file_paths() {
+  local src_root="$1" dest_root="$2" name_prefix="$3" rel_path="" src="" dest="" name="" line="" transfer_output=""
+  shift 3
+  local -a transfer_paths=()
+  local -A itemized_by_path=()
 
-  if [[ -d "$dest" && ! -L "$dest" ]]; then
-    if [[ "${SYNC_MODE}" == "dry-run" ]]; then
+  for rel_path in "$@"; do
+    src="${src_root}/${rel_path}" dest="${dest_root}/${rel_path}" name="${name_prefix}${rel_path}"
+    if [[ "${SYNC_MODE}" == "list" ]]; then
+      plan_copy_path file "$src" "$dest"
+    elif ! path_exists "$src"; then
+      path_exists "$dest" || { log_warn "Skipping $name (not found: $src)"; continue; }
+      remove_destination "$dest" "stale $name"
+    elif [[ -d "$dest" && ! -L "$dest" && "${SYNC_MODE}" == "dry-run" ]]; then
       emit_preview_result "$name" "${RSYNC_ITEMIZED_DELETE}${dest##*/}"$'\n'"${RSYNC_ITEMIZED_NEW_FILE}${dest##*/}"
-      return
+    else
+      [[ ! -d "$dest" || -L "$dest" ]] || rm -rf -- "$dest"
+      transfer_paths+=("${rel_path}")
     fi
-    rm -rf -- "$dest"
-  fi
+  done
+  ((${#transfer_paths[@]})) || return 0
 
-  run_rsync_transfer transfer_output "$name" -a --mkpath "$src" "$dest" || return
-  if [[ "${SYNC_MODE}" == "dry-run" ]]; then
-    emit_preview_result "$name" "$transfer_output"
-    return
-  fi
-  emit_apply_result "$name" "$transfer_output"
-}
-
-sync_mapped_path() {
-  local kind="$1" src="$2" dest="$3" name="$4"
-  shift 4
-
-  if [[ "${SYNC_MODE}" == "list" ]]; then
-    plan_copy_path "$kind" "$src" "$dest" "$@"
-    return
-  fi
-  if [[ "$kind" == "dir" ]]; then
-    [[ -e "$src" ]] || { log_warn "Skipping $name (not found: $src)"; return; }
-    if [[ -d "$src" ]]; then
-      sync_directory_path "$src" "$dest" "$name" "$@"
-      return
+  run_rsync_transfer transfer_output "${dest_root}" -a --mkpath --no-implied-dirs --from0 \
+    --files-from=<(printf './%s\0' "${transfer_paths[@]}") "${src_root}/" "${dest_root}/" || return
+  while IFS= read -r line; do
+    [[ "${line}" == *" "* ]] || continue
+    rel_path="${line#* }"
+    itemized_by_path["${rel_path%% -> *}"]+="${line}"$'\n'
+  done <<< "${transfer_output}"
+  for rel_path in "${transfer_paths[@]}"; do
+    name="${name_prefix}${rel_path}" line="${itemized_by_path["${rel_path}"]:-}"
+    if [[ "${SYNC_MODE}" == "dry-run" ]]; then
+      emit_preview_result "$name" "${line%$'\n'}"
+    else
+      emit_apply_result "$name" "$line"
     fi
-  fi
-  if ! path_exists "$src"; then
-    path_exists "$dest" || { log_warn "Skipping $name (not found: $src)"; return; }
-    remove_destination "$dest" "stale $name"
-    return
-  fi
-  sync_file_path "$src" "$dest" "$name"
+  done
 }
 
 sync_manifest_mappings() {
@@ -297,7 +291,7 @@ sync_manifest_mappings() {
   local rel_path=""
   local excludes=""
   local record=""
-  local -a extra_excludes=()
+  local -a extra_excludes=() file_paths=()
 
   for record in "${SYNC_MANIFEST_RECORDS[@]}"; do
     IFS='|' read -r kind rel_path excludes <<< "${record}"
@@ -317,15 +311,14 @@ sync_manifest_mappings() {
 
     case "${kind}" in
       dir)
-        sync_mapped_path dir "${HOME}/${rel_path}" "${DOTFILES_DIR}/${rel_path}" "${rel_path}" "${extra_excludes[@]}"
+        sync_directory_path "${HOME}/${rel_path}" "${DOTFILES_DIR}/${rel_path}" "${rel_path}" "${extra_excludes[@]}"
         ;;
       file)
-        sync_mapped_path file "${HOME}/${rel_path}" "${DOTFILES_DIR}/${rel_path}" "${rel_path}"
-        ;;
-      host)
+        file_paths+=("${rel_path}")
         ;;
     esac
   done
+  sync_file_paths "${HOME}" "${DOTFILES_DIR}" "" "${file_paths[@]}"
 }
 
 main() {

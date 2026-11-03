@@ -34,6 +34,8 @@ Column {
     var freq = Model.freqText(mhz)
     if (freq) parts.push(freq)
     if (isFinite(Number(temp)) && temp !== null) parts.push(Model.tempText(temp, temperatureUnit))
+    var watts = Model.cpuPackageWatts(snap)
+    if (watts !== null) parts.push(watts.toFixed(1) + " W")
     return parts.join(", ")
   }
 

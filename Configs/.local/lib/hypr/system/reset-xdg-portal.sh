@@ -5,6 +5,7 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require system || exit 1
+declare -F hypr_svc_user >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/services.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell system/reset-xdg-portal
 Drop the running xdg-desktop-portal instances (gtk, hyprland, base) so the next

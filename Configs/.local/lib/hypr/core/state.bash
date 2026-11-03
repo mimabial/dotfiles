@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-_hypr_state_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-if ! declare -F hypr_ensure_runtime_subdir >/dev/null 2>&1; then
+_hypr_state_dir="${BASH_SOURCE[0]%/*}"
+[[ "${_hypr_state_dir}" != "${BASH_SOURCE[0]}" ]] || _hypr_state_dir=.
+if ! declare -F hypr_ensure_runtime_dir_into >/dev/null 2>&1; then
   # shellcheck source=/dev/null
   source "${_hypr_state_dir}/common.bash" || return 1 2>/dev/null || exit 1
 fi
@@ -20,34 +21,36 @@ state_color_mode_is_valid() {
   esac
 }
 
-state_resolve_color_source() {
-  local source="${1-}"
-  local mode="${2-}"
+state_resolve_color_source_into() {
+  local -n color_source_ref="$1"
+  local source="${2-}"
+  local mode="${3-}"
 
   case "${source}" in
     theme | wallpaper)
-      printf '%s\n' "${source}"
+      color_source_ref="${source}"
       ;;
     *)
       if state_color_mode_is_valid "${mode}"; then
-        printf 'wallpaper\n'
+        color_source_ref=wallpaper
       else
-        printf 'theme\n'
+        color_source_ref=theme
       fi
       ;;
   esac
 }
 
-state_resolve_color_mode() {
-  local mode="${1-}"
-  local variant="${2-}"
+state_resolve_color_mode_into() {
+  local -n color_mode_ref="$1"
+  local mode="${2-}"
+  local variant="${3-}"
 
   if state_color_mode_is_valid "${mode}"; then
-    printf '%s\n' "${mode}"
+    color_mode_ref="${mode}"
   elif [[ "${variant}" == "light" ]]; then
-    printf '%s\n' "${STATE_COLOR_MODE_LIGHT}"
+    color_mode_ref="${STATE_COLOR_MODE_LIGHT}"
   else
-    printf '%s\n' "${STATE_COLOR_MODE_DARK}"
+    color_mode_ref="${STATE_COLOR_MODE_DARK}"
   fi
 }
 
@@ -63,8 +66,8 @@ state_load_runtime_environment() {
 }
 
 refresh_hypr_runtime_state() {
-  selected_color_source="$(state_resolve_color_source "${selected_color_source:-}" "${selected_color_mode:-}")"
-  selected_color_mode="$(state_resolve_color_mode "${selected_color_mode:-}" "${BACKGROUND_MODE:-}")"
+  state_resolve_color_source_into selected_color_source "${selected_color_source:-}" "${selected_color_mode:-}"
+  state_resolve_color_mode_into selected_color_mode "${selected_color_mode:-}" "${BACKGROUND_MODE:-}"
 
   if [[ -z "${HYPR_THEME:-}" ]]; then
     if declare -F print_log >/dev/null 2>&1; then
@@ -117,32 +120,29 @@ state_dir() {
   printf '%s\n' "${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}"
 }
 
-state_rc_file() {
-  printf '%s\n' "${STATE_RC:-${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/staterc}"
-}
+state_target_file_into() {
+  local -n target_file_ref="$1"
+  local state_root="${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}"
 
-state_env_overrides_file() {
-  printf '%s\n' "${STATE_ENV_OVERRIDES:-${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/env-overrides}"
-}
-
-state_color_variant_file() {
-  printf '%s\n' "${STATE_COLOR_VARIANT:-${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/color_variant}"
-}
-
-state_target_file() {
-  case "${1:-staterc}" in
-    staterc) state_rc_file ;;
-    env-overrides) state_env_overrides_file ;;
-    color_variant) state_color_variant_file ;;
-    *) state_rc_file ;;
+  case "${2:-staterc}" in
+    env-overrides) target_file_ref="${STATE_ENV_OVERRIDES:-${state_root}/env-overrides}" ;;
+    color_variant) target_file_ref="${STATE_COLOR_VARIANT:-${state_root}/color_variant}" ;;
+    *) target_file_ref="${STATE_RC:-${state_root}/staterc}" ;;
   esac
+}
+
+state_rc_file() {
+  local state_file=""
+
+  state_target_file_into state_file staterc
+  printf '%s\n' "${state_file}"
 }
 
 state_lock_file() {
   local out_name="$1" lock_label="${2##*/}" lock_dir=""
 
   lock_label="${lock_label//[^A-Za-z0-9._-]/_}"
-  lock_dir="$(hypr_ensure_runtime_subdir hypr)" || return 1
+  hypr_ensure_runtime_dir_into lock_dir hypr || return 1
   printf -v "${out_name}" '%s/state-%s.lock' "${lock_dir}" "${lock_label:-state}"
 }
 
@@ -190,7 +190,7 @@ state_write_color_variant_file() {
   (
     trap 'rm -f "${tmp_file}" 2>/dev/null' EXIT HUP INT TERM
     printf '%s\n' "${var_value}" >"${tmp_file}"
-    mv -f "${tmp_file}" "${state_file}"
+    mv -f "${tmp_file}" "${state_file}" && trap - EXIT
   )
 }
 
@@ -239,7 +239,7 @@ state_write_key_value_file() {
       [[ "${candidate}" == "${var_name}="* ]] || printf '%s\n' "${line}"
     done <"${source_file}" >"${tmp_file}"
     printf '%s%s=%s\n' "${value_prefix}" "${var_name}" "${quoted_value}" >>"${tmp_file}"
-    mv -f "${tmp_file}" "${state_file}"
+    mv -f "${tmp_file}" "${state_file}" && trap - EXIT
   ); then
     return 0
   fi
@@ -256,10 +256,10 @@ state_set() {
   local state_file=""
   local lock_fd="" state_parent="" rc=0
 
-  state_file="$(state_target_file "${target_kind}")"
+  state_target_file_into state_file "${target_kind}"
   state_parent="${state_file%/*}"
   [[ "${state_parent}" != "${state_file}" ]] || state_parent=.
-  mkdir -p "${state_parent}" || return 1
+  [[ -d "${state_parent}" ]] || mkdir -p "${state_parent}" || return 1
   state_acquire_lock "${state_file}" lock_fd || return 1
 
   if [[ "${target_kind}" == "color_variant" ]]; then
@@ -271,30 +271,28 @@ state_set() {
   return "${rc}"
 }
 
-state_get_color_variant() {
+state_get_color_variant_into() {
+  local -n stored_variant_ref="$1"
   local state_root="${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}"
-  local color_variant_file="${STATE_COLOR_VARIANT:-${state_root}/color_variant}" value=""
+  local color_variant_file="${STATE_COLOR_VARIANT:-${state_root}/color_variant}"
 
-  if [[ -f "${color_variant_file}" ]]; then
-    [[ -r "${color_variant_file}" ]] || return 1
-    IFS= read -r value <"${color_variant_file}" || true
-    printf '%s\n' "${value}"
-  else
-    printf 'dark\n'
-  fi
+  stored_variant_ref=dark
+  [[ -f "${color_variant_file}" ]] || return 0
+  stored_variant_ref=""
+  [[ -r "${color_variant_file}" ]] || return 1
+  IFS= read -r stored_variant_ref <"${color_variant_file}" || true
 }
 
-state_resolve_color_variant() {
-  local variant=""
+state_resolve_color_variant_into() {
+  local -n color_variant_ref="$1"
 
-  case "${1-}" in
-    "${STATE_COLOR_MODE_DARK}") printf 'dark\n' ;;
-    "${STATE_COLOR_MODE_LIGHT}") printf 'light\n' ;;
+  case "${2-}" in
+    "${STATE_COLOR_MODE_DARK}") color_variant_ref=dark ;;
+    "${STATE_COLOR_MODE_LIGHT}") color_variant_ref=light ;;
     *)
-      variant="$(state_get_color_variant 2>/dev/null || true)"
-      [[ "${variant}" =~ ^(dark|light)$ ]] || variant="${BACKGROUND_MODE:-}"
-      [[ "${variant}" =~ ^(dark|light)$ ]] || variant="dark"
-      printf '%s\n' "${variant}"
+      state_get_color_variant_into color_variant_ref || true
+      [[ "${color_variant_ref}" =~ ^(dark|light)$ ]] || color_variant_ref="${BACKGROUND_MODE:-}"
+      [[ "${color_variant_ref}" =~ ^(dark|light)$ ]] || color_variant_ref=dark
       ;;
   esac
 }

@@ -55,6 +55,8 @@ Item {
         property int lines: 5
         implicitHeight: Math.round(area.font.pixelSize * 1.4 * lines) + Style.controlPaddingY * 2
         clip: true
+        ScrollBar.vertical.opacity: Style.popupStyle.scrollbarAlpha
+        ScrollBar.horizontal.opacity: Style.popupStyle.scrollbarAlpha
         background: Rectangle {
             radius: pane.popup.shell.rounding
             color: pane.popup.shell.alpha(pane.popup.shell.foreground, .06)
@@ -751,14 +753,13 @@ Loader {
                 Item { width: 1; height: Style.xs }
 
                 Item {
-                    width: parent.width; height: Style.px(24)
-                    Text {
-                        visible: pane.popup.eventEditorError !== ""
+                    width: parent.width; height: Math.max(Style.px(24), eventError.visible ? eventError.implicitHeight : 0)
+                    PopupHint {
+                        id: eventError
+                        shell: pane.popup.shell; error: true
                         anchors.left: parent.left; anchors.right: formButtons.left; anchors.rightMargin: Style.sm
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "\u{f002a}  " + pane.popup.eventEditorError; elide: Text.ElideRight
-                        color: pane.popup.shell.role("error", pane.popup.shell.foreground)
-                        font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption
+                        text: pane.popup.eventEditorError
                     }
                     Row {
                         id: formButtons; anchors.right: parent.right; spacing: Style.lg
@@ -772,7 +773,7 @@ Loader {
 
                 Text {
                     width: parent.width
-                    text: "↑↓ Tab  suggestions     Ctrl+Enter  save     Esc  cancel"
+                    text: "↑↓/Tab Suggestions  Ctrl+Enter Save  Esc Cancel"
                     color: pane.popup.shell.alpha(pane.popup.shell.foreground, .3)
                     font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption
                     horizontalAlignment: Text.AlignHCenter

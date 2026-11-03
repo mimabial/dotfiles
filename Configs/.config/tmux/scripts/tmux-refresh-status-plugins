@@ -17,9 +17,7 @@ set_tmux_option() {
   tmux set-option -gq "$option_name" "$option_value" >/dev/null 2>&1 || true
 }
 
-refresh_plugin "$plugins_dir/tmux-battery/battery.tmux"
 refresh_plugin "$plugins_dir/tmux-pomodoro-plus/pomodoro.tmux"
-refresh_plugin "$plugins_dir/tmux-cpu/cpu.tmux"
 refresh_plugin "$plugins_dir/tmux-mode-indicator/mode_indicator.tmux"
 set_tmux_option "@resurrect-save-script-path" "$safe_save_script"
 set_tmux_option "@resurrect-restore-script-path" "$safe_restore_script"

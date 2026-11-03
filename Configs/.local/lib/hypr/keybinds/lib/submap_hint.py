@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from pyutils.xdg_base_dirs import xdg_runtime_dir
-from submap_bindings import normalize_submap, build_submap_hint
+from submap_bindings import normalize_submap, build_submap_hint, configured_binds
 
 COMMAND_TIMEOUT_SECONDS = 2
 HINT_BUILD_TIMEOUT_SECONDS = 5
@@ -129,12 +129,8 @@ class SubmapHintController:
     async def show(self, name):
         try:
             body = await generate_submap_hint_with_deadline(name)
-            if self.current_submap != name:
-                return
-            if not body:
-                LOG.warning("no configured binds found for submap %r", name)
-                return
-            await show_notification(name, body)
+            if body and self.current_submap == name:
+                await show_notification(name, body)
         except asyncio.CancelledError:
             raise
         except (OSError, RuntimeError, ValueError) as error:
@@ -177,6 +173,8 @@ async def forward_submap_events(controller, reader, stop_event):
         event = raw_event.decode(errors="replace").rstrip("\n")
         if event.startswith("submap>>"):
             await controller.set_submap(event.removeprefix("submap>>"))
+        elif event.startswith("configreloaded>>"):
+            configured_binds.cache_clear()
 
 
 async def watch_submap_events(controller, stop_event):
@@ -225,9 +223,8 @@ async def watch_submap_hints():
 
 async def show_once(name):
     body = await generate_submap_hint_with_deadline(name)
-    if not body:
-        raise RuntimeError(f"no configured binds found for submap {name!r}")
-    await show_notification(name, body)
+    if body:
+        await show_notification(name, body)
 
 
 async def refresh():
@@ -235,11 +232,8 @@ async def refresh():
     if not name:
         return
     body = await generate_submap_hint_with_deadline(name)
-    if name != await active_submap():
-        return
-    if not body:
-        raise RuntimeError(f"no configured binds found for submap {name!r}")
-    await show_notification(name, body)
+    if body and name == await active_submap():
+        await show_notification(name, body)
 
 
 def parse_args():

@@ -15,7 +15,7 @@ PopupWindow {
     property int margin: Style.popupGap
     property int headerHeight: 0
     property int padding: Style.popupPadding
-    property string keyboardHint: "↑↓/Tab move · ←→ adjust · Enter · Esc"
+    property string keyboardHint: "↑↓/Tab Move  ←→ Adjust  Enter  Esc"
     readonly property int keyboardHintHeight: keyboardHint ? hintText.implicitHeight + Style.sm : 0
     property alias background: cardSurface.background
     property alias borderColor: cardSurface.borderColor
@@ -23,7 +23,8 @@ PopupWindow {
     property alias borderOpacity: cardSurface.borderOpacity
     property var extraGrabWindows: []
     readonly property bool open: popupEnabled && shell.popupName === popupName
-    readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null
+    readonly property Item placementAnchor: anchorItem?.QsWindow.window?.popupAnchorItem ?? anchorItem
+    readonly property var anchorWindow: placementAnchor ? placementAnchor.QsWindow.window : null
     readonly property bool centered: shell.popupCenteredName === root.popupName
     property string position: shell.barEdge
     property bool leftAligned: false
@@ -35,11 +36,11 @@ PopupWindow {
     property int placementRevision: 0
     readonly property var availableScreenPlacement: {
         const screen = placementRevision >= 0 && anchorWindow ? anchorWindow.screen : null
-        if (!screen || !anchorItem) return {top: 0, height: cardHeight, anchor: 0}
-        const origin = anchorWindowScreenOrigin(), itemTop = origin.y + anchorWindow.contentItem.mapFromItem(anchorItem, 0, 0).y
-        const top = !centered && position === "top" ? itemTop + anchorItem.height + margin : margin
+        if (!screen || !placementAnchor) return {top: 0, height: cardHeight, anchor: 0}
+        const origin = anchorWindowScreenOrigin(), itemTop = origin.y + anchorWindow.contentItem.mapFromItem(placementAnchor, 0, 0).y
+        const top = !centered && position === "top" ? itemTop + placementAnchor.height + margin : margin
         const bottom = !centered && position === "bottom" ? itemTop - margin : screen.height - margin
-        return {top: top, height: Math.max(1, bottom - top), anchor: itemTop + anchorItem.height / 2 - top}
+        return {top: top, height: Math.max(1, bottom - top), anchor: itemTop + placementAnchor.height / 2 - top}
     }
     readonly property int maxHeight: availableScreenPlacement.height
     readonly property int cardHeight: Math.min(contentHeight + keyboardHintHeight, maxHeight - headerHeight) + headerHeight
@@ -177,6 +178,7 @@ PopupWindow {
         return false
     }
     function handleKey(event) { return defaultKey(event) }
+    function handleKeyRelease(event) { return false }
 
     HyprlandFocusGrab {
         active: root.open && !root.shell.focusPriming
@@ -190,11 +192,11 @@ PopupWindow {
         gravity: Edges.Bottom | Edges.Right
         rect.width: 1; rect.height: 1
         onAnchoring: {
-            if (!root.anchorItem || !root.anchorWindow || !root.anchorWindow.screen) return
+            if (!root.placementAnchor || !root.anchorWindow || !root.anchorWindow.screen) return
             const origin = root.anchorWindowScreenOrigin()
-            let x = root.leftAligned ? 0 : root.anchorItem.width / 2 - root.width / 2
+            let x = root.leftAligned ? 0 : root.placementAnchor.width / 2 - root.width / 2
             anchor.rect.x = Math.round(root.centered ? (root.anchorWindow.screen.width - root.width) / 2 - origin.x
-                : root.anchorWindow.contentItem.mapFromItem(root.anchorItem, x, 0).x)
+                : root.anchorWindow.contentItem.mapFromItem(root.placementAnchor, x, 0).x)
             anchor.rect.y = Math.round(root.availableScreenPlacement.top - origin.y)
         }
     }
@@ -214,7 +216,11 @@ PopupWindow {
                 anchors.fill: parent; anchors.margins: root.padding
                 anchors.bottomMargin: root.padding + root.keyboardHintHeight
                 focus: root.open
-                Keys.onPressed: event => event.accepted = root.handleKey(event)
+                Keys.onPressed: event => {
+                    root.shell.keyboardInput = true
+                    event.accepted = root.handleKey(event)
+                }
+                Keys.onReleased: event => event.accepted = root.handleKeyRelease(event)
                 Flickable {
                     id: contentScroll
                     anchors.fill: parent

@@ -2,7 +2,7 @@
 
 wallpaper_set_paths() {
   if [[ "${wallpaper_is_global}" == "true" ]]; then
-    mkdir -p "${WALLPAPER_CURRENT_DIR}"
+    [[ -d "${WALLPAPER_CURRENT_DIR}" ]] || mkdir -p "${WALLPAPER_CURRENT_DIR}"
     active_wallpaper_link="${HYPR_THEME_DIR}/wall.set"
     current_wallpaper_link="${WALLPAPER_CURRENT_DIR}/wall.set"
     current_square_thumbnail_link="${WALLPAPER_CURRENT_DIR}/wall.sqre"
@@ -10,7 +10,7 @@ wallpaper_set_paths() {
     current_blur_thumbnail_link="${WALLPAPER_CURRENT_DIR}/wall.blur"
     current_quad_thumbnail_link="${WALLPAPER_CURRENT_DIR}/wall.quad"
   elif [[ -n "${wallpaper_backend}" ]]; then
-    mkdir -p "${WALLPAPER_CURRENT_DIR}"
+    [[ -d "${WALLPAPER_CURRENT_DIR}" ]] || mkdir -p "${WALLPAPER_CURRENT_DIR}"
     current_wallpaper_link="${WALLPAPER_CURRENT_DIR}/${wallpaper_backend}.png"
     active_wallpaper_link="${HYPR_THEME_DIR}/wall.${wallpaper_backend}.png"
   else
@@ -38,10 +38,6 @@ wallpaper_apply_backend() {
     print_log -warn "wallpaper" "No backend script found for ${wallpaper_backend}"
     print_log -warn "wallpaper" "Created: $WALLPAPER_CURRENT_DIR/${wallpaper_backend}.png instead"
   fi
-}
-
-wallpaper_selected_path() {
-  printf '%s\n' "${wallpaper_paths[selected_wallpaper_index]:-}"
 }
 
 wallpaper_should_apply_colors_async() {
@@ -81,7 +77,7 @@ wallpaper_run_color_refresh() {
   [[ -n "${wallpaper_path}" ]] || return 1
 
   hypr_theme_cmd="$(command -v hypr-theme)" || return 1
-  variant="$(state_resolve_color_variant "${selected_color_mode:-}")"
+  state_resolve_color_variant_into variant "${selected_color_mode:-}"
 
   if [[ -z "${theme_name}" ]] && declare -F state_get >/dev/null 2>&1; then
     theme_name="$(state_get "HYPR_THEME" "" 2>/dev/null || true)"
@@ -137,15 +133,14 @@ wallpaper_refresh_thumbnail_links() {
 }
 
 wallpaper_apply_selected() {
+  local wallpaper_path="$1"
   local apply_colors=0
-  local wallpaper_path=""
   wallpaper_should_apply_colors_async && apply_colors=1
 
   if [[ "${WALLPAPER_RELOAD_ALL:-1}" -eq 1 ]] && [[ ${wallpaper_action} != "link" ]]; then
     print_log -sec "wallpaper" "Reloading themes and wallpapers"
   fi
 
-  wallpaper_path="$(wallpaper_selected_path)"
   wallpaper_link_selected "${wallpaper_path}"
   wallpaper_refresh_hyprlock_background
   [[ "${wallpaper_is_global}" == "true" ]] || return 0
@@ -155,6 +150,11 @@ wallpaper_apply_selected() {
   wallpaper_refresh_thumbnail_links "${wallpaper_path}"
 }
 
+wallpaper_apply_file() {
+  wallpaper_catalog_load_file "$1" || exit 1
+  wallpaper_apply_selected "${wallpaper_paths[0]}"
+}
+
 wallpaper_select_adjacent() {
   local direction="$1"
   local current_wallpaper="" index=""
@@ -162,13 +162,13 @@ wallpaper_select_adjacent() {
   current_wallpaper="$(wallpaper_resolve_path "${active_wallpaper_link}")"
 
   if index="$(catalog_index_of wallpaper_paths "${current_wallpaper}")"; then
-    selected_wallpaper_index="$(catalog_adjacent_index "${index}" "${direction}" "${#wallpaper_paths[@]}")" || return 1
+    index="$(catalog_adjacent_index "${index}" "${direction}" "${#wallpaper_paths[@]}")" || return 1
   else
-    selected_wallpaper_index=0
+    index=0
     print_log -sec "wallpaper" -warn "Current wallpaper not in theme list, resetting to first"
   fi
 
-  wallpaper_apply_selected
+  wallpaper_apply_selected "${wallpaper_paths[index]}"
 }
 
 wallpaper_random_index() {
@@ -190,18 +190,17 @@ wallpaper_random_index() {
   done
 }
 
-wallpaper_select_current_or_first() {
-  local missing_message="$1"
+wallpaper_current_or_first_into() {
+  local -n chosen_path_ref="$1"
+  local missing_message="$2"
   local current_wallpaper="" index=""
 
   wallpaper_ensure_catalog
   current_wallpaper="$(wallpaper_resolve_path "${active_wallpaper_link}")"
 
-  if index="$(catalog_index_of wallpaper_paths "${current_wallpaper}")"; then
-    selected_wallpaper_index="${index}"
-    return 0
+  if ! index="$(catalog_index_of wallpaper_paths "${current_wallpaper}")"; then
+    index=0
+    print_log -sec "wallpaper" -warn "${missing_message}"
   fi
-
-  selected_wallpaper_index=0
-  print_log -sec "wallpaper" -warn "${missing_message}"
+  chosen_path_ref="${wallpaper_paths[index]}"
 }

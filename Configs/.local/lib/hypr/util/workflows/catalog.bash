@@ -1,3 +1,5 @@
+declare -F hypr_dbus_get >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/dbus.bash" || return 1
+
 workflow_locked() {
   local owner=""
   [[ "${HYPR_WORKFLOW_UNLOCK:-0}" == 1 ]] && return 1
@@ -53,7 +55,7 @@ workflow_list_choices() {
 workflow_load_active() {
   local workflow_path
 
-  active_workflow_name="$(state_get "HYPR_WORKFLOW" "default")"
+  state_get_into active_workflow_name HYPR_WORKFLOW default
 
   workflow_path="$(workflow_resolve_path "${active_workflow_name}" || true)"
   if [[ -z "${workflow_path}" ]]; then

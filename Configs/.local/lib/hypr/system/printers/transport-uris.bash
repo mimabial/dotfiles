@@ -59,33 +59,38 @@ printer_find_usb_uri_from_lpinfo() {
 }
 
 printer_resolve_hint() {
-  printer_uri_hint="${current_uri%%\?*}"
-  printer_uri_hint="${printer_uri_hint##*/}"
-  if [[ -z "$printer_uri_hint" || "$printer_uri_hint" == "print" ]]; then
-    printer_uri_hint="$target_printer"
+  local -n printer_ref=$1
+  local uri_hint="${printer_ref[current_uri]%%\?*}"
+  uri_hint="${uri_hint##*/}"
+  if [[ -z "$uri_hint" || "$uri_hint" == "print" ]]; then
+    uri_hint="${printer_ref[printer]}"
   fi
+  printer_ref[uri_hint]="$uri_hint"
 }
 
 printer_seed_current_uris() {
-  if [[ "$current_transport" == "usb" && -z "$usb_uri" ]]; then
-    usb_uri="$(printer_normalize_print_uri "$current_uri")"
+  local -n printer_ref=$1
+  if [[ "${printer_ref[current_transport]}" == "usb" && -z "${printer_ref[usb_uri]}" ]]; then
+    printer_ref[usb_uri]="$(printer_normalize_print_uri "${printer_ref[current_uri]}")"
   fi
-  if [[ "$current_transport" == "network" && -z "$network_uri" ]]; then
-    network_uri="$(printer_normalize_print_uri "$current_uri")"
+  if [[ "${printer_ref[current_transport]}" == "network" && -z "${printer_ref[network_uri]}" ]]; then
+    printer_ref[network_uri]="$(printer_normalize_print_uri "${printer_ref[current_uri]}")"
   fi
 }
 
 printer_apply_stored_uris() {
-  usb_uri="${usb_uri:-$stored_usb_uri}"
-  network_uri="${network_uri:-$stored_network_uri}"
+  local -n printer_ref=$1
+  printer_ref[usb_uri]="${printer_ref[usb_uri]:-${printer_ref[stored_usb_uri]}}"
+  printer_ref[network_uri]="${printer_ref[network_uri]:-${printer_ref[stored_network_uri]}}"
 }
 
 printer_discover_candidate_uris() {
-  [[ -z "$usb_uri" ]] && usb_uri="$(printer_find_queue_uri "usb" "$target_printer" "$printer_uri_hint")"
-  [[ -z "$network_uri" ]] && network_uri="$(printer_find_queue_uri "network" "$target_printer" "$printer_uri_hint")"
-  [[ -z "$usb_uri" ]] && usb_uri="$(printer_find_usb_uri_from_lpinfo "$printer_uri_hint")"
-  usb_uri="$(printer_normalize_print_uri "$usb_uri")"
-  network_uri="$(printer_normalize_print_uri "$network_uri")"
+  local -n printer_ref=$1
+  [[ -z "${printer_ref[usb_uri]}" ]] && printer_ref[usb_uri]="$(printer_find_queue_uri "usb" "${printer_ref[printer]}" "${printer_ref[uri_hint]}")"
+  [[ -z "${printer_ref[network_uri]}" ]] && printer_ref[network_uri]="$(printer_find_queue_uri "network" "${printer_ref[printer]}" "${printer_ref[uri_hint]}")"
+  [[ -z "${printer_ref[usb_uri]}" ]] && printer_ref[usb_uri]="$(printer_find_usb_uri_from_lpinfo "${printer_ref[uri_hint]}")"
+  printer_ref[usb_uri]="$(printer_normalize_print_uri "${printer_ref[usb_uri]}")"
+  printer_ref[network_uri]="$(printer_normalize_print_uri "${printer_ref[network_uri]}")"
 }
 
 printer_detect_transport() {

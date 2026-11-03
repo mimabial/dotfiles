@@ -6,7 +6,7 @@ hypr_help_guard "Usage: hyprshell system/vpn-networkmanager [--connect UUID | --
 List NetworkManager VPN profiles as JSON or change one." "$@"
 
 note() { send_ephemeral_notif vpn-networkmanager -a VPN -i network-vpn -u "${3:-normal}" "$1" "$2" >/dev/null 2>&1 || true; }
-trim() { local value="${1#*:}"; printf '%s' "${value#"${value%%[![:space:]]*}"}"; }
+trim_into() { local -n trimmed_ref="$1"; local value="${2#*:}"; trimmed_ref="${value#"${value%%[![:space:]]*}"}"; }
 has_openconnect() { local path; for path in /usr/lib/nm-openconnect-auth-dialog /usr/libexec/nm-openconnect-auth-dialog /usr/lib/NetworkManager/nm-openconnect-auth-dialog /usr/lib/networkmanager/nm-openconnect-auth-dialog /usr/lib/*/nm-openconnect-auth-dialog; do [[ -x $path ]] && return; done; return 1; }
 carrier() {
   case "$1" in
@@ -23,10 +23,10 @@ snapshot() {
   raw="$(LC_ALL=C nmcli -m multiline -f NAME,UUID,TYPE,ACTIVE,FILENAME connection show 2>/dev/null)" || { jq -cn '{available:true,valid:false,error:"Could not read NetworkManager profiles",profiles:[],connected:false,active:null}'; return; }
   while IFS= read -r line; do
     case "$line" in
-      NAME:*) name="$(trim "$line")" ;; UUID:*) uuid="$(trim "$line")" ;; TYPE:*) type="$(trim "$line")" ;;
-      ACTIVE:*) active="$(trim "$line")" ;;
+      NAME:*) trim_into name "$line" ;; UUID:*) trim_into uuid "$line" ;; TYPE:*) trim_into type "$line" ;;
+      ACTIVE:*) trim_into active "$line" ;;
       FILENAME:*)
-        file="$(trim "$line")"; [[ $type == vpn || $type == wireguard ]] || continue
+        trim_into file "$line"; [[ $type == vpn || $type == wireguard ]] || continue
         [[ $file == /run/* || $name == wg0-mullvad* ]] && continue
         if [[ $type == wireguard ]]; then kind=wireguard
         else

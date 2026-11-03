@@ -32,7 +32,9 @@ Column {
   readonly property var procs: snap.procs || null
   readonly property real total: Math.max(1, Model.num(mem.total, 1))
   readonly property real usedPercent: Model.num(mem.used) / total * 100
-  readonly property real pressure: Math.max(Model.num(mem.pressureSome), Model.num(mem.pressureFull))
+  readonly property real pressureSome: Model.num(mem.pressureSome)
+  readonly property real pressureFull: Model.num(mem.pressureFull)
+  readonly property color swapColor: Commons.Util.alpha(foreground, Commons.Style.mutedTextAlpha)
   readonly property bool hasCompression: Model.num(mem.compressed) >= 1024 * 1024
   readonly property bool hasSwap: Model.num(mem.swapTotal) > 0
   readonly property real swapTotal: Model.num(mem.swapTotal)
@@ -41,13 +43,13 @@ Column {
 
   readonly property var swapGaugeSpec: {
     if (swapTotal <= 0) {
-      return { value: 0, color: s1, text: "Off", unit: "", label: "Swap", sub: "" }
+      return { value: 0, color: swapColor, text: "Off", unit: "", label: "Swap", sub: "" }
     }
     var frac = swapUsed / swapTotal
     var sub = Units.bytesText(swapUsed > 0 ? swapUsed : swapTotal)
     return {
       value: frac,
-      color: frac >= Model.SWAP_DANGER ? danger : (frac >= Model.SWAP_WARN ? warn : s1),
+      color: frac >= Model.SWAP_DANGER ? danger : (frac >= Model.SWAP_WARN ? warn : swapColor),
       text: String(Math.round(frac * 100)), unit: "%", label: "Swap", sub: sub
     }
   }
@@ -93,7 +95,18 @@ Column {
           valueText: String(Math.round(root.usedPercent))
           unitText: "%"
           labelText: "Memory"
-          subText: root.pressure >= 0.5 ? "pressure " + Math.round(root.pressure) + "%" : ""
+          size: Commons.Style.space(86)
+        }
+
+        RingGauge {
+          value: root.pressureSome / 100
+          color: Model.pressureColor(root.pressureSome, root.swapColor, root.warn, root.danger)
+          foreground: root.foreground
+          fontFamily: root.fontFamily
+          valueText: String(Math.round(root.pressureSome))
+          unitText: "%"
+          labelText: "Pressure"
+          subText: root.pressureFull >= 1 ? "all " + Math.round(root.pressureFull) + "%" : "waiting"
           size: Commons.Style.space(86)
         }
       }
@@ -161,32 +174,10 @@ Column {
     }
 
     StatRow {
-      visible: root.hasCompression
-      label: "Compressed"
-      dot: root.warn
-      value: root.part(root.mem.compressed).value
-      unit: root.part(root.mem.compressed).unit
-      foreground: root.foreground
-      fontFamily: root.fontFamily
-    }
-
-    StatRow {
       label: "Free"
       dot: root.track
       value: root.part(root.mem.free).value
       unit: root.part(root.mem.free).unit
-      foreground: root.foreground
-      fontFamily: root.fontFamily
-    }
-
-    StatRow {
-      visible: root.hasSwap
-      label: "Swap"
-      detail: "of " + Units.bytesText(root.mem.swapTotal)
-      dot: Model.num(root.mem.swapUsed) > 0 ? root.danger : "transparent"
-      showDot: true
-      value: root.part(root.mem.swapUsed).value
-      unit: root.part(root.mem.swapUsed).unit
       foreground: root.foreground
       fontFamily: root.fontFamily
     }
@@ -198,6 +189,34 @@ Column {
       unit: root.part(root.mem.total).unit
       labelOpacity: 0.55
       boldValue: false
+      foreground: root.foreground
+      fontFamily: root.fontFamily
+    }
+
+    Item {
+      visible: root.hasCompression || root.hasSwap
+      width: 1
+      height: Commons.Style.space(6)
+    }
+
+    StatRow {
+      visible: root.hasCompression
+      label: "Compressed"
+      showDot: true
+      value: root.part(root.mem.compressed).value
+      unit: root.part(root.mem.compressed).unit
+      foreground: root.foreground
+      fontFamily: root.fontFamily
+    }
+
+    StatRow {
+      visible: root.hasSwap
+      label: "Swap"
+      detail: "of " + Units.bytesText(root.mem.swapTotal)
+      dot: Model.num(root.mem.swapUsed) > 0 ? root.swapGaugeSpec.color : "transparent"
+      showDot: true
+      value: root.part(root.mem.swapUsed).value
+      unit: root.part(root.mem.swapUsed).unit
       foreground: root.foreground
       fontFamily: root.fontFamily
     }

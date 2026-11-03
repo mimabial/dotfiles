@@ -51,18 +51,22 @@ def valid_rate(rate):
     return isinstance(rate, (int, float)) and math.isfinite(rate) and rate >= 0
 
 
+def priced_cost(cost_usd, unpriced_tokens, assumed_rate_tokens):
+    return {"costUsd": cost_usd, "unpricedTokens": unpriced_tokens, "assumedRateTokens": assumed_rate_tokens}
+
+
 def price_usage(usage, rates, context_tiers):
     total = sum(usage.get(field, 0) for field in empty_token_totals())
     reported = usage.get("reportedCostUsd", 0)
     if valid_rate(reported) and reported > 0:
-        return reported, 0, 0
+        return priced_cost(reported, 0, 0)
     prompt = total - usage.get("outputTokens", 0)
     context = next((suffix for threshold, suffix in context_tiers if prompt > threshold), "")
     tier = usage.get("service_tier")
     tier_suffix = {None: "", "": "", "auto": "", "default": "", "standard": "", "fast": "_priority",
                    "priority": "_priority", "flex": "_flex", "batch": "_batches", "ultrafast": "_ultrafast"}.get(tier)
     if tier_suffix is None:
-        return 0.0, total, 0
+        return priced_cost(0.0, total, 0)
     multiplier = 1.0
     modifiers = rates.get("provider_specific_entry") or {}
     for modifier in (usage.get("speed"), usage.get("inference_geo")):
@@ -70,7 +74,7 @@ def price_usage(usage, rates, context_tiers):
             continue
         factor = modifiers.get(modifier)
         if not valid_rate(factor):
-            return 0.0, total, 0
+            return priced_cost(0.0, total, 0)
         multiplier *= factor
     cache = usage.get("cache_creation") or {}
     one_hour = cache.get("ephemeral_1h_input_tokens", 0)
@@ -92,7 +96,7 @@ def price_usage(usage, rates, context_tiers):
                 cost += count * rate * multiplier
             else:
                 unpriced += count
-    return cost, unpriced, total - unpriced if assumed else 0
+    return priced_cost(cost, unpriced, total - unpriced if assumed else 0)
 
 
 def empty_cell():
@@ -124,7 +128,7 @@ def cost_periods(cost_days, prices):
                 cell = dict(empty_cell(), **{field: usage.get(field, 0) for field in empty_token_totals()})
                 cell["tokens"] = sum(cell[field] for field in empty_token_totals())
                 key = model_price_key(model, usage, prices)
-                cell["costUsd"], cell["unpricedTokens"], cell["assumedRateTokens"] = price_usage(usage, prices.get(key, {}), contexts.get(key, []))
+                cell.update(price_usage(usage, prices.get(key, {}), contexts.get(key, [])))
                 add_cell(model_cell, cell)
     periods = {}
     for span in PERIODS:

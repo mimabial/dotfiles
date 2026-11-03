@@ -2,12 +2,13 @@
 
 set -euo pipefail
 # shellcheck source=/dev/null
-source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/dbus.bash"
+hypr_lib="${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}"
+source "${hypr_lib}/core/dbus.bash"
 
-[[ "${1:-}" == "--no-lock" ]] || hyprshell session/lid-close.sh --no-suspend
-trap 'hyprshell gaming/gamemode-hook reconcile >/dev/null 2>&1 || true' EXIT
+[[ "${1:-}" == "--no-lock" ]] || "${hypr_lib}/session/lid-close.sh" --no-suspend
+trap '"${hypr_lib}/gaming/gamemode-hook.sh" reconcile >/dev/null 2>&1 || true' EXIT
 
-hyprshell system/removable --unmount-all || {
+bash "${hypr_lib}/system/removable.sh" --unmount-all || {
   notify-send -u critical 'Suspend cancelled' 'A removable drive could not be unmounted'
   exit 1
 }

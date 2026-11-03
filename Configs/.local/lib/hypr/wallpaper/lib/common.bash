@@ -18,10 +18,9 @@ wallpaper_run_low_priority() {
   fi
 }
 
-wallpaper_cache_root() {
-  local cache_root="${WALLPAPER_CACHE_DIR}"
-  [[ -z "${cache_root}" ]] && cache_root="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/wallpaper"
-  printf '%s\n' "${cache_root}"
+wallpaper_cache_root_into() {
+  local -n cache_root_ref="$1"
+  cache_root_ref="${WALLPAPER_CACHE_DIR:-${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}/wallpaper}"
 }
 
 wallpaper_resolve_path() {
@@ -31,44 +30,38 @@ wallpaper_resolve_path() {
     || printf '%s' "${input_path}"
 }
 
-wallpaper_extensions_regex() {
-  local -a extensions=("$@")
-  local regex_ext=""
+wallpaper_extensions_regex_into() {
+  local -n regex_ext_ref="$1"
+  shift
   local ext
 
-  for ext in "${extensions[@]}"; do
-    [[ -n "${ext}" ]] || continue
-    if [[ -z "${regex_ext}" ]]; then
-      regex_ext="${ext}"
-    else
-      regex_ext="${regex_ext}|${ext}"
-    fi
+  regex_ext_ref=""
+  for ext in "$@"; do
+    [[ -n "${ext}" ]] && regex_ext_ref+="${regex_ext_ref:+|}${ext}"
   done
-
-  [[ -z "${regex_ext}" ]] && regex_ext="gif|jpg|jpeg|png|webp"
-  printf '%s\n' "${regex_ext}"
+  : "${regex_ext_ref:=gif|jpg|jpeg|png|webp}"
 }
 
-wallpaper_hashmap_cache_key() {
-  local -a wall_sources=("$@")
+wallpaper_hashmap_cache_key_into() {
+  local -n cache_key_ref="$1"
+  shift
   local -a supported_extensions=()
 
-  [[ ${#wall_sources[@]} -gt 0 ]] || return 1
+  cache_key_ref=""
+  (($#)) || return 1
   wallpaper_supported_extensions_into supported_extensions
 
-  printf '%s\n' "${wall_sources[@]}" "${supported_extensions[@]}" | "${HYPR_HASH_COMMAND}" | awk '{print $1}'
+  read -r cache_key_ref _ < <(printf '%s\n' "$@" "${supported_extensions[@]}" | "${HYPR_HASH_COMMAND}") || :
 }
 
-wallpaper_hashmap_cache_file() {
-  local cache_key=""
-  cache_key="$(wallpaper_hashmap_cache_key "$@")" || return 1
-  printf '%s/hashmap/%s.tsv\n' "$(wallpaper_cache_root)" "${cache_key}"
-}
-
-wallpaper_catalog_json_file() {
-  local cache_key=""
-  cache_key="$(wallpaper_hashmap_cache_key "$@")" || return 1
-  printf '%s/catalog/%s.json\n' "$(wallpaper_cache_root)" "${cache_key}"
+wallpaper_hashmap_cache_file_into() {
+  local -n hashmap_file_ref="$1"
+  shift
+  local cache_key="" cache_root=""
+  hashmap_file_ref=""
+  wallpaper_hashmap_cache_key_into cache_key "$@" || return 1
+  wallpaper_cache_root_into cache_root
+  hashmap_file_ref="${cache_root}/hashmap/${cache_key}.tsv"
 }
 
 wallpaper_theme_sources() {

@@ -8,6 +8,9 @@ var IGNORED_TOKENS = {
   "web": true, "steam": true,
   "https": true, "http": true, "www": true, "x86_64": true, "x86": true, "amd64": true, "lib": true
 };
+var NOISE_AFFIX = "app|bin|linux|gtk|wrapper|desktop|client|qt\\d?|gui"
+var NOISE_WORD = new RegExp("^(?:" + NOISE_AFFIX + ")$")
+var WEB_APP_HOST = /^(?:chrome|chromium|brave|edge|microsoft-edge|helium|helium-browser|opera|vivaldi)-(?:https?_+)?(?:www\.)?([^_]+\.[^_]+)/
 
 function stripDesktop(id) {
   var value = String(id == null ? "" : id).trim()
@@ -66,9 +69,9 @@ function getCandidates(id) {
   var len = list.length
   for (var i = 0; i < len; i++) {
     var item = list[i]
-    var stripped = item.replace(/[-_](app|bin|linux|gtk|wrapper|desktop|client|qt\d?|gui)$/i, "")
+    var stripped = item.replace(new RegExp("[-_](?:" + NOISE_AFFIX + ")$", "i"), "")
     if (stripped && list.indexOf(stripped) < 0) list.push(stripped)
-    var prefixStripped = item.replace(/^(app|bin|linux|gtk|wrapper|desktop|client|qt\d?|gui)[-_]/i, "")
+    var prefixStripped = item.replace(new RegExp("^(?:" + NOISE_AFFIX + ")[-_]", "i"), "")
     if (prefixStripped && list.indexOf(prefixStripped) < 0) list.push(prefixStripped)
   }
 
@@ -81,18 +84,30 @@ function getCandidates(id) {
   return out
 }
 
+function identityWords(name) {
+  return name.split(/[\s._\/-]+/).filter(function (word) { return word && !NOISE_WORD.test(word) })
+}
+
+function appName(raw) {
+  var web = raw.match(WEB_APP_HOST)
+  if (web) return web[1].slice(0, web[1].lastIndexOf("."))
+  var labels = raw.split(".")
+  if (labels.length < 3) return raw
+  var named = labels.filter(function (label) { return identityWords(label).length > 0 })
+  return named.length > 0 ? named[named.length - 1] : raw
+}
+
+function appIdentity(id) {
+  return identityWords(appName(stripDesktop(id).toLowerCase())).sort().join(" ")
+}
+
 function isAppMatch(idA, idB) {
   if (!idA || !idB) return false
   var a = stripDesktop(idA).toLowerCase()
   var b = stripDesktop(idB).toLowerCase()
   if (a === b) return true
-
-  var candidatesA = getCandidates(a)
-  var candidatesB = getCandidates(b)
-  for (var candidate of candidatesA) {
-    if (candidatesB.indexOf(candidate) >= 0) return true
-  }
-  return false
+  var identity = appIdentity(a)
+  return identity !== "" && identity === appIdentity(b)
 }
 
 function parsePinned(raw) {
@@ -184,17 +199,15 @@ function entryFor(appRows, appId) {
   var want = stripDesktop(appId)
   if (!want || !appRows) return null
 
-  var desktopIdCandidates = getCandidates(want)
-  for (var appRow of appRows) {
-    var entry = appRow && appRow.entry
-    if (!entry) continue
-    var entryCandidates = getCandidates(entry.id)
-      .concat(getCandidates(entry.name))
-      .concat(getCandidates(entry.icon))
-    for (var candidate of desktopIdCandidates) {
-      if (entryCandidates.indexOf(candidate) >= 0) return entry
+  var identity = appIdentity(want)
+  if (identity !== "") {
+    for (var appRow of appRows) {
+      var entry = appRow && appRow.entry
+      if (entry && (appIdentity(entry.id) === identity || appIdentity(entry.name || "") === identity)) return entry
     }
   }
+
+  var desktopIdCandidates = getCandidates(want)
 
   for (var appRow of appRows) {
     var entry = appRow && appRow.entry
@@ -288,29 +301,13 @@ function workspaceLabel(name) {
   return suffix ? suffix.charAt(0).toUpperCase() : ""
 }
 
-function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMinimizedWs, minimizedOrigins, appGroups, recentIds, recentLimit) {
+function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMinimizedWs, minimizedOrigins, recentIds, recentLimit) {
   var pinned = Array.isArray(pinnedIds) ? pinnedIds : []
   var list = toArray(toplevels)
   var isParkedWorkspace = typeof isMinimizedWs === "function"
     ? isMinimizedWs
     : function (name) { return name === "special:minimized" }
   var minOrigins = minimizedOrigins || {}
-  var groupedIds = []
-  var groups = toArray(appGroups)
-  for (var group of groups) {
-    var apps = toArray(group && group.apps)
-    for (var app of apps) {
-      var groupedId = stripDesktop(app)
-      if (groupedId && groupedIds.indexOf(groupedId) < 0) groupedIds.push(groupedId)
-    }
-  }
-
-  function isGrouped(appId) {
-    for (var i = 0; i < groupedIds.length; i++)
-      if (isAppMatch(appId, groupedIds[i])) return true
-    return false
-  }
-
   function isPinnedApp(appId) {
     for (var i = 0; i < pinned.length; i++)
       if (isAppMatch(pinned[i], appId)) return true
@@ -382,7 +379,7 @@ function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMini
 
   for (j = 0; j < pinned.length; j++) {
     var pid = stripDesktop(pinned[j])
-    if (!pid || seen[pid] || isGrouped(pid)) continue
+    if (!pid || seen[pid]) continue
     seen[pid] = true
     var wins = getWindowsFor(pid)
     pinnedOut.push({
@@ -399,7 +396,7 @@ function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMini
   var runningOut = []
   for (j = 0; j < runningIds.length; j++) {
     var rid = runningIds[j]
-    if (isPinnedApp(rid) || isGrouped(rid) || seen[rid]) continue
+    if (isPinnedApp(rid) || seen[rid]) continue
     seen[rid] = true
     var wins = winMap[rid] || []
     runningOut.push({
@@ -415,29 +412,14 @@ function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMini
   var recents = toArray(recentIds)
   for (j = 0; j < recents.length && recentOut.length < recentLimit; j++) {
     var cid = stripDesktop(recents[j])
-    if (!cid || seen[cid] || isPinnedApp(cid) || isGrouped(cid)) continue
+    if (!cid || seen[cid] || isPinnedApp(cid)) continue
     seen[cid] = true
     recentOut.push({ id: cid, appId: cid, pinned: false, running: false, windows: 0, windowList: [] })
   }
   runningOut = runningOut.concat(recentOut)
   enrich(runningOut)
 
-  var groupedOut = []
-  for (j = 0; j < groupedIds.length; j++) {
-    var gid = groupedIds[j]
-    var groupedWindows = getWindowsFor(gid)
-    if (groupedWindows.length > 0) groupedOut.push({
-      id: gid,
-      appId: gid,
-      pinned: false,
-      running: true,
-      windows: groupedWindows.length,
-      windowList: groupedWindows
-    })
-  }
-  enrich(groupedOut)
-
-  return { pinned: pinnedOut, running: runningOut, grouped: groupedOut }
+  return { pinned: pinnedOut, running: runningOut }
 }
 
 function allWindowsMinimized(windowList, resolveLiveWorkspace, isMinimizedWs) {
@@ -543,4 +525,45 @@ function isPlaceIcon(name) {
 function resolveFileItemIcon(iconName) {
   var name = String(iconName || "text-x-generic").trim()
   return isPlaceIcon(name) ? resolveThemedFolderIcon(name) : name
+}
+
+function playingAppIds(players, toplevels) {
+  var windows = toArray(toplevels)
+  return toArray(players).map(function (player) {
+    var track = String(player.trackTitle || "")
+    var owner = track === "" ? null : windows.find(function (toplevel) { return String(toplevel.title || "").indexOf(track) >= 0 })
+    return owner ? stripDesktop(owner.appId) : String(player.desktopEntry || player.identity || "")
+  })
+}
+
+var FILE_ICON_SUFFIXES = {
+  "image-x-generic": ["png", "jpg", "jpeg", "webp", "svg", "gif"],
+  "video-x-generic": ["mp4", "mkv", "webm", "mov", "avi"],
+  "audio-x-generic": ["mp3", "flac", "wav", "ogg", "m4a"],
+  "package-x-generic": ["zip", "tar", "gz", "xz", "7z", "rar"],
+  "application-pdf": ["pdf"],
+  "text-x-generic": ["txt", "md", "json", "qml", "py", "cpp", "js", "lua", "rs", "go", "html", "css"]
+}
+
+function fileIcon(suffix, isDir) {
+  if (isDir) return "folder"
+  var wanted = String(suffix || "").toLowerCase()
+  for (var icon in FILE_ICON_SUFFIXES)
+    if (FILE_ICON_SUFFIXES[icon].indexOf(wanted) >= 0) return icon
+  return "application-x-executable"
+}
+
+function sizeLabel(bytes) {
+  var units = ["B", "KB", "MB", "GB"]
+  var size = Number(bytes) || 0
+  var unit = 0
+  while (size >= 1024 && unit < units.length - 1) {
+    size /= 1024
+    unit++
+  }
+  return unit === 0 ? size + " B" : size.toFixed(1) + " " + units[unit]
+}
+
+function fileUrl(path) {
+  return "file://" + String(path || "").split("/").map(encodeURIComponent).join("/")
 }

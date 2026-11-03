@@ -36,7 +36,6 @@ PopupCard {
         stderr: StdioCollector { waitForEnd: true; onStreamFinished: root.error = String(text).trim() }
         onExited: root.refresh()
     }
-    property Timer printerPollTimer: Timer { interval: 5000; running: root.open; repeat: true; onTriggered: root.refresh() }
 
     Column {
         id: printersColumn
@@ -44,12 +43,11 @@ PopupCard {
 
         PopupHero { shell: root.shell; title: "Printers"; status: root.printers.length > 0 ? root.printers.length + " configured" : "none configured" }
 
-        Text {
-            visible: text !== ""
-            width: parent.width; wrapMode: Text.Wrap
-            text: root.error || (root.printers.length === 0 ? "No printers configured" : "")
-            color: root.error ? root.shell.role("error", root.shell.foreground) : root.shell.mutedText
-            font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+        PopupHint {
+            shell: root.shell; error: root.error !== ""
+            width: parent.width; text: root.error || (root.printers.length === 0 ? "No printers configured" : "")
+            wrapMode: Text.Wrap; horizontalAlignment: Text.AlignLeft
+            font.pixelSize: Style.bodySmall
         }
 
         Column {

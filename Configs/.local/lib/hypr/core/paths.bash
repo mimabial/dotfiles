@@ -1,31 +1,23 @@
 #!/usr/bin/env bash
 
-hypr_ensure_runtime_root_dir() {
-  local runtime_dir="${XDG_RUNTIME_DIR:-/run/user/${UID}}"
-  local fallback_dir=""
+hypr_ensure_runtime_dir_into() {
+  local -n runtime_dir_ref="$1"
+  local subdir="${2:-}"
 
-  if [[ -n "${runtime_dir}" ]] && { [[ -d "$runtime_dir" ]] || mkdir -p "$runtime_dir" 2>/dev/null; }; then
-    printf '%s\n' "${runtime_dir}"
-    return 0
+  runtime_dir_ref="${XDG_RUNTIME_DIR:-/run/user/${UID}}"
+  if [[ -z "${runtime_dir_ref}" ]] || { [[ ! -d "${runtime_dir_ref}" ]] && ! mkdir -p "${runtime_dir_ref}" 2>/dev/null; }; then
+    runtime_dir_ref="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/runtime"
+    [[ -d "${runtime_dir_ref}" ]] || mkdir -p "${runtime_dir_ref}" || return 1
   fi
 
-  fallback_dir="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/runtime"
-  [[ -d "$fallback_dir" ]] || mkdir -p "$fallback_dir" || return 1
-  printf '%s\n' "${fallback_dir}"
+  [[ -n "${subdir}" ]] || return 0
+  runtime_dir_ref+="/${subdir#/}"
+  [[ -d "${runtime_dir_ref}" ]] || mkdir -p "${runtime_dir_ref}" || return 1
 }
 
 hypr_ensure_runtime_subdir() {
-  local subdir="${1:-}"
-  local runtime_root=""
-  local target_dir=""
+  local runtime_dir=""
 
-  runtime_root="$(hypr_ensure_runtime_root_dir)" || return 1
-  if [[ -z "${subdir}" ]]; then
-    printf '%s\n' "${runtime_root}"
-    return 0
-  fi
-
-  target_dir="${runtime_root}/${subdir#/}"
-  mkdir -p "${target_dir}" || return 1
-  printf '%s\n' "${target_dir}"
+  hypr_ensure_runtime_dir_into runtime_dir "${1:-}" || return 1
+  printf '%s\n' "${runtime_dir}"
 }

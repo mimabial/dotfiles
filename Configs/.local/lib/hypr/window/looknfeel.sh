@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-exec hyprshell window/settings.sh "$@"
+exec "${BASH_SOURCE[0]%/*}/settings.sh" "$@"

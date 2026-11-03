@@ -9,6 +9,7 @@ CpuPage 1.0 CpuPage.qml
 GpuPage 1.0 GpuPage.qml
 DisksPage 1.0 DisksPage.qml
 HistoryGraph 1.0 HistoryGraph.qml
+KeyField 1.0 KeyField.qml
 Legend 1.0 Legend.qml
 Measure 1.0 Measure.qml
 MemoryPage 1.0 MemoryPage.qml

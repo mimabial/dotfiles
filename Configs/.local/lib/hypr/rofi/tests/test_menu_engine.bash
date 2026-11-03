@@ -42,9 +42,12 @@ menu_lookup_selection branch 'A&B <One>   ✓' kind target && assert_eq special 
 [[ "${HYPR_MENU_PARENTS[branch]}" == main ]] || fail 'submenu parent'
 menu_descendant_depth branch
 assert_eq 2 "${HYPR_MENU_DEPTHS[branch]}" 'submenu descendant depth'
-assert_eq '󰅂' "$(menu_submenu_glyph 1)" 'one-level submenu glyph'
-assert_eq '󰄾' "$(menu_submenu_glyph 2)" 'two-level submenu glyph'
-assert_eq '󰶻' "$(menu_submenu_glyph 3)" 'three-level submenu glyph'
+menu_submenu_glyph_into submenu_glyph 1
+assert_eq '󰅂' "${submenu_glyph}" 'one-level submenu glyph'
+menu_submenu_glyph_into submenu_glyph 2
+assert_eq '󰄾' "${submenu_glyph}" 'two-level submenu glyph'
+menu_submenu_glyph_into submenu_glyph 3
+assert_eq '󰶻' "${submenu_glyph}" 'three-level submenu glyph'
 menu_add_item main Plain action duplicate 2>/dev/null && fail 'duplicate label accepted'
 menu_add_item main Bad invalid bad 2>/dev/null && fail 'invalid item accepted'
 
@@ -57,6 +60,16 @@ assert_eq "branch${MENU_ITEM_KEY_SEP}A&B <One>" "${deeper_item_keys[0]}" 'deeper
 assert_has "${direct_rows[0]}" $'display\x1fPlain\n<span size="small" alpha="55%">Root</span>' 'direct row'
 assert_has "${deeper_rows[0]}" 'A&amp;B &lt;One&gt;' 'escaped label'
 assert_has "${deeper_rows[0]}" '>Sub</span>' 'deeper path'
+
+breadcrumb=""
+menu_breadcrumb_into breadcrumb main Root
+assert_eq '' "${breadcrumb}" 'root breadcrumb'
+menu_breadcrumb_into breadcrumb branch Branch
+assert_eq Sub "${breadcrumb}" 'breadcrumb names a menu by the row that opens it'
+menu_breadcrumb_into breadcrumb deep Deep
+assert_eq Sub "${breadcrumb}" 'breadcrumb drops the segment the title repeats'
+menu_breadcrumb_into breadcrumb deep Search
+assert_eq 'Sub › Deep' "${breadcrumb}" 'search breadcrumb keeps the whole scope'
 
 search_ifs="$(
   menu_resolve_style() { :; }
@@ -126,10 +139,15 @@ rofi_effective_font_name() { printf 'Mono'; }
 rofi_theme_width_multiplier_override() { printf 'window { width: 295px; }'; }
 rofi_default_border_radius() { printf '2'; }
 rofi_standard_window_theme() { printf 'window{border:3px;}'; }
-rofi_font_text_extents_px() { cat >/dev/null; printf '425 10'; }
+rofi_window_position_theme() { printf 'window{location:center;}'; }
+rofi_font_text_extents_px() { cat >/dev/null; printf '425 10 0 0'; }
 rofi_focused_monitor_logical_size() { printf '1920 1080'; }
 rofi_font_override() { printf 'font{}'; }
+rofi_header_args_into() { :; }
 rofi_resolve_theme() { printf 'menutree.rasi'; }
+rofi_hypr_snapshot() { :; }
+rofi_popup_metrics() { printf '89 117 25 24 48\n'; }
+rofi_font_description() { printf '%s %spx' "$1" "$2"; }
 rofi_with_background_theme() { cat >/dev/null; printf 'Picked'; return 7; }
 set +e
 rofi_output="$(menu_run_rofi Prompt Rows '')"

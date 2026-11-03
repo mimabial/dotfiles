@@ -45,16 +45,12 @@ own defaults still apply.
 | --- | --- | --- | --- |
 | `top` | `horizontal` | top | three-section horizontal bar |
 | `bottom` | `horizontal` | bottom | three-section horizontal bar |
-| `winbar` | `winbar` | bottom | Windows 11 taskbar: Start/apps, Task View, search icon, weather widget, overflow, separate Wi-Fi/sound/battery controls, clock, launcher strip |
+| `winbar` | `winbar` | bottom | Windows 11 taskbar: Start/apps, Task View, search icon, weather widget, overflow, combined Wi-Fi/sound/battery Quick Settings, clock, launcher strip |
 | `macos` | `horizontal` | top | macOS menu bar: hyprmenu dropdown, focused-app menus, status items, clock |
-| `gnome` | `horizontal` | top | GNOME Shell top bar: Activities pills, centered date and notification menu, screen-recording timer, keyboard layout, Quick Settings with power actions |
+| `gnome` | `horizontal` | top | GNOME-style top bar: Activities pills, centered date and notification menu, screen-recording timer, keyboard layout, compact status indicators with individual popups and Quick Settings |
 
 The dock in `dock/` is not a layout: it is a separate bottom-edge panel that
 runs alongside whichever bar layout is active, the way `expose/` does.
-Its app groups are virtual collections in `dock/settings.json` (`appGroups`),
-not filesystem folders. Drag one app onto another to create a group, drag onto
-an existing group to add it, or use Dock Settings → App Groups. A group
-auto-dissolves when one app remains.
 
 The horizontal `taskbar` module in `top`, `bottom`, and `winbar` groups running
 windows by app by default and removes each icon when its last window closes. Left-click
@@ -64,7 +60,10 @@ close actions. Hover shows the app name and its open window titles. It shows
 windows from all workspaces, including special workspaces. `"pins": true` keeps the
 apps listed in `taskbar/pins.json` first, running or not, and adds Pin/Unpin to the
 right-click menu; `"dash": true` draws one Windows-style dash per app, wide and
-accented for the focused one, instead of a dot per window.
+accented for the focused one, instead of a dot per window. Combined apps with
+multiple windows add a stacked edge on the button's right that follows its active or
+hover background and stays transparent while idle. Hover does not change the
+indicator's focus colour; minimized apps keep the inactive colour.
 The `winbar` combines each app's windows into one button or shows separate window
 buttons. Separate window buttons show icon and title; combined buttons show icons
 only. The Start button's right-click menu controls combining, label highlighting
@@ -78,7 +77,8 @@ recorded application name matches the app.
 The `winbar` tray is the Windows overflow, adapted from
 [omarchy-tray](https://github.com/TyRichards/omarchy-tray): left-click the chevron
 to open a grid flyout above it, which closes on an outside click, `Esc`, or when a
-popup opened from it closes. `mod+O T` (`quickshell ipc call bar tray`) opens it
+popup opens from it. Those popups open above the chevron.
+`mod+O T` (`quickshell ipc call bar tray`) opens it
 with a keyboard cursor, the way Win+B does: arrows and Tab move, `Enter`/`Space`
 click the cell, `Menu`/`Shift+F10` open an icon's menu. The flyout is the layout's
 `tray` array, in order: module
@@ -150,15 +150,12 @@ hides its playback glyph. Its `props` include `cavaBars` (positive integer, defa
 `cavaBarWidth` (default `2`), `cavaGap` (default `1`), and `cavaPosition` (`"center"`,
 `"top"`, or `"bottom"`). Width and gap scale with the bar's UI size. The default
 `"center"` grows in both directions; `"top"` grows downward and `"bottom"` upward.
-`cavaMode` selects `"bars"` (default), `"foobar"` (bars with held peak caps), `"dots"`,
-`"wave"` (a connected spectrum line), `"mirror"` (always centered), or `"blocks"`.
-Right-click cycles these modes in the Cava appearance; other appearances retain play/pause.
+Cava uses the foobar style: bars with held peak caps. Right-click toggles play/pause.
 `cavaFps` sets a positive frame rate (default `20`), `cavaGain` multiplies heights
 (default `1`), and `cavaSmoothing` sets Cava noise reduction from `0` (fast/noisy)
-to `100` (slow/smooth), default `77`. Gain and mode changes reuse the stream.
+to `100` (slow/smooth), default `77`. Gain changes reuse the stream.
 Peak caps use the theme's error color and
-hold for 320 ms before falling at a rate independent of FPS. Right-click changes
-last until the module reloads; set `cavaMode` in layout props for its initial mode.
+hold for 320 ms before falling at a rate independent of FPS.
 It takes `showWhenIdle: true` to keep a placeholder when no player is
 running. The `countdown` and idle `mpris` views show a music-box glyph (`idleIcon`)
 and a short quote that advances on each hover (`idleQuotes`); `icon` shows only the glyph,
@@ -168,8 +165,10 @@ text reads `author — quote`; otherwise it shows just the quote. Idle text elid
 at `maxLabelWidth` or the available bar width. Otherwise the module collapses
 when `Media.player` is null.
 
-In `gnome`, the bar mirrors GNOME Shell and carries nothing it lacks: no tray drawer,
-no submap. `gnome-activities` opens Exposé and draws GNOME's workspace dots, one per
+In `gnome`, the original status indicators keep their compact spacing and visibility
+rules. Microphone, Night Light, VPN, network, notifications, Bluetooth, sound and power
+indicators open their own popups; the other indicators and gaps open Quick Settings.
+There is no tray drawer or submap. `gnome-activities` opens Exposé and draws GNOME's workspace dots, one per
 workspace plus the empty one after the last; the wheel steps through those dots.
 `fixedWorkspaceCount: N` switches to GNOME's fixed mode: dots 1–N always, plus any
 higher workspace in use. `gnome-date-menu`
@@ -188,6 +187,8 @@ opens Suspend, Restart…, Power Off… and Log Out…. `gnome-screen-record` ta
 `macInputItems: false` to drop the macOS emoji and settings rows. Colors, fonts,
 rounding, and borders come from the active theme; opacity and blur use the shared settings.
 
+`hidden-bar` collapses the modules listed in the layout's `hiddenBarItems`; its state is saved in the bar preferences. Recording and notification indicators, battery, Wi-Fi, Spotlight, Control Center and the clock stay visible. Right-click the chevron to toggle Show Desktop.
+
 In `macos`, `menu` takes `dropdown: true`: a left click opens system actions, recent documents,
 Force Quit, and the full menutree under Hyprmenu; right and middle click keep their
 start-menu actions. `appmenu` shows the focused app in bold with File/Edit/View/Window/Help menus that
@@ -196,7 +197,7 @@ manager's App, File, Go, and Help menus, as Finder does. Edit sends its combo wi
 `send_shortcut`, moving copy/paste to Ctrl+Shift in terminals and disabling the
 combos a terminal reads as signals. `controlcenter` holds Wi-Fi, Bluetooth, Night
 Shift and Keep Awake tiles with display, sound and now-playing controls; `battery`
-opens the power popup; `spotlight` searches apps, menu actions, places, recent files, and indexed Documents, with an option to search more files in File Finder; `SUPER+S` opens it in any layout, through `PopupHost.qml` where no `menu` module is live. `nowplaying` shows a playback glyph only while a
+opens the power popup; `spotlight` searches apps, open windows, menu actions, places, recent files, and indexed Documents, with an option to search more files in File Finder. `a:`, `w:` and `f:` limit a search to apps, windows or files. A query that starts with a number and holds an operator or `to` (or any query after `=`) shows a `qalc` result that Enter copies. `aw`, `aur`, `gh`, `mdn`, `w` or `yt` followed by a space searches that site instead of DuckDuckGo. It learns what you open, overall and per typed prefix, in `~/.local/state/quickshell/spotlight-usage.json`; that ranks results and fills the list before you type. `SUPER+S` opens it in any layout, through `PopupHost.qml` where no `menu` module is live. `nowplaying` shows a playback glyph only while a
 player is active and opens a compact card: artwork, title, artist, a seek bar, and
 previous/play/next. The `*-menu` modules (`sound`, `wifi`, `bluetooth`, `vpn`,
 `display`) and `battery` wrap the regular buttons with a compact `modules/MacCard.qml`:
@@ -208,17 +209,32 @@ the full calendar), the five latest notifications, and a link to the full archiv
 where `null` is a separator, `submenu` is a nested item list, and `run` is a
 command array or a function. Arrow keys walk every level: → or Enter opens a
 submenu, ← or Esc backs out one level, and ←/→ switch top-level menus.
+The Start popup has one cursor: Tab/Shift+Tab cycle its parts (apps or search
+results, pinned, places, menu), ↑↓ move within a part (rows in the pinned grid, ←→
+across it), Enter runs what the cursor is on and Shift+Enter its secondary action
+(pin/unpin, remove a place). The pointer moves the same cursor. → opens a menu row's
+flyout, and while a flyout is open the keys go to the deepest one (↑↓/Tab move,
+→ or Enter opens or runs, ← or Esc backs out one level).
 
 The `winbar` recreates the Windows 11 taskbar. `widgets` shows the weather icon,
-temperature and condition and opens the weather popup. `menu` takes the Windows
-logo through its `text` prop and opens apps and recent files; `spotlight` searches
-recent files and indexed Documents in one popup.
-`wifi-menu`, `sound-menu`, and `battery` each
-open their own compact popup, with a link to the full network, audio, or power
-popup.
+temperature and condition and opens the weather popup. `menu` uses the active icon
+theme's `start-here-kde-symbolic` icon and opens apps and recent files; `spotlight` opens
+the Spotlight search described above.
+`windows-quick-settings` combines Wi-Fi, sound, and battery into one button. Its
+popup has toggle tiles, brightness and volume sliders, media controls, and pages
+for Wi-Fi networks, paired Bluetooth devices, and sound outputs. The vertical
+dots and arrows beside the tiles switch quick-action pages; scrolling, swiping,
+and Page Up/Down work there too. Brightness and volume stay below the tile pages.
+The next page opens VPN, display, volume mixer, microphone, and power settings,
+and toggles Keep Awake. Tile arrows open
+those pages; Back or Esc returns. Passwords, pairing, and detailed settings use
+the existing full popups, loaded on demand.
 `notifications` takes `themed: true` to draw its bell from the style's symbolic
 icons. `task-view` opens Exposé on click; `launcher-strip` is the sliver at the right edge: hovering opens the Rofi app launcher.
 The Exposé hot corner is inactive while the Windows bar is shown.
+
+`Super+W`, then `C` opens Snap placement for the window captured before the picker opens. The same menu is in the macOS Window menu and taskbar app menus; halves, quarters and centering follow the target monitor's scale, rotation, reserved area, gaps and borders. Maximize and Return to tiling use the compositor's native window actions.
+`Super+W`, then `D`, or `quickshell ipc call dock showDesktop` hides the current regular workspace's unpinned windows and toggles them back through the dock's existing layout restoration. Windows minimized before the toggle stay minimized. The dock keeps parking records across soft shell reloads.
 
 `appmenus.json` adds per-app menus, keyed by lowercase app id (comma-separated ids
 share an entry). Each item is `[label, mods, key]` sent with `send_shortcut`, or `null`
@@ -229,6 +245,29 @@ the `fr` layout.
 
 `notifications` takes `showBadge: true` to show the unread count. `bluetooth`
 takes `showReadout: true` for its connected-device count.
+
+`workspaces` takes `minimap: true` (top and bottom set it) to follow the workspace number with a
+map of its windows in `minimap/`: one box per window in its layout column, at the window's
+proportions, with stacked windows sharing a box, a group drawn as one box with a tab per window,
+and columns scrolled off screen dimmed. Windows that cover the same spot, as in monocle, get a box
+each in creation order, with the hidden ones dimmed; monocle's `N`/`Shift+N`
+window-mode keys (`cycle_monocle` in `keybindings.lua`) cycle in that same order. `tapeMaxWidth` caps the map's width (it scrolls with the
+focused box past that) and `tapeGap` spaces the boxes. Box movement, resizing and tape scrolling use
+Hyprland's effective `windowsMove` curve, duration and enabled state, read at startup and on config
+reload. Disabling compositor animations stops decorative effects and keeps alert colors static.
+Hovering a box, or a focus change, slides a tab with
+the app icon and title out of the bar. Left-click focuses, the wheel changes workspace, and
+right-click opens the workspaces popup, whose minimap sections set the numerals (the layout's
+`numerals` prop), the animation style (smooth or cyberpunk) and
+the toggles saved in `~/.local/state/quickshell/minimap.json`. A pack can set
+`"minimap": { "animStyle": "cyberpunk" }` in `quickshell.theme`; the animation picker saves an
+override for that pack. Packs without a default keep the global selection. Box actions add a right-click window
+menu and middle-click close; Drag to reorder works with a right-drag, since left-drag moves bar
+modules: in scrolling it moves a column, in the other tiled layouts it swaps the window with the box
+it is dropped on (lit in the accent), and it is off in monocle and for floating boxes. Urgent windows, and new entries in the notification archive matched to a window
+by app name, desktop entry or icon, turn its box amber, or red for critical ones; an alert on
+another workspace tints the number the same way, and clicking the number focuses the most urgent window.
+`quickshell ipc call minimap alert <app> <minor|critical>`, `clear`, `jump` and `state` script it.
 
 `weather` shows the readouts picked under the gear in its popup (`temp` by default;
 also `minmax`, `sunrise`, `sunset`, `rain`, `wind`, `humidity`), saved in
@@ -262,8 +301,8 @@ button height follows the box, so an enlarged small glyph never grows the bar.
 `BarButton.trailingWidth` reserves room right of the label for drawn content, such as
 the Control Center privacy dots. Individual sides use
 `borderTopWidth`/`borderTopColor`, `borderRightWidth`/`borderRightColor`,
-`borderBottomWidth`/`borderBottomColor`, or `borderLeftWidth`/`borderLeftColor`. Hover uses
-the same color fields. Colors use a palette role or `[role, opacity]`; `null`
+`borderBottomWidth`/`borderBottomColor`, or `borderLeftWidth`/`borderLeftColor`. Hover can
+change `backgroundColor`, `color` and `iconColor`; borders never react to it. Colors use a palette role or `[role, opacity]`; `null`
 paints nothing.
 
 Use the layout module id as the style key for a single button or readout.
@@ -306,13 +345,20 @@ Important geometry rules:
   `badgeOffsetX`/`badgeOffsetY` nudge it, positive right and down. It tracks the
   glyph, not the module frame, so it stays put as the bar widens.
 
+Highlights are fill-only. Hover and the keyboard cursor paint `shell.hoverFill()`
+(`hvr_br` at `Style.hoverFillAlpha`); selected, current and active states paint
+`shell.selectedFill()` (`act_br` at `Style.selectedFillAlpha`); hover wins when both
+apply. Commons panels use `Commons.Color.menu.selectedBackground` and
+`Commons.Style.selectedFillFor`. A border is structure and never changes with
+state. The exception is a tile whose content would be hidden or recoloured by a
+fill: wallpaper thumbnails, Exposé windows and workspace chips, lockview layouts,
+dock colour swatches and window dots keep their state borders.
+
 ## Alt+Tab
 
-In every workflow, `Alt+Tab` focuses the next window immediately and `Alt+Shift+Tab` focuses the previous one, bringing it to the front. Holding Alt keeps the cycle order stable; releasing Alt ends the cycle. No switcher preview opens. The `altscape` button, in the winbar and horizontal trays, and `Super+Alt+Shift+S` toggle its settings popup: which windows it cycles through (all workspaces, other workspaces, this monitor, or this workspace), the order (by workspace or most recent first), and whether scratchpads are included. They are saved in `~/.local/state/quickshell/altscape/settings.json`. Bindings live in `~/.config/hypr/keybindings.lua`.
+In every workflow, `Alt+Tab` opens Switcher on the previously focused window; `Alt+Shift+Tab` starts at the oldest window. Hold Alt to navigate the depth stack and workspace map; release Alt to focus the selection. Typing filters, Space keeps the overlay open, Enter or a click focuses, and Escape clears the filter or cancels. The port lives in `switcher/`, with its original MIT attribution in `switcher/LICENSE`. Colors, fonts, rounding and wallpaper follow the shell. `~/.config/hypr/keybindings.lua` loads `~/.config/hypr/switcher.lua` for its bindings and Alt-release hook. Use `quickshell ipc call switcher open|state|field|captures|cancel` to browse or inspect it.
 
-Entering Windows selects the Windows 11 theme and floats ordinary windows through `~/.config/hypr/floating_windows.lua`, which the Floating workflow shares. Leaving restores existing windows' floating states and geometry. Theme and tiling-layout changes made in Windows or macOS are kept on exit, while the next workflow's own defaults take priority. Without a manual change, Windows restores its previous theme and layout.
-
-Use `quickshell ipc call altscape next|prev|release` for direct switching and `open|close|status` for the popup. The port lives in `altscape/`, with its original MIT attribution in `altscape/LICENSE`.
+Entering Windows selects the Windows 11 theme. Leaving restores existing windows' floating states and geometry through `~/.config/hypr/floating_windows.lua`. Theme and tiling-layout changes made in Windows or macOS are kept on exit, while the next workflow's own defaults take priority. Without a manual change, Windows restores its previous theme and layout.
 
 ## Drawers and popups
 
@@ -328,6 +374,12 @@ A panel opens with `PopupHero`. Its top-level column uses `Style.sectionGap`; ea
 `PopupTab`, facts `PopupInfoPair`, glyph actions `PopupIconButton`, switches
 `PopupToggleRow`. Controls take `Style.controlHeight`; chosen state is
 `shell.selectedFill()`/`selectedEdge()`, secondary text `shell.mutedText`/`faintText`.
+
+`styles/popup.json` owns popup spacing, opacity and control-state values for both
+Quickshell and Rofi. Rofi's renderer uses the same palette roles and
+`quickshell.theme` pack override; its launch helper reads popup preferences each
+time a menu opens and uses Quickshell's popup rounding and border width. Rofi font
+descriptions use pixels, including text measurements.
 
 Popup appearance is shared. The desktop popup's POPUPS section sets opacity, accent
 tint and accent border, saved as `popupOpacity` (-1 keeps `Style.defaultPopupSurfaceOpacity`),
@@ -384,10 +436,12 @@ device and has no native path, so sysfs and D-Bus paths come from the
   `~/.cache/hypr/agents/usage.json`; `system/agent-usage.sh` is the only
   producer, so quota and token calculations stay aligned between the bar and
   terminal views. Each surface triggers its own refresh: the TUI on open when
-  the cache is older than its `STALE_AFTER`, `AgentsButton` on a 15 minute
+  the cache is older than its `CACHE_MAX_AGE_SECONDS`, `AgentsButton` on a 15 minute
   Timer. That Timer only runs on layouts that instantiate the button, so it is
   not a refresh path anything else may rely on. Pressing R in the popup forces
-  a local rescan. The OpenCode tab reads provider
+  a local rescan. Providers publish independently as they finish; pricing runs
+  separately, retaining the previous costs until each fresh calculation arrives.
+  The OpenCode tab reads provider
   tokens and cost from `opencode.db`; its Go limits appear when a Go key is available.
   Kimi Code reads quota limits from the sign-in at
   `~/.kimi/credentials/kimi-code.json` (`KIMI_SHARE_DIR` overrides the root)
@@ -436,10 +490,28 @@ device and has no native path, so sysfs and D-Bus paths come from the
   keyed by path and mtime. The pass is parallel and time-boxed; anything that
   misses the budget lands on the next listing, and cached art costs nothing.
   Files, Recents, and the local half of search all go through it.
-- Adding to the queue writes `~/.cache/cliamp/queue.json` *and* appends to mpv's
-  own playlist. Each entry carries mpv's `playlist_id`; `reconcile_queue()` uses
-  the current ID to drop consumed entries. YouTube falls back to mpv's URL loader
+- The queue is mpv's own playlist. `~/.cache/cliamp/mpv_playlist.json` mirrors it,
+  adding what mpv lacks (title, artist, thumb, keyed by `playlist_id`) and the
+  current entry; `sync_mirror()` refreshes it under `mpv_playlist.lock` on each
+  status and queue read, and mpv runs it on every `start-file` through
+  `cliamp/sync_mirror.lua`, so tracks that advance while the popup is closed are
+  recorded. The script first writes the started entry's id to
+  `~/.cache/cliamp/mpv_last_started`, in event order; while mpv has no current
+  entry (stopped or gone), that id is the current one, so a stop or quit right
+  after a track change cannot leave played tracks queued. The Queue tab is every entry after the current one (wrapping
+  under repeat-all), so prev, media keys and MPRIS stay in step; rows play and
+  remove by `playlist_id`. While stopped, mpv's playlist is empty and the saved
+  mirror is what play/resume reload. Shuffle reorders only upcoming entries and keeps
+  its state in mpv's `shuffle` property; turning it off restores `playlist_id`
+  (append) order. The popup's `watch` reloads the tab on `playlist-count`,
+  `playlist-pos` and `loop-playlist` events. YouTube falls back to mpv's URL loader
   when direct stream resolution fails, so queued songs never share an audio pipe.
+- Bar buttons, the popup and the media keys (`crmne.mpris` IPC, not `playerctl`) act on
+  one player, `Media.controlTarget`: `Media.player` (the last one controlled, saved in
+  `~/.local/state/hypr/mediaplayer.json`, else the first playing), or that saved player
+  while it is stopped. With another player active, the Queue tab shows MPD's queue for
+  MPD (reloaded on MPD `idle playlist` events while the tab is open), the playlist for a
+  YouTube `list=` URL with the URL's `v=` video marked current, and otherwise cliamp's queue without a now-playing row.
 - The Bitwarden vault (`Bitwarden.qml`, one per shell) keeps its session key in
   `$XDG_RUNTIME_DIR/bitwarden-session` and any armed quick-unlock secret in
   `$XDG_RUNTIME_DIR/bitwarden-unlock`, so neither outlives the login. The terminal
@@ -532,3 +604,4 @@ that still have some deliberately go without it.
 
 - The Tasks popup draws on [omarchy-todos](https://github.com/Saikomantisu/omarchy-todos).
 - Its sorting, search, facets, and activity grid draw on [omarchy-tuxedo-todo](https://github.com/lpanebr/omarchy-tuxedo-todo).
+- The workspace minimap is ported from [jgarza9788/minimap](https://github.com/jgarza9788/minimap) (MIT, `minimap/LICENSE`).

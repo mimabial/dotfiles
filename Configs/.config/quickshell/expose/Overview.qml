@@ -7,7 +7,6 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons as Commons
-import "IconResolver.js" as IconResolver
 import "WindowModel.js" as WindowModel
 
 Item {
@@ -126,6 +125,7 @@ Item {
     property string appFilter: ""
     property string workspaceScope: "all"
     property int selectedIndex: 0
+    property var lastPointerScenePosition: null
     property var followedWindow: null
     property int previewIndex: -1
     property int previewExitIndex: -1
@@ -145,7 +145,7 @@ Item {
     readonly property real motionEpsilon: 0.001
     readonly property bool motionSettled: root.motionProgress >= 1 - root.motionEpsilon
     property int lastRequestedBlur: -1
-    property var iconCache: ({})
+    readonly property string genericIcon: Quickshell.iconPath("application-x-executable", true)
     property int modelRevision: 0
     property var sessionToplevels: []
     property var sessionAspectRatios: []
@@ -184,14 +184,14 @@ Item {
             return String(active.monitor.name || "");
         return Quickshell.screens.length ? String(Quickshell.screens[0].name || "") : "";
     }
-    // One overlay surface: the focused monitor, or the display whose hot
-    // corner opened Exposé. Instantiating on every enabled output duplicates
-    // screencopy captures and layer textures.
-    readonly property var mountedScreens: {
+    readonly property var gridScreens: {
         if (!root.surfaceMounted || !root.effectiveOverviewScreen)
             return [];
         return [root.effectiveOverviewScreen];
     }
+    readonly property var backdropScreens: root.surfaceMounted
+        ? Quickshell.screens.filter(screen => screen !== root.effectiveOverviewScreen)
+        : []
     readonly property var filteredToplevels: {
         var revision = root.modelRevision;
         return root.toplevelsForScreen(root.keyboardScreenName);
@@ -218,6 +218,7 @@ Item {
         hotCornerTimer.stop();
         root.pendingWorkspaceAction = "";
         root.pendingWindowActivation = null;
+        root.lastPointerScenePosition = null;
         var blurRestoreInFlight = root.restoringDesktopBlur && backgroundBlurSession.running;
         if (!blurRestoreInFlight)
             root.restoringDesktopBlur = false;
@@ -256,6 +257,12 @@ Item {
         } else {
             root.prepareOpenSurface();
         }
+    }
+
+    function pointerMovedTo(scenePosition) {
+        var moved = root.lastPointerScenePosition !== null && scenePosition !== root.lastPointerScenePosition;
+        root.lastPointerScenePosition = scenePosition;
+        return moved;
     }
 
     function close() {
@@ -589,7 +596,7 @@ Item {
     }
 
     function hotCornerHovered() {
-        var groups = [hotCornerInstances, surfaceInstances];
+        var groups = [hotCornerInstances, surfaceInstances, backdropInstances];
         for (var group of groups) {
             var instances = group.instances;
             for (var index = 0; index < instances.length; index++)
@@ -808,9 +815,10 @@ Item {
     function activatePendingWindow() {
         if (!root.pendingWindowActivation)
             return;
-        for (var index = 0; index < surfaceInstances.instances.length; index++)
-            if (surfaceInstances.instances[index].keyboardActive)
-                return;
+        for (var group of [surfaceInstances, backdropInstances])
+            for (var surface of group.instances)
+                if (surface.keyboardActive)
+                    return;
         var top = root.pendingWindowActivation;
         root.pendingWindowActivation = null;
         var address = WindowModel.addressFor(top);
@@ -819,14 +827,11 @@ Item {
         if (dock && (dock.isMinimizedWorkspace(WindowModel.workspaceName(top))
                 || dock.minimizedOrigins[address] !== undefined))
             dock.restoreWindow(address, appId);
-        var helper = root.pluginDir + "/activate-window";
-        Quickshell.execDetached([
-            helper,
-            address,
-            appId,
-            String(top.title || ""),
-            root.moveCursorToWindow ? "true" : "false"
-        ]);
+        if (!address)
+            return;
+        var focus = "hl.dsp.focus({ window = " + JSON.stringify("address:" + address) + " })";
+        Hyprland.dispatch(root.moveCursorToWindow ? focus
+            : "(function() local cursor = hl.get_cursor_pos(); hl.dispatch(" + focus + "); if cursor then hl.dispatch(hl.dsp.cursor.move({ x = cursor.x, y = cursor.y })) end; return hl.dsp.no_op() end)()");
     }
 
     function toggleFullscreen(top) {
@@ -1074,7 +1079,7 @@ Item {
         return root.liveAspectRatioFor(top);
     }
 
-    function computeWindowLayout(toplevels, width, height, gap, padding, footerHeight, viewportRatioHint) {
+    function computeWindowLayout(toplevels, width, height, gap, padding, footerHeight) {
         var count = toplevels.length;
         if (!count || width <= 0 || height <= 0)
             return [];
@@ -1112,19 +1117,7 @@ Item {
         var bestScale = -1;
         var minimumCardHeight = footerHeight + padding * 2 + footerSpacing + 1;
         var maxRows = Math.max(1, Math.min(count, Math.floor((availableHeight + gap) / (minimumCardHeight + gap))));
-        var totalNaturalWidth = 0;
-        var totalNaturalHeight = 0;
-        for (var naturalIndex = 0; naturalIndex < entries.length; naturalIndex++) {
-            totalNaturalWidth += Math.sqrt(entries[naturalIndex].weight * entries[naturalIndex].ratio);
-            totalNaturalHeight += Math.sqrt(entries[naturalIndex].weight / entries[naturalIndex].ratio);
-        }
-        var averageNaturalHeight = totalNaturalHeight / entries.length;
-        var viewportRatio = Number(viewportRatioHint);
-        if (!isFinite(viewportRatio) || viewportRatio <= 0)
-            viewportRatio = availableWidth / availableHeight;
-        var balancedRows = Math.round(Math.sqrt(totalNaturalWidth / Math.max(0.01, viewportRatio * averageNaturalHeight)));
-        var minimumRows = Math.max(1, Math.min(maxRows, balancedRows));
-        for (var rowCount = minimumRows; rowCount <= maxRows; rowCount++) {
+        for (var rowCount = 1; rowCount <= maxRows; rowCount++) {
             var rows = WindowModel.compositionRows(entries, rowCount);
             var low = 0;
             var rowHigh = high;
@@ -1190,17 +1183,7 @@ Item {
     }
 
     function iconFor(top) {
-        var identity = IconResolver.identityFor(top);
-        if (Object.prototype.hasOwnProperty.call(root.iconCache, identity.key))
-            return root.iconCache[identity.key];
-        var entries = DesktopEntries.applications ? DesktopEntries.applications.values : [];
-        var entry = IconResolver.findEntry(entries, identity.candidates);
-        var iconName = entry
-            ? String(entry.icon || "application-x-executable")
-            : String(identity.candidates[0] || "application-x-executable");
-        var result = Quickshell.iconPath(iconName, true);
-        root.iconCache[identity.key] = result;
-        return result;
+        return Commons.WindowApp.lookup(top).icon || root.genericIcon;
     }
 
     function handleKey(event, layout) {
@@ -1278,13 +1261,6 @@ Item {
             required property var modelData
             target: modelData
             function onActiveWorkspaceChanged() { root.handleDisplayStateChanged(); }
-        }
-    }
-
-    Connections {
-        target: DesktopEntries.applications
-        function onValuesChanged() {
-            root.iconCache = {};
         }
     }
 
@@ -1512,40 +1488,99 @@ Item {
         }
     }
 
+    component OverviewSurface: PanelWindow {
+        id: surface
+        required property var modelData
+        readonly property bool hotCornerHovered: openHotCorner.hovered
+        readonly property bool keyboardActive: surface.contentItem.Window.active
+        screen: modelData
+        visible: true
+        anchors {
+            top: true
+            right: true
+            bottom: true
+            left: true
+        }
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.namespace: "expose-window-overview"
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus: root.opened ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+        HyprlandWindow.opacity: root.motionProgress
+        BackgroundEffect.blurRegion: root.backgroundBlur > 0
+                && !root.backgroundBlurFailed
+            ? backgroundBlurRegion
+            : null
+        onKeyboardActiveChanged: if (!surface.keyboardActive) root.activatePendingWindow()
+
+        Region {
+            id: backgroundBlurRegion
+            item: surface.contentItem
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            color: "black"
+            opacity: root.backgroundDim / 100
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                if (surface.modelData === root.effectiveOverviewScreen
+                        && (root.previewIndex >= 0 || root.previewExitIndex >= 0))
+                    root.clearPreview();
+                else
+                    root.dismiss();
+            }
+
+            HoverHandler {
+                onPointChanged: root.pointerMovedTo(point.scenePosition)
+            }
+        }
+
+        HotCornerTarget {
+            id: openHotCorner
+            width: root.hotCornerReach
+            height: root.hotCornerReach
+            x: root.hotCornerOnLeft ? 0 : parent.width - width
+            y: root.hotCornerOnTop ? 0 : parent.height - height
+            z: 100
+            enabled: root.hotCornerActive
+            onTop: root.hotCornerOnTop
+            onLeft: root.hotCornerOnLeft
+            onEntered: root.triggerHotCorner(String(surface.modelData.name || ""))
+            onExited: root.scheduleHotCornerRearm()
+        }
+    }
+
+    Variants {
+        id: backdropInstances
+        model: root.backdropScreens
+
+        OverviewSurface {
+            Item {
+                anchors.fill: parent
+                focus: true
+                Keys.forwardTo: root.opened && surfaceInstances.instances.length
+                    ? [surfaceInstances.instances[0].keyboardItem]
+                    : []
+            }
+        }
+    }
+
     Variants {
         id: surfaceInstances
-        model: root.mountedScreens
+        model: root.gridScreens
 
-        PanelWindow {
+        OverviewSurface {
             id: overviewWindow
-            required property var modelData
-            screen: modelData
-            visible: true
-            anchors {
-                top: true
-                right: true
-                bottom: true
-                left: true
-            }
-            color: "transparent"
-            exclusionMode: ExclusionMode.Ignore
-            WlrLayershell.namespace: "expose-window-overview"
-            WlrLayershell.layer: WlrLayer.Overlay
-            HyprlandWindow.opacity: root.motionProgress
-            BackgroundEffect.blurRegion: root.backgroundBlur > 0
-                    && !root.backgroundBlurFailed
-                ? backgroundBlurRegion
-                : null
-            readonly property bool hotCornerHovered: openHotCorner.hovered
             readonly property bool acceptsKeyboard: {
                 var wanted = root.effectiveOverviewScreenName;
                 if (wanted)
                     return String(modelData.name || "") === wanted;
                 return true;
             }
-            WlrLayershell.keyboardFocus: root.opened && acceptsKeyboard ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-            readonly property bool keyboardActive: keyCatcher.Window.active
-            onKeyboardActiveChanged: if (!overviewWindow.keyboardActive) root.activatePendingWindow()
 
             property alias keyboardItem: keyCatcher
             readonly property var screenToplevels: {
@@ -1571,20 +1606,6 @@ Item {
             onCardToplevelsSourceChanged: overviewWindow.syncCardToplevels()
             Component.onCompleted: overviewWindow.syncCardToplevels()
             readonly property string screenScopeLabel: root.workspaceScopeLabelForScreen(String(modelData.name || ""))
-            readonly property real screenRatio: overviewWindow.screen && overviewWindow.screen.height > 0
-                ? overviewWindow.screen.width / overviewWindow.screen.height
-                : 0
-
-            Region {
-                id: backgroundBlurRegion
-                item: overviewWindow.contentItem
-            }
-
-            Rectangle {
-                anchors.fill: parent
-                color: "black"
-                opacity: root.backgroundDim / 100
-            }
 
             // The workspace row sits on its own heavier material, as in Mission
             // Control. Hyprland's blur strength is global, so the band blurs one
@@ -1646,16 +1667,6 @@ Item {
                 Keys.priority: Keys.BeforeItem
                 Keys.onPressed: function (event) {
                     root.handleKey(event, overviewArea.windowLayout);
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        if (root.previewIndex >= 0 || root.previewExitIndex >= 0)
-                            root.clearPreview();
-                        else
-                            root.dismiss();
-                    }
                 }
 
                 ColumnLayout {
@@ -1743,7 +1754,7 @@ Item {
                             var revision = root.modelRevision;
                             return root.shell.workflow === "niri"
                                 ? WindowModel.composeStrips(overviewWindow.screenToplevels, width, height, Commons.Style.spacing.huge * 2, Commons.Style.spacing.sm, root.windowFooterHeight, overviewWindow.screenToplevels.indexOf(root.followedWindow))
-                                : root.computeWindowLayout(overviewWindow.screenToplevels, width, height, Commons.Style.spacing.huge * 2, Commons.Style.spacing.sm, root.windowFooterHeight, overviewWindow.screenRatio);
+                                : root.computeWindowLayout(overviewWindow.screenToplevels, width, height, Commons.Style.spacing.huge * 2, Commons.Style.spacing.sm, root.windowFooterHeight);
                         }
 
                         WheelHandler {
@@ -1807,9 +1818,9 @@ Item {
                         visible: root.showFooter
 
                         Text {
-                            text: "Type to filter windows   ← ↑ ↓ → navigate   Space preview   "
-                                + (root.appFilter ? "Tab next app   Backspace all apps" : "Tab next workspace   Shift+Tab previous")
-                                + "   Drag to a workspace to move   Shift+Q close   Enter open   Esc close"
+                            text: "Type to filter windows  ←↑↓→ Navigate  Space Preview  "
+                                + (root.appFilter ? "Tab Next App  Backspace All Apps" : "Tab Next Workspace  Shift+Tab Previous")
+                                + "  Drag to a workspace to move  Shift+Q Close  Enter Open  Esc Close"
                             textFormat: Text.PlainText
                             color: Commons.Color.menu.text
                             opacity: Commons.Style.mutedTextAlpha
@@ -1819,20 +1830,6 @@ Item {
 
                     }
                 }
-            }
-
-            HotCornerTarget {
-                id: openHotCorner
-                width: root.hotCornerReach
-                height: root.hotCornerReach
-                x: root.hotCornerOnLeft ? 0 : parent.width - width
-                y: root.hotCornerOnTop ? 0 : parent.height - height
-                z: 100
-                enabled: root.hotCornerActive
-                onTop: root.hotCornerOnTop
-                onLeft: root.hotCornerOnLeft
-                onEntered: root.triggerHotCorner()
-                onExited: root.scheduleHotCornerRearm()
             }
         }
     }

@@ -36,7 +36,7 @@ desktop_entry_write_exec_launcher() {
   local launcher_path="$1"
   shift
 
-  mkdir -p "$(dirname "$launcher_path")"
+  [[ -d "${launcher_path%/*}" ]] || mkdir -p "${launcher_path%/*}"
 
   {
     printf '%s\n' '#!/usr/bin/env bash'
@@ -54,6 +54,7 @@ desktop_entry_write_exec_launcher() {
 desktop_entry_normalize_mime_types() {
   local out_name="$1" raw="${2-}"
   local entry=""
+  local -a entries=()
   local mime_pattern='^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*$'
   local -a normalized=()
 
@@ -63,7 +64,8 @@ desktop_entry_normalize_mime_types() {
   raw=${raw//$'\n'/;}
   raw=${raw//,/;}
 
-  while IFS= read -r entry; do
+  IFS=';' read -r -a entries <<<"$raw"
+  for entry in "${entries[@]}"; do
     entry="${entry#"${entry%%[![:space:]]*}"}"
     entry="${entry%"${entry##*[![:space:]]}"}"
     [[ -n "$entry" ]] || continue
@@ -74,7 +76,7 @@ desktop_entry_normalize_mime_types() {
     fi
 
     normalized+=("$entry")
-  done < <(printf '%s\n' "$raw" | tr ';' '\n')
+  done
 
   if ((${#normalized[@]})); then
     printf -v "${out_name}" '%s;' "${normalized[@]}"
@@ -89,7 +91,7 @@ desktop_entry_safe_id() {
   value="${value//$'\r'/-}"
   value="${value//$'\t'/-}"
   value="${value// /-}"
-  value="$(printf '%s' "$value" | tr -cd '[:alnum:]._-')"
+  value="${value//[^a-zA-Z0-9._-]/}"
   value="${value##[-.]}"
   value="${value%%[-.]}"
 

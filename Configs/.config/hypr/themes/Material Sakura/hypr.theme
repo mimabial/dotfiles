@@ -1,7 +1,7 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
 $ICON_THEME = Tela-black-light
-$COLOR_SCHEME = prefer-dark
+$COLOR_SCHEME = prefer-light
 $NVIM_SCHEME = rose-pine
 $NVIM_VARIANT = dawn
 $NVIM_BACKGROUND = light

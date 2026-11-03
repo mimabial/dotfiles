@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="62"
+   height="62"
+   viewBox="0 0 62 62"
+   version="1.1"
+   id="svg2"
+   sodipodi:docname="giver.svg"
+   inkscape:version="1.4.4 (unknown)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview2"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="5.9140625"
+     inkscape:cx="29.590489"
+     inkscape:cy="23.080581"
+     inkscape:window-width="1920"
+     inkscape:window-height="994"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg2" />
+  <defs
+     id="defs2">
+    <linearGradient
+       id="linear0"
+       gradientUnits="userSpaceOnUse"
+       x1="0"
+       y1="128"
+       x2="128"
+       y2="0"
+       gradientTransform="matrix(0.562503,0,0,0.69155,-3.698487,-12.543929)">
+      <stop
+         offset="0"
+         style="stop-color:#7137c8;stop-opacity:1"
+         id="stop1" />
+      <stop
+         offset="1"
+         style="stop-color:#ffd42a;stop-opacity:1"
+         id="stop2" />
+    </linearGradient>
+    <filter
+       style="color-interpolation-filters:sRGB"
+       inkscape:label="Diffuse Light"
+       id="filter184"
+       x="-0.039034307"
+       y="-0.051970901"
+       width="1.0780686"
+       height="1.1039418">
+      <feGaussianBlur
+         in="SourceGraphic"
+         stdDeviation="1"
+         result="blur"
+         id="feGaussianBlur174" />
+      <feDiffuseLighting
+         diffuseConstant="1"
+         surfaceScale="10"
+         lighting-color="#ffffff"
+         result="diffuse"
+         id="feDiffuseLighting178">
+        <feDistantLight
+           elevation="8"
+           azimuth="235"
+           id="feDistantLight176" />
+      </feDiffuseLighting>
+      <feComposite
+         in="diffuse"
+         in2="diffuse"
+         operator="arithmetic"
+         k1="1"
+         result="composite1"
+         id="feComposite180"
+         k2="0"
+         k3="0"
+         k4="0" />
+      <feComposite
+         in="composite1"
+         in2="SourceGraphic"
+         k1="1"
+         operator="arithmetic"
+         k3="1"
+         result="composite2"
+         id="feComposite182"
+         k2="0"
+         k4="0" />
+    </filter>
+  </defs>
+  <g
+     id="surface1"
+     style="filter:url(#filter184)"
+     transform="translate(-1.3007815,-0.71484383)">
+    <path
+       style="fill:url(#linear0);fill-rule:nonzero;stroke:none"
+       d="M 14.980469,8.625 14.425781,10.496094 2.648438,51.019531 1.558594,54.804688 H 63.042969 L 61.933594,51.019531 50.15625,10.496094 49.625,8.625 Z m 3.246093,5.660156 H 46.355469 L 56.488281,49.144531 H 8.09375 Z M 19.625,15.5 10.539062,47.453125 h 11.035157 l 4.542969,-21.574219 z m 24.839844,0 -6.488282,10.378906 4.539063,21.574219 h 11.035156 z m 0,0"
+       id="path2" />
+  </g>
+</svg>

@@ -3,21 +3,10 @@
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR}/controls/lib/control-feedback.bash"
 
-normalize_brightness_mode() {
-  case "${1:-auto}" in
-    0 | false | FALSE | no | NO | off | OFF | disabled | DISABLED | never | NEVER)
-      printf '%s\n' off
-      ;;
-    *)
-      printf '%s\n' auto
-      ;;
-  esac
-}
-
 brightness_idle_enabled() {
-  local mode
-  mode="$(normalize_brightness_mode "${HYPR_IDLE_DIM:-auto}")"
-  [[ "${mode}" != off ]] || return 1
+  case "${HYPR_IDLE_DIM:-auto}" in
+    0 | false | FALSE | no | NO | off | OFF | disabled | DISABLED | never | NEVER) return 1 ;;
+  esac
   require_cmd brightnessctl && brightnessctl -m >/dev/null 2>&1
 }
 

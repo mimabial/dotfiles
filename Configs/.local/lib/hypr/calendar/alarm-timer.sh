@@ -10,7 +10,7 @@ timer_state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell"
 timer_state_file="${timer_state_dir}/timers.json"
 timer_script_path="$(readlink -f "${BASH_SOURCE[0]}")"
 exec_at="${timer_script_path%/*}/lib/exec_at.py"
-mkdir -p "${timer_state_dir}"
+[[ -d "${timer_state_dir}" ]] || mkdir -p "${timer_state_dir}"
 [[ -s "${timer_state_file}" ]] || printf '[]\n' >"${timer_state_file}"
 
 update_timer_state_under_lock() {
@@ -22,8 +22,13 @@ update_timer_state_under_lock() {
 }
 
 timer_process_is_alive() {
+  local -a cmdline=()
+  local joined=""
+
   [[ "$1" =~ ^[0-9]+$ && -r "/proc/$1/cmdline" ]] || return 1
-  [[ "$(tr '\0' ' ' <"/proc/$1/cmdline")" == *"${timer_script_path} fire $2 "* ]]
+  mapfile -d '' cmdline <"/proc/$1/cmdline"
+  printf -v joined '%s ' "${cmdline[@]}"
+  [[ "${joined}" == *"${timer_script_path} fire $2 "* ]]
 }
 
 start_timer_wait_process() {
@@ -34,12 +39,12 @@ start_timer_wait_process() {
 
 case "${1:-list}" in
   list)
-    jq --argjson now "$(date +%s)" 'map(select(.epoch > $now)) | sort_by(.epoch)' "${timer_state_file}"
+    jq --argjson now "${EPOCHSECONDS}" 'map(select(.epoch > $now)) | sort_by(.epoch)' "${timer_state_file}"
     ;;
   add)
     kind="${2:-}"; epoch="${3:-}"; label="${4:-}"
-    [[ "${kind}" == timer || "${kind}" == alarm ]] && [[ "${epoch}" =~ ^[0-9]+$ ]] && ((epoch > $(date +%s))) || exit 2
-    id="$(date +%s%N)"; pid="$(start_timer_wait_process "${id}" "${epoch}")"
+    [[ "${kind}" == timer || "${kind}" == alarm ]] && [[ "${epoch}" =~ ^[0-9]+$ ]] && ((epoch > EPOCHSECONDS)) || exit 2
+    id="${EPOCHREALTIME/./}000"; pid="$(start_timer_wait_process "${id}" "${epoch}")"
     update_timer_state_under_lock '. + [{id:$id, epoch:$epoch, kind:$kind, label:$label, pid:$pid}] | sort_by(.epoch)' \
       --arg id "${id}" --argjson epoch "${epoch}" --arg kind "${kind}" --arg label "${label}" --arg pid "${pid}"
     ;;
@@ -61,14 +66,12 @@ case "${1:-list}" in
     canberra-gtk-play -i alarm-clock-elapsed 2>/dev/null || pw-play /usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga 2>/dev/null || true
     ;;
   restore)
-    while IFS= read -r item; do
-      id="$(jq -r .id <<<"${item}")"; epoch="$(jq -r .epoch <<<"${item}")"
-      if ((epoch <= $(date +%s))); then "${timer_script_path}" fire "${id}"; continue; fi
-      pid="$(jq -r .pid <<<"${item}")"
+    while IFS=$'\t' read -r id epoch pid; do
+      if ((epoch <= EPOCHSECONDS)); then "${timer_script_path}" fire "${id}"; continue; fi
       timer_process_is_alive "${pid}" "${id}" && continue
       pid="$(start_timer_wait_process "${id}" "${epoch}")"
       update_timer_state_under_lock 'map(if .id == $id then .pid=$pid else . end)' --arg id "${id}" --arg pid "${pid}"
-    done < <(jq -c '.[]' "${timer_state_file}")
+    done < <(jq -r '.[] | [(.id // "null"), (.epoch // 0), (.pid // "null")] | @tsv' "${timer_state_file}")
     ;;
   *) usage >&2; exit 2 ;;
 esac

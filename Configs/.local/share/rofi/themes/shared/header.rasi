@@ -1,0 +1,65 @@
+* {
+    menu-spacing:                @control-gap;
+}
+
+inputbar {
+    enabled:                     true;
+    expand:                      false;
+    spacing:                     @menu-spacing;
+    margin:                      0px;
+    padding:                     0px;
+    border:                      0px;
+    border-radius:               0px;
+    border-color:                @border;
+    background-color:            transparent;
+    text-color:                  @foreground;
+    orientation:                 vertical;
+    children:                    [ "promptbar", "entry" ];
+}
+
+promptbar {
+    orientation:                 horizontal;
+    expand:                      false;
+    spacing:                     0px;
+    margin:                      0px;
+    padding:                     0px;
+    background-color:            transparent;
+    children:                    [ "textbox-prompt-colon", "textbox-prompt-label" ];
+}
+
+textbox-prompt-colon, textbox-prompt-label {
+    horizontal-align:            0.5;
+    vertical-align:              0.5;
+}
+
+textbox-prompt-colon {
+    width:                       @prompt-icon-width;
+    border-color:                @field-border;
+    border-radius:               @element-border-radius;
+    padding:                     @control-padding-y;
+    margin:                      @prompt-icon-margin;
+    expand:                      false;
+    background-color:            @selected-background;
+    text-color:                  @background;
+    str:                         "";
+}
+
+textbox-prompt-label {
+    border:                      0px;
+    border-color:                @field-border;
+    expand:                      false;
+    padding:                     @menu-spacing;
+    background-color:            transparent;
+    text-color:                  @accent;
+}
+
+entry {
+    enabled:                     true;
+    padding:                     @control-padding;
+    border:                      0px;
+    border-radius:               @element-border-radius;
+    background-color:            @field-background;
+    text-color:                  @foreground;
+    placeholder:                 "";
+    placeholder-color:           @separator;
+}

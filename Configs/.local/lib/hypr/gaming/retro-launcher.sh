@@ -71,7 +71,7 @@ install_retroarch_launcher() {
   [[ -f "${core_path}" ]] || { printf 'Core not found: %s\n' "${core_path}" >&2; return 1; }
   [[ -f "${game_path}" ]] || { printf 'Game not found: %s\n' "${game_path}" >&2; return 1; }
 
-  game_name="$(basename "${game_path}")"
+  game_name="${game_path##*/}"
   game_name="${game_name%.*}"
   game_name="$(sed -E 's/[[:space:]]*\([^)]*\)//g; s/[[:space:]]+/ /g; s/^ | $//g' <<<"${game_name}")"
   desktop_id="$(tr '[:upper:]' '[:lower:]' <<<"${game_name}" | tr -cs '[:alnum:]' '-' | sed 's/^-//; s/-$//')"

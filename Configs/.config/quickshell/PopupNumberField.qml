@@ -6,6 +6,7 @@ import QtQuick.Controls
 Column {
     id: root
     required property var shell
+    required property PopupCard popupController
     property string label: ""
     property int value: 0
     property int minimum: 0
@@ -31,9 +32,9 @@ Column {
     function finishEditing(step) {
         field.focus = false
         Qt.callLater(() => {
-            if (!shell.popupCard) return
-            shell.popupCard.resumeKeyboard()
-            if (step) shell.popupCard.moveCursor(step)
+            if (!popupController) return
+            popupController.resumeKeyboard()
+            if (step) popupController.moveCursor(step)
         })
     }
     function adjustKeyboard(direction) {
@@ -57,9 +58,9 @@ Column {
         inputMethodHints: Qt.ImhDigitsOnly
         validator: IntValidator { bottom: root.minimum; top: root.maximum }
         onActiveFocusChanged: {
-            if (!root.shell.popupCard) return
-            root.shell.popupCard.wantsKeyboard = activeFocus
-            if (activeFocus) { root.shell.popupCard.selectRow(root); selectAll() }
+            if (!root.popupController) return
+            root.popupController.wantsKeyboard = activeFocus
+            if (activeFocus) { root.popupController.selectRow(root); selectAll() }
         }
         onEditingFinished: {
             if (!root.canceling) root.commit()
@@ -84,10 +85,8 @@ Column {
         }
         background: Rectangle {
             radius: root.shell.rounding
-            color: root.cursored ? root.shell.hoverFill() : root.shell.alpha(root.shell.foreground, .06)
-            border.width: root.cursored || parent.activeFocus ? 2 : 1
-            border.color: root.cursored ? root.shell.hoverEdge(.85)
-                : root.shell.alpha(root.shell.foreground, parent.activeFocus ? .45 : .18)
+            color: root.cursored || parent.activeFocus ? root.shell.hoverFill() : root.shell.alpha(root.shell.foreground, Style.fieldFillAlpha)
+            border.color: root.shell.alpha(root.shell.foreground, Style.fieldBorderAlpha)
         }
     }
 }

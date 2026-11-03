@@ -48,22 +48,29 @@ download_and_install_font() {
 
 resolve() {
   local layout_path="${1}"
+  local font=""
   local name=""
   local url=""
+  local installed_fonts=""
+  local -a name_words=() url_words=()
 
-  layout_path="$(printf "%s" "${layout_path}")"
   layout_path="$(realpath "${layout_path}")"
   if [[ ! -f "${layout_path}" ]]; then
     echo "[font] Layout file not found: ${layout_path}"
     return 1
   fi
+  installed_fonts="$(fc-list)" || true
   # shellcheck disable=SC2016
   while IFS='=' read -r _ font; do
-    name=$(echo "$font" | awk -F'|' '{print $1}' | xargs)
-    url=$(echo "$font" | awk -F'|' '{print $2}' | xargs)
-    if ! fc-list | grep -q "${name}"; then
+    IFS='|' read -r name url _ <<<"${font}"
+    read -ra name_words <<<"${name}"
+    read -ra url_words <<<"${url}"
+    name="${name_words[*]}"
+    url="${url_words[*]}"
+    if ! grep -q "${name}" <<<"${installed_fonts}"; then
       download_and_install_font "$name" "$url" || return 1
       fc-cache -f "${font_dir}" || return 1
+      installed_fonts="$(fc-list)" || true
     fi
   done < <(grep -Eo '^\s*\$resolve\.font\s*=\s*[^|]+\s*\|\s*[^ ]+' "${layout_path}")
 }

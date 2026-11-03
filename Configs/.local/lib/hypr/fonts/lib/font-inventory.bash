@@ -6,22 +6,27 @@ require_cmd() {
   }
 }
 
-collect_search_roots() {
-  ACTIVE_SEARCH_ROOTS=()
+collect_search_roots_into() {
+  local -n roots_ref=$1
+  local root
+  roots_ref=()
   for root in "${SEARCH_ROOTS[@]}"; do
-    [[ -e "$root" ]] && ACTIVE_SEARCH_ROOTS+=("$root")
+    [[ -e "$root" ]] && roots_ref+=("$root")
   done
 }
 
-build_rg_args() {
-  RG_ARGS=(-n -i --color=never)
+build_rg_args_into() {
+  local -n rg_args_ref=$1
+  local glob
+  rg_args_ref=(-n -i --color=never)
   for glob in "${SEARCH_GLOBS[@]}"; do
-    RG_ARGS+=(--glob "$glob")
+    rg_args_ref+=(--glob "$glob")
   done
 }
 
-collect_live_font_refs() {
-  LIVE_FONT_REFS=()
+collect_live_font_refs_into() {
+  local -n live_refs_ref=$1
+  live_refs_ref=()
   command -v gsettings >/dev/null 2>&1 || return 0
 
   local entry schema key raw_value
@@ -30,7 +35,7 @@ collect_live_font_refs() {
     key="${entry#* }"
     raw_value="$(gsettings get "${schema}" "${key}" 2>/dev/null || true)"
     [[ -n "${raw_value}" && "${raw_value}" != "''" ]] || continue
-    LIVE_FONT_REFS+=("gsettings: ${schema} ${key} = ${raw_value}")
+    live_refs_ref+=("gsettings: ${schema} ${key} = ${raw_value}")
   done
 }
 
@@ -49,26 +54,21 @@ installed_size() {
   pacman -Qi "$1" 2>/dev/null | awk -F ': +' '/^Installed Size/ {print $2; exit}'
 }
 
-package_font_files() {
-  local pkg="$1"
-  pacman -Qlq "$pkg" 2>/dev/null | grep -E "$FONT_EXT_REGEX" || true
-}
-
 package_families() {
   local pkg="$1"
-  local font_file families_text
+  local font_file families_text=""
+  local -a font_files=()
 
   if [[ -n "${PACKAGE_FAMILY_CACHE[$pkg]+x}" ]]; then
     [[ -n "${PACKAGE_FAMILY_CACHE[$pkg]}" ]] && printf '%s\n' "${PACKAGE_FAMILY_CACHE[$pkg]}"
     return
   fi
 
-  families_text="$(
-    while IFS= read -r font_file; do
-      [[ -f "$font_file" ]] || continue
-      fc-scan --format '%{family}\n' "$font_file" 2>/dev/null || true
-    done < <(package_font_files "$pkg") | unique_family_names
-  )"
+  while IFS= read -r font_file; do
+    if [[ -f "$font_file" ]]; then font_files+=("$font_file"); fi
+  done <<<"${PACKAGE_FONT_FILES[$pkg]:-}"
+  ((${#font_files[@]} == 0)) \
+    || families_text="$(fc-scan --format '%{family}\n' "${font_files[@]}" 2>/dev/null | unique_family_names)" || true
 
   PACKAGE_FAMILY_CACHE["$pkg"]="${families_text}"
   [[ -n "${families_text}" ]] && printf '%s\n' "${families_text}"
@@ -97,10 +97,12 @@ summarize_families() {
   fi
 }
 
-collect_installed_font_packages() {
-  local pkg
+collect_installed_font_packages_into() {
+  local -n packages_ref=$1 package_files_ref=$2
+  local pkg line
   local -a candidates=()
-  INSTALLED_FONT_PACKAGES=()
+  packages_ref=()
+  package_files_ref=()
 
   while IFS= read -r pkg; do
     [[ -n "$pkg" ]] && candidates+=("$pkg")
@@ -110,30 +112,33 @@ collect_installed_font_packages() {
       | sort
   )
 
+  ((${#candidates[@]})) || return 0
+  while IFS= read -r line; do
+    if [[ "${line#* }" =~ ${FONT_EXT_REGEX} ]]; then package_files_ref["${line%% *}"]+="${line#* }"$'\n'; fi
+  done < <(pacman -Ql "${candidates[@]}" 2>/dev/null)
   for pkg in "${candidates[@]}"; do
-    if package_font_files "$pkg" | grep -q .; then
-      INSTALLED_FONT_PACKAGES+=("$pkg")
-    fi
+    if [[ -n "${package_files_ref[$pkg]:-}" ]]; then packages_ref+=("$pkg"); fi
   done
 }
 
-collect_local_font_families() {
+collect_local_font_families_into() {
+  local -n families_ref=$1 family_files_ref=$2 file_families_ref=$3
   local font_file family
-  declare -A seen_families=()
+  local -A seen_families=()
 
-  LOCAL_FONT_FAMILIES=()
-  LOCAL_FAMILY_FILES=()
-  LOCAL_FILE_FAMILIES=()
+  families_ref=()
+  family_files_ref=()
+  file_families_ref=()
   [[ -d "${LOCAL_FONT_ROOT}" ]] || return 0
 
   while IFS= read -r font_file; do
     while IFS= read -r family; do
       [[ -n "${family}" ]] || continue
-      LOCAL_FAMILY_FILES["${family}"]+="${font_file}"$'\n'
-      LOCAL_FILE_FAMILIES["${font_file}"]+="${family}"$'\n'
+      family_files_ref["${family}"]+="${font_file}"$'\n'
+      file_families_ref["${font_file}"]+="${family}"$'\n'
       if [[ -z "${seen_families[$family]:-}" ]]; then
         seen_families["${family}"]=1
-        LOCAL_FONT_FAMILIES+=("${family}")
+        families_ref+=("${family}")
       fi
     done < <(fc-scan --format '%{family}\n' "${font_file}" 2>/dev/null | unique_family_names)
   done < <(

@@ -1,3 +1,5 @@
+declare -F hypr_svc_user >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/services.bash" || return 1
+
 WINDOWS_WORKFLOW_THEME="Windows 11"
 
 workflow_theme_state() {
@@ -35,7 +37,7 @@ windows_enter() {
 }
 
 windows_restore() {
-  local previous current layout mode windows floating result
+  local previous current layout mode windows result
   previous="$(state_get WORKFLOW_WINDOWS_PREVIOUS)"
   [[ -n "${previous}" ]] || return 0
   current="$(workflow_theme_state)"
@@ -61,8 +63,7 @@ windows_restore() {
       + ",x=" + (.at[0] | tostring) + ",y=" + (.at[1] | tostring)
       + ",width=" + (.size[0] | tostring) + ",height=" + (.size[1] | tostring) + "}") | "{" + join(",") + "}"' <<<"${previous}")" || return 1
   fi
-  [[ "${active_workflow_name:-default}" == floating ]] && floating=true || floating=false
-  result="$(hyprctl repl "require(\"floating_windows\").restore(${windows}, ${floating})")" || return 1
+  result="$(hyprctl repl "require(\"floating_windows\").restore(${windows})")" || return 1
   [[ "${result}" == ok ]] || { printf '%s\n' "${result}" >&2; return 1; }
   [[ "${active_workflow_name:-default}" == gaming ]] || state_set WORKFLOW_WINDOWS_PREVIOUS "" staterc
 }

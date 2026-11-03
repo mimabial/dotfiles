@@ -57,5 +57,4 @@ for candidate in "${desktop}" "${app}"; do
 done
 
 [[ -n "${address}" ]] || exit 0
-launch_source_core_common || exit 1
 hypr_lua_dispatch "hl.dsp.focus({window=$(hypr_lua_quote "address:${address}")})" >/dev/null 2>&1

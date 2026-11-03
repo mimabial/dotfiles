@@ -5,9 +5,9 @@
 --
 -- Output is one tab-separated record per line:
 --
---   k  <key:path>  <type>  <value>                     a config setting
---   v  <name>  <type>  <value>                         a theme variable
---   a  <leaf>  <enabled>  <speed>  <bezier>  <style>   an animation leaf
+--   k  <key:path>  <type>  <value>                               a config setting
+--   v  <name>  <type>  <value>                                   a theme variable
+--   a  <leaf>  <enabled>  <speed>  <bezier>  <style>  <spring>   an animation leaf
 --
 -- Nothing is applied: every stub only records. Exits non-zero with the Lua
 -- error on stderr if the chunk does not load or run.
@@ -41,7 +41,7 @@ hl = {
     config = function(config) emit_config_entries(config, "") end,
     animation = function(animation)
         emit_record("a", animation.leaf or "", animation.enabled ~= false, animation.speed or "",
-            animation.bezier or "", animation.style or "")
+            animation.bezier or "", animation.style or "", animation.spring or "")
     end,
     curve = noop,
     window_rule = noop,

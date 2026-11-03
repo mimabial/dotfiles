@@ -92,3 +92,12 @@ hypr_svc_user_signal() {
       ;;
   esac
 }
+
+hypr_svc_user_signal_or_start() {
+  local name="${1:-}" sig="${2:-}"
+  if hypr_svc_user is-active "${name}"; then
+    hypr_svc_user_signal "${name}" "${sig}"
+  else
+    hypr_svc_user start "${name}"
+  fi
+}

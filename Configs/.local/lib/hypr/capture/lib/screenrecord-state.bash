@@ -84,7 +84,7 @@ emit_screenrecord_status_json() {
   if screenrecord_cleanup_state_and_check_active; then
     printf '{"text": "󰑋", "class": "recording", "tooltip": "Recording (click to stop)", "started": %s}\n' "$(stat -c %Y "$RECORDING_FILE")"
   else
-    rm -f "$RECORDING_FILE"
+    [[ ! -e "$RECORDING_FILE" ]] || rm -f "$RECORDING_FILE"
     # a stale file means the bar was last told "recording" and nothing else will correct it
     [[ "$had_state" == true ]] && screenrecord_refresh_bar
     echo '{"text": "󰑋", "class": "idle", "tooltip": "Start recording"}'

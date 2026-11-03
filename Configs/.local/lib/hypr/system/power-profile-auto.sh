@@ -3,6 +3,7 @@ set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 hypr_runtime_require state || exit 1
+declare -F hypr_dbus_get >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/dbus.bash" || exit 1
 workflows_script="${HYPR_LIB_DIR}/util/workflows.sh"
 
 # Edge-triggered: the UPower root object also emits PropertiesChanged for

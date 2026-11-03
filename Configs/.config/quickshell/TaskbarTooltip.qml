@@ -19,6 +19,7 @@ PopupWindow {
     property bool blocked: false
     property bool ready: false
     property bool advanced: true
+    property bool showPreview: false
     property int delay: 450
     property int selectedIndex: -1
     readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null
@@ -50,10 +51,10 @@ PopupWindow {
         onAnchoring: {
             if (!root.anchorWindow || !root.anchorItem) return
             let x = root.anchorItem.width / 2 - root.width / 2
-            let y = root.anchorItem.height + 6
-            if (root.edge === "bottom") y = -root.height - 6
+            let y = root.anchorItem.height + Commons.Style.gapsOut
+            if (root.edge === "bottom") y = -root.height - Commons.Style.gapsOut
             else if (root.edge === "left") {
-                x = root.anchorItem.width + 6
+                x = root.anchorItem.width + Commons.Style.gapsOut
                 y = root.anchorItem.height / 2 - root.height / 2
             }
             const point = root.anchorWindow.contentItem.mapFromItem(root.anchorItem, x, y)
@@ -64,9 +65,8 @@ PopupWindow {
     BorderSurface {
         id: bubble
         color: Commons.Util.alpha(Commons.Style.popupTinted(Commons.Color.tooltip.background), Commons.Style.popupSurfaceOpacity)
-        borderSpec: Commons.Border.surfaceSpec("tooltip", "border", Commons.Style.popupBorder(Commons.Color.tooltip.border), 1)
         radius: Commons.Style.cornerRadius
-        padding: Commons.Style.space(6)
+        padding: Commons.Style.spacing.popupPadding
         width: content.implicitWidth + contentLeftInset + contentRightInset
         height: content.implicitHeight + contentTopInset + contentBottomInset
         Dock.AppTooltipContent {
@@ -81,6 +81,14 @@ PopupWindow {
             windowFocused: root.windowFocused
             windowParked: root.windowParked
             windowLabel: root.windowLabel
+            previews: root.showPreview && root.visible
+            previewWidth: {
+                const count = Math.max(1, root.windows.length)
+                const available = root.anchorWindow?.screen?.width ?? Commons.Style.spacing.dropdownWidth
+                return Math.min(Commons.Style.spacing.dropdownWidth, Math.max(0,
+                    (available - bubble.contentLeftInset - bubble.contentRightInset
+                        - (count + 1) * Commons.Style.spacing.sm) / count))
+            }
         }
     }
 }

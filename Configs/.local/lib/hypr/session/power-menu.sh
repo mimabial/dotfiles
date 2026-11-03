@@ -3,11 +3,10 @@
 set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
-
-SCREEN_OFF_DELAY_S=0.4
+declare -F hypr_dbus_get >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/dbus.bash" || exit 1
 
 can_sleep() {
-  hypr_login1_call "Can$1" 2>/dev/null | grep -q 'string "yes"'
+  [[ "$(hypr_login1_call "Can$1" 2>/dev/null)" == *'string "yes"'* ]]
 }
 
 case "${1:-}" in
@@ -19,12 +18,11 @@ case "${1:-}" in
       "${suspend}" "${hibernate}" "${uptime%%.*}" "${USER:-$(id -un)}" "${HOSTNAME}"
     ;;
   screen-off)
-    sleep "${SCREEN_OFF_DELAY_S}"
     hypr_lua_dispatch 'hl.dsp.dpms({ action = "disable" })' >/dev/null 2>&1
     ;;
   hibernate)
-    hyprshell session/lid-close.sh --no-suspend
-    trap 'hyprshell gaming/gamemode-hook reconcile >/dev/null 2>&1 || true' EXIT
+    "${HYPR_LIB_DIR}/session/lid-close.sh" --no-suspend
+    trap '"${HYPR_LIB_DIR}/gaming/gamemode-hook.sh" reconcile >/dev/null 2>&1 || true' EXIT
     hypr_login1_call Hibernate boolean:true >/dev/null 2>&1 && exit 0
     command -v ZZZ >/dev/null && exec ZZZ
     notify_send_safe -u critical 'Hibernate failed' 'No supported hibernate command found'

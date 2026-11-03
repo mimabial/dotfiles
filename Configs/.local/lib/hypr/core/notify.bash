@@ -24,10 +24,11 @@ NOTIFY_ID_SUBMAP_HINT=9042
 NOTIFY_ID_KEYBOARD_LAYOUT=91190
 
 notify_send_safe() {
-  local notifier output rc
+  local notifier=notify-send output rc
   local -a command
 
-  notifier="$(command -v notify-send 2>/dev/null || command -v dunstify 2>/dev/null)" || {
+  command -v "${notifier}" >/dev/null 2>&1 || notifier=dunstify
+  command -v "${notifier}" >/dev/null 2>&1 || {
     printf 'WARN: notification command unavailable; notification skipped\n' >&2
     return 1
   }

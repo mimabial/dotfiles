@@ -48,7 +48,7 @@ leave it alone.
 ## Both are rows in the panel
 
 Animation preset and screen shader are also rows in the look-and-feel TUI
-(`Super + T` then `V`). The panel does not reimplement them — the row dispatches
+(`Super + T` then `L`). The panel does not reimplement them — the row dispatches
 into these same scripts. One pipeline, two front ends.
 
 ## Nightlight is separate

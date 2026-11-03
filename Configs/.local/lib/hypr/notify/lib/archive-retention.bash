@@ -2,11 +2,12 @@ prune_archive_locked() {
   local cutoff="" keep_days="" max_items="" before="" after="" oldest="" tmp=""
   local ms_per_day=86400000
 
-  keep_days="$(archive_setting NOTIFY_KEEP_DAYS "${ARCHIVE_DEFAULT_KEEP_DAYS}")"
-  max_items="$(archive_setting NOTIFY_MAX_ITEMS "${ARCHIVE_DEFAULT_MAX_ITEMS}")"
+  archive_setting_into keep_days NOTIFY_KEEP_DAYS "${ARCHIVE_DEFAULT_KEEP_DAYS}"
+  archive_setting_into max_items NOTIFY_MAX_ITEMS "${ARCHIVE_DEFAULT_MAX_ITEMS}"
   [[ "${keep_days}" =~ ^[0-9]+$ ]] || keep_days="${ARCHIVE_DEFAULT_KEEP_DAYS}"
   [[ "${max_items}" =~ ^[0-9]+$ ]] && ((max_items > 0)) || max_items="${ARCHIVE_DEFAULT_MAX_ITEMS}"
-  cutoff=$(($(archive_timestamp_ms) - keep_days * ms_per_day))
+  archive_timestamp_ms_into cutoff
+  cutoff=$((cutoff - keep_days * ms_per_day))
 
   before="$(wc -l <"${archive}" 2>/dev/null || echo 0)"
   if ((before <= max_items)); then

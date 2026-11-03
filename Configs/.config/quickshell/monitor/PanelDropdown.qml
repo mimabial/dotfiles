@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import qs.Commons as Commons
+import qs.Ui as Ui
 import "Ui"
 
 // The menu is positioned in panel coordinates instead of relying on Popup's implicit parent, which keeps it attached to
@@ -87,8 +88,7 @@ Item {
       readonly property bool focused: activeFocus
       readonly property bool hot: triggerHover.hovered || root.hasCursor
       color: Commons.Style.controlFill(focused, hot, root.foreground, root.accent)
-      borderSpec: Commons.Border.controlSpec(focused ? "focus" : (hot ? "hover-cursor" : "normal"),
-                                     root.foreground, root.accent)
+      borderSpec: Commons.Border.controlSpec("normal", root.foreground, root.accent)
 
       HoverHandler {
         id: triggerHover
@@ -196,7 +196,7 @@ Item {
       boundsBehavior: Flickable.StopAtBounds
       model: root.options
       currentIndex: -1
-      ScrollBar.vertical: ScrollBar {
+      ScrollBar.vertical: Ui.PanelScrollBar {
         policy: root.scrollable && optionList.contentHeight > optionList.height
           ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
       }

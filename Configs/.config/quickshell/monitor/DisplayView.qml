@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import ".." as Shell
 import qs.Commons as Commons
+import qs.Ui as Ui
 import "Ui"
 import "Model.js" as Model
 
@@ -344,11 +345,8 @@ KeyboardPanel {
             workspacePlan: panel.controller.workspacePlan
             emphasis: "layout"
             selectedKey: panel.controller.selectedOutputKey
-            interactive: false
             selectable: panel.controller.editorReady
             movable: panel.controller.managedChecked && panel.controller.editorReady && !panel.controller.editPending && panel.controller.previewTransaction === ""
-            detailed: true
-            framed: false
             foreground: panel.controller.foreground
             dim: panel.controller.dim
             accent: Commons.Color.accent
@@ -751,11 +749,8 @@ KeyboardPanel {
               workspacePlan: panel.controller.workspacePlan
               emphasis: "layout"
               selectedKey: panel.controller.selectedOutputKey
-              interactive: false
               selectable: panel.controller.editorReady
               movable: panel.controller.managedChecked && panel.controller.editorReady && !panel.controller.editPending && panel.controller.previewTransaction === ""
-              detailed: true
-              framed: false
               foreground: panel.controller.foreground
               dim: panel.controller.dim
               accent: Commons.Color.accent
@@ -866,387 +861,425 @@ KeyboardPanel {
                 }
               }
 
-              Column {
-                visible: panel.controller.inspectorPage === "display"
+              Flickable {
+                id: inspectorScroll
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: inspectorTabs.bottom
+                anchors.bottom: parent.bottom
                 anchors.topMargin: Commons.Style.space(9)
-                spacing: Commons.Style.space(9)
-
-                BrightnessControl {
-                  visible: panel.controller.brightnessConnector !== ""
-                  width: parent.width
-                  shell: panel.controller.shell
-                  connector: panel.controller.brightnessConnector
-                  displayLabel: panel.controller.brightnessDisplayLabel
-                  value: panel.controller.brightnessPercent
-                  available: panel.controller.brightnessAvailable
-                  loading: panel.controller.brightnessLoading
-                  foreground: panel.controller.foreground
-                  dim: panel.controller.dim
-                  accent: Commons.Color.accent
-                  fontFamily: panel.controller.fontFamily
-                  onPreviewed: function(value) { panel.controller.setBrightness(value) }
-                  onCommitted: function(value) { panel.controller.setBrightness(value) }
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                flickableDirection: Flickable.VerticalFlick
+                contentHeight: displayInspector.visible ? displayInspector.height : colorInspector.height
+                readonly property real pageWidth: width - (inspectorScrollBar.visible
+                  ? inspectorScrollBar.width + Commons.Style.space(4) : 0)
+                onContentHeightChanged: returnToBounds()
+                ScrollBar.vertical: Ui.PanelScrollBar {
+                  id: inspectorScrollBar
+                  policy: ScrollBar.AsNeeded
                 }
 
-                PanelSeparator {
-                  visible: panel.controller.brightnessConnector !== ""
-                  width: parent.width
-                  foreground: panel.controller.foreground
+                function cursorField(item) {
+                  if ("hasCursor" in item) return item.hasCursor ? item : null
+                  for (var index = 0; index < item.children.length; index++) {
+                    var field = cursorField(item.children[index])
+                    if (field) return field
+                  }
+                  return null
                 }
 
-                Toggle {
-                  id: displayEnabledToggle
-                  width: parent.width
-                  label: "Enabled"
-                  description: checked ? "This display participates in the layout" : "Saved as off"
-                  checked: panel.controller.selectedOutput ? panel.controller.selectedOutput.enabled !== false : false
-                  enabled: panel.controller.managedChecked && !!panel.controller.selectedOutput && !panel.controller.editPending
-                    && (checked ? Model.enabledOutputCount(panel.controller.draftProfile) > 1 : true)
-                  opacity: panel.controller.managedChecked ? 1.0 : panel.controller.unmanagedOpacity
-                  hasCursor: panel.controller.inspectorHasCursor("enabled")
-                  foreground: panel.controller.foreground
-                  fontFamily: panel.controller.fontFamily
-                  onClicked: panel.controller.editOutput({ enabled: !checked })
+                function revealCursorField() {
+                  var field = cursorField(displayInspector.visible ? displayInspector : colorInspector)
+                  if (!field) return
+                  var top = field.mapToItem(contentItem, 0, 0).y
+                  if (top < contentY) contentY = top
+                  else if (top + field.height > contentY + height) contentY = top + field.height - height
                 }
 
-                Grid {
-                  width: parent.width
-                  columns: 2
-                  spacing: Commons.Style.space(8)
-                  enabled: panel.controller.managedChecked
-                  opacity: panel.controller.managedChecked ? 1.0 : panel.controller.unmanagedOpacity
-                  readonly property real cellWidth: (width - spacing) / 2
+                Connections {
+                  target: panel.controller
+                  function onKeyboardInspectorFieldChanged() { Qt.callLater(inspectorScroll.revealCursorField) }
+                }
 
-                  PanelDropdown {
-                    id: modeDropdown
-                    popupParent: keyCatcher
-                    ownerOpen: panel.controller.opened && panel.controller.expanded
-                    width: parent.cellWidth
-                    label: "MODE"
-                    options: Model.modeOptions(panel.controller.editorDocument.displays, panel.controller.selectedOutputKey)
-                    value: panel.controller.selectedOutput ? Model.outputMode(panel.controller.selectedOutput) : ""
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("mode")
+                Column {
+                  id: displayInspector
+                  visible: panel.controller.inspectorPage === "display"
+                  width: inspectorScroll.pageWidth
+                  spacing: Commons.Style.space(9)
+
+                  BrightnessControl {
+                    visible: panel.controller.brightnessConnector !== ""
+                    width: parent.width
+                    shell: panel.controller.shell
+                    connector: panel.controller.brightnessConnector
+                    displayLabel: panel.controller.brightnessDisplayLabel
+                    value: panel.controller.brightnessPercent
+                    available: panel.controller.brightnessAvailable
+                    loading: panel.controller.brightnessLoading
                     foreground: panel.controller.foreground
+                    dim: panel.controller.dim
+                    accent: Commons.Color.accent
                     fontFamily: panel.controller.fontFamily
-                    onChanged: function(value) { panel.controller.editOutput({ mode: value }) }
+                    onPreviewed: function(value) { panel.controller.setBrightness(value) }
+                    onCommitted: function(value) { panel.controller.setBrightness(value) }
                   }
 
-                  PanelDropdown {
-                    id: scaleDropdown
-                    popupParent: keyCatcher
-                    ownerOpen: panel.controller.opened && panel.controller.expanded
-                    width: parent.cellWidth
-                    label: "SCALE"
-                    options: Model.scaleOptions(panel.controller.editorDocument.displays, panel.controller.selectedOutputKey,
-                      panel.controller.selectedOutput ? panel.controller.selectedOutput.scale : 1)
-                    value: panel.controller.selectedOutput ? Model.formatScale(panel.controller.selectedOutput.scale) : "1"
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("scale")
+                  PanelSeparator {
+                    visible: panel.controller.brightnessConnector !== ""
+                    width: parent.width
                     foreground: panel.controller.foreground
-                    fontFamily: panel.controller.fontFamily
-                    onChanged: function(value) { panel.controller.editOutput({ scale: Number(value) }) }
                   }
 
-                  PanelDropdown {
-                    id: vrrDropdown
-                    popupParent: keyCatcher
-                    ownerOpen: panel.controller.opened && panel.controller.expanded
-                    width: parent.cellWidth
-                    label: "VRR"
-                    options: panel.controller.vrrOptions
-                    value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.vrr || 0) : "0"
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("vrr")
+                  Toggle {
+                    id: displayEnabledToggle
+                    width: parent.width
+                    label: "Enabled"
+                    description: checked ? "This display participates in the layout" : "Saved as off"
+                    checked: panel.controller.selectedOutput ? panel.controller.selectedOutput.enabled !== false : false
+                    enabled: panel.controller.managedChecked && !!panel.controller.selectedOutput && !panel.controller.editPending
+                      && (checked ? Model.enabledOutputCount(panel.controller.draftProfile) > 1 : true)
+                    opacity: panel.controller.managedChecked ? 1.0 : panel.controller.unmanagedOpacity
+                    hasCursor: panel.controller.inspectorHasCursor("enabled")
                     foreground: panel.controller.foreground
                     fontFamily: panel.controller.fontFamily
-                    onChanged: function(value) { panel.controller.editOutput({ vrr: Number(value) }) }
+                    onClicked: panel.controller.editOutput({ enabled: !checked })
                   }
 
-                  PanelDropdown {
-                    id: rotationDropdown
-                    popupParent: keyCatcher
-                    ownerOpen: panel.controller.opened && panel.controller.expanded
-                    width: parent.cellWidth
-                    label: "ROTATION"
-                    options: panel.controller.transformOptions
-                    value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.transform || 0) : "0"
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("rotation")
-                    foreground: panel.controller.foreground
-                    fontFamily: panel.controller.fontFamily
-                    onChanged: function(value) { panel.controller.editOutput({ transform: Number(value) }) }
-                  }
+                  Grid {
+                    width: parent.width
+                    columns: 2
+                    spacing: Commons.Style.space(8)
+                    enabled: panel.controller.managedChecked
+                    opacity: panel.controller.managedChecked ? 1.0 : panel.controller.unmanagedOpacity
+                    readonly property real cellWidth: (width - spacing) / 2
 
-                  NumberField {
-                    id: positionXField
-                    width: parent.cellWidth
-                    fieldWidth: width
-                    label: "POSITION X"
-                    from: -20000
-                    to: 20000
-                    value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.x || 0) : 0
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("positionX")
-                    foreground: panel.controller.foreground
-                    fontFamily: panel.controller.fontFamily
-                    onModified: function(value) {
-                      panel.controller.editOutput({ x: value })
-                      Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+                    PanelDropdown {
+                      id: modeDropdown
+                      popupParent: keyCatcher
+                      ownerOpen: panel.controller.opened && panel.controller.expanded
+                      width: parent.cellWidth
+                      label: "MODE"
+                      options: Model.modeOptions(panel.controller.editorDocument.displays, panel.controller.selectedOutputKey)
+                      value: panel.controller.selectedOutput ? Model.outputMode(panel.controller.selectedOutput) : ""
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("mode")
+                      foreground: panel.controller.foreground
+                      fontFamily: panel.controller.fontFamily
+                      onChanged: function(value) { panel.controller.editOutput({ mode: value }) }
+                    }
+
+                    PanelDropdown {
+                      id: scaleDropdown
+                      popupParent: keyCatcher
+                      ownerOpen: panel.controller.opened && panel.controller.expanded
+                      width: parent.cellWidth
+                      label: "SCALE"
+                      options: Model.scaleOptions(panel.controller.editorDocument.displays, panel.controller.selectedOutputKey,
+                        panel.controller.selectedOutput ? panel.controller.selectedOutput.scale : 1)
+                      value: panel.controller.selectedOutput ? Model.formatScale(panel.controller.selectedOutput.scale) : "1"
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("scale")
+                      foreground: panel.controller.foreground
+                      fontFamily: panel.controller.fontFamily
+                      onChanged: function(value) { panel.controller.editOutput({ scale: Number(value) }) }
+                    }
+
+                    PanelDropdown {
+                      id: vrrDropdown
+                      popupParent: keyCatcher
+                      ownerOpen: panel.controller.opened && panel.controller.expanded
+                      width: parent.cellWidth
+                      label: "VRR"
+                      options: panel.controller.vrrOptions
+                      value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.vrr || 0) : "0"
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("vrr")
+                      foreground: panel.controller.foreground
+                      fontFamily: panel.controller.fontFamily
+                      onChanged: function(value) { panel.controller.editOutput({ vrr: Number(value) }) }
+                    }
+
+                    PanelDropdown {
+                      id: rotationDropdown
+                      popupParent: keyCatcher
+                      ownerOpen: panel.controller.opened && panel.controller.expanded
+                      width: parent.cellWidth
+                      label: "ROTATION"
+                      options: panel.controller.transformOptions
+                      value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.transform || 0) : "0"
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("rotation")
+                      foreground: panel.controller.foreground
+                      fontFamily: panel.controller.fontFamily
+                      onChanged: function(value) { panel.controller.editOutput({ transform: Number(value) }) }
+                    }
+
+                    NumberField {
+                      id: positionXField
+                      width: parent.cellWidth
+                      fieldWidth: width
+                      label: "POSITION X"
+                      from: -20000
+                      to: 20000
+                      value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.x || 0) : 0
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("positionX")
+                      foreground: panel.controller.foreground
+                      fontFamily: panel.controller.fontFamily
+                      onModified: function(value) {
+                        panel.controller.editOutput({ x: value })
+                        Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+                      }
+                    }
+
+                    NumberField {
+                      id: positionYField
+                      width: parent.cellWidth
+                      fieldWidth: width
+                      label: "POSITION Y"
+                      from: -20000
+                      to: 20000
+                      value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.y || 0) : 0
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("positionY")
+                      foreground: panel.controller.foreground
+                      fontFamily: panel.controller.fontFamily
+                      onModified: function(value) {
+                        panel.controller.editOutput({ y: value })
+                        Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+                      }
                     }
                   }
 
-                  NumberField {
-                    id: positionYField
-                    width: parent.cellWidth
-                    fieldWidth: width
-                    label: "POSITION Y"
-                    from: -20000
-                    to: 20000
-                    value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.y || 0) : 0
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("positionY")
-                    foreground: panel.controller.foreground
-                    fontFamily: panel.controller.fontFamily
-                    onModified: function(value) {
-                      panel.controller.editOutput({ y: value })
-                      Qt.callLater(function() { keyCatcher.forceActiveFocus() })
-                    }
-                  }
-                }
-
-                PanelDropdown {
-                  id: mirrorDropdown
-                  popupParent: keyCatcher
-                  ownerOpen: panel.controller.opened && panel.controller.expanded
-                  width: parent.width
-                  label: "MIRROR"
-                  options: Model.mirrorOptions(panel.controller.draftProfile, panel.controller.selectedOutputKey)
-                  value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.mirror_of || "") : ""
-                  enabled: panel.controller.managedChecked && !!panel.controller.selectedOutput && !panel.controller.editPending
-                  hasCursor: panel.controller.inspectorHasCursor("mirror")
-                  opacity: panel.controller.managedChecked ? 1.0 : panel.controller.unmanagedOpacity
-                  foreground: panel.controller.foreground
-                  fontFamily: panel.controller.fontFamily
-                  onChanged: function(value) { panel.controller.editOutput({ mirror_of: value }) }
-                }
-              }
-
-              Column {
-                visible: panel.controller.inspectorPage === "color"
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: inspectorTabs.bottom
-                anchors.topMargin: Commons.Style.space(9)
-                spacing: Commons.Style.space(8)
-                enabled: panel.controller.managedChecked
-                opacity: panel.controller.managedChecked ? 1.0 : panel.controller.unmanagedOpacity
-
-                Grid {
-                  width: parent.width
-                  columns: 2
-                  spacing: Commons.Style.space(7)
-                  readonly property real cellWidth: (width - spacing) / 2
-
                   PanelDropdown {
-                    id: bitdepthDropdown
+                    id: mirrorDropdown
                     popupParent: keyCatcher
                     ownerOpen: panel.controller.opened && panel.controller.expanded
-                    width: parent.cellWidth
-                    label: "BIT DEPTH"
-                    options: panel.controller.bitdepthOptions
-                    value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.bitdepth || 8) : "8"
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("bitdepth")
+                    width: parent.width
+                    label: "MIRROR"
+                    options: Model.mirrorOptions(panel.controller.draftProfile, panel.controller.selectedOutputKey)
+                    value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.mirror_of || "") : ""
+                    enabled: panel.controller.managedChecked && !!panel.controller.selectedOutput && !panel.controller.editPending
+                    hasCursor: panel.controller.inspectorHasCursor("mirror")
+                    opacity: panel.controller.managedChecked ? 1.0 : panel.controller.unmanagedOpacity
                     foreground: panel.controller.foreground
                     fontFamily: panel.controller.fontFamily
-                    onChanged: function(value) { panel.controller.editOutput({ bitdepth: Number(value) }) }
-                  }
-
-                  PanelDropdown {
-                    id: colorManagementDropdown
-                    popupParent: keyCatcher
-                    ownerOpen: panel.controller.opened && panel.controller.expanded
-                    width: parent.cellWidth
-                    label: "COLOR MANAGEMENT"
-                    options: panel.controller.colorManagementOptions
-                    value: panel.controller.selectedOutput && String(panel.controller.selectedOutput.cm || "") !== ""
-                      ? String(panel.controller.selectedOutput.cm) : "srgb"
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("colorManagement")
-                    foreground: panel.controller.foreground
-                    fontFamily: panel.controller.fontFamily
-                    onChanged: function(value) { panel.controller.editOutput({ cm: value }) }
-                  }
-
-                  DecimalField {
-                    controller: panel.controller
-                    keyTarget: keyCatcher
-                    id: sdrBrightnessField
-                    width: parent.cellWidth
-                    label: "SDR BRIGHTNESS"
-                    value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.sdr_brightness || 0) : 0
-                    decimals: 2
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("sdrBrightness")
-                    onModified: function(value) { panel.controller.editOutput({ sdr_brightness: value }) }
-                  }
-
-                  DecimalField {
-                    controller: panel.controller
-                    keyTarget: keyCatcher
-                    id: sdrSaturationField
-                    width: parent.cellWidth
-                    label: "SDR SATURATION"
-                    value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.sdr_saturation || 0) : 0
-                    decimals: 2
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("sdrSaturation")
-                    onModified: function(value) { panel.controller.editOutput({ sdr_saturation: value }) }
-                  }
-
-                  DecimalField {
-                    controller: panel.controller
-                    keyTarget: keyCatcher
-                    id: sdrMinLuminanceField
-                    width: parent.cellWidth
-                    label: "SDR MIN LUMINANCE"
-                    value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.sdr_min_luminance || 0) : 0
-                    decimals: 3
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("sdrMinLuminance")
-                    onModified: function(value) { panel.controller.editOutput({ sdr_min_luminance: value }) }
-                  }
-
-                  DecimalField {
-                    controller: panel.controller
-                    keyTarget: keyCatcher
-                    id: sdrMaxLuminanceField
-                    width: parent.cellWidth
-                    label: "SDR MAX LUMINANCE"
-                    value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.sdr_max_luminance || 0) : 0
-                    decimals: 0
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("sdrMaxLuminance")
-                    onModified: function(value) { panel.controller.editOutput({ sdr_max_luminance: Math.round(value) }) }
-                  }
-
-                  PanelDropdown {
-                    id: sdrCurveDropdown
-                    popupParent: keyCatcher
-                    ownerOpen: panel.controller.opened && panel.controller.expanded
-                    width: parent.cellWidth
-                    label: "SDR CURVE"
-                    options: [
-                      { value: "default", label: "Default" },
-                      { value: "gamma22", label: "Gamma 2.2" },
-                      { value: "srgb", label: "sRGB" }
-                    ]
-                    value: panel.controller.selectedOutput && String(panel.controller.selectedOutput.sdr_eotf || "") !== ""
-                      ? String(panel.controller.selectedOutput.sdr_eotf) : "default"
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("sdrCurve")
-                    foreground: panel.controller.foreground
-                    fontFamily: panel.controller.fontFamily
-                    onChanged: function(value) { panel.controller.editOutput({ sdr_eotf: value }) }
-                  }
-
-                  DecimalField {
-                    controller: panel.controller
-                    keyTarget: keyCatcher
-                    id: minLuminanceField
-                    width: parent.cellWidth
-                    label: "MIN LUMINANCE"
-                    value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.min_luminance || 0) : 0
-                    decimals: 3
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("minLuminance")
-                    onModified: function(value) { panel.controller.editOutput({ min_luminance: value }) }
-                  }
-
-                  DecimalField {
-                    controller: panel.controller
-                    keyTarget: keyCatcher
-                    id: maxLuminanceField
-                    width: parent.cellWidth
-                    label: "MAX LUMINANCE"
-                    value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.max_luminance || 0) : 0
-                    decimals: 0
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("maxLuminance")
-                    onModified: function(value) { panel.controller.editOutput({ max_luminance: Math.round(value) }) }
-                  }
-
-                  DecimalField {
-                    controller: panel.controller
-                    keyTarget: keyCatcher
-                    id: maxAvgLuminanceField
-                    width: parent.cellWidth
-                    label: "MAX AVG LUMINANCE"
-                    value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.max_avg_luminance || 0) : 0
-                    decimals: 0
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("maxAverageLuminance")
-                    onModified: function(value) { panel.controller.editOutput({ max_avg_luminance: Math.round(value) }) }
-                  }
-
-                  PanelDropdown {
-                    id: forceWideDropdown
-                    popupParent: keyCatcher
-                    ownerOpen: panel.controller.opened && panel.controller.expanded
-                    width: parent.cellWidth
-                    label: "FORCE WIDE GAMUT"
-                    options: panel.controller.triStateOptions
-                    value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.supports_wide_color || 0) : "0"
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("forceWideColor")
-                    foreground: panel.controller.foreground
-                    fontFamily: panel.controller.fontFamily
-                    onChanged: function(value) { panel.controller.editOutput({ supports_wide_color: Number(value) }) }
-                  }
-
-                  PanelDropdown {
-                    id: forceHdrDropdown
-                    popupParent: keyCatcher
-                    ownerOpen: panel.controller.opened && panel.controller.expanded
-                    width: parent.cellWidth
-                    label: "FORCE HDR"
-                    options: panel.controller.triStateOptions
-                    value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.supports_hdr || 0) : "0"
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("forceHdr")
-                    foreground: panel.controller.foreground
-                    fontFamily: panel.controller.fontFamily
-                    onChanged: function(value) { panel.controller.editOutput({ supports_hdr: Number(value) }) }
+                    onChanged: function(value) { panel.controller.editOutput({ mirror_of: value }) }
                   }
                 }
 
                 Column {
-                  width: parent.width
-                  spacing: Commons.Style.space(4)
+                  id: colorInspector
+                  visible: panel.controller.inspectorPage === "color"
+                  width: inspectorScroll.pageWidth
+                  spacing: Commons.Style.space(8)
+                  enabled: panel.controller.managedChecked
+                  opacity: panel.controller.managedChecked ? 1.0 : panel.controller.unmanagedOpacity
 
-                  PanelSectionHeader {
-                    text: "ICC PROFILE"
-                    foreground: panel.controller.foreground
-                    fontFamily: panel.controller.fontFamily
+                  Grid {
+                    width: parent.width
+                    columns: 2
+                    spacing: Commons.Style.space(7)
+                    readonly property real cellWidth: (width - spacing) / 2
+
+                    PanelDropdown {
+                      id: bitdepthDropdown
+                      popupParent: keyCatcher
+                      ownerOpen: panel.controller.opened && panel.controller.expanded
+                      width: parent.cellWidth
+                      label: "BIT DEPTH"
+                      options: panel.controller.bitdepthOptions
+                      value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.bitdepth || 8) : "8"
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("bitdepth")
+                      foreground: panel.controller.foreground
+                      fontFamily: panel.controller.fontFamily
+                      onChanged: function(value) { panel.controller.editOutput({ bitdepth: Number(value) }) }
+                    }
+
+                    PanelDropdown {
+                      id: colorManagementDropdown
+                      popupParent: keyCatcher
+                      ownerOpen: panel.controller.opened && panel.controller.expanded
+                      width: parent.cellWidth
+                      label: "COLOR MANAGEMENT"
+                      options: panel.controller.colorManagementOptions
+                      value: panel.controller.selectedOutput && String(panel.controller.selectedOutput.cm || "") !== ""
+                        ? String(panel.controller.selectedOutput.cm) : "srgb"
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("colorManagement")
+                      foreground: panel.controller.foreground
+                      fontFamily: panel.controller.fontFamily
+                      onChanged: function(value) { panel.controller.editOutput({ cm: value }) }
+                    }
+
+                    DecimalField {
+                      controller: panel.controller
+                      keyTarget: keyCatcher
+                      id: sdrBrightnessField
+                      width: parent.cellWidth
+                      label: "SDR BRIGHTNESS"
+                      value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.sdr_brightness || 0) : 0
+                      decimals: 2
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("sdrBrightness")
+                      onModified: function(value) { panel.controller.editOutput({ sdr_brightness: value }) }
+                    }
+
+                    DecimalField {
+                      controller: panel.controller
+                      keyTarget: keyCatcher
+                      id: sdrSaturationField
+                      width: parent.cellWidth
+                      label: "SDR SATURATION"
+                      value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.sdr_saturation || 0) : 0
+                      decimals: 2
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("sdrSaturation")
+                      onModified: function(value) { panel.controller.editOutput({ sdr_saturation: value }) }
+                    }
+
+                    DecimalField {
+                      controller: panel.controller
+                      keyTarget: keyCatcher
+                      id: sdrMinLuminanceField
+                      width: parent.cellWidth
+                      label: "SDR MIN LUMINANCE"
+                      value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.sdr_min_luminance || 0) : 0
+                      decimals: 3
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("sdrMinLuminance")
+                      onModified: function(value) { panel.controller.editOutput({ sdr_min_luminance: value }) }
+                    }
+
+                    DecimalField {
+                      controller: panel.controller
+                      keyTarget: keyCatcher
+                      id: sdrMaxLuminanceField
+                      width: parent.cellWidth
+                      label: "SDR MAX LUMINANCE"
+                      value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.sdr_max_luminance || 0) : 0
+                      decimals: 0
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("sdrMaxLuminance")
+                      onModified: function(value) { panel.controller.editOutput({ sdr_max_luminance: Math.round(value) }) }
+                    }
+
+                    PanelDropdown {
+                      id: sdrCurveDropdown
+                      popupParent: keyCatcher
+                      ownerOpen: panel.controller.opened && panel.controller.expanded
+                      width: parent.cellWidth
+                      label: "SDR CURVE"
+                      options: [
+                        { value: "default", label: "Default" },
+                        { value: "gamma22", label: "Gamma 2.2" },
+                        { value: "srgb", label: "sRGB" }
+                      ]
+                      value: panel.controller.selectedOutput && String(panel.controller.selectedOutput.sdr_eotf || "") !== ""
+                        ? String(panel.controller.selectedOutput.sdr_eotf) : "default"
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("sdrCurve")
+                      foreground: panel.controller.foreground
+                      fontFamily: panel.controller.fontFamily
+                      onChanged: function(value) { panel.controller.editOutput({ sdr_eotf: value }) }
+                    }
+
+                    DecimalField {
+                      controller: panel.controller
+                      keyTarget: keyCatcher
+                      id: minLuminanceField
+                      width: parent.cellWidth
+                      label: "MIN LUMINANCE"
+                      value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.min_luminance || 0) : 0
+                      decimals: 3
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("minLuminance")
+                      onModified: function(value) { panel.controller.editOutput({ min_luminance: value }) }
+                    }
+
+                    DecimalField {
+                      controller: panel.controller
+                      keyTarget: keyCatcher
+                      id: maxLuminanceField
+                      width: parent.cellWidth
+                      label: "MAX LUMINANCE"
+                      value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.max_luminance || 0) : 0
+                      decimals: 0
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("maxLuminance")
+                      onModified: function(value) { panel.controller.editOutput({ max_luminance: Math.round(value) }) }
+                    }
+
+                    DecimalField {
+                      controller: panel.controller
+                      keyTarget: keyCatcher
+                      id: maxAvgLuminanceField
+                      width: parent.cellWidth
+                      label: "MAX AVG LUMINANCE"
+                      value: panel.controller.selectedOutput ? Number(panel.controller.selectedOutput.max_avg_luminance || 0) : 0
+                      decimals: 0
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("maxAverageLuminance")
+                      onModified: function(value) { panel.controller.editOutput({ max_avg_luminance: Math.round(value) }) }
+                    }
+
+                    PanelDropdown {
+                      id: forceWideDropdown
+                      popupParent: keyCatcher
+                      ownerOpen: panel.controller.opened && panel.controller.expanded
+                      width: parent.cellWidth
+                      label: "FORCE WIDE GAMUT"
+                      options: panel.controller.triStateOptions
+                      value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.supports_wide_color || 0) : "0"
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("forceWideColor")
+                      foreground: panel.controller.foreground
+                      fontFamily: panel.controller.fontFamily
+                      onChanged: function(value) { panel.controller.editOutput({ supports_wide_color: Number(value) }) }
+                    }
+
+                    PanelDropdown {
+                      id: forceHdrDropdown
+                      popupParent: keyCatcher
+                      ownerOpen: panel.controller.opened && panel.controller.expanded
+                      width: parent.cellWidth
+                      label: "FORCE HDR"
+                      options: panel.controller.triStateOptions
+                      value: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.supports_hdr || 0) : "0"
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("forceHdr")
+                      foreground: panel.controller.foreground
+                      fontFamily: panel.controller.fontFamily
+                      onChanged: function(value) { panel.controller.editOutput({ supports_hdr: Number(value) }) }
+                    }
                   }
 
-                  TextField {
-                    id: iccProfileInput
+                  Column {
                     width: parent.width
-                    text: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.icc || "") : ""
-                    placeholderText: "None — enter an absolute profile path"
-                    enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
-                    hasCursor: panel.controller.inspectorHasCursor("iccProfile")
-                    foreground: panel.controller.foreground
-                    onEditingFinished: {
-                      var returnToKeyboard = activeFocus
-                      panel.controller.editOutput({ icc: text })
-                      if (returnToKeyboard)
-                        Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+                    spacing: Commons.Style.space(4)
+
+                    PanelSectionHeader {
+                      text: "ICC PROFILE"
+                      foreground: panel.controller.foreground
+                      fontFamily: panel.controller.fontFamily
+                    }
+
+                    TextField {
+                      id: iccProfileInput
+                      width: parent.width
+                      text: panel.controller.selectedOutput ? String(panel.controller.selectedOutput.icc || "") : ""
+                      placeholderText: "None — enter an absolute profile path"
+                      enabled: !!panel.controller.selectedOutput && !panel.controller.editPending
+                      hasCursor: panel.controller.inspectorHasCursor("iccProfile")
+                      foreground: panel.controller.foreground
+                      onEditingFinished: {
+                        var returnToKeyboard = activeFocus
+                        panel.controller.editOutput({ icc: text })
+                        if (returnToKeyboard)
+                          Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+                      }
                     }
                   }
                 }
@@ -1501,9 +1534,6 @@ KeyboardPanel {
                 workspacePlan: panel.controller.selectedSavedWorkspacePlan
                 emphasis: "profile"
                 selectedKey: ""
-                interactive: false
-                detailed: true
-                framed: false
                 markDisconnected: true
                 foreground: panel.controller.foreground
                 dim: panel.controller.dim
@@ -1706,7 +1736,7 @@ KeyboardPanel {
                 model: visible ? panel.controller.manualWorkspaceRows : []
                 currentIndex: panel.controller.workspaceKeyboardIndex >= panel.controller.workspaceListKeyboardStart
                   ? panel.controller.workspaceKeyboardIndex - panel.controller.workspaceListKeyboardStart : -1
-                ScrollBar.vertical: ScrollBar {
+                ScrollBar.vertical: Ui.PanelScrollBar {
                   id: manualScrollBar
                   policy: ScrollBar.AsNeeded
                 }
@@ -1848,9 +1878,6 @@ KeyboardPanel {
                 workspacePlan: panel.controller.workspacePlan
                 emphasis: "workspaces"
                 selectedKey: panel.controller.selectedWorkspaceDisplayKey
-                interactive: false
-                detailed: true
-                framed: false
                 foreground: panel.controller.foreground
                 dim: panel.controller.dim
                 accent: Commons.Color.accent
@@ -2065,7 +2092,7 @@ KeyboardPanel {
   }
   Text {
     width: parent.width; anchors.bottom: parent.bottom
-    text: "Tab move · Arrows adjust · Enter select · ? keys · Esc"
+    text: "Tab Move  Arrows Adjust  Enter Select  ? Keys  Esc"
     wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter
     fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Commons.Style.font.caption - 2)
     color: panel.controller.dim

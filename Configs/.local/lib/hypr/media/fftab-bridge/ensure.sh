@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
+bridge_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
-. "$(dirname "${BASH_SOURCE[0]}")/manifest.bash"
+. "${bridge_dir}/manifest.bash"
 set -euo pipefail
 
-bridge_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ "${1:-}" == "--help" ]]; then
   printf 'Usage: %s [--help]\n\nSign an extension update:\n  cd %s/extension\n  web-ext sign --channel unlisted --api-key <issuer> --api-secret <secret>\n\nGet credentials from addons.mozilla.org/developers → Tools → Manage API Keys,\nthen install the new XPI from web-ext-artifacts/.\n' "$0" "${bridge_dir}"
   exit 0

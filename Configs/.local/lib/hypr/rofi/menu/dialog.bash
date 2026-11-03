@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 menu_resolve_style() {
+  rofi_hypr_snapshot
+  read -r MENU_CONTENT_INNER_CHROME_PX MENU_VERTICAL_CHROME_PX MENU_ROW_CHROME_PX MENU_FOOTER_CHROME_PX MENU_FOOTER_WIDTH_CHROME_PX < <(rofi_popup_metrics)
   [[ -n "${MENU_STYLE[font_scale]}" ]] ||
     MENU_STYLE[font_scale]="$(rofi_effective_font_scale "${ROFI_MENU_SCALE:-${ROFI_SCALE:-}}")"
   [[ -n "${MENU_STYLE[font_name]}" ]] ||
@@ -14,6 +16,7 @@ menu_resolve_style() {
     MENU_STYLE[window_theme]="$(rofi_standard_window_theme "listview" "same")"
   [[ "${MENU_STYLE[window_theme]}" =~ border:([0-9]+)px ]] && MENU_WINDOW_BORDER_PX="${BASH_REMATCH[1]}"
   MENU_CONTENT_CHROME_PX=$((MENU_CONTENT_INNER_CHROME_PX + 2 * MENU_WINDOW_BORDER_PX))
+  MENU_VERTICAL_CHROME_PX=$((MENU_VERTICAL_CHROME_PX + 2 * MENU_WINDOW_BORDER_PX))
 }
 
 menu_text_column_px() {
@@ -41,22 +44,31 @@ menu_content_theme_override() {
   local rows="$1"
   local lines_per_row="${2:-1}"
   local footer_mode="${3:-}"
-  local extents="" content_px="" text_px="" cap_px="" rows_max="" footer_px=0 mon_width="" mon_height=""
-
-  extents="$(
-    printf '%s\n' "${rows}" | rofi_font_text_extents_px "${MENU_STYLE[font_name]}" "${MENU_STYLE[font_scale]}" 2>/dev/null || true
-  )"
-  read -r content_px text_px <<<"${extents}"
-  [[ "${content_px}" =~ ^[0-9]+$ && "${text_px}" =~ ^[0-9]+$ ]] || return 1
+  local extents="" content_px="" text_px="" cap_px="" rows_max="" footer="" footer_px=0 footer_width=0 footer_height=0 mon_width="" mon_height=""
+  local row_newlines="${rows%$'\n'}" row_count=0 height_px=0
 
   case "${footer_mode}" in
-    tree) footer_px=$((text_px * 2 + MENU_FOOTER_CHROME_PX)) ;;
-    search | copy | multi) footer_px=$((text_px + MENU_FOOTER_CHROME_PX)) ;;
+    tree) footer="${MENU_NAV_HINT}" ;;
+    search) footer="${MENU_SEARCH_HINT}" ;;
+    copy) footer="${MENU_COPY_HINT}" ;;
+    multi) footer="${MENU_MULTI_HINT}" ;;
   esac
+
+  extents="$(
+    printf '%s\n' "${rows}" | rofi_font_text_extents_px "${MENU_STYLE[font_name]}" "${MENU_STYLE[font_scale]}" "${footer}" 2>/dev/null || true
+  )"
+  read -r content_px text_px footer_width footer_height <<<"${extents}"
+  [[ "${content_px}" =~ ^[0-9]+$ && "${text_px}" =~ ^[0-9]+$ ]] || return 1
+
+  if [[ -n "${footer}" ]]; then
+    footer_px=$((footer_height + MENU_FOOTER_CHROME_PX))
+    footer_width=$((footer_width + MENU_FOOTER_WIDTH_CHROME_PX + 2 * MENU_WINDOW_BORDER_PX))
+  fi
 
   read -r mon_width mon_height < <(rofi_focused_monitor_logical_size)
 
   content_px=$((content_px + MENU_CONTENT_CHROME_PX))
+  ((content_px < footer_width)) && content_px="${footer_width}"
   if [[ "${MENU_STYLE[width_theme]}" =~ ([0-9]+)(\.[0-9]+)?px ]] && ((content_px < BASH_REMATCH[1])); then
     content_px="${BASH_REMATCH[1]}"
   fi
@@ -72,7 +84,11 @@ menu_content_theme_override() {
     printf ' listview { lines: %s; }' "${rows_max}"
   fi
 
-  printf '\n'
+  row_newlines="${row_newlines//[!$'\n']/}"
+  [[ -z "${rows}" ]] || row_count=$((${#row_newlines} + 1))
+  [[ -z "${rows_max}" ]] || ((row_count <= rows_max)) || row_count="${rows_max}"
+  height_px=$((MENU_VERTICAL_CHROME_PX + 2 * text_px + footer_px + row_count * (text_px * lines_per_row + MENU_ROW_CHROME_PX)))
+  rofi_window_position_theme "${content_px}" "${height_px}"
 }
 
 menu_measured_rows() {
@@ -188,19 +204,10 @@ menu_theme_args() {
   local -n theme_args_ref="$1"
   local prompt="$2"
   local width_override="$3"
-  # Propo reports each icon's real width, so the glyph box fits the glyph and centring lands on it
-  local glyph_font="${MENU_STYLE[font_name]%% Nerd Font*} Nerd Font Propo ${MENU_STYLE[font_scale]}"
-  local user_name="${USER:-user}"
-
   theme_args_ref+=("-theme-str" "$(rofi_font_override "${MENU_STYLE[font_name]}" "${MENU_STYLE[font_scale]}")")
   theme_args_ref+=("-theme-str" "${MENU_STYLE[window_theme]}")
   theme_args_ref+=("-theme-str" "* {element-border-radius: ${MENU_STYLE[radius_px]}px;}")
-  # rofi's lexer runs a quoted value to the last quote on its line, so each one gets its own -theme-str
-  theme_args_ref+=("-theme-str" "textbox-prompt-colon {str: \"${MENU_PROMPT_GLYPH}\";}")
-  theme_args_ref+=("-theme-str" "textbox-prompt-label {str: \"${prompt}\";}")
-  theme_args_ref+=("-theme-str" "textbox-prompt-label {font: \"${MENU_STYLE[font_name]} Bold ${MENU_STYLE[font_scale]}\";}")
-  theme_args_ref+=("-theme-str" "textbox-prompt-colon {font: \"${glyph_font}\";}")
-  theme_args_ref+=("-theme-str" "entry {placeholder: \"Hello ${user_name^}!\";}")
+  rofi_header_args_into "$1" "${prompt}" "${MENU_PROMPT_GLYPH}" MENU_STYLE "${MENU_PLACEHOLDER}"
   [[ -n "${width_override}" ]] && theme_args_ref+=("-theme-str" "${width_override}")
   return 0
 }

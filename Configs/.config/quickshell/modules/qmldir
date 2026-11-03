@@ -16,6 +16,7 @@ ScreenshotButton 1.0 ScreenshotButton.qml
 SudokuButton 1.0 SudokuButton.qml
 TasksButton 1.0 TasksButton.qml
 TerminalButton 1.0 TerminalButton.qml
+ThemeRotationButton 1.0 ThemeRotationButton.qml
 VpnButton 1.0 VpnButton.qml
 WallpaperButton 1.0 WallpaperButton.qml
 WebcamButton 1.0 WebcamButton.qml
@@ -38,3 +39,4 @@ GnomeActivities 1.0 GnomeActivities.qml
 GnomeDateMenu 1.0 GnomeDateMenu.qml
 GnomeCalendar 1.0 GnomeCalendar.qml
 GnomeQuickSettings 1.0 GnomeQuickSettings.qml
+WindowsQuickSettings 1.0 WindowsQuickSettings.qml

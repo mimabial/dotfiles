@@ -24,7 +24,7 @@ reload_live_theme_client() {
       ;;
     tmux)
       if command -v tmux &>/dev/null; then
-        tmux source-file "${XDG_CONFIG_HOME:-$HOME/.config}/tmux/colors.conf" 2>/dev/null || true
+        python3 "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/theme/lib/tmux.reload.py" 2>/dev/null || true
       fi
       ;;
     rmpc)

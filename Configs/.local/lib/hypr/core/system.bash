@@ -49,22 +49,46 @@ hypr_theme_variable_assignment() {
   ' "${theme_file}"
 }
 
+hypr_theme_text_expands_nothing() {
+  local line=""
+
+  while IFS= read -r line; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    [[ "${line}" == \#* && "${line}" != \#\#* ]] && continue
+    [[ "${line%"${line##*[![:space:]]}"}" != *\\ ]] || return 1
+    [[ "${line}" == [A-Za-z_]* || "${line}" != *=* || "${line#\$}" != *\$* ]] || return 1
+  done <<<"$1"
+}
+
 hypr_theme_variable() {
   local variable_name="${1}"
   local theme_file="${2:-"$HYPR_THEME_DIR/hypr.theme"}"
-  local value=""
+  local value="" theme_text="" cache_file="" cached_text=""
 
   [[ -n "${variable_name}" && -r "${theme_file}" ]] || return 1
 
-  if command -v hyq &>/dev/null; then
-    value="$(hyq --query "\$${variable_name}" "${theme_file}" 2>/dev/null || true)"
-    [[ -n "${value}" ]] && printf '%s\n' "${value}" && return 0
+  IFS= read -r -d '' theme_text <"${theme_file}" || true
+  hypr_ensure_runtime_dir_into cache_file hypr/theme-variables && cache_file+="/${variable_name}" || cache_file=""
+  if [[ -f "${cache_file}" ]]; then
+    { IFS= read -r value; IFS= read -r -d '' cached_text; } <"${cache_file}" || true
+    if [[ "${cached_text}" == "${theme_text}" ]]; then
+      [[ -z "${value}" ]] || printf '%s\n' "${value}"
+      return 0
+    fi
   fi
 
-  value="$(hypr_theme_variable_assignment "${theme_file}" "\$${variable_name}")"
-  if [[ -n "${value}" ]] && [[ "${value}" != \$* ]]; then
-    printf '%s\n' "${value}"
+  value=""
+  if command -v hyq &>/dev/null; then
+    value="$(hyq --query "\$${variable_name}" "${theme_file}" 2>/dev/null || true)"
   fi
+  if [[ -z "${value}" ]]; then
+    value="$(hypr_theme_variable_assignment "${theme_file}" "\$${variable_name}")"
+    [[ "${value}" != \$* ]] || value=""
+  fi
+
+  [[ -n "${cache_file}" ]] && hypr_theme_text_expands_nothing "${theme_text}" \
+    && printf '%s\n%s' "${value}" "${theme_text}" >"${cache_file}"
+  [[ -z "${value}" ]] || printf '%s\n' "${value}"
 }
 
 paste_clipboard() {

@@ -7,6 +7,7 @@ singleton Border 1.0 Border.qml
 singleton Color 1.0 Color.qml
 singleton Style 1.0 Style.qml
 singleton Util 1.0 Util.qml
+singleton WindowApp 1.0 WindowApp.qml
 StyleBar 1.0 StyleBar.qml
 StyleFont 1.0 StyleFont.qml
 StyleSpacing 1.0 StyleSpacing.qml

@@ -17,7 +17,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, NamedTuple, TypedDict
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib/hypr"))
+HYPR_LIB_DIR = Path(__file__).resolve().parent.parent / "lib/hypr"
+sys.path.insert(0, str(HYPR_LIB_DIR))
 from pyutils.xdg_base_dirs import xdg_cache_home
 
 
@@ -62,6 +63,7 @@ class ChartRow(NamedTuple):
     value_attr: int
 
 
+DEFAULT_APP_SCRIPT = HYPR_LIB_DIR / "setup/default-app.sh"
 CACHE_FILE = Path(os.environ.get("HYPR_CACHE_HOME") or xdg_cache_home() / "hypr") / "agents" / "usage.json"
 CLAUDE_CREDENTIALS = (
     Path(os.environ.get("CLAUDE_CONFIG_DIR") or "~/.claude").expanduser() / ".credentials.json"
@@ -88,6 +90,7 @@ BRIGHT_BLACK = 8
 PERCENT_WIDTH = 5
 RESET_WIDTH = 10
 CHART_VALUE_WIDTH = 8
+LEFT_MARGIN = 1
 RIGHT_MARGIN = 2
 LABEL_COLUMN = 3
 LABEL_WIDTH_DIVISOR = 4
@@ -109,6 +112,7 @@ MODEL_ROWS = 5
 MIN_BAR_WIDTH = 8
 APP_TITLE = "Agent Hub"
 HEADER_GAP = 4
+SECTION_RULE_GAP = 1
 ALERT_FRACTION = 0.9
 REFRESH_NOTE_SECONDS = 60
 HOURS_PER_DAY = 24
@@ -121,6 +125,8 @@ IN_DELETE = 0x00000200
 NOTE_SECONDS = 4
 EVENT_READ_BYTES = 4096
 RULE_GLYPH = "\u2500"
+BAR_GLYPH = "\u2584"
+SELECTED_TAB_GLYPH = "\u258c"
 DOT_SEPARATOR = " \u00b7 "
 KEY_HINT = "\u2190\u2192 agent   Enter launch   d default   s set default   r refresh"
 CLOSE_HINT = "q close"
@@ -336,7 +342,7 @@ def format_progress_bar(value, width, divisions=1):
         size = cells // divisions + (index < cells % divisions)
         filled = min(size, max(0, used))
         used -= filled
-        segments.append("\u2584" * filled + " " * (size - filled))
+        segments.append(BAR_GLYPH * filled + " " * (size - filled))
     return " ".join(segments)
 
 
@@ -416,7 +422,7 @@ class Dashboard:
             return configured
         try:
             return subprocess.run(
-                ["hyprshell", "setup/default-app.sh", "agent"],
+                [DEFAULT_APP_SCRIPT, "agent"],
                 capture_output=True,
                 text=True,
                 timeout=2,
@@ -448,7 +454,7 @@ class Dashboard:
         if self.refresh_process:
             self.note("Usage refresh is already running")
             return
-        command = ["hyprshell", "system/agent-usage", "--write"]
+        command = [HYPR_LIB_DIR / "system/agent-usage.sh", "--write"]
         if force:
             command.append("--force")
         try:
@@ -466,7 +472,7 @@ class Dashboard:
     def update_cache(self, force=False):
         mtime = mtime_ns(CACHE_FILE)
         if mtime != self.last_mtime or force:
-            current_id = self.current().get("id") if self.current() else ""
+            current_id = record.get("id") if (record := self.current()) else ""
             self.records = load_records()
             self.selected = next(
                 (
@@ -495,15 +501,12 @@ class Dashboard:
         if y != TAB_ROW:
             return
         for start, width, index in self.tab_spans:
-            if start <= x < start + width:
+            if start <= x < start + width and index < len(self.records):
                 self.selected = index
                 return
 
     def current(self):
-        if not self.records:
-            return None
-        self.selected %= len(self.records)
-        return self.records[self.selected]
+        return self.records[self.selected] if self.records else None
 
     def launch(self, agent_id):
         if not agent_id:
@@ -516,8 +519,7 @@ class Dashboard:
         try:
             subprocess.Popen(
                 [
-                    "hyprshell",
-                    "launch/tui.sh",
+                    HYPR_LIB_DIR / "launch/tui.sh",
                     "--app-id",
                     f"org.agent.{agent_id.title()}",
                     "--title",
@@ -542,7 +544,7 @@ class Dashboard:
             self.note("The selected provider cannot be set as an agent", error=True)
             return
         result = subprocess.run(
-            ["hyprshell", "setup/default-app.sh", "agent", agent_id],
+            [DEFAULT_APP_SCRIPT, "agent", agent_id],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=False,
@@ -566,26 +568,26 @@ class Dashboard:
             pass
 
     def draw_section(self, y, title, title_gap=1):
-        self.draw_text(y, 1, title, curses.color_pair(PAIR_ACCENT) | curses.A_BOLD)
-        self.draw_text(y, 2 + len(title), RULE_GLYPH * self.screen.getmaxyx()[1], curses.color_pair(PAIR_DIM))
+        self.draw_text(y, LEFT_MARGIN, title, curses.color_pair(PAIR_ACCENT) | curses.A_BOLD)
+        self.draw_text(y, LEFT_MARGIN + len(title) + SECTION_RULE_GAP, RULE_GLYPH * self.screen.getmaxyx()[1], curses.color_pair(PAIR_DIM))
         return y + 1 + title_gap
 
     def draw_header(self, record, width, accent, dim):
-        self.draw_text(0, 1, APP_TITLE, accent | curses.A_BOLD)
+        self.draw_text(0, LEFT_MARGIN, APP_TITLE, accent | curses.A_BOLD)
         updated = ""
         if record and record.get("updatedAt"):
             stamp = parse_time(record.get("updatedAt"))
             if stamp:
                 updated = "updated " + stamp.astimezone().strftime("%H:%M")
-        self.draw_text(0, max(1 + len(APP_TITLE) + HEADER_GAP, width - len(updated) - 2), updated, dim)
-        self.draw_text(1, 1, RULE_GLYPH * (width - 2), dim)
+        self.draw_text(0, max(LEFT_MARGIN + len(APP_TITLE) + HEADER_GAP, width - len(updated) - RIGHT_MARGIN), updated, dim)
+        self.draw_text(1, LEFT_MARGIN, RULE_GLYPH * width, dim)
 
-        x = 1
+        x = LEFT_MARGIN
         self.tab_spans = []
         for index, item in enumerate(self.records):
             agent_id = str(item.get("id", ""))
             selected = index == self.selected
-            entry = ("\u258c" if selected else " ") + f" {index + 1} "
+            entry = (SELECTED_TAB_GLYPH if selected else " ") + f" {index + 1} "
             entry += str(item.get("name", agent_id))
             self.draw_text(TAB_ROW, x, entry, (accent | curses.A_BOLD) if selected else dim)
             span = len(entry)
@@ -594,7 +596,7 @@ class Dashboard:
                 self.draw_text(TAB_ROW, x + span, marker, dim)
                 span += len(marker)
             self.tab_spans.append((x, span, index))
-            x += span + 2
+            x += span + COLUMN_GAP
 
         if not record:
             return
@@ -605,13 +607,13 @@ class Dashboard:
             for part in (str(record.get("name", "Agent")), tier, usage_summary(record))
             if part
         )
-        self.draw_text(HEAD_ROW, 1, heading, curses.A_BOLD)
+        self.draw_text(HEAD_ROW, LEFT_MARGIN, heading, curses.A_BOLD)
         chosen = recommended_agent(self.records)
         if chosen:
             name = chosen.get("name", chosen.get("id", "Agent"))
             self.draw_text(
                 HEAD_ROW + 1,
-                1,
+                LEFT_MARGIN,
                 f"Recommended  {name}{DOT_SEPARATOR}{usage_summary(chosen)}",
                 curses.color_pair(PAIR_BAR),
             )
@@ -709,18 +711,18 @@ class Dashboard:
     def draw_too_small(self, height, width, dim):
         self.draw_text(
             0,
-            1,
+            LEFT_MARGIN,
             f"{APP_TITLE} needs at least {MIN_COLS} columns x {MIN_ROWS} rows.",
             curses.color_pair(PAIR_ERROR) | curses.A_BOLD,
         )
-        self.draw_text(2, 1, f"Current terminal: {width} x {height}", dim)
-        self.draw_text(height - 1, 1, CLOSE_HINT, dim)
+        self.draw_text(2, LEFT_MARGIN, f"Current terminal: {width} x {height}", dim)
+        self.draw_text(height - 1, LEFT_MARGIN, CLOSE_HINT, dim)
 
     def draw_empty(self, dim):
-        self.draw_text(HEAD_ROW, 1, "No AI coding subscription data found.", curses.A_BOLD)
+        self.draw_text(HEAD_ROW, LEFT_MARGIN, "No AI coding subscription data found.", curses.A_BOLD)
         self.draw_text(
             FIRST_SECTION_ROW,
-            1,
+            LEFT_MARGIN,
             "A refresh is running\u2026" if self.refresh_process else "Press r to collect usage.",
             dim,
         )
@@ -767,13 +769,13 @@ class Dashboard:
 
     def draw_footer(self, height, width):
         first_hint, second_hint = footer_hint(self.agent_paths)
-        self.draw_text(height - FOOTER_ROWS, 1, RULE_GLYPH * (width - 2), curses.color_pair(PAIR_DIM))
-        self.draw_text(height - 2, 1, first_hint, curses.color_pair(PAIR_DIM))
+        self.draw_text(height - FOOTER_ROWS, LEFT_MARGIN, RULE_GLYPH * width, curses.color_pair(PAIR_DIM))
+        self.draw_text(height - 2, LEFT_MARGIN, first_hint, curses.color_pair(PAIR_DIM))
         if self.message and time.monotonic() < self.message_until:
             attr = curses.color_pair(PAIR_ERROR if self.message_error else PAIR_BAR)
-            self.draw_text(height - 1, 1, self.message, attr | curses.A_BOLD)
+            self.draw_text(height - 1, LEFT_MARGIN, self.message, attr | curses.A_BOLD)
             return
-        self.draw_text(height - 1, 1, second_hint, curses.color_pair(PAIR_DIM))
+        self.draw_text(height - 1, LEFT_MARGIN, second_hint, curses.color_pair(PAIR_DIM))
 
     def move_selection(self, offset):
         if self.records:

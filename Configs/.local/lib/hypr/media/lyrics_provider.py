@@ -5,6 +5,7 @@ import sys
 import os
 from collections.abc import Callable
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+from typing import NamedTuple
 
 from lyrics_cache import lyrics_miss_cache, miss_cache_key
 from lyrics_text import (
@@ -109,13 +110,18 @@ def _choose_plain_candidate(
     return sorted_candidates[0]
 
 
+class ProviderSearch(NamedTuple):
+    result: ProviderResult | None
+    plain_candidates: list[ProviderResult]
+
+
 def _fetch_sequential(
     providers: list[tuple[str, ProviderFetcher]],
     artist: str,
     title: str,
     album: str,
     require_synced: bool,
-) -> tuple[ProviderResult | None, list[ProviderResult]]:
+) -> ProviderSearch:
     plain_candidates: list[ProviderResult] = []
     for source_name, fetcher in providers:
         result = _fetch_candidate(source_name, fetcher, artist, title, album)
@@ -128,8 +134,8 @@ def _fetch_sequential(
                 file=sys.stderr,
             )
             continue
-        return result, plain_candidates
-    return None, plain_candidates
+        return ProviderSearch(result, plain_candidates)
+    return ProviderSearch(None, plain_candidates)
 
 
 def _fetch_parallel(
@@ -138,9 +144,9 @@ def _fetch_parallel(
     title: str,
     album: str,
     require_synced: bool,
-) -> tuple[ProviderResult | None, list[ProviderResult]]:
+) -> ProviderSearch:
     if not providers:
-        return None, []
+        return ProviderSearch(None, [])
 
     plain_candidates: list[ProviderResult] = []
     max_workers = min(len(providers), MAX_PROVIDER_WORKERS)
@@ -180,12 +186,12 @@ def _fetch_parallel(
                 except TypeError:
                     executor.shutdown(wait=False)
                 executor_shutdown = True
-                return result, plain_candidates
+                return ProviderSearch(result, plain_candidates)
     finally:
         if not executor_shutdown:
             executor.shutdown(wait=True)
 
-    return None, plain_candidates
+    return ProviderSearch(None, plain_candidates)
 
 
 def _lyrics_providers(
@@ -209,7 +215,7 @@ def _lyrics_providers(
 
 
 def _search_lyrics(
-    fetch_from_providers: Callable[..., tuple[ProviderResult | None, list[ProviderResult]]],
+    fetch_from_providers: Callable[..., ProviderSearch],
     artist: str,
     title: str,
     album: str,
@@ -221,17 +227,15 @@ def _search_lyrics(
     provider_order = synced_providers + plain_providers
 
     if synced_only:
-        return fetch_from_providers(synced_providers, artist, title, album, require_synced=True)[0]
+        return fetch_from_providers(synced_providers, artist, title, album, require_synced=True).result
     if not prefer_synced:
-        return fetch_from_providers(provider_order, artist, title, album, require_synced=False)[0]
+        return fetch_from_providers(provider_order, artist, title, album, require_synced=False).result
 
-    synced_result, plain_candidates = fetch_from_providers(
-        synced_providers, artist, title, album, require_synced=True
-    )
-    if synced_result:
-        return synced_result
+    synced = fetch_from_providers(synced_providers, artist, title, album, require_synced=True)
+    if synced.result:
+        return synced.result
 
-    plain_result = _choose_plain_candidate(plain_candidates, provider_order)
+    plain_result = _choose_plain_candidate(synced.plain_candidates, provider_order)
     if plain_result:
         print(
             f"  [{plain_result['source']}] Using plain lyrics fallback after synced search",
@@ -239,7 +243,7 @@ def _search_lyrics(
         )
         return plain_result
 
-    return fetch_from_providers(plain_providers, artist, title, album, require_synced=False)[0]
+    return fetch_from_providers(plain_providers, artist, title, album, require_synced=False).result
 
 
 def fetch_lyrics(

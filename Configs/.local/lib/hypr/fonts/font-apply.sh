@@ -31,10 +31,10 @@ append_updated() {
 resolve_font_targets() {
   local general_font=""
 
-  general_font="$(hypr_config_value_from_layers 'FONT' 2>/dev/null || true)"
-  MONOSPACE_FONT="$(hypr_config_value_from_layers 'MONOSPACE_FONT' 2>/dev/null || true)"
-  MENU_FONT="$(hypr_config_value_from_layers 'MENU_FONT' 2>/dev/null || true)"
-  TERMINAL_FONT="$(hypr_config_value_from_layers 'TERMINAL_FONT' 2>/dev/null || true)"
+  hypr_config_value_from_layers_into general_font FONT 2>/dev/null || true
+  hypr_config_value_from_layers_into MONOSPACE_FONT MONOSPACE_FONT 2>/dev/null || true
+  hypr_config_value_from_layers_into MENU_FONT MENU_FONT 2>/dev/null || true
+  hypr_config_value_from_layers_into TERMINAL_FONT TERMINAL_FONT 2>/dev/null || true
 
   GENERAL_FONT="${general_font:-${FONT_NAME:-sans-serif}}"
   MONOSPACE_FONT="${MONOSPACE_FONT:-${FONT_NAME:-monospace}}"

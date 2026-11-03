@@ -16,6 +16,7 @@ BASELINE_TOLERANCE = 1e-6
 
 
 MIN_ANIMATION_SPEED = 0.1
+INPUT_PREFIX = "input:"
 
 
 class VisualSettings:
@@ -25,7 +26,7 @@ class VisualSettings:
         self.variable_defaults = {}
         self.overrides = {}
         self.variable_overrides = {}
-        self.overrides_unreadable = False
+        self.unreadable_override_path = None
         self.live_baseline = {}
         self.baseline_animations = []
         self.speed_multiplier = 1
@@ -49,6 +50,7 @@ class VisualSettings:
 
         self.theme_path = CONFIG_DIR / "themes/theme.lua"
         self.staterc_path = STATE_DIR / "staterc"
+        self.input_override_path = STATE_DIR / "input.lua"
         self.variant_path = STATE_DIR / "color_variant"
 
     @property
@@ -97,22 +99,20 @@ class VisualSettings:
         self.start_option_lists()
 
     def read_saved_overrides(self):
-        self.overrides_unreadable = False
-        proc = run_capture(["lua", READER, str(self.override_path)])
-        if proc.returncode != 0:
-            if self.override_path.exists():
-                self.overrides_unreadable = True
-                self.error_text = "cannot read " + str(self.override_path) + "; saving is disabled"
-            # A missing file is the normal case for a theme with no overrides
-            # yet; the reader exits non-zero on it, which is not an error here.
-            self.overrides = {}
-            self.variable_overrides = {}
-            self.speed_multiplier = 1
-            return
-        parsed = lua.parse_records(proc.stdout)
-        self.overrides = parsed["keys"]
+        self.unreadable_override_path = None
+        parsed = self.read_override_file(self.override_path)
+        self.overrides = {**parsed["keys"], **self.read_override_file(self.input_override_path)["keys"]}
         self.variable_overrides = parsed["variables"]
         self.speed_multiplier = self.animation_speed_multiplier(parsed["animations"])
+
+    def read_override_file(self, path):
+        proc = run_capture(["lua", READER, str(path)])
+        if proc.returncode == 0:
+            return lua.parse_records(proc.stdout)
+        if path.exists():
+            self.unreadable_override_path = path
+            self.error_text = "cannot read " + str(path) + "; saving is disabled"
+        return lua.parse_records("")
 
     def read_animation_baseline(self):
         proc = run_capture(["lua", READER, str(STATE_DIR / "animations.lua")])
@@ -224,18 +224,26 @@ class VisualSettings:
                 return False
         return str(baseline) == str(value)
 
+    def scaled_animations(self):
+        if self.speed_multiplier == 1:
+            return []
+        return [{
+            "leaf": leaf["leaf"],
+            "enabled": leaf["enabled"],
+            "speed": max(MIN_ANIMATION_SPEED, round_decimal_places(leaf["speed"] * self.speed_multiplier, 2)),
+            "bezier": leaf["bezier"],
+            "style": leaf["style"],
+            "spring": leaf["spring"],
+        } for leaf in self.baseline_animations]
+
     def render_overrides(self):
-        animations = []
-        if self.speed_multiplier != 1:
-            for leaf in self.baseline_animations:
-                animations.append({
-                    "leaf": leaf["leaf"],
-                    "enabled": leaf["enabled"],
-                    "speed": max(MIN_ANIMATION_SPEED, round_decimal_places(leaf["speed"] * self.speed_multiplier, 2)),
-                    "bezier": leaf["bezier"],
-                    "style": leaf["style"],
-                })
-        return lua.render_block(self.overrides, animations, self.variable_overrides)
+        return lua.render_block(self.overrides, self.scaled_animations(), self.variable_overrides)
+
+    def saved_blocks(self):
+        theme_keys = {key: value for key, value in self.overrides.items() if not key.startswith(INPUT_PREFIX)}
+        input_keys = {key: value for key, value in self.overrides.items() if key.startswith(INPUT_PREFIX)}
+        return ((self.override_path, lua.render_block(theme_keys, self.scaled_animations(), self.variable_overrides)),
+                (self.input_override_path, lua.render_block(input_keys)))
 
     def override_snapshot(self):
         return dict(self.overrides), dict(self.variable_overrides), self.speed_multiplier
@@ -315,13 +323,23 @@ class VisualSettings:
             self.error_text = "could not preview the cursor"
 
     def save_overrides(self):
-        if self.overrides_unreadable:
-            self.error_text = "cannot read " + str(self.override_path) + "; saving is disabled"
+        if self.unreadable_override_path:
+            self.error_text = "cannot read " + str(self.unreadable_override_path) + "; saving is disabled"
             self.save_pending = False
             return
-        block = self.render_overrides()
         sync_cursor = self.cursor_sync_pending
-        path = self.override_path
+        if not all(self.write_block(path, block) for path, block in self.saved_blocks()):
+            return
+
+        errors = run_capture(["hyprctl", "configerrors"]).stdout.strip()
+        self.error_text = "" if errors in ("", "no errors") else errors
+        self.save_pending = False
+        if sync_cursor:
+            self.start_cursor_sync()
+
+    def write_block(self, path, block):
+        if read_text(path) == block:
+            return True
         try:
             if not block:
                 path.unlink(missing_ok=True)
@@ -332,13 +350,8 @@ class VisualSettings:
                 os.replace(temporary, path)
         except OSError:
             self.error_text = "could not write " + str(path)
-            return
-
-        errors = run_capture(["hyprctl", "configerrors"]).stdout.strip()
-        self.error_text = "" if errors in ("", "no errors") else errors
-        self.save_pending = False
-        if sync_cursor:
-            self.start_cursor_sync()
+            return False
+        return True
 
     def start_cursor_sync(self):
         if self.cursor_sync_running:
@@ -404,10 +417,10 @@ class VisualSettings:
         if row.get("list"):
             options = self.pipeline_options.get(row["id"], [])
         else:
-            options = row.get("options") or []
+            options = list(row.get("options") or [])
         if not options:
             return
-        current = str(self.value_for(row))
+        current = self.value_for(row)
         index = options.index(current) if current in options else 0
         nxt = options[(index + direction) % len(options)]
         if row["type"] == "pipeline":

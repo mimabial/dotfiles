@@ -56,7 +56,7 @@ class ReaderTest(unittest.TestCase):
             'hl.animation({leaf = "windows", enabled = true, speed = 6,'
             ' bezier = "wind", style = "slide"})'
         )
-        self.assertIn(["a", "windows", "true", "6", "wind", "slide"], records)
+        self.assertIn(["a", "windows", "true", "6", "wind", "slide", ""], records)
 
     def test_runtime_config_is_recorded_like_hl_config(self):
         records = read('local r = require("runtime") r.config("general.gaps_out", 7)')
@@ -278,7 +278,7 @@ class SchemaTest(unittest.TestCase):
         titles = [s["title"] for s in schema.sections()]
         self.assertEqual(titles, [
             "Windows", "Layout", "Corners", "Opacity", "Dimming", "Blur",
-            "Shadow", "Glow", "Animations", "Groups", "Cursor", "Pipelines",
+            "Shadow", "Glow", "Animations", "Groups", "Cursor", "Mouse & Touchpad", "Pipelines",
         ])
 
     def test_keys_are_unique(self):
@@ -411,9 +411,12 @@ class RenderTest(unittest.TestCase):
 
     def test_round_trip_preserves_animation_leaf(self):
         anims = [{"leaf": "windows", "enabled": True, "speed": 4,
-                  "bezier": "wind", "style": "slide"}]
-        self.assertIn(["a", "windows", "true", "4", "wind", "slide"],
-                      read(render({}, anims)))
+                  "bezier": "wind", "style": "slide"},
+                 {"leaf": "workspaces", "enabled": True, "speed": 1,
+                  "spring": "settle", "style": "slidevert"}]
+        records = read(render({}, anims))
+        self.assertIn(["a", "windows", "true", "4", "wind", "slide", ""], records)
+        self.assertIn(["a", "workspaces", "true", "1", "", "slidevert", "settle"], records)
 
     def test_round_trip_preserves_cursor_variables(self):
         source = render({}, variables={

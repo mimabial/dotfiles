@@ -11,7 +11,7 @@ Item {
 
   property bool hasCursor: false
 
-  property bool cursorRing: interactive
+  property bool cursorFill: interactive
   property int cursorPad: Commons.Style.space(6)
   property bool rounded: Commons.Style.cornerRadius > 0
   property color foreground: Commons.Color.foreground
@@ -28,17 +28,17 @@ Item {
   property int knobSize: Math.max(6, Math.round(trackHeight * 0.72))
   property int knobInset: Math.max(1, Math.round((trackHeight - knobSize) / 2))
 
-  readonly property int cursorRingInset: cursorRing ? cursorPad : 0
+  readonly property int cursorFillInset: cursorFill ? cursorPad : 0
 
-  implicitWidth: trackWidth + cursorRingInset * 2
-  implicitHeight: trackHeight + cursorRingInset * 2
+  implicitWidth: trackWidth + cursorFillInset * 2
+  implicitHeight: trackHeight + cursorFillInset * 2
 
   BorderSurface {
     anchors.fill: parent
-    visible: root.cursorRing && root.hot
-    color: "transparent"
+    visible: root.cursorFill && root.hot
+    color: Commons.Style.hoverFillFor(root.foreground, root.accent)
     radius: Commons.Style.cornerRadius
-    borderSpec: Commons.Border.controlSpec("hover-cursor", root.foreground, root.accent)
+    borderSpec: Commons.Border.none()
   }
 
   BorderSurface {
@@ -50,7 +50,7 @@ Item {
     color: root.checked
       ? Commons.Style.selectedFillFor(root.foreground, root.accent)
       : Commons.Style.normalFillFor(root.foreground, root.accent)
-    borderSpec: Commons.Border.controlSpec(root.checked ? "selected" : "normal", root.foreground, root.accent)
+    borderSpec: Commons.Border.controlSpec("normal", root.foreground, root.accent)
 
     Behavior on color { ColorAnimation { duration: 120 } }
 

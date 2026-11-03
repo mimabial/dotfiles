@@ -1,6 +1,6 @@
 # Look and feel
 
-`Super + T` then `V`, or `Super + J` then `L`, opens the desktop Settings TUI.
+`Super + T` then `L`, or `Super + J` then `L`, opens the desktop Settings TUI.
 Its visual pages cover every visual key a theme sets: gaps,
 border width, rounding, opacity, dimming, blur, shadow, glow, animations, group
 bars, cursor theme and size, and whichever knobs the active layout engine has.

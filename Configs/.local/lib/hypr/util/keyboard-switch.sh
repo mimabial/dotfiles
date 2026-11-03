@@ -77,16 +77,14 @@ keyboard_active_keymap_from_json() {
   local keyboards_json="$1"
   local keyboard_name="$2"
 
-  jq -r --arg name "${keyboard_name}" '.[] | select(.name == $name) | .active_keymap // empty' <<<"${keyboards_json}" \
-    | head -n1
+  jq -r --arg name "${keyboard_name}" 'first(.[] | select(.name == $name) | .active_keymap // empty)' <<<"${keyboards_json}"
 }
 
 reference_keyboard_name() {
   local keyboards_json="$1"
   local name=""
 
-  name="$(jq -r 'map(select(.main == true))[0].name // empty' <<<"${keyboards_json}")"
-  [[ -n "${name}" ]] || name="$(jq -r '.[0].name // empty' <<<"${keyboards_json}")"
+  name="$(jq -r 'first((map(select(.main == true))[0].name, .[0].name) | select(. != null and . != false and . != ""))' <<<"${keyboards_json}")"
   [[ -n "${name}" ]] || return 1
   printf '%s\n' "${name}"
 }
@@ -145,7 +143,7 @@ regenerate_keybind_hint_cache() {
 
   [[ -r "${hint_py}" ]] || return 0
   command -v python3 >/dev/null 2>&1 || return 0
-  mkdir -p "${cache_dir}" 2>/dev/null || return 0
+  [[ -d "${cache_dir}" ]] || mkdir -p "${cache_dir}" 2>/dev/null || return 0
 
   # keybinds_hint.py reads live binds via `hyprctl binds`, which already reflect
   # the swap above; rewrite the mtime-cached rofi file atomically so the next
@@ -193,7 +191,7 @@ main() {
   }
 
   keyboards_json="$(keyboard_devices_json)"
-  [[ "$(jq 'length' <<<"${keyboards_json}")" -gt 0 ]] || {
+  [[ -n "${keyboards_json}" && "${keyboards_json}" != "[]" ]] || {
     print_log -err "No keyboard devices available for layout switching"
     return 1
   }

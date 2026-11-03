@@ -16,7 +16,7 @@ TextField {
 
   readonly property bool inputFocused: activeFocus
   readonly property bool inputHighlighted: hovered || hasCursor
-  readonly property var stateBorderSpec: Commons.Border.controlSpec(inputFocused ? "focus" : (inputHighlighted ? "hover-cursor" : "normal"), root.foreground, root.accent)
+  readonly property var normalBorderSpec: Commons.Border.controlSpec("normal", root.foreground, root.accent)
 
   echoMode: password ? TextInput.Password : TextInput.Normal
   font.family: Commons.Style.font.family
@@ -26,14 +26,14 @@ TextField {
   selectedTextColor: foreground
   placeholderTextColor: Qt.darker(foreground, 1.6)
 
-  leftPadding: horizontalPadding + Commons.Border.left(stateBorderSpec)
-  rightPadding: horizontalPadding + Commons.Border.right(stateBorderSpec)
-  topPadding: verticalPadding + Commons.Border.top(stateBorderSpec)
-  bottomPadding: verticalPadding + Commons.Border.bottom(stateBorderSpec)
+  leftPadding: horizontalPadding + Commons.Border.left(normalBorderSpec)
+  rightPadding: horizontalPadding + Commons.Border.right(normalBorderSpec)
+  topPadding: verticalPadding + Commons.Border.top(normalBorderSpec)
+  bottomPadding: verticalPadding + Commons.Border.bottom(normalBorderSpec)
 
   background: BorderSurface {
     color: Commons.Style.controlFill(root.inputFocused, root.inputHighlighted, root.foreground, root.accent)
-    borderSpec: root.stateBorderSpec
+    borderSpec: root.normalBorderSpec
     radius: Commons.Style.cornerRadius
   }
 }

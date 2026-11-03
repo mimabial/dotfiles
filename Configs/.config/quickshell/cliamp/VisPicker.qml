@@ -20,16 +20,12 @@ BorderSurface {
 
     { id: "soundcloud_wave", name: "SoundCloud Wave", category: "wave", icon: "\uf1be" },
     { id: "telegram_wave", name: "Telegram Wave", category: "wave", icon: "\uf130" },
-    { id: "daw_wave", name: "DAW Peak Wave", category: "wave", icon: "\uf080" },
     { id: "led_scrubber", name: "LED Scrubber", category: "wave", icon: "\uf009" },
     { id: "heatmap_wave", name: "Heatmap Wave", category: "wave", icon: "\uf06d" },
     { id: "grounded_wave", name: "Baseline Wave", category: "wave", icon: "\uf012" },
     { id: "wave", name: "Waveform", category: "wave", icon: "\uf21e" },
     { id: "sine", name: "Sine Wave", category: "wave", icon: "\uf1d8" },
     { id: "mirror", name: "Mirror", category: "wave", icon: "\uf042" },
-
-    { id: "matrix", name: "Matrix", category: "retro", icon: "\uf108" },
-    { id: "mosaic", name: "Mosaic", category: "retro", icon: "\uf009" },
 
     { id: "butterfly", name: "Butterfly", category: "particle", icon: "\uf1d8" },
     { id: "scatter", name: "Scatter", category: "particle", icon: "\uf005" },
@@ -88,7 +84,7 @@ BorderSurface {
         width: bgLabel.implicitWidth + Commons.Style.space(10); height: Commons.Style.space(17)
         radius: Commons.Style.space(4)
         color: active ? Commons.Color.menu.selectedBackground
-          : (bgMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Commons.Color.menu.selectedBackground) : "transparent")
+          : (bgMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill() : Commons.Color.menu.selectedBackground) : "transparent")
         border.width: 1
         border.color: active || cursored ? Commons.Color.menu.selectedBorder
           : (root.controller ? root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.25) : Commons.Color.popups.border)
@@ -121,7 +117,7 @@ BorderSurface {
         width: pulseLabel.implicitWidth + Commons.Style.space(10); height: Commons.Style.space(17)
         radius: Commons.Style.space(4)
         color: active ? Commons.Color.menu.selectedBackground
-          : (pulseMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Commons.Color.menu.selectedBackground) : "transparent")
+          : (pulseMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill() : Commons.Color.menu.selectedBackground) : "transparent")
         border.width: 1
         border.color: active || cursored ? Commons.Color.menu.selectedBorder
           : (root.controller ? root.controller.shell.alpha(root.controller.shell.role("br", root.controller.foreground), 0.25) : Commons.Color.popups.border)
@@ -166,7 +162,6 @@ BorderSurface {
           { id: "all", label: "All" },
           { id: "classic", label: "Classic" },
           { id: "wave", label: "Wave" },
-          { id: "retro", label: "Retro" },
           { id: "particle", label: "Particle" },
           { id: "3d", label: "3D" }
         ]
@@ -180,7 +175,7 @@ BorderSurface {
           width: tabLabel.implicitWidth + Commons.Style.space(10); height: Commons.Style.space(18)
           radius: Commons.Style.space(9)
           color: isSelected ? Commons.Color.menu.selectedBackground
-            : (tabMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Commons.Color.menu.selectedBackground) : "transparent")
+            : (tabMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill() : Commons.Color.menu.selectedBackground) : "transparent")
           border.width: cursored ? 1 : 0
           border.color: Commons.Color.menu.selectedBorder
 
@@ -207,7 +202,7 @@ BorderSurface {
       height: parent.height - Commons.Style.space(46)
       contentWidth: width; contentHeight: flowGrid.implicitHeight
       clip: true; boundsBehavior: Flickable.StopAtBounds
-      ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+      ScrollBar.vertical: PanelScrollBar { policy: ScrollBar.AsNeeded }
 
       Flow {
         id: flowGrid
@@ -227,7 +222,7 @@ BorderSurface {
             height: Commons.Style.space(22)
             radius: Commons.Style.space(4)
             color: isActive ? Commons.Color.menu.selectedBackground
-              : (chipMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill(1) : Commons.Color.menu.selectedBackground)
+              : (chipMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill() : Commons.Color.menu.selectedBackground)
                 : (root.controller ? root.controller.shell.alpha(root.controller.surface, 0.8) : Commons.Color.popups.background))
             border.width: 1
             border.color: isActive || cursored ? Commons.Color.menu.selectedBorder

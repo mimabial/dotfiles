@@ -13,9 +13,7 @@ is_true() {
   esac
 }
 
-media_icons_dir() {
-  printf '%s/Hypr-Icon/media\n' "${ICONS_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/icons}"
-}
+MEDIA_ICONS_DIR="${ICONS_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/icons}/Hypr-Icon/media"
 
 notify_level() {
   local app="$1" replace_id="$2" percent="$3" label="$4" knob_percent="" bar=""
@@ -23,5 +21,5 @@ notify_level() {
   ((knob_percent > 100)) && knob_percent=100
   printf -v bar '%*s' "$((percent / LEVEL_BAR_PERCENT_PER_DOT))" ''
   dunstify -a "${app}" -r "${replace_id}" -t "${NOTIFY_OSD_MS}" \
-    -e -i "$(media_icons_dir)/knob-${knob_percent}.svg" "${percent}${bar// /.}" "${label}"
+    -e -i "${MEDIA_ICONS_DIR}/knob-${knob_percent}.svg" "${percent}${bar// /.}" "${label}"
 }

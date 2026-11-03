@@ -14,7 +14,8 @@ if [ "$#" -eq 0 ]; then
   TUIS=()
   while IFS= read -r -d '' file; do
     if grep -qx -- "$TUI_MARKER" "$file" || grep -Eq '^Exec=(\$TERMINAL_TUI|tui-terminal-exec)\b' "$file"; then
-      TUIS+=("$(basename "${file%.desktop}")")
+      tui_name="${file%.desktop}"
+      TUIS+=("${tui_name##*/}")
     fi
   done < <(find "$DESKTOP_ENTRY_DIR" -name '*.desktop' -print0)
 

@@ -1,9 +1,8 @@
 AgentsButton 1.0 AgentsButton.qml
-AltscapeButton 1.0 AltscapeButton.qml
-AltscapePopup 1.0 AltscapePopup.qml
 AgentsPopup 1.0 AgentsPopup.qml
 AlarmTimerPopup 1.0 AlarmTimerPopup.qml
 AltGrHints 1.0 AltGrHints.qml
+AppIconButton 1.0 AppIconButton.qml
 AudioButton 1.0 AudioButton.qml
 AudioPopup 1.0 AudioPopup.qml
 BarButton 1.0 BarButton.qml
@@ -36,7 +35,6 @@ ClockworkPage 1.0 ClockworkPage.qml
 ClockworkState 1.0 ClockworkState.qml
 ColorModePopup 1.0 ColorModePopup.qml
 ColorPickerPopup 1.0 ColorPickerPopup.qml
-ColumnMap 1.0 ColumnMap.qml
 DesktopPopup 1.0 DesktopPopup.qml
 DisksPopup 1.0 DisksPopup.qml
 GamePopup 1.0 GamePopup.qml
@@ -92,7 +90,6 @@ SpotlightRow 1.0 SpotlightRow.qml
 StartButton 1.0 StartButton.qml
 StartMenuFlyout 1.0 StartMenuFlyout.qml
 StartMenuPane 1.0 StartMenuPane.qml
-StartMenuRow 1.0 StartMenuRow.qml
 StartPinnedGrid 1.0 StartPinnedGrid.qml
 StartPopup 1.0 StartPopup.qml
 SubmapButton 1.0 SubmapButton.qml
@@ -103,6 +100,8 @@ TaskbarTooltip 1.0 TaskbarTooltip.qml
 TasksMascot 1.0 TasksMascot.qml
 TasksPopup 1.0 TasksPopup.qml
 Theme 1.0 Theme.qml
+ThemeRotation 1.0 ThemeRotation.qml
+ThemeRotationPopup 1.0 ThemeRotationPopup.qml
 ToggleSwitch 1.0 ToggleSwitch.qml
 Tray 1.0 Tray.qml
 TrayFlyout 1.0 TrayFlyout.qml

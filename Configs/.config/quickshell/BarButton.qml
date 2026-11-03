@@ -54,7 +54,7 @@ Item {
     property real textOffsetX: inkOffsetX
     readonly property real textOffsetY: fitsIconBox ? label.height / 2 - label.baselineOffset - label.font.pixelSize * (glyphInk.y + glyphInk.height / 2) : 0
     property real textRotation: 0
-    property real fixedWidth: 0
+    property real fixedWidth: box.fixedWidth ?? 0
     property real maxWidth: 0
     readonly property int textAlignment: box.justify === "right" ? Text.AlignRight
         : box.justify === "left" ? Text.AlignLeft : Text.AlignHCenter
@@ -97,8 +97,6 @@ Item {
         if (box.hover && !(key in box.hover)) return fallback
         if (!box.hover) {
             if (key === "backgroundColor") return shell.alpha(shell.foreground, .1)
-            if (key === "borderColor" && fallback.a > 0)
-                return shell.alpha(shell.role("br", shell.foreground), .6)
             return fallback
         }
         const spec = box.hover[key]
@@ -139,10 +137,9 @@ Item {
         color: root.cursored ? root.shell.hoverFill()
             : root.interactiveColor("backgroundColor", root.popupOpen && root.box.open
                 ? root.shell.styleColor(root.box.open.backgroundColor, root.backgroundColor) : root.backgroundColor)
-        border.color: root.cursored ? root.shell.hoverEdge(.85) : root.interactiveColor("borderColor", root.borderColor)
-        border.width: root.cursored ? 2 : root.paintedBorderWidth
+        border.color: root.borderColor
+        border.width: root.paintedBorderWidth
         Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
-        Behavior on border.color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
     }
     Loader { id: glyphProbe; active: root.boxedIcon && !root.symbolic; sourceComponent: Component { GlyphInk { glyph: root.labelText; family: root.shell.iconGlyphFont } } }
     Item {
@@ -238,7 +235,7 @@ Item {
     }
     Rectangle { anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: 8; anchors.rightMargin: 2; height: 1; visible: root.cornerOutline.a > 0; color: root.cornerOutline }
     Rectangle { anchors.top: parent.top; anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.rightMargin: 2; anchors.bottomMargin: 8; width: 1; visible: root.cornerOutline.a > 0; color: root.cornerOutline }
-    SideBorder { id: sideBorder; shell: root.shell; host: root; hovered: root.hovered }
+    SideBorder { id: sideBorder; shell: root.shell; host: root }
     MouseArea {
         id: buttonHitArea
         z: 1
@@ -247,6 +244,7 @@ Item {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: event => {
+            root.shell.keyboardInput = false
             buttonTooltip.dismiss()
             if (event.button !== Qt.LeftButton || !root.popupOpenedOnHover || !root.popupOpen) root.clicked(event.button)
             root.popupOpenedOnHover = false

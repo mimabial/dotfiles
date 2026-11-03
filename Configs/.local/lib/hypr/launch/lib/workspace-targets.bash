@@ -7,8 +7,7 @@ launch_active_workspace_occupancy() {
   local snapshot="${2:-}"
 
   [[ -n "${snapshot}" ]] || snapshot="$(hyprctl --batch -j 'activeworkspace;clients' | jq -sc '.')"
-  printf '%s\n' "${snapshot}" \
-    | jq -r --arg exclude "${exclude_address}" '
+  jq -r --arg exclude "${exclude_address}" '
         .[0].name as $workspace_name
         | [
             $workspace_name,
@@ -18,7 +17,7 @@ launch_active_workspace_occupancy() {
             )
           ]
         | @tsv
-      '
+      ' <<<"${snapshot}"
 }
 
 launch_prepare_target_workspace() {

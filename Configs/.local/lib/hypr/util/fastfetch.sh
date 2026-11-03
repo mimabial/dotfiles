@@ -107,7 +107,7 @@ fastfetch_select_logo_ui() {
     if [[ -r "${lib_root}/rofi/rofi.lib.bash" ]]; then
       # shellcheck source=/dev/null
       source "${lib_root}/rofi/rofi.lib.bash"
-      font_args=(-theme-str "$(rofi_font_override "$(rofi_effective_font_name)" "$(rofi_effective_font_scale)")")
+      rofi_build_standard_menu_args font_args "Fastfetch logo" "" "$(rofi_resolve_theme menutree)" listview
     fi
     if [[ -n "${current_label}" ]]; then
       selected_label="$(printf '%s\n' "${labels[@]}" | rofi_with_background_theme -dmenu -i -p "Fastfetch logo" "${font_args[@]}" -select "${current_label}")"

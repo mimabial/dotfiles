@@ -10,11 +10,12 @@ VERBOSE
 }
 
 battery_process_state_change() {
+  local -n monitor_ref=$1
   battery_refresh_state || return
 
-  if [ "$battery_status" != "$last_battery_status" ] || [ "$battery_percent" != "$last_battery_percent" ]; then
-    last_battery_status=$battery_status
-    last_battery_percent=$battery_percent
+  if [ "$battery_status" != "${monitor_ref[last_battery_status]}" ] || [ "$battery_percent" != "${monitor_ref[last_battery_percent]}" ]; then
+    monitor_ref[last_battery_status]=$battery_status
+    monitor_ref[last_battery_percent]=$battery_percent
     battery_print_verbose_state
 
     if [[ "$battery_percent" -le "$low_threshold_percent" ]]; then
@@ -23,47 +24,50 @@ battery_process_state_change() {
     if [[ "$battery_percent" -ge "$unplug_threshold_percent" ]]; then
       battery_run_command "${unplug_command}"
     fi
-    if ! $suppress_status_notifications; then battery_notify_status_change; fi
-    battery_notify_thresholds
+    if ! $suppress_status_notifications; then battery_notify_status_change "$1"; fi
+    battery_notify_thresholds "$1"
   fi
-  battery_update_critical_deadline
+  battery_update_critical_deadline "$1"
 }
 
 battery_stop_monitor() {
-  kill "$battery_monitor_pid" 2>/dev/null || true
-  wait "$battery_monitor_pid" 2>/dev/null || true
-  exec {battery_event_fd}<&-
+  local monitor_pid=$1 event_fd=$2
+  kill "$monitor_pid" 2>/dev/null || true
+  wait "$monitor_pid" 2>/dev/null || true
+  exec {event_fd}<&-
 }
 
 battery_monitor_events() {
-  local battery_event_fd battery_monitor_pid event remaining_seconds read_status monitor_status=0
-  local last_battery_status=$battery_status last_battery_percent=$battery_percent
-  local last_notified_percent=$battery_percent last_notified_status=$battery_status
-  local last_full_notification_epoch=0 critical_deadline_seconds=0 critical_action_executed=false
-  local -A reported_unknown_statuses=()
+  local battery_event_fd battery_monitor_pid event deadline_seconds remaining_seconds read_status monitor_status=0
+  local -A battery_monitor=(
+    [last_battery_status]=$battery_status [last_battery_percent]=$battery_percent
+    [last_notified_percent]=$battery_percent [last_notified_status]=$battery_status
+    [last_full_notification_epoch]=0 [critical_deadline_seconds]=0 [critical_action_executed]=false
+  )
   exec {battery_event_fd}< <(exec upower --monitor)
   battery_monitor_pid=$!
-  trap battery_stop_monitor EXIT
+  trap "battery_stop_monitor $battery_monitor_pid $battery_event_fd" EXIT
   trap 'exit 0' INT TERM
-  battery_update_critical_deadline
+  battery_update_critical_deadline battery_monitor
   while true; do
-    remaining_seconds=$((critical_deadline_seconds - SECONDS))
-    if ((critical_deadline_seconds > 0 && remaining_seconds <= 0)); then
-      battery_run_critical_action || { monitor_status=$?; break; }
+    deadline_seconds=${battery_monitor[critical_deadline_seconds]}
+    remaining_seconds=$((deadline_seconds - SECONDS))
+    if ((deadline_seconds > 0 && remaining_seconds <= 0)); then
+      battery_run_critical_action battery_monitor || { monitor_status=$?; break; }
       continue
     fi
     local -a read_options=(-r -u "$battery_event_fd")
-    ((critical_deadline_seconds == 0)) || read_options+=(-t "$remaining_seconds")
+    ((deadline_seconds == 0)) || read_options+=(-t "$remaining_seconds")
     if IFS= read "${read_options[@]}" event; then
-      [[ "$event" != *"/battery_BAT"* ]] || battery_process_state_change || { monitor_status=$?; break; }
+      [[ "$event" != *"/battery_BAT"* ]] || battery_process_state_change battery_monitor || { monitor_status=$?; break; }
     else
       read_status=$?
-      ((read_status > 128 && critical_deadline_seconds > 0)) && continue
+      ((read_status > 128 && deadline_seconds > 0)) && continue
       wait "$battery_monitor_pid" 2>/dev/null || monitor_status=$?
       break
     fi
   done
-  battery_stop_monitor
+  battery_stop_monitor "$battery_monitor_pid" "$battery_event_fd"
   trap - EXIT INT TERM
   return "${monitor_status}"
 }

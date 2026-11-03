@@ -20,6 +20,7 @@ SECTIONS = [
         "rows": [
             {"key": "general:gaps_in", "label": "Gaps in", "type": "int", "min": 0, "max": 50, "step": 1},
             {"key": "general:gaps_out", "label": "Gaps out", "type": "int", "min": 0, "max": 50, "step": 1},
+            {"key": "general:float_gaps", "label": "Floating gaps", "type": "int", "min": 0, "max": 50, "step": 1},
             {"key": "general:gaps_workspaces", "label": "Workspace gaps", "type": "int", "min": 0, "max": 100, "step": 1},
             {"key": "general:border_size", "label": "Border width", "type": "int", "min": 0, "max": 20, "step": 1},
             {"key": "decoration:border_part_of_window", "label": "Border inside window", "type": "bool"},
@@ -57,6 +58,7 @@ SECTIONS = [
             {"key": "decoration:dim_strength", "label": "Strength", "type": "float", "min": 0, "max": 1, "step": 0.01},
             {"key": "decoration:dim_special", "label": "Special workspace", "type": "float", "min": 0, "max": 1, "step": 0.01},
             {"key": "decoration:dim_around", "label": "Dim around", "type": "float", "min": 0, "max": 1, "step": 0.01},
+            {"key": "decoration:dim_modal", "label": "Dim behind modals", "type": "bool"},
         ],
     },
     {
@@ -90,6 +92,7 @@ SECTIONS = [
         "rows": [
             {"key": "decoration:glow:enabled", "label": "Enabled", "type": "bool"},
             {"key": "decoration:glow:range", "label": "Range", "type": "int", "min": 0, "max": 100, "step": 1},
+            {"key": "decoration:glow:render_power", "label": "Falloff", "type": "int", "min": 1, "max": 4, "step": 1},
         ],
     },
     {
@@ -108,10 +111,12 @@ SECTIONS = [
             {"key": "group:groupbar:enabled", "label": "Group bar", "type": "bool"},
             {"key": "group:groupbar:height", "label": "Height", "type": "int", "min": 1, "max": 50, "step": 1},
             {"key": "group:groupbar:font_size", "label": "Font size", "type": "int", "min": 1, "max": 40, "step": 1},
+            {"key": "group:groupbar:render_titles", "label": "Titles", "type": "bool"},
             {"key": "group:groupbar:rounding", "label": "Rounding", "type": "int", "min": 0, "max": 20, "step": 1},
             {"key": "group:groupbar:indicator_height", "label": "Indicator", "type": "int", "min": 0, "max": 20, "step": 1},
             {"key": "group:groupbar:gradients", "label": "Gradients", "type": "bool"},
             {"key": "group:groupbar:stacked", "label": "Stacked", "type": "bool"},
+            {"key": "group:groupbar:disable_when_only", "label": "Hide when alone", "type": "bool"},
             {"key": "group:insert_after_current", "label": "Insert after current", "type": "bool"},
             {"key": "group:merge_groups_on_drag", "label": "Merge on drag", "type": "bool"},
         ],
@@ -123,6 +128,23 @@ SECTIONS = [
              "list": ["theme/cursor-list.sh"]},
             {"id": "cursor_size", "variable": "CURSOR_SIZE", "label": "Size", "type": "int",
              "min": 8, "max": 96, "step": 1},
+        ],
+    },
+    {
+        "title": "Mouse & Touchpad",
+        "rows": [
+            {"key": "input:sensitivity", "label": "Sensitivity", "type": "float", "min": -1, "max": 1, "step": 0.05},
+            {"key": "input:accel_profile", "label": "Acceleration", "type": "enum",
+             "options": {"": "device default", "flat": "flat", "adaptive": "adaptive"}},
+            {"key": "input:follow_mouse", "label": "Focus follows mouse", "type": "enum",
+             "options": {0: "off", 1: "on", 2: "hover; click for keyboard", 3: "hover only"}},
+            {"key": "input:natural_scroll", "label": "Natural scrolling", "type": "bool"},
+            {"key": "input:scroll_factor", "label": "Scroll speed", "type": "float", "min": 0.1, "max": 3, "step": 0.05},
+            {"key": "input:touchpad:natural_scroll", "label": "Touchpad natural scrolling", "type": "bool"},
+            {"key": "input:touchpad:tap_to_click", "label": "Tap to click", "type": "bool"},
+            {"key": "input:touchpad:clickfinger_behavior", "label": "Two-finger right click", "type": "bool"},
+            {"key": "input:touchpad:disable_while_typing", "label": "Disable while typing", "type": "bool"},
+            {"key": "input:touchpad:scroll_factor", "label": "Touchpad scroll speed", "type": "float", "min": 0.1, "max": 3, "step": 0.05},
         ],
     },
     {
@@ -143,10 +165,12 @@ SECTIONS = [
 # whatever `general:layout` is set to — this is purely presentation.
 LAYOUT_ROWS = {
     "dwindle": [
-        {"key": "dwindle:force_split", "label": "Force split", "type": "int", "min": 0, "max": 2, "step": 1},
+        {"key": "dwindle:force_split", "label": "Split side", "type": "enum",
+         "options": {0: "cursor", 1: "left/top", 2: "right/bottom"}},
         {"key": "dwindle:preserve_split", "label": "Preserve split", "type": "bool"},
         {"key": "dwindle:smart_split", "label": "Smart split", "type": "bool"},
         {"key": "dwindle:default_split_ratio", "label": "Default split ratio", "type": "float", "min": 0.1, "max": 1.9, "step": 0.01},
+        {"key": "dwindle:split_width_multiplier", "label": "Split width multiplier", "type": "float", "min": 0.5, "max": 2, "step": 0.01},
     ],
     "master": [
         {"key": "master:new_status", "label": "New window", "type": "enum",

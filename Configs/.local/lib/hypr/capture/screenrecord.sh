@@ -85,45 +85,39 @@ if [[ ! -d "$OUTPUT_DIR" ]]; then
   }
 fi
 
-DESKTOP_AUDIO=false
-MICROPHONE_AUDIO=false
-WEBCAM=false
-WEBCAM_DEVICE=""
-RESOLUTION=""
-USE_OUTPUT=false
-USE_REGION=false
-USE_SMART=false
-USE_WINDOW=false
-ACTION=""
+declare -A recording_options=(
+  [action]="" [desktop_audio]=false [microphone_audio]=false [webcam]=false [webcam_device]=""
+  [resolution]="" [use_output]=false [use_region]=false [use_smart]=false [use_window]=false
+)
 
 for arg in "$@"; do
   case "$arg" in
-    --start) ACTION="start" ;;
-    --toggle) ACTION="toggle" ;;
-    --quit) ACTION="quit" ;;
-    --status) ACTION="status" ;;
+    --start) recording_options[action]="start" ;;
+    --toggle) recording_options[action]="toggle" ;;
+    --quit) recording_options[action]="quit" ;;
+    --status) recording_options[action]="status" ;;
     --help) usage; exit 0 ;;
-    --audio|--with-desktop-audio) DESKTOP_AUDIO=true ;;
-    --with-microphone-audio) MICROPHONE_AUDIO=true ;;
-    --with-webcam) WEBCAM=true ;;
-    --webcam-device=*) WEBCAM_DEVICE="${arg#*=}" ;;
-    --resolution=*) RESOLUTION="${arg#*=}" ;;
-    --output) USE_OUTPUT=true ;;
-    --region) USE_REGION=true ;;
-    --smart) USE_SMART=true ;;
-    --window) USE_WINDOW=true ;;
+    --audio|--with-desktop-audio) recording_options[desktop_audio]=true ;;
+    --with-microphone-audio) recording_options[microphone_audio]=true ;;
+    --with-webcam) recording_options[webcam]=true ;;
+    --webcam-device=*) recording_options[webcam_device]="${arg#*=}" ;;
+    --resolution=*) recording_options[resolution]="${arg#*=}" ;;
+    --output) recording_options[use_output]=true ;;
+    --region) recording_options[use_region]=true ;;
+    --smart) recording_options[use_smart]=true ;;
+    --window) recording_options[use_window]=true ;;
   esac
 done
 
-case "${ACTION:-}" in
+case "${recording_options[action]}" in
   start)
-    screenrecord_start_flow
+    screenrecord_start_flow recording_options
     ;;
   toggle)
     if screenrecord_has_matching_process -x slurp; then
       screenrecord_signal_matching TERM -x slurp
     else
-      screenrecord_toggle_flow
+      screenrecord_toggle_flow recording_options
     fi
     ;;
   quit)
@@ -133,6 +127,6 @@ case "${ACTION:-}" in
     emit_screenrecord_status_json
     ;;
   "")
-    screenrecord_toggle_flow
+    screenrecord_toggle_flow recording_options
     ;;
 esac

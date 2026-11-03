@@ -1,8 +1,18 @@
+declare -F hypr_dbus_get >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/dbus.bash" || return 1
+
 power_config_path="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/power-manager.json"
 POWER_DEFAULT_BATTERY_THRESHOLD_PERCENT=20
 
 power_manager_enabled() {
   [[ -f "$power_config_path" ]] && jq -e '.enabled == true' "$power_config_path" >/dev/null 2>&1
+}
+
+power_require_idle_state() {
+  declare -F idle_system_enabled >/dev/null || source "${HYPR_LIB_DIR}/session/idle/state.bash"
+}
+
+power_sleep_held() {
+  power_require_idle_state && idle_system_enabled
 }
 
 power_setting() {

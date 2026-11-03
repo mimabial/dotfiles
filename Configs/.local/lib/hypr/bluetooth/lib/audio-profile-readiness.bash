@@ -36,13 +36,13 @@ audio_event_affects_card() {
   [[ $event =~ $AUDIO_ENDPOINT_EVENT || $event == *" on card #${card_index}" ]]
 }
 
-drain_queued_card_events() {
-  local events_fd=$1 card_index=$2 event='' queued=1
+drained_events_touched_card() {
+  local events_fd=$1 card_index=$2 event='' touched=1
 
   while read -t 0 -u "$events_fd" && read -r -u "$events_fd" event; do
-    audio_event_affects_card "$card_index" "$event" && queued=0
+    audio_event_affects_card "$card_index" "$event" && touched=0
   done
-  return "$queued"
+  return "$touched"
 }
 
 await_card_event() {
@@ -86,7 +86,7 @@ wait_for_profile_topology() {
     if [[ $reported_profile == "$target_profile" ]] \
         && endpoint_count_is_ready "$expected_sinks" "$sink_count" "$sink_bound" \
         && endpoint_count_is_ready "$expected_sources" "$source_count" "$source_bound"; then
-      drain_queued_card_events "$events_fd" "${card_ref[index]}" || return 0
+      drained_events_touched_card "$events_fd" "${card_ref[index]}" || return 0
       (( ${EPOCHREALTIME//[!0-9]/} / 1000 < deadline_ms )) || break
     else
       await_card_event "$events_fd" "${card_ref[index]}" "$deadline_ms" || break

@@ -1,0 +1,22 @@
+local windowSpeed, exitSpeed, fadeSpeed = 2.5, 1.67, 0.83
+local windowScale = "popin 90%"
+
+require("runtime").config("animations.enabled", true)
+hl.curve("windowsEntrance", {type = "bezier", points = {{0, 0}, {0, 1}}})
+hl.curve("windowsMove", {type = "bezier", points = {{0.55, 0.55}, {0, 1}}})
+hl.curve("windowsFade", {type = "bezier", points = {{0, 0}, {1, 1}}})
+hl.animation({leaf = "windowsIn", enabled = true, speed = windowSpeed, bezier = "windowsEntrance", style = windowScale})
+hl.animation({leaf = "windowsOut", enabled = true, speed = exitSpeed, bezier = "windowsEntrance", style = windowScale})
+hl.animation({leaf = "windowsMove", enabled = true, speed = windowSpeed, bezier = "windowsMove", style = "slide"})
+hl.animation({leaf = "border", enabled = true, speed = fadeSpeed, bezier = "windowsFade"})
+hl.animation({leaf = "borderangle", enabled = false})
+hl.animation({leaf = "fade", enabled = true, speed = fadeSpeed, bezier = "windowsFade"})
+hl.animation({leaf = "fadeIn", enabled = true, speed = fadeSpeed, bezier = "windowsFade"})
+hl.animation({leaf = "fadeOut", enabled = true, speed = fadeSpeed, bezier = "windowsFade"})
+hl.animation({leaf = "layersIn", enabled = true, speed = windowSpeed, bezier = "windowsEntrance", style = "slide"})
+hl.animation({leaf = "layersOut", enabled = true, speed = exitSpeed, bezier = "windowsEntrance", style = "slide"})
+hl.animation({leaf = "fadeLayersIn", enabled = true, speed = fadeSpeed, bezier = "windowsFade"})
+hl.animation({leaf = "fadeLayersOut", enabled = true, speed = fadeSpeed, bezier = "windowsFade"})
+hl.animation({leaf = "workspaces", enabled = true, speed = windowSpeed, bezier = "windowsMove", style = "slide"})
+hl.animation({leaf = "specialWorkspace", enabled = true, speed = exitSpeed, bezier = "windowsFade", style = "fade"})
+require("vars").set("WORKSPACE_SWIPE_AXIS", "horizontal")

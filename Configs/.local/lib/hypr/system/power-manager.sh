@@ -20,10 +20,12 @@ case "${1:-}" in
   idle-arm) power_arm_idle ;;
   idle-rearm) power_rearm_idle ;;
   idle-cancel) power_cancel_idle ;;
-  idle-legacy) power_manager_enabled || hyprshell session/suspend.sh ;;
+  idle-legacy) power_manager_enabled || power_sleep_held || hyprshell session/suspend.sh ;;
   idle-wait) power_wait_idle "${2:-}" "${3:-}" "${4:-}" "${5:-}" ;;
   lid-action) power_lid_action ;;
+  lid-choice) power_lid_choice ;;
+  lid-set) power_set_lid_choice "${2:-}" ;;
   perform) power_perform_action "${2:-}" "${3:-}" ;;
-  -h|--help) printf 'Usage: hyprshell system/power-manager <state|enabled|apply-profile|idle-plan|idle-arm|idle-rearm|idle-cancel|idle-legacy|idle-wait TOKEN DELAY ACTION PID|lid-action|perform ACTION [--locked]>\n' ;;
+  -h|--help) printf 'Usage: hyprshell system/power-manager <state|enabled|apply-profile|idle-plan|idle-arm|idle-rearm|idle-cancel|idle-legacy|idle-wait TOKEN DELAY ACTION PID|lid-action|lid-choice|lid-set keep-running|ACTION|perform ACTION [--locked]>\n' ;;
   *) exit 2 ;;
 esac

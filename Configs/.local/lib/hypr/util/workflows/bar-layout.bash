@@ -15,6 +15,9 @@ workflow_apply_bar_layout() {
   local current_layout_name saved_layout target_layout=""
   local last_applied allowed
 
+  [[ "${active_workflow_name}" == powersaver ]] && return 0
+  [[ "${workflow_previous_name}" == powersaver && "${active_workflow_name}" == "$(state_get POWER_PROFILE_WORKFLOW_PREV "")" ]] && return 0
+
   read -ra allowed <<<"$(workflow_read_bar_layouts "${active_workflow_path}")"
   current_layout_name="$(state_get "QUICKSHELL_LAYOUT_NAME" "top")"
   saved_layout="$(state_get "WORKFLOW_QUICKSHELL_PREV_LAYOUT" "")"
@@ -39,5 +42,5 @@ workflow_apply_bar_layout() {
   fi
   state_set "WORKFLOW_QUICKSHELL_LAST_APPLIED_LAYOUT" "${target_layout}" "staterc"
   state_set "QUICKSHELL_LAYOUT_NAME" "${target_layout}" "staterc"
-  hyprshell render/dunst.py >/dev/null 2>&1 || true
+  "${HYPR_LIB_DIR}/render/dunst.py" >/dev/null 2>&1 || true
 }

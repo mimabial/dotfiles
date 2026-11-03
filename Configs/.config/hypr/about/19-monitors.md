@@ -21,7 +21,10 @@ reach for when a profile applies and then something puts it back — it verifies
 the load order rather than guessing at it.
 
 A daemon watches for hotplug and applies the matching profile, so docking and
-undocking sort themselves out.
+undocking sort themselves out. A display no profile knows joins the right edge
+of the layout at the mode Hyprland lit it with, and with the lid closed the
+laptop panel turns off while an external display shows a picture — no
+separate docked profile needed.
 
 ## The editor
 

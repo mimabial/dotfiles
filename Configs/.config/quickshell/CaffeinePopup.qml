@@ -16,6 +16,7 @@ PopupCard {
     readonly property bool gameActive: shell.caffeineGameActive
     readonly property bool windowHolding: fullscreenEnabled && (fullscreenActive || gameActive)
     readonly property bool awake: manual || audioHolding || windowHolding
+    readonly property bool systemHeld: shell.keepAwakeSystem
     readonly property string reason: [[manual, "Manual"], [audioHolding, "Audio"], [fullscreenEnabled && fullscreenActive, "Fullscreen"], [fullscreenEnabled && gameActive, "Game"]].filter(([active]) => active).map(([, label]) => label).join(", ") || "None"
     function toggle(script) { shell.run([shell.home + "/.local/lib/hypr/" + script]) }
 
@@ -25,7 +26,7 @@ PopupCard {
 
         PopupHero {
             shell: root.shell; title: "Caffeine"
-            status: root.awake ? "awake · " + root.reason : "idle allowed"
+            status: root.awake ? "awake · " + root.reason : root.systemHeld ? "idle locks · sleep held" : "idle allowed"
         }
         PopupSeparator { shell: root.shell }
 
@@ -38,6 +39,14 @@ PopupCard {
                 detail: root.manual ? "Holding the session awake" : "Idle and lock run normally"
                 active: root.manual
                 onClicked: root.toggle("session/toggle-keep-awake.sh")
+            }
+            PopupRow {
+                width: parent.width; shell: root.shell
+                icon: root.systemHeld ? "󰌢" : "󰛧"
+                title: "Keep running with the lid closed"
+                detail: root.systemHeld ? "Lid and idle lock, never sleep" : "Lid and idle sleep normally"
+                active: root.systemHeld
+                onClicked: root.toggle("session/toggle-system-keep-awake.sh")
             }
             PopupRow {
                 width: parent.width; shell: root.shell

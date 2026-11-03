@@ -9,7 +9,7 @@ import "BitwardenModel.js" as Model
 PopupCard {
     id: root
     popupName: "bitwarden"
-    keyboardHint: page === "list" ? "Type search · ↑↓ move · Tab filter · Enter copy · ⇧Enter open · Esc" : "↑↓/Tab move · Enter select · Esc back"
+    keyboardHint: page === "list" ? "Type search  ↑↓ Move  Tab Filter  Enter Copy  ⇧Enter Open  Esc" : "↑↓/Tab Move  Enter Select  Esc Back"
     contentWidth: Style.px(430)
     wantsKeyboard: true
 
@@ -181,9 +181,9 @@ PopupCard {
         signal edited(string text)
         function activateKeyboard() { area.forceActiveFocus() }
         width: parent ? parent.width : 0; implicitHeight: Math.max(Style.px(56), area.implicitHeight)
-        radius: root.shell.rounding; color: root.shell.alpha(root.shell.foreground, .06)
-        border.width: 1; border.color: cursored ? root.shell.hoverEdge(.85)
-            : root.shell.alpha(root.shell.foreground, area.activeFocus ? .45 : .18)
+        radius: root.shell.rounding
+        color: cursored || area.activeFocus ? root.shell.hoverFill() : root.shell.alpha(root.shell.foreground, Style.fieldFillAlpha)
+        border.width: 1; border.color: root.shell.alpha(root.shell.foreground, Style.fieldBorderAlpha)
         TextArea {
             id: area
             anchors.fill: parent; wrapMode: TextArea.Wrap; background: null
@@ -272,11 +272,10 @@ PopupCard {
             active: root.visible
             sourceComponent: root.pages[root.page]
         }
-        Text {
-            width: parent.width; visible: text !== ""; wrapMode: Text.Wrap
-            text: root.vault.error || root.vault.notice
-            color: root.vault.error ? root.shell.urgent : root.shell.mutedText
-            font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+        PopupHint {
+            shell: root.shell; error: root.vault.error !== ""
+            width: parent.width; text: root.vault.error || root.vault.notice
+            textFormat: Text.PlainText; wrapMode: Text.Wrap; horizontalAlignment: Text.AlignLeft
         }
     }
 
@@ -338,7 +337,7 @@ PopupCard {
             }
             PopupField {
                 width: parent.width; shell: root.shell
-                placeholderText: "Search · Enter copies · Shift+Enter opens · Tab filters"
+                placeholderText: "Search  Enter Copy  Shift+Enter Open  Tab Filter"
                 text: root.query; onTextEdited: root.query = text
                 Keys.onPressed: event => event.accepted = root.listKey(event)
                 Component.onCompleted: forceActiveFocus()

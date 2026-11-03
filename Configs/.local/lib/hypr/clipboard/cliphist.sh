@@ -7,7 +7,7 @@ favorites_file="${XDG_CACHE_HOME:-$HOME/.cache}/landing/cliphist_favorites"
 OCR_ERROR_NOTIFY_MS=7000
 
 run_cliphist_for_entry() {
-  printf '%s\t' "$2" | cliphist "$1"
+  cliphist "$1" <<<"$2"$'\t'
 }
 
 emit_clipboard_panel_json() {
@@ -42,14 +42,15 @@ add_favorite() {
 
 cache_entry_image() {
   local image=""
-  image="$(hypr_ensure_runtime_subdir hypr/cliphist)/$1" || return 1
+  hypr_ensure_runtime_dir_into image hypr/cliphist || return 1
+  image+="/$1"
   [[ -s "${image}" ]] || run_cliphist_for_entry decode "$1" >"${image}" || { rm -f "${image}"; return 1; }
   printf '%s\n' "${image}"
 }
 
 decode_entry_to_temporary_file() {
-  local id="$1" error_title="$2" image=""
-  image="$(mktemp "$(hypr_ensure_runtime_subdir hypr)/cliphist.XXXXXX")" &&
+  local id="$1" error_title="$2" image="" runtime_dir=""
+  hypr_ensure_runtime_dir_into runtime_dir hypr && image="$(mktemp "${runtime_dir}/cliphist.XXXXXX")" &&
     run_cliphist_for_entry decode "${id}" >"${image}" && printf '%s\n' "${image}" && return
   rm -f "${image}"
   dunstify -t "${NOTIFY_MS}" -i dialog-error "${error_title}" "Failed to decode the clipboard entry."

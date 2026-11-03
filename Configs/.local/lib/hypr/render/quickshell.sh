@@ -21,17 +21,7 @@ render_output_is_current render_job && exit 0
 render_stage_output_into render_job
 trap 'rm -f -- "${render_job[staged_file]}"' EXIT
 
-palette_roles_json=""
-# A pack override is a flat {role: "#hex"} object. Unreadable or malformed packs
-# fall through to the palette-derived defaults rather than failing the render.
-if [[ -n "${render_job[pack_override]}" ]]; then
-  palette_roles_json="$(jq -ce 'with_entries(select(.value | type == "string"))' "${render_job[pack_override]}" 2>/dev/null || true)"
-fi
-
-if [[ -z "${palette_roles_json}" ]]; then
-  palette_roles_json="$(jq -c "${RENDER_PALETTE_ROLES_JQ} + {background: .bg, foreground: .fg}\
-    ${RENDER_PALETTE_NUMBERED_JQ}" "${render_job[palette_file]}")"
-fi
+palette_roles_json="$(render_palette_roles render_job)"
 
 [[ "$(jq -r 'length' <<<"${palette_roles_json}")" -gt 0 ]] || {
   echo "render/quickshell: empty palette" >&2
@@ -39,7 +29,10 @@ fi
 }
 
 jq -n --argjson palette "${palette_roles_json}" --argjson rounding "${rounding}" --argjson border "${border}" \
-  '{rounding: $rounding, borderSize: $border, palette: $palette}' > "${render_job[staged_file]}"
+  --arg source "${render_job[palette_source]}" --rawfile override "${render_job[pack_override]:-/dev/null}" \
+  '{rounding: $rounding, borderSize: $border, palette: $palette,
+    themeName: (if $source | startswith("theme:") then $source | ltrimstr("theme:") else "" end),
+    minimap: ((try ($override | fromjson) catch {}) | .minimap // {})}' > "${render_job[staged_file]}"
 
 render_commit_staged_output render_job
 trap - EXIT

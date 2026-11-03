@@ -23,7 +23,6 @@ Rectangle {
   implicitHeight: thumbSize + 2 * Commons.Style.spacing.sm
   radius: Commons.Style.cornerRadius
   color: mouse.containsMouse || cursored ? controller.shell.hoverFill() : isCurrent ? controller.shell.selectedFill() : "transparent"
-  border.color: cursored ? controller.shell.hoverEdge(.85) : isCurrent ? controller.shell.selectedEdge() : "transparent"
 
   MouseArea {
     id: mouse

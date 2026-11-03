@@ -33,13 +33,6 @@ hyprshell system/pm clean-cache
 hyprshell system/pm remove-orphans
 ```
 
-And a snapshot of everything explicitly installed, which is the thing you
-actually want when rebuilding a machine:
-
-```bash
-installed_packages
-```
-
 ## Through the menu
 
 **Maintenance** in the menu covers updates, desktop process restarts, password

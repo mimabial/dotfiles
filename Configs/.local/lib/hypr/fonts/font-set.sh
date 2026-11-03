@@ -37,15 +37,15 @@ require_installed_font() {
 
   printf "Font '%s' not found in system.\n\n" "${FONT_NAME}" >&2
   printf 'Available monospace fonts:\n' >&2
-  hyprshell fonts/font-list.sh | head -n "${FONT_SUGGESTION_LIMIT}" >&2
+  "${HYPR_LIB_DIR}/fonts/font-list.sh" | head -n "${FONT_SUGGESTION_LIMIT}" >&2
   printf '\nInstall fonts from Menu > Install > Font\n' >&2
   exit 1
 }
 
 persist_font_selection() {
   local font_lua=""
-  font_lua="$(jq -Rn --arg value "${FONT_NAME}" '$value')"
-  mkdir -p "$(dirname "${USER_FONTS_FILE}")"
+  font_lua="$(hypr_lua_quote "${FONT_NAME}")"
+  [[ -d "${USER_FONTS_FILE%/*}" ]] || mkdir -p "${USER_FONTS_FILE%/*}"
   cat <<LUA >"${USER_FONTS_FILE}"
 -- Generated native Hyprland Lua font overrides.
 local vars = require("vars")
@@ -62,4 +62,4 @@ LUA
 require_font_name
 require_installed_font
 persist_font_selection
-hyprshell fonts/font-apply.sh "${FONT_NAME}"
+"${HYPR_LIB_DIR}/fonts/font-apply.sh" "${FONT_NAME}"

@@ -72,7 +72,7 @@ app="${1:-}"
 case "${app}" in
   kitty) binds="$(list_kitty_bindings || true)" ;;
   tmux) binds="$(list_tmux_bindings || true)" ;;
-  *) printf 'usage: %s <kitty|tmux>\n' "$(basename "$0")" >&2; exit 1 ;;
+  *) printf 'usage: %s <kitty|tmux>\n' "${0##*/}" >&2; exit 1 ;;
 esac
 
 if [[ -z "${binds}" ]]; then
@@ -86,6 +86,7 @@ rows="$(awk -F '\t' '
 ' <<<"${binds}")"
 font_scale="$(rofi_effective_font_scale "${ROFI_KEYBIND_HINT_SCALE:-}")"
 font_name="$(rofi_effective_font_name "${ROFI_KEYBIND_HINT_FONT:-${ROFI_FONT:-}}")"
+row_newlines="${rows//[!$'\n']/}"
 
 # same geometry and overrides as keybinds_hint, so the cheatsheets match
 printf '%s\n' "${rows}" | rofi_with_background_theme -dmenu -i -no-custom -no-show-icons -p " ${app}" \
@@ -94,5 +95,5 @@ printf '%s\n' "${rows}" | rofi_with_background_theme -dmenu -i -no-custom -no-sh
   -theme-str "$(rofi_font_override "${font_name}" "${font_scale}")" \
   -theme-str "$(rofi_icon_theme_override)" \
   -theme-str "$(rofi_standard_window_theme listview same)" \
-  -theme-str "$(rofi_cheatsheet_layout_override "$(wc -l <<<"${rows}")" "${font_name}" "${font_scale}")" \
+  -theme-str "$(rofi_cheatsheet_layout_override "$((${#row_newlines} + 1))" "${font_name}" "${font_scale}")" \
   >/dev/null

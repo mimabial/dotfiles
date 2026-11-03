@@ -1,5 +1,7 @@
 MPRIS_SEEK_SECONDS=10
 MPRIS_TITLE_MAX_CHARS=40
+MPRIS_SNAPSHOT_FORMAT=$'{{playerInstance}}\x1f{{status}}\x1f{{xesam:title}}\x1f{{xesam:artist}}\x1f{{mpris:length}}\x1f{{mpris:artUrl}}\x1f{{xesam:url}}'
+MPRIS_SNAPSHOT_SHARE_MICROSECONDS=500000
 mpris_player_icon() {
   local player=${1:-default}
   declare -A player_icons=(
@@ -25,20 +27,47 @@ mpris_player_icon() {
 
 # playerctl lists alphabetically, so only the status can pick the player that sounds.
 mpris_selected_player() {
-  local -a names=() statuses=()
-  mapfile -t names < <(playerctl --list-all 2>/dev/null)
-  mapfile -t statuses < <(playerctl -a status 2>/dev/null)
-  local index="" paused=""
-  for index in "${!names[@]}"; do
-    case "${statuses[index]:-}" in
+  local name="" status="" first="" paused=""
+  while IFS=$'\t' read -r name status; do
+    [[ -n ${first} ]] || first="${name}"
+    case "${status}" in
       Playing)
-        printf '%s' "${names[index]}"
+        printf '%s' "${name}"
         return
         ;;
-      Paused) [[ -n ${paused} ]] || paused="${names[index]}" ;;
+      Paused) [[ -n ${paused} ]] || paused="${name}" ;;
     esac
-  done
-  printf '%s' "${paused:-${names[0]:-}}"
+  done < <(playerctl -a status --format $'{{playerInstance}}\t{{status}}' 2>/dev/null)
+  printf '%s' "${paused:-${first}}"
+}
+
+mpris_snapshot_into() {
+  local -n snapshot_ref="$1"
+  local snapshot_file="$2" lock_fd stamp="" rows="" row="" name="" status="" selected="" paused="" first=""
+  local now="${EPOCHREALTIME/./}"
+  [[ -d "${snapshot_file%/*}" ]] || mkdir -m 700 "${snapshot_file%/*}" || return 1
+  exec {lock_fd}<>"${snapshot_file}"
+  flock "${lock_fd}"
+  { IFS= read -r stamp || true; IFS= read -r -d '' rows || true; } <"${snapshot_file}"
+  if ((now - ${stamp:-0} >= MPRIS_SNAPSHOT_SHARE_MICROSECONDS || now < ${stamp:-0})); then
+    rows="$(playerctl -a metadata --format "${MPRIS_SNAPSHOT_FORMAT}" 2>/dev/null)" || true
+    printf '%s\n%s\n' "${now}" "${rows}" >"${snapshot_file}"
+    snapshot_ref[fresh]=1
+  fi
+  exec {lock_fd}>&-
+  while IFS= read -r row; do
+    IFS=$'\x1f' read -r name status _ <<<"${row}"
+    [[ -n ${first} ]] || first="${row}"
+    case "${status}" in
+      Playing)
+        selected="${row}"
+        break
+        ;;
+      Paused) [[ -n ${paused} ]] || paused="${row}" ;;
+    esac
+  done <<<"${rows}"
+  IFS=$'\x1f' read -r "snapshot_ref[player]" "snapshot_ref[status]" "snapshot_ref[title]" "snapshot_ref[artist]" \
+    "snapshot_ref[length]" "snapshot_ref[art_url]" "snapshot_ref[url]" <<<"${selected:-${paused:-${first}}}"
 }
 
 mpris_player_status() {
@@ -52,39 +81,34 @@ mpris_status_is_active() {
   esac
 }
 
-mpris_active_metadata() {
-  local player="$1"
-  local format="$2"
-  local metadata=""
-  metadata="$(playerctl -p "${player}" metadata --format $'{{status}}\t'"${format}" 2>/dev/null)" || return 1
-  local status="${metadata%%$'\t'*}"
-  local value="${metadata#*$'\t'}"
-  mpris_status_is_active "${status}" || return 1
-  printf '%s\n' "${value}"
-}
-
-mpris_artwork_url() {
-  local player="$1"
-  local art_url=""
-  local video_url=""
-  local video_id=""
+mpris_artwork_url_into() {
+  local -n art_url_ref="$1"
+  local video_url="$3"
   local youtube_watch_re='youtube\.com/watch\?v=([^&]+)'
   local youtube_short_re='youtu\.be/([^?]+)'
 
-  art_url="$(playerctl -p "${player}" metadata --format '{{mpris:artUrl}}' 2>/dev/null)"
-  if [[ -z "${art_url}" ]]; then
-    video_url="$(playerctl -p "${player}" metadata --format '{{xesam:url}}' 2>/dev/null)"
-    if [[ "${video_url}" =~ ${youtube_watch_re} ]] || [[ "${video_url}" =~ ${youtube_short_re} ]]; then
-      video_id="${BASH_REMATCH[1]}"
-      art_url="https://img.youtube.com/vi/${video_id}/maxresdefault.jpg"
-    fi
+  art_url_ref="$2"
+  if [[ -z "${art_url_ref}" ]] && { [[ "${video_url}" =~ ${youtube_watch_re} ]] || [[ "${video_url}" =~ ${youtube_short_re} ]]; }; then
+    art_url_ref="https://img.youtube.com/vi/${BASH_REMATCH[1]}/maxresdefault.jpg"
   fi
+}
 
+mpris_artwork_url() {
+  local art_url="" video_url=""
+  IFS=$'\x1f' read -r art_url video_url < <(playerctl -p "$1" metadata --format $'{{mpris:artUrl}}\x1f{{xesam:url}}' 2>/dev/null) || true
+  mpris_artwork_url_into art_url "${art_url}" "${video_url}"
   printf '%s\n' "${art_url}"
 }
 
 mpris_fallback_artist() {
-  awk -F'=' '/^PRETTY_NAME=/ {gsub(/"/,"",$2); print $2; exit}' /etc/os-release
+  local line="" value=""
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    [[ "${line}" == PRETTY_NAME=* ]] || continue
+    value="${line#PRETTY_NAME=}"
+    value="${value%%=*}"
+    printf '%s\n' "${value//\"/}"
+    return
+  done </etc/os-release
 }
 
 format_mpris_length() {
@@ -108,47 +132,43 @@ truncate_mpris_title() {
 }
 
 hyprlock_media_title() {
-  local player=${1:-$(mpris_selected_player)}
-  local title=""
+  local -n title_media_ref="$1"
 
-  title="$(mpris_active_metadata "${player}" "{{xesam:title}}" || true)"
-  if [[ -n "${title}" ]]; then
-    truncate_mpris_title "${title}"
+  if mpris_status_is_active "${title_media_ref[status]}" && [[ -n "${title_media_ref[title]}" ]]; then
+    truncate_mpris_title "${title_media_ref[title]}"
   else
     echo "${USER^}"
   fi
 }
 
 hyprlock_active_media_title() {
-  local player=${1:-$(mpris_selected_player)}
-  mpris_status_is_active "$(mpris_player_status "${player}" || true)" || return 1
-  hyprlock_media_title "${player}"
+  local -n active_media_ref="$1"
+  mpris_status_is_active "${active_media_ref[status]}" || return 1
+  hyprlock_media_title "$1"
 }
 
 hyprlock_media_artist() {
-  local player=${1:-$(mpris_selected_player)}
+  local -n artist_media_ref="$1"
 
-  if ! mpris_active_metadata "${player}" "{{xesam:artist}}"; then
+  if mpris_status_is_active "${artist_media_ref[status]}"; then
+    printf '%s\n' "${artist_media_ref[artist]}"
+  else
     mpris_fallback_artist
   fi
 }
 
 hyprlock_media_player_icon() {
-  local player=${1:-$(mpris_selected_player)}
-  local player_status=""
+  local -n icon_media_ref="$1"
 
-  player_status="$(mpris_player_status "${player}" || true)"
-  if mpris_status_is_active "${player_status}"; then
-    mpris_player_icon "${player}"
+  if mpris_status_is_active "${icon_media_ref[status]}"; then
+    mpris_player_icon "${icon_media_ref[player]}"
   fi
 }
 
 hyprlock_media_status_icon() {
-  local player=${1:-$(mpris_selected_player)}
-  local player_status=""
+  local -n status_media_ref="$1"
 
-  player_status="$(mpris_player_status "${player}" || true)"
-  case "${player_status}" in
+  case "${status_media_ref[status]}" in
     Playing) echo "▶" ;;
     Paused) echo "⏸" ;;
     *) echo "" ;;
@@ -167,11 +187,9 @@ hyprlock_control_media() {
 }
 
 hyprlock_media_duration() {
-  local player=${1:-$(mpris_selected_player)}
-  local length=""
+  local -n duration_media_ref="$1"
 
-  length="$(mpris_active_metadata "${player}" "{{mpris:length}}" || true)"
-  if [[ -n "${length}" ]]; then
-    format_mpris_length "${length}"
+  if mpris_status_is_active "${duration_media_ref[status]}" && [[ -n "${duration_media_ref[length]}" ]]; then
+    format_mpris_length "${duration_media_ref[length]}"
   fi
 }

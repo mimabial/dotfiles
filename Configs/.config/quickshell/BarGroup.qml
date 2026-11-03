@@ -20,10 +20,6 @@ Item {
     property real radius: shell.moduleRadius
     property color backgroundColor: root.boxColor("backgroundColor")
     property color borderColor: root.boxColor("borderColor")
-    property color hoverBorderColor: {
-        const spec = box.hover && "borderColor" in box.hover ? box.hover.borderColor : ["hvr_br", Style.hoverBorderAlpha]
-        return !spec ? "transparent" : Array.isArray(spec) ? shell.alpha(shell.role(spec[0], borderColor), spec[1] ?? 1) : shell.role(spec, borderColor)
-    }
     readonly property bool hovered: hover.hovered
     readonly property bool primaryFilled: hasVisibleContent(primaryLoader.item)
     readonly property bool drawersBeforePrimary: reverse && !alwaysOpen
@@ -59,9 +55,8 @@ Item {
         anchors.topMargin: root.box.margin[0]; anchors.rightMargin: root.box.margin[1]
         anchors.bottomMargin: root.box.margin[2]; anchors.leftMargin: root.box.margin[3]
         radius: root.radius; color: root.backgroundColor
-        border.color: root.hovered ? root.hoverBorderColor : root.borderColor
+        border.color: root.borderColor
         border.width: root.borderWidth
-        Behavior on border.color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
     }
     GridLayout {
         id: content

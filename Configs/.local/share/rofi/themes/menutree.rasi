@@ -1,13 +1,13 @@
 @import "~/.config/rofi/colors.rasi"
+@import "shared/header.rasi"
 
 * {
     /* rofi/menu.engine.bash overrides element-border-radius per launch */
     element-border-radius:       8px;
-    window-border-radius:        12px;
-    menu-padding:                20px;
-    menu-spacing:                10px;
-    menu-icon-padding:           10px 12px;
-    menu-list-margin:            10px 0px 0px 0px;
+    window-border-radius:        @element-border-radius;
+    menu-padding:                @popup-padding;
+    menu-icon-padding:           @control-padding;
+    menu-list-margin:            @section-margin;
 }
 
 window {
@@ -44,80 +44,19 @@ mainbox {
     children:                    [ "inputbar", "listview", "message" ];
 }
 
-inputbar {
-    enabled:                     true;
-    spacing:                     @menu-spacing;
-    margin:                      0px;
-    padding:                     0px;
-    border:                      0px;
-    border-radius:               0px;
-    border-color:                @border;
-    background-color:            transparent;
-    text-color:                  @foreground;
-    orientation:                 vertical;
-    children:                    [ "promptbar", "entry" ];
-}
-
-promptbar {
-    orientation:                 horizontal;
-    expand:                      false;
-    spacing:                     @menu-spacing;
-    margin:                      0px;
-    background-color:            transparent;
-    children:                    [ "textbox-prompt-colon", "textbox-prompt-label" ];
-}
-
-entry {
-    border:                      0px;
-    enabled:                     true;
-    padding:                     @menu-spacing;
-    border-radius:               @element-border-radius;
-    background-color:            @background;
-    border-color:                transparent;
-    text-color:                  @foreground;
-    placeholder:                 "";
-    placeholder-color:           @separator;
-}
-
-textbox-prompt-colon, textbox-prompt-label {
-    horizontal-align:            0.5;
-    vertical-align:              0.5;
-}
-
-textbox-prompt-colon {
-    expand:                      false;
-    border:                      2px;
-    padding:                     @menu-icon-padding;
-    border-radius:               @element-border-radius;
-    border-color:                @accent;
-    background-color:            transparent;
-    text-color:                  @foreground;
-    str:                         "";
-}
-
-textbox-prompt-label {
-    border:                      2px;
-    expand:                      false;
-    padding:                     @menu-spacing;
-    border-radius:               @element-border-radius;
-    border-color:                @selected-background;
-    background-color:            transparent;
-    text-color:                  @selected-foreground;
-}
-
 listview {
     enabled:                     true;
     columns:                     1;
     lines:                       10;
     cycle:                       true;
     dynamic:                     true;
-    scrollbar:                   false;
+    scrollbar:                   true;
     layout:                      vertical;
     reverse:                     false;
     fixed-height:                false;
     fixed-columns:               true;
 
-    spacing:                     5px;
+    spacing:                     @row-gap;
     margin:                      @menu-list-margin;
     padding:                     0px;
     border:                      0px solid;
@@ -129,18 +68,14 @@ listview {
 }
 
 scrollbar {
-    handle-width:                4px;
-    handle-color:                @separator;
-    handle-rounded-corners:      false;
-    background-color:            @background;
-    border-color:                @border;
+    handle-rounded-corners:      true;
 }
 
 element {
     enabled:                     true;
-    spacing:                     10px;
+    spacing:                     @control-gap;
     margin:                      0px;
-    padding:                     14px;
+    padding:                     @control-padding;
     border:                      0px solid;
     border-radius:               @element-border-radius;
     border-color:                @border;
@@ -155,8 +90,7 @@ element normal.normal {
 }
 
 element selected.normal {
-    border:                      2px;
-    border-color:            @selected-background;
+    background-color:            @selected-background;
     text-color:                  @selected-foreground;
 }
 
@@ -176,7 +110,7 @@ element-icon {
 
 message {
     enabled:                     true;
-    margin:                      12px 0px 0px 0px;
+    margin:                      @section-margin;
     padding:                     0px;
     border:                      0px solid;
     border-radius:               0px;
@@ -186,7 +120,7 @@ message {
 }
 
 textbox {
-    padding:                     6px;
+    padding:                     @control-padding-y;
     border:                      0px solid;
     border-radius:               @element-border-radius;
     border-color:                @border;
@@ -197,10 +131,10 @@ textbox {
 }
 
 error-message {
-    padding:                     12px;
+    padding:                     @popup-padding;
     border:                      2px solid;
     border-radius:               @window-border-radius;
     border-color:                @border;
-    background-color:            @background;
+    background-color:            @background-alpha;
     text-color:                  @foreground;
 }

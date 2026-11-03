@@ -2,11 +2,13 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 import "StartMenuModel.js" as StartMenuModel
 
 PopupCard {
     id: root
+    readonly property string menutreeScript: root.shell.home + "/.local/lib/hypr/rofi/menutree.sh"
     property string activePopupName: "start"
     popupName: activePopupName
     Binding on activePopupName {
@@ -15,21 +17,31 @@ PopupCard {
         restoreMode: Binding.RestoreNone
     }
     keyboardHint: spotlight ? ""
-        : placeEditorOpen ? "Enter save place · Esc cancel"
-        : browseOnly ? "↑↓ move · Enter open · Esc close" : "Type to search · ↑↓ move · Enter open · Esc close"
+        : placeEditorOpen ? "Enter Save Place  Esc Cancel"
+        : browseOnly ? "Tab Section  ↑↓ Move  Enter Open  Esc Close" : "Type to search  Tab Section  ↑↓ Move  Enter Open  Esc Close"
     wantsKeyboard: true
     contentWidth: spotlight ? Style.spotlightWidth : Style.px(620)
     contentHeight: layoutColumn.implicitHeight + padding * 2
     padding: spotlight ? 0 : Style.popupPadding
+    Binding on borderOpacity { when: !root.spotlight; value: 0 }
     centeredHeight: spotlight ? spotlightChromeHeight + Style.spotlightListHeight : cardHeight
 
     property string searchQuery: ""
     property var recentFiles: []
     property var indexedDocuments: []
+    property var usage: ({items: {}, queries: {}})
+    property var calculation: null
+    readonly property int frequentResultLimit: 8
     readonly property bool spotlight: popupName === "spotlight"
     readonly property bool browseOnly: shell.mode === "winbar" && !spotlight
     property int selectedEntryIndex: 0
+    property string cursorSection: "entries"
+    property int pinnedCursor: 0
+    property int placesCursor: 0
+    onPinnedApplicationsChanged: pinnedCursor = Math.min(pinnedCursor, Math.max(0, pinnedApplications.length - 1))
+    onPlacesChanged: placesCursor = Math.min(placesCursor, places.length)
     readonly property bool searchActive: searchQuery.trim() !== ""
+    readonly property bool listingResults: spotlight || searchActive
     readonly property int fixedContentHeight: (browseOnly ? 0 : searchHeader.height + layoutColumn.spacing) + padding * 2
     readonly property int availableContentHeight: root.maxHeight - root.fixedContentHeight
     readonly property int desiredBrowseHeight: Math.max(placesColumn.implicitHeight + paneSeparator.height
@@ -126,22 +138,42 @@ PopupCard {
 
     property var menus: ({})
 
-    readonly property var searchIndex: StartMenuModel.searchIndex(availableApplications, menus, places, spotlight ? recentFiles : [])
+    readonly property var openWindows: spotlight && open ? (Hyprland.toplevels?.values ?? []).map(window => {
+        const appId = String(window.wayland?.appId || window.lastIpcObject?.class || "")
+        const app = DesktopEntries.heuristicLookup(appId)
+        return {address: window.address, appId, entryId: app?.id ?? "", name: app?.name || appId, title: String(window.title || ""), icon: app?.icon || appId}
+    }) : []
+    readonly property var searchIndex: StartMenuModel.searchIndex(availableApplications, menus, places, spotlight ? recentFiles : [], openWindows)
+    readonly property var parsedQuery: spotlight ? StartMenuModel.parseQuery(searchQuery) : ({text: searchQuery.trim(), type: ""})
+    readonly property string calculatorExpression: StartMenuModel.calculatorExpression(parsedQuery)
+    onCalculatorExpressionChanged: calculate()
     readonly property var searchResults: {
-        const results = StartMenuModel.search(searchQuery, searchIndex, indexedDocuments)
-        if (spotlight && searchActive) results.push({type: "fileSearch", query: searchQuery.trim()}, {type: "webSearch", query: searchQuery.trim()})
-        return results
+        const now = Date.now()
+        if (spotlight && !searchActive) return StartMenuModel.frequent(searchIndex, usage, now, frequentResultLimit)
+        const results = StartMenuModel.search(parsedQuery, searchIndex, indexedDocuments, spotlight ? usage : null, now)
+        if (!spotlight) return results
+        const web = StartMenuModel.webSearch(parsedQuery.text)
+        const leading = calculation ? [calculation] : [], trailing = []
+        if (!parsedQuery.type) (web.explicitEngine ? leading : trailing).push(web)
+        if (parsedQuery.text && (!parsedQuery.type || parsedQuery.type === "file"))
+            trailing.unshift({type: "fileSearch", query: parsedQuery.text})
+        return leading.concat(results, trailing)
     }
     readonly property var browseEntries: browseOnly
         ? recentFiles.map(file => ({type: "file", file: file})).concat(availableApplications)
         : availableApplications
-    readonly property var selectableEntries: searchActive ? searchResults : browseEntries
+    readonly property var selectableEntries: listingResults ? searchResults : browseEntries
     readonly property var selectedEntry: selectableEntries[selectedEntryIndex]
+    readonly property var cursorSections: listingResults ? ["entries"]
+        : ["entries"].concat(pinnedApplications.length > 0 ? ["pinned"] : [], ["places"], menuPane.items.length > 0 ? ["menu"] : [])
+    onCursorSectionsChanged: if (!cursorSections.includes(cursorSection)) cursorSection = "entries"
 
     readonly property int spotlightChromeHeight: Style.spotlightSearchHeight + Style.xl * 2
         + Style.popupRowHeight + searchRule.height + footerRule.height
     readonly property int spotlightGutter: Style.xl + Style.controlPaddingX
     readonly property var spotlightKinds: ({
+        calc: {section: "Calculator", kind: "Calculator", verb: "Copy"},
+        window: {section: "Windows", kind: "Window", verb: "Switch"},
         app: {section: "Applications", kind: "Application", verb: "Open"},
         action: {section: "Commands", kind: "Command", verb: "Run"},
         place: {section: "Places", kind: "Place", verb: "Open"},
@@ -149,7 +181,6 @@ PopupCard {
         fileSearch: {section: "Files", kind: "File Finder", verb: "Search"},
         webSearch: {section: "Web", kind: "Web Search", verb: "Search"}
     })
-    readonly property string webSearchUrl: "https://duckduckgo.com/?q="
     readonly property var spotlightHeadings: searchResults.map((item, index) => {
         const section = spotlightKinds[item.type].section
         return index > 0 && spotlightKinds[searchResults[index - 1].type].section === section ? "" : section
@@ -164,84 +195,114 @@ PopupCard {
         const row = (title, detail, icon, iconSource = "", checked = false) => ({title, detail, icon, iconSource, checked})
         switch (item.type) {
         case "app": return row(item.app.name, item.app.genericName || item.app.comment, "", Quickshell.iconPath(item.app.icon, true))
-        case "action": return row(item.entry.label, item.entry.parent, item.entry.icon, "",
-            (shell.menuTargetActive(item.entry.target) ?? item.entry.checked) === true)
+        case "window": return row(item.window.title || item.window.name, item.window.name, "", Quickshell.iconPath(item.window.icon, true))
+        case "calc": return row(item.result, item.expression, "\u{f00ec}")
+        case "action": return row(item.entry.label, item.entry.parent, item.entry.icon, "", actionChecked(item.entry))
         case "place": return row(item.place.label, tildePath(item.place.path), item.place.icon)
         case "file": return row(item.file.text, tildePath(StartMenuModel.filePath(item.file.uri).replace(/\/[^/]*$/, "")),
             item.file.folder ? "\u{f024b}" : "\u{f0219}")
-        case "webSearch": return row("Search the web for “" + item.query + "”…", "", "\u{f059f}")
+        case "webSearch": return row("Search " + item.engine.name + " for “" + item.query + "”…", "", item.engine.icon)
         }
         return row("Find more files for “" + item.query + "”…", "", "\u{f0349}")
     }
+    function actionChecked(entry) { return (shell.menuTargetActive(entry.target) ?? entry.checked) === true }
+    function togglesInPlace(item) { return item?.type === "action" && shell.menuTargetActive(item.entry.target) !== undefined }
     function secondaryLabel(item) {
         return !item ? ""
             : item.type === "app" ? (pinnedApplicationIds.includes(item.app.id) ? "Unpin" : "Pin")
-            : item.type === "place" ? "Remove" : ""
+            : item.type === "place" ? "Remove"
+            : togglesInPlace(item) ? "Toggle" : ""
     }
     property var lastPointer: null
-    function followPointer(index, position) {
+    function followPointer(item, x, y) {
+        if (item.cursorSection) pointerMovedTo(item.cursorSection, item.cursorSlot, item.mapToGlobal(x, y))
+    }
+    function cursorSlotIn(section) {
+        return section === "entries" ? selectedEntryIndex : section === "pinned" ? pinnedCursor
+            : section === "places" ? placesCursor : menuPane.cursorIndex
+    }
+    function pointerMovedTo(section, slot, position) {
         const moved = lastPointer !== null && (position.x !== lastPointer.x || position.y !== lastPointer.y)
         lastPointer = position
-        if (moved) { selectedEntryIndex = index; holdSelection() }
+        if (!moved || cursorSection === section && cursorSlotIn(section) === slot) return
+        cursorSection = section
+        if (section === "entries") { selectedEntryIndex = slot; holdSelection() }
+        else if (section === "pinned") pinnedCursor = slot
+        else if (section === "places") placesCursor = slot
+        else menuPane.cursorIndex = slot
     }
     property var heldSelection: null
-    function selectionKey(result) { return result?.app ?? result?.entry ?? result?.place ?? result?.file ?? result?.type }
-    function holdSelection() { if (searchActive) heldSelection = {query: searchQuery, key: selectionKey(selectedEntry)} }
-    function bestMatchIndex() {
-        return searchResults.reduce((best, result, index) => (result.score ?? 0) > (searchResults[best].score ?? 0) ? index : best, 0)
+    function selectionKey(result) {
+        return result?.app ?? result?.window?.address ?? result?.entry ?? result?.place ?? result?.file ?? result?.type
     }
-    onSearchResultsChanged: if (searchActive) {
+    function holdSelection() { if (listingResults) heldSelection = {query: searchQuery, key: selectionKey(selectedEntry)} }
+    onSearchResultsChanged: if (listingResults) {
         const held = heldSelection?.query === searchQuery
             ? searchResults.findIndex(result => selectionKey(result) === heldSelection.key) : -1
-        selectedEntryIndex = held >= 0 ? held : bestMatchIndex()
+        selectedEntryIndex = Math.max(0, held)
         Qt.callLater(revealSelection)
     }
 
     function searchDocuments() {
         indexedDocuments = []
-        if (!open || !searchActive || documentSearchProcess.running) return
-        documentSearchProcess.query = searchQuery.trim()
+        if (!open || !parsedQuery.text || parsedQuery.type && parsedQuery.type !== "file" || documentSearchProcess.running) return
+        documentSearchProcess.query = parsedQuery.text
         documentSearchProcess.running = true
     }
+    function calculate() {
+        if (!calculatorExpression) calculation = null
+        else if (!calculatorProcess.running) {
+            calculatorProcess.expression = calculatorExpression
+            calculatorProcess.running = true
+        }
+    }
+    function rememberUse(item) {
+        const key = spotlight ? StartMenuModel.resultKey(item) : ""
+        if (!key) return
+        usage = StartMenuModel.recordUse(usage, key, StartMenuModel.searchNeedle(parsedQuery.text), Date.now())
+        usageFile.setText(JSON.stringify(usage) + "\n")
+    }
 
-    function runMenuAction(target) {
-        shell.run(["hyprshell", "rofi/menutree", "--action", target])
-        shell.closePopup()
+    function runMenuAction(target, keepOpen) {
+        shell.run(["bash", root.menutreeScript, "--action", target])
+        if (!keepOpen) shell.closePopup()
     }
     function activateEntry(item) {
         if (!item) return
-        if (item.type === "action") {
+        rememberUse(item)
+        switch (item.type) {
+        case "action":
             runMenuAction(item.entry.target)
             return
-        }
-        if (item.type === "place") {
+        case "calc":
+            if (item.expression !== calculatorExpression) return
+            shell.run(["wl-copy", item.result])
+            break
+        case "window":
+            Hyprland.dispatch('hl.dsp.focus({window = "address:0x' + item.window.address + '"})')
+            break
+        case "place":
             shell.run(["xdg-open", item.place.path])
-            shell.closePopup()
-            return
-        }
-        if (item.type === "file") {
+            break
+        case "file":
             shell.run(["xdg-open", item.file.uri])
-            shell.closePopup()
-            return
-        }
-        if (item.type === "fileSearch") {
+            break
+        case "fileSearch":
             shell.run([shell.home + "/.local/lib/hypr/launch/file-finder.sh", item.query])
-            shell.closePopup()
-            return
+            break
+        case "webSearch":
+            shell.run(["xdg-open", item.url])
+            break
+        default:
+            (item.type === "app" ? item.app : item).execute()
         }
-        if (item.type === "webSearch") {
-            shell.run(["xdg-open", webSearchUrl + encodeURIComponent(item.query)])
-            shell.closePopup()
-            return
-        }
-        const app = item.type === "app" ? item.app : item
-        app.execute()
         shell.closePopup()
     }
     function activateSecondaryEntry(item) {
         if (!item) return
         if (item.type === "app") toggleApplicationPin(item.app)
         else if (item.type === "place") removePlace(item.place)
+        else if (togglesInPlace(item)) runMenuAction(item.entry.target, true)
         else activateEntry(item)
     }
     function activateSelection(event) {
@@ -254,10 +315,64 @@ PopupCard {
         revealSelection()
     }
     function revealSelection() {
-        if (searchActive) (spotlight ? spotlightList : searchResultList).positionViewAtIndex(selectedEntryIndex, ListView.Contain)
+        if (spotlight) spotlightList.positionViewAtIndex(selectedEntryIndex, ListView.Contain)
+        else if (searchActive) searchResultList.positionViewAtIndex(selectedEntryIndex, ListView.Contain)
         else if (browseOnly && selectedEntryIndex < recentFiles.length)
             recentList.positionViewAtIndex(selectedEntryIndex, ListView.Contain)
         else applicationList.positionViewAtIndex(selectedEntryIndex - (browseOnly ? recentFiles.length : 0), ListView.Contain)
+    }
+    function cycleSection(step) {
+        cursorSection = cursorSections[(cursorSections.indexOf(cursorSection) + step + cursorSections.length) % cursorSections.length]
+        if (cursorSection === "entries" && selectedEntryIndex < 0) moveSelection(1)
+        else if (cursorSection === "menu" && menuPane.cursorIndex < 0) menuPane.moveCursor(1)
+    }
+    function moveInSection(step) {
+        if (cursorSection === "entries") moveSelection(step)
+        else if (cursorSection === "pinned") {
+            const next = pinnedCursor + step
+            if (next >= 0 && next < pinnedApplications.length) pinnedCursor = next
+        } else if (cursorSection === "places") placesCursor = Math.max(0, Math.min(places.length, placesCursor + step))
+        else menuPane.moveCursor(step)
+    }
+    function moveAcross(step) {
+        if (cursorSection === "menu") return step > 0 && menuPane.openCursorSubmenu()
+        if (cursorSection !== "pinned") return false
+        moveInSection(step)
+        return true
+    }
+    function activateCursorItem(event) {
+        const secondary = event.modifiers & Qt.ShiftModifier
+        if (cursorSection === "entries") activateSelection(event)
+        else if (cursorSection === "pinned") {
+            const app = pinnedApplications[pinnedCursor]
+            if (!app) return
+            if (secondary) toggleApplicationPin(app); else activateEntry(app)
+        } else if (cursorSection === "places") {
+            const place = places[placesCursor]
+            if (!place) openPlaceEditor()
+            else if (secondary) removePlace(place)
+            else activateEntry({type: "place", place: place})
+        } else menuPane.activateCursor()
+    }
+    function handleNavigationKey(event) {
+        shell.keyboardInput = true
+        const tab = event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab
+        if (tab && (event.modifiers & Qt.ControlModifier)) return false
+        const deepestFlyout = [flyout4, flyout3, flyout2, flyout].find(level => level.open)
+        const toggleTarget = event.key === Qt.Key_Space && !searchActive ? deepestFlyout?.cursorToggleTarget() : ""
+        if (toggleTarget) { runMenuAction(toggleTarget, true); return true }
+        if (deepestFlyout && deepestFlyout.handleKey(event)) return true
+        switch (event.key) {
+        case Qt.Key_Tab: cycleSection(1); return true
+        case Qt.Key_Backtab: cycleSection(-1); return true
+        case Qt.Key_Down: moveInSection(cursorSection === "pinned" ? pinnedGrid.columns : 1); return true
+        case Qt.Key_Up: moveInSection(cursorSection === "pinned" ? -pinnedGrid.columns : -1); return true
+        case Qt.Key_Left: return moveAcross(-1)
+        case Qt.Key_Right: return moveAcross(1)
+        case Qt.Key_Return:
+        case Qt.Key_Enter: activateCursorItem(event); return true
+        }
+        return false
     }
     function typeKey(event, field) {
         if (event.key === Qt.Key_Backspace) { field.text = field.text.slice(0, -1); return true }
@@ -273,13 +388,13 @@ PopupCard {
             if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { validatePlaceInput(); return true }
             return typeKey(event, placeField)
         }
-        if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) { moveSelection(event.key === Qt.Key_Down ? 1 : -1); return true }
-        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { activateSelection(event); return true }
+        if (handleNavigationKey(event)) return true
         return browseOnly ? defaultKey(event) : typeKey(event, searchField) || defaultKey(event)
     }
     onOpenChanged: {
         searchField.text = ""
         selectedEntryIndex = browseOnly ? -1 : 0
+        cursorSection = "entries"
         lastPointer = null
         heldSelection = null
         placeEditorOpen = false
@@ -352,6 +467,16 @@ PopupCard {
             } catch (error) { root.customPlaces = []; root.hiddenDefaultPaths = [] }
         }
     }
+    property FileView usageFile: FileView {
+        path: root.shell.home + "/.local/state/quickshell/spotlight-usage.json"
+        watchChanges: true
+        atomicWrites: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: {
+            try { root.usage = JSON.parse(String(text())) } catch (error) {}
+        }
+    }
     property Process directoryValidationProcess: Process {
         property string candidate: ""
         command: ["test", "-d", candidate]
@@ -391,7 +516,7 @@ PopupCard {
     }
 
     property Process menuTreeProcess: Process {
-        command: ["hyprshell", "rofi/menutree", "--dump-json"]
+        command: ["bash", root.menutreeScript, "--dump-json"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             try { root.menus = JSON.parse(text) } catch (error) {}
         } }
@@ -411,15 +536,29 @@ PopupCard {
             root.shell.home + "/Documents", query.split(/\s+/).map(term => "filename:" + term).join(" ")]
         stdout: StdioCollector { id: documentSearchOutput; waitForEnd: true }
         onExited: {
-            if (root.open && query === root.searchQuery.trim())
+            if (root.open && query === root.parsedQuery.text)
                 root.indexedDocuments = String(documentSearchOutput.text).split("\n")
                     .filter(line => line.startsWith(root.shell.home + "/Documents/"))
                     .map(line => {
                         const path = line.replace(/\/$/, "")
                         return {text: path.split("/").pop(), uri: path, folder: path !== line}
                     })
-            else if (root.open && root.searchActive && query !== root.searchQuery.trim())
+            else if (root.open && root.searchActive)
                 Qt.callLater(root.searchDocuments)
+        }
+    }
+    property Process calculatorProcess: Process {
+        property string expression: ""
+        command: ["qalc", "-t", "--", expression]
+        stdout: StdioCollector { id: calculatorOutput; waitForEnd: true }
+        onExited: code => {
+            if (expression !== root.calculatorExpression) {
+                Qt.callLater(root.calculate)
+                return
+            }
+            const result = String(calculatorOutput.text).trim()
+            root.calculation = code === 0 && result.replace(/\s/g, "") !== expression.replace(/\s/g, "")
+                ? {type: "calc", expression, result} : null
         }
     }
 
@@ -433,25 +572,25 @@ PopupCard {
     property StartMenuFlyout flyout: StartMenuFlyout {
         shell: root.shell; menus: root.menus
         menuId: menuPane.openSubId; anchorItem: menuPane.openRow
-        onActionTriggered: target => root.runMenuAction(target)
+        onActionTriggered: (target, keepOpen) => root.runMenuAction(target, keepOpen)
         onDismissed: menuPane.reset()
     }
     property StartMenuFlyout flyout2: StartMenuFlyout {
         shell: root.shell; menus: root.menus
         menuId: root.flyout.openSubId; anchorItem: root.flyout.openRow
-        onActionTriggered: target => root.runMenuAction(target)
+        onActionTriggered: (target, keepOpen) => root.runMenuAction(target, keepOpen)
         onDismissed: root.flyout.closeSubmenu()
     }
     property StartMenuFlyout flyout3: StartMenuFlyout {
         shell: root.shell; menus: root.menus
         menuId: root.flyout2.openSubId; anchorItem: root.flyout2.openRow
-        onActionTriggered: target => root.runMenuAction(target)
+        onActionTriggered: (target, keepOpen) => root.runMenuAction(target, keepOpen)
         onDismissed: root.flyout2.closeSubmenu()
     }
     property StartMenuFlyout flyout4: StartMenuFlyout {
         shell: root.shell; menus: root.menus
         menuId: root.flyout3.openSubId; anchorItem: root.flyout3.openRow
-        onActionTriggered: target => root.runMenuAction(target)
+        onActionTriggered: (target, keepOpen) => root.runMenuAction(target, keepOpen)
         onDismissed: root.flyout3.closeSubmenu()
     }
 
@@ -482,16 +621,13 @@ PopupCard {
                 anchors.rightMargin: root.spotlight ? root.spotlightGutter : Style.xs
                 anchors.verticalCenter: parent.verticalCenter
                 leftPadding: 0; rightPadding: 0; topPadding: 0; bottomPadding: 0
-                placeholderText: root.spotlight ? "Search apps, actions, places, recent files, documents" : "Search apps, actions, places, documents"
+                placeholderText: root.spotlight ? "Search apps, windows, actions, places, files" : "Search apps, actions, places, documents"
                 Binding on placeholderTextColor { when: root.spotlight; value: root.shell.faintText }
                 color: root.shell.foreground
                 font.family: root.shell.fontFamily; font.pixelSize: searchHeader.textSize
                 background: null
                 onTextChanged: root.searchQuery = text
-                Keys.onDownPressed: root.moveSelection(1)
-                Keys.onUpPressed: root.moveSelection(-1)
-                Keys.onReturnPressed: event => root.activateSelection(event)
-                Keys.onEnterPressed: event => root.activateSelection(event)
+                Keys.onPressed: event => event.accepted = root.handleNavigationKey(event)
             }
             Text {
                 id: countText
@@ -505,7 +641,7 @@ PopupCard {
         }
 
         Column {
-            visible: root.spotlight && root.searchActive
+            visible: root.spotlight && root.searchResults.length > 0
             width: parent.width
             PopupSeparator { id: searchRule; shell: root.shell; x: Style.xl; width: parent.width - Style.xl * 2 }
             Item {
@@ -527,7 +663,7 @@ PopupCard {
                         kind: modelData.file?.folder ? "Folder" : root.spotlightKinds[modelData.type].kind
                         cursored: index === root.selectedEntryIndex
                         checked: entry.checked
-                        onPointerMoved: position => root.followPointer(index, position)
+                        onPointerMoved: position => root.pointerMovedTo("entries", index, position)
                         onClicked: button => button === Qt.RightButton
                             ? root.activateSecondaryEntry(modelData) : root.activateEntry(modelData)
                     }
@@ -549,7 +685,7 @@ PopupCard {
                     spacing: Style.xxxl
                     Text {
                         visible: text !== ""
-                        text: root.searchActive && root.selectedEntry ? "↵  " + root.spotlightKinds[root.selectedEntry.type].verb : ""
+                        text: root.spotlight && root.selectedEntry ? "↵  " + root.spotlightKinds[root.selectedEntry.type].verb : ""
                         color: root.shell.mutedText
                         font.family: root.shell.fontFamily; font.pixelSize: Style.caption
                     }
@@ -572,7 +708,7 @@ PopupCard {
             model: root.spotlight ? [] : root.searchResults
             readonly property bool overflowing: contentHeight > height
             ScrollBar.vertical: PopupScrollBar { shell: root.shell }
-            delegate: StartMenuRow {
+            delegate: PopupRow {
                 required property var modelData
                 required property int index
                 width: searchResultList.width; shell: root.shell
@@ -589,7 +725,10 @@ PopupCard {
                     : modelData.type === "place" ? modelData.place.path
                     : modelData.type === "file" ? modelData.file.uri
                     : modelData.type === "fileSearch" ? "File Finder" : ""
-                value: modelData.type === "app" && root.pinnedApplicationIds.indexOf(modelData.app.id) >= 0 ? "\u{f0403}" : ""
+                value: modelData.type === "app" && root.pinnedApplicationIds.indexOf(modelData.app.id) >= 0 ? "\u{f0403}"
+                    : modelData.type === "action" && root.actionChecked(modelData.entry) ? "✓" : ""
+                readonly property string cursorSection: "entries"
+                readonly property int cursorSlot: index
                 cursored: index === root.selectedEntryIndex
                 onClicked: button => button === Qt.RightButton
                     ? root.activateSecondaryEntry(modelData) : root.activateEntry(modelData)
@@ -609,8 +748,10 @@ PopupCard {
                     width: parent.width
                     shell: root.shell
                     apps: root.pinnedApplications
+                    cursorIndex: root.cursorSection === "pinned" ? root.pinnedCursor : -1
                     onLaunched: app => root.activateEntry(app)
                     onUnpinned: app => root.toggleApplicationPin(app)
+                    onPointed: (index, position) => root.pointerMovedTo("pinned", index, position)
                 }
                 PopupSection { visible: recentList.visible; shell: root.shell; text: "RECENT FILES" }
                 ListView {
@@ -623,7 +764,7 @@ PopupCard {
                     model: root.recentFiles
                     readonly property bool overflowing: contentHeight > height
                     ScrollBar.vertical: PopupScrollBar { shell: root.shell }
-                    delegate: StartMenuRow {
+                    delegate: PopupRow {
                         required property var modelData
                         required property int index
                         width: recentList.width; shell: root.shell
@@ -633,7 +774,9 @@ PopupCard {
                         value: hovered ? "\u{f0156}" : ""
                         valueClickable: true
                         valueHoverColor: root.shell.role("error", root.shell.foreground)
-                        cursored: index === root.selectedEntryIndex
+                        readonly property string cursorSection: "entries"
+                        readonly property int cursorSlot: index
+                        cursored: root.cursorSection === cursorSection && root.selectedEntryIndex === cursorSlot
                         onValueClicked: root.removeRecentFile(modelData.uri)
                         onClicked: button => button === Qt.RightButton
                             ? root.removeRecentFile(modelData.uri)
@@ -649,7 +792,7 @@ PopupCard {
                     model: root.availableApplications
                     readonly property bool overflowing: contentHeight > height
                     ScrollBar.vertical: PopupScrollBar { shell: root.shell }
-                    delegate: StartMenuRow {
+                    delegate: PopupRow {
                         required property var modelData
                         required property int index
                         width: applicationList.width; shell: root.shell
@@ -658,7 +801,9 @@ PopupCard {
                         title: modelData.name
                         detail: modelData.genericName || modelData.comment
                         value: root.pinnedApplicationIds.indexOf(modelData.id) >= 0 ? "\u{f0403}" : ""
-                        cursored: index + (root.browseOnly ? root.recentFiles.length : 0) === root.selectedEntryIndex
+                        readonly property string cursorSection: "entries"
+                        readonly property int cursorSlot: index + (root.browseOnly ? root.recentFiles.length : 0)
+                        cursored: root.cursorSection === cursorSection && root.selectedEntryIndex === cursorSlot
                         onClicked: button => button === Qt.RightButton
                             ? root.toggleApplicationPin(modelData) : root.activateEntry(modelData)
                     }
@@ -676,8 +821,12 @@ PopupCard {
                     PopupSection { shell: root.shell; text: "PLACES" }
                     Repeater {
                         model: root.places
-                        StartMenuRow {
+                        PopupRow {
                             required property var modelData
+                            required property int index
+                            readonly property string cursorSection: "places"
+                            readonly property int cursorSlot: index
+                            cursored: root.cursorSection === cursorSection && root.placesCursor === cursorSlot
                             width: placesColumn.width; shell: root.shell
                             implicitHeight: Style.px(24)
                             icon: modelData.icon
@@ -691,8 +840,11 @@ PopupCard {
                                 : root.activateEntry({type: "place", place: modelData})
                         }
                     }
-                    StartMenuRow {
+                    PopupRow {
                         visible: !root.placeEditorOpen
+                        readonly property string cursorSection: "places"
+                        readonly property int cursorSlot: root.places.length
+                        cursored: root.cursorSection === cursorSection && root.placesCursor === cursorSlot
                         width: placesColumn.width; shell: root.shell
                         implicitHeight: Style.px(24)
                         icon: "\u{f0415}"
@@ -726,13 +878,9 @@ PopupCard {
                             Keys.onEscapePressed: root.closePlaceEditor()
                         }
                     }
-                    Text {
-                        visible: root.placeEditorError !== ""
-                        width: placesColumn.width
-                        text: root.placeEditorError
-                        color: root.shell.role("error", root.shell.foreground)
-                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-                        elide: Text.ElideRight
+                    PopupHint {
+                        shell: root.shell; error: true
+                        width: placesColumn.width; text: root.placeEditorError
                     }
                 }
                 PopupSeparator { id: paneSeparator; shell: root.shell }
@@ -742,6 +890,7 @@ PopupCard {
                     shell: root.shell
                     menus: root.menus
                     totalHeight: root.contentPaneHeight - placesColumn.height - paneSeparator.height - Style.sm * 2
+                    cursorShown: root.cursorSection === "menu"
                     onAction: target => root.runMenuAction(target)
                 }
             }

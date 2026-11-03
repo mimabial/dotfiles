@@ -25,7 +25,7 @@ if ! command -v mullvad >/dev/null 2>&1; then
   exit 0
 fi
 
-if ! mullvad_status="$(vpn_mullvad_status)"; then
+if ! mullvad_status="$(mullvad status 2>&1)"; then
   printf 'Failed to get Mullvad status: %s\n' "$mullvad_status" >&2
   exit 1
 fi

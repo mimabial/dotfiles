@@ -3,7 +3,7 @@
 A workflow is a named set of tradeoffs applied in one keystroke. `Super + U` then
 `W` picks one.
 
-There are ten. Eight you choose:
+There are eight. Six you choose:
 
 **default** — no workflow configuration. The theme and your look-and-feel
 overrides decide everything.
@@ -11,12 +11,7 @@ overrides decide everything.
 **editing** — opaque application windows. Transparency is lovely until you are
 judging contrast in an image, at which point it is actively lying to you.
 
-**presentation** — keeps the machine awake, pauses notifications, disables the
-night light, and removes transparency and distracting effects. When you leave,
-it restores only the runtime settings it changed; manual changes made while the
-workflow is active are left alone.
-
-**windows** — floating windows, the Windows 11 theme, and the winbar bar layout.
+**windows** — the Windows 11 theme, dwindle layout, and the winbar bar layout.
 Leaving restores the previous theme, window layout, and each existing window's floating state and
 floating geometry. Theme and tiling-layout changes made while Windows is active
 are kept. Scratchpads, pinned windows, and fullscreen windows keep their placement.
@@ -30,8 +25,6 @@ The next workflow's own defaults take priority in either case.
 
 **gnome** — the GNOME-style top bar and dock with spring animations.
 
-**floating** — movable, resizable windows with the current bar.
-
 And two you do not:
 
 **gaming** — takes over whenever GameMode has a client. Not in the picker.
@@ -42,8 +35,7 @@ in the picker.
 ## Automatic ones lock the manual ones out
 
 While GameMode is running or the machine is on `power-saver`, the workflow is
-*owned*. Trying to switch to something else fails rather than half-applying, and
-`--select` will not offer you the choice.
+*owned*. Trying to switch to something else fails rather than half-applying.
 
 That is on purpose. A workflow that a game silently reverted three seconds after
 you set it would be worse than one that tells you no. When the game exits or you
@@ -63,7 +55,6 @@ turns that half off while leaving GameMode's half in place.
 ```bash
 hyprshell util/workflows --list
 hyprshell util/workflows --set windows
-hyprshell util/workflows --set presentation
 ```
 
 `--list` prints name, icon and description, which is also what the bar module

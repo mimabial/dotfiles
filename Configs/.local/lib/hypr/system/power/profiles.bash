@@ -1,3 +1,5 @@
+declare -F hypr_dbus_get >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/dbus.bash" || return 1
+
 power_profiles_list() {
   dbus-send --system --print-reply=literal --dest=org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles org.freedesktop.DBus.Properties.Get string:org.freedesktop.UPower.PowerProfiles string:Profiles |
     grep -oP '^\s*Profile\s+variant\s+\K\S+'
