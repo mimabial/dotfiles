@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from agents.sources import OPENCODE_DATA_DIR
+from agents.usage_records import LimitRecord
 from typing import NamedTuple
 import json
 import time
@@ -10,7 +11,7 @@ GO_URL = "https://opencode.ai/zen/go/v1/usage"
 WINDOWS = (("rolling", "5h"), ("weekly", "Weekly"), ("monthly", "Monthly"))
 
 class GoLimits(NamedTuple):
-    limits: list
+    limits: list[LimitRecord]
     status: str
     observed_at: int
 

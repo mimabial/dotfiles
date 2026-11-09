@@ -26,15 +26,13 @@ fi
 need_cmd() {
   command -v "$1" >/dev/null 2>&1 || {
     echo "Missing required command: $1" >&2
-    exit 1
+    return 1
   }
 }
 
-need_cmd findmnt
-need_cmd pkexec
-need_cmd ntfsfix
-need_cmd mount
-need_cmd blkid
+for required_command in findmnt pkexec ntfsfix mount blkid; do
+  need_cmd "${required_command}" || exit 1
+done
 
 default_uuid="F474B7AA74B76DCC"
 

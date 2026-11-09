@@ -31,12 +31,13 @@ Rectangle {
     readonly property bool highlighted: cursored || (!shell.popupCard?.open && hovered)
     property bool selected: false
     property bool centerTitle: false
+    property bool centerTitleInRow: false
     // pills after the title: [{text, color}]
     property var badges: []
     signal clicked(int button)
     signal valueClicked()
     implicitHeight: Math.max(Style.popupRowHeight, Math.max(textColumn.implicitHeight, iconImage.visible ? root.iconSize : 0) + Style.controlPaddingY * 2)
-    color: (interactive && (highlighted || selected)) ? shell.hoverFill()
+    color: (navigable && (highlighted || selected)) ? shell.hoverFill()
         : active ? shell.selectedFill() : "transparent"
     radius: shell.rounding
     Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
@@ -67,7 +68,8 @@ Rectangle {
                         text: root.title; color: root.titleColor
                         font.family: root.shell.fontFamily; font.pixelSize: Style.subtitle; font.bold: root.active
                         elide: titleClip.scrolling ? Text.ElideNone : Text.ElideRight
-                        horizontalAlignment: root.centerTitle ? Text.AlignHCenter : Text.AlignLeft
+                        horizontalAlignment: root.centerTitle || root.centerTitleInRow ? Text.AlignHCenter : Text.AlignLeft
+                        rightPadding: root.centerTitleInRow ? textColumn.x : 0
                         SequentialAnimation on x {
                             running: titleClip.scrolling
                             loops: Animation.Infinite

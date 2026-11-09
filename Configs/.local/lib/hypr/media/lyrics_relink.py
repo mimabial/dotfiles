@@ -2,21 +2,26 @@
 from __future__ import annotations
 
 import argparse
+import glob
+import os
 import re
 import shutil
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
+from typing import NamedTuple
 
 from audio_tags import parse_extensions
-from fetch_album_lyrics import DEFAULT_EXTENSIONS, get_audio_metadata
+from lyrics_metadata import DEFAULT_EXTENSIONS, get_audio_metadata
 from lyrics_paths import (
     absolute_path,
     hidden_lyrics_root,
     is_in_hidden_lyrics,
     is_in_music_library,
     lrc_path_for,
+    lyrics_directory_for,
     music_library_dir,
     prune_empty_lyrics_parents,
 )
@@ -201,6 +206,45 @@ def find_relink_candidate(
     return None, []
 
 
+class RelinkOutcome(Enum):
+    PRESENT = "present"
+    MOVED = "moved"
+    AMBIGUOUS = "ambiguous"
+    MISSING = "missing"
+
+
+class LyricsMirrorTidy(NamedTuple):
+    relinked: int
+    deleted: int
+
+
+def relink_audio_file(
+    audio_file: Path,
+    index: LibraryIndex,
+    dry_run: bool,
+) -> tuple[RelinkOutcome, list[LrcEntry]]:
+    target = lrc_path_for(audio_file)
+    if target.is_file():
+        return RelinkOutcome.PRESENT, []
+
+    candidate, conflicts = find_relink_candidate(audio_file, index)
+    if candidate is None:
+        if not conflicts:
+            return RelinkOutcome.MISSING, []
+        paths = ", ".join(str(entry.path) for entry in conflicts)
+        print(f"! {audio_file.name}: multiple matching lyrics: {paths}")
+        return RelinkOutcome.AMBIGUOUS, conflicts
+
+    verb = "Would move" if dry_run else "Moved"
+    print(f"{verb}: {candidate.path}\n      -> {target}")
+    if not dry_run:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(candidate.path), str(target))
+        prune_empty_lyrics_parents(candidate.path.parent)
+    index.remove(candidate)
+    return RelinkOutcome.MOVED, [candidate]
+
+
 def relink_directory(
     directory: Path,
     *,
@@ -209,55 +253,80 @@ def relink_directory(
     extensions: set[str],
 ) -> int:
     index = build_library_index(directory, recursive, extensions)
-    audio_files = index.audio_files
-    if not audio_files:
+    if not index.audio_files:
         print(f"No supported audio files in {directory}", file=sys.stderr)
         return 0
 
-    moved = present = missing = ambiguous = 0
-
-    for audio_file in audio_files:
-        target = lrc_path_for(audio_file)
-        if target.is_file():
+    outcomes: Counter[RelinkOutcome] = Counter()
+    for audio_file in index.audio_files:
+        outcome, _ = relink_audio_file(audio_file, index, dry_run)
+        if outcome is RelinkOutcome.PRESENT:
             print(f"✓ {audio_file.name}: lyrics already in the correct folder")
-            present += 1
-            continue
-
-        candidate, conflicts = find_relink_candidate(audio_file, index)
-        if candidate is None:
-            if conflicts:
-                paths = ", ".join(str(entry.path) for entry in conflicts)
-                print(f"! {audio_file.name}: multiple matching lyrics: {paths}")
-                ambiguous += 1
-            else:
-                print(f"✗ {audio_file.name}: no lyrics found")
-                missing += 1
-            continue
-
-        verb = "Would move" if dry_run else "Moved"
-        print(f"{verb}: {candidate.path}\n      -> {target}")
-        if not dry_run:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(candidate.path), str(target))
-            prune_empty_lyrics_parents(candidate.path.parent)
-        index.remove(candidate)
-        moved += 1
+        elif outcome is RelinkOutcome.MISSING:
+            print(f"✗ {audio_file.name}: no lyrics found")
+        outcomes[outcome] += 1
 
     print(
-        f"\nSummary: {moved} {'would move' if dry_run else 'moved'}, "
-        f"{present} already correct, {missing} without lyrics, "
-        f"{ambiguous} ambiguous"
+        f"\nSummary: {outcomes[RelinkOutcome.MOVED]} {'would move' if dry_run else 'moved'}, "
+        f"{outcomes[RelinkOutcome.PRESENT]} already correct, "
+        f"{outcomes[RelinkOutcome.MISSING]} without lyrics, "
+        f"{outcomes[RelinkOutcome.AMBIGUOUS]} ambiguous"
     )
-    return 1 if missing or ambiguous else 0
+    return 1 if outcomes[RelinkOutcome.MISSING] or outcomes[RelinkOutcome.AMBIGUOUS] else 0
+
+
+def behind_broken_link(directory: Path) -> bool:
+    nearest = next(path for path in (directory, *directory.parents) if os.path.lexists(path))
+    return nearest.is_symlink() and not nearest.exists()
+
+
+def prune_orphaned_lyrics(
+    lyrics_directory: Path,
+    recursive: bool,
+    claimed: set[Path],
+    dry_run: bool,
+) -> int:
+    lyrics_files = lyrics_directory.rglob("*.lrc") if recursive else lyrics_directory.glob("*.lrc")
+    deleted = 0
+    for lyrics_file in sorted(lyrics_files):
+        audio_stem = music_library_dir() / lyrics_file.relative_to(hidden_lyrics_root()).with_suffix("")
+        if (
+            lyrics_file in claimed
+            or behind_broken_link(audio_stem.parent)
+            or any(audio_stem.parent.glob(f"{glob.escape(audio_stem.name)}.*"))
+        ):
+            continue
+        print(f"{'Would delete' if dry_run else 'Deleted'} orphaned lyrics: {lyrics_file}")
+        if not dry_run:
+            lyrics_file.unlink()
+            prune_empty_lyrics_parents(lyrics_file.parent)
+        deleted += 1
+    return deleted
+
+
+def tidy_lyrics_mirror(
+    directory: Path,
+    recursive: bool,
+    extensions: set[str],
+    dry_run: bool,
+) -> LyricsMirrorTidy:
+    lyrics_directory = lyrics_directory_for(directory)
+    if lyrics_directory is None or is_in_hidden_lyrics(directory):
+        return LyricsMirrorTidy(0, 0)
+    index = build_library_index(directory, recursive, extensions)
+    relinked = 0
+    claimed: set[Path] = set()
+    for audio_file in index.audio_files:
+        outcome, entries = relink_audio_file(audio_file, index, dry_run)
+        relinked += outcome is RelinkOutcome.MOVED
+        claimed.update(entry.path for entry in entries)
+    return LyricsMirrorTidy(relinked, prune_orphaned_lyrics(lyrics_directory, recursive, claimed, dry_run))
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="hyprshell media/lyrics_relink",
-        description=(
-            "Find orphaned lyrics for audio files in a directory and move them "
-            "to the correct mirrored lyrics folder"
-        ),
+        description="Find orphaned lyrics for audio files in a directory and move them to the correct mirrored lyrics folder",
     )
     parser.add_argument(
         "directory",

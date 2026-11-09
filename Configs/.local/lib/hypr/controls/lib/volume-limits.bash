@@ -1,4 +1,6 @@
 SOFTWARE_VOLUME_LIMITS='{"minimum":-60,"maximum":0,"step":1,"backend":"software"}'
+HDA_AMP_STEP_UNIT_DB=0.25
+USB_MIXER_UNITS_PER_DB=100
 
 default_sink_api_card_port() {
   local sink=""
@@ -47,13 +49,13 @@ print_volume_limits() {
   done
   if [[ "${capabilities}" =~ ofs=0x([[:xdigit:]]+),[[:space:]]+nsteps=0x([[:xdigit:]]+),[[:space:]]+stepsize=0x([[:xdigit:]]+) ]]; then
     local offset=$((16#${BASH_REMATCH[1]})) steps=$((16#${BASH_REMATCH[2]})) step_size=$((16#${BASH_REMATCH[3]}))
-    awk -v offset="${offset}" -v steps="${steps}" -v step_size="${step_size}" 'BEGIN { step_db=(step_size+1)/4; printf "{\"minimum\":%.2f,\"maximum\":%.2f,\"step\":%.2f,\"backend\":\"alsa\"}\n", -offset*step_db, (steps-offset)*step_db, step_db }'
+    awk -v offset="${offset}" -v steps="${steps}" -v step_size="${step_size}" -v step_unit_db="${HDA_AMP_STEP_UNIT_DB}" 'BEGIN { step_db=(step_size+1)*step_unit_db; printf "{\"minimum\":%.2f,\"maximum\":%.2f,\"step\":%.2f,\"backend\":\"alsa\"}\n", -offset*step_db, (steps-offset)*step_db, step_db }'
     return
   fi
   codec_file="/proc/asound/card${card_index}/usbmixer"
   [[ -r "${codec_file}" ]] && capabilities="$(playback_volume_caps_line "${mixer_control}" 'Volume:.*dBmin=' "${codec_file}")"
   if [[ "${capabilities}" =~ dBmin=(-?[0-9]+),[[:space:]]*dBmax=(-?[0-9]+) ]]; then
-    awk -v minimum="${BASH_REMATCH[1]}" -v maximum="${BASH_REMATCH[2]}" 'BEGIN { printf "{\"minimum\":%.2f,\"maximum\":%.2f,\"step\":1,\"backend\":\"alsa\"}\n", minimum/100, maximum/100 }'
+    awk -v minimum="${BASH_REMATCH[1]}" -v maximum="${BASH_REMATCH[2]}" -v units_per_db="${USB_MIXER_UNITS_PER_DB}" 'BEGIN { printf "{\"minimum\":%.2f,\"maximum\":%.2f,\"step\":1,\"backend\":\"alsa\"}\n", minimum/units_per_db, maximum/units_per_db }'
   else
     printf '%s\n' "${SOFTWARE_VOLUME_LIMITS}"
   fi

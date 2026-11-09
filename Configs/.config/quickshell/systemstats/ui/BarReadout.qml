@@ -132,10 +132,6 @@ Item {
       var reading = Model.sensorReading(snap, sensorId, temperatureUnit)
       if (reading) out.push(reading)
     }
-    if (out.length === 0) {
-      var fallback = Model.sensorReading(snap, "cpu", temperatureUnit)
-      if (fallback) out.push(fallback)
-    }
     return out
   }
 
@@ -179,7 +175,7 @@ Item {
   }
 
   labelVisible: false
-  hasVisualContent: true
+  hasVisualContent: module !== "sensors" || sensorReadings.length > 0
   text: def.icon
   horizontalMargin: 5
   fixedWidth: content.implicitWidth + scaledHorizontalMargin * 2
@@ -226,7 +222,6 @@ Item {
       color: root.metricColor
       font.family: root.fontFamily
       font.pixelSize: Commons.Style.font.body
-      font.bold: true
       renderType: Text.NativeRendering
     }
 
@@ -261,8 +256,8 @@ Item {
         id: sensorPair
         required property int index
         readonly property var reading: root.sensorReadings[index] || ({})
-        readonly property color readingColor: root.hovered ? root.contentColor : reading.kind === "temp"
-          ? root.temperatureColor(reading.celsius, reading.critical) : root.foreground
+        readonly property string unitSuffix: String(reading.unit || "")
+        readonly property color readingColor: root.hovered ? root.contentColor : root.temperatureColor(reading.celsius, reading.critical)
         columns: 0
         rows: 1
         spacing: Commons.Style.space(3)
@@ -288,14 +283,14 @@ Item {
           id: sensorReserve
           font.family: root.fontFamily
           font.pixelSize: Commons.Style.font.body
-          text: sensorPair.reading.kind === "fan" ? "9999" : "100°"
+          text: "100" + sensorPair.unitSuffix
         }
 
         Text {
           textFormat: Text.PlainText
           width: Math.ceil(sensorReserve.advanceWidth)
           horizontalAlignment: Text.AlignRight
-          text: root.ready ? String(sensorPair.reading.text || "") + String(sensorPair.reading.unit === "°" ? "°" : "") : "…"
+          text: root.ready ? String(sensorPair.reading.text || "") + sensorPair.unitSuffix : "…"
           color: sensorPair.readingColor
           font.family: root.fontFamily
           font.pixelSize: Commons.Style.font.body
@@ -334,7 +329,7 @@ Item {
       value: root.ringValue
       color: root.ringColor
       foreground: root.contentColor
-      trackColor: Commons.Util.alpha(root.contentColor, 0.22)
+      trackColor: Commons.Util.scaleAlpha(root.contentColor, 0.22)
     }
   }
 
@@ -356,7 +351,7 @@ Item {
         var grades = Model.utilizationHistoryColors(root.module === "cpu" ? root.hist.cpuTotal : root.module === "memory" ? root.hist.memUsed : root.gpuHistory, root.settings, root.lightTheme)
         return root.module === "cpu" ? [grades, grades] : [grades]
       }
-      baselineColor: Commons.Util.alpha(root.contentColor, 0.28)
+      baselineColor: Commons.Util.scaleAlpha(root.contentColor, 0.28)
     }
   }
 
@@ -373,7 +368,7 @@ Item {
       upColor: root.s2
       downColor: root.s1
       minimumCeiling: root.module === "network" ? Model.NETWORK_SCALE_FLOOR : Model.DISK_SCALE_FLOOR
-      midlineColor: Commons.Util.alpha(root.contentColor, 0.32)
+      midlineColor: Commons.Util.scaleAlpha(root.contentColor, 0.32)
     }
   }
 

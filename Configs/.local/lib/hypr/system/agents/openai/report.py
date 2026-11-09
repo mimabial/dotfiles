@@ -3,6 +3,7 @@ from __future__ import annotations
 from agents.openai.limits import fetch_codex_rpc
 from agents.openai.local_usage import SCAN_REUSE_SECONDS
 from agents.openai.local_usage import cached_local_stats
+from agents.usage_records import UsageRecord
 from datetime import datetime
 from datetime import timezone
 import argparse
@@ -21,8 +22,7 @@ def main():
   stats = cached_local_stats(max_age)
   rpc = fetch_codex_rpc()
 
-  record = {
-    "schemaVersion": 1,
+  record: UsageRecord = {
     "id": AGENT_ID,
     "name": AGENT_NAME,
     "updatedAt": datetime.now(timezone.utc).isoformat(),

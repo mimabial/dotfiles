@@ -24,7 +24,7 @@ HIDDEN_MARKER = "[Hidden] "
 
 
 # keybindings.lua gates these binds on the workspace layout at press time, inside
-# a Lua closure that hyprctl cannot see: every bind reports dispatcher "__lua".
+# a Lua closure that hyprctl cannot see: it reports only "function: 0x…".
 # The sub-category header is the only signal that a bind is layout-specific.
 LAYOUT_HEADERS = {
     "Dwindle": "dwindle",
@@ -166,7 +166,7 @@ class WindowContext:
             client
             for client in clients
             if self.window
-            and client["workspace"]["id"] == self.window["workspace"]["id"]
+            and client["workspace"]["name"] == self.window["workspace"]["name"]
             and client["address"] != self.window["address"]
             and client["mapped"]
             and not client["hidden"]

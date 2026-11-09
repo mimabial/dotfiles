@@ -52,14 +52,14 @@ while getopts "t:w:" option; do
 done
 
 wallpaper_import_into_theme() {
-  theme_hashes=()
-  theme_walls=()
+  local -a theme_hashes=() theme_walls=()
+  local incoming_wallpaper_hash=""
 
   incoming_wallpaper_hash="$(wallpaper_file_hash "${selected_wallpaper}")"
   wallpaper_scan_hashes_into theme_hashes theme_walls "${themes_dir}/${selected_theme}"
   if [[ " ${theme_hashes[*]} " == *" ${incoming_wallpaper_hash} "* ]]; then
     send_ephemeral_notif "hypr-wallpaper-kde-error" -a "Wallpaper" -i "${WALLPAPER_THUMB_DIR}/${incoming_wallpaper_hash}.sqre" -t "${NOTIFY_MS}" "Error" "Hash matched in ${selected_theme}"
-    exit 0
+    return 0
   fi
 
   local theme_wallpapers_dir=""

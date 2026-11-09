@@ -10,8 +10,9 @@ runtime_dir=${XDG_RUNTIME_DIR:-}
   echo "expose: a user-owned XDG_RUNTIME_DIR is required" >&2
   exit 1
 }
-exec 9>"$runtime_dir/expose-blur-session.lock"
-flock 9
+MAX_BLUR_SIZE=20
+exec {session_lock_fd}>"$runtime_dir/expose-blur-session.lock"
+flock "$session_lock_fd"
 
 run_hyprctl() {
   timeout --signal=TERM --kill-after=1 2 hyprctl "$@"
@@ -90,13 +91,13 @@ while IFS= read -r candidate; do
       if [[ $candidate =~ ^0*([0-9]{1,2})$ ]]; then
         requested_size=$((10#${BASH_REMATCH[1]}))
       else
-        requested_size=20
+        requested_size=$MAX_BLUR_SIZE
       fi
-      if (( requested_size > 20 )); then
-        requested_size=20
+      if (( requested_size > MAX_BLUR_SIZE )); then
+        requested_size=$MAX_BLUR_SIZE
       fi
     fi
-    IFS= read -r -t 0.02 candidate || break
+    read -r -t 0 && IFS= read -r candidate || break
   done
 
   if [[ $close_requested == true ]]; then

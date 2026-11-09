@@ -74,7 +74,7 @@ mute_original_streams original || exit 1
 transition[change_requested]=true
 hypr_daemon_call pactl set-card-profile "${card[name]}" "${card[requested_profile]}" || exit 1
 
-if ! wait_for_profile_topology card "${card[requested_profile]}" "$expected_sinks" "$expected_sources" \
+if ! wait_for_profile_topology_muting_new_endpoints card "${card[requested_profile]}" "$expected_sinks" "$expected_sources" \
     "${transition[events_fd]}" transition transition_error; then
   echo "$transition_error" >&2
   exit 1

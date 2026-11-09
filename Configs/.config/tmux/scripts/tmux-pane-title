@@ -35,53 +35,54 @@ basename_into() {
 
 foreground_process_into() {
   local -n proc_ref="$1" args_ref="$2"
-  local stat="" fields=() last_proc="" last_args=""
+  local tty="$3" stat="" fields=() last_proc="" last_args=""
   while read -r -a fields; do
     stat="${fields[0]}" last_proc="${fields[1]:-}" last_args="${fields[*]:2}"
     [[ $stat =~ ^[^TXZ\ ]*\+ ]] && break
-  done < <(ps -t "$1" -o stat= -o comm= -o args= 2>/dev/null)
+  done < <(ps -t "$tty" -o stat= -o comm= -o args= 2>/dev/null)
   proc_ref="${last_proc##*/}" args_ref="$last_args"
 }
 
-resolve_process() {
-  local tty="$1" fallback="$2" proc="" args="" script=""
-  [[ -n $tty ]] || { resolved="${fallback:-shell}"; return; }
+resolve_process_into() {
+  local -n process_name_ref="$1"
+  local tty="$2" fallback="$3" proc="" args="" script=""
+  [[ -n $tty ]] || { process_name_ref="${fallback:-shell}"; return; }
   foreground_process_into proc args "$tty"
-  [[ -n $proc || -n $args ]] || { resolved="${fallback:-shell}"; return; }
+  [[ -n $proc || -n $args ]] || { process_name_ref="${fallback:-shell}"; return; }
 
   if [[ $args =~ (^|[[:space:]/])(codex|claude|anthropic|aider)([[:space:]]|$) ]]; then
-    resolved="${BASH_REMATCH[2]}"
+    process_name_ref="${BASH_REMATCH[2]}"
   elif [[ $args =~ (^|[[:space:]])(g?(view|n?vim?x?)(diff)?)([[:space:]]|$) ]]; then
-    resolved=nvim
+    process_name_ref=nvim
   elif [[ $proc == node && $args =~ node([[:space:]]+[^[:space:]-][^[:space:]]*) ]]; then
     trim_into script "${BASH_REMATCH[1]}"
     basename_into script "$script" .js
-    case "$script" in npm | npx | yarn | pnpm | bun) resolved="$script" ;; *) trim_into resolved "$script" ;; esac
+    case "$script" in npm | npx | yarn | pnpm | bun) process_name_ref="$script" ;; *) trim_into process_name_ref "$script" ;; esac
   elif [[ $proc =~ ^python || $proc == uv ]]; then
     if [[ $args =~ python[^[:space:]]*[[:space:]]+-m[[:space:]]+([^[:space:]]+) ]]; then
-      trim_into resolved "${BASH_REMATCH[1]}"
+      trim_into process_name_ref "${BASH_REMATCH[1]}"
     elif [[ $args =~ (^|[[:space:]])([^[:space:]]+\.py)([[:space:]]|$) ]]; then
       basename_into script "${BASH_REMATCH[2]}" .py
-      trim_into resolved "$script"
+      trim_into process_name_ref "$script"
     else
-      resolved=python
+      process_name_ref=python
     fi
   elif [[ $proc =~ ^(bash|zsh|sh|fish)$ && $args =~ ${proc}[[:space:]]+([^[:space:]-][^[:space:]]*) ]]; then
     basename_into script "${BASH_REMATCH[1]}"
     script="${script%.sh}"; script="${script%.bash}"; script="${script%.zsh}"
-    if [[ $script =~ ^(\.|config|rc|profile)$ || -z $script ]]; then trim_into resolved "$proc"; else trim_into resolved "$script"; fi
+    if [[ $script =~ ^(\.|config|rc|profile)$ || -z $script ]]; then trim_into process_name_ref "$proc"; else trim_into process_name_ref "$script"; fi
   elif [[ $proc =~ ^(ssh|mosh)$ && $args =~ ${proc}[[:space:]]+([^[:space:]]+@)?([^[:space:]]+) ]]; then
     trim_into script "${BASH_REMATCH[2]}" "$HOST_MAX_CHARS"
-    resolved="$proc:$script"
+    process_name_ref="$proc:$script"
   elif [[ $args =~ /nix/store/[^/]+/bin/([^[:space:]]+) ]]; then
-    trim_into resolved "${BASH_REMATCH[1]}"
+    trim_into process_name_ref "${BASH_REMATCH[1]}"
   else
-    trim_into resolved "${proc:-${fallback:-shell}}"
+    trim_into process_name_ref "${proc:-${fallback:-shell}}"
   fi
 }
 
 resolved=""
-resolve_process "$tty" "$cmd" 2>/dev/null || true
+resolve_process_into resolved "$tty" "$cmd" 2>/dev/null || true
 [[ -n $resolved ]] && cmd="$resolved"
 
 case "$cmd" in

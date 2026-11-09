@@ -4,7 +4,7 @@ import ".."
 
 BarButton {
     id: root
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     property bool inUse: false
     property bool recheckPending: false
     css: "webcam"
@@ -44,7 +44,7 @@ BarButton {
 
     PopupCard {
         id: card
-        anchorItem: root; shell: root.shell; popupName: "webcam"; popupEnabled: root.popupsAllowed
+        anchorItem: root; shell: root.shell; popupName: "webcam"; popupEnabled: root.popupEnabled
         contentWidth: Style.px(420)
         // loading by URL keeps QtMultimedia out of the bar process until the popup opens
         Loader {

@@ -17,6 +17,8 @@ from pyutils.lock_paths import ensure_runtime_root_dir
 SECRET_LIFETIME_SECONDS = 60
 REQUEST_TIMEOUT_SECONDS = 2
 DUNST_MAX_PAUSE_LEVEL = 100
+MIN_CODE_CHARS = 4
+MAX_CODE_CHARS = 8
 CONTEXT = r"(?:verification|security|authentication|confirmation|login|sign[ -]?in|one[ -]?time)[ -]+(?:code|passcode|password)|(?:otp|2fa|passcode|pin)|your[ -]+code|code[ -]+(?:de[ -]+)?(?:vérification|confirmation|sécurité|connexion)"
 CODE = r"(?:[A-Z]-)?(?:[0-9]{2,4}[ -][0-9]{2,5}|[0-9]{4,8}|[A-Z0-9]{5,8})"
 FORWARD = re.compile(rf"\b(?:{CONTEXT})\b\s*(?:(?:is|est)\s*)?[:=\-–]?\s*[\"']?({CODE})(?![\w-])", re.I)
@@ -34,7 +36,7 @@ def verification_codes(summary, body):
                 code = numeric
             elif not (code.isupper() and re.search(r"[A-Z]", code) and re.search(r"[0-9]", code)):
                 continue
-            if 4 <= len(code) <= 8 and code not in codes:
+            if MIN_CODE_CHARS <= len(code) <= MAX_CODE_CHARS and code not in codes:
                 codes.append(code)
     return codes
 

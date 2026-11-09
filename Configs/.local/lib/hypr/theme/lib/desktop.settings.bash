@@ -85,7 +85,7 @@ theme_desktop_resolve_settings_into() {
   state_get_color_variant_into color_variant || true
   color_variant="${color_variant:-dark}"
   state_resolve_color_source_into color_source "${requested_color_source}" "${requested_color_mode}"
-  state_resolve_color_mode_into color_mode "${requested_color_mode}" "${color_variant}"
+  state_resolve_color_mode_into color_mode "${requested_color_mode}"
 
   theme_desktop_resolve_base_values_into "$1" "${color_source}"
   settings_ref[COLOR_SCHEME]="prefer-${color_variant}"

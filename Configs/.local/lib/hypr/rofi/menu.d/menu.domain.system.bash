@@ -41,7 +41,7 @@ system_pick_font_to_remove() {
       system_pick_font_to_remove unused
       ;;
     "${empty_label}" | "")
-      menu_exit_or_show remove
+      menu_show_then_exit remove
       ;;
     *)
       package="${font_packages["${selection}"]:-}"
@@ -74,7 +74,7 @@ system_pick_session_snapshot() {
 
   case "${selection}" in
     "${empty_label}" | "")
-      menu_exit_or_show system_session
+      menu_show_then_exit system_session
       ;;
     *)
       menu_present_terminal hyprshell session/snapshot.py "${mode}" "${selection}"
@@ -90,7 +90,7 @@ remove_gaming_package() {
     dunstify -i dialog-information "${name} is not installed"
     return 0
   fi
-  menu_present_terminal hyprshell pm --noconfirm remove "${package}"
+  menu_present_terminal hyprshell package-manager --noconfirm remove "${package}"
 }
 
 menu_register_domain_system() {
@@ -183,7 +183,7 @@ update_fill_packages() {
 }
 
 update_check_and_show() {
-  hyprshell system/system.update.sh --refresh >/dev/null || return
+  hyprshell system/package-updates.sh --refresh >/dev/null || return
   [[ "$(quickshell ipc call bar popupName)" == updates ]] || quickshell ipc call bar popup updates
 }
 
@@ -195,15 +195,15 @@ menu_run_action_system() {
     remove_language) menu_pick_language remove remove ;;
     system_session_restore) system_pick_session_snapshot restore ;;
     system_session_delete) system_pick_session_snapshot delete ;;
-    remove_package) menu_launch_shell_terminal hyprshell pm --noconfirm remove ;;
+    remove_package) menu_launch_shell_terminal hyprshell package-manager --noconfirm remove ;;
     remove_webapp) menu_present_terminal hyprshell install/webapp-remove.sh ;;
     remove_tui) menu_present_terminal hyprshell install/tui-remove.sh ;;
     remove_gaming_lutris) remove_gaming_package Lutris lutris ;;
     remove_gaming_heroic) remove_gaming_package "Heroic Games Launcher" heroic-games-launcher-bin ;;
     remove_gaming_retro_launcher) hyprshell gaming/retro-launcher.sh remove ;;
     remove_windows) menu_present_terminal hyprshell vm/windows.sh remove ;;
-    update_system) hyprshell system/system.update.sh up ;;
-    update_system_*) hyprshell system/system.update.sh up "${action_id#update_system_}" ;;
+    update_system) hyprshell system/package-updates.sh up ;;
+    update_system_*) hyprshell system/package-updates.sh up "${action_id#update_system_}" ;;
     update_check) update_check_and_show </dev/null >/dev/null 2>&1 & ;;
     update_firmware) menu_present_terminal hyprshell system/firmware.sh ;;
     update_timezone) menu_present_terminal hyprshell system/timezone.sh ;;
@@ -215,7 +215,7 @@ menu_run_action_system() {
     update_picker_db) menu_present_terminal hyprshell rofi/picker-db-generate.py --boxdraw --glyph ;;
     update_wallpaper_cache) menu_present_terminal hyprshell wallpaper/wallpaper.cache.sh -f ;;
     update_fonts_unused) menu_present_terminal hyprshell fonts/find-unused.sh ;;
-    update_debug_log) menu_present_terminal hyprshell util/debug.hypr.sh ;;
+    update_debug_log) menu_present_terminal hyprshell util/debug-log.sh ;;
     update_process_rofi) pkill -u "${UID}" -x rofi >/dev/null 2>&1 || true ;;
     update_process_portals) menu_present_terminal hyprshell system/reset-xdg-portal.sh ;;
     update_hardware_audio) menu_present_terminal hyprshell service/recover.sh pipewire ;;

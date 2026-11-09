@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import socket
+from typing import Any, TypedDict
 
 from pyutils import child_process
 from pyutils.xdg_base_dirs import xdg_runtime_dir
@@ -10,6 +11,36 @@ from pyutils.xdg_base_dirs import xdg_runtime_dir
 RUNTIME = str(xdg_runtime_dir() or "/run/user/%d" % os.getuid())
 SIGNATURE = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE", "")
 SYNTHETIC_OUTPUT = "FALLBACK"
+
+
+class HyprMonitor(TypedDict, total=False):
+    id: int
+    name: str
+    description: str
+    make: str
+    model: str
+    serial: str
+    width: int
+    height: int
+    physicalWidth: int
+    physicalHeight: int
+    refreshRate: float
+    x: int
+    y: int
+    scale: float
+    transform: int
+    focused: bool
+    dpmsStatus: bool
+    disabled: bool
+    mirrorOf: str
+    currentFormat: str
+    availableModes: list[str]
+    activeWorkspace: dict[str, Any]
+    colorManagementPreset: str
+    sdrBrightness: float
+    sdrSaturation: float
+    sdrMinLuminance: float
+    sdrMaxLuminance: float
 
 
 def _ipc_dir() -> str:
@@ -25,7 +56,7 @@ def hyprctl(*args: str, timeout: float = 4.0) -> str:
     return result.stdout
 
 
-def monitors() -> list[dict]:
+def monitors() -> list[HyprMonitor]:
     """Disabled ones included."""
     return [m for m in json.loads(hyprctl("monitors", "all", "-j")) if m.get("name") != SYNTHETIC_OUTPUT]
 
@@ -42,11 +73,11 @@ def output_key(make: str, model: str, name: str = "") -> str:
     return (name or "").lower()
 
 
-def monitor_key(monitor: dict) -> str:
+def monitor_key(monitor: HyprMonitor) -> str:
     return output_key(monitor.get("make", ""), monitor.get("model", ""), monitor.get("name", ""))
 
 
-def mirror_source(monitor: dict, monitors: list[dict]) -> dict | None:
+def mirror_source(monitor: HyprMonitor, monitors: list[HyprMonitor]) -> HyprMonitor | None:
     """Hyprland reports the mirrored display by id, which is not stable enough to store."""
     return next((m for m in monitors if str(m.get("id")) == str(monitor.get("mirrorOf"))), None)
 
@@ -72,7 +103,7 @@ def lid_closed() -> bool:
     return lid_state() == "closed"
 
 
-def is_internal(monitor: dict) -> bool:
+def is_internal(monitor: HyprMonitor) -> bool:
     return str(monitor.get("name", "")).startswith(("eDP", "LVDS", "DSI"))
 
 

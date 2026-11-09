@@ -2,7 +2,7 @@
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/rofi/picker.common.bash"
-rofi_picker_toggle_off_if_open "$@"
+rofi_picker_toggle_off_and_exit_if_open "$@"
 rofi_picker_load_environment || exit 1
 source "${BASH_SOURCE[0]%/*}/picker/emoji.records.bash"
 source "${BASH_SOURCE[0]%/*}/picker/emoji.variants.bash"
@@ -21,7 +21,7 @@ EMOJI_GRID_PADDING_EM=2
 EMOJI_WINDOW_HEIGHT_EM=30
 EMOJI_FALLBACK_WIDTH_PX_PER_SCALE=81
 EMOJI_FALLBACK_HEIGHT_PX_PER_SCALE=60
-EMOJI_ICONLESS_THEME_STR='listview { show-icons: false; } element { children: [ "element-text" ]; } element-icon { enabled: false; size: 0em; width: 0em; padding: 0; margin: 0; border: 0; }'
+EMOJI_LISTVIEW_THEME_STR='listbox { expand: true; children: [ "listview" ]; } listview { expand: true; show-icons: false; } element { children: [ "element-text" ]; } element-icon { enabled: false; size: 0em; width: 0em; padding: 0; margin: 0; border: 0; }'
 emoji_resolve_layout_into() {
   local -n picker_layout_ref="$1"
   rofi_resolve_style_into "$1" \
@@ -69,6 +69,7 @@ emoji_clipboard_dmenu() {
   rofi_picker_header_args_into header_args "${prompt}" "󰞅" "$3" "${placeholder}"
 
   rofi_with_background_theme -dmenu -i -p "${prompt}" -no-show-icons \
+    -theme-str "${EMOJI_LISTVIEW_THEME_STR}" \
     -theme-str "${picker_layout_ref[position_theme]} ${picker_layout_ref[window_theme]}" \
     -theme-str "${picker_layout_ref[font_theme]}" \
     -theme-str "${picker_layout_ref[size_theme]}" \
@@ -111,7 +112,7 @@ emoji_rofi_selection_index() {
     rofi_with_background_theme -dmenu -i -format 'i' "$@" "${rofi_config_args[@]}" \
       -no-show-icons \
       -theme-str "${picker_layout_ref[size_theme]}" \
-      -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
+      -theme-str "${EMOJI_LISTVIEW_THEME_STR}" \
       -theme-str "${picker_layout_ref[font_theme]}" \
       -no-custom <"${display_file}"
     return
@@ -120,7 +121,7 @@ emoji_rofi_selection_index() {
   rofi_picker_header_args_into header_args Emoji "󰞅" "${layout_name}"
   rofi_with_background_theme -dmenu -i -format 'i' "$@" \
     -no-show-icons \
-    -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
+    -theme-str "${EMOJI_LISTVIEW_THEME_STR}" \
     -theme-str "${picker_layout_ref[position_theme]} ${picker_layout_ref[window_theme]}" \
     -theme-str "${picker_layout_ref[font_theme]}" \
     -theme-str "${picker_layout_ref[size_theme]}" \
@@ -203,7 +204,7 @@ emoji_pick_category() {
 
   selected=$(rofi_with_background_theme -dmenu -i "${style_menu_args[@]}" \
     -no-show-icons "${rofi_base_opts[@]}" \
-    -theme-str "${EMOJI_ICONLESS_THEME_STR}" \
+    -theme-str "${EMOJI_LISTVIEW_THEME_STR}" \
     -theme-str "${picker_layout_ref[position_theme]} ${picker_layout_ref[window_theme]}" \
     -theme-str "${picker_layout_ref[font_theme]}" \
     "${header_args[@]}" \

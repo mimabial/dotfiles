@@ -15,7 +15,9 @@ usage() {
   cat <<EOF2
 Usage: hyprshell fonts/font-set.sh <font-name>
 
-Sets the shared font override layer for:
+Set one font for every role in the shared font override layer.
+
+Roles:
   • General UI font
   • Document font
   • Monospace font
@@ -39,7 +41,7 @@ require_installed_font() {
   printf 'Available monospace fonts:\n' >&2
   "${HYPR_LIB_DIR}/fonts/font-list.sh" | head -n "${FONT_SUGGESTION_LIMIT}" >&2
   printf '\nInstall fonts from Menu > Install > Font\n' >&2
-  exit 1
+  return 1
 }
 
 persist_font_selection() {
@@ -60,6 +62,6 @@ LUA
 }
 
 require_font_name
-require_installed_font
+require_installed_font || exit 1
 persist_font_selection
 "${HYPR_LIB_DIR}/fonts/font-apply.sh" "${FONT_NAME}"

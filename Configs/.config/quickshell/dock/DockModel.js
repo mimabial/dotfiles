@@ -301,138 +301,121 @@ function workspaceLabel(name) {
   return suffix ? suffix.charAt(0).toUpperCase() : ""
 }
 
-function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, isMinimizedWs, minimizedOrigins, recentIds, recentLimit) {
-  var pinned = Array.isArray(pinnedIds) ? pinnedIds : []
-  var list = toArray(toplevels)
-  var isParkedWorkspace = typeof isMinimizedWs === "function"
-    ? isMinimizedWs
-    : function (name) { return name === "special:minimized" }
-  var minOrigins = minimizedOrigins || {}
-  function isPinnedApp(appId) {
-    for (var i = 0; i < pinned.length; i++)
-      if (isAppMatch(pinned[i], appId)) return true
-    return false
-  }
+var MINIMIZED_WORKSPACE = "special:minimized"
 
-  var runningIds = []
-  var winMap = {}
-  for (var toplevel of list) {
+function isMinimizedWorkspace(name) {
+  var value = String(name || "")
+  return value === MINIMIZED_WORKSPACE || value.indexOf(MINIMIZED_WORKSPACE + "-") === 0
+}
+
+function windowsByApp(toplevels, hyprFor, minimizedOrigins) {
+  var origins = minimizedOrigins || {}
+  var grouped = { appIds: [], windowsById: {} }
+  for (var toplevel of toArray(toplevels)) {
     if (!toplevel) continue
     var appId = stripDesktop(toplevel.appId)
     if (!appId) continue
-    if (!winMap[appId]) {
-      winMap[appId] = []
-      runningIds.push(appId)
+    if (!grouped.windowsById[appId]) {
+      grouped.windowsById[appId] = []
+      grouped.appIds.push(appId)
     }
-    var h = hyprFor ? hyprFor(toplevel) : null
-    var addr = windowAddress(h)
-    var ws = h ? h.workspace : null
-    var wsName = ws ? String(ws.name || ws.id || "") : ""
-    var isParked = (wsName !== "" && isParkedWorkspace(wsName)) || Boolean(addr && minOrigins[addr])
-    winMap[appId].push({
+    var handle = hyprFor ? hyprFor(toplevel) : null
+    var address = windowAddress(handle)
+    var workspace = handle ? handle.workspace : null
+    var workspaceName = workspace ? String(workspace.name || workspace.id || "") : ""
+    grouped.windowsById[appId].push({
       title: String(toplevel.title || "Window"),
-      address: addr,
+      address: address,
       appId: appId,
-      workspaceName: wsName,
-      isMinimized: isParked
+      workspaceName: workspaceName,
+      isMinimized: isMinimizedWorkspace(workspaceName) || Boolean(address && origins[address])
     })
   }
+  return grouped
+}
 
-  function getWindowsFor(targetId) {
-    if (winMap[targetId] && winMap[targetId].length > 0) return winMap[targetId]
-    for (var runningId of runningIds) {
-      if (isAppMatch(targetId, runningId)) {
-        return winMap[runningId] || []
-      }
-    }
-    return []
+function windowsMatchingApp(grouped, appId) {
+  if (grouped.windowsById[appId] && grouped.windowsById[appId].length > 0) return grouped.windowsById[appId]
+  for (var runningId of grouped.appIds) {
+    if (isAppMatch(appId, runningId)) return grouped.windowsById[runningId] || []
   }
+  return []
+}
 
-  function enrich(list) {
-    for (var item of list) {
-      var entry = (appLibrary && appLibrary.lookup) ? appLibrary.lookup(item.appId) : null
-      if (!entry) entry = entryFor(appRows, item.appId)
-      if (entry && appLibrary) {
-        item.name = appLibrary.entryName(entry)
-        item.icon = appLibrary.iconSource(entry.icon)
-      } else {
-        item.name = item.appId
-        var iconFound = ""
-        if (appLibrary) {
-          var candidates = getCandidates(item.appId)
-          for (var candidate of candidates) {
-            var testSrc = appLibrary.iconSource(candidate)
-            if (testSrc && testSrc.indexOf("application-x-executable") < 0) {
-              iconFound = testSrc
-              break
-            }
+function addNamesAndIcons(entries, appRows, appLibrary) {
+  for (var item of entries) {
+    var entry = (appLibrary && appLibrary.lookup) ? appLibrary.lookup(item.appId) : null
+    if (!entry) entry = entryFor(appRows, item.appId)
+    if (entry && appLibrary) {
+      item.name = appLibrary.entryName(entry)
+      item.icon = appLibrary.iconSource(entry.icon)
+    } else {
+      item.name = item.appId
+      var iconFound = ""
+      if (appLibrary) {
+        for (var candidate of getCandidates(item.appId)) {
+          var testSrc = appLibrary.iconSource(candidate)
+          if (testSrc && testSrc.indexOf("application-x-executable") < 0) {
+            iconFound = testSrc
+            break
           }
         }
-        item.icon = iconFound
       }
+      item.icon = iconFound
     }
   }
+}
+
+function dockEntry(appId, pinned, windows) {
+  return { id: appId, appId: appId, pinned: pinned, running: windows.length > 0, windows: windows.length, windowList: windows }
+}
+
+function matchesPinnedApp(pinned, appId) {
+  return pinned.some(function (pinnedId) { return isAppMatch(pinnedId, appId) })
+}
+
+function buildEntries(pinnedIds, toplevels, appRows, appLibrary, hyprFor, minimizedOrigins, recentIds, recentLimit) {
+  var pinned = Array.isArray(pinnedIds) ? pinnedIds : []
+  var grouped = windowsByApp(toplevels, hyprFor, minimizedOrigins)
+  var seen = {}
 
   var pinnedOut = []
-  var seen = {}
-  var j = 0
-
-  for (j = 0; j < pinned.length; j++) {
-    var pid = stripDesktop(pinned[j])
-    if (!pid || seen[pid]) continue
-    seen[pid] = true
-    var wins = getWindowsFor(pid)
-    pinnedOut.push({
-      id: pid,
-      appId: pid,
-      pinned: true,
-      running: wins.length > 0,
-      windows: wins.length,
-      windowList: wins
-    })
+  for (var pinnedId of pinned) {
+    var id = stripDesktop(pinnedId)
+    if (!id || seen[id]) continue
+    seen[id] = true
+    pinnedOut.push(dockEntry(id, true, windowsMatchingApp(grouped, id)))
   }
-  enrich(pinnedOut)
+  addNamesAndIcons(pinnedOut, appRows, appLibrary)
 
   var runningOut = []
-  for (j = 0; j < runningIds.length; j++) {
-    var rid = runningIds[j]
-    if (isPinnedApp(rid) || seen[rid]) continue
-    seen[rid] = true
-    var wins = winMap[rid] || []
-    runningOut.push({
-      id: rid,
-      appId: rid,
-      pinned: false,
-      running: true,
-      windows: wins.length,
-      windowList: wins
-    })
+  for (var runningId of grouped.appIds) {
+    if (matchesPinnedApp(pinned, runningId) || seen[runningId]) continue
+    seen[runningId] = true
+    runningOut.push(dockEntry(runningId, false, grouped.windowsById[runningId]))
   }
-  var recentOut = []
   var recents = toArray(recentIds)
-  for (j = 0; j < recents.length && recentOut.length < recentLimit; j++) {
-    var cid = stripDesktop(recents[j])
-    if (!cid || seen[cid] || isPinnedApp(cid)) continue
-    seen[cid] = true
-    recentOut.push({ id: cid, appId: cid, pinned: false, running: false, windows: 0, windowList: [] })
+  var recentOut = []
+  for (var j = 0; j < recents.length && recentOut.length < recentLimit; j++) {
+    var recentId = stripDesktop(recents[j])
+    if (!recentId || seen[recentId] || matchesPinnedApp(pinned, recentId)) continue
+    seen[recentId] = true
+    recentOut.push(dockEntry(recentId, false, []))
   }
   runningOut = runningOut.concat(recentOut)
-  enrich(runningOut)
+  addNamesAndIcons(runningOut, appRows, appLibrary)
 
   return { pinned: pinnedOut, running: runningOut }
 }
 
-function allWindowsMinimized(windowList, resolveLiveWorkspace, isMinimizedWs) {
-  var isParkedWorkspace = typeof isMinimizedWs === "function"
-    ? isMinimizedWs
-    : function (name) { return name === "special:minimized" }
+function allWindowsMinimized(windowList, resolveLiveWorkspace) {
   var list = toArray(windowList)
   if (list.length === 0) return false
   for (var window of list) {
     if (!window) return false
     if (window.isMinimized) continue
     var ws = resolveLiveWorkspace ? String(resolveLiveWorkspace(window) || "") : String(window.workspaceName || "")
-    if (!isParkedWorkspace(ws)) return false
+    if (!isMinimizedWorkspace(ws)) return false
   }
   return true
 }

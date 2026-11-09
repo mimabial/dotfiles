@@ -13,8 +13,8 @@ Item {
   property string errorMessage: ""
   property color background: Commons.Color.background
   property color foreground: Commons.Color.foreground
-  property color scrim: Commons.Util.alpha(Commons.Color.background, 0.7)
-  property color selectedBackground: Commons.Util.alpha(Commons.Color.foreground, 0.08)
+  property color scrim: Commons.Util.scaleAlpha(Commons.Color.background, 0.7)
+  property color selectedBackground: Commons.Util.scaleAlpha(Commons.Color.foreground, 0.08)
   property color selectedText: Commons.Color.accent
   property string fontFamily: Commons.Style.font.family
   property int cornerRadius: Commons.Style.cornerRadius
@@ -162,7 +162,7 @@ Item {
                 height: Commons.Style.space(34)
                 color: selected ? root.selectedBackground : "transparent"
                 borderSpec: Commons.Border.flat(
-                  selected ? root.selectedText : Commons.Util.alpha(root.foreground, 0.38),
+                  selected ? root.selectedText : Commons.Util.scaleAlpha(root.foreground, Commons.Style.normalBorderAlpha),
                   Commons.Style.normalBorderWidth
                 )
                 radius: 0

@@ -37,7 +37,7 @@ battery_render_format() {
         ;;
     *)
         echo "Invalid format option: $1. Use 'icon', 'percentage', 'int', 'status', or 'status-icon'."
-        exit 1
+        return 1
         ;;
     esac
 }

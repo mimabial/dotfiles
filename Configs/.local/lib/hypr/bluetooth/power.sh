@@ -4,7 +4,9 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 
-hypr_help_guard "Usage: hyprshell bluetooth/power {on|off|toggle|is-on}" "$@"
+hypr_help_guard "Usage: hyprshell bluetooth/power {on|off|toggle|is-on}
+
+Turn the Bluetooth adapter on or off, or report whether it is powered." "$@"
 
 bluetooth_is_powered() {
   [[ "$(hypr_daemon_call bluetoothctl show 2>/dev/null)" == *'Powered: yes'* ]]

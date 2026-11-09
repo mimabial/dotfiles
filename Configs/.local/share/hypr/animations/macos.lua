@@ -1,7 +1,7 @@
 local windowSpeed, springSpeed, mass, spacesSpringDurationSeconds = 2.5, 1, 1, 0.5
 local spacesStiffness = mass * (2 * math.pi / spacesSpringDurationSeconds) ^ 2
 
-require("runtime").config("animations.enabled", true)
+require("runtime").config_if_supported("animations.enabled", true)
 hl.curve("macosOpen", {type = "bezier", points = {{0, 0}, {0.58, 1}}})
 hl.curve("macosClose", {type = "bezier", points = {{0.42, 0}, {1, 1}}})
 hl.curve("macosMove", {type = "bezier", points = {{0.25, 0.1}, {0.25, 1}}})

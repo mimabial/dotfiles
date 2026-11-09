@@ -8,7 +8,7 @@ from typing import NamedTuple
 
 from title_cleanup import clean_title
 
-# Independent of the weighted score. Measured: worst true 0.51, best false 0.44.
+# Independent of the weighted score. Measured: worst true 0.51; other tracks of one album reach 0.67 sharing no word.
 # Correct pairs such as "ru. & Magixx"/"ru." prevent raising this to 0.60.
 MIN_TITLE_SIMILARITY = 0.50
 MIN_ARTIST_SIMILARITY = 0.50
@@ -29,8 +29,12 @@ CREDIT_SEPARATOR = re.compile(
     r"\s*(?:,|&|;|\bfeat(?:uring)?\b\.?|\bft\b\.?|\bwith\b)\s*",
     re.IGNORECASE,
 )
+BRACKETED_SEGMENT = re.compile(r"[\(\[][^\)\]]*[\)\]]")
 BUCKET_ARTISTS = re.compile(r"\s*\[g\]\s*$", re.IGNORECASE)
 BUCKET_ALBUMS = re.compile(r"\s*\[c\]\s*$", re.IGNORECASE)
+TRACK_NUMBER_PREFIX = re.compile(
+    r"^\s*(?P<disc>\d{1,2}-)?(?P<number>\d{1,3})(?P<separator>\s*[-._)]\s*|\s+)(?=\S)"
+)
 
 
 TITLE_WEIGHT = 0.6
@@ -42,8 +46,14 @@ class TrackIdentity(NamedTuple):
     featured_credit: str
 
 
+def unambiguous_track_prefix(text: str) -> re.Match | None:
+    prefix = TRACK_NUMBER_PREFIX.match(text)
+    return prefix if prefix and (prefix["disc"] or not prefix["separator"].isspace()) else None
+
+
 def parse_filename(path: Path) -> tuple[str, str]:
-    stem = re.sub(r"^\s*\d{1,3}\s*[-._)]\s*", "", path.stem)
+    prefix = unambiguous_track_prefix(path.stem)
+    stem = path.stem[prefix.end():] if prefix else path.stem
     if " - " not in stem:
         return "", stem.strip()
     artist, _, title = stem.partition(" - ")
@@ -55,6 +65,21 @@ def existing(tags, key: str) -> str:
     if not value:
         return ""
     return str(value[0] if isinstance(value, list) else value).strip()
+
+
+def track_position(path: Path, tags) -> int | None:
+    tagged = existing(tags, "tracknumber").split("/", 1)[0].strip()
+    if tagged.isdigit():
+        return int(tagged)
+    prefix = unambiguous_track_prefix(path.stem)
+    return int(prefix["number"]) if prefix else None
+
+
+def drop_track_number(title: str, path: Path, tags) -> str:
+    prefix = TRACK_NUMBER_PREFIX.match(title)
+    if prefix and int(prefix["number"]) == track_position(path, tags):
+        return title[prefix.end():]
+    return title
 
 
 def normalize_identity_tokens(value: str) -> list[str]:
@@ -118,6 +143,16 @@ def title_similarity(candidate: str, title: str) -> float:
     return similarity(track_identity("", candidate)[0], track_identity("", title)[0])
 
 
+def unbracketed_words(title: str) -> set[str]:
+    return set(normalize_identity_tokens(BRACKETED_SEGMENT.sub(" ", title)))
+
+
+def title_agrees(candidate: str, title: str) -> bool:
+    candidate_base, title_base = track_identity("", candidate)[0], track_identity("", title)[0]
+    shared = unbracketed_words(candidate_base) & unbracketed_words(title_base)
+    return bool(shared) and similarity(candidate_base, title_base) >= MIN_TITLE_SIMILARITY
+
+
 def credit_similarity(
     candidate_artist: str, candidate_title: str, artist: str, title: str
 ) -> float:
@@ -143,7 +178,7 @@ def candidate_agrees(
     candidate_credit = track_identity(candidate_artist, candidate_title)[1]
     _, wanted_credit, wanted_features = track_identity(artist, title)
     return (
-        title_similarity(candidate_title, title) >= MIN_TITLE_SIMILARITY
+        title_agrees(candidate_title, title)
         and artist_agrees(candidate_credit, wanted_credit)
         and (not wanted_features or credit_contains(candidate_credit, wanted_features))
     )
@@ -208,6 +243,13 @@ def missing_credit_names(
     ]
 
 
+def filename_credit_loss(path: Path, artist: str, title: str) -> list[str]:
+    file_artist, file_title = parse_filename(path)
+    if not file_artist or not file_title:
+        return []
+    return missing_credit_names(file_artist, file_title, artist, title)
+
+
 def search_variants(artist: str, title: str) -> list[tuple[str, str]]:
     cleaned = clean_title(title)
     base_title, combined_credit, _ = track_identity(artist, cleaned)
@@ -270,6 +312,10 @@ def folder_hints(path: Path, root: Path) -> tuple[str, str]:
             return "", inner[-1]
         return inner[0], inner[-1] if len(inner) > 1 else ""
     return (parts[0], "") if len(parts) == 1 else (parts[-2], parts[-1])
+
+
+def in_album_folder(path: Path, root: Path) -> bool:
+    return bool(folder_hints(path, root)[1])
 
 
 class AlbumContext(NamedTuple):

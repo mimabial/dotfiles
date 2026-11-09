@@ -5,8 +5,8 @@ idle_window_activity() {
   hyprctl --batch -j 'clients;monitors' 2>/dev/null | jq -rse --argjson tolerance "${IDLE_WINDOW_COVER_TOLERANCE_PX}" '
     (.[0] // []) as $clients | (.[1] // []) as $monitors |
     def visible($c): any($monitors[]?;
-      .activeWorkspace.id == $c.workspace.id
-      or ((.specialWorkspace.id // 0) != 0 and .specialWorkspace.id == $c.workspace.id));
+      .activeWorkspace.name == $c.workspace.name
+      or (.specialWorkspace.name != "" and .specialWorkspace.name == $c.workspace.name));
     def covers($c): any($monitors[]?;
       .id == $c.monitor
       and (($c.at[0] - .x) | fabs) <= $tolerance and (($c.at[1] - .y) | fabs) <= $tolerance

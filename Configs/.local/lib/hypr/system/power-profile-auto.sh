@@ -47,7 +47,7 @@ sync_power_saver_workflow() {
 case "${1:-}" in
   "") apply_once=0 ;;
   --once) apply_once=1 ;;
-  -h|--help) printf 'Usage: %s [--once]\n' "${0##*/}"; exit ;;
+  -h|--help) printf 'Usage: %s [--once]\n\nSwitch the power profile to match AC or battery, once or on every change.\n' "${0##*/}"; exit ;;
   *) exit 2 ;;
 esac
 

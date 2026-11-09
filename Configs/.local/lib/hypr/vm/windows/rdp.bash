@@ -25,11 +25,11 @@ windows_start_for_rdp() {
       echo "   Try checking: hyprshell vm/windows.sh status"
       echo "   View logs: docker logs $WINDOWS_CONTAINER_NAME"
       windows_notify_start_failed
-      exit 1
+      return 1
     fi
   fi
 
-  windows_wait_for_rdp_port
+  windows_wait_for_rdp_port || return 1
   windows_notify_rdp_available
 }
 
@@ -117,9 +117,9 @@ windows_launch() {
     esac
     shift
   done
-  windows_require_compose_config
+  windows_require_compose_config || exit 1
   windows_read_credentials credentials
-  windows_start_for_rdp
+  windows_start_for_rdp || exit 1
   trap "windows_finish_rdp_session ${keep_container_running}" EXIT
   trap 'exit 129' HUP
   trap 'exit 130' INT

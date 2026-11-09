@@ -107,8 +107,9 @@ _pairs_main() {
       ;;
     -h | --help | "")
       cat <<'EOF'
-Usage: hyprshell theme/pairs --polarity <theme>
-       hyprshell theme/pairs --pair-for <theme> <dark|light>
+Usage: hyprshell theme/pairs --polarity <theme> | --pair-for <theme> <dark|light>
+
+Report whether a theme is dark or light, or the theme paired with it for a mode.
 EOF
       ;;
     *)

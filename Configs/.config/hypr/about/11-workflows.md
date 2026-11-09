@@ -66,15 +66,15 @@ Workflows are Lua. The shared ones in `~/.local/share/hypr/workflows/` are
 generated, so yours goes in `~/.config/hypr/workflows/`, where a file of the same
 name shadows the shared one.
 
-Three `vars.set` calls carry the metadata, and the rest is `runtime.config`:
+Three `vars.set` calls carry the metadata, and the rest is `runtime.config_if_supported`:
 
 ```lua
 vars.set("WORKFLOW_ICON", "󰊗")
 vars.set("WORKFLOW_DESCRIPTION", "What this one is for")
 vars.set("WORKFLOW_QUICKSHELL_LAYOUT", "winbar")
 
-runtime.config("decoration.blur.enabled", 0)
-runtime.config("general.layout", "scrolling")
+runtime.config_if_supported("decoration.blur.enabled", 0)
+runtime.config_if_supported("general.layout", "scrolling")
 ```
 
 `WORKFLOW_QUICKSHELL_LAYOUT` selects the initial bar: Windows uses winbar,

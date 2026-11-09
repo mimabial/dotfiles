@@ -3,7 +3,7 @@ import ".."
 
 BarButton {
     id: root
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     css: "screenshot"; text: "󰄄"
     tooltip: "<b>Screenshot</b>\nLeft: Panel\nMiddle: Full screen\nRight: Focused monitor"
     onClicked: button => button === Qt.MiddleButton
@@ -11,5 +11,5 @@ BarButton {
         : button === Qt.RightButton
             ? root.shell.run(["hyprshell", "screenshot", "m"])
             : root.shell.togglePopup("screenshot")
-    ScreenshotPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }
+    ScreenshotPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }
 }

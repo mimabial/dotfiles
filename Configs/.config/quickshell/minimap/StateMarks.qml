@@ -1,6 +1,5 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Shapes
 import qs
 
 Item {
@@ -9,29 +8,25 @@ Item {
     property bool fullscreen: false
     property bool floating: false
     property color ink: "black"
+    property real corner: 0
     readonly property real unit: Style.uiScale
     readonly property real edge: 2 * unit
     readonly property real outlineInset: 2.2 * unit
+    readonly property real outlineStroke: 1.8 * unit
     readonly property real stroke: 1.2 * unit
     readonly property real dot: 4 * unit
     readonly property real arm: Math.max(2 * unit, Math.min(4 * unit, Math.min(width, height) / 3))
     readonly property bool roomy: width >= 10 * unit && height >= 10 * unit
     anchors.fill: parent
 
-    Shape {
+    Rectangle {
         anchors.fill: parent
+        anchors.margins: marks.outlineInset - marks.outlineStroke / 2
         visible: marks.roomy && marks.floating && !marks.fullscreen
-        ShapePath {
-            strokeColor: marks.ink
-            strokeWidth: 1.8 * marks.unit
-            fillColor: "transparent"
-            joinStyle: ShapePath.RoundJoin
-            startX: marks.outlineInset; startY: marks.outlineInset
-            PathLine { x: marks.width - marks.outlineInset; y: marks.outlineInset }
-            PathLine { x: marks.width - marks.outlineInset; y: marks.height - marks.outlineInset }
-            PathLine { x: marks.outlineInset; y: marks.height - marks.outlineInset }
-            PathLine { x: marks.outlineInset; y: marks.outlineInset }
-        }
+        color: "transparent"
+        border.width: marks.outlineStroke
+        border.color: marks.ink
+        radius: Math.max(0, marks.corner - anchors.margins)
     }
     Repeater {
         model: marks.roomy && marks.fullscreen ? 4 : 0

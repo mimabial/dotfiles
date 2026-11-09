@@ -6,7 +6,7 @@ pkg_installed() {
   [[ -n "${package}" ]] || return 1
   command -v "${package}" &>/dev/null && return 0
   command -v flatpak &>/dev/null && flatpak info "${package}" &>/dev/null && return 0
-  hyprshell pm query "${package}" &>/dev/null
+  hyprshell package-manager query "${package}" &>/dev/null
 }
 
 sed_escape_replacement() {
@@ -94,32 +94,40 @@ hypr_theme_variable() {
 paste_clipboard() {
   local window_class=""
   local arg=""
-  local ignored_class=""
-  local -a ignored_classes=(
+  local class=""
+  local into_terminals=false
+  local shortcut_mods="CTRL"
+  local wtype_keys="-M ctrl V -m ctrl"
+  local -a terminal_classes=(
     kitty
     Alacritty
   )
+  local -a ignored_classes=()
 
   [[ -t 1 ]] && return 0
 
   for arg in "$@"; do
     case "${arg}" in
-      --ignore=*)
-        ignored_class="${arg#--ignore=}"
-        [[ -n "${ignored_class}" ]] && ignored_classes+=("${ignored_class}")
-        ;;
+      --ignore=?*) ignored_classes+=("${arg#--ignore=}") ;;
+      --into-terminals) into_terminals=true ;;
     esac
   done
 
   window_class="$(hyprctl -j activewindow | jq -r '.initialClass // empty')"
-  for ignored_class in "${ignored_classes[@]}"; do
-    [[ "${window_class}" == "${ignored_class}" ]] && return 0
+  for class in "${ignored_classes[@]}"; do
+    [[ "${window_class}" == "${class}" ]] && return 0
+  done
+  for class in "${terminal_classes[@]}"; do
+    [[ "${window_class}" == "${class}" ]] || continue
+    [[ "${into_terminals}" == true ]] || return 0
+    shortcut_mods="CTRL SHIFT"
+    wtype_keys="-M ctrl -M shift V -m shift -m ctrl"
   done
 
   if command -v wtype >/dev/null; then
-    hypr_lua_dispatch 'hl.dsp.exec_cmd("wtype -M ctrl V -m ctrl")' >/dev/null
+    hypr_lua_dispatch "hl.dsp.exec_cmd(\"wtype ${wtype_keys}\")" >/dev/null
   elif command -v hyprctl >/dev/null; then
-    hypr_lua_dispatch 'hl.dsp.send_shortcut({mods="CTRL", key="V", window="activewindow"})' >/dev/null
+    hypr_lua_dispatch "hl.dsp.send_shortcut({mods=\"${shortcut_mods}\", key=\"V\", window=\"activewindow\"})" >/dev/null
   fi
 }
 

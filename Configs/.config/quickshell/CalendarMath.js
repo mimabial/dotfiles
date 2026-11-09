@@ -1,8 +1,5 @@
 .pragma library
-
-var MS_PER_MINUTE = 60 * 1000
-var MS_PER_HOUR = 60 * MS_PER_MINUTE
-var MS_PER_DAY = 24 * MS_PER_HOUR
+.import "Units.js" as Units
 
 function isoDay(date) { return Qt.formatDate(date, "yyyy-MM-dd") }
 function fromIsoDay(value) { return new Date(String(value) + "T12:00:00") }
@@ -20,12 +17,12 @@ function isoWeek(date) {
     day.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7) + 3)
     const firstThursday = new Date(Date.UTC(day.getUTCFullYear(), 0, 4))
     firstThursday.setUTCDate(firstThursday.getUTCDate() - ((firstThursday.getUTCDay() + 6) % 7) + 3)
-    return 1 + Math.round((day - firstThursday) / (7 * MS_PER_DAY))
+    return 1 + Math.round((day - firstThursday) / (7 * Units.MS_PER_DAY))
 }
 function relativeDayLabel(value, today) {
     const todayIso = isoDay(today)
     if (value === todayIso) return "Today"
-    const gap = Math.round((fromIsoDay(value) - fromIsoDay(todayIso)) / MS_PER_DAY)
+    const gap = Math.round((fromIsoDay(value) - fromIsoDay(todayIso)) / Units.MS_PER_DAY)
     return gap === 1 ? "Tomorrow" : gap === -1 ? "Yesterday" : ""
 }
 function isWeekend(value) {
@@ -46,8 +43,4 @@ function rawTime(value) {
     const text = String(value)
     const separator = text.indexOf("T")
     return separator < 0 ? "" : text.slice(separator + 1, separator + 3) + ":" + text.slice(separator + 3, separator + 5)
-}
-function enteredValue(value) {
-    const compact = String(value).replace(/\s/g, "")
-    return /\d/.test(compact) ? compact : ""
 }

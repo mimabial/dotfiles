@@ -77,7 +77,7 @@ Column {
         colors: [gpuCard.seriesColor]
         sampleColors: [Model.utilizationHistoryColors(gpuCard.utilHistory, root.settings, root.lightTheme)]
         ceiling: 100
-        baselineColor: Commons.Util.alpha(root.foreground, 0.14)
+        baselineColor: Commons.Util.scaleAlpha(root.foreground, 0.14)
       }
 
       SectionTitle {
@@ -94,7 +94,7 @@ Column {
         series: [gpuCard.tempHistory]
         colors: [gpuCard.seriesColor]
         minimumCeiling: Model.TEMPERATURE_SCALE_FLOOR
-        baselineColor: Commons.Util.alpha(root.foreground, 0.14)
+        baselineColor: Commons.Util.scaleAlpha(root.foreground, 0.14)
       }
 
       SectionTitle {
@@ -112,7 +112,7 @@ Column {
         colors: [gpuCard.seriesColor]
         sampleColors: [Model.utilizationHistoryColors(gpuCard.vramHistory, root.settings, root.lightTheme)]
         ceiling: 100
-        baselineColor: Commons.Util.alpha(root.foreground, 0.14)
+        baselineColor: Commons.Util.scaleAlpha(root.foreground, 0.14)
       }
 
       StatRow {

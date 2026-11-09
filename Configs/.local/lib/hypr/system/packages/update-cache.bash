@@ -29,8 +29,9 @@ updates_last_upgrade_epoch() {
 
 updates_capture_query_into() {
   local out_var="$1"
-  local label="$2"
-  shift 2
+  local -n query_errors_ref="$2"
+  local label="$3"
+  shift 3
 
   local output=""
   local stderr_file=""
@@ -38,10 +39,7 @@ updates_capture_query_into() {
   local rc=0
 
   stderr_file="$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/system-update-${label}.XXXXXX")" || return 1
-  set +e
-  output="$("$@" 2>"${stderr_file}")"
-  rc=$?
-  set -e
+  output="$("$@" 2>"${stderr_file}")" || rc=$?
   stderr_output="$(<"${stderr_file}")"
   rm -f "${stderr_file}"
 
@@ -61,16 +59,17 @@ updates_capture_query_into() {
       ;;
   esac
 
-  system_update_errors+=("${label}: ${stderr_output:-exit ${rc}}")
+  query_errors_ref+=("${label}: ${stderr_output:-exit ${rc}}")
 }
 
-updates_read_cached_counts() {
-  IFS=$'\t' read -r repo_update_count aur_update_count flatpak_update_count < <(
+updates_read_cached_counts_into() {
+  local -n repo_count_ref="$1" aur_count_ref="$2" flatpak_count_ref="$3"
+  IFS=$'\t' read -r repo_count_ref aur_count_ref flatpak_count_ref < <(
     jq -r '[.packages.pacman, .packages.aur, .packages.flatpak] | map(length) | @tsv' "${update_cache_path}"
   )
-  repo_update_count="$(updates_normalize_count "${repo_update_count}")"
-  aur_update_count="$(updates_normalize_count "${aur_update_count}")"
-  flatpak_update_count="$(updates_normalize_count "${flatpak_update_count}")"
+  repo_count_ref="$(updates_normalize_count "${repo_count_ref}")"
+  aur_count_ref="$(updates_normalize_count "${aur_count_ref}")"
+  flatpak_count_ref="$(updates_normalize_count "${flatpak_count_ref}")"
 }
 
 updates_require_cached_report() {

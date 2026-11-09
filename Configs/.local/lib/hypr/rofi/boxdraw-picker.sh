@@ -2,7 +2,7 @@
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/rofi/picker.common.bash"
-rofi_picker_toggle_off_if_open "$@"
+rofi_picker_toggle_off_and_exit_if_open "$@"
 rofi_picker_load_environment || exit 1
 
 declare -A picker_paths=()
@@ -72,7 +72,7 @@ boxdraw_rofi_args_into() {
 
   if [[ -n "${use_rofile}" ]]; then
     rofi_picker_rasi_args rofi_config_args "${use_rofile}" "${picker_layout_ref[position_theme]}"
-    boxdraw_args_ref=(-i "${ROFI_BOXDRAW_ARGS[@]}" "${rofi_config_args[@]}" -theme-str "${picker_layout_ref[size_theme]}" -no-custom)
+    boxdraw_args_ref=(-i "${ROFI_BOXDRAW_ARGS[@]}" "${rofi_config_args[@]}" -theme-str "${picker_layout_ref[width_theme]}" -no-custom)
     return 0
   fi
 
@@ -88,7 +88,7 @@ boxdraw_rofi_args_into() {
   boxdraw_args_ref=(-i "${base_args[@]}" "${grid_args[@]}"
     -theme-str "${picker_layout_ref[position_theme]} ${picker_layout_ref[window_theme]}"
     -theme-str "${picker_layout_ref[font_theme]}"
-    -theme-str "${picker_layout_ref[size_theme]}"
+    -theme-str "${picker_layout_ref[width_theme]}"
     -theme "$(rofi_resolve_theme "${theme}")"
     -no-custom)
   rofi_picker_header_args_into "$1" "Box Drawing" "󰇟" "$3"

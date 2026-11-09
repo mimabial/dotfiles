@@ -33,10 +33,10 @@ PopupCard {
     ]
     readonly property int enabledMetricCount: metrics.filter(metric => Model.enabled(options, metric.key)).length
 
-    function option(key, fallback) { return Model.value(options, key, fallback) }
+    function option(key, fallback) { return Model.optionValue(options, key, fallback) }
     function setOption(key, value) {
         if (!configReady) return
-        const next = Model.update(configText, key, value)
+        const next = Model.withOption(configText, key, value)
         if (next === configText) return
         configText = next
         configFile.setText(next)
@@ -79,7 +79,7 @@ PopupCard {
             if (/GameRegistered|GameUnregistered|^The name /.test(line)) root.refreshGameMode()
         } }
     }
-    Timer { id: copiedTimer; interval: 2500; onTriggered: root.copiedLaunchOptions = false }
+    Timer { id: copiedTimer; interval: Style.confirmationShownMs; onTriggered: root.copiedLaunchOptions = false }
 
     Flickable {
         id: scroll

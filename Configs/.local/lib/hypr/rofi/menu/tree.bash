@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-menu_exit_or_show() {
+menu_show_then_exit() {
   [[ "${BACK_TO_EXIT}" == "true" ]] || menu_show_menu "${1:-main}"
   exit 0
 }
@@ -91,16 +91,16 @@ menu_show_menu() {
   fi
 
   if ((rofi_exit == MENU_EXIT_BACK)); then
-    [[ "${menu_id}" == "main" ]] && exit 0
-    menu_exit_or_show "${HYPR_MENU_PARENTS["${menu_id}"]:-main}"
+    [[ "${menu_id}" == "main" ]] && return 0
+    menu_show_then_exit "${HYPR_MENU_PARENTS["${menu_id}"]:-main}"
     return 0
   fi
 
   if ((rofi_exit != 0 && rofi_exit != MENU_EXIT_DESCEND)); then
-    exit 0
+    return 0
   fi
   if [[ -z "${selection}" ]]; then
-    exit 0
+    return 0
   fi
 
   local dispatch_status=0

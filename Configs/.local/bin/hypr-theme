@@ -65,16 +65,15 @@ if [[ "${subcommand}" == "wallpaper" && "${HYPR_THEME_REQUIRE_CURRENT_WALLPAPER:
 fi
 
 prepare_palette() {
-  local subcommand="$1"
-  local target="${2:-}"
-  case "${subcommand}" in
+  local mode="$1" target="$2" wallpaper_variant="$3"
+  case "${mode}" in
     apply)
       [[ -n "${target}" ]] || { echo "hypr-theme apply: pack name required" >&2; exit 2; }
       python3 "${RENDER_DIR}/_palette.py" --theme "${target}" --out "${PALETTE}"
       ;;
     wallpaper)
       [[ -n "${target}" ]] || { echo "hypr-theme wallpaper: image path required" >&2; exit 2; }
-      python3 "${RENDER_DIR}/_palette.py" --wallpaper "${target}" --variant "${variant}" --out "${PALETTE}"
+      python3 "${RENDER_DIR}/_palette.py" --wallpaper "${target}" --variant "${wallpaper_variant}" --out "${PALETTE}"
       ;;
   esac
 }
@@ -109,47 +108,39 @@ run_renderers() {
   return "${failed}"
 }
 
+reload_compositor_config_and_published_vars() {
+  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl >/dev/null 2>&1 || return 0
+  hyprctl reload config-only >/dev/null 2>&1 || true
+}
+
+set_desktop_color_scheme() {
+  local palette_text=""
+  IFS= read -r -d '' palette_text <"${PALETTE}" || true
+  [[ "${palette_text}" =~ \"color_variant\":[[:space:]]*\"(dark|light)\" ]] && command -v gsettings >/dev/null 2>&1 || return 0
+  gsettings set org.gnome.desktop.interface color-scheme "prefer-${BASH_REMATCH[1]}" >/dev/null 2>&1 || true
+}
+
 reload_clients() {
-  if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl >/dev/null 2>&1; then
-    hyprctl reload config-only >/dev/null 2>&1 || true
-  fi
-  [[ "${HYPR_THEME_DEFER_CLIENTS:-0}" == 1 ]] && return
+  local client=""
   source "${HYPR_LIB_DIR}/theme/lib/clients.reload.bash"
-
-  local background=""
-  background="$(jq -r '.background // empty' "${PALETTE}" 2>/dev/null || true)"
-
-  if [[ "${background}" =~ ^(dark|light)$ ]] && command -v gsettings >/dev/null 2>&1; then
-    gsettings set org.gnome.desktop.interface color-scheme "prefer-${background}" >/dev/null 2>&1 || true
-  fi
-
-  reload_live_theme_client kitty
-  reload_live_theme_client alacritty
-  reload_live_theme_client cava
-  reload_live_theme_client zathura
-  reload_live_theme_client rmpc
-  reload_live_theme_client tmux
-
-  # FileView re-arms across the renderers' mv, so the palette lands on its own;
-  # this only re-reads the font sources, which a soft reload would miss.
-  if command -v quickshell >/dev/null 2>&1; then
-    quickshell ipc --any-display call bar refresh >/dev/null 2>&1 || true
-  fi
-
-  if [[ -x "${HYPR_LIB_DIR}/util/nvim-theme-sync.sh" ]]; then
-    "${HYPR_LIB_DIR}/util/nvim-theme-sync.sh" >/dev/null 2>&1 || true
-  fi
+  set_desktop_color_scheme &
+  for client in kitty alacritty cava zathura rmpc tmux; do
+    reload_live_theme_client "${client}" &
+  done
+  [[ ! -x "${HYPR_LIB_DIR}/util/nvim-theme-sync.sh" ]] || "${HYPR_LIB_DIR}/util/nvim-theme-sync.sh" >/dev/null 2>&1 &
+  wait
 }
 
 case "${subcommand}" in
   apply|wallpaper)
-    prepare_palette "${subcommand}" "${positional[0]:-}"
+    prepare_palette "${subcommand}" "${positional[0]:-}" "${variant}"
     if [[ "${subcommand}" == apply ]]; then
       state_set "HYPR_THEME" "${positional[0]}" "staterc"
     fi
     render_failed=0
     run_renderers || render_failed=1
-    reload_clients
+    reload_compositor_config_and_published_vars
+    [[ "${HYPR_THEME_DEFER_CLIENTS:-0}" == 1 ]] || reload_clients
     exit "${render_failed}"
     ;;
   *)

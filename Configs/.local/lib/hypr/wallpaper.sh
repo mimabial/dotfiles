@@ -36,8 +36,8 @@ for wallpaper_lib in \
 done
 
 main() {
-  wallpaper_require_backend
-  wallpaper_acquire_lock_if_needed
+  wallpaper_require_backend || return 1
+  wallpaper_acquire_lock_if_needed || return 0
 
   wallpaper_set_paths
   wallpaper_refresh_inventory_if_needed

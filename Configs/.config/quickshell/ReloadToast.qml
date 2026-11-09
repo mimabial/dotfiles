@@ -9,7 +9,6 @@ Scope {
     property bool shown: false
     property bool failed: false
     readonly property int failureShownMs: 8000
-    readonly property int successShownMs: 1400
     property string detail: ""
     readonly property string title: root.failed ? "Configuration reload failed" : "Configuration reloaded"
 
@@ -34,7 +33,7 @@ Scope {
         function onReloadCompleted() { Quickshell.inhibitReloadPopup(); root.showSuccess() }
         function onReloadFailed(error: string) { Quickshell.inhibitReloadPopup(); root.showFailure(error) }
     }
-    Timer { id: toastExpiryTimer; interval: root.failed ? root.failureShownMs : root.successShownMs; onTriggered: root.shown = false }
+    Timer { id: toastExpiryTimer; interval: root.failed ? root.failureShownMs : Style.confirmationShownMs; onTriggered: root.shown = false }
 
     TextMetrics { id: titleMetrics; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; text: root.title }
 
@@ -53,7 +52,7 @@ Scope {
             anchors.fill: parent; radius: root.shell.rounding
             color: root.shell.alpha(Style.popupTinted(root.shell.role("alt_bg", root.shell.background)), Style.popupSurfaceOpacity)
             border.width: 1
-            border.color: root.shell.alpha(root.failed ? root.shell.role("error", root.shell.accent) : Style.popupBorder(root.shell.role("act_br", root.shell.accent)), .65)
+            border.color: root.failed ? root.shell.alpha(root.shell.role("error", root.shell.accent), .65) : Style.popupBorder(root.shell.role("act_br", root.shell.accent), .65)
             Column {
                 id: content
                 anchors.centerIn: parent

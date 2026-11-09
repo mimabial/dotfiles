@@ -2,7 +2,7 @@ package_pick_with_preview() {
   local preview="$1"
   local color="$2"
   shift 2
-  package_command_exists fzf || package_error "fzf is not installed"
+  package_command_exists fzf || package_die "fzf is not installed"
   fzf \
     --multi \
     --preview="${preview}" \
@@ -32,7 +32,7 @@ package_pick_repository_install() {
 package_pick_aur_install() {
   local helper=""
   local -a selected=()
-  helper="$(package_aur_helper)" || package_error "no AUR helper found; install yay or paru"
+  helper="$(package_aur_helper)" || package_die "no AUR helper found; install yay or paru"
   mapfile -t selected < <(
     package_aur_names "${helper}" |
       package_pick_with_preview \

@@ -59,7 +59,7 @@ User-facing commands should print `--help` to stdout and exit 0.
 ```bash
 hyprshell capture/screenrecord --help
 hyprshell util/workflows --help
-hyprshell system/pm --help
+hyprshell system/package-manager --help
 ```
 
 If you write a script here, use `hypr_help_guard` and you get the right shape for

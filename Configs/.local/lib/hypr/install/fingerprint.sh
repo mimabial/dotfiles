@@ -24,14 +24,14 @@ if [[ "--remove" == "${1:-}" ]]; then
   remove_pam_authentication "fingerprint" "pam_fprintd.so"
 
   print_auth_info "Removing fingerprint packages..."
-  hyprshell pm --noconfirm remove fprintd
+  hyprshell package-manager --noconfirm remove fprintd
 
   print_auth_success "Fingerprint authentication has been completely removed."
 else
   print_auth_success "Setting up fingerprint scanner for authentication.\n"
 
   print_auth_info "Installing required packages..."
-  hyprshell pm add fprintd usbutils
+  hyprshell package-manager add fprintd usbutils
 
   if ! check_fingerprint_hardware; then
     exit 1

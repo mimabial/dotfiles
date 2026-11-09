@@ -28,8 +28,8 @@ PopupCard {
     signal limitNotificationsEnabled()
     onNotifyLimitChanged: if (notifyLimit) limitNotificationsEnabled()
 
-    readonly property int blockingHorizonMs: 5 * CalendarMath.MS_PER_HOUR
-    readonly property int staleAfterMs: 40 * CalendarMath.MS_PER_MINUTE
+    readonly property int blockingHorizonMs: 5 * Units.MS_PER_HOUR
+    readonly property int staleAfterMs: 40 * Units.MS_PER_MINUTE
     readonly property int viewportHeight: Style.px(520)
     readonly property real switchMargin: 0.05
 
@@ -107,7 +107,7 @@ PopupCard {
     function resetsIn(iso) {
         const target = Date.parse(iso)
         if (isNaN(target)) return ""
-        const minutes = Math.max(0, Math.round((target - shell.clock.date.getTime()) / CalendarMath.MS_PER_MINUTE))
+        const minutes = Math.max(0, Math.round((target - shell.clock.date.getTime()) / Units.MS_PER_MINUTE))
         return Units.spanText(minutes * Units.SECONDS_PER_MINUTE) || "0m"
     }
     function handleKey(event) {

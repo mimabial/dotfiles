@@ -77,7 +77,7 @@ screenrecord_cleanup_state_and_check_active() {
   screenrecord_has_matching_process -f "^gpu-screen-recorder($| )"
 }
 
-emit_screenrecord_status_json() {
+reconcile_and_emit_screenrecord_status_json() {
   local had_state=false
   [[ -f "$RECORDING_FILE" ]] && had_state=true
 

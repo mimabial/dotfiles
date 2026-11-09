@@ -5,7 +5,7 @@ PartOf=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=%h/.local/lib/hypr/system/powerprofiles.auto.sh
+ExecStart=%h/.local/lib/hypr/system/power-profile-auto.sh
 Restart=on-failure
 RestartSec=5
 

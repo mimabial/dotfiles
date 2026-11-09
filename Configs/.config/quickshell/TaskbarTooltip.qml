@@ -64,7 +64,7 @@ PopupWindow {
     }
     BorderSurface {
         id: bubble
-        color: Commons.Util.alpha(Commons.Style.popupTinted(Commons.Color.tooltip.background), Commons.Style.popupSurfaceOpacity)
+        color: Commons.Util.scaleAlpha(Commons.Style.popupTinted(Commons.Color.tooltip.background), Commons.Style.popupSurfaceOpacity)
         radius: Commons.Style.cornerRadius
         padding: Commons.Style.spacing.popupPadding
         width: content.implicitWidth + contentLeftInset + contentRightInset

@@ -4,7 +4,7 @@ import ".."
 
 BarButton {
     id: root
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     property bool loaded: false
     readonly property var vault: shell.bitwarden
     opensPopup: true
@@ -19,10 +19,10 @@ BarButton {
     }
     Connections {
         target: root.shell
-        function onPopupNameChanged() { if (root.popupsAllowed && root.shell.popupName === "bitwarden") root.loaded = true }
+        function onPopupNameChanged() { if (root.popupEnabled && root.shell.popupName === "bitwarden") root.loaded = true }
     }
     Loader {
         active: root.loaded; visible: false
-        sourceComponent: Component { BitwardenPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        sourceComponent: Component { BitwardenPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
 }

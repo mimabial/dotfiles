@@ -127,7 +127,7 @@ Column {
       series: [root.chargeHistory.charging, root.chargeHistory.discharging]
       colors: [root.good, root.s1]
       ceiling: 100
-      baselineColor: Commons.Util.alpha(root.foreground, 0.14)
+      baselineColor: Commons.Util.scaleAlpha(root.foreground, 0.14)
     }
 
     Legend {

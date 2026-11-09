@@ -80,7 +80,7 @@ Item {
       anchors.verticalCenter: parent.verticalCenter
       text: frow.subtext
       textFormat: Text.PlainText
-      color: Commons.Util.alpha(Commons.Color.menu.text, 0.45)
+      color: Commons.Util.scaleAlpha(Commons.Color.menu.text, 0.45)
       font.family: Commons.Style.font.family
       font.pixelSize: Commons.Style.font.caption
     }

@@ -19,7 +19,7 @@ color_mode_notify=1
 state_get_into selected_color_mode selected_color_mode
 state_get_into selected_color_source selected_color_source
 state_resolve_color_source_into selected_color_source "${selected_color_source}" "${selected_color_mode}"
-state_resolve_color_mode_into selected_color_mode "${selected_color_mode}" "${BACKGROUND_MODE:-}"
+state_resolve_color_mode_into selected_color_mode "${selected_color_mode}"
 
 acquire_mode_switch_lock() {
   hypr_lock_path_into MODE_SWITCH_LOCK mode_switch
@@ -41,14 +41,15 @@ color_mode_release_lock() {
   return "${exit_code}"
 }
 
-cycle_color_mode() {
-  local i=""
+cycle_color_mode_into() {
+  local -n cycled_mode_ref="$1"
+  local direction="$2" i=""
   for i in "${!color_mode_values[@]}"; do
     if [[ "${selected_color_mode}" == "${color_mode_values[i]}" ]]; then
-      if [ "${1}" == "n" ]; then
-        target_color_mode="${color_mode_values[$(((i + 1) % ${#color_mode_values[@]}))]}"
-      elif [ "${1}" == "p" ]; then
-        target_color_mode="${color_mode_values[$(((i - 1 + ${#color_mode_values[@]}) % ${#color_mode_values[@]}))]}"
+      if [ "${direction}" == "n" ]; then
+        cycled_mode_ref="${color_mode_values[$(((i + 1) % ${#color_mode_values[@]}))]}"
+      elif [ "${direction}" == "p" ]; then
+        cycled_mode_ref="${color_mode_values[$(((i - 1 + ${#color_mode_values[@]}) % ${#color_mode_values[@]}))]}"
       fi
       break
     fi
@@ -160,7 +161,6 @@ apply_color_policy() {
   fi
 
   wallpaper="$(resolve_wallpaper)" || return 1
-  state_set "BACKGROUND_MODE" "${target_mode}" "staterc"
   state_set_color_variant "${target_mode}"
 
   "${hypr_theme_cmd}" wallpaper --variant "${target_mode}" "${wallpaper}"
@@ -171,11 +171,11 @@ parse_target_policy() {
   target_color_mode="${selected_color_mode}"
 
   case "${1:-}" in
-    n | -n | --next) cycle_color_mode n ;;
-    p | -p | --prev) cycle_color_mode p ;;
+    n | -n | --next) cycle_color_mode_into target_color_mode n ;;
+    p | -p | --prev) cycle_color_mode_into target_color_mode p ;;
     -s | --set) set_policy_from_args "${2:-}" "${3:-}" ;;
     --set=*) set_policy_from_args "${1#--set=}" "${2:-}" ;;
-    "") cycle_color_mode n ;;
+    "") cycle_color_mode_into target_color_mode n ;;
     *) printf '%s\n' "${color_mode_usage}" >&2; exit 1 ;;
   esac
 

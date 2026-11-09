@@ -9,7 +9,7 @@ import re
 
 from . import lua_config as lua
 from . import visual_schema as schema
-from .paths import CONFIG_DIR, STATE_DIR, READER, library_command
+from .paths import CONFIG_DIR, DATA_DIR, STATE_DIR, READER, library_command
 from .values import read_text, run_capture, round_decimal_places, round_half_toward_positive_infinity, theme_override_slug
 
 BASELINE_TOLERANCE = 1e-6
@@ -115,7 +115,10 @@ class VisualSettings:
         return lua.parse_records("")
 
     def read_animation_baseline(self):
-        proc = run_capture(["lua", READER, str(STATE_DIR / "animations.lua")])
+        selected = STATE_DIR / "animations.lua"
+        default_presets = [directory / "animations/default.lua" for directory in (CONFIG_DIR, DATA_DIR)]
+        preset = selected if selected.exists() else next((path for path in default_presets if path.exists()), selected)
+        proc = run_capture(["lua", READER, str(preset)])
         if proc.returncode == 0:
             self.baseline_animations = lua.parse_records(proc.stdout)["animations"]
 

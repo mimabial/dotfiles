@@ -63,7 +63,7 @@ menu_show_search() {
   menu_collect_search_rows "${menu_id}" direct_rows deeper_rows direct_item_keys deeper_item_keys "${root_name}" 0
 
   if ((${#direct_rows[@]} + ${#deeper_rows[@]} == 0)); then
-    menu_exit_or_show "${menu_id}"
+    menu_show_then_exit "${menu_id}"
     return 0
   fi
 
@@ -77,20 +77,20 @@ menu_show_search() {
   rofi_exit=$?
 
   if ((rofi_exit == MENU_EXIT_BACK)); then
-    menu_exit_or_show "${menu_id}"
+    menu_show_then_exit "${menu_id}"
     return 0
   fi
 
-  ((rofi_exit == 0)) || exit 0
+  ((rofi_exit == 0)) || return 0
 
   if [[ ! "${selection}" =~ ^[0-9]+$ ]]; then
-    menu_exit_or_show "${menu_id}"
+    menu_show_then_exit "${menu_id}"
     return 0
   fi
 
   item_key="${row_item_keys[selection]:-}"
   if [[ -z "${item_key}" ]]; then
-    menu_exit_or_show "${menu_id}"
+    menu_show_then_exit "${menu_id}"
     return 0
   fi
 

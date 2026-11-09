@@ -26,7 +26,6 @@ from fetch_album_lyrics import (
     build_artist_candidates,
     build_title_candidates,
     directory_hints,
-    get_audio_metadata,
     lrc_state,
     parse_filename,
     process_audio_file,
@@ -34,11 +33,12 @@ from fetch_album_lyrics import (
     track_identity,
 )
 from lyrics_cache import LyricsMissCache
+from lyrics_metadata import get_audio_metadata
 from lyrics_provider import ProviderSearch, fetch_lyrics
 
 
 class LyricsMetadataTests(unittest.TestCase):
-    @patch("fetch_album_lyrics.MutagenFile")
+    @patch("lyrics_metadata.MutagenFile")
     def test_reads_opus_style_stream_comments_directly(self, mutagen_file):
         mutagen_file.return_value = SimpleNamespace(
             tags={

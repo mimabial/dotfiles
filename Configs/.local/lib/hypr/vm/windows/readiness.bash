@@ -20,7 +20,7 @@ windows_wait_for_rdp_port() {
       echo "   The VM might still be installing Windows."
       echo "   Check progress at: $WINDOWS_WEB_UI_URL"
       dunstify -r "${NOTIFY_ID_WINDOWS_VM}" -u critical -t "${NOTIFY_LONG_MS}" -i "computer" "Windows VM" "Timed out waiting for RDP. The VM may still be installing."
-      exit 1
+      return 1
     fi
     sleep "${WINDOWS_RDP_RETRY_INTERVAL_SECONDS}"
   done

@@ -8,8 +8,8 @@ source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 hypr_help_guard "Usage: hyprshell install/xbox-controllers
 Install xpadneo for Xbox controller support (reboots when confirmed)." "$@"
 
-hyprshell pm add linux-headers
-hyprshell pm aur-add xpadneo-dkms
+hyprshell package-manager add linux-headers
+hyprshell package-manager aur-add xpadneo-dkms
 
 echo blacklist xpad | sudo tee /etc/modprobe.d/blacklist-xpad.conf >/dev/null
 echo hid_xpadneo | sudo tee /etc/modules-load.d/xpadneo.conf >/dev/null

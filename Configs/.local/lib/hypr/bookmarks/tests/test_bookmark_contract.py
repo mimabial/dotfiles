@@ -27,7 +27,7 @@ class BookmarkContractTest(unittest.TestCase):
         self.settings = self.fixture / "settings.json"
 
     def command(self, action, *arguments, data=None, env=None):
-        result = child_process.run([sys.executable, str(ROOT / "bookmark_helper.py"),
+        result = child_process.run([sys.executable, str(ROOT / "commands.py"),
                                     action, *map(str, arguments)],
                                    input=data, capture_output=True, text=True,
                                    timeout=HELPER_TIMEOUT_SECONDS, env=env, check=False)

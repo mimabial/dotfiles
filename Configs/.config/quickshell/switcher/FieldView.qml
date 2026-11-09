@@ -352,73 +352,36 @@ Item {
     }
   }
 
-  Row {
+  Text {
     id: hints
 
-    anchors.right: parent.right
-    anchors.rightMargin: fieldView.margin
+    readonly property string hint: {
+      if (fieldView.nothingShown) return "Backspace Edit  Esc Clear"
+      const holding = fieldView.holding
+      const filtering = fieldView.filtering
+      return [
+        holding ? "Tab Deeper" : "", "↑↓ Dive", "←→ Workspace",
+        filtering ? "Backspace Edit" : "Type Filter",
+        filtering ? "" : holding ? "Space Keep Open" : "1–9 Go To",
+        holding ? "" : "Enter Focus",
+        "Del Close Window",
+        "Esc " + (filtering ? "Clear" : holding ? "Cancel" : "Close")
+      ].filter(Boolean).join("  ")
+    }
+
+    anchors.horizontalCenter: parent.horizontalCenter
     anchors.bottom: parent.bottom
     anchors.bottomMargin: Math.max(0, (fieldView.margin - height) / 2)
-    spacing: 16 * fieldView.unit
+    color: fieldView.theme.accentText
+    font.family: Commons.Style.font.family
+    font.pixelSize: Commons.Style.font.bodySmall
+    textFormat: Text.StyledText
+    text: Commons.Util.keyHintMarkup(hints.hint, fieldView.theme.textSoft)
 
-    Repeater {
-      model: {
-        if (fieldView.nothingShown) return [["Backspace", "edit"], ["Esc", "clear"]]
-        const navigation = fieldView.holding
-          ? [["Tab", "deeper"], ["↑↓", "dive"], ["←→", "workspace"]]
-          : [["↑↓", "dive"], ["←→", "workspace"]]
-        const filtering = fieldView.filtering ? [["Backspace", "edit"]]
-          : [["Type", "filter"], fieldView.holding ? ["Space", "keep open"] : ["1–9", "go to"]]
-        return navigation.concat(filtering, fieldView.holding ? [] : [["Enter", "focus"]],
-          [["Del", "close window"], ["Esc", fieldView.filtering ? "clear" : fieldView.holding ? "cancel" : "close"]])
-      }
-
-      delegate: Row {
-        id: hint
-
-        required property var modelData
-
-        spacing: 5 * fieldView.unit
-
-        Rectangle {
-          anchors.verticalCenter: parent.verticalCenter
-          width: Math.max(height, keyText.implicitWidth + 10 * fieldView.unit)
-          height: 18 * fieldView.unit
-          radius: Math.min(fieldView.appearance.cornerRadius, height / 2)
-          color: fieldView.theme.key
-          border.width: fieldView.appearance.borderWidth
-          border.color: fieldView.theme.keyBorder
-
-          Text {
-            id: keyText
-
-            anchors.centerIn: parent
-            color: fieldView.theme.textSoft
-            font.family: Commons.Style.font.family
-            font.pixelSize: 11 * fieldView.textUnit
-            textFormat: Text.PlainText
-            text: hint.modelData[0]
-          }
-        }
-
-        Text {
-          anchors.verticalCenter: parent.verticalCenter
-          color: fieldView.theme.textFaint
-          font.family: Commons.Style.font.family
-          font.pixelSize: 11 * fieldView.textUnit
-          textFormat: Text.PlainText
-          text: hint.modelData[1]
-        }
-      }
+    MouseArea {
+      anchors.fill: parent
+      onClicked: fieldView.focusKeys()
     }
-  }
-
-  MouseArea {
-    x: hints.x
-    y: hints.y
-    width: hints.width
-    height: hints.height
-    onClicked: fieldView.focusKeys()
   }
 
   WorkspaceMap {

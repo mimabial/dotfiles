@@ -115,7 +115,7 @@ Item {
             width: chip.width
             height: strip.previewHeight
             radius: Commons.Style.cornerRadius
-            color: chip.modelData === null ? Commons.Style.popupTinted(Commons.Color.background) : Commons.Color.alpha(Commons.Style.popupTinted(Commons.Color.background), Commons.Style.popupSurfaceOpacity)
+            color: chip.modelData === null ? Commons.Style.popupTinted(Commons.Color.background) : Commons.Util.scaleAlpha(Commons.Style.popupTinted(Commons.Color.background), Commons.Style.popupSurfaceOpacity)
             clip: true
 
             Image {
@@ -206,7 +206,7 @@ Item {
                             radius: windowPreview.cornerRadius
                             color: "transparent"
                             border.width: strip.windowBorderWidth
-                            border.color: Commons.Color.alpha(Commons.Color.role("br", Commons.Color.menu.text), Commons.Style.popupBorderOpacity)
+                            border.color: Commons.Util.scaleAlpha(Commons.Color.role("br", Commons.Color.menu.text), Commons.Style.popupBorderOpacity)
                         }
                     }
                 }

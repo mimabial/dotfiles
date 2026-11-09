@@ -10,7 +10,7 @@ wallpaper_is_video() {
   file --mime-type -b "$1" | grep -q '^video/'
 }
 
-wallcache_resolve_source_image() {
+wallcache_extract_source_image_if_video() {
   local wallpaper_hash="$1"
   local wallpaper_path="$2"
   local force="$3"
@@ -134,7 +134,7 @@ wallcache_render_wallpaper() {
   local -a magick_args=()
 
   hypr_magick_limit_args_into magick_args
-  source_image="$(wallcache_resolve_source_image "${wallpaper_hash}" "${wallpaper_path}" "${force}")" || return 1
+  source_image="$(wallcache_extract_source_image_if_video "${wallpaper_hash}" "${wallpaper_path}" "${force}")" || return 1
   [[ "${source_image}" == "${wallpaper_path}" ]] || temp_image="${source_image}"
 
   if [[ "${force}" -eq 1 ]]; then

@@ -69,14 +69,15 @@ PopupCard {
         Removable.activateVolume(volume)
         if (volume.mounted || Model.isMountable(volume)) shell.closePopup()
     }
+    function closeAfterLaunch(launched) { if (launched) shell.closePopup() }
 
     function letterKey(text) {
         const row = navigableRows[cursorIndex] || {}, volume = row.volume || null
         const device = row.device || Removable.deviceOfVolume(volume) || Removable.devices[0] || null
         const actions = {
             j: () => moveCursor(1), k: () => moveCursor(-1), " ": () => activateCursor(),
-            m: () => volume && activateVolume(volume, false), o: () => Removable.openVolume(volume), y: () => Removable.copyPath(volume),
-            t: () => volume && Removable.openTerminal(volume.mountpoint, false), d: () => volume && Removable.openTerminal(volume.mountpoint, true),
+            m: () => volume && activateVolume(volume, false), o: () => closeAfterLaunch(Removable.openVolume(volume)), y: () => Removable.copyPath(volume),
+            t: () => volume && closeAfterLaunch(Removable.openTerminal(volume.mountpoint, false)), d: () => volume && closeAfterLaunch(Removable.openTerminal(volume.mountpoint, true)),
             l: () => volume && showTools(volume, "label"), f: () => volume && showTools(volume, "format"),
             c: () => volume && checkVolume(volume),
             e: () => Removable.eject(device), x: () => Removable.eject(device), E: () => Removable.ejectAll(),
@@ -227,9 +228,9 @@ PopupCard {
                             Flow {
                                 visible: networkItem.expanded
                                 width: parent.width; spacing: Style.xxs
-                                ActionTile { glyph: Model.GLYPH_FOLDER; label: "Open"; onTriggered: Removable.openPath(networkItem.modelData.mountpoint) }
-                                ActionTile { glyph: Model.GLYPH_PIE; label: "Disk usage"; onTriggered: Removable.openTerminal(networkItem.modelData.mountpoint, true) }
-                                ActionTile { glyph: Model.GLYPH_TERMINAL; label: "Terminal"; onTriggered: Removable.openTerminal(networkItem.modelData.mountpoint, false) }
+                                ActionTile { glyph: Model.GLYPH_FOLDER; label: "Open"; onTriggered: root.closeAfterLaunch(Removable.openPath(networkItem.modelData.mountpoint)) }
+                                ActionTile { glyph: Model.GLYPH_PIE; label: "Disk usage"; onTriggered: root.closeAfterLaunch(Removable.openTerminal(networkItem.modelData.mountpoint, true)) }
+                                ActionTile { glyph: Model.GLYPH_TERMINAL; label: "Terminal"; onTriggered: root.closeAfterLaunch(Removable.openTerminal(networkItem.modelData.mountpoint, false)) }
                                 ActionTile { glyph: Model.GLYPH_UNMOUNT; label: "Unmount"; onTriggered: Removable.unmountNetwork(networkItem.modelData) }
                             }
                         }
@@ -312,14 +313,16 @@ PopupCard {
                     width: (parent.width - parent.spacing) / 2
                     shell: root.shell; icon: Model.GLYPH_REFRESH
                     title: "Rescan"
-                    centerTitle: true
+                    centerTitleInRow: true
                     onClicked: Removable.rescan()
                 }
                 PopupRow {
                     width: (parent.width - parent.spacing) / 2
                     shell: root.shell; icon: Model.GLYPH_EJECT
                     title: Removable.pendingEjectPath ? "Cancel eject" : "Eject all"
-                    centerTitle: true; enabled: Removable.devices.length > 0 && !Removable.busy
+                    iconColor: enabled ? root.shell.foreground : root.shell.mutedText
+                    titleColor: iconColor
+                    centerTitleInRow: true; enabled: Removable.devices.length > 0 && !Removable.busy
                     onClicked: Removable.pendingEjectPath ? Removable.cancelPendingEject() : Removable.ejectAll()
                 }
             }
@@ -626,7 +629,7 @@ PopupCard {
                 onClicked: button => {
                     if (button === Qt.MiddleButton) Removable.copyPath(volumeRow.volume)
                     else if (button === Qt.LeftButton) {
-                        if (volumeRow.system) Removable.openVolume(volumeRow.volume)
+                        if (volumeRow.system) root.closeAfterLaunch(Removable.openVolume(volumeRow.volume))
                         else root.activateVolume(volumeRow.volume)
                     }
                 }
@@ -642,7 +645,7 @@ PopupCard {
                     hint: volumeRow.volume.mounted ? "Open in file manager"
                         : volumeRow.volume.encrypted && !volumeRow.volume.unlocked ? "Unlock" : "Mount"
                     enabled: !Removable.busy
-                    onTriggered: volumeRow.volume.mounted ? Removable.openVolume(volumeRow.volume) : root.activateVolume(volumeRow.volume, false)
+                    onTriggered: volumeRow.volume.mounted ? root.closeAfterLaunch(Removable.openVolume(volumeRow.volume)) : root.activateVolume(volumeRow.volume, false)
                 }
                 DiskAction {
                     visible: volumeRow.volume.fstype !== "swap"
@@ -695,11 +698,11 @@ PopupCard {
             }
             DiskAction {
                 visible: volumeRow.volume.mounted; glyph: Model.GLYPH_PIE; hint: "Disk usage"
-                onTriggered: Removable.openTerminal(volumeRow.volume.mountpoint, true)
+                onTriggered: root.closeAfterLaunch(Removable.openTerminal(volumeRow.volume.mountpoint, true))
             }
             DiskAction {
                 visible: volumeRow.volume.mounted; glyph: Model.GLYPH_TERMINAL; hint: "Terminal at the mount point"
-                onTriggered: Removable.openTerminal(volumeRow.volume.mountpoint, false)
+                onTriggered: root.closeAfterLaunch(Removable.openTerminal(volumeRow.volume.mountpoint, false))
             }
             DiskAction {
                 visible: volumeRow.volume.encrypted && volumeRow.volume.unlocked; glyph: Model.GLYPH_LOCKED

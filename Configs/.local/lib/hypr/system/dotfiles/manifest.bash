@@ -28,7 +28,7 @@ path_exists() {
 }
 
 require_rsync() {
-  command -v rsync >/dev/null 2>&1 || { printf 'rsync is required\n' >&2; exit 1; }
+  command -v rsync >/dev/null 2>&1 || { printf 'rsync is required\n' >&2; return 1; }
 }
 
 sync_manifest_error() {

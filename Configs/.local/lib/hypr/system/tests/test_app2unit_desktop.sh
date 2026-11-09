@@ -4,13 +4,14 @@ set -euo pipefail
 system_dir="$(cd -- "$(dirname -- "$0")/.." && pwd -P)"
 source "$system_dir/applications/desktop-exec.bash"
 
-desktop_entry_exec_tokenize_spec 'printf "two words" literal=%%c'
-[[ "$DESKTOP_ENTRY_EXECUTABLE" == printf ]]
-[[ "${DESKTOP_ENTRY_ARGV[*]}" == 'printf two words literal=%%c' ]]
+argv=() workdir=""
+desktop_entry_exec_tokenize_spec_into argv 'printf "two words" literal=%%c'
+[[ "${argv[0]##*/}" == printf ]]
+[[ "${argv[*]}" == 'printf two words literal=%%c' ]]
 
-desktop_entry_exec_resolve firefox.desktop 'https://example.com/a b'
-[[ "$DESKTOP_ENTRY_EXECUTABLE" == firefox ]]
-[[ "${DESKTOP_ENTRY_ARGV[-1]}" == 'https://example.com/a b' ]]
+desktop_entry_exec_resolve_into argv workdir firefox.desktop 'https://example.com/a b'
+[[ "${argv[0]##*/}" == firefox ]]
+[[ "${argv[-1]}" == 'https://example.com/a b' ]]
 
 python3 - "$system_dir/desktop-entry.py" <<'PY'
 import importlib.util

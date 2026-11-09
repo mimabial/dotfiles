@@ -110,6 +110,28 @@ hypr_monitor_geometry_into() {
   ' --arg selector "${selector}" <<<"${monitors_json}"
 }
 
+hypr_read_nonblank_line_into() {
+  local -n nonblank_line_ref="$1"
+
+  nonblank_line_ref=""
+  while [[ -z "${nonblank_line_ref}" ]] && IFS= read -r nonblank_line_ref; do :; done
+}
+
+hypr_load_monitors_and_edge_padding() {
+  local gaps_out_json="" rounding_json="" border_size_json="" monitors_json=""
+
+  [[ -z "${HYPR_BORDER_METRICS_LOADED:-}" ]] || return 0
+  {
+    hypr_read_nonblank_line_into gaps_out_json
+    hypr_read_nonblank_line_into rounding_json
+    hypr_read_nonblank_line_into border_size_json
+    IFS= read -r -d '' monitors_json || true
+  } < <(hyprctl --batch -j "getoption general:gaps_out;${HYPR_BORDER_METRICS_QUERY};monitors all" 2>/dev/null)
+  hypr_gaps_out_json_prime "${gaps_out_json}"
+  hypr_load_border_metrics_from_json "${rounding_json}${border_size_json}"
+  hypr_monitors_json_prime "${monitors_json}"
+}
+
 hypr_window_edge_padding_px() {
   local gaps_out="" border_width=""
 

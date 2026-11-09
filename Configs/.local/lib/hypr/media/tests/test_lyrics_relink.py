@@ -10,9 +10,63 @@ from unittest.mock import patch
 MEDIA_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(MEDIA_DIR))
 
-from lyrics_relink import relink_directory
+from lyrics_relink import LyricsMirrorTidy, relink_directory, tidy_lyrics_mirror
 
 EXTENSIONS = {".opus"}
+
+
+class LyricsMirrorTidyTests(unittest.TestCase):
+    def library(self, root: Path) -> dict[str, Path]:
+        files = {
+            "renamed": root / "Album" / "01 - Song.opus",
+            "kept": root / "Album" / "02 - Other.opus",
+            "twice": root / "Album" / "03 - Twice.opus",
+            "orphan": root / ".lyrics" / "Album" / "Song.lrc",
+            "owned": root / ".lyrics" / "Album" / "02 - Other.lrc",
+            "gone": root / ".lyrics" / "Deleted Album" / "Gone.lrc",
+            "twice_a": root / ".lyrics" / "Old" / "Twice.lrc",
+            "twice_b": root / ".lyrics" / "Older" / "Twice.lrc",
+            "unplugged": root / ".lyrics" / "External" / "Away.lrc",
+        }
+        for name, path in files.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            title = "Twice" if name.startswith("twice") else path.stem
+            path.write_text(f"[ar:Artist]\n[ti:{title}]\n[00:01.00]Line\n")
+        (root / "External").symlink_to(root / "unplugged-drive")
+        return files
+
+    def tidy(self, root: Path, dry_run: bool) -> LyricsMirrorTidy:
+        titles = {"01 - Song": "Song", "02 - Other": "02 - Other", "03 - Twice": "Twice"}
+        with (
+            patch.dict(os.environ, {"XDG_MUSIC_DIR": str(root)}),
+            patch(
+                "lyrics_relink.get_audio_metadata",
+                side_effect=lambda path: {"artist": "Artist", "title": titles[Path(path).stem], "album": ""},
+            ),
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            return tidy_lyrics_mirror(root, True, EXTENSIONS, dry_run)
+
+    def test_relinks_before_deleting_only_lyrics_of_removed_songs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            files = self.library(root)
+
+            self.assertEqual(self.tidy(root, dry_run=False), LyricsMirrorTidy(relinked=1, deleted=1))
+            self.assertTrue((root / ".lyrics" / "Album" / "01 - Song.lrc").is_file())
+            self.assertFalse(files["orphan"].exists())
+            self.assertFalse(files["gone"].exists())
+            self.assertFalse(files["gone"].parent.exists())
+            for kept in ("owned", "twice_a", "twice_b", "unplugged"):
+                self.assertTrue(files[kept].is_file(), kept)
+
+    def test_dry_run_reports_the_same_work_without_touching_files(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            files = self.library(root)
+
+            self.assertEqual(self.tidy(root, dry_run=True), LyricsMirrorTidy(relinked=1, deleted=1))
+            self.assertTrue(all(path.exists() for path in files.values()))
 
 
 class LyricsRelinkTests(unittest.TestCase):

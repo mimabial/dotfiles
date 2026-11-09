@@ -188,7 +188,7 @@ def parse_getoption(text):
     return out
 
 
-_CONFIG_RX = re.compile(r'runtime\.config\(\s*"([^"]+)"\s*,\s*(.+?)\s*\)$')
+_CONFIG_RX = re.compile(r'runtime\.config_if_supported\(\s*"([^"]+)"\s*,\s*(.+?)\s*\)$')
 _VARIABLE_RX = re.compile(r'vars\.set\(\s*"([^"]+)"\s*,\s*"([^"]*)"\s*\)$')
 
 

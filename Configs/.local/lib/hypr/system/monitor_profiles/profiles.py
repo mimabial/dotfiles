@@ -4,6 +4,7 @@ import json
 import os
 import re
 import time
+from typing import TypedDict
 
 from . import CONFIG_HOME, hypr
 
@@ -28,6 +29,78 @@ DEFAULT_MAX_WORKSPACES = 9
 DEFAULT_GROUP_SIZE = 3
 
 
+class Output(TypedDict, total=False):
+    key: str
+    match_key: str
+    name: str
+    description: str
+    make: str
+    model: str
+    enabled: bool
+    mode: str
+    width: int
+    height: int
+    refresh: float
+    x: int
+    y: int
+    scale: float
+    transform: int
+    vrr: int
+    bitdepth: int
+    cm: str
+    sdr_brightness: float
+    sdr_saturation: float
+    sdr_min_luminance: float
+    sdr_max_luminance: float
+    min_luminance: float
+    mirror_of: str
+
+
+class WorkspaceRule(TypedDict):
+    output_key: str
+    workspace: str
+
+
+class WorkspaceSettings(TypedDict, total=False):
+    enabled: bool
+    strategy: str
+    max_workspaces: int
+    group_size: int
+    monitor_order: list[str]
+    rules: list[WorkspaceRule]
+
+
+class Profile(TypedDict, total=False):
+    name: str
+    created_at: str
+    updated_at: str
+    outputs: list[Output]
+    workspaces: WorkspaceSettings
+    exec: str
+
+
+class MatchReason(TypedDict):
+    kind: str
+    count: int
+    points: int
+
+
+class ProfileScore(TypedDict):
+    name: str
+    match_score: int
+    match_reasons: list[MatchReason]
+    exact_display_match: bool
+    output_count: int
+    enabled_outputs: int
+    connected_outputs: int
+    connected_enabled_outputs: int
+    updated_at: str
+
+
+class ProfileSummary(ProfileScore, total=False):
+    active: bool
+
+
 def _now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%S.000000000Z", time.gmtime())
 
@@ -37,11 +110,11 @@ def slug(name: str) -> str:
     return value or "profile"
 
 
-def bitdepth(monitor: dict) -> int:
+def bitdepth(monitor: hypr.HyprMonitor) -> int:
     return 10 if "2101010" in str(monitor.get("currentFormat", "")) else 8
 
 
-def output_from_monitor(monitor: dict, monitors: list[dict]) -> dict:
+def output_from_monitor(monitor: hypr.HyprMonitor, monitors: list[hypr.HyprMonitor]) -> Output:
     key, source = hypr.monitor_key(monitor), hypr.mirror_source(monitor, monitors)
     return {
         "key": key,
@@ -72,7 +145,7 @@ def output_from_monitor(monitor: dict, monitors: list[dict]) -> dict:
     }
 
 
-def capture(name: str, monitors: list[dict] | None = None) -> dict:
+def capture(name: str, monitors: list[hypr.HyprMonitor] | None = None) -> Profile:
     monitors = hypr.monitors() if monitors is None else monitors
     outputs = [output_from_monitor(m, monitors) for m in monitors]
     stamp = _now()
@@ -92,7 +165,7 @@ def capture(name: str, monitors: list[dict] | None = None) -> dict:
     }
 
 
-def load_all() -> list[dict]:
+def load_all() -> list[Profile]:
     if not os.path.isdir(PROFILE_DIR):
         return []
     profiles = []
@@ -111,11 +184,11 @@ def load_all() -> list[dict]:
     return profiles
 
 
-def by_name(name: str) -> dict | None:
+def by_name(name: str) -> Profile | None:
     return next((p for p in load_all() if p.get("name") == name), None)
 
 
-def save(profile: dict) -> dict:
+def save(profile: Profile) -> Profile:
     os.makedirs(PROFILE_DIR, exist_ok=True)
     existing = by_name(profile.get("name", ""))
     profile["created_at"] = (existing or profile).get("created_at") or _now()
@@ -149,11 +222,11 @@ def delete(name: str) -> bool:
     return removed
 
 
-def match_key(output: dict) -> str:
+def match_key(output: Output) -> str:
     return output.get("match_key") or output.get("key", "")
 
 
-def score(profile: dict, monitors: list[dict]) -> dict:
+def score(profile: Profile, monitors: list[hypr.HyprMonitor]) -> ProfileScore:
     connected = {hypr.monitor_key(m) for m in monitors}
     outputs = profile.get("outputs", [])
     seen, tally = set(), {}
@@ -192,7 +265,7 @@ def score(profile: dict, monitors: list[dict]) -> dict:
     }
 
 
-def rank(monitors: list[dict], profiles: list[dict] | None = None) -> list[dict]:
+def rank(monitors: list[hypr.HyprMonitor], profiles: list[Profile] | None = None) -> list[ProfileScore]:
     profiles = load_all() if profiles is None else profiles
     scored = [score(p, monitors) for p in profiles]
     scored.sort(key=lambda s: (-s["match_score"], not s["exact_display_match"], s["name"]))

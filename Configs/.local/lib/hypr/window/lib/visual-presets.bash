@@ -53,6 +53,13 @@ hypr_visual_preset_list_names() {
   done
 }
 
+hypr_visual_preset_print_list_rows() {
+  local name="" no_icon="" no_description=""
+  while IFS= read -r name; do
+    [[ -z "${name}" ]] || printf '%s\t%s\t%s\n' "${name}" "${no_icon}" "${no_description}"
+  done
+}
+
 hypr_visual_preset_write_lua() {
   local out_file="$1"
   shift
@@ -90,7 +97,7 @@ hypr_visual_preset_write_lua() {
       printf 'runtime.load(%s)\n' "$(hypr_lua_quote "${load_path}")"
     fi
     if [[ -n "${config_key}" ]]; then
-      printf 'runtime.config("%s", %s)\n' "${config_key}" "$(hypr_lua_quote "${config_value}")"
+      printf 'runtime.config_if_supported("%s", %s)\n' "${config_key}" "$(hypr_lua_quote "${config_value}")"
     fi
   } >"${out_file}"
 }

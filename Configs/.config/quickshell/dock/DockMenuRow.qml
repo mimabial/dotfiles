@@ -38,8 +38,8 @@ Item {
     visible: !crow.isHeader && !crow.disabled
     radius: Commons.Style.cornerRadius
     color: (area.containsMouse || crow.cursored || crow.highlighted)
-      ? (crow.danger ? Commons.Util.alpha(Commons.Color.urgent, 0.16) : Commons.Color.menu.selectedBackground)
-      : (crow.checked ? Commons.Util.alpha(Commons.Color.bar.active, 0.12) : "transparent")
+      ? (crow.danger ? Commons.Util.scaleAlpha(Commons.Color.urgent, 0.16) : Commons.Color.menu.selectedBackground)
+      : (crow.checked ? Commons.Util.scaleAlpha(Commons.Color.bar.active, 0.12) : "transparent")
   }
 
   Row {
@@ -65,10 +65,10 @@ Item {
         anchors.centerIn: parent
         color: crow.winFocused
           ? Commons.Color.bar.active
-          : (crow.winParked ? "transparent" : (crow.checked ? Commons.Color.bar.active : Commons.Util.alpha(Commons.Color.menu.text, 0.45)))
+          : (crow.winParked ? "transparent" : (crow.checked ? Commons.Color.bar.active : Commons.Util.scaleAlpha(Commons.Color.menu.text, 0.45)))
         border.color: crow.winFocused
           ? Commons.Color.bar.active
-          : (crow.winParked ? Commons.Util.alpha(Commons.Color.menu.text, 0.4) : (crow.checked ? Commons.Color.bar.active : "transparent"))
+          : (crow.winParked ? Commons.Util.scaleAlpha(Commons.Color.menu.text, 0.4) : (crow.checked ? Commons.Color.bar.active : "transparent"))
         border.width: 1
       }
 
@@ -82,7 +82,7 @@ Item {
         text: crow.glyph !== "" ? crow.glyph : "\uf00c"
         font.family: Commons.Style.font.family
         font.pixelSize: Commons.Style.font.caption
-        color: crow.checked ? Commons.Color.bar.active : (crow.isHeader ? Commons.Util.alpha(Commons.Color.menu.text, 0.5) : crow.textColor)
+        color: crow.checked ? Commons.Color.bar.active : (crow.isHeader ? Commons.Util.scaleAlpha(Commons.Color.menu.text, 0.5) : crow.textColor)
       }
     }
 
@@ -112,7 +112,7 @@ Item {
       text: crow.text
       textFormat: Text.PlainText
       color: (crow.isHeader || crow.disabled)
-        ? Commons.Util.alpha(Commons.Color.menu.text, 0.5)
+        ? Commons.Util.scaleAlpha(Commons.Color.menu.text, 0.5)
         : (crow.checked || crow.winFocused
             ? Commons.Color.bar.active
         : ((area.containsMouse || crow.cursored) && crow.danger ? Commons.Color.urgent : crow.textColor))
@@ -132,7 +132,7 @@ Item {
     anchors.verticalCenter: parent.verticalCenter
     text: crow.shortcut
     textFormat: Text.PlainText
-    color: Commons.Util.alpha(Commons.Color.menu.text, 0.5)
+    color: Commons.Util.scaleAlpha(Commons.Color.menu.text, 0.5)
     font.family: Commons.Style.font.family
     font.pixelSize: Commons.Style.font.body
   }

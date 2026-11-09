@@ -1,13 +1,13 @@
 printer_require_transport_tools() {
-  printer_require_tool lpstat
-  printer_require_tool lpadmin
-  printer_require_tool cupsenable
-  printer_require_tool cupsaccept
+  local tool=""
+  for tool in lpstat lpadmin cupsenable cupsaccept; do
+    printer_require_tool "${tool}" || return 1
+  done
 }
 
 printer_load_printer_context() {
   local -n printer_ref=$1
-  printer_ref[printer]="$(printer_resolve_queue "${printer_ref[requested_printer]}")"
+  printer_ref[printer]="$(printer_resolve_queue "${printer_ref[requested_printer]}")" || return 1
   printer_load_state_paths "$1"
 }
 
@@ -45,7 +45,7 @@ printer_resolve_target_uri() {
 
   echo "Error: no ${printer_ref[target_transport]} URI available for printer '${printer_ref[printer]}'." >&2
   echo "Hint: run with --${printer_ref[target_transport]}-uri '<uri>'." >&2
-  exit 1
+  return 1
 }
 
 printer_apply_target_uri() {
@@ -101,8 +101,8 @@ printer_run_with_state_lock() (
     exit 0
   fi
 
-  printer_resolve_target_transport "$1"
-  printer_resolve_target_uri "$1"
+  printer_resolve_target_transport "$1" || return 1
+  printer_resolve_target_uri "$1" || return 1
   printer_apply_target_uri "$1"
   printer_check_network_endpoint "$1"
   printer_persist_state "$1"
@@ -126,7 +126,7 @@ printer_resolve_toggle_transport() {
       else
         echo "Error: unable to infer target mode from current queue state." >&2
         echo "Hint: provide --usb-uri or --network-uri once to seed this printer." >&2
-        exit 1
+        return 1
       fi
       ;;
   esac
@@ -136,6 +136,6 @@ printer_resolve_target_transport() {
   local -n printer_ref=$1
   printer_ref[target_transport]="${printer_ref[action]}"
   if [[ "${printer_ref[action]}" == "toggle" ]]; then
-    printer_resolve_toggle_transport "$1"
+    printer_resolve_toggle_transport "$1" || return 1
   fi
 }

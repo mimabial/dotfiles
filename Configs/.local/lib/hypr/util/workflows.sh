@@ -58,7 +58,7 @@ while true; do
       state_get_into workflow_previous_theme_override WORKFLOW_THEME_OVERRIDE
       export HYPR_WORKFLOW_TRANSITION=1
       source "${BASH_SOURCE[0]%/*}/workflows/windows.bash"
-      if [[ "${workflow_name}" == windows && "${workflow_previous_name}" != windows ]]; then windows_enter || exit 1; fi
+      if [[ "${workflow_name}" == windows && "${workflow_previous_name}" != windows ]]; then windows_enter "${workflow_previous_name}" || exit 1; fi
       if [[ "${workflow_name}" != "${workflow_previous_name}" && "${workflow_name}" != gaming && "${workflow_previous_name}" != gaming ]]; then
         state_set WORKFLOW_LAYOUT_OVERRIDE "" staterc
         state_set WORKFLOW_LAYOUT_CHANGED "" staterc

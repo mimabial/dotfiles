@@ -20,6 +20,8 @@ Repeat calls inside ${update_cache_ttl_seconds}s reuse the cached report; --refr
 update_database_dir=""
 update_aur_helper=""
 declare -a system_update_errors=()
+repo_update_lines="" aur_update_lines="" flatpak_update_lines="" flatpak_updates=""
+repo_update_count=0 aur_update_count=0 flatpak_update_count=0 total_update_count=0
 
 source "${BASH_SOURCE[0]%/*}/packages/update-cache.bash"
 
@@ -50,6 +52,7 @@ if [[ "${1:-}" == "--run-upgrade" ]]; then
   source "${HYPR_LIB_DIR}/session/idle/state.bash"
   source "${HYPR_LIB_DIR}/session/idle/controller.bash"
   source "${BASH_SOURCE[0]%/*}/packages/upgrade.bash"
+  trap upgrade_await_close EXIT
   upgrade_acquire_lock || exit 1
   upgrade_run "${2:-all}"
   exit $?

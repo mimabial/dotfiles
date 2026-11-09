@@ -8,9 +8,9 @@ BarButton {
     readonly property bool saver: PowerProfiles.profile === PowerProfile.PowerSaver
     css: performance ? "powerprofile.performance" : saver ? "powerprofile.power-saver" : "powerprofile"
     text: PowerProfiles.profile === PowerProfile.Performance ? "󱐌" : PowerProfiles.profile === PowerProfile.PowerSaver ? "󰌪" : "󰗑"
-    // powerprofiles owns the GameMode lock and the list of profiles that exist
+    // power-profiles owns the GameMode lock and the list of profiles that exist
     onClicked: button => button === Qt.RightButton
-        ? shell.run(["hyprshell", "system/powerprofiles", "--cycle"])
+        ? shell.run(["hyprshell", "system/power-profiles", "--cycle"])
         : shell.togglePopup("power")
 
     PowerPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }

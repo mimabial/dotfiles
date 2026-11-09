@@ -5,7 +5,7 @@ import ".."
 
 ScriptButton {
     id: root
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     property bool activeOnly: false
     css: "screenrecord"; tooltip: ""
     readonly property bool recording: output.class === "recording"
@@ -23,7 +23,7 @@ ScriptButton {
         NumberAnimation { target: blink; property: "phase"; from: 1; to: 0; duration: 500 }
     }
     command: ["bash", root.shell.home + "/.local/lib/hypr/capture/screenrecord.sh", "--status"]
-    indicator: "screenrecord"; polling: false
+    indicator: "screenrecord"
     Component.onCompleted: refresh()
     Process {
         command: ["pidwait", "--euid", Quickshell.env("USER"), "--full", "^gpu-screen-recorder($| )"]
@@ -33,5 +33,5 @@ ScriptButton {
     onClicked: button => button === Qt.RightButton
         ? root.shell.run(["hyprshell", "screenrecord", "--quit"])
         : root.shell.togglePopup("screenrecord")
-    ScreenRecordPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }
+    ScreenRecordPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }
 }

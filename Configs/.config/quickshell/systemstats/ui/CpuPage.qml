@@ -62,7 +62,7 @@ Column {
         : [root.hist.cpuTotal || []]
       colors: root.historyRange === 0 ? [root.s1, root.s2] : [root.s1]
       ceiling: 100
-      baselineColor: Commons.Util.alpha(root.foreground, 0.14)
+      baselineColor: Commons.Util.scaleAlpha(root.foreground, 0.14)
     }
 
     Legend {
@@ -91,7 +91,7 @@ Column {
       series: [root.hist.cpuTemp || []]
       colors: [root.s2]
       minimumCeiling: Model.TEMPERATURE_SCALE_FLOOR
-      baselineColor: Commons.Util.alpha(root.foreground, 0.14)
+      baselineColor: Commons.Util.scaleAlpha(root.foreground, 0.14)
     }
   }
 
@@ -128,7 +128,7 @@ Column {
           ]
         : [
             { color: root.s1, label: "Cores", value: Model.num(root.cpu.coreCount), unit: "" },
-            { color: Commons.Util.alpha(root.foreground, 0.25), label: "Threads", value: Model.num(root.cpu.threadCount), unit: "" }
+            { color: Commons.Util.scaleAlpha(root.foreground, 0.25), label: "Threads", value: Model.num(root.cpu.threadCount), unit: "" }
           ]
     }
 

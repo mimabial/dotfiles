@@ -49,7 +49,7 @@ with_archive_lock() {{ "$@"; }}
 prune_archive_locked() {{ :; }}
 python3() {{ printf true; }}
 store_notification_image() {{ exit 9; }}
-archive={shlex.quote(str(archive))}
+ARCHIVE_FILE={shlex.quote(str(archive))}
 archive_add
 """
             environment = dict(os.environ, DUNST_APP_NAME="Sender 482913", DUNST_ID="5",

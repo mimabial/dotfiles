@@ -5,9 +5,9 @@ import sys
 from pathlib import Path
 
 from _common import (LIGHT_LUMINANCE_THRESHOLD, RENDER_OUTPUT_DIR, atomic_write, cache_hit, cache_store, hex_to_rgb,
-                     luminance, palette_path, short_digest)
+                     luminance, palette_path_from_argv, short_digest)
 
-PALETTE = palette_path()
+PALETTE = palette_path_from_argv()
 OUT_FILE = RENDER_OUTPUT_DIR / "gimp" / "gimp.css"
 
 APP = "gimp"

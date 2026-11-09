@@ -2,7 +2,7 @@ package_aur_helper() {
   [[ "${requested_package_manager}" == pacman ]] && return 1
 
   if [[ -n "${requested_package_manager}" && "${requested_package_manager}" != pacman ]]; then
-    package_command_exists "${requested_package_manager}" || package_error "package manager not found: ${requested_package_manager}"
+    package_command_exists "${requested_package_manager}" || package_die "package manager not found: ${requested_package_manager}"
     printf '%s\n' "${requested_package_manager}"
     return 0
   fi
@@ -18,7 +18,7 @@ package_aur_helper() {
 package_selected_manager() {
   local helper=""
   if [[ -n "${requested_package_manager}" ]]; then
-    package_command_exists "${requested_package_manager}" || package_error "package manager not found: ${requested_package_manager}"
+    package_command_exists "${requested_package_manager}" || package_die "package manager not found: ${requested_package_manager}"
     printf '%s\n' "${requested_package_manager}"
   elif helper="$(package_aur_helper)"; then
     printf '%s\n' "${helper}"
@@ -43,7 +43,7 @@ package_run_pacman() {
   elif package_command_exists sudo; then
     sudo pacman "$@"
   else
-    package_error "neither sudo nor pkexec is available"
+    package_die "neither sudo nor pkexec is available"
   fi
 }
 
@@ -58,7 +58,7 @@ package_install_aur() {
   package_require_arguments "$@"
   local helper=""
   local -a flags=(--aur --needed)
-  helper="$(package_aur_helper)" || package_error "no AUR helper found; install yay or paru"
+  helper="$(package_aur_helper)" || package_die "no AUR helper found; install yay or paru"
   ((skip_confirmation == 1)) && flags+=(--noconfirm)
   "${helper}" -S "${flags[@]}" -- "$@"
 }
@@ -84,13 +84,13 @@ package_upgrade() {
       fi
       ;;
     aur)
-      helper="$(package_aur_helper)" || package_error "no AUR helper found; install yay or paru"
+      helper="$(package_aur_helper)" || package_die "no AUR helper found; install yay or paru"
       "${helper}" -Sua "${flags[@]}" || return
       ;;
     flatpak)
-      package_command_exists flatpak || package_error "flatpak is not installed"
+      package_command_exists flatpak || package_die "flatpak is not installed"
       ;;
-    *) package_error "unknown update source: ${update_source}" ;;
+    *) package_die "unknown update source: ${update_source}" ;;
   esac
 
   if [[ "${update_source}" == flatpak ]] || { [[ "${update_source}" == all ]] && package_command_exists flatpak; }; then
@@ -125,7 +125,7 @@ package_list() {
   case "${1:-}" in
     all) pacman -Sl --color=never ;;
     installed) pacman -Q --color=never ;;
-    *) package_error "expected list scope: all or installed" ;;
+    *) package_die "expected list scope: all or installed" ;;
   esac
 }
 

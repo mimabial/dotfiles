@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "RemovableModel.js" as Model
+import "Units.js" as Units
 
 Singleton {
     id: root
@@ -22,6 +23,9 @@ Singleton {
     property var store: ({version: 1, drives: {}, showSystem: true})
     property bool loaded: false
     property bool watchClosely: false
+    readonly property int usageRefreshMs: 8000
+    readonly property int healthProbeCloseWatchMs: Units.MS_PER_MINUTE
+    readonly property int healthProbeIdleMs: 5 * Units.MS_PER_MINUTE
     property bool healthAlertsEnabled: false
     readonly property bool notificationsEnabled: store.notify !== false
     readonly property bool automount: store.automount !== false
@@ -58,9 +62,7 @@ Singleton {
         const entry = activity[device.name]
         return total + (entry ? Number(entry.writeRate || 0) : 0)
     }, 0)
-    readonly property string barGlyph: devices.length ? devices[0].glyph
-        : portables.length ? Model.portableGlyph(portables[0])
-        : supportHint ? Model.GLYPH_ALERT : Model.GLYPH_USB
+    readonly property string barGlyph: Model.GLYPH_DISK
 
     readonly property string storePath: Quickshell.env("HOME") + "/.local/state/hypr/removable-drives.json"
     readonly property string hookDir: (Quickshell.env("XDG_RUNTIME_DIR") || "/dev/shm") + "/removable-drives"
@@ -70,6 +72,7 @@ Singleton {
     function rescan() {
         if (lsblkProcess.running || gioProcess.running) { rescanQueued = true; return }
         lsblkProcess.running = true; gioProcess.running = true
+        if (!monitorProcess.running) monitorProcess.running = true
         if (!mountsProcess.running) mountsProcess.running = true
         if (!supportProcess.running) supportProcess.running = true
         if (watchClosely && !networkProcess.running) networkProcess.running = true
@@ -386,9 +389,11 @@ Singleton {
     }
 
     function forceUnmountBlocked() { const volume = volumeByPath(blockedFsPath); if (volume) unmount(volume, true) }
-    function openVolume(volume) { if (volume && volume.mounted) openPath(volume.mountpoint) }
+    function openVolume(volume) { return !!volume && volume.mounted && openPath(volume.mountpoint) }
     function openPath(path) {
-        if (path) Quickshell.execDetached(store.fileManager ? ["sh", "-c", store.fileManager + " \"$1\"", "sh", path] : ["xdg-open", path])
+        if (!path) return false
+        Quickshell.execDetached(store.fileManager ? ["sh", "-c", store.fileManager + " \"$1\"", "sh", path] : ["xdg-open", path])
+        return true
     }
     function unmountNetwork(share) {
         if (!share || !share.mountpoint) return
@@ -396,9 +401,10 @@ Singleton {
         runAction(["bash", "-c", script, "drives", share.mountpoint], share.mountpoint, "unmount-network", "Unmounted " + share.source)
     }
     function openTerminal(path, usage) {
-        if (!path) return
+        if (!path) return false
         const command = usage ? "exec dua i \"$1\"" : "cd \"$1\" && exec \"${SHELL:-/bin/bash}\""
         Quickshell.execDetached(["hyprshell", "launch/terminal-present", "--hypr-profile", "tui", "--app-id", usage ? "org.tui.Dua" : "org.hypr.DriveTerminal", "--title", usage ? "Disk usage" : "Drive terminal", "--", "bash", "-c", command, "drives", path])
+        return true
     }
     function probeHealth(device) {
         if (!device) return
@@ -409,7 +415,7 @@ Singleton {
     }
     function autoProbeHealth() {
         if ((!watchClosely && !healthAlertsEnabled) || healthProcess.running) return
-        const interval = watchClosely ? 60000 : 300000
+        const interval = watchClosely ? healthProbeCloseWatchMs : healthProbeIdleMs
         const device = devices.concat(store.showSystem || healthAlertsEnabled ? systemDevices : []).find(item =>
             item.tran && Date.now() - (_healthChecked[healthKey(item)] || 0) > interval)
         if (device) probeHealth(device)
@@ -509,6 +515,7 @@ Singleton {
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.portables = Model.parseGioMounts(text) }
     }
     Process { command: ["gio", "mount", "-o"]; running: true; stdout: SplitParser { onRead: root.rescan() } }
+    Process { command: ["findmnt", "--poll", "--noheadings", "--output", "TARGET"]; running: root.watchClosely; stdout: SplitParser { onRead: root.rescan() } }
     Process {
         id: supportProcess
         command: ["bash", Quickshell.env("HOME") + "/.local/lib/hypr/system/removable.sh", "--probe-support"]
@@ -519,7 +526,6 @@ Singleton {
         command: ["stdbuf", "-oL", "udevadm", "monitor", "--udev", "--subsystem-match=block", "--subsystem-match=usb"]
         running: true
         stdout: SplitParser { onRead: line => { if (/(add|remove|change|bind|unbind)/.test(String(line))) root.rescan() } }
-        onExited: monitorRestart.restart()
     }
 
     Instantiator {
@@ -540,10 +546,9 @@ Singleton {
         onLoadFailed: root.store = Model.parseStore("")
     }
 
-    Timer { id: monitorRestart; interval: 3000; onTriggered: if (!monitorProcess.running) monitorProcess.running = true }
-    Timer { interval: 1000; running: root.devices.length > 0 || root.watchClosely && root.store.showSystem && root.systemDevices.length > 0; repeat: true; triggeredOnStart: true; onTriggered: root.sampleActivity() }
-    Timer { interval: 8000; running: root.watchClosely; repeat: true; onTriggered: root.rescan() }
-    Timer { interval: 60000; running: root.watchClosely || root.healthAlertsEnabled; repeat: true; onTriggered: root.autoProbeHealth() }
+    Timer { interval: Units.MS_PER_SECOND; running: root.devices.length > 0 || root.watchClosely && root.store.showSystem && root.systemDevices.length > 0; repeat: true; triggeredOnStart: true; onTriggered: root.sampleActivity() }
+    Timer { interval: root.usageRefreshMs; running: root.watchClosely; repeat: true; onTriggered: if (!lsblkProcess.running) lsblkProcess.running = true }
+    Timer { interval: root.healthProbeCloseWatchMs; running: root.watchClosely || root.healthAlertsEnabled; repeat: true; onTriggered: root.autoProbeHealth() }
     onWatchCloselyChanged: if (watchClosely) { rescan(); autoProbeHealth() } else activityHistory = ({})
     onHealthAlertsEnabledChanged: if (healthAlertsEnabled) { rescan(); autoProbeHealth() }
 

@@ -7,9 +7,9 @@ import re
 import sys
 from pathlib import Path
 
-from _common import CONFIG_HOME, RENDER_OUTPUT_DIR, atomic_write, cache_hit, cache_store, palette_path, short_digest, srgb_to_linear
+from _common import CONFIG_HOME, RENDER_OUTPUT_DIR, atomic_write, cache_hit, cache_store, palette_path_from_argv, short_digest, srgb_to_linear
 
-PALETTE = palette_path()
+PALETTE = palette_path_from_argv()
 TEMPLATE = CONFIG_HOME / "templates" / "firefox-userChrome.css"
 FIREFOX_ROOT = Path(os.environ.get("FIREFOX_ROOT", Path.home() / ".mozilla" / "firefox"))
 OUT_FILE = RENDER_OUTPUT_DIR / "firefox" / "userChrome.css"

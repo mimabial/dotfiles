@@ -1,25 +1,27 @@
-app_launch_load_qt_env() {
+app_launch_load_qt_env_into() {
+  local -n qt_environment_ref="$1"
   [[ -r "$qt_environment_path" ]] || return 0
   local line
   while IFS= read -r line || [[ -n "$line" ]]; do
     [[ -n "$line" && "$line" != \#* ]] || continue
-    qt_environment+=("$line")
+    qt_environment_ref+=("$line")
   done <"$qt_environment_path"
 }
 
-app_launch_build_uwsm_command() {
-  launch_command=(uwsm-app -s "$launch_slice" -t "$launch_unit_type")
-  [[ -z "$launch_app_name" ]] || launch_command+=(-a "$launch_app_name")
-  [[ -z "$launch_unit_name" ]] || launch_command+=(-u "$launch_unit_name")
-  [[ -z "$launch_description" ]] || launch_command+=(-d "$launch_description")
-  [[ -z "$launch_silence" ]] || launch_command+=(-S "$launch_silence")
-  $join_graphical_session && launch_command+=(-p After=graphical-session.target -p PartOf=graphical-session.target)
+app_launch_build_uwsm_command_into() {
+  local -n launch_command_ref="$1"
+  launch_command_ref=(uwsm-app -s "$launch_slice" -t "$launch_unit_type")
+  [[ -z "$launch_app_name" ]] || launch_command_ref+=(-a "$launch_app_name")
+  [[ -z "$launch_unit_name" ]] || launch_command_ref+=(-u "$launch_unit_name")
+  [[ -z "$launch_description" ]] || launch_command_ref+=(-d "$launch_description")
+  [[ -z "$launch_silence" ]] || launch_command_ref+=(-S "$launch_silence")
+  $join_graphical_session && launch_command_ref+=(-p After=graphical-session.target -p PartOf=graphical-session.target)
   local var
   # Scope units have no exec context, so systemd rejects Environment= there.
   for var in "${qt_environment[@]}"; do
-    if [[ "$launch_unit_type" == service ]]; then launch_command+=(-p "Environment=$var"); else export "${var?}"; fi
+    if [[ "$launch_unit_type" == service ]]; then launch_command_ref+=(-p "Environment=$var"); else export "${var?}"; fi
   done
-  launch_command+=(-- "${target_arguments[@]}")
+  launch_command_ref+=(-- "${target_arguments[@]}")
 }
 
 app_launch_run_direct() {

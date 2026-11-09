@@ -5,7 +5,7 @@
 
 case "${1:-}" in
 -h | --help)
-	printf 'Usage: hyprshell system/tmux-server\nRun the tmux server in the foreground and ensure a default session exists.\n'
+	printf 'Usage: hyprshell system/tmux-server\n\nRun the tmux server in the foreground and ensure a default session exists.\n'
 	exit 0
 	;;
 esac

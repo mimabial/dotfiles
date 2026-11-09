@@ -7,11 +7,11 @@ import sys
 import tempfile
 from pathlib import Path
 
-from _common import XDG_DATA_HOME, atomic_write, cache_hit, cache_store, palette_path, short_digest
+from _common import XDG_DATA_HOME, atomic_write, cache_hit, cache_store, palette_path_from_argv, short_digest
 from _gtk_assets import install_gtk_theme_assets
-from _gtk_compile import GTK_SOURCE_DIR, GTK_VERSIONS, compile_gtk_theme
+from _gtk_compile import GTK_SOURCE_DIR, GTK_VERSIONS, SassCompileError, compile_gtk_theme
 
-PALETTE_FILE = palette_path()
+PALETTE_FILE = palette_path_from_argv()
 GTK_THEME_DIR = XDG_DATA_HOME / "themes" / "Hypr-Gtk"
 APP = "gtk"
 
@@ -95,7 +95,10 @@ def main():
 
     with tempfile.TemporaryDirectory() as build_dir:
         source_dir = prepare_patched_sweet_sources(Path(build_dir))
-        compiled_theme = compile_gtk_theme(source_dir, palette, radius)
+        try:
+            compiled_theme = compile_gtk_theme(source_dir, palette, radius)
+        except SassCompileError as error:
+            sys.exit(f"render/gtk: sassc: {error}")
         install_gtk_theme_assets(source_dir, compiled_theme, GTK_THEME_DIR)
         install_gtk_stylesheets(compiled_theme.stylesheets)
     toggle_gtk_reload_theme_name()

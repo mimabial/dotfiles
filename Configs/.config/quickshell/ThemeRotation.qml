@@ -1,11 +1,11 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "Units.js" as Units
 
 Scope {
     id: root
     required property var shell
-    readonly property int minuteMs: 60000
     readonly property int defaultIntervalMinutes: 60
     property bool loaded: false
     property bool enabled: false
@@ -14,7 +14,7 @@ Scope {
     property double lastChangeEpoch: 0
     property string seenTheme: ""
     readonly property string themeName: shell.themeName
-    readonly property double dueEpoch: lastChangeEpoch + intervalMinutes * minuteMs
+    readonly property double dueEpoch: lastChangeEpoch + intervalMinutes * Units.MS_PER_MINUTE
     readonly property string statusText: enabled ? "Next theme at " + Qt.formatTime(new Date(dueEpoch), "HH:mm") : "Theme rotation paused"
 
     function applyConfig(raw) {

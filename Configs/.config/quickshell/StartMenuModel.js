@@ -1,4 +1,5 @@
 .pragma library
+.import "Units.js" as Units
 
 function applications(entries) {
     const visible = []
@@ -119,8 +120,7 @@ function matchScore(candidate, query) {
         : candidate.wordStarts.includes(" " + query) ? 3
         : candidate.name.includes(query) ? 2 : 1
 }
-const hourMs = 3600000, dayMs = 24 * hourMs
-const recencyWeights = [[hourMs, 4], [dayMs, 2], [7 * dayMs, 0.5], [90 * dayMs, 0.25], [Infinity, 0.1]]
+const recencyWeights = [[Units.MS_PER_HOUR, 4], [Units.MS_PER_DAY, 2], [7 * Units.MS_PER_DAY, 0.5], [90 * Units.MS_PER_DAY, 0.25], [Infinity, 0.1]]
 const halfBonusRank = 2
 const itemBonusLimit = 0.5
 const queryBonusLimit = 1

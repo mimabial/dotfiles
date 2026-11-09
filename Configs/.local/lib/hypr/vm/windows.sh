@@ -3,7 +3,7 @@
 set -euo pipefail
 
 windows_usage() {
-  echo "Usage: hyprshell vm/windows.sh [command] [options]"
+  printf 'Usage: hyprshell vm/windows.sh [command] [options]\n\nInstall and run a Windows VM in Docker and connect to it over RDP.\n'
   echo ""
   echo "Commands:"
   echo "  install              Install and configure Windows VM"

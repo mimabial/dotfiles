@@ -136,8 +136,6 @@ function derive(theme) {
 
         panel: light ? hex(paper(0.7), 0.94) : hex(bg, 0.85),
         panelBorder: hex(fg, light ? 0.18 : 0.14),
-        key: light ? hex(paper(0.8)) : hex(fg, 0.08),
-        keyBorder: hex(fg, light ? 0.24 : 0.2),
 
         mapCard: light ? hex(paper(0.6), 0.8) : hex(fg, 0.045),
         mapCardBorder: hex(fg, light ? 0.13 : 0.1),

@@ -35,7 +35,7 @@ def command_for_setting(settings, row, value, direction):
     if name == "bluetooth_power":
         return library_command("bluetooth/power.sh", "on" if value else "off")
     if name == "power_profile":
-        return library_command("system/powerprofiles.sh", "--set", value)
+        return library_command("system/power-profiles.sh", "--set", value)
     if name == "brightness":
         return library_command("controls/brightness-control.sh", "i" if direction > 0 else "d",
                       str(row["step"]))

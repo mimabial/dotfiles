@@ -11,7 +11,7 @@ WALLPAPER_ICON_EM_MIN=8
 WALLPAPER_ICON_EM_MAX=100
 # wallpaper.rasi spends 7em on the entry, the label and the listview padding.
 WALLPAPER_ROW_CHROME_EM=7
-WALLPAPER_ELEMENT_PX_PER_SCALE=$((16 + 8 + 5))
+WALLPAPER_ELEMENT_PX_PER_SCALE=29
 WALLPAPER_EXIT_DELETE=10
 WALLPAPER_LISTVIEW_INSET_PX_PER_SCALE=4
 
@@ -78,17 +78,18 @@ element{border-radius:$((border_radius * 2))px;}
 EOF
 }
 
-wallpaper_select_rofi_args() {
-  local font_scale="$1"
-  local font_name="$2"
-  local selected_row="$3"
+wallpaper_rofi_args_into() {
+  local -n rofi_args_ref="$1"
+  local font_scale="$2"
+  local font_name="$3"
+  local selected_row="$4"
   local font_override=""
   local r_override=""
 
   font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
   r_override="$(wallpaper_select_theme_override "${font_scale}" "${font_name}")"
 
-  rofi_args=(
+  rofi_args_ref=(
     -dmenu -i
     -sync
     -no-custom
@@ -107,7 +108,7 @@ wallpaper_select_rofi_args() {
     -theme-str "listview { show-icons: true; }"
     -theme "${ROFI_WALLPAPER_STYLE:-wallpaper}"
   )
-  [[ -n "${selected_row}" ]] && rofi_args+=(-selected-row "${selected_row}")
+  [[ -n "${selected_row}" ]] && rofi_args_ref+=(-selected-row "${selected_row}")
 }
 
 wallpaper_selected_row() {
@@ -177,6 +178,7 @@ wallpaper_trash_selected() {
 
 wallpaper_pick_into() {
   local -n picked_path_ref="$1"
+  picked_path_ref=""
   hypr_runtime_require rofi || return 1
   if ! declare -F rofi_effective_font_scale >/dev/null 2>&1; then
     # shellcheck source=/dev/null
@@ -191,14 +193,14 @@ wallpaper_pick_into() {
   selected_row="$(wallpaper_selected_row "${wall_json_file}")"
   local -a rofi_args
   while :; do
-    wallpaper_select_rofi_args "${font_scale}" "${font_name}" "${selected_row}"
+    wallpaper_rofi_args_into rofi_args "${font_scale}" "${font_name}" "${selected_row}"
 
     rofi_status=0
     selected_entry="$(wallpaper_rofi_entries "${wall_json_file}" | rofi_with_background_theme "${rofi_args[@]}")" || rofi_status=$?
     if ((rofi_status != 0 && rofi_status != WALLPAPER_EXIT_DELETE)) || [[ -z "${selected_entry}" ]]; then
       rm -f "${wall_json_file}"
       ((deleted)) && wallpaper_refresh_inventory_and_prune_async
-      exit 0
+      return 0
     fi
 
     IFS=$'\t' read -r _ selected_path _ < <(wallpaper_selected_fields "${wall_json_file}" "${selected_entry}")

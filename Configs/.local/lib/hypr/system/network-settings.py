@@ -83,7 +83,7 @@ def apply_connection_setting(args):
         raise ValueError("Could not apply the change; restored the previous settings. " + error.stderr.strip())
 
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(description="Show or change the DNS servers and Wi-Fi band of a NetworkManager connection.")
 parser.add_argument("action", choices=["status", "dns", "band"])
 parser.add_argument("connection_uuid")
 parser.add_argument("interface_name")

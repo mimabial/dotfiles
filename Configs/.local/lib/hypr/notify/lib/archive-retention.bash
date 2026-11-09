@@ -9,21 +9,21 @@ prune_archive_locked() {
   archive_timestamp_ms_into cutoff
   cutoff=$((cutoff - keep_days * ms_per_day))
 
-  before="$(wc -l <"${archive}" 2>/dev/null || echo 0)"
+  before="$(wc -l <"${ARCHIVE_FILE}" 2>/dev/null || echo 0)"
   if ((before <= max_items)); then
-    oldest="$(jq -Rnr 'first(inputs | fromjson? | .ts) // 0' <"${archive}")"
+    oldest="$(jq -Rnr 'first(inputs | fromjson? | .ts) // 0' <"${ARCHIVE_FILE}")"
     [[ "${oldest}" =~ ^[0-9]+$ ]] && ((oldest >= cutoff)) && return 0
   fi
-  tmp="${archive}.tmp"
+  tmp="${ARCHIVE_FILE}.tmp"
   jq -Rnr --argjson cutoff "${cutoff}" --argjson max "${max_items}" \
     '[inputs | fromjson? | select(.ts >= $cutoff)] | .[-$max:] | .[] | tojson' \
-    <"${archive}" >"${tmp}" && mv -- "${tmp}" "${archive}" || {
+    <"${ARCHIVE_FILE}" >"${tmp}" && mv -- "${tmp}" "${ARCHIVE_FILE}" || {
     rm -f -- "${tmp}"
     return 1
   }
-  chmod 600 "${archive}" 2>/dev/null || true
+  chmod 600 "${ARCHIVE_FILE}" 2>/dev/null || true
 
-  after="$(wc -l <"${archive}" 2>/dev/null || echo 0)"
+  after="$(wc -l <"${ARCHIVE_FILE}" 2>/dev/null || echo 0)"
   ((after < before)) && remove_unreferenced_archive_images
   return 0
 }
@@ -33,27 +33,27 @@ remove_unreferenced_archive_images() {
   local -A kept=()
   while IFS= read -r file; do
     kept["${file}"]=1
-  done < <(jq -Rnr 'inputs | fromjson? | .icon, .preview | select(type == "string" and . != "")' <"${archive}")
-  for file in "${images}"/*; do
+  done < <(jq -Rnr 'inputs | fromjson? | .icon, .preview | select(type == "string" and . != "")' <"${ARCHIVE_FILE}")
+  for file in "${ARCHIVE_IMAGES_DIR}"/*; do
     [[ -f "${file}" ]] || continue
     [[ -v 'kept[$file]' ]] || rm -f -- "${file}"
   done
 }
 
 remove_archive_entry_locked() {
-  local tmp="${archive}.tmp"
+  local tmp="${ARCHIVE_FILE}.tmp"
   jq -Rnr --arg key "$1" \
     'inputs | fromjson? | select(.key != $key) | tojson' \
-    <"${archive}" >"${tmp}" && mv -- "${tmp}" "${archive}" || {
+    <"${ARCHIVE_FILE}" >"${tmp}" && mv -- "${tmp}" "${ARCHIVE_FILE}" || {
     rm -f -- "${tmp}"
     return 1
   }
-  chmod 600 "${archive}" 2>/dev/null || true
+  chmod 600 "${ARCHIVE_FILE}" 2>/dev/null || true
   remove_unreferenced_archive_images
 }
 
 clear_archive_locked() {
-  : >"${archive}"
-  chmod 600 "${archive}" 2>/dev/null || true
-  rm -f -- "${images:?}"/* 2>/dev/null || true
+  : >"${ARCHIVE_FILE}"
+  chmod 600 "${ARCHIVE_FILE}" 2>/dev/null || true
+  rm -f -- "${ARCHIVE_IMAGES_DIR:?}"/* 2>/dev/null || true
 }

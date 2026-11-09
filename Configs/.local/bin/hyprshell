@@ -34,6 +34,7 @@ hyprshell_prepend_path() {
 hyprshell_prepend_path "${BIN_DIR}" "${HYPR_LIB_DIR}"
 
 HYPRSHELL_LIB_DIR="${HYPR_LIB_DIR}/shell/lib"
+HYPRSHELL_APP_COMMAND="system/app2unit"
 
 export BIN_DIR LIB_DIR PATH
 
@@ -55,7 +56,7 @@ hyprshell_load_completion_helpers() {
 
 if ! hyprshell_is_sourced && [[ "${1:-}" == "app" ]]; then
   shift
-  exec "${HYPR_LIB_DIR}/system/app2unit.sh" "$@"
+  exec "${HYPR_LIB_DIR}/${HYPRSHELL_APP_COMMAND}.sh" "$@"
 fi
 
 for hyprshell_lib in \
@@ -127,6 +128,7 @@ case "${1:-}" in
     ;;
   resolve)
     shift
+    [[ "${1:-}" != app ]] || set -- "${HYPRSHELL_APP_COMMAND}"
     hyprshell_print_command_path "${1:-}"
     ;;
   *)

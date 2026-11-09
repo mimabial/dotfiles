@@ -11,7 +11,7 @@ LIBRETRO_CORE_SUFFIX=_libretro.so
 RETROARCH_LAUNCHER_MARKER='X-Hypr-RetroArch=true'
 
 usage() {
-  printf 'Usage: hyprshell gaming/retro-launcher.sh install [CORE ROM] | remove\n'
+  printf 'Usage: hyprshell gaming/retro-launcher.sh install [CORE ROM] | remove\n\nInstall or remove RetroArch desktop launchers for ROMs.\n'
 }
 
 remove_retroarch_launcher() {

@@ -22,7 +22,7 @@ state_home = Path(os.environ.get("HYPR_STATE_HOME") or
                   Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state") / "hypr")
 palette = json.loads((state_home / "active-palette.json").read_text())
 palette["cursor"] = palette.get("cursor") or palette["fg"]
-colorfgbg = "0;15" if palette["background"] == "light" else "15;0"
+colorfgbg = "0;15" if palette["color_variant"] == "light" else "15;0"
 window_style = f"fg={palette['fg']},bg={palette['bg']}"
 commands = [["source-file", str(config_home / "tmux/colors.conf")],
             ["set-option", "-g", "window-style", window_style],

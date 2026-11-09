@@ -90,7 +90,7 @@ PopupWindow {
     id: card
     anchors.fill: parent
     opacity: root.open ? 1 : 0
-    color: Commons.Color.alpha(Commons.Style.popupTinted(Commons.Color.popups.background), Commons.Style.popupSurfaceOpacity)
+    color: Commons.Util.scaleAlpha(Commons.Style.popupTinted(Commons.Color.popups.background), Commons.Style.popupSurfaceOpacity)
     borderSpec: root.borderSpec
     radius: Commons.Style.cornerRadius
     Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }

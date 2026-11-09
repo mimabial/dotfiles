@@ -12,10 +12,10 @@ Drop the running xdg-desktop-portal instances (gtk, hyprland, base) so the next
 portal request re-activates them against the current settings." "$@"
 
 # Every portal ships a D-Bus service file with SystemdService=, so the reset is
-# a stop, not a start: the next portal request activates a fresh instance. The
-# previous version started them by hand when the unit restart failed, which left
-# duplicate instances owning the bus names and the packaged units wedged in
-# start-limit-hit behind them ("Failed to request bus name (File exists)").
+# a stop, not a start: the next portal request activates a fresh instance.
+# Starting them by hand when a unit restart fails leaves duplicate instances
+# owning the bus names and the packaged units wedged in start-limit-hit behind
+# them ("Failed to request bus name (File exists)").
 reset_portal() {
   local name="$1"
 

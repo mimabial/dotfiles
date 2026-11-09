@@ -64,11 +64,12 @@ wallpaper_hashmap_cache_file_into() {
   hashmap_file_ref="${cache_root}/hashmap/${cache_key}.tsv"
 }
 
-wallpaper_theme_sources() {
+wallpaper_theme_sources_into() {
+  local -n source_paths_ref="$1"
   local theme_source_dir=""
-  wallpaper_source_paths=()
+  source_paths_ref=()
   [[ -d "${HYPR_THEME_DIR}" ]] || return 1
 
   wallpaper_theme_source_dir_into theme_source_dir "${HYPR_THEME_DIR}"
-  wallpaper_source_paths=("${theme_source_dir}" "${WALLPAPER_CUSTOM_PATHS[@]}")
+  source_paths_ref=("${theme_source_dir}" "${WALLPAPER_CUSTOM_PATHS[@]}")
 }

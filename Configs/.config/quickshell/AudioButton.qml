@@ -20,10 +20,10 @@ BarButton {
         ["phone", "󰏲"], ["portable", "󰏲"], ["car", "󰄋"]
     ]
     readonly property string activePort: AudioPorts.port(root.sink ? root.sink.name : "")
-    function clampVolume() { if (sink && sink.audio && sink.audio.volume > shell.volumeLimit) sink.audio.volume = shell.volumeLimit }
+    function clampVolume() { if (sink && sink.audio && sink.audio.volume > shell.volumeRange.limit) sink.audio.volume = shell.volumeRange.limit }
     function volumeAction(action) { shell.run(["hyprshell", "volume-control.sh", "-o", action]) }
-    onSinkChanged: { shell.refreshVolumeRange(); clampVolume() }
-    onActivePortChanged: shell.refreshVolumeRange()
+    onSinkChanged: { shell.volumeRange.refresh(); clampVolume() }
+    onActivePortChanged: shell.volumeRange.refresh()
 
     readonly property string portKey: {
         const sinkProperties = root.sink ? root.sink.properties : null
@@ -51,6 +51,6 @@ BarButton {
 
     PwObjectTracker { objects: [root.sink].filter(x => x) }
     Connections { target: root.sink ? root.sink.audio : null; function onVolumeChanged() { root.clampVolume() } }
-    Connections { target: root.shell; function onVolumeLimitChanged() { root.clampVolume() } }
+    Connections { target: root.shell.volumeRange; function onLimitChanged() { root.clampVolume() } }
     AudioPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: root.settingsPopupName }
 }

@@ -12,7 +12,7 @@ Item {
     id: root
     required property var shell
     required property var registry
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     property int iconSize: 12
     property var menuHandle: null
     property Item menuAnchor: null
@@ -79,7 +79,7 @@ Item {
     function activateIcon(icon, button, anchor) {
         if (button === Qt.MiddleButton) { icon.secondaryActivate(); popupHold = false }
         else if (button === Qt.LeftButton && !icon.onlyMenu) { icon.activate(); popupHold = false }
-        else if (icon.hasMenu && popupsAllowed) {
+        else if (icon.hasMenu && popupEnabled) {
             if (shell.popupName === "tray" && shell.popupCard?.anchorItem === anchor) {
                 shell.closePopup()
                 return
@@ -128,8 +128,8 @@ Item {
     readonly property bool popupOwned: ownsPopup()
     readonly property bool draggingContent: drawerEntries.some(entry => entry.key === shell.dragKey)
     readonly property bool draggingWidget: drawerEntries.some(entry => entry.widget && entry.key === shell.dragKey)
-    readonly property bool expanded: popupsAllowed && (popupHold || draggingContent)
-    onPopupsAllowedChanged: if (!popupsAllowed) popupHold = false
+    readonly property bool expanded: popupEnabled && (popupHold || draggingContent)
+    onPopupEnabledChanged: if (!popupEnabled) popupHold = false
     implicitWidth: content.implicitWidth
     implicitHeight: Math.max(content.implicitHeight, scaledIcon + spanY)
 
@@ -143,7 +143,7 @@ Item {
             if (root.shell.popupCard) root.popupHold = false
         }
         function onTrayToggleRequested() {
-            if (!root.popupsAllowed) return
+            if (!root.popupEnabled) return
             root.toggleFlyout()
             if (root.popupHold) root.cursorKey = root.drawerEntries[0]?.key ?? ""
         }
@@ -160,7 +160,7 @@ Item {
             backgroundColor: root.expanded && box.open ? shell.styleColor(box.open.backgroundColor, "transparent") : styleColor("backgroundColor")
             Layout.fillHeight: true
             onClicked: button => {
-                if (button === Qt.RightButton && root.popupsAllowed) root.shell.togglePopup("bar-organizer")
+                if (button === Qt.RightButton && root.popupEnabled) root.shell.togglePopup("bar-organizer")
                 else if (button === Qt.LeftButton) root.toggleFlyout()
             }
             DragHandler {
@@ -286,7 +286,7 @@ Item {
             width: overflowGrid.width + 2 * Style.lg; height: overflowGrid.height + 2 * Style.lg
             radius: root.shell.rounding
             color: root.shell.alpha(Style.popupTinted(root.shell.background), Style.popupSurfaceOpacity)
-            border.color: root.shell.alpha(Style.popupBorder(root.shell.role("alt_br", root.shell.foreground)), Style.popupBorderOpacity)
+            border.color: Style.popupBorder(root.shell.role("alt_br", root.shell.foreground), Style.popupBorderOpacity)
             border.width: root.box.popupBorderWidth ?? root.shell.borderWidth
             Grid {
                 id: overflowGrid
@@ -428,10 +428,10 @@ Item {
         anchorItem: root.menuAnchor || root
         handle: root.menuHandle
         label: root.menuLabel
-        popupEnabled: root.popupsAllowed
+        popupEnabled: root.popupEnabled
     }
     BarOrganizerPopup {
-        shell: root.shell; anchorItem: chevron; popupEnabled: root.popupsAllowed; icons: root.icons; registry: root.registry
+        shell: root.shell; anchorItem: chevron; popupEnabled: root.popupEnabled; icons: root.icons; registry: root.registry
         defaultSection: root.host.sectionName
         onRestoreWidget: key => root.shell.moveBarModule(key, root.host.sectionName, root.host.moduleKey, true, true)
         onHideWidget: key => root.shell.moveBarModule(key, "tray", "", false)

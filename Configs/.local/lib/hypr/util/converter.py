@@ -4,12 +4,14 @@ from __future__ import annotations
 import json
 import sys
 
-from conversion.units import UNIT_CATEGORIES as GROUPS, unit_conversion_schema
+from conversion.units import unit_conversion_schema
+
+USAGE = "Usage: converter.py --units|--rates\n\nPrint the unit or currency conversion tables as JSON."
 
 
 def main() -> int:
     if len(sys.argv) != 2 or sys.argv[1] in {"-h", "--help"}:
-        print("Usage: converter.py --units|--rates")
+        print(USAGE)
         return 0 if len(sys.argv) == 2 else 2
     try:
         if sys.argv[1] == "--units":

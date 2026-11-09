@@ -65,17 +65,13 @@ list_shader_names() {
   hypr_visual_preset_list_names "frag" "${shaders_user_dir}" "${shaders_shared_dir}" "neutral"
 }
 
-# Keep workflow-compatible tab-separated fields, including empty metadata.
 list_shaders() {
-  local name=""
   {
     if resolve_shader_path neutral >/dev/null 2>&1; then
       printf 'neutral\n'
     fi
     list_shader_names
-  } | sed '/^$/d' | while IFS= read -r name; do
-    printf '%s\t\t\n' "${name}"
-  done
+  } | hypr_visual_preset_print_list_rows
 }
 
 reload_shader() {

@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-# The packaged wrapper passes a literal %U and drops "$@".
-export DCONF_PROFILE="${XDG_CONFIG_HOME:-$HOME/.config}/dconf/mullvad-profile"
-exec "/opt/Mullvad VPN/mullvad-vpn" "$@"

@@ -1,3 +1,3 @@
 local runtime = require("runtime")
 
-runtime.config("animations.enabled", false)
+runtime.config_if_supported("animations.enabled", false)

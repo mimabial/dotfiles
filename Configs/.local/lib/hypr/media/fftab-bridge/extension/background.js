@@ -3,6 +3,10 @@ const mediaPortsByTab = new Map();
 
 function routeHostCommand(msg) {
   if (!msg || msg.type !== "command" || !mediaPortsByTab.has(msg.tabId)) return;
+  if (msg.command === "openuri") {
+    browser.tabs.update(msg.tabId, { url: msg.url }).catch(() => {});
+    return;
+  }
   if (msg.command === "raise") {
     browser.tabs
       .get(msg.tabId)

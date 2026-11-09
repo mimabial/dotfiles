@@ -21,9 +21,9 @@ Item {
     readonly property real stackGap: Math.max(gap, Style.xs)
     readonly property real corner: Math.min(shell.rounding, Style.xxs)
     readonly property real dragThreshold: Style.md
-    readonly property var refreshEvents: ["openwindow", "closewindow", "movewindowv2", "changefloatingmode", "fullscreen", "pin",
-        "togglegroup", "moveintogroup", "moveoutofgroup", "workspacev2", "focusedmonv2", "monitoraddedv2", "monitorremovedv2", "custom"]
-    readonly property var workspace: Hyprland.focusedWorkspace
+    readonly property var refreshEvents: ["activewindowv2", "openwindow", "closewindow", "movewindowv2", "changefloatingmode", "fullscreen", "pin",
+        "togglegroup", "moveintogroup", "moveoutofgroup", "workspacev2", "activespecial", "focusedmonv2", "monitoraddedv2", "monitorremovedv2", "custom"]
+    readonly property var workspace: MinimapState.shownWorkspace
     readonly property string tiledLayout: workspace?.lastIpcObject?.tiledLayout ?? ""
     readonly property bool columnDrag: tiledLayout === "scrolling"
     readonly property bool reorderable: settings.dragReorder && tiledLayout !== "monocle"
@@ -43,12 +43,8 @@ Item {
     readonly property real maxScroll: Math.max(0, tapeTotal - viewLength)
     property string hoverAddress: ""
     property Item hoverItem: null
-    property string peekAddress: ""
-    property string focusEventAddress: ""
-    readonly property string shownAddress: hoverAddress || peekAddress
-    readonly property var shownWindow: shownAddress ? Minimap.windowAt(columns, shownAddress) : null
-    readonly property var shownToplevel: shownWindow ? Array.from(workspace.toplevels.values).find(top => Minimap.normalizeAddress(top.address) === shownAddress) ?? null : null
-    readonly property Item shownItem: hoverAddress ? hoverItem : shownWindow && boxes.count ? boxes.itemAt(rowIndex(shownWindow.key)) : null
+    readonly property var shownWindow: hoverAddress ? Minimap.windowAt(columns, hoverAddress) : null
+    readonly property var shownToplevel: shownWindow ? Array.from(workspace.toplevels.values).find(top => Minimap.normalizeAddress(top.address) === hoverAddress) ?? null : null
     property Item menuAnchor: null
     property var menuWindow: ({})
     property int dragFrom: -1
@@ -102,14 +98,6 @@ Item {
         hoverItem = item
     }
     function hoverLeft(address) { if (hoverAddress === address) hoverClear.restart() }
-    function trackFocus(address) {
-        if (address === focusEventAddress) return
-        focusEventAddress = address
-        Hyprland.refreshToplevels()
-        if (!address) return
-        peekAddress = address
-        peekTimer.restart()
-    }
     function openSettings() { shell.togglePopup("workspaces") }
     function secondaryClick(item, window) {
         if (!settings.boxActions) return openSettings()
@@ -147,13 +135,10 @@ Item {
     Connections {
         target: Hyprland
         function onRawEvent(event) {
-            if (event.name === "activewindowv2") root.trackFocus(Minimap.normalizeAddress(event.data))
-            else if (root.refreshEvents.includes(event.name)) Hyprland.refreshToplevels()
-            else if (event.name === "configreloaded") Hyprland.refreshWorkspaces()
+            if (root.refreshEvents.includes(event.name)) Hyprland.refreshToplevels()
         }
     }
     Timer { id: hoverClear; interval: 140; onTriggered: { root.hoverAddress = ""; root.hoverItem = null } }
-    Timer { id: peekTimer; interval: 500; onTriggered: root.peekAddress = "" }
     ListModel { id: rows }
 
     component WindowMove: NumberAnimation {
@@ -190,7 +175,6 @@ Item {
             }
 
             Repeater {
-                id: boxes
                 model: rows
                 delegate: Rectangle {
                     id: box
@@ -234,6 +218,7 @@ Item {
                     radius: root.corner
                     color: engage > 0.001 ? Qt.tint(baseFill, Qt.rgba(alertFill.r, alertFill.g, alertFill.b, engage)) : baseFill
                     opacity: Math.min(1, appear * MinimapState.fadeLead) * fx.flick * (focused || dropTarget || engage > 0.5 ? 1 : hot ? 0.95 : onScreen ? 0.75 : 0.4)
+                        * (attention > 0 && !Style.reduceMotion ? (1 + fx.power * fx.pulse) / (1 + fx.power) : 1)
                     transform: Translate { x: box.dragX }
                     MotionBehavior on x { WindowMove {} }
                     MotionBehavior on y { WindowMove {} }
@@ -243,7 +228,7 @@ Item {
                     MotionBehavior on lift { SpringAnimation { spring: 4; damping: 0.45; epsilon: 0.002 } }
                     MotionBehavior on engage { NumberAnimation { duration: 320; easing.type: Easing.InOutSine } }
                     MotionBehavior on color { enabled: !Style.reduceMotion && box.engage < 0.001 && box.attention === 0; ColorAnimation { duration: 260; easing.type: Easing.InOutSine } }
-                    MotionBehavior on opacity { Fade {} }
+                    MotionBehavior on opacity { enabled: !Style.reduceMotion && box.attention === 0; Fade {} }
                     MotionBehavior on dragX { enabled: !Style.reduceMotion && !box.dragging; WindowMove {} }
                     onFocusedChanged: if (focused && arrived && !Style.reduceMotion) { focusPop.restart(); fx.play("focus") }
                     onAppearChanged: if (closing && appear < 0.01) Qt.callLater(root.removeClosed, key)
@@ -263,6 +248,7 @@ Item {
                         fullscreen: box.fullscreen
                         floating: box.floating
                         ink: box.ink
+                        corner: root.corner
                     }
                     BoxFx {
                         id: fx
@@ -401,11 +387,11 @@ Item {
     FocusTab {
         shell: root.shell
         host: root.tabAnchor
-        target: root.shownItem
+        target: root.hoverItem
         title: root.shell.popupName === "" ? root.shownWindow?.title ?? "" : ""
         appClass: root.shownWindow?.appClass ?? ""
         iconSource: root.shownToplevel ? Commons.WindowApp.lookup(root.shownToplevel).icon : ""
-        highlighted: root.shownAddress === root.activeAddress
+        highlighted: root.hoverAddress === root.activeAddress
     }
     MenuBarPopup {
         anchorItem: root.menuAnchor ?? root

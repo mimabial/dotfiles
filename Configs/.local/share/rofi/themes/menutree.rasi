@@ -2,7 +2,7 @@
 @import "shared/header.rasi"
 
 * {
-    /* rofi/menu.engine.bash overrides element-border-radius per launch */
+    /* rofi/menu/dialog.bash overrides element-border-radius per launch */
     element-border-radius:       8px;
     window-border-radius:        @element-border-radius;
     menu-padding:                @popup-padding;

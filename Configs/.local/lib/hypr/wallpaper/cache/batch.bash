@@ -14,7 +14,6 @@ wallcache_release_lock() {
 }
 
 wallcache_prepare_directories() {
-  [[ -d "${HYPR_THEME_DIR}" ]] && wallcache_source_dir="${HYPR_THEME_DIR}" || exit 1
   [[ -d "${WALLPAPER_THUMB_DIR}" ]] || mkdir -p "${WALLPAPER_THUMB_DIR}"
   [[ -d "${HYPR_CACHE_HOME}/landing" ]] || mkdir -p "${HYPR_CACHE_HOME}/landing"
 }
@@ -73,10 +72,8 @@ wallcache_link_shared_rofi_themes() {
   [[ -d "${src_dir}" ]] || return 0
 
   mkdir -p "${dst_dir}"
-  shopt -s nullglob
   theme_files=("${src_dir}"/*)
-  shopt -u nullglob
-  ((${#theme_files[@]} > 0)) || return 0
+  [[ -e "${theme_files[0]}" ]] || return 0
   ln -snf "${theme_files[@]}" "${dst_dir}/"
 }
 

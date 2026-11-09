@@ -30,12 +30,12 @@ def write_json_atomic(path, data):
             os.unlink(tmp)
 
 
-def read_todoman_ids_to_uids(cache):
+def read_todoman_uids_and_list_dirs(cache):
     try:
         with sqlite3.connect(f"file:{cache}?mode=ro", uri=True) as con:
-            return dict(con.execute("SELECT id, uid FROM todos"))
+            return dict(con.execute("SELECT id, uid FROM todos")), [path for (path,) in con.execute("SELECT path FROM lists")]
     except sqlite3.Error:
-        return {}
+        return {}, []
 
 
 def advance_task_carries(todos, state, deferred_task_uids, today):
@@ -69,7 +69,7 @@ def main():
         print('{"todos":[]}')
         return
 
-    uids = read_todoman_ids_to_uids(cache)
+    uids, list_dirs = read_todoman_uids_and_list_dirs(cache)
     for item in todos:
         item["uid"] = str(uids.get(item.get("id"), "id:" + str(item.get("id", ""))))
 
@@ -87,7 +87,7 @@ def main():
     for item in todos:
         item["carries"] = 0 if item["uid"] in deferred_task_uids else int(items.get(item["uid"], {}).get("carries", 0) or 0)
     todos.sort(key=task_completion_due_priority_sort_key)
-    print(json.dumps({"todos": todos, "carryNotice": newly_carried}, separators=(",", ":")))
+    print(json.dumps({"todos": todos, "carryNotice": newly_carried, "listDirs": list_dirs}, separators=(",", ":")))
 
 
 main()

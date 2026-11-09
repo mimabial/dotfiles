@@ -16,6 +16,8 @@ usage() {
   cat <<USAGE
 Usage: hyprshell notify/archive <command> [args]
 
+Store, list and remove the notifications the bar panel shows.
+
   add                 archive the notification in the DUNST_* environment
   list [LIMIT]        the archive as JSON, newest first (default ${ARCHIVE_DEFAULT_LIMIT})
   remove KEY          drop one entry and any picture kept for it

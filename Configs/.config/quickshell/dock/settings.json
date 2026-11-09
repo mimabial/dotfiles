@@ -28,10 +28,12 @@
   "clickToMinimize": true,
   "iconSize": 36,
   "recentApps": [
-    "blueman-manager",
-    "org.kde.elisa",
-    "mpv"
+    "kitty",
+    "libreoffice-writer",
+    "signal"
   ],
   "showRecents": true,
-  "showIndicators": true
+  "showIndicators": true,
+  "expandBackground": false,
+  "floating": true
 }

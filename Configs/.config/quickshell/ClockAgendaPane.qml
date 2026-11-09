@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import qs.Commons as Commons
 import "CalendarMath.js" as CalendarMath
 
 Item {
@@ -9,13 +10,27 @@ Item {
     readonly property int maxChips: 3
     required property var popup
     required property real calendarHeight
+    readonly property int timeColumnWidth: Style.px(40)
+    readonly property int previewLabelWidth: Style.px(52)
+    readonly property int formLabelWidth: Style.px(64)
+    readonly property string quickAddHelp: [
+        "Day or time first, then the title",
+        "Day: today, tomorrow, friday, 2026-11-12",
+        "Time: 14:00, or 14:00 15:30 with an end",
+        "Length: 45m, 1h30m, or 3d for several days",
+        "Several days: 2026-11-12 2026-11-14 Trip",
+        "Timezone: 14:00 Europe/London Call",
+        "Notes: tomorrow 9:00 Dentist :: bring card",
+        "A time alone goes on the selected day",
+        "A day alone makes an all-day event"
+    ].join("\n")
     width: pane.popup.agendaVisible ? pane.popup.agendaWidth : 0
     height: agendaContent.implicitHeight
     visible: pane.popup.agendaVisible
     clip: true
 
     component FieldLabel: Text {
-        color: pane.popup.shell.alpha(pane.popup.shell.foreground, .45)
+        color: pane.popup.shell.mutedText
         font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption
         font.letterSpacing: 1; font.bold: true
     }
@@ -31,15 +46,14 @@ Item {
         implicitWidth: chipText.implicitWidth + Style.controlPaddingX * 2.5
         implicitHeight: Style.px(22)
         radius: pane.popup.shell.rounding
-        color: selected ? pane.popup.shell.alpha(pane.popup.shell.role("act_br", pane.popup.shell.accent), .35)
-            : chipArea.containsMouse ? pane.popup.shell.alpha(pane.popup.shell.foreground, .1) : "transparent"
+        color: chipArea.containsMouse ? pane.popup.shell.hoverFill() : selected ? pane.popup.shell.selectedFill() : "transparent"
         border.width: 1
-        border.color: pane.popup.shell.alpha(pane.popup.shell.foreground, selected ? .4 : .16)
+        border.color: pane.popup.structureLine
         Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
         Text {
             id: chipText
             anchors.centerIn: parent
-            color: pane.popup.shell.alpha(pane.popup.shell.foreground, parent.selected ? 1 : .6)
+            color: parent.selected ? pane.popup.shell.foreground : pane.popup.secondaryText
             font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption
         }
         MouseArea {
@@ -59,9 +73,9 @@ Item {
         ScrollBar.horizontal.opacity: Style.popupStyle.scrollbarAlpha
         background: Rectangle {
             radius: pane.popup.shell.rounding
-            color: pane.popup.shell.alpha(pane.popup.shell.foreground, .06)
+            color: area.activeFocus ? pane.popup.shell.hoverFill() : pane.popup.shell.alpha(pane.popup.shell.foreground, Style.fieldFillAlpha)
             border.width: 1
-            border.color: pane.popup.shell.alpha(pane.popup.shell.foreground, area.activeFocus ? .45 : .18)
+            border.color: pane.popup.structureLine
         }
         TextArea {
             id: area
@@ -69,7 +83,7 @@ Item {
             leftPadding: Style.controlPaddingX; rightPadding: Style.controlPaddingX
             topPadding: Style.controlPaddingY; bottomPadding: Style.controlPaddingY
             color: pane.popup.shell.foreground
-            placeholderTextColor: pane.popup.shell.alpha(pane.popup.shell.foreground, .28)
+            placeholderTextColor: pane.popup.shell.faintText
             font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
             background: null
             Keys.onEscapePressed: pane.popup.closeEventPanels()
@@ -91,12 +105,10 @@ Item {
         implicitWidth: buttonText.implicitWidth + Style.controlPaddingX * 3
         implicitHeight: Style.px(24)
         radius: pane.popup.shell.rounding
-        opacity: enabled ? 1 : .4
-        color: primary
-            ? pane.popup.shell.alpha(pane.popup.shell.role("act_br", pane.popup.shell.accent), buttonArea.containsMouse ? .5 : .3)
-            : buttonArea.containsMouse ? pane.popup.shell.alpha(pane.popup.shell.foreground, .12) : "transparent"
+        opacity: enabled ? 1 : Style.faintTextAlpha
+        color: buttonArea.containsMouse ? pane.popup.shell.hoverFill() : primary ? pane.popup.shell.selectedFill() : "transparent"
         border.width: 1
-        border.color: pane.popup.shell.alpha(pane.popup.shell.foreground, primary ? .4 : .22)
+        border.color: pane.popup.structureLine
         Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
         Text {
             id: buttonText
@@ -112,33 +124,359 @@ Item {
         }
     }
 
+    component FieldRow: Row {
+        id: fieldRow
+        property alias label: rowLabel.text
+        default property alias content: slot.data
+        readonly property real slotWidth: width - pane.formLabelWidth - spacing
+        readonly property real halfSlot: Math.floor((slotWidth - slot.spacing) / 2)
+        width: parent ? parent.width : 0
+        spacing: Style.md
+        FieldLabel { id: rowLabel; width: pane.formLabelWidth; height: Style.controlHeight; verticalAlignment: Text.AlignVCenter }
+        Row { id: slot; height: Math.max(Style.controlHeight, implicitHeight); spacing: Style.md }
+    }
+
+    component KeyCap: Rectangle {
+        property alias text: keyLabel.text
+        property bool highlighted: false
+        width: Math.max(height, keyLabel.implicitWidth + Style.md * 2)
+        height: keyLabel.implicitHeight + Style.xxs * 2
+        radius: pane.popup.shell.rounding
+        color: pane.popup.shell.hoverFill(highlighted ? 2 : 1)
+        Text {
+            id: keyLabel
+            anchors.centerIn: parent
+            color: parent.highlighted ? pane.popup.shell.foreground : pane.popup.secondaryText
+            font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption
+        }
+    }
+
+    component Dot: Rectangle {
+        width: Style.md; height: width; radius: width / 2
+    }
+
+    component BinButton: Rectangle {
+        id: bin
+        property string uid: ""
+        width: Style.px(20); height: width; radius: pane.popup.shell.rounding
+        color: binArea.containsMouse ? pane.popup.shell.alpha(pane.popup.shell.role("error", pane.popup.shell.foreground), Style.hoverFillAlpha) : "transparent"
+        Text {
+            anchors.centerIn: parent
+            text: "\u{f0a7a}"
+            color: binArea.containsMouse ? pane.popup.shell.role("error", pane.popup.shell.foreground) : pane.popup.shell.mutedText
+            font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
+        }
+        MouseArea {
+            id: binArea
+            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+            onClicked: pane.popup.deleteEvent(bin.uid)
+        }
+    }
+
+    component AgendaRow: Rectangle {
+        id: row
+        property var event: ({})
+        property int itemIndex: -1
+        readonly property string phase: event.allDay ? "" : pane.popup.eventPhase(event)
+        readonly property string countdown: event.allDay ? "" : pane.popup.countdownText(event)
+        readonly property bool soon: !event.allDay && pane.popup.startsSoon(event)
+        readonly property string note: [pane.popup.secondaryCalendarName(event), event.location, event.description].filter(part => !!part).join("  ·  ")
+        width: parent ? parent.width : 0
+        implicitHeight: Math.max(lines.implicitHeight, times.implicitHeight) + Style.lg * 2
+        radius: pane.popup.shell.rounding
+        color: rowHover.hovered ? pane.popup.shell.hoverFill() : itemIndex === pane.popup.selectedEventIndex ? pane.popup.shell.selectedFill() : "transparent"
+        Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
+        HoverHandler { id: rowHover }
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: pane.popup.openEvent(row.event)
+        }
+        Item {
+            anchors.fill: parent
+            opacity: row.phase === "past" ? Style.faintTextAlpha : 1
+            Column {
+                id: times
+                visible: !row.event.allDay
+                x: Style.lg; y: Style.lg
+                width: visible ? pane.timeColumnWidth : 0
+                spacing: Style.px(1)
+                Text {
+                    text: String(row.event.start || "")
+                    color: row.phase === "now" ? pane.popup.shell.accent : pane.popup.shell.foreground
+                    font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.body
+                }
+                Text {
+                    text: String(row.event.end || "")
+                    color: pane.popup.shell.mutedText
+                    font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption
+                }
+            }
+            Dot {
+                id: dot
+                x: times.x + times.width + (row.event.allDay ? 0 : Style.sm)
+                y: Style.lg + Style.sm
+                color: pane.popup.eventChipColor(row.event)
+            }
+            Column {
+                id: lines
+                anchors.left: dot.right; anchors.right: parent.right
+                anchors.leftMargin: Style.lg; anchors.rightMargin: bin.width + Style.lg
+                y: Style.lg
+                spacing: Style.xxs
+                Text {
+                    width: parent.width
+                    text: String(row.event.title || "")
+                    wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
+                    color: pane.popup.shell.foreground
+                    font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.body
+                }
+                Text {
+                    visible: text !== ""
+                    width: parent.width
+                    text: row.countdown
+                    color: row.soon ? pane.popup.shell.accent : pane.popup.shell.mutedText
+                    font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption; font.bold: row.soon
+                }
+                Text {
+                    visible: text !== ""
+                    width: parent.width
+                    text: row.note
+                    elide: Text.ElideRight
+                    color: pane.popup.shell.mutedText
+                    font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption
+                }
+            }
+        }
+        BinButton {
+            id: bin
+            anchors.right: parent.right; anchors.rightMargin: Style.md
+            anchors.verticalCenter: parent.verticalCenter
+            uid: String(row.event.uid || "")
+            visible: rowHover.hovered && !pane.popup.eventIsReadOnly(row.event)
+        }
+    }
+
+    component NowLine: Item {
+        width: parent ? parent.width : 0
+        height: nowLabel.implicitHeight
+        Dot {
+            id: nowDot
+            x: Style.sm; anchors.verticalCenter: parent.verticalCenter
+            color: pane.popup.shell.accent
+        }
+        Text {
+            id: nowLabel
+            anchors.left: nowDot.right; anchors.leftMargin: Style.md
+            text: Qt.formatTime(pane.popup.today, "HH:mm")
+            color: pane.popup.shell.accent
+            font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
+        }
+        Rectangle {
+            anchors.left: nowLabel.right; anchors.right: parent.right
+            anchors.leftMargin: Style.md; anchors.verticalCenter: parent.verticalCenter
+            height: Style.xxs; radius: height / 2
+            color: pane.popup.shell.accent
+        }
+    }
+
     Column {
     id: agendaContent
     anchors.right: parent.right
     width: pane.popup.agendaWidth
-    spacing: Style.px(10)
+    spacing: Style.sectionGap
+
+Column {
+    width: parent.width; spacing: Style.sm
+    visible: !pane.popup.eventPanelOpen
+    PopupField {
+        id: quickField
+        shell: pane.popup.shell
+        width: parent.width
+        leftPadding: quickIcon.x + quickIcon.width + Style.lg
+        rightPadding: quickKeys.width + Style.controlPaddingX + Style.lg
+        placeholderText: "New… tomorrow 14:00 1h Lunch"
+        function submit(event) { if (event.modifiers & Qt.ShiftModifier) pane.popup.editQuickAdd(); else pane.popup.quickAdd() }
+        onSubmitted: pane.popup.quickAdd()
+        Keys.onReturnPressed: event => quickField.submit(event)
+        Keys.onEnterPressed: event => quickField.submit(event)
+        Keys.onEscapePressed: { if (quickField.text !== "") quickField.clear(); else pane.popup.focusCalendar() }
+        Text {
+            id: quickIcon
+            x: Style.controlPaddingX; anchors.verticalCenter: parent.verticalCenter
+            text: "\u{f0415}"
+            color: quickIconArea.containsMouse ? pane.popup.shell.role("hvr_fg", pane.popup.shell.foreground) : pane.popup.shell.accent
+            font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.body
+            MouseArea {
+                id: quickIconArea
+                anchors.fill: parent; anchors.margins: -Style.sm
+                hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                onClicked: pane.popup.editQuickAdd()
+            }
+        }
+        Row {
+            id: quickKeys
+            anchors.right: parent.right; anchors.rightMargin: Style.controlPaddingX
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: Style.sm
+            KeyCap {
+                text: "?"
+                highlighted: helpHover.hovered
+                HoverHandler { id: helpHover; cursorShape: Qt.WhatsThisCursor }
+                ToolTip {
+                    visible: helpHover.hovered
+                    delay: Style.tooltipDelay
+                    padding: Style.lg
+                    text: pane.quickAddHelp
+                    background: Rectangle {
+                        radius: pane.popup.shell.rounding
+                        color: pane.popup.shell.alpha(Style.popupTinted(pane.popup.shell.role("bg", pane.popup.shell.background)), .98)
+                        border.width: 1; border.color: Style.popupBorder(pane.popup.shell.role("alt_br", pane.popup.shell.foreground), .45)
+                    }
+                    contentItem: Text {
+                        text: pane.quickAddHelp
+                        color: pane.popup.shell.foreground
+                        font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
+                    }
+                }
+            }
+            KeyCap { visible: !quickField.activeFocus; text: "N" }
+        }
+    }
+    Rectangle {
+        visible: pane.popup.quickRows.length > 0 || pane.popup.quickError !== ""
+        width: parent.width; height: previewColumn.implicitHeight + Style.lg * 2
+        radius: pane.popup.shell.rounding
+        color: pane.popup.shell.alpha(pane.popup.shell.foreground, Style.fieldFillAlpha)
+        border.width: 1
+        border.color: pane.popup.structureLine
+        Column {
+            id: previewColumn
+            x: Style.controlPaddingX; y: Style.lg
+            width: parent.width - Style.controlPaddingX * 2
+            spacing: Style.xs
+            Text {
+                visible: text !== ""
+                width: parent.width; wrapMode: Text.Wrap
+                text: pane.popup.quickError
+                color: pane.popup.shell.role("error", pane.popup.shell.foreground)
+                font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption
+            }
+            Repeater {
+                model: pane.popup.quickRows
+                Row {
+                    id: previewRow
+                    required property var modelData
+                    width: previewColumn.width; spacing: Style.lg
+                    FieldLabel { width: pane.previewLabelWidth; text: previewRow.modelData.label; topPadding: Style.px(1) }
+                    Text {
+                        width: parent.width - pane.previewLabelWidth - parent.spacing
+                        text: previewRow.modelData.value; wrapMode: Text.Wrap
+                        color: pane.popup.shell.foreground
+                        font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
+                        font.bold: previewRow.modelData.label === "TITLE"
+                    }
+                }
+            }
+            Item {
+                visible: pane.popup.quickRows.length > 0
+                width: parent.width; height: quickButtons.height + Style.xs
+                Text {
+                    anchors.left: parent.left; anchors.bottom: parent.bottom
+                    anchors.right: quickButtons.left; anchors.rightMargin: Style.lg
+                    text: pane.popup.defaultCalendar; elide: Text.ElideRight
+                    color: pane.popup.shell.mutedText
+                    font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption
+                }
+                Row {
+                    id: quickButtons
+                    anchors.right: parent.right; anchors.bottom: parent.bottom
+                    spacing: Style.md
+                    FormButton { text: "More options"; onActivated: pane.popup.editQuickAdd() }
+                    FormButton { text: "Add  ⏎"; primary: true; onActivated: pane.popup.quickAdd() }
+                }
+            }
+        }
+    }
+    Binding { target: pane.popup; property: "quickText"; value: quickField.text }
+    Binding { target: pane.popup; property: "quickAddFocused"; value: quickField.activeFocus }
+    Connections {
+        target: pane.popup
+        function onQuickAddRequested() { quickField.forceActiveFocus() }
+        function onEventSaved() { quickField.clear() }
+    }
+}
+
+Rectangle {
+    id: nextCard
+    readonly property var event: pane.popup.shell.upcomingEvents.nextUp
+    readonly property bool live: event !== null && event === pane.popup.shell.upcomingEvents.current
+    visible: event !== null && !pane.popup.eventPanelOpen
+    width: parent.width; height: nextColumn.implicitHeight + Style.xxl * 2
+    radius: pane.popup.shell.rounding
+    color: nextArea.containsMouse ? pane.popup.shell.hoverFill() : pane.popup.shell.selectedFill()
+    Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
+    Column {
+        id: nextColumn
+        x: Style.xxxl; y: Style.xxl
+        width: parent.width - Style.xxxl * 2
+        spacing: Style.xs
+        FieldLabel {
+            text: !nextCard.event ? "" : nextCard.live ? "HAPPENING NOW"
+                : "NEXT  ·  IN " + pane.popup.shell.duration(pane.popup.shell.upcomingEvents.secondsUntil(nextCard.event)).toUpperCase()
+            color: pane.popup.shell.accent
+        }
+        Text {
+            width: parent.width; wrapMode: Text.Wrap
+            text: nextCard.event ? String(nextCard.event.title || "") : ""
+            color: pane.popup.shell.foreground
+            font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.title; font.bold: true
+        }
+        Text {
+            width: parent.width; elide: Text.ElideRight
+            text: !nextCard.event ? "" : [Qt.formatTime(new Date(pane.popup.shell.upcomingEvents.ms(nextCard.event.start)), "HH:mm")
+                + " – " + Qt.formatTime(new Date(pane.popup.shell.upcomingEvents.ms(nextCard.event.end)), "HH:mm"),
+                nextCard.event.location].filter(part => !!part).join("  ·  ")
+            color: pane.popup.shell.mutedText
+            font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
+        }
+    }
+    MouseArea {
+        id: nextArea
+        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+        onClicked: pane.popup.openUpcoming(nextCard.event)
+    }
+}
 
 Item {
+    visible: !pane.popup.eventEditorOpen
     width: parent.width
-    height: Math.max(agendaTitle.implicitHeight, modePills.implicitHeight)
-    Text {
-        id: agendaTitle
-        anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-        width: parent.width - modePills.width - Style.sm
-        elide: Text.ElideRight
-        readonly property string dayLabel: Qt.formatDate(pane.popup.selectedDate, "dddd d MMMM").toUpperCase()
-        text: pane.popup.editedEventUid !== "" ? "EDITING \u2014 " + dayLabel
-            : pane.popup.eventDetailsOpen ? String(pane.popup.eventDetails.calendar || "").toUpperCase() + " \u2014 " + dayLabel
-            : pane.popup.agendaMode === "week" ? pane.popup.weekHeading.toUpperCase()
-            : dayLabel
-        color: pane.popup.shell.alpha(pane.popup.shell.foreground, .55)
-        font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption
-        font.letterSpacing: 1; font.bold: true
+    height: Math.max(headingColumn.implicitHeight, modePills.implicitHeight)
+    Column {
+        id: headingColumn
+        anchors.left: parent.left; anchors.right: modePills.visible ? modePills.left : parent.right
+        anchors.rightMargin: Style.sm
+        spacing: Style.xs
+        FieldLabel {
+            id: agendaTitle
+            width: parent.width; wrapMode: Text.Wrap
+            text: (pane.popup.eventDetailsOpen ? String(pane.popup.eventDetails.calendar || "") + "  ·  " + pane.popup.dayHeading
+                : pane.popup.agendaMode === "week" ? pane.popup.weekHeading
+                : pane.popup.dayHeading).toUpperCase()
+            color: pane.popup.secondaryText
+        }
+        Text {
+            visible: pane.popup.agendaMode === "day" && !pane.popup.eventPanelOpen && text !== ""
+            width: parent.width
+            text: pane.popup.daySummary
+            color: pane.popup.shell.mutedText
+            font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption
+        }
     }
     Row {
         id: modePills
         visible: !pane.popup.eventPanelOpen
-        anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+        anchors.right: parent.right; anchors.top: parent.top
         spacing: Style.xs
         Repeater {
             model: ["day", "week"]
@@ -151,91 +489,57 @@ Item {
         }
     }
 }
-Text {
-    visible: pane.popup.agendaMode === "day" && pane.popup.selectedDayEvents.length === 0 && !pane.popup.eventPanelOpen
-    width: parent.width
-    text: pane.popup.selectedDayAgenda.unavailable === true ? "khal is not configured" : "Nothing scheduled"
-    color: pane.popup.shell.alpha(pane.popup.shell.foreground, .35)
-    font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
-}
+
 Column {
     visible: pane.popup.agendaMode === "day" && !pane.popup.eventPanelOpen
-    width: parent.width; spacing: 3
-    Repeater {
-        model: pane.popup.selectedDayEvents
-        Item {
-            id: eventItem
-            required property var modelData
-            width: parent.width
-            height: eventRow.implicitHeight
-
-            HoverHandler { id: eventHover }
-            Rectangle {
-                anchors.fill: parent
-                anchors.margins: -2
-                radius: pane.popup.shell.rounding
-                color: eventHover.hovered
-                    ? pane.popup.shell.alpha(pane.popup.shell.foreground, .08) : "transparent"
-            }
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: pane.popup.openEvent(eventItem.modelData)
-            }
-
-            Row {
-            id: eventRow
-            width: parent.width; spacing: Style.sm
-            Text {
-                width: Style.px(40)
-                text: eventItem.modelData.allDay ? "all" : eventItem.modelData.start
-                color: pane.popup.eventColor(eventItem.modelData)
-                font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
-            }
-            Column {
-                width: parent.width - Style.px(40) - Style.sm - Style.px(22); spacing: 0
-                Text {
-                    width: parent.width; text: eventItem.modelData.title; elide: Text.ElideRight
-                    color: pane.popup.shell.foreground
-                    font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
-                }
-                Row {
-                    width: parent.width; spacing: Style.xs
-                    Text {
-                        visible: text !== ""
-                        width: parent.width
-                        text: [pane.popup.secondaryCalendarName(eventItem.modelData),
-                            eventItem.modelData.location,
-                            eventItem.modelData.description].filter(part => !!part).join("  ·  ")
-                        elide: Text.ElideRight
-                        color: pane.popup.shell.alpha(pane.popup.shell.foreground, .4)
-                        font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption
-                    }
-                }
-            }
-            }
-
-            Rectangle {
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                visible: eventHover.hovered && !pane.popup.eventIsReadOnly(eventItem.modelData)
-                width: Style.px(20); height: Style.px(20); radius: pane.popup.shell.rounding
-                color: binArea.containsMouse
-                    ? pane.popup.shell.alpha(pane.popup.shell.role("error", pane.popup.shell.foreground), .25) : "transparent"
-                Text {
-                    anchors.centerIn: parent
-                    text: "\u{f0a7a}"
-                    color: binArea.containsMouse ? pane.popup.shell.role("error", pane.popup.shell.foreground)
-                        : pane.popup.shell.alpha(pane.popup.shell.foreground, .6)
-                    font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
-                }
-                MouseArea {
-                    id: binArea
-                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                    onClicked: pane.popup.deleteEvent(eventItem.modelData.uid)
-                }
+    width: parent.width; spacing: Style.sectionGap
+    Rectangle {
+        visible: pane.popup.dayItems.length === 0
+        width: parent.width; height: emptyText.implicitHeight + Style.sectionGap * 2
+        radius: pane.popup.shell.rounding
+        color: "transparent"
+        border.width: 1
+        border.color: pane.popup.structureLine
+        Text {
+            id: emptyText
+            anchors.left: parent.left; anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter; anchors.margins: Style.sectionGap
+            wrapMode: Text.Wrap
+            text: pane.popup.selectedDayAgenda.unavailable === true ? "khal is not configured" : "Nothing scheduled. Add something above."
+            color: pane.popup.shell.mutedText
+            font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
+        }
+    }
+    Column {
+        visible: pane.popup.allDayEvents.length > 0
+        width: parent.width; spacing: Style.xxs
+        FieldLabel { bottomPadding: Style.sm; text: "ALL DAY  ·  " + pane.popup.allDayEvents.length }
+        Repeater {
+            model: pane.popup.allDayEvents
+            AgendaRow {
+                required property var modelData
+                required property int index
+                event: modelData
+                itemIndex: index
             }
         }
+    }
+    Column {
+        visible: pane.popup.timedEvents.length > 0
+        width: parent.width; spacing: Style.xxs
+        FieldLabel { bottomPadding: Style.sm; text: "SCHEDULED" }
+        Repeater {
+            model: pane.popup.timedEvents
+            Column {
+                id: timedEntry
+                required property var modelData
+                required property int index
+                width: parent.width; spacing: Style.xxs
+                NowLine { visible: timedEntry.index === pane.popup.nowLineIndex }
+                AgendaRow { event: timedEntry.modelData; itemIndex: pane.popup.allDayEvents.length + timedEntry.index }
+            }
+        }
+        NowLine { visible: pane.popup.nowLineIndex === pane.popup.timedEvents.length }
     }
 }
 
@@ -247,17 +551,17 @@ Column {
         width: parent.width; height: Style.px(22)
         ClockNavButton { popup: pane.popup;
             anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-            glyph: "\u2039"; size: Style.display; onActivated: pane.popup.moveDay(-7)
+            glyph: "‹"; size: Style.display; onActivated: pane.popup.moveDay(-7)
         }
         ClockNavButton { popup: pane.popup;
             anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-            glyph: "\u203a"; size: Style.display; onActivated: pane.popup.moveDay(7)
+            glyph: "›"; size: Style.display; onActivated: pane.popup.moveDay(7)
         }
         Text {
             anchors.centerIn: parent
             visible: pane.popup.selectedWeekDates.indexOf(CalendarMath.isoDay(pane.popup.today)) < 0
             text: "\u{f0954}  this week"
-            color: pane.popup.shell.alpha(pane.popup.shell.foreground, mouse.containsMouse ? .9 : .45)
+            color: mouse.containsMouse ? pane.popup.shell.role("hvr_fg", pane.popup.shell.foreground) : pane.popup.shell.mutedText
             font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption
             MouseArea {
                 id: mouse
@@ -278,29 +582,24 @@ Column {
             readonly property bool isToday: dayCard.modelData === CalendarMath.isoDay(pane.popup.today)
             readonly property bool isSelected: dayCard.modelData === CalendarMath.isoDay(pane.popup.selectedDate)
             readonly property bool isWeekend: CalendarMath.isWeekend(dayCard.modelData)
+            property Item hoveredChip: null
 
             width: parent.width
             height: cardRow.implicitHeight + Style.px(14)
             radius: pane.popup.shell.rounding
-            color: dayCard.isSelected
-                ? pane.popup.shell.alpha(pane.popup.shell.role("act_bg", pane.popup.shell.accent), .3)
-                : dayCard.isToday ? pane.popup.shell.alpha(pane.popup.shell.foreground, .07)
-                : dayCard.isWeekend ? pane.popup.shell.alpha(pane.popup.shell.foreground, .025)
-                : pane.popup.shell.alpha(pane.popup.shell.foreground, .04)
-            border.width: dayCard.isToday && !dayCard.isSelected ? 1 : 0
-            border.color: pane.popup.shell.alpha(pane.popup.shell.foreground, .2)
-
-            Rectangle {
-                visible: dayCard.isToday || dayCard.isSelected
-                anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                width: Style.px(3); height: parent.height - Style.px(10); radius: 1
-                color: pane.popup.shell.role("act_br", pane.popup.shell.accent)
-            }
+            color: cardHover.hovered && !dayCard.hoveredChip ? pane.popup.shell.hoverFill()
+                : dayCard.isSelected ? pane.popup.shell.selectedFill()
+                : pane.popup.shell.alpha(pane.popup.shell.foreground, dayCard.isWeekend ? .025 : .04)
+            Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
+            HoverHandler { id: cardHover }
 
             MouseArea {
                 z: -1
                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                onClicked: pane.popup.selectedDate = dayCard.date
+                onClicked: {
+                    pane.popup.showDay(dayCard.date)
+                    pane.popup.agendaMode = "day"
+                }
             }
 
             Row {
@@ -320,7 +619,7 @@ Column {
                     }
                     Text {
                         text: dayCard.date.getDate() + " · " + Qt.formatDate(dayCard.date, "MMM")
-                        color: pane.popup.shell.foreground
+                        color: dayCard.isToday ? pane.popup.shell.accent : pane.popup.shell.foreground
                         font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.body
                         font.bold: dayCard.isToday || dayCard.isSelected
                     }
@@ -354,18 +653,21 @@ Column {
                             readonly property color tint: pane.popup.eventChipColor(chip.modelData)
                             width: chipColumn.width; height: Style.px(22)
                             radius: pane.popup.shell.rounding
-                            color: pane.popup.shell.alpha(chip.tint, .13)
-                            border.width: 1
-                            border.color: pane.popup.shell.alpha(chip.tint, .24)
+                            color: chipHover.hovered ? pane.popup.shell.hoverFill() : "transparent"
+                            Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
+                            HoverHandler {
+                                id: chipHover
+                                onHoveredChanged: {
+                                    if (hovered) dayCard.hoveredChip = chip
+                                    else if (dayCard.hoveredChip === chip) dayCard.hoveredChip = null
+                                }
+                            }
                             Row {
                                 anchors.fill: parent
                                 anchors.leftMargin: Style.controlPaddingX
                                 anchors.rightMargin: Style.controlPaddingX
                                 spacing: Style.xs
-                                Rectangle {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: 2; height: Style.px(12); radius: 1; color: chip.tint
-                                }
+                                Dot { anchors.verticalCenter: parent.verticalCenter; color: chip.tint }
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
                                     width: Style.px(38)
@@ -375,7 +677,7 @@ Column {
                                 }
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
-                                    width: parent.width - Style.px(38) - 2 - Style.xs * 2
+                                    width: parent.width - Style.px(38) - Style.md - Style.xs * 2
                                     text: chip.modelData.title; elide: Text.ElideRight
                                     color: pane.popup.shell.foreground
                                     font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
@@ -424,7 +726,7 @@ Loader {
             radius: pane.popup.shell.rounding
             color: "transparent"
             border.width: 1
-            border.color: pane.popup.shell.alpha(pane.popup.shell.foreground, .2)
+            border.color: pane.popup.structureLine
             focus: true
             Keys.onEscapePressed: pane.popup.closeEventDetails()
 
@@ -451,7 +753,7 @@ Loader {
                     }
                     Text {
                         text: String(pane.popup.eventDetails.calendar || "") + "  ·  read-only"
-                        color: pane.popup.shell.alpha(pane.popup.shell.foreground, .45)
+                        color: pane.popup.shell.mutedText
                         font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption
                     }
                 }
@@ -490,7 +792,7 @@ Loader {
                     visible: text !== ""
                     width: parent.width; wrapMode: Text.Wrap
                     text: String(pane.popup.eventDetails.description || "")
-                    color: pane.popup.shell.alpha(pane.popup.shell.foreground, .75)
+                    color: pane.popup.secondaryText
                     font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
                 }
             }
@@ -511,82 +813,120 @@ Loader {
     active: pane.popup.eventEditorOpen
     visible: active
     sourceComponent: Component {
-        Rectangle {
+        Column {
+            id: form
             width: parent ? parent.width : 0
-            implicitHeight: Math.max(formColumn.implicitHeight + Style.controlPaddingX * 2,
-                pane.calendarHeight - agendaTitle.implicitHeight - agendaContent.spacing)
-            radius: pane.popup.shell.rounding
-            color: "transparent"
-            border.width: 1
-            border.color: pane.popup.shell.alpha(pane.popup.shell.foreground, .2)
+            spacing: Style.lg
+            Keys.onEscapePressed: pane.popup.closeEventPanels()
 
-            Column {
-                id: formColumn
-                anchors.left: parent.left; anchors.right: parent.right
-                anchors.top: parent.top; anchors.margins: Style.controlPaddingX
-                spacing: Style.sm
-
-                FormField {
-                    id: titleField
-                    width: parent.width; text: pane.popup.draftValues.title || ""
-                    placeholderText: "What is happening"
-                    Keys.onReturnPressed: startField.forceActiveFocus()
-                    Keys.onEnterPressed: startField.forceActiveFocus()
+            Item {
+                width: parent.width; height: Math.max(formTitle.implicitHeight, formButtons.height)
+                FieldLabel {
+                    id: formTitle
+                    anchors.left: parent.left; anchors.right: formButtons.left
+                    anchors.rightMargin: Style.lg; anchors.verticalCenter: parent.verticalCenter
+                    text: pane.popup.editedEventUid !== "" ? "EDIT EVENT" : "NEW EVENT"
+                    elide: Text.ElideRight
                 }
-
-                Item { width: 1; height: Style.xs }
-
-                Item {
-                    width: parent.width; height: Math.max(allDayLabel.implicitHeight, allDaySwitch.height)
-                    FieldLabel { id: allDayLabel; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: "ALL DAY" }
-                    ToggleSwitch { id: allDaySwitch; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; shell: pane.popup.shell; checked: pane.popup.draftAllDay; onToggled: pane.popup.draftAllDay = !pane.popup.draftAllDay }
-                }
-
-                Item { width: 1; height: Style.xs }
-
                 Row {
-                    width: parent.width; spacing: Style.lg
-                    Column { id: startFields; width: pane.popup.choiceColumn - Style.controlPaddingX * 2; spacing: Style.sm
-                        opacity: pane.popup.draftAllDay ? .35 : 1
-                        Behavior on opacity { NumberAnimation { duration: 120 } }
-                        FieldLabel { text: "START" }
-                        FormField {
-                            id: startField; width: parent.width; enabled: !pane.popup.draftAllDay
-                            text: pane.popup.draftValues.start || ""; placeholderText: "09:00"; inputMask: "99:99"
-                            Keys.onReturnPressed: endField.forceActiveFocus(); Keys.onEnterPressed: endField.forceActiveFocus()
-                        }
-                    }
-                    Item { width: Style.xl; height: startFields.implicitHeight; opacity: startFields.opacity
-                        Text { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: Style.px(24)
-                            text: "→"; color: pane.popup.shell.alpha(pane.popup.shell.foreground, .35)
-                            font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
-                            horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
-                        }
-                    }
-                    Column { id: endFields; width: startFields.width; spacing: Style.sm; opacity: startFields.opacity
-                        FieldLabel { text: "END" }
-                        FormField {
-                            id: endField; width: parent.width; enabled: !pane.popup.draftAllDay
-                            text: pane.popup.draftValues.end || ""; placeholderText: "optional"; inputMask: "99:99"
-                            Keys.onReturnPressed: endDayField.forceActiveFocus(); Keys.onEnterPressed: endDayField.forceActiveFocus()
-                        }
-                    }
-                    Item { width: parent.width - startFields.width * 2 - untilFields.width - Style.xl - parent.spacing * 4; height: 1 }
-                    Column { id: untilFields; width: pane.popup.choiceColumn + Style.controlPaddingX * 2; spacing: Style.sm
-                        FieldLabel { text: "UNTIL" }
-                        FormField {
-                            id: endDayField; width: parent.width
-                            text: pane.popup.draftValues.endDay || ""; placeholderText: CalendarMath.isoDay(pane.popup.selectedDate); inputMask: "9999-99-99"
-                            Keys.onReturnPressed: locationField.forceActiveFocus(); Keys.onEnterPressed: locationField.forceActiveFocus()
-                        }
-                    }
+                    id: formButtons
+                    anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                    spacing: Style.md
+                    FormButton { text: "Cancel"; onActivated: pane.popup.closeEventPanels() }
+                    FormButton { text: pane.popup.editedEventUid !== "" ? "Save" : "Create"; primary: true; onActivated: pane.popup.saveRequested() }
                 }
+            }
+            Text {
+                visible: text !== ""
+                width: parent.width; wrapMode: Text.Wrap
+                text: pane.popup.eventEditorError
+                color: pane.popup.shell.role("error", pane.popup.shell.foreground)
+                font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption
+            }
 
-                Item { width: 1; height: Style.xs }
+            FormField {
+                id: titleField
+                width: parent.width
+                placeholderText: "Add title"
+                Keys.onReturnPressed: pane.popup.saveRequested()
+                Keys.onEnterPressed: pane.popup.saveRequested()
+            }
 
+            FieldRow {
+                id: startsRow
+                label: "STARTS"
+                ClockDatePicker {
+                    shell: pane.popup.shell; weekStart: pane.popup.weekStart
+                    width: pane.popup.draft.allDay ? startsRow.slotWidth : startsRow.halfSlot
+                    value: pane.popup.draft.startDate || ""
+                    onPicked: day => pane.popup.setDraftStartDate(day)
+                }
+                PopupSelect {
+                    visible: !pane.popup.draft.allDay
+                    width: startsRow.halfSlot
+                    shell: pane.popup.shell
+                    choices: pane.popup.startTimeChoices
+                    selectedIndex: Math.max(0, choices.findIndex(choice => choice.value === pane.popup.draft.startTime))
+                    onActivated: index => pane.popup.setDraftStartTime(choices[index].value)
+                }
+            }
+            FieldRow {
+                id: endsRow
+                label: "ENDS"
+                ClockDatePicker {
+                    shell: pane.popup.shell; weekStart: pane.popup.weekStart
+                    width: pane.popup.draft.allDay ? endsRow.slotWidth : endsRow.halfSlot
+                    value: pane.popup.draft.endDate || ""
+                    onPicked: day => pane.popup.setDraftEndDate(day)
+                }
+                PopupSelect {
+                    visible: !pane.popup.draft.allDay
+                    width: endsRow.halfSlot
+                    shell: pane.popup.shell
+                    choices: pane.popup.endTimeChoices
+                    selectedIndex: Math.max(0, choices.findIndex(choice => choice.value === pane.popup.draft.endTime))
+                    onActivated: index => pane.popup.updateDraft({ endTime: choices[index].value })
+                }
+            }
+            FieldRow {
+                label: "ALL DAY"
+                ToggleSwitch {
+                    anchors.verticalCenter: parent.verticalCenter
+                    shell: pane.popup.shell
+                    checked: pane.popup.draft.allDay === true
+                    onToggled: pane.popup.updateDraft({ allDay: !pane.popup.draft.allDay })
+                }
+            }
+            FieldRow {
+                id: repeatRow
+                label: "REPEAT"
+                PopupSelect {
+                    width: repeatRow.slotWidth
+                    shell: pane.popup.shell
+                    choices: pane.popup.repeatChoices
+                    selectedIndex: Math.max(0, choices.findIndex(choice => choice.value === (pane.popup.draft.repeat || "")))
+                    onActivated: index => pane.popup.updateDraft({ repeat: choices[index].value })
+                }
+            }
+            FieldRow {
+                id: alertRow
+                label: "ALERT"
+                PopupSelect {
+                    width: alertRow.slotWidth
+                    shell: pane.popup.shell
+                    choices: pane.popup.draftAlarmChoices
+                    selectedIndex: Math.max(0, choices.findIndex(choice => choice.value === pane.popup.effectiveAlarm))
+                    onActivated: index => pane.popup.updateDraft({ alarm: choices[index].value })
+                }
+            }
+
+            FieldRow {
+                id: locationRow
+                z: 1
+                label: "LOCATION"
                 FormField {
-                    id: locationField; width: parent.width; z: 10
-                    text: pane.popup.draftValues.location || ""; placeholderText: "Location (optional)"
+                    id: locationField; width: locationRow.slotWidth
+                    placeholderText: "Search a place or type an address"
 
                     readonly property bool listOpen: activeFocus && !pane.popup.locationSuggestionsDismissed
                         && pane.popup.locationSuggestions.length > 0
@@ -655,7 +995,7 @@ Loader {
                         radius: pane.popup.shell.rounding
                         color: pane.popup.shell.role("bg", pane.popup.shell.background)
                         border.width: 1
-                        border.color: pane.popup.shell.alpha(pane.popup.shell.foreground, .25)
+                        border.color: pane.popup.structureLine
                         Column {
                             id: suggestionColumn
                             y: 1; width: parent.width
@@ -666,10 +1006,8 @@ Loader {
                                     required property var modelData
                                     required property int index
                                     width: suggestionColumn.width; height: Style.px(20)
-                                    color: suggestionRow.index === pane.popup.locationSelectionIndex
-                                        ? pane.popup.shell.alpha(pane.popup.shell.role("act_bg", pane.popup.shell.accent), .35)
-                                        : hoverArea.containsMouse
-                                        ? pane.popup.shell.alpha(pane.popup.shell.foreground, .08) : "transparent"
+                                    color: hoverArea.containsMouse ? pane.popup.shell.hoverFill()
+                                        : suggestionRow.index === pane.popup.locationSelectionIndex ? pane.popup.shell.selectedFill() : "transparent"
                                     Text {
                                         anchors.fill: parent
                                         anchors.leftMargin: Style.controlPaddingX
@@ -691,130 +1029,65 @@ Loader {
                     }
                 }
 
+            }
+
+            FieldRow {
+                id: notesRow
+                label: "NOTES"
                 FormArea {
-                    id: descriptionField; width: parent.width; lines: 2
-                    text: pane.popup.draftValues.description || ""; placeholderText: "Description (optional)"
+                    id: descriptionField; width: notesRow.slotWidth; lines: 2
                 }
+            }
 
-                Item { width: 1; height: Style.xs }
-
-                Row {
-                    id: calendarRow
+            FieldRow {
+                id: calendarRow
+                label: "CALENDAR"
+                PopupSelect {
                     visible: pane.popup.writableCalendars.length > 1
-                    width: parent.width; height: Style.px(22); spacing: Style.sm
-                    FieldLabel {
-                        id: calendarLabel
-                        width: pane.popup.choiceColumn - Style.controlPaddingX * 2
-                        height: parent.height; text: "CALENDAR"
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    Repeater {
-                        model: pane.popup.writableCalendars
-                        Chip {
-                            required property var modelData
-                            width: (calendarRow.width - calendarLabel.width
-                                - calendarRow.spacing * pane.popup.writableCalendars.length)
-                                / pane.popup.writableCalendars.length
-                            text: String(modelData)
-                            selected: pane.popup.draftCalendar === String(modelData)
-                            onPicked: pane.popup.draftCalendar = String(modelData)
-                        }
-                    }
+                    width: calendarRow.slotWidth
+                    shell: pane.popup.shell
+                    choices: pane.popup.writableCalendars.map(name => ({ label: name, value: name }))
+                    selectedIndex: Math.max(0, pane.popup.writableCalendars.indexOf(pane.popup.draft.calendar))
+                    onActivated: index => pane.popup.updateDraft({ calendar: choices[index].value })
                 }
                 Row {
-                    id: alarmRow
-                    width: parent.width; height: Style.px(22); spacing: Style.sm
-                    FieldLabel { id: alertLabel; width: pane.popup.choiceColumn - Style.controlPaddingX * 2; height: parent.height; text: "ALERT"; verticalAlignment: Text.AlignVCenter }
-                    Repeater {
-                        model: pane.popup.alarmChoices
-                        Chip {
-                            required property var modelData
-                            width: (alarmRow.width - alertLabel.width - alarmRow.spacing * pane.popup.alarmChoices.length) / pane.popup.alarmChoices.length
-                            text: modelData.label; selected: pane.popup.draftAlarm === modelData.value
-                            onPicked: pane.popup.draftAlarm = modelData.value
-                        }
-                    }
-                }
-                Row {
-                    id: repeatRow
-                    width: parent.width; height: Style.px(22); spacing: Style.sm
-                    FieldLabel { id: repeatLabel; width: alertLabel.width; height: parent.height; text: "REPEAT"; verticalAlignment: Text.AlignVCenter }
-                    Repeater {
-                        model: pane.popup.repeatChoices
-                        Chip {
-                            required property var modelData
-                            width: (repeatRow.width - repeatLabel.width - repeatRow.spacing * pane.popup.repeatChoices.length) / pane.popup.repeatChoices.length
-                            text: modelData.label; selected: pane.popup.draftRepeat === modelData.value
-                            onPicked: pane.popup.draftRepeat = modelData.value
-                        }
-                    }
-                }
-
-                Item { width: 1; height: Style.xs }
-
-                Item {
-                    width: parent.width; height: Math.max(Style.px(24), eventError.visible ? eventError.implicitHeight : 0)
-                    PopupHint {
-                        id: eventError
-                        shell: pane.popup.shell; error: true
-                        anchors.left: parent.left; anchors.right: formButtons.left; anchors.rightMargin: Style.sm
+                    visible: pane.popup.writableCalendars.length <= 1
+                    height: Style.controlHeight; spacing: Style.md
+                    Dot {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: pane.popup.eventEditorError
+                        color: pane.popup.calendarColor(String(pane.popup.draft.calendar || ""), pane.popup.shell.role("act_br", pane.popup.shell.accent))
                     }
-                    Row {
-                        id: formButtons; anchors.right: parent.right; spacing: Style.lg
-                        FormButton { width: pane.popup.choiceColumn; text: "Cancel"; onActivated: pane.popup.closeEventPanels() }
-                        FormButton {
-                            width: pane.popup.choiceColumn; text: pane.popup.editedEventUid !== "" ? "Save" : "Add"; primary: true
-                            onActivated: pane.popup.saveRequested()
-                        }
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: String(pane.popup.draft.calendar || "")
+                        color: pane.popup.shell.foreground
+                        font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
                     }
                 }
+            }
 
-                Text {
-                    width: parent.width
-                    text: "↑↓/Tab Suggestions  Ctrl+Enter Save  Esc Cancel"
-                    color: pane.popup.shell.alpha(pane.popup.shell.foreground, .3)
-                    font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption
-                    horizontalAlignment: Text.AlignHCenter
-                }
+            Text {
+                width: parent.width
+                textFormat: Text.StyledText
+                text: Commons.Util.keyHintMarkup("↑↓/Tab Suggestions  Ctrl+Enter Save  Esc Cancel", pane.popup.shell.alpha(pane.popup.shell.foreground, .3))
+                color: pane.popup.shell.accent
+                font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.caption
+                horizontalAlignment: Text.AlignHCenter
             }
 
             Connections {
                 target: pane.popup
-                function onSaveRequested() {
-                    pane.popup.validateAndSaveEvent({
-                        title: titleField.text, start: startField.text,
-                        end: endField.text, endDay: endDayField.text,
-                        location: locationField.text, description: descriptionField.text
-                    })
-                }
+                function onSaveRequested() { pane.popup.saveDraft(titleField.text, locationField.text, descriptionField.text) }
             }
-            Component.onCompleted: titleField.forceActiveFocus()
+            Component.onCompleted: {
+                titleField.text = pane.popup.draft.title || ""
+                locationField.text = pane.popup.draft.location || ""
+                descriptionField.text = pane.popup.draft.description || ""
+                titleField.forceActiveFocus()
+            }
         }
     }
 }
 
-Rectangle {
-    width: parent.width; height: Style.px(26)
-    visible: pane.popup.agendaMode === "day" && !pane.popup.eventPanelOpen
-    radius: pane.popup.shell.rounding
-    color: addArea.containsMouse ? pane.popup.shell.alpha(pane.popup.shell.foreground, .1) : "transparent"
-    border.width: addArea.containsMouse ? 1 : 0
-    border.color: pane.popup.shell.alpha(pane.popup.shell.foreground, .25)
-    Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
-    Text {
-        anchors.centerIn: parent
-        text: "\u{f0415}  Add event"
-        color: pane.popup.shell.alpha(pane.popup.shell.foreground, addArea.containsMouse ? .9 : .45)
-        font.family: pane.popup.shell.fontFamily; font.pixelSize: Style.bodySmall
-    }
-    MouseArea {
-        id: addArea
-        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-        onClicked: pane.popup.openNewEventEditor()
     }
 }
-    }
-
-    }

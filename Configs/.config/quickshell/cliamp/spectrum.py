@@ -10,6 +10,9 @@ import time
 
 import numpy as np
 
+sys.path.insert(0, os.path.expanduser("~/.local/lib/hypr"))
+from pyutils import child_process
+
 RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR")
 RUN_DIR = os.path.join(RUNTIME_DIR, "cliamp") if RUNTIME_DIR and os.path.isdir(RUNTIME_DIR) else os.path.expanduser("~/.cache/cliamp/run")
 OUT_FILE = os.path.join(RUN_DIR, "spectrum.json")
@@ -153,7 +156,7 @@ def read_target():
 
 def select_sink_input(selectors):
     try:
-        result = subprocess.run(["pactl", "--format=json", "list", "sink-inputs"], capture_output=True, text=True, timeout=1, check=True)
+        result = child_process.run(["pactl", "--format=json", "list", "sink-inputs"], capture_output=True, text=True, timeout=1, check=True)
         inputs = json.loads(result.stdout)
     except (OSError, subprocess.SubprocessError, json.JSONDecodeError, KeyError, ValueError):
         return None, ""
@@ -225,12 +228,7 @@ def write_frame(frame):
 
 def stop_process(process):
     if process and process.poll() is None:
-        process.terminate()
-        try:
-            process.wait(timeout=0.5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait()
+        child_process.stop(process)
 
 def run():
     process = history = None

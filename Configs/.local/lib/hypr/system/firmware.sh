@@ -11,7 +11,7 @@ Refresh and apply firmware updates via fwupdmgr." "$@"
 echo -e "\e[32mUpdate Firmware\e[0m"
 
 if ! command -v fwupdmgr >/dev/null 2>&1; then
-  hyprshell pm add fwupd
+  hyprshell package-manager add fwupd
 fi
 
 fwupdmgr refresh

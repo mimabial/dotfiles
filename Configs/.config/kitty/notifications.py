@@ -5,8 +5,14 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path.home() / ".local/lib/hypr"))
+from pyutils import child_process
 
 
+DUNSTIFY_DEADLINE_SECONDS = 2
 DEFAULT_TIMEOUT_MS = 4000
 LONGEST_PLAUSIBLE_TIMEOUT_MS = 30000
 DEFAULT_URGENCY = "normal"
@@ -144,14 +150,13 @@ def main(cmd: object) -> bool:
         command.append(body)
 
     try:
-        subprocess.run(
+        result = child_process.run(
             command,
-            check=False,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            timeout=2,
+            timeout=DUNSTIFY_DEADLINE_SECONDS,
         )
-    except Exception:
+    except (OSError, subprocess.TimeoutExpired):
         return False
 
-    return True
+    return result.returncode == 0

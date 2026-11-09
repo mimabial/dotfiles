@@ -377,9 +377,9 @@ Item {
     Text {
       width: parent.width
       height: Commons.Style.space(34)
-      text: "Enter Open  ↑↓ Select  Ctrl+Tab / Esc Back"
-      color: Commons.Color.menu.text
-      opacity: Commons.Style.mutedTextAlpha
+      textFormat: Text.StyledText
+      text: Commons.Util.keyHintMarkup("Enter Open  ↑↓ Select  Ctrl+Tab/Esc Back", Commons.Util.scaleAlpha(Commons.Color.menu.text, Commons.Style.mutedTextAlpha))
+      color: Commons.Color.accent
       font.family: Commons.Style.font.menuFamily
       font.pixelSize: Commons.Style.font.caption
       horizontalAlignment: Text.AlignHCenter

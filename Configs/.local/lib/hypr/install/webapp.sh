@@ -45,8 +45,7 @@ build_webapp_launcher_argv() {
     launcher_argv_ref=(hyprshell launch/webapp.sh "${app_url}")
     return 0
   fi
-  desktop_entry_exec_tokenize_spec "${custom_exec}" || return 1
-  launcher_argv_ref=("${DESKTOP_ENTRY_ARGV[@]}")
+  desktop_entry_exec_tokenize_spec_into launcher_argv_ref "${custom_exec}" || return 1
 }
 
 if [[ "$#" -lt 3 ]]; then

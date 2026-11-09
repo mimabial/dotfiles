@@ -74,7 +74,7 @@ Column {
 
   Timer {
     id: copiedTimer
-    interval: 1400
+    interval: Commons.Style.confirmationShownMs
     onTriggered: root.copiedValue = ""
   }
 
@@ -125,7 +125,7 @@ Column {
       upColor: root.s2
       downColor: root.s1
       minimumCeiling: Model.NETWORK_SCALE_FLOOR
-      midlineColor: Commons.Util.alpha(root.foreground, 0.18)
+      midlineColor: Commons.Util.scaleAlpha(root.foreground, 0.18)
     }
 
     Legend {

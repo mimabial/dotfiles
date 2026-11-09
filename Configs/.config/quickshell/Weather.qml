@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "CalendarMath.js" as CalendarMath
+import "Units.js" as Units
 
 Singleton {
     id: root
@@ -17,7 +18,7 @@ Singleton {
         for (const day of data.weather ?? [])
             for (const hour of day.hourly ?? []) {
                 const start = Date.parse(hour.time)
-                if (start + CalendarMath.MS_PER_HOUR > now && start < now + rainLookaheadHours * CalendarMath.MS_PER_HOUR && Number(hour.chanceofrain) >= likelyRainChance)
+                if (start + Units.MS_PER_HOUR > now && start < now + rainLookaheadHours * Units.MS_PER_HOUR && Number(hour.chanceofrain) >= likelyRainChance)
                     return hour
             }
         return null
@@ -71,12 +72,12 @@ Singleton {
     }
     Process {
         id: forecastProcess
-        command: ["hyprshell", "weather", "--alt"]
+        command: ["hyprshell", "weather-status", "--alt"]
         stdout: SplitParser { onRead: line => {
             try { root.output = JSON.parse(line) }
             catch (error) { console.warn("weather: " + error) }
         } }
         onExited: cache.reload()
     }
-    Timer { interval: 10 * CalendarMath.MS_PER_MINUTE; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
+    Timer { interval: 10 * Units.MS_PER_MINUTE; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
 }

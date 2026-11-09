@@ -56,7 +56,7 @@ def _save_state(state: dict) -> None:
     os.replace(tmp, STATE_PATH)
 
 
-def split_mode_fields(output: dict) -> None:
+def split_mode_fields(output: profiles.Output) -> None:
     mode = str(output.get("mode", ""))
     body = mode[:-2] if mode.endswith("Hz") else mode
     geometry, _, refresh = body.partition("@")
@@ -69,7 +69,7 @@ def split_mode_fields(output: dict) -> None:
         pass
 
 
-def logical_size(output: dict) -> tuple[int, int]:
+def logical_size(output: profiles.Output) -> tuple[int, int]:
     """Layout positions are in scaled pixels, and a quarter turn swaps the axes."""
     scale = float(output.get("scale") or 1)
     width, height = (max(1, round(output.get(side, 1) / scale)) for side in ("width", "height"))
@@ -86,17 +86,17 @@ def sharp_scales(width: int, height: int) -> list[float]:
     ]
 
 
-def placed(profile: dict) -> list[dict]:
+def placed(profile: profiles.Profile) -> list[profiles.Output]:
     """Outputs that take their own spot in the layout; a mirror shares its source's."""
     return [o for o in profile.get("outputs", []) if o.get("enabled", True) and not o.get("mirror_of")]
 
 
-def centre(output: dict) -> tuple[float, float]:
+def centre(output: profiles.Output) -> tuple[float, float]:
     width, height = logical_size(output)
     return output.get("x", 0) + width / 2, output.get("y", 0) + height / 2
 
 
-def snap(profile: dict, key: str, distance: float) -> None:
+def snap(profile: profiles.Profile, key: str, distance: float) -> None:
     if distance <= 0:
         return
     target = next((o for o in profile.get("outputs", []) if o.get("key") == key), None)
@@ -123,7 +123,7 @@ def snap(profile: dict, key: str, distance: float) -> None:
                 target[axis] = int(value)
 
 
-def snap_beside(profile: dict, key: str, direction: str) -> None:
+def snap_beside(profile: profiles.Profile, key: str, direction: str) -> None:
     outputs = placed(profile)
     target = next((o for o in outputs if o.get("key") == key), None)
     anchors = [o for o in outputs if o is not target]
@@ -144,11 +144,11 @@ def place_beside(target: dict, anchor: dict, direction: str) -> None:
     }[direction]
 
 
-def right_edge(output: dict) -> int:
+def right_edge(output: profiles.Output) -> int:
     return output.get("x", 0) + logical_size(output)[0]
 
 
-def extend_with_unknown_outputs(profile: dict, monitors: list[dict]) -> None:
+def extend_with_unknown_outputs(profile: profiles.Profile, monitors: list[hypr.HyprMonitor]) -> None:
     connected = {hypr.monitor_key(m) for m in monitors}
     known = {profiles.match_key(o) for o in profile["outputs"]}
     for monitor in monitors:
@@ -163,7 +163,7 @@ def extend_with_unknown_outputs(profile: dict, monitors: list[dict]) -> None:
         profile["outputs"].append(output)
 
 
-def clamshell(profile: dict, monitors: list[dict]) -> None:
+def clamshell(profile: profiles.Profile, monitors: list[hypr.HyprMonitor]) -> None:
     lit = {hypr.monitor_key(m) for m in monitors if not m.get("disabled") and m.get("width")}
     outputs = profile["outputs"]
     if any(o.get("enabled", True) and not hypr.is_internal(o) and profiles.match_key(o) in lit for o in outputs):
@@ -172,12 +172,12 @@ def clamshell(profile: dict, monitors: list[dict]) -> None:
                 output["enabled"] = False
 
 
-def lights_a_connected_display(profile: dict, monitors: list[dict]) -> bool:
+def lights_a_connected_display(profile: profiles.Profile, monitors: list[hypr.HyprMonitor]) -> bool:
     connected = {hypr.monitor_key(m) for m in monitors}
     return any(o.get("enabled", True) and profiles.match_key(o) in connected for o in profile["outputs"])
 
 
-def edit_profile(profile: dict, edit: dict) -> dict:
+def edit_profile(profile: profiles.Profile, edit: dict) -> profiles.Profile:
     draft = json.loads(json.dumps(profile or {}))
     draft.setdefault("outputs", [])
     edit = edit or {}
@@ -273,7 +273,7 @@ class Daemon:
             }
         return document
 
-    def monitor_entry(self, monitor: dict) -> dict:
+    def monitor_entry(self, monitor: hypr.HyprMonitor) -> dict:
         scale = monitor.get("scale", 1) or 1
         entry = {
             "name": monitor.get("name", ""),
@@ -301,7 +301,7 @@ class Daemon:
             entry["mirror_of"] = source.get("name", "")
         return entry
 
-    def display_entry(self, monitor: dict) -> dict:
+    def display_entry(self, monitor: hypr.HyprMonitor) -> dict:
         return {
             "key": hypr.monitor_key(monitor),
             "name": monitor.get("name", ""),
@@ -355,14 +355,14 @@ class Daemon:
                 except OSError:
                     self.clients.remove(client)
 
-    def effective(self, profile: dict) -> dict:
+    def effective(self, profile: profiles.Profile) -> profiles.Profile:
         draft = json.loads(json.dumps(profile))
         extend_with_unknown_outputs(draft, self.monitors)
         if hypr.lid_closed():
             clamshell(draft, self.monitors)
         return draft
 
-    def activate(self, profile: dict, remember: bool = True) -> None:
+    def activate(self, profile: profiles.Profile, remember: bool = True) -> None:
         if self.unmanaged:
             raise ValueError("Monitor management is off; run hyprmoncfg manage first")
         effective = self.effective(profile)
@@ -377,7 +377,7 @@ class Daemon:
                 applied_workspaces=profile.get("workspaces", {}),
             )
 
-    def available_monitors(self) -> list[dict]:
+    def available_monitors(self) -> list[hypr.HyprMonitor]:
         """A closed lid takes the internal panel out of the running, unless it is
         the only display left -- switching then would leave nothing on screen."""
         if not hypr.lid_closed():

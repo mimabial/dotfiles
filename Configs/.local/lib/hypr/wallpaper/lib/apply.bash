@@ -87,9 +87,6 @@ wallpaper_run_color_refresh() {
     wallpaper_run_low_priority "${hypr_theme_cmd}" wallpaper --variant "${variant}" "${wallpaper_path}" &>/dev/null || return
   [[ "$(realpath -e -- "${current_wallpaper_link}" 2>/dev/null)" == "$(realpath -e -- "${wallpaper_path}")" ]] || return 0
 
-  if declare -F state_set >/dev/null 2>&1; then
-    state_set "BACKGROUND_MODE" "${variant}" "staterc" || true
-  fi
   if declare -F state_set_color_variant >/dev/null 2>&1; then
     state_set_color_variant "${variant}" || true
   fi
@@ -151,11 +148,11 @@ wallpaper_apply_selected() {
 }
 
 wallpaper_apply_file() {
-  wallpaper_catalog_load_file "$1" || exit 1
+  wallpaper_catalog_load_file "$1" || return 1
   wallpaper_apply_selected "${wallpaper_paths[0]}"
 }
 
-wallpaper_select_adjacent() {
+wallpaper_apply_adjacent() {
   local direction="$1"
   local current_wallpaper="" index=""
 
@@ -195,7 +192,7 @@ wallpaper_current_or_first_into() {
   local missing_message="$2"
   local current_wallpaper="" index=""
 
-  wallpaper_ensure_catalog
+  wallpaper_ensure_catalog || return 1
   current_wallpaper="$(wallpaper_resolve_path "${active_wallpaper_link}")"
 
   if ! index="$(catalog_index_of wallpaper_paths "${current_wallpaper}")"; then

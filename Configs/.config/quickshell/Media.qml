@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
 import "MediaModel.js" as MediaModel
+import "Units.js" as Units
 
 Singleton {
     id: root
@@ -68,8 +69,9 @@ Singleton {
     }
     function chooseActivePlayer() {
         const preferred = preferredPlayer()
-        return preferred || firstMatching(true, false) || firstMatching(true, true)
-            || firstMatching(false, false) || firstMatching(false, true) || null
+        const playingPreferred = preferred?.isPlaying ? preferred : null
+        return playingPreferred || firstMatching(true, false) || firstMatching(true, true)
+            || preferred || firstMatching(false, false) || firstMatching(false, true) || null
     }
 
     function select(player) {
@@ -145,6 +147,6 @@ Singleton {
         onLoaded: { try { root.selectedPlayer = String(JSON.parse(selection.text()).player || "") } catch (error) { root.selectedPlayer = "" } }
         onFileChanged: selection.reload()
     }
-    Timer { id: positionTick; interval: 1000; repeat: true; running: root.player && root.player.isPlaying; onTriggered: ++root.tick }
+    Timer { id: positionTick; interval: Units.MS_PER_SECOND; repeat: true; running: root.player && root.player.isPlaying; onTriggered: ++root.tick }
 
 }

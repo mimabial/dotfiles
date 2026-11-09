@@ -24,7 +24,7 @@ PopupWindow {
 
   BorderSurface {
     id: surface
-    color: Commons.Util.alpha(Commons.Style.popupTinted(Commons.Color.tooltip.background), Commons.Style.popupSurfaceOpacity)
+    color: Commons.Util.scaleAlpha(Commons.Style.popupTinted(Commons.Color.tooltip.background), Commons.Style.popupSurfaceOpacity)
     borderSpec: Commons.Border.none()
     radius: Commons.Style.cornerRadius
     padding: Commons.Style.space(4)

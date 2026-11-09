@@ -40,26 +40,26 @@ updates_format_errors() {
 
 updates_escape_pango() { sed 's/&/\&amp;/g;s/</\&lt;/g;s/>/\&gt;/g'; }
 
-updates_append_tooltip_section() {
-  local header="$1"
+updates_append_tooltip_section_into() {
+  local -n tooltip_ref="$1"
+  local header="$2"
   local body
-  body="$(updates_escape_pango <<<"$2")"
+  body="$(updates_escape_pango <<<"$3")"
   [[ -n "$body" ]] || return 0
-  [[ -n "$content" ]] && content+=$'\n'
-  content+="<b>${header}:</b>"$'\n'"${body}"
+  [[ -n "$tooltip_ref" ]] && tooltip_ref+=$'\n'
+  tooltip_ref+="<b>${header}:</b>"$'\n'"${body}"
 }
 
 updates_build_tooltip() {
   local aur_label="${update_aur_helper^^}"
-  local title=""
-  content=""
+  local title="" content=""
   aur_label="${aur_label:-NONE}"
   title="<b>${total_update_count} Updates</b>"$'\n'"  ${repo_update_count} Official (Pacman)"$'\n'"  ${aur_update_count} AUR (${aur_label})"$'\n'"  ${flatpak_update_count} Universal (Flatpak)"
 
-  updates_append_tooltip_section "PACMAN" "$(updates_format_package_lines "$repo_update_lines")"
-  updates_append_tooltip_section "AUR" "$(updates_format_package_lines "$aur_update_lines")"
-  updates_append_tooltip_section "FLATPAK" "${flatpak_updates-}"
-  updates_append_tooltip_section "CHECK ERRORS" "$(updates_format_errors)"
+  updates_append_tooltip_section_into content "PACMAN" "$(updates_format_package_lines "$repo_update_lines")"
+  updates_append_tooltip_section_into content "AUR" "$(updates_format_package_lines "$aur_update_lines")"
+  updates_append_tooltip_section_into content "FLATPAK" "${flatpak_updates-}"
+  updates_append_tooltip_section_into content "CHECK ERRORS" "$(updates_format_errors)"
 
   printf '%s' "${title}"
   [[ -n "$content" ]] && printf '\n\n%s' "$content"

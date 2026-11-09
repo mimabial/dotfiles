@@ -113,9 +113,10 @@ edge, so edits to its modules affect both bars.
 An extending layout can prepend modules to a section with `leftPrepend`,
 `centerPrepend`, or `rightPrepend`.
 `horizontal` and `winbar` accept top/bottom edges and `left`, `center`, and `right` arrays. An
-entry may be a module id or `{"id":"audio","props":{"reverse":false}}`;
+entry may be a module id or `{"id":"volume","props":{"reverse":false}}`;
 custom entries can use `{"id":"name","source":"modules/Name.qml"}` or
-`{"id":"name","exec":["command","arg"]}`. A source component receives `shell`
+`{"id":"name","exec":["command","arg"]}`, which runs once unless it sets `"interval"` in
+milliseconds. A source component receives `shell`
 as an initial property; command output uses `ScriptButton`'s JSON format.
 `"spacer"` stretches a `left` or `right` section to the center. A horizontal layout may set
 `centerAnchor` to pin one center module to the exact screen center; entries
@@ -145,7 +146,7 @@ Validate with `jq empty layouts/<name>.json`, then run
 `"icon"` (a playback-state glyph), `"mpris"` (cover art, metadata, and optional
 transport controls), and `"cava"` (an audio spectrum with an optional playback glyph).
 Cava uses the default audio input monitor and shares one process per bars/FPS/smoothing configuration across displays;
-it runs only while its appearance is visible and media is playing. `noIcon: true`
+it runs only while its appearance is visible and media is playing. `showIcon: false`
 hides its playback glyph. Its `props` include `cavaBars` (positive integer, default `16`),
 `cavaBarWidth` (default `2`), `cavaGap` (default `1`), and `cavaPosition` (`"center"`,
 `"top"`, or `"bottom"`). Width and gap scale with the bar's UI size. The default
@@ -244,7 +245,7 @@ View and Window. Prefer letter keys: digits and most punctuation sit above level
 the `fr` layout.
 
 `notifications` takes `showBadge: true` to show the unread count. `bluetooth`
-takes `showReadout: true` for its connected-device count.
+takes `showBadge: true` for its connected-device count.
 
 `workspaces` takes `minimap: true` (top and bottom set it) to follow the workspace number with a
 map of its windows in `minimap/`: one box per window in its layout column, at the window's
@@ -255,7 +256,7 @@ window-mode keys (`cycle_monocle` in `keybindings.lua`) cycle in that same order
 focused box past that) and `tapeGap` spaces the boxes. Box movement, resizing and tape scrolling use
 Hyprland's effective `windowsMove` curve, duration and enabled state, read at startup and on config
 reload. Disabling compositor animations stops decorative effects and keeps alert colors static.
-Hovering a box, or a focus change, slides a tab with
+Hovering a box slides a tab with
 the app icon and title out of the bar. Left-click focuses, the wheel changes workspace, and
 right-click opens the workspaces popup, whose minimap sections set the numerals (the layout's
 `numerals` prop), the animation style (smooth or cyberpunk) and
@@ -272,7 +273,7 @@ another workspace tints the number the same way, and clicking the number focuses
 `weather` shows the readouts picked under the gear in its popup (`temp` by default;
 also `minmax`, `sunrise`, `sunset`, `rain`, `wind`, `humidity`), saved in
 `~/.local/state/quickshell/weather.json`. All of them come from the one
-`hyprshell weather` run behind the `Weather` singleton.
+`hyprshell weather-status` run behind the `Weather` singleton.
 
 ## Styling
 
@@ -363,7 +364,10 @@ Entering Windows selects the Windows 11 theme. Leaving restores existing windows
 ## Drawers and popups
 
 Only one popup is open globally (`shell.popupName`), and only the focused monitor
-accepts it. `PopupCard.position` defaults to the side the bar layout implies;
+accepts it. It closes on Esc, an outside click, a keyboard-taking layer (rofi,
+Switcher, Exposé), a bar layout change, and the Hyprland events in
+`shell.popupClosingEvents` (a window opening, a workspace or special-workspace
+switch). An action that hands off to a window or picker closes it first. `PopupCard.position` defaults to the side the bar layout implies;
 a host that is not the bar (the dock's `dockstart` menu) sets it explicitly.
 Bars normally use `WlrKeyboardFocus.None`; a newly opened popup is
 briefly primed with `Exclusive`, then uses `OnDemand`. Preserve that transition
@@ -382,13 +386,13 @@ time a menu opens and uses Quickshell's popup rounding and border width. Rofi fo
 descriptions use pixels, including text measurements.
 
 Popup appearance is shared. The desktop popup's POPUPS section sets opacity, accent
-tint and accent border, saved as `popupOpacity` (-1 keeps `Style.defaultPopupSurfaceOpacity`),
-`popupTint` and `popupAccentBorder` in `~/.local/state/quickshell/bar.json`. Opacity
+tint, borders and accent border, saved as `popupOpacity` (-1 keeps `Style.defaultPopupSurfaceOpacity`),
+`popupTint`, `popupBorders` (enabled by default) and `popupAccentBorder` in `~/.local/state/quickshell/bar.json`. Opacity
 drives `Style.popupSurfaceOpacity`, so tooltips, flyouts and the dock and Exposé menus
 follow it; a style's `popup` `surfaceOpacity` rule still wins. The tint reaches cards,
 tooltips, dropdowns, menus, flyouts, the reload toast, the lock-layouts window and
 Exposé's window-card buttons and workspace thumbnails through `Style.popupTinted()`. The accent border
-replaces the border color on those same surfaces through `Style.popupBorder()`, including
+replaces the border color through `Style.popupBorder()`, which also hides popup borders when disabled, including
 cards that set their own `borderColor`; a failed reload toast keeps its error border.
 
 Popup cards fit the screen and scroll overflow in both directions. Scrollbars
@@ -508,8 +512,8 @@ device and has no native path, so sysfs and D-Bus paths come from the
   when direct stream resolution fails, so queued songs never share an audio pipe.
 - Bar buttons, the popup and the media keys (`crmne.mpris` IPC, not `playerctl`) act on
   one player, `Media.controlTarget`: `Media.player` (the last one controlled, saved in
-  `~/.local/state/hypr/mediaplayer.json`, else the first playing), or that saved player
-  while it is stopped. With another player active, the Queue tab shows MPD's queue for
+  `~/.local/state/hypr/mediaplayer.json`, while it plays, else the first playing, else
+  the saved one paused), or that saved player while it is stopped. With another player active, the Queue tab shows MPD's queue for
   MPD (reloaded on MPD `idle playlist` events while the tab is open), the playlist for a
   YouTube `list=` URL with the URL's `v=` video marked current, and otherwise cliamp's queue without a now-playing row.
 - The Bitwarden vault (`Bitwarden.qml`, one per shell) keeps its session key in

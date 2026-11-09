@@ -44,7 +44,7 @@ Column {
             visible: root.suffix !== ""
             text: root.suffix
             textFormat: Text.PlainText
-            color: Commons.Util.alpha(Commons.Color.tooltip.text, 0.80)
+            color: Commons.Util.scaleAlpha(Commons.Color.tooltip.text, 0.80)
             font.family: Commons.Style.font.family
             font.pixelSize: Commons.Style.font.caption
             anchors.verticalCenter: parent.verticalCenter
@@ -110,9 +110,9 @@ Column {
                         Layout.alignment: Qt.AlignVCenter
                         color: tooltipRow.parked ? "transparent"
                             : (tooltipRow.selected ? Commons.Color.accent
-                                : tooltipRow.focused ? Commons.Color.bar.active : Commons.Util.alpha(Commons.Color.tooltip.text, 0.5))
+                                : tooltipRow.focused ? Commons.Color.bar.active : Commons.Util.scaleAlpha(Commons.Color.tooltip.text, 0.5))
                         border.color: tooltipRow.selected ? Commons.Color.accent
-                            : tooltipRow.parked ? Commons.Util.alpha(Commons.Color.tooltip.text, 0.6) : "transparent"
+                            : tooltipRow.parked ? Commons.Util.scaleAlpha(Commons.Color.tooltip.text, 0.6) : "transparent"
                         border.width: 1
                     }
                     Item {
@@ -136,7 +136,7 @@ Column {
                         text: fullLabel.length > root.maxLabelLength ? fullLabel.slice(0, root.maxLabelLength - 1) + "…" : fullLabel
                         textFormat: Text.PlainText
                         color: tooltipRow.selected ? Commons.Color.accent
-                            : tooltipRow.focused ? Commons.Color.tooltip.text : Commons.Util.alpha(Commons.Color.tooltip.text, 0.80)
+                            : tooltipRow.focused ? Commons.Color.tooltip.text : Commons.Util.scaleAlpha(Commons.Color.tooltip.text, 0.80)
                         font.family: Commons.Style.font.family
                         font.pixelSize: Math.max(10, Commons.Style.font.caption - 1)
                         font.bold: tooltipRow.focused
@@ -153,7 +153,7 @@ Column {
         anchors.horizontalCenter: parent.horizontalCenter
         text: "+" + (root.windows.length - root.maxWindows) + " more"
         textFormat: Text.PlainText
-        color: Commons.Util.alpha(Commons.Color.tooltip.text, 0.6)
+        color: Commons.Util.scaleAlpha(Commons.Color.tooltip.text, 0.6)
         font.family: Commons.Style.font.family
         font.pixelSize: Math.max(9, Commons.Style.font.caption - 3)
     }

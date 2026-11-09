@@ -3,6 +3,7 @@ import QtQuick
 import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Wayland
+import qs.Commons as Commons
 
 PanelWindow {
     id: root
@@ -133,8 +134,10 @@ PanelWindow {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: Math.max(Style.popupPadding / 2, Style.sm)
-        text: root.actions.map(action => action.key.toUpperCase() + " " + action.text).join("  ") + "  ←→↑↓/Tab Move  Enter Select  Esc"
-        color: root.shell.mutedText
+        textFormat: Text.StyledText
+        text: Commons.Util.keyHintMarkup(root.actions.map(action => action.key.toUpperCase() + " " + action.text).join("  ")
+            + "  ←→↑↓/Tab Move  Enter Select  Esc", root.shell.mutedText)
+        color: root.shell.accent
         font.family: root.shell.fontFamily
         font.pixelSize: Style.caption
     }

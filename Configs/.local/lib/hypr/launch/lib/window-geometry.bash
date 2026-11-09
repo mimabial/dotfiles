@@ -60,6 +60,8 @@ launch_monitor_usable_geometry() {
   local visible_height=""
   local edge_padding=""
 
+  launch_source_core_common || return 1
+  hypr_load_monitors_and_edge_padding
   launch_monitor_geometry_into monitor "${monitor_selector}" || return 1
 
   visible_width=$((monitor[logical_width_px] - monitor[reserved_left_px] - monitor[reserved_right_px]))

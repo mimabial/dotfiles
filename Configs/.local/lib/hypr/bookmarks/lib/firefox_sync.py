@@ -8,8 +8,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from .records import MAX_IDENTIFIER_CHARS, normalize_bookmark
-from .store import read_store_items, write_bookmark_store
+from .records import normalize_bookmark
+from .store import read_store_items, stored_bookmark, write_bookmark_store
 from .urls import canonical_http_url
 
 
@@ -87,15 +87,10 @@ def merge_firefox_items(
     counts = {"new": 0, "updated": 0, "removed": 0, "tagged": 0}
 
     for raw_item in existing_items:
-        item = normalize_bookmark(raw_item, favicon_policy="stored")
-        identifier = (
-            str(raw_item.get("id") or "").strip()
-            if isinstance(raw_item, dict)
-            else ""
-        )
-        if item is None or not identifier or len(identifier) > MAX_IDENTIFIER_CHARS:
+        item = stored_bookmark(raw_item)
+        if item is None:
             raise ValueError("Bookmarks store contains an invalid entry")
-        item["id"] = identifier
+        identifier = item["id"]
         key = canonical_http_url(item["url"])
         if key in known:
             raise ValueError("Bookmarks store contains duplicate URLs")

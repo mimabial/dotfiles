@@ -160,15 +160,9 @@ ShellRoot {
     readonly property bool dateModuleVisible: clockOnBar && selectedClockFormat.hasDate
     readonly property bool clockModuleVisible: clockOnBar && selectedClockFormat.hasTime
     readonly property string timeVisibility: Quickshell.processId + " " + Number(dateModuleVisible) + " " + Number(clockModuleVisible) + "\n"
-    property real volumeLimit: 1
-    property real volumeMinDb: -60
-    property real volumeMaxDb: 0
-    property real volumeStepDb: 1
-    property var timerItems: []
-    property double timerNowMs: Date.now()
-    readonly property int timerNow: Math.floor(timerNowMs / 1000)
-    readonly property var activeEntries: timerItems.filter(item => Number(item.epoch) > timerNow).sort((a, b) => a.epoch - b.epoch)
-    readonly property var activeTimers: activeEntries.filter(item => item.kind === "timer")
+    readonly property alias volumeRange: volumeRangeState
+    readonly property alias alarmTimers: alarmTimersState
+    readonly property alias upcomingEvents: upcomingEventsState
     readonly property alias clockwork: clockworkState
     readonly property alias kdeconnect: kdeconnectService
     readonly property alias bitwarden: bitwardenVault
@@ -178,6 +172,7 @@ ShellRoot {
     readonly property var monitorPreviewCoordinator: monitorPreviewGuardLoader.item
     readonly property var dock: dockLoader.item
     readonly property var expose: overviewLoader.item
+    readonly property var dueTasks: dueTasksLoader.item
     property Theme style: Theme { home: shellRoot.home; styleName: String(shellRoot.barLayout.style || shellRoot.layoutName); variant: shellRoot.prefs.winbarSmall ? "small" : "" }
     readonly property var palette: style.palette
     readonly property color background: role("bg", "#1f2430")
@@ -186,8 +181,7 @@ ShellRoot {
     readonly property color urgent: role("error", "#f38ba8")
     readonly property color mutedText: alpha(foreground, Style.mutedTextAlpha)
     readonly property color faintText: alpha(foreground, Style.faintTextAlpha)
-    property var hyprVarLayers: ({})
-    readonly property var hyprVarLoadOrder: ["vars", "userVars", "theme", "userfonts", "userprefs"]
+    property var hyprVars: ({})
     readonly property string fontFamily: style.box("shell").fontFamily ?? hyprVar("BAR_FONT", "JetBrainsMono Nerd Font")
     readonly property var iconFonts: ({
         "Miracode": "Monoid Nerd Font"
@@ -228,6 +222,7 @@ ShellRoot {
     readonly property bool barBlur: style.box("shell").barBlur ?? prefs.barBlur
     Binding { target: Style; property: "popupSurfaceOpacity"; value: shellRoot.style.box("popup").surfaceOpacity ?? (shellRoot.prefs.popupOpacity >= 0 ? shellRoot.prefs.popupOpacity : Style.defaultPopupSurfaceOpacity) }
     Binding { target: Style; property: "popupTint"; value: shellRoot.alpha(shellRoot.accent, shellRoot.prefs.popupTint) }
+    Binding { target: Style; property: "popupBorders"; value: shellRoot.prefs.popupBorders }
     Binding { target: Style; property: "popupBorderOverride"; value: shellRoot.prefs.popupAccentBorder ? shellRoot.accent : "transparent" }
     readonly property color barColor: styleColor(style.box("bar." + barEdge).backgroundColor, alpha(background, barOpacity))
     property SystemClock clock: SystemClock { precision: SystemClock.Minutes }
@@ -250,6 +245,7 @@ ShellRoot {
             property bool barFloating: false
             property real popupOpacity: -1
             property real popupTint: 0
+            property bool popupBorders: true
             property bool popupAccentBorder: false
             property bool winbarAutoHide: false
             property string winbarCombine: "always"
@@ -293,6 +289,10 @@ ShellRoot {
         property int lyricsFontStep: 0
     }
 
+    VolumeRange { id: volumeRangeState; home: shellRoot.home }
+    AlarmTimers { id: alarmTimersState; home: shellRoot.home }
+    UpcomingEvents { id: upcomingEventsState; shell: shellRoot }
+    Loader { id: dueTasksLoader; active: shellRoot.barModules.includes("tasks"); sourceComponent: Component { DueTasks { shell: shellRoot } } }
     ClockworkState { id: clockworkState; shell: shellRoot }
     KdeConnect { id: kdeconnectService; shell: shellRoot }
     Bitwarden { id: bitwardenVault; shell: shellRoot }
@@ -326,8 +326,7 @@ ShellRoot {
             for (const child of item.children) {
                 if (!child.visible || !child.enabled) continue
                 const button = child as BarButton
-                if (button && button.hasPopup && !("popupsAllowed" in button && !button.popupsAllowed)
-                    && !("popupEnabled" in button && !button.popupEnabled)) buttons.push(button)
+                if (button && button.hasPopup && !("popupEnabled" in button && !button.popupEnabled)) buttons.push(button)
                 else collect(child)
             }
         }
@@ -337,8 +336,11 @@ ShellRoot {
             const first = a.mapToItem(window.contentItem, 0, 0), second = b.mapToItem(window.contentItem, 0, 0)
             return vertical ? first.y - second.y : first.x - second.x
         })
+        if (buttons.length < 2) return
         const index = buttons.indexOf(popupCard.anchorItem)
-        if (buttons.length > 1) buttons[index < 0 ? direction > 0 ? 0 : buttons.length - 1 : (index + direction + buttons.length) % buttons.length].clicked(Qt.LeftButton)
+        const firstInDirection = direction > 0 ? 0 : buttons.length - 1
+        const next = index < 0 ? firstInDirection : (index + direction + buttons.length) % buttons.length
+        buttons[next].clicked(Qt.LeftButton)
     }
     property var mediaPopup: null
     function run(command, onExited) {
@@ -369,30 +371,13 @@ ShellRoot {
             powerProfileRestorePending = true
             return
         }
-        powerProfileRestore.command = ["hyprshell", "system/powerprofiles", "--restore"]
+        powerProfileRestore.command = ["hyprshell", "system/power-profiles", "--restore"]
         powerProfileRestore.running = true
-    }
-    function volumeToDb(value) { return 60 * Math.log10(value) }
-    function dbToVolume(value) { return Math.pow(10, value / 60) }
-    function setVolumeLimit(value, persist) {
-        volumeLimit = Math.max(dbToVolume(volumeMinDb), Math.min(dbToVolume(volumeMaxDb), value))
-        if (persist) volumeLimitFile.setText(volumeLimit.toFixed(6) + "\n")
-    }
-    function refreshVolumeRange() { if (!volumeRangeProbe.running) volumeRangeProbe.running = true }
-    function loadVolumeRange(raw) {
-        try {
-            const range = JSON.parse(raw)
-            const minimum = Number(range.minimum), maximum = Number(range.maximum), step = Number(range.step)
-            if (!isFinite(minimum) || !isFinite(maximum) || !isFinite(step) || minimum >= maximum || step <= 0) return
-            volumeMinDb = minimum; volumeMaxDb = maximum; volumeStepDb = step
-            setVolumeLimit(volumeLimit, true)
-        } catch (error) {}
     }
     function duration(seconds) { return Units.spanText(Math.round(seconds / Units.SECONDS_PER_MINUTE) * Units.SECONDS_PER_MINUTE) || "0m" }
     function profileName(profile) { return PowerProfile.toString(profile).replace(/([a-z])([A-Z])/g, "$1 $2") }
-    function loadTimers(raw) { try { timerItems = JSON.parse(raw) || [] } catch (error) { timerItems = [] } }
-    function refreshTimers() { timerStateFile.reload() }
     property string popupCenteredName: ""
+    readonly property var popupClosingEvents: ["openwindow", "workspacev2", "activespecialv2"]
     function togglePopup(name, centered) { popupCenteredName = centered === true ? name : ""; popupName = popupName === name ? "" : name }
     function closePopup() { popupName = "" }
     function toggleWinbarCombine() { prefs.winbarCombine = prefs.winbarCombine === "never" ? "always" : "never" }
@@ -497,27 +482,7 @@ ShellRoot {
     function hoverEdge(strength) { return alpha(role("hvr_br", foreground), Style.hoverBorderAlpha * (strength === undefined ? 1 : strength)) }
     function selectedFill() { return alpha(role("act_br", accent), Style.selectedFillAlpha) }
     function selectedEdge() { return alpha(role("act_br", accent), Style.selectedBorderAlpha) }
-    function hyprVar(name, fallback) {
-        let value = fallback
-        for (const layer of hyprVarLoadOrder) value = hyprVarLayers[layer]?.[name] || value
-        return value
-    }
-    function loadHyprVars(layer, raw) {
-        const assignment = /vars\.set\("([\w.]+)",\s*"([^"]*)"\)|^\s*(?:\["([\w.]+)"\]|(\w+))\s*=\s*"([^"]*)",?\s*$/gm
-        const values = {}
-        for (let match = assignment.exec(raw); match; match = assignment.exec(raw))
-            values[match[1] || match[3] || match[4]] = match[2] ?? match[5]
-        hyprVarLayers = Object.assign({}, hyprVarLayers, { [layer]: values })
-    }
-    function refresh() {
-        stateFile.reload()
-        layoutFile.reload()
-        varsFile.reload()
-        userVarsFile.reload()
-        themeVarsFile.reload()
-        userFontsFile.reload()
-        userPrefsFile.reload()
-    }
+    function hyprVar(name, fallback) { return hyprVars[name] || fallback }
 
     FileView {
         id: stateFile
@@ -529,18 +494,10 @@ ShellRoot {
     FileView { path: Quickshell.env("XDG_RUNTIME_DIR") + "/hypr/caffeine-windows"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadCaffeineWindowState(text()); onFileChanged: reload() }
     FileView { id: layoutFile; path: shellRoot.home + "/.config/quickshell/layouts/" + shellRoot.layoutName + ".json"; watchChanges: true; atomicWrites: true; blockWrites: true; printErrors: false; onPathChanged: reload(); onLoaded: shellRoot.loadBarLayout(text()); onFileChanged: reload(); onSaveFailed: error => shellRoot.layoutSaveError = FileViewError.toString(error) }
     FileView { id: sharedLayoutFile; path: shellRoot.layoutData.extends ? shellRoot.home + "/.config/quickshell/layouts/shared/" + shellRoot.layoutData.extends + ".json" : ""; watchChanges: true; atomicWrites: true; blockWrites: true; printErrors: false; onLoaded: shellRoot.loadSharedLayout(text()); onFileChanged: reload(); onSaveFailed: error => shellRoot.layoutSaveError = FileViewError.toString(error) }
-    FileView { id: varsFile; path: shellRoot.home + "/.local/share/hypr/vars.lua"; watchChanges: true; onLoaded: shellRoot.loadHyprVars("vars", text()); onFileChanged: reload() }
-    FileView { id: userVarsFile; path: shellRoot.home + "/.config/hypr/vars.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadHyprVars("userVars", text()); onFileChanged: reload() }
-    FileView { id: themeVarsFile; path: shellRoot.home + "/.config/hypr/themes/theme.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadHyprVars("theme", text()); onFileChanged: reload() }
-    FileView { id: userFontsFile; path: shellRoot.home + "/.config/hypr/userfonts.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadHyprVars("userfonts", text()); onFileChanged: reload() }
-    FileView { id: userPrefsFile; path: shellRoot.home + "/.config/hypr/userprefs.lua"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadHyprVars("userprefs", text()); onFileChanged: reload() }
-    FileView { id: volumeLimitFile; path: shellRoot.home + "/.local/state/quickshell/volume-limit"; printErrors: false; onLoaded: { const value = Number(text()); if (value > 0) shellRoot.setVolumeLimit(value, false) } }
-    FileView { id: timerStateFile; path: shellRoot.home + "/.local/state/quickshell/timers.json"; watchChanges: true; printErrors: false; onLoaded: shellRoot.loadTimers(text()); onFileChanged: reload() }
+    FileView { id: hyprVarsFile; path: Quickshell.env("XDG_RUNTIME_DIR") + "/hypr/" + Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") + "/vars.json"; watchChanges: true; onLoaded: shellRoot.hyprVars = JSON.parse(text()); onFileChanged: reload() }
     FileView { id: exposeSettingsFile; path: shellRoot.home + "/.config/quickshell/expose/settings.json"; watchChanges: true; onLoaded: shellRoot.loadExposeConfig(text()); onFileChanged: reload() }
     FileView { id: timeVisibilityFile; path: shellRoot.home + "/.local/state/quickshell/time-visibility"; printErrors: false }
     Timer { id: timeVisibilityWrite; interval: 0; running: true; onTriggered: timeVisibilityFile.setText(shellRoot.timeVisibility) }
-    Timer { interval: 1000; repeat: true; running: shellRoot.activeEntries.length > 0; triggeredOnStart: true; onTriggered: shellRoot.timerNowMs = Date.now() }
-    Process { id: volumeRangeProbe; command: [shellRoot.home + "/.local/lib/hypr/controls/volume-control.sh", "--limits"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadVolumeRange(text) } }
     Process { id: windowMetricsProbe; command: ["hyprctl", "-j", "--batch", "getoption general:layout ; getoption general:gaps_out ; getoption general:border_size ; getoption decoration:rounding ; getoption general:col.active_border ; getoption general:col.inactive_border"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.loadWindowMetrics(text) } }
     Process { id: pausedProbe; command: ["dunstctl", "is-paused"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: shellRoot.notificationsPaused = text.trim() === "true" } }
     Process {
@@ -594,7 +551,7 @@ ShellRoot {
     LayerBlur { surface: "hypr-shell-reload"; enabled: shellRoot.barBlur; ignoreAlpha: 0.1 }
 
     onModeChanged: closePopup()
-    onLayoutNameChanged: { barRevealed = false; layoutData = ({}); barLayout = ({}); layoutFile.reload() }
+    onLayoutNameChanged: { closePopup(); barRevealed = false; layoutData = ({}); barLayout = ({}); layoutFile.reload() }
     onUserHiddenChanged: if (userHidden) barRevealed = false
     onBarShownChanged: if (!barShown) closePopup()
     onTimeVisibilityChanged: timeVisibilityWrite.restart()
@@ -615,7 +572,11 @@ ShellRoot {
     }
     Connections {
         target: Hyprland
-        function onRawEvent(event) { if (event && event.name === "configreloaded") shellRoot.refreshWindowMetrics() }
+        function onRawEvent(event) {
+            if (!event) return
+            if (event.name === "configreloaded") shellRoot.refreshWindowMetrics()
+            else if (shellRoot.popupClosingEvents.includes(event.name)) shellRoot.closePopup()
+        }
     }
 
     IpcHandler {
@@ -624,7 +585,6 @@ ShellRoot {
         function show(): void { shellRoot.userHidden = false }
         function reveal(): void { shellRoot.userHidden = false }
         function hide(): void { shellRoot.userHidden = true }
-        function refresh(): void { shellRoot.refresh() }
         function reload(): void { Quickshell.reload(false) }
         function reloadHard(): void { Quickshell.reload(true) }
         function popup(name: string): void { shellRoot.togglePopup(name, true) }

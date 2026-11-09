@@ -62,7 +62,7 @@ local run_file
 -- animations.lua reach the preset it chains to.
 local stubs = {
     runtime = {
-        config = function(path, value)
+        config_if_supported = function(path, value)
             emit_record("k", (tostring(path):gsub("%.", ":")), type(value), value)
         end,
         load = function(path) run_file(path, true) end,

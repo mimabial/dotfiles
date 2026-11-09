@@ -304,10 +304,10 @@ PopupCard {
             spacing: Commons.Style.spacing.xxs
             Text {
                 width: parent.width
-                textFormat: Text.PlainText
+                textFormat: Text.StyledText
                 wrapMode: Text.WordWrap
-                text: "↑↓ Move  [ ] Sections  Shift+↑↓ Order  Shift+←→ Section"
-                color: root.shell.mutedText
+                text: Commons.Util.keyHintMarkup("↑↓ Move  [/] Sections  Shift+↑↓ Order  Shift+←→ Section", root.shell.mutedText)
+                color: root.shell.accent
                 font.family: root.shell.fontFamily; font.pixelSize: Commons.Style.font.caption
             }
             Text {

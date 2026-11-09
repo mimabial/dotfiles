@@ -1,6 +1,7 @@
 AgentsButton 1.0 AgentsButton.qml
 AgentsPopup 1.0 AgentsPopup.qml
 AlarmTimerPopup 1.0 AlarmTimerPopup.qml
+AlarmTimers 1.0 AlarmTimers.qml
 AltGrHints 1.0 AltGrHints.qml
 AppIconButton 1.0 AppIconButton.qml
 AudioButton 1.0 AudioButton.qml
@@ -29,6 +30,7 @@ CavaView 1.0 CavaView.qml
 CliphistPopup 1.0 CliphistPopup.qml
 ClockAgendaPane 1.0 ClockAgendaPane.qml
 ClockButton 1.0 ClockButton.qml
+ClockDatePicker 1.0 ClockDatePicker.qml
 ClockNavButton 1.0 ClockNavButton.qml
 ClockPopup 1.0 ClockPopup.qml
 ClockworkPage 1.0 ClockworkPage.qml
@@ -37,6 +39,7 @@ ColorModePopup 1.0 ColorModePopup.qml
 ColorPickerPopup 1.0 ColorPickerPopup.qml
 DesktopPopup 1.0 DesktopPopup.qml
 DisksPopup 1.0 DisksPopup.qml
+DueTasks 1.0 DueTasks.qml
 GamePopup 1.0 GamePopup.qml
 GlyphInk 1.0 GlyphInk.qml
 HorizontalBar 1.0 HorizontalBar.qml
@@ -108,6 +111,8 @@ TrayFlyout 1.0 TrayFlyout.qml
 TrayMenu 1.0 TrayMenu.qml
 UpdatesButton 1.0 UpdatesButton.qml
 UpdatesPopup 1.0 UpdatesPopup.qml
+UpcomingEvents 1.0 UpcomingEvents.qml
+VolumeRange 1.0 VolumeRange.qml
 VpnPopup 1.0 VpnPopup.qml
 singleton VpnStatus 1.0 VpnStatus.qml
 WallpaperPopup 1.0 WallpaperPopup.qml

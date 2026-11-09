@@ -6,7 +6,7 @@ BarSurface {
     readonly property bool onTop: shell.barEdge === "top"
     BarModules {
         id: moduleCatalog
-        shell: root.shell; popupsAllowed: root.popupsAllowed
+        shell: root.shell; popupEnabled: root.popupEnabled
         taskbarAvailableWidth: Math.max(0, rightRow.x - leftRow.x - leftRow.width
             - centerFallback.leftInset - centerFallback.rightInset - centerFallback.widthBesideTaskbar)
     }
@@ -117,5 +117,5 @@ BarSurface {
         width: 2; height: root.height; color: root.shell.accent
     }
 
-    PopupHost { shell: root.shell; anchorItem: leftRow; popupsAllowed: root.popupsAllowed }
+    PopupHost { shell: root.shell; anchorItem: leftRow; popupEnabled: root.popupEnabled }
 }

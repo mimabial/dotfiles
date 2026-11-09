@@ -14,8 +14,6 @@ BorderSurface {
     { id: "classic_led", name: "Classic LED", category: "classic", icon: "\uf111" },
     { id: "peaks", name: "Peaks", category: "classic", icon: "\uf012" },
     { id: "bricks", name: "Bricks", category: "classic", icon: "\uf0c9" },
-    { id: "stereo", name: "Stereo VU", category: "classic", icon: "\uf025" },
-    { id: "correlation", name: "Correlation", category: "classic", icon: "\uf07e" },
     { id: "ascii", name: "ASCII", category: "classic", icon: "\uf121" },
 
     { id: "soundcloud_wave", name: "SoundCloud Wave", category: "wave", icon: "\uf1be" },
@@ -23,14 +21,11 @@ BorderSurface {
     { id: "led_scrubber", name: "LED Scrubber", category: "wave", icon: "\uf009" },
     { id: "heatmap_wave", name: "Heatmap Wave", category: "wave", icon: "\uf06d" },
     { id: "grounded_wave", name: "Baseline Wave", category: "wave", icon: "\uf012" },
-    { id: "wave", name: "Waveform", category: "wave", icon: "\uf21e" },
-    { id: "sine", name: "Sine Wave", category: "wave", icon: "\uf1d8" },
     { id: "mirror", name: "Mirror", category: "wave", icon: "\uf042" },
 
     { id: "butterfly", name: "Butterfly", category: "particle", icon: "\uf1d8" },
     { id: "scatter", name: "Scatter", category: "particle", icon: "\uf005" },
 
-    { id: "plasma", name: "Liquid Plasma (2D)", category: "3d", icon: "\uf043" },
     { id: "cyber_tunnel", name: "3D Cyber Tunnel", category: "3d", icon: "\uf135" },
     { id: "red_sector", name: "Red Sector", category: "3d", icon: "\uf1b2" }
   ]
@@ -82,7 +77,7 @@ BorderSurface {
         readonly property bool active: root.controller ? root.controller.visBackground : false
         anchors.verticalCenter: parent.verticalCenter
         width: bgLabel.implicitWidth + Commons.Style.space(10); height: Commons.Style.space(17)
-        radius: Commons.Style.space(4)
+        radius: Commons.Style.cornerRadius
         color: active ? Commons.Color.menu.selectedBackground
           : (bgMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill() : Commons.Color.menu.selectedBackground) : "transparent")
         border.width: 1
@@ -115,7 +110,7 @@ BorderSurface {
         readonly property bool active: root.controller ? root.controller.visBackgroundPulse : false
         anchors.verticalCenter: parent.verticalCenter
         width: pulseLabel.implicitWidth + Commons.Style.space(10); height: Commons.Style.space(17)
-        radius: Commons.Style.space(4)
+        radius: Commons.Style.cornerRadius
         color: active ? Commons.Color.menu.selectedBackground
           : (pulseMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill() : Commons.Color.menu.selectedBackground) : "transparent")
         border.width: 1
@@ -173,7 +168,7 @@ BorderSurface {
           function activateKeyboard() { root.selectedCategory = modelData.id }
           readonly property bool isSelected: root.selectedCategory === modelData.id
           width: tabLabel.implicitWidth + Commons.Style.space(10); height: Commons.Style.space(18)
-          radius: Commons.Style.space(9)
+          radius: Commons.Style.cornerRadius
           color: isSelected ? Commons.Color.menu.selectedBackground
             : (tabMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill() : Commons.Color.menu.selectedBackground) : "transparent")
           border.width: cursored ? 1 : 0
@@ -220,7 +215,7 @@ BorderSurface {
             readonly property bool isActive: root.controller && root.controller.visMode === modelData.id
             width: chipContent.implicitWidth + Commons.Style.space(12)
             height: Commons.Style.space(22)
-            radius: Commons.Style.space(4)
+            radius: Commons.Style.cornerRadius
             color: isActive ? Commons.Color.menu.selectedBackground
               : (chipMouse.containsMouse ? (root.controller ? root.controller.shell.hoverFill() : Commons.Color.menu.selectedBackground)
                 : (root.controller ? root.controller.shell.alpha(root.controller.surface, 0.8) : Commons.Color.popups.background))

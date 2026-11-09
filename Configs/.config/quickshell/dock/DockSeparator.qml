@@ -10,6 +10,6 @@ Item {
     anchors.centerIn: parent
     width: separator.dock.separatorWidth
     height: separator.dock.iconSize * 0.7
-    color: Commons.Util.alpha(Commons.Color.bar.text, 0.25)
+    color: Commons.Util.scaleAlpha(Commons.Color.bar.text, 0.25)
   }
 }

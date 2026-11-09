@@ -1,7 +1,8 @@
 local M = {}
+local floating_area = require("core").floating_area
 
 local function eligible(window)
-    return window.workspace and window.workspace.id > 0 and not window.pinned and not window.hidden
+    return window.workspace and (window.workspace.id or 0) > 0 and not window.pinned and not window.hidden
         and window.fullscreen == 0
 end
 
@@ -37,15 +38,8 @@ function M.snap(address, placement)
         hl.dispatch(hl.dsp.window.float({window = selector, action = "unset"}))
         return
     end
-    local monitor = window.monitor
-    local width, height = monitor.width / monitor.scale, monitor.height / monitor.scale
-    if monitor.transform % 2 == 1 then width, height = height, width end
-    local reserved, outer = monitor.reserved, hl.get_config("general.gaps_out")
+    local x, y, width, height = floating_area(window.monitor)
     local inner, border = hl.get_config("general.gaps_in"), hl.get_config("general.border_size")
-    local x = monitor.x + reserved.left + outer.left + border
-    local y = monitor.y + reserved.top + outer.top + border
-    width = width - reserved.left - reserved.right - outer.left - outer.right - 2 * border
-    height = height - reserved.top - reserved.bottom - outer.top - outer.bottom - 2 * border
     if placement == "center" then
         local centered_width, centered_height = math.min(window.size.x, width), math.min(window.size.y, height)
         place(window, x + (width - centered_width) / 2, y + (height - centered_height) / 2, centered_width, centered_height)

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
-hypr_help_guard "Usage: hyprshell clipboard/cliphist --panel-json | --wipe | --panel-{copy,delete,image,fav-add} ID | --panel-fav-{copy,remove} N | --scan-{image,qr} ID" "$@"
+hypr_help_guard "Usage: hyprshell clipboard/cliphist --panel-json | --wipe | --panel-{move-to-newest-and-paste,delete,image,fav-add} ID | --panel-fav-{copy,remove} N | --scan-{image,qr} ID
+
+Serve the clipboard history popup and act on its entries." "$@"
 
 favorites_file="${XDG_CACHE_HOME:-$HOME/.cache}/landing/cliphist_favorites"
 OCR_ERROR_NOTIFY_MS=7000
@@ -102,7 +104,7 @@ action="${1:-}" id="${2:-}"
 [[ "${action}" =~ ^--(panel-json|wipe)$ || "${id}" =~ ^[1-9][0-9]*$ ]] || action=""
 case "${action}" in
   --panel-json) emit_clipboard_panel_json ;;
-  --panel-copy) move_entry_to_newest_and_paste "${id}" ;;
+  --panel-move-to-newest-and-paste) move_entry_to_newest_and_paste "${id}" ;;
   --panel-delete) run_cliphist_for_entry delete "${id}" ;;
   --panel-image) cache_entry_image "${id}" ;;
   --panel-fav-add) add_favorite "${id}" ;;

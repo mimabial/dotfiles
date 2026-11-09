@@ -235,7 +235,7 @@ class AutoThemeDaemon:
         palette = read_active_palette()
         if not palette:
             return False
-        if palette.get("background") != mode:
+        if palette.get("color_variant") != mode:
             return False
 
         if self._color_source(staterc_values) == "theme":
@@ -379,7 +379,6 @@ class AutoThemeDaemon:
             detail = (result.stderr or result.stdout or "").strip()
             print(f"Warning: Failed to apply hypr-theme colors: {detail or 'unknown error'}")
             return False
-        set_state_value("BACKGROUND_MODE", mode, "staterc")
         set_state_value("", mode, "color_variant")
         return True
 

@@ -111,7 +111,7 @@ var SETTINGS = {
   showBreakdown: true,
   showVolumes: true, showActivity: true,
   showInterfaces: true, showTotals: true, showAddresses: true,
-  showTemperatures: true, showFans: true,
+  showTemperatures: true,
   showHistory: true, showDetails: true, showDevices: true
 }
 
@@ -134,8 +134,7 @@ var PANEL_SECTIONS = {
     { key: "showAddresses", label: "IP addresses" }
   ],
   sensors: [
-    { key: "showTemperatures", label: "Temperatures" },
-    { key: "showFans", label: "Fans" }
+    { key: "showTemperatures", label: "Temperatures" }
   ],
   battery: [
     { key: "showHistory", label: "Charge history" },
@@ -173,12 +172,11 @@ var SWAP_WARN = 0.5
 var SWAP_DANGER = 0.85
 var BATTERY_LOW_PERCENT = 20
 var BATTERY_CRITICAL_PERCENT = 10
-var FAN_FULL_SCALE_RPM = 2400
 var SENSOR_ALERT_MIN = 40
 var SENSOR_ALERT_MAX = 120
 var SENSOR_ALERT_STEP = 5
 var ALERT_CONFIRMATIONS = 3
-var ALERT_REPEAT_MS = 5 * 60 * 1000
+var ALERT_REPEAT_MS = 5 * Units.MS_PER_MINUTE
 
 function nearestStopIndex(value, stops) {
   var requested = Number(value)
@@ -224,26 +222,6 @@ function sensorTemps(snapshot) {
   return out
 }
 
-function sensorFans(snapshot) {
-  var sensors = (snapshot || {}).sensors || {}
-  var out = Array.isArray(sensors.fans) ? sensors.fans.slice() : []
-  for (var card of gpuList(snapshot)) {
-    if (finiteValue(card.fan)) out.push({ chip: "GPU", id: "gpufan:" + gpuId(card), label: gpuTitle(card) + " fan", percent: Number(card.fan) })
-  }
-  return out
-}
-
-function fanParts(fan) {
-  if (fan && finiteValue(fan.percent)) return num(fan.percent) > 0 ? { value: String(Math.round(fan.percent)), unit: "%" } : { value: "Off", unit: "" }
-  var rpm = num(fan ? fan.rpm : 0)
-  return rpm > 0 ? { value: String(Math.round(rpm)), unit: "rpm" } : { value: "Off", unit: "" }
-}
-
-function fanFraction(fan) {
-  if (fan && finiteValue(fan.percent)) return clamp(num(fan.percent) / 100, 0, 1)
-  return Math.min(1, num(fan ? fan.rpm : 0) / FAN_FULL_SCALE_RPM)
-}
-
 function sensorLabel(temp) {
   if (temp.title) return String(temp.title)
   var chip = String(temp.chip || "")
@@ -261,7 +239,6 @@ function sensorOptions(snapshot) {
   if (finiteValue(cpu.temp)) out.push({ value: "cpu", label: "CPU temperature", kind: "temp" })
   if (finiteValue(sensorGpuTemp(snapshot))) out.push({ value: "gpu", label: "GPU temperature", kind: "temp" })
   for (var temp of sensorTemps(snapshot)) out.push({ value: String(temp.id), label: sensorLabel(temp), kind: "temp" })
-  for (var fan of sensorFans(snapshot)) out.push({ value: String(fan.id), label: String(fan.label || "Fan"), kind: "fan" })
   return out
 }
 
@@ -284,12 +261,6 @@ function sensorReading(snapshot, id, unit) {
     if (String(temp.id) === id) {
       var reading = tempParts(temp.value, unit)
       return { icon: "󰔏", short: temp.chip === "GPU" ? gpuShort(gpuById(snapshot, id.slice(4))) : "TMP", label: sensorLabel(temp), text: reading.value, unit: reading.unit, kind: "temp", celsius: temp.value, critical: temp.critical }
-    }
-  }
-  for (var fan of sensorFans(snapshot)) {
-    if (String(fan.id) === id) {
-      var parts = fanParts(fan)
-      return { icon: "󰈐", short: "FAN", label: String(fan.label || "Fan"), text: parts.value, unit: parts.unit, kind: "fan", rpm: num(fan.rpm) }
     }
   }
   return null

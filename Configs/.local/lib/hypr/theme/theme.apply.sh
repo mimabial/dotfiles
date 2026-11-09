@@ -349,11 +349,10 @@ theme_apply_sync_theme_color_variant() {
   local palette="${HYPR_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/hypr}/active-palette.json"
   command -v jq >/dev/null 2>&1 || return 0
   [[ -r "${palette}" ]] || return 0
-  local mode=""
-  mode="$(jq -r '.background // empty' "${palette}" 2>/dev/null || true)"
-  [[ "${mode}" =~ ^(dark|light)$ ]] || return 0
-  state_set "BACKGROUND_MODE" "${mode}" "staterc" 2>/dev/null || return 1
-  state_set_color_variant "${mode}"
+  local color_variant=""
+  color_variant="$(jq -r '.color_variant // empty' "${palette}" 2>/dev/null || true)"
+  [[ "${color_variant}" =~ ^(dark|light)$ ]] || return 0
+  state_set_color_variant "${color_variant}"
 }
 
 theme_apply_run_color_sync() {
@@ -385,7 +384,6 @@ theme_apply_run_color_sync() {
 
   state_resolve_color_variant_into variant "${selected_color_mode}"
 
-  state_set "BACKGROUND_MODE" "${variant}" "staterc" || return 1
   state_set_color_variant "${variant}" || return 1
 
   HYPR_THEME_DEFER_CLIENTS=1 "${hypr_theme_cmd}" wallpaper "${hypr_theme_args[@]}" --variant "${variant}" "${wallpaper_path}"
@@ -412,7 +410,7 @@ if [[ "${1:-}" == "--theme-envelope" ]]; then
 fi
 
 theme_apply_usage() {
-  printf '%s\n' "Usage: hyprshell theme/theme.apply [--quiet] [--regen|--force-regenerate] [--no-cache]"
+  printf 'Usage: hyprshell theme/theme.apply [--quiet] [--regen|--force-regenerate] [--no-cache]\n\nApply the active theme: render each app palette and reload what uses it.\n'
 }
 
 quiet=false

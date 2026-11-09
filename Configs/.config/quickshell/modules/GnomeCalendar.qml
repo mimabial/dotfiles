@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell.Io
 import "../CalendarMath.js" as CalendarMath
 import ".."
+import "../Units.js" as Units
 
 Column {
     id: root
@@ -17,7 +18,7 @@ Column {
     property int weekStart: Qt.locale().firstDayOfWeek
     readonly property int thursdayColumn: (Qt.Thursday - weekStart + daysPerWeek) % daysPerWeek
     readonly property date firstShown: CalendarMath.startOfWeek(visibleMonth, weekStart)
-    readonly property int weeks: Math.ceil((Math.round((new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 0) - firstShown) / CalendarMath.MS_PER_DAY) + 1) / daysPerWeek)
+    readonly property int weeks: Math.ceil((Math.round((new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 0) - firstShown) / Units.MS_PER_DAY) + 1) / daysPerWeek)
     readonly property int gridColumns: daysPerWeek + (showWeekNumbers ? 1 : 0)
     readonly property real cellSpacing: Style.xxs
     readonly property real cellWidth: (width - cellSpacing * (gridColumns - 1)) / gridColumns
@@ -181,5 +182,5 @@ Column {
             root.weekStart = saved.weekStart >= 0 ? saved.weekStart : Qt.locale().firstDayOfWeek
         }
     }
-    LazyPopup { shell: root.shell; popup: "weather"; owners: ["weather"]; sourceComponent: Component { WeatherPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: true } } }
+    LazyPopup { shell: root.shell; popupName: "weather"; owners: ["weather"]; sourceComponent: Component { WeatherPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: true } } }
 }

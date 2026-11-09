@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from agents.opencode.limits import go_limits
 from agents.opencode.local_usage import local_usage
+from agents.usage_records import UsageRecord
 from datetime import datetime
 import json
 
@@ -12,8 +13,8 @@ def main():
         return
     week_tokens = sum(provider["tokensWeek"] for provider in usage.providers)
     week_cost = sum(provider["costWeek"] for provider in usage.providers)
-    record = {
-        "schemaVersion": 1, "id": "opencode", "name": "OpenCode",
+    record: UsageRecord = {
+        "id": "opencode", "name": "OpenCode",
         "updatedAt": datetime.now().astimezone().isoformat(),
         "usageStatusText": f"{week_tokens:,} tokens · ${week_cost:.2f} / 7d",
         "providerUsage": usage.providers, "modelUsage": usage.models, "recentDays": usage.recent_days,

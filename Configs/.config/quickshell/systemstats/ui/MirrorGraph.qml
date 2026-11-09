@@ -14,9 +14,9 @@ Canvas {
   property real headroom: 1.08
   property int barWidth: 2
   property int gap: 1
-  property color midlineColor: Commons.Util.alpha(Commons.Color.popups.text, 0.18)
+  property color midlineColor: Commons.Util.scaleAlpha(Commons.Color.popups.text, 0.18)
   property bool showGaps: false
-  property color gapColor: Commons.Util.alpha(Commons.Color.popups.text, 0.5)
+  property color gapColor: Commons.Util.scaleAlpha(Commons.Color.popups.text, 0.5)
 
   readonly property int pitch: Math.max(1, barWidth + gap)
   readonly property int capacity: Math.max(1, Math.floor((width + gap) / pitch))

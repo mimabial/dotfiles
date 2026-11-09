@@ -3,7 +3,8 @@ BATTERY_ICON_PERCENT_STEP=10
 CRITICAL_MIN_GRACE_SECONDS=60
 
 battery_icon_level_into() {
-  printf -v "$1" "$2" "$(((battery_percent + BATTERY_ICON_PERCENT_STEP / 2) / BATTERY_ICON_PERCENT_STEP * BATTERY_ICON_PERCENT_STEP))"
+  local output_name="$1" format="$2" percent="$3"
+  printf -v "$output_name" "$format" "$(((percent + BATTERY_ICON_PERCENT_STEP / 2) / BATTERY_ICON_PERCENT_STEP * BATTERY_ICON_PERCENT_STEP))"
 }
 
 battery_run_command() {
@@ -43,14 +44,14 @@ battery_notify_thresholds() {
   local -n monitor_ref=$1
   local battery_icon_level
   if [[ "$battery_percent" -ge "$unplug_threshold_percent" ]] && [[ "$battery_status" != "Discharging" ]] && [[ "$battery_status" != "Full" ]] && (((battery_percent - monitor_ref[last_notified_percent]) >= notification_step_percent)); then
-    battery_icon_level_into battery_icon_level '%03d'
+    battery_icon_level_into battery_icon_level '%03d' "$battery_percent"
     if $verbose_enabled; then echo "Prompt:UNPLUG: $unplug_threshold_percent $battery_status $battery_percent $battery_icon_level"; fi
     dunstify -a "Power" -t "${NOTIFY_LONG_MS}" -r "${NOTIFY_ID_BATTERY}" -u "CRITICAL" -i "battery-${battery_icon_level:-100}-charging" "Battery Charged" "Battery is at $battery_percent%. You can unplug the charger"
     monitor_ref[last_notified_percent]=$battery_percent
   elif [[ "$battery_percent" -le "$critical_threshold_percent" && "$battery_status" == Discharging ]]; then
     return 0
   elif [[ "$battery_percent" -le "$low_threshold_percent" ]] && [[ "$battery_status" == "Discharging" ]] && (((monitor_ref[last_notified_percent] - battery_percent) >= notification_step_percent)); then
-    battery_icon_level_into battery_icon_level '%d'
+    battery_icon_level_into battery_icon_level '%d' "$battery_percent"
     if $verbose_enabled; then echo "Prompt:LOW: $low_threshold_percent $battery_status $battery_percent"; fi
     dunstify -a "Power" -t "${NOTIFY_STICKY_MS}" -r "${NOTIFY_ID_BATTERY}" -u "CRITICAL" -i "battery-level-${battery_icon_level:-10}-symbolic" "Battery Low" "Battery is at $battery_percent%. Connect the charger."
     monitor_ref[last_notified_percent]=$battery_percent
@@ -67,7 +68,7 @@ battery_notify_status_change() {
         monitor_ref[last_notified_status]=$battery_status
         urgency=NORMAL
         [[ $battery_percent -le $low_threshold_percent ]] && urgency=CRITICAL
-        battery_icon_level_into battery_icon_level '%d'
+        battery_icon_level_into battery_icon_level '%d' "$battery_percent"
         dunstify -a "Power" -t "${NOTIFY_MS}" -r "${NOTIFY_ID_BATTERY}" -u "${urgency:-normal}" -i "battery-level-${battery_icon_level:-10}-symbolic" "Charger Plug Out" "Battery is at $battery_percent%."
         battery_run_command "${discharging_command}"
       fi
@@ -78,7 +79,7 @@ battery_notify_status_change() {
         monitor_ref[last_notified_status]=$battery_status
         urgency=NORMAL
         [[ $battery_percent -ge $unplug_threshold_percent ]] && urgency=CRITICAL
-        battery_icon_level_into battery_icon_level '%03d'
+        battery_icon_level_into battery_icon_level '%03d' "$battery_percent"
         dunstify -a "Power" -t "${NOTIFY_MS}" -r "${NOTIFY_ID_BATTERY}" -u "${urgency:-normal}" -i "battery-${battery_icon_level:-100}-charging" "Charger Plug In" "Battery is at $battery_percent%."
         battery_run_command "${charging_command}"
       fi

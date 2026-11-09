@@ -14,13 +14,13 @@ import requests
 from pyutils.xdg_base_dirs import xdg_cache_home, xdg_config_home
 from mutagen import MutagenError
 from audio_tags import SUPPORTED, SUPPORTED_LABEL, read_tags, selected_extensions
-from autotag_identity import album_agrees, album_context, existing
+from autotag_identity import album_agrees, album_context, existing, filename_credit_loss, in_album_folder
 from lyrics_paths import music_library_dir
 from autotag_models import TrackTags, Unidentified
 from autotag_cache import ResolutionCache
-from autotag_catalogs import ACOUSTID_INTERVAL_SECONDS, DEEZER_INTERVAL_SECONDS, HTTP_SESSION, HTTP_TIMEOUT_SECONDS, ITUNES_INTERVAL_SECONDS, MUSICBRAINZ_INTERVAL_SECONDS, RateLimiter, acoustid_key, configure_persistent_cache
-from autotag_youtube_credits import filename_credit_loss, recovered_youtube_artist
-from autotag_tag_io import NON_TAG_FIELDS, embed_artwork, embedded_artwork, has_artwork, prepare_metadata, tidy_title, write_tags
+from autotag_catalogs import ACOUSTID_INTERVAL_SECONDS, DEEZER_INTERVAL_SECONDS, HTTP_SESSION, HTTP_TIMEOUT_SECONDS, ITUNES_INTERVAL_SECONDS, MUSICBRAINZ_INTERVAL_SECONDS, RateLimiter, acoustid_key, configure_persistent_cache_and_deezer_cooldown
+from autotag_youtube_credits import recovered_youtube_artist
+from autotag_tag_io import NON_TAG_FIELDS, clear_track_number, embed_artwork, embedded_artwork, has_artwork, prepare_metadata, tidy_title, write_tags
 from autotag_resolver import Resolver, cache_resolution
 
 
@@ -85,7 +85,7 @@ def restore_youtube_credit_tags(
         path = audio_file.path
         try:
             tags = read_tags(path)
-            lost_credits = filename_credit_loss(path, tags)
+            lost_credits = filename_credit_loss(path, existing(tags, "artist"), existing(tags, "title"))
             if not lost_credits:
                 complete += 1
                 continue
@@ -132,7 +132,8 @@ def add_lookup_options(parser: argparse.ArgumentParser) -> None:
                              f"(default: {DEFAULT_PROVIDER_ORDER}); "
                              f"any of: {', '.join(PROVIDERS)}")
     parser.add_argument("--fill", default=",".join(FILL_FIELDS),
-                        help="Only look a file up when one of these tags is missing "
+                        help="Only look a file up when one of these tags is missing; "
+                             "outside an album folder tracknumber is cleared, not filled "
                              f"(default: {','.join(FILL_FIELDS)})")
     parser.add_argument("--min-similarity", type=float, default=0.60,
                         help="Minimum artist/title similarity (default: %(default)s)")
@@ -343,6 +344,7 @@ def tag_file(
     replace_artwork = replacing_artwork(args)
     tags = read_tags(path)
     album, album_key = album_context(path, tags, root)
+    album_folder = in_album_folder(path, root)
     artwork_group = (
         join_album_artwork_group(album_artwork_groups, album_key, album, path, root)
         if args.artwork and replace_artwork and album_key
@@ -351,15 +353,23 @@ def tag_file(
 
     tidied = tidy_title(path, args.dry_run, tags)
     if tidied:
-        verb = "would drop" if args.dry_run else "dropped"
-        print(f".. {path.name}: {verb} duplicated credit -> {tidied!r}", flush=True)
+        verb = "would tidy" if args.dry_run else "tidied"
+        print(f".. {path.name}: {verb} title -> {tidied!r}", flush=True)
+
+    if not album_folder:
+        cleared = clear_track_number(tags, args.dry_run)
+        if cleared:
+            verb = "would clear" if args.dry_run else "cleared"
+            print(f".. {path.name}: {verb} track {cleared!r} outside an album folder", flush=True)
 
     if not replace_artwork and args.fill_fields and all(
-        existing(tags, field) for field in args.fill_fields
+        existing(tags, field) for field in args.fill_fields if album_folder or field != "tracknumber"
     ):
         return "skipped"
 
     meta = resolve_track_metadata(path, root, tags, resolver)
+    if not album_folder:
+        meta.pop("tracknumber", None)
     if artwork_group is not None:
         artwork_group.metadata[path] = meta
         if meta.get("artwork_url") and album_agrees(meta.get("album", ""), album):
@@ -431,7 +441,7 @@ def close_lookup_cache(cache) -> None:
         return
     if cache.hits:
         print(f"reused {cache.hits} cached lookup(s)", file=sys.stderr)
-    configure_persistent_cache(None)
+    configure_persistent_cache_and_deezer_cooldown(None)
     cache.close()
 
 
@@ -456,7 +466,7 @@ def main() -> int:
         )
 
     cache = open_lookup_cache(args)
-    configure_persistent_cache(cache)
+    configure_persistent_cache_and_deezer_cooldown(cache)
     resolver = make_resolver(args, "" if replacing_artwork(args) else key, cache)
     album_artwork_groups: dict[tuple, AlbumArtworkGroup] = {}
     failed, complete = tag_files(audio_files, resolver, album_artwork_groups)

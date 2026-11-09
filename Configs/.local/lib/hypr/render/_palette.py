@@ -102,7 +102,7 @@ def resolve_theme(pack_name: str) -> dict:
     out = {
         "source": f"theme:{pack_name}",
         "mode":   "theme",
-        "background": "light" if is_light_color(parsed["bg"]) else "dark",
+        "color_variant": "light" if is_light_color(parsed["bg"]) else "dark",
         "bg":     parsed["bg"],
         "fg":     parsed["fg"],
         "colors": parsed["colors"],
@@ -122,7 +122,7 @@ def resolve_wallpaper(image_path: str, variant: str) -> dict:
     return {
         "source": f"wallpaper:{img}",
         "mode":   "wallpaper",
-        "background": variant,
+        "color_variant": variant,
         "bg":     role("surface"),
         "fg":     role("on_surface"),
         "colors": [role(name) for name in ANSI_ROLES[variant]],

@@ -112,7 +112,7 @@ def sdr_step(value: float, delta: int) -> float:
     return round(min(SDR_MAX, max(0, value + delta / SDR_STEPS_PER_UNIT)), 2)
 
 
-def model_of(output: dict) -> str:
+def model_of(output: profiles.Output) -> str:
     made = f"{output.get('make', '')} {output.get('model', '')}".strip()
     return made or output.get("description") or output.get("name", "")
 
@@ -139,30 +139,30 @@ def grid(width: int, height: int) -> str:
     return "\n".join("".join(cell(x, y) for x in range(width)) for y in range(height))
 
 
-def planned(profile: dict) -> dict:
+def planned(profile: profiles.Profile) -> profiles.Profile:
     """The profile with its planner on, to show what the rules would be."""
     return {**profile, "workspaces": {**profile.get("workspaces", {}), "enabled": True}}
 
 
-def plan_lines(profile: dict) -> list[str]:
+def plan_lines(profile: profiles.Profile) -> list[str]:
     outputs = {o["key"]: o for o in profile.get("outputs", [])}
     rows = [(model_of(outputs.get(r["output_key"], {})), r["workspaces"]) for r in workspaces.plan(profile)]
     width = max((len(model) for model, _ in rows), default=0) + 2
     return [f"{model:<{width}}{', '.join(numbers)}" for model, numbers in rows]
 
 
-def profile_row(summary: dict) -> Text:
+def profile_row(summary: profiles.ProfileSummary) -> Text:
     flag, score = "active" if summary["active"] else "", f"{summary['match_score']:>6}"
     return Text.assemble(f"  {summary['name']:<34}", (f"{flag:>6}", "bold green"), score)
 
 
-def reason_line(reason: dict) -> Text:
+def reason_line(reason: profiles.MatchReason) -> Text:
     count = reason["count"]
     what = f"{count} display{'' if count == 1 else 's'} {REASONS[reason['kind']]}"
     return Text.assemble((f" {reason['points']:+d} ", GRAY["label"]), what)
 
 
-def mode_card(output: dict) -> Text:
+def mode_card(output: profiles.Output) -> Text:
     output = OUTPUT_DEFAULTS | output
     width, height = daemon.logical_size(output)
     kind = "Internal · " if hypr.is_internal(output) else ""
@@ -252,7 +252,7 @@ class Canvas(Widget, can_focus=True):
         self.body, self.can_focus, self.profile, self.selected = body, editable, {}, ""
         self.border_title = "Monitor Layout"
 
-    def show(self, profile: dict, selected: str = "") -> None:
+    def show(self, profile: profiles.Profile, selected: str = "") -> None:
         self.profile, self.selected = profile, selected
         self.refresh(recompose=True)
 
@@ -419,7 +419,7 @@ class MonitorEditor(App):
         return self.switcher.current or "layout"
 
     @property
-    def output(self) -> dict:
+    def output(self) -> profiles.Output:
         return next((o for o in self.draft.get("outputs", []) if o["key"] == self.selected), {})
 
     @property
@@ -545,14 +545,14 @@ class MonitorEditor(App):
             ("Panel mm", panel),
         ], DETAIL_LABEL_WIDTH)
 
-    def profile_details(self, summary: dict, profile: dict) -> Text:
+    def profile_details(self, summary: profiles.ProfileSummary, profile: profiles.Profile) -> Text:
         standing = ("Active", "bold green") if summary["active"] else ("Saved", "bold")
         match = Text.assemble(standing, (" · score ", GRAY["label"]), str(summary["match_score"]))
         reasons = [("", reason_line(reason)) for reason in summary["match_reasons"]]
         plan = plan_lines(profile) if profile.get("workspaces", {}).get("enabled") else ["(not managed)"]
         return table([
             ("Name", Text(profile["name"], "bold")),
-            ("Updated", profile.get("updated_at", "")[:16].replace("T", " ")),
+            ("Updated", profile.get("updated_at", "")[:len("YYYY-MM-DDTHH:MM")].replace("T", " ")),
             ("Match", match),
             *reasons,
             ("Displays", f"{summary['output_count']} saved · {summary['connected_outputs']} connected"),
@@ -560,7 +560,7 @@ class MonitorEditor(App):
             *(("Workspaces" if index == 0 else "", line) for index, line in enumerate(plan)),
         ], DETAIL_LABEL_WIDTH)
 
-    def workspace_card(self, output: dict) -> Text:
+    def workspace_card(self, output: profiles.Output) -> Text:
         rows = workspaces.plan(planned(self.draft))
         numbers = next((", ".join(r["workspaces"]) for r in rows if r["output_key"] == output["key"]), "")
         name, model = (output.get("name", ""), "bold"), (model_of(output), GRAY["label"])
@@ -579,8 +579,8 @@ class MonitorEditor(App):
             "enabled": ("Enabled", "on" if o["enabled"] else "off", lambda d: not o["enabled"]),
             "mode": ("Mode", o["mode"], lambda d: cycle(modes, o["mode"], d)),
             "scale": ("Scale", f"{o['scale']:g}", lambda d: cycle(scales, o["scale"], d)),
-            "vrr": ("VRR", "default" if vrr is None else VRR_MODES[vrr], lambda d: cycle(range(3), vrr, d)),
-            "transform": ("Rotation", ROTATIONS[o["transform"]], lambda d: (o["transform"] + d) % 8),
+            "vrr": ("VRR", "default" if vrr is None else VRR_MODES[vrr], lambda d: cycle(range(len(VRR_MODES)), vrr, d)),
+            "transform": ("Rotation", ROTATIONS[o["transform"]], lambda d: (o["transform"] + d) % len(ROTATIONS)),
             "x": ("Position X", o["x"], lambda d: o["x"] + 10 * d),
             "y": ("Position Y", o["y"], lambda d: o["y"] + 10 * d),
             "mirror_of": ("Mirror", self.name_of(mirror) or "None", lambda d: cycle(mirrors, mirror, d)),

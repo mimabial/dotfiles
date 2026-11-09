@@ -3,12 +3,13 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell.Io
 import "CalendarMath.js" as CalendarMath
+import "Units.js" as Units
 
 PopupCard {
     id: root
     readonly property string locationScript: root.shell.home + "/.local/lib/hypr/util/weather-location.sh"
     popupName: "weather"
-    keyboardHint: searching ? "Type city  ↑↓ Suggestions  Enter Select  Esc" : "←→ Forecast  ↑↓ Day  U Units  R Refresh  S City  Esc"
+    keyboardHint: searching ? "Type city  ↑↓ Suggestions  Enter Select  Esc" : "Tab Tabs  ←→ Forecast  M More  U Units  R Refresh  S City  Esc"
     contentWidth: Style.px(420)
     contentHeight: weatherColumn.implicitHeight + 32
     readonly property var conditions: Weather.data.current_condition ? Weather.data.current_condition[0] : ({})
@@ -16,7 +17,7 @@ PopupCard {
     property int selectedDay: -1
     readonly property var hours: {
         if (selectedDay >= 0 && selectedDay < days.length) return days[selectedDay].hourly || []
-        const upcoming = [], cutoff = Date.now() - CalendarMath.MS_PER_HOUR
+        const upcoming = [], cutoff = Date.now() - Units.MS_PER_HOUR
         for (const day of days) for (const hour of day.hourly || [])
             if (new Date(hour.time).getTime() >= cutoff) upcoming.push(hour)
         return upcoming.slice(0, 12)
@@ -25,6 +26,7 @@ PopupCard {
         : selectedDay === 0 ? "TODAY"
         : Qt.formatDate(new Date(days[selectedDay].date + "T12:00:00"), "ddd").toUpperCase()
     property string forecastView: "hourly"
+    readonly property bool lunar: forecastView === "lunar"
     readonly property var cards: forecastView === "hourly" ? hours : days
     property int cardIndex: -1
     function showHours(day) {
@@ -33,10 +35,10 @@ PopupCard {
         cardIndex = -1
         forecast.positionViewAtBeginning()
     }
-    function showDays() {
-        const from = selectedDay
+    function showDays(view) {
+        const from = lunar ? cardIndex : selectedDay
         selectedDay = -1
-        forecastView = "daily"
+        forecastView = view || "daily"
         cardIndex = from
         forecast.positionViewAtBeginning()
         if (from >= 0) Qt.callLater(() => forecast.positionViewAtIndex(from, ListView.Contain))
@@ -75,11 +77,11 @@ PopupCard {
         case Qt.Key_Down:
         case Qt.Key_J:      return drillIn()
         case Qt.Key_Return:
-        case Qt.Key_Enter:  return drillIn()
+        case Qt.Key_Enter:  return cursorIndex >= 0 ? defaultKey(event) : drillIn()
         case Qt.Key_Up:
         case Qt.Key_K:      return drillOut()
         case Qt.Key_U:      toggleUnits(); return true
-        case Qt.Key_R:      shell.run(["hyprshell", "weather", "--force", "--alt"]); return true
+        case Qt.Key_R:      shell.run(["hyprshell", "weather-status", "--force", "--alt"]); return true
         case Qt.Key_M:      weatherColumn.expanded = !weatherColumn.expanded; return true
         case Qt.Key_S:
         case Qt.Key_Slash:  openSearch(); return true
@@ -108,6 +110,9 @@ PopupCard {
 
     readonly property var today: days.length ? days[0] : ({})
     readonly property var astronomy: today.astronomy && today.astronomy.length ? today.astronomy[0] : ({})
+    readonly property var lunarAstronomy: dayAstronomy(days[Math.max(0, cardIndex)])
+    function dayAstronomy(day) { return day?.astronomy?.[0] || ({}) }
+    function illumination(source) { return source.moon_illumination == null ? "--" : source.moon_illumination + "%" }
 
     function distance(km) {
         if (!km) return "--"
@@ -142,7 +147,7 @@ PopupCard {
     function startCitySearch() {
         if (citySearchProcess.running || pendingCityQuery === "") return
         activeCityQuery = pendingCityQuery
-        citySearchProcess.command = [root.shell.home + "/.local/lib/hypr/util/weather-status.py", "--search", pendingCityQuery]
+        citySearchProcess.command = ["python3", root.shell.home + "/.local/lib/hypr/util/weather-status.py", "--search", pendingCityQuery]
         citySearchProcess.running = true
     }
     function pick(place) {
@@ -170,7 +175,7 @@ PopupCard {
     function cityFieldText(value) { cityField.text = value }
     function cityName() {
         const area = Weather.data.nearest_area
-        return area && area.length ? value(area[0].areaName, pinnedCity) : pinnedCity
+        return area && area.length ? firstValue(area[0].areaName, pinnedCity) : pinnedCity
     }
     function openSearch() {
         searching = true
@@ -193,7 +198,7 @@ PopupCard {
         shell.run(["bash", root.locationScript, name], root.readPinnedCity)
     }
 
-    function value(list, fallback) { return list && list.length ? list[0].value : fallback }
+    function firstValue(list, fallback) { return list && list.length ? list[0].value : fallback }
 
     component GlyphButton: Text {
         required property string glyph
@@ -252,7 +257,7 @@ PopupCard {
             Column {
                 anchors.top: parent.top; anchors.right: parent.right; spacing: Style.md
                 GlyphButton { glyph: "\uf423"; onActivated: root.settingsOpen = !root.settingsOpen }
-                GlyphButton { glyph: "󰑐"; onActivated: root.shell.run(["hyprshell", "weather", "--force", "--alt"]) }
+                GlyphButton { glyph: "󰑐"; onActivated: root.shell.run(["hyprshell", "weather-status", "--force", "--alt"]) }
             }
             Column {
                 id: heroRight
@@ -317,7 +322,18 @@ PopupCard {
             }
         }
         property bool expanded: false
-        readonly property var metrics: [
+        readonly property var metrics: root.lunar ? [
+            ["MOONRISE", root.lunarAstronomy.moonrise || "--"],
+            ["MOONSET", root.lunarAstronomy.moonset || "--"],
+            ["PHASE", root.lunarAstronomy.moon_phase || "--"],
+            ["ILLUMINATION", root.illumination(root.lunarAstronomy)],
+            ["BLUE HOUR · AM", root.lunarAstronomy.blue_hour_morning || "--"],
+            ["BLUE HOUR · PM", root.lunarAstronomy.blue_hour_evening || "--"],
+            ["GOLDEN HOUR · AM", root.lunarAstronomy.golden_hour_morning || "--"],
+            ["GOLDEN HOUR · PM", root.lunarAstronomy.golden_hour_evening || "--"],
+            [(root.lunarAstronomy.solstice?.season || "NEXT").toUpperCase() + " SOLSTICE", root.lunarAstronomy.solstice?.date
+                ? Qt.formatDate(new Date(root.lunarAstronomy.solstice.date + "T12:00:00"), "d MMM yyyy") : "--"]
+        ] : [
             ["MAX|MIN", root.today.maxtempC ? root.temp(root.today, "maxtemp") + "\u00b0 | " + root.temp(root.today, "mintemp") + "\u00b0" : "--"],
             ["RAIN", (root.days.length ? root.days[0].chanceofrain : "--") + "%"],
             ["SUNRISE", root.astronomy.sunrise || "--"],
@@ -394,8 +410,9 @@ PopupCard {
         PopupSeparator { shell: root.shell }
         Row {
             width: parent.width; spacing: Style.sm
-            PopupTab { width: (parent.width - parent.spacing) / 2; shell: root.shell; text: root.hourlyLabel; selected: root.forecastView === "hourly"; onClicked: root.showHours(-1) }
-            PopupTab { width: (parent.width - parent.spacing) / 2; shell: root.shell; text: "Daily"; selected: root.forecastView === "daily"; onClicked: root.showDays() }
+            PopupTab { width: (parent.width - parent.spacing * 2) / 3; shell: root.shell; text: root.hourlyLabel; selected: root.forecastView === "hourly"; onClicked: root.showHours(-1) }
+            PopupTab { width: (parent.width - parent.spacing * 2) / 3; shell: root.shell; text: "Daily"; selected: root.forecastView === "daily"; onClicked: root.showDays() }
+            PopupTab { width: (parent.width - parent.spacing * 2) / 3; shell: root.shell; text: "Lunar"; selected: root.lunar; onClicked: root.showDays("lunar") }
         }
         Item {
             width: parent.width; height: Style.px(88)
@@ -410,6 +427,7 @@ PopupCard {
                     id: forecastCard
                     required property var modelData
                     required property int index
+                    readonly property var astronomy: root.dayAstronomy(modelData)
                     readonly property bool cursored: root.cardIndex === index
                     width: (forecast.width - forecast.spacing * 4) / 5; height: forecast.height
                     radius: root.shell.rounding
@@ -418,26 +436,27 @@ PopupCard {
                         anchors.centerIn: parent; spacing: Style.xxs
                         Text {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: root.forecastView === "daily"
+                            text: root.forecastView !== "hourly"
                                 ? (forecastCard.index === 0 ? "TODAY" : Qt.formatDate(new Date(forecastCard.modelData.date + "T12:00:00"), "ddd").toUpperCase())
                                 : (root.selectedDay < 0 && forecastCard.index === 0 ? "NOW" : Qt.formatTime(new Date(forecastCard.modelData.time), "HH:mm"))
                             color: root.shell.mutedText
                             font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
                         }
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: forecastCard.modelData.icon || "󰖐"; color: root.shell.role("c2", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.display }
+                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.lunar ? (forecastCard.astronomy.moon_icon || "\uf186") : (forecastCard.modelData.icon || "󰖐"); color: root.shell.role("c2", root.shell.foreground); font.family: root.shell.fontFamily; font.pixelSize: Style.display }
                         Text {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: root.forecastView === "hourly" ? root.temp(forecastCard.modelData, "temp") + "\u00b0"
+                            text: root.lunar ? (forecastCard.astronomy.moon_short || forecastCard.astronomy.moon_phase || "--")
+                                : root.forecastView === "hourly" ? root.temp(forecastCard.modelData, "temp") + "\u00b0"
                                 : root.temp(forecastCard.modelData, "maxtemp") + "\u00b0 | " + root.temp(forecastCard.modelData, "mintemp") + "\u00b0"
-                            color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+                            color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: root.lunar ? Style.caption : Style.bodySmall
                         }
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "󱢋 " + (forecastCard.modelData.chanceofrain || "0") + "%"; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
+                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.lunar ? root.illumination(forecastCard.astronomy) : "󱢋 " + (forecastCard.modelData.chanceofrain || "0") + "%"; color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
                     }
                     MouseArea {
                         id: dayMouse; anchors.fill: parent
-                        enabled: root.forecastView === "daily"
+                        enabled: root.forecastView !== "hourly"
                         hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: root.showHours(forecastCard.index)
+                        onClicked: root.lunar ? root.moveCardTo(forecastCard.index) : root.showHours(forecastCard.index)
                     }
                 }
                 WheelHandler { onWheel: event => {
@@ -466,7 +485,7 @@ PopupCard {
                     required property var modelData
                     width: (weatherColumn.width - 12) / 2; spacing: 2
                     Text { text: parent.modelData[0]; color: root.shell.faintText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true; font.letterSpacing: 1 }
-                    Text { text: parent.modelData[1]; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.subtitle }
+                    Text { width: parent.width; text: parent.modelData[1]; wrapMode: Text.WordWrap; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.subtitle }
                 }
             }
         }

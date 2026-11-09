@@ -7,6 +7,7 @@ from agents.openai.codex_sessions import scan_native_codex_sessions
 from agents.openai.opencode_sessions import scan_opencode_sessions
 from agents.openai.pi_sessions import scan_pi_sessions
 from agents.sources import CODEX_HOME, OPENCODE_DB
+from agents.usage_records import UsageStats
 from agents.usage_records import UsageTotals
 from agents.usage_records import cache_key
 from agents.usage_records import local_date_string
@@ -15,6 +16,7 @@ import fcntl
 import sys
 
 SCAN_REUSE_SECONDS = 20
+STATS_CACHE_SCHEMA_VERSION = 2
 
 def scan_cache_paths():
   digest = cache_key(str(Path.home()) + "\n" + str(CODEX_HOME) + "\n" + str(OPENCODE_DB))
@@ -22,9 +24,9 @@ def scan_cache_paths():
   return root / f"codex-scan-{digest}.json", root / f"codex-scan-{digest}.lock"
 
 
-def read_cached_stats(cache_file, max_age_seconds):
+def read_cached_stats(cache_file, max_age_seconds) -> UsageStats | None:
   cached = read_fresh_cached_json(cache_file, max_age_seconds)
-  if not isinstance(cached, dict) or cached.get("schemaVersion") != 2:
+  if not isinstance(cached, dict) or cached.get("schemaVersion") != STATS_CACHE_SCHEMA_VERSION:
     return None
   if cached.get("scanDate") != local_date_string():
     return None
@@ -38,7 +40,7 @@ def read_cached_stats(cache_file, max_age_seconds):
 
 def write_cached_stats(cache_file, stats):
   try:
-    write_cached_json(cache_file, {"schemaVersion": 2, "scanDate": local_date_string(), "stats": stats})
+    write_cached_json(cache_file, {"schemaVersion": STATS_CACHE_SCHEMA_VERSION, "scanDate": local_date_string(), "stats": stats})
   except Exception as exc:
     print(f"agent-usage-codex: could not write usage cache ({exc})", file=sys.stderr)
 

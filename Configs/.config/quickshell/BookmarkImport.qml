@@ -160,9 +160,9 @@ Item {
       Text {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        text: "Esc Cancel"
-        color: Commons.Color.menu.text
-        opacity: Commons.Style.mutedTextAlpha
+        textFormat: Text.StyledText
+        text: Commons.Util.keyHintMarkup("Esc Cancel", Commons.Util.scaleAlpha(Commons.Color.menu.text, Commons.Style.mutedTextAlpha))
+        color: Commons.Color.accent
         font.family: Commons.Style.font.menuFamily
         font.pixelSize: Commons.Style.font.caption
       }

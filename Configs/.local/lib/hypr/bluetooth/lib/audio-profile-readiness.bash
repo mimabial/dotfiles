@@ -56,7 +56,7 @@ await_card_event() {
   return 1
 }
 
-wait_for_profile_topology() {
+wait_for_profile_topology_muting_new_endpoints() {
   local -n card_ref=$1 topology_ref=$6 failure_ref=$7
   local target_profile=$2 expected_sinks=$3 expected_sources=$4 events_fd=$5
   local deadline_ms reported_profile=''

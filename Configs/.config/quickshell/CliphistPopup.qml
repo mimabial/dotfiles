@@ -79,7 +79,7 @@ PopupCard {
     function refresh() { if (!listProcess.running) listProcess.running = true }
     function act(args) { shell.run(["bash", root.cliphistScript].concat(args), root.refresh) }
     function actAndClose(args) { shell.closePopup(); act(args) }
-    function copyRow(row) { actAndClose([row.favorite ? "--panel-fav-copy" : "--panel-copy", String(row.key)]) }
+    function copyRow(row) { actAndClose([row.favorite ? "--panel-fav-copy" : "--panel-move-to-newest-and-paste", String(row.key)]) }
     function deleteRow(row) {
         const key = String(row.key)
         if (row.favorite) favorites = favorites.filter(entry => String(entry.index) !== key)

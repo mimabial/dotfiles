@@ -30,10 +30,10 @@ key="$1"
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR}/notify/lib/archive-storage.bash"
 
-[[ -f "${archive}" ]] || exit 0
+[[ -f "${ARCHIVE_FILE}" ]] || exit 0
 
 entry="$(jq -Rc --arg key "${key}" \
-  'fromjson? | select(.key == $key)' <"${archive}" | head -n 1)"
+  'fromjson? | select(.key == $key)' <"${ARCHIVE_FILE}" | head -n 1)"
 [[ -n "${entry}" ]] || exit 0
 
 mapfile -t fields < <(jq -r '.preview // "", .app // "", .desktop // ""' <<<"${entry}")
@@ -42,7 +42,7 @@ app="${fields[1]:-}"
 desktop="${fields[2]:-}"
 
 # The path has to be one the store wrote, not one the entry merely claims.
-if ((focus_only == 0)) && [[ -n "${preview}" && "${preview}" == "${images}/"* && -f "${preview}" ]]; then
+if ((focus_only == 0)) && [[ -n "${preview}" && "${preview}" == "${ARCHIVE_IMAGES_DIR}/"* && -f "${preview}" ]]; then
   exec xdg-open "${preview}"
 fi
 

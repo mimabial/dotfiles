@@ -77,7 +77,7 @@ PopupWindow {
         width: targetWidth
         height: label.implicitHeight + Style.px(18)
         radius: Math.min(tip.shell.rounding, height / 2)
-        color: tip.shell.barColor
+        color: tip.shell.alpha(tip.shell.barColor, Style.popupSurfaceOpacity)
         opacity: Math.max(0, Math.min(1, presence * tip.fadeLead))
         visible: opacity > 0
         MotionBehavior on presence { SpringAnimation { spring: tip.springK; damping: tip.springD; epsilon: MinimapState.progressEpsilon } }

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Hyprland
+import qs.Commons as Commons
 import "PopupNavigation.js" as Navigation
 
 PopupWindow {
@@ -243,7 +244,9 @@ PopupWindow {
                 width: parent.width - root.padding * 2
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom; anchors.bottomMargin: Math.max(root.padding / 2, Style.sm)
-                text: root.keyboardHint
+                color: root.shell.accent
+                textFormat: Text.StyledText
+                text: Commons.Util.keyHintMarkup(root.keyboardHint, root.shell.mutedText)
                 fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Style.caption - 2)
             }
         }

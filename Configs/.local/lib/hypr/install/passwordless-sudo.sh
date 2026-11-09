@@ -4,7 +4,7 @@ set -euo pipefail
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 
 usage() {
-  printf 'Usage: hyprshell install/passwordless-sudo.sh [MINUTES|--disable]\n'
+  printf 'Usage: hyprshell install/passwordless-sudo.sh [MINUTES|--disable]\n\nAllow sudo without a password for MINUTES (default 15), or remove that rule with --disable.\n'
 }
 
 minutes=15

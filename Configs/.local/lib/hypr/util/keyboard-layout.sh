@@ -6,6 +6,8 @@ hypr_runtime_require state
 
 hypr_help_guard "Usage: hyprshell util/keyboard-layout [OPTION]
 
+Show or change the keyboard layouts and options.
+
 Without options, prints the active layout and managed keyboard settings as JSON.
 
 Options:
@@ -46,34 +48,34 @@ case "${action}" in
     xkbcli list --load-exotic
     ;;
   --use)
-    [[ "${2:-}" =~ ^[0-9]+$ ]] || keyboard_error '--use needs a numeric layout index.'
+    [[ "${2:-}" =~ ^[0-9]+$ ]] || keyboard_die '--use needs a numeric layout index.'
     index=$2
     layout_settings=$(keyboard_current_settings)
     count=$(jq '.layouts | length' <<<"${layout_settings}")
-    (( index < count )) || keyboard_error 'That keyboard layout is no longer configured.'
-    keyboard_switch_typing_devices "${index}" || keyboard_error 'The physical keyboards could not be switched.'
+    (( index < count )) || keyboard_die 'That keyboard layout is no longer configured.'
+    keyboard_switch_typing_devices "${index}" || keyboard_die 'The physical keyboards could not be switched.'
     keyboard_emit_status "${layout_settings}"
     ;;
   --add)
     layout=${2:-}; variant=${3:-}
     [[ "${layout}" =~ ^[A-Za-z0-9_+-]+$ && "${variant}" =~ ^[A-Za-z0-9_+-]*$ ]] \
-      || keyboard_error '--add needs a valid XKB layout and optional variant.'
+      || keyboard_die '--add needs a valid XKB layout and optional variant.'
     keyboard_acquire_config_lock
     layout_settings=$(keyboard_current_settings)
     next=$(jq -c --arg layout "${layout}" --arg variant "${variant}" '
       if any(.layouts[]; .layout == $layout and .variant == $variant)
       then error("duplicate") else .layouts += [{layout: $layout, variant: $variant}] end
-    ' <<<"${layout_settings}" 2>/dev/null) || keyboard_error 'That layout and variant is already configured.'
+    ' <<<"${layout_settings}" 2>/dev/null) || keyboard_die 'That layout and variant is already configured.'
     keyboard_commit_settings "${next}" "$(jq '.layouts | length' <<<"${layout_settings}")"
     ;;
   --remove)
-    [[ "${2:-}" =~ ^[0-9]+$ ]] || keyboard_error '--remove needs a numeric layout index.'
+    [[ "${2:-}" =~ ^[0-9]+$ ]] || keyboard_die '--remove needs a numeric layout index.'
     index=$2
     keyboard_acquire_config_lock
     layout_settings=$(keyboard_current_settings)
     count=$(jq '.layouts | length' <<<"${layout_settings}")
-    (( count > 1 )) || keyboard_error 'Keep at least one keyboard layout.'
-    (( index < count )) || keyboard_error 'That keyboard layout is no longer configured.'
+    (( count > 1 )) || keyboard_die 'Keep at least one keyboard layout.'
+    (( index < count )) || keyboard_die 'That keyboard layout is no longer configured.'
     current=$(keyboard_active_layout_index)
     if (( index < current )); then requested=$((current - 1)); elif (( index == current )); then requested=${index}; else requested=$current; fi
     (( requested < count - 1 )) || requested=$((count - 2))
@@ -84,7 +86,7 @@ case "${action}" in
   --shortcut)
     shortcut=${2:-}
     [[ "${shortcut}" == none || "${shortcut}" =~ ^grp:[A-Za-z0-9_+-]+$ ]] \
-      || keyboard_error '--shortcut needs an XKB grp option or none.'
+      || keyboard_die '--shortcut needs an XKB grp option or none.'
     [[ "${shortcut}" == none ]] && shortcut=""
     keyboard_acquire_config_lock
     layout_settings=$(keyboard_current_settings)
@@ -92,6 +94,6 @@ case "${action}" in
     keyboard_commit_settings "${next}" "$(keyboard_active_layout_index)"
     ;;
   *)
-    keyboard_error "Unknown option: ${action}"
+    keyboard_die "Unknown option: ${action}"
     ;;
 esac

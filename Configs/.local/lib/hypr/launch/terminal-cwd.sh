@@ -10,14 +10,22 @@ Print the best working directory for terminal-launch keybinds." "$@"
 
 active_window_json="$(hyprctl activewindow -j 2>/dev/null || true)"
 active_class=""
+active_title=""
 terminal_pid=""
 [[ "${active_window_json}" =~ \"class\":\ \"([^\"]*)\" ]] && active_class="${BASH_REMATCH[1]}"
+[[ "${active_window_json}" =~ \"title\":\ \"([^\"]*)\" ]] && active_title="${BASH_REMATCH[1]}"
 [[ "${active_window_json}" =~ \"pid\":\ (-?[0-9]+) ]] && terminal_pid="${BASH_REMATCH[1]}"
 shell_pid=""
 cwd=""
 shell_path=""
 shell_entry=""
 kitty_cwd=""
+dolphin_dir="${active_title% — Dolphin}"
+
+if [[ "${active_class}" == "org.kde.dolphin" && "${dolphin_dir}" == /* && -d "${dolphin_dir}" ]]; then
+  printf '%s\n' "${dolphin_dir}"
+  exit 0
+fi
 
 if [[ "${active_class}" == "kitty" ]] && command -v kitty >/dev/null 2>&1; then
   kitty_cwd="$(
@@ -43,7 +51,7 @@ fi
 }
 
 mapfile -t child_pids < <(pgrep -P "${terminal_pid}")
-shell_pid="${child_pids[-1]:-}"
+shell_pid="${child_pids[@]: -1}"
 
 if [[ -n "${shell_pid}" ]]; then
   if cd -P "/proc/${shell_pid}/cwd" 2>/dev/null; then cwd="${PWD}"; fi

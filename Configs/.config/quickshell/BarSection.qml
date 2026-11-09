@@ -11,12 +11,15 @@ Item {
     onModulesChanged: preserveModuleInstances()
     Component.onCompleted: preserveModuleInstances()
     function preserveModuleInstances() {
-        const entryKeys = modules.map(entry => JSON.stringify(entry))
+        const entryKeys = modules.map(entry => JSON.stringify(typeof entry === "string" ? { id: entry } : Object.assign({}, entry, { props: undefined })))
         for (let targetIndex = 0; targetIndex < entryKeys.length; targetIndex++) {
             let existingIndex = targetIndex
             while (existingIndex < moduleInstances.count && moduleInstances.get(existingIndex).key !== entryKeys[targetIndex]) existingIndex++
-            if (existingIndex === moduleInstances.count) moduleInstances.insert(targetIndex, { key: entryKeys[targetIndex] })
-            else if (existingIndex > targetIndex) moduleInstances.move(existingIndex, targetIndex, 1)
+            if (existingIndex === moduleInstances.count) moduleInstances.insert(targetIndex, { key: entryKeys[targetIndex], entry: JSON.stringify(modules[targetIndex]) })
+            else {
+                if (existingIndex > targetIndex) moduleInstances.move(existingIndex, targetIndex, 1)
+                moduleInstances.setProperty(targetIndex, "entry", JSON.stringify(modules[targetIndex]))
+            }
         }
         if (moduleInstances.count > entryKeys.length) moduleInstances.remove(entryKeys.length, moduleInstances.count - entryKeys.length)
     }
@@ -41,7 +44,7 @@ Item {
         spacing: root.styleBox.spacing || 0
         Repeater {
             model: moduleInstances
-            delegate: BarModuleLoader { required property string key; modelData: JSON.parse(key); registry: root.registry; shell: root.shell; sectionName: root.sectionName }
+            delegate: BarModuleLoader { required property string entry; modelData: JSON.parse(entry); registry: root.registry; shell: root.shell; sectionName: root.sectionName }
         }
     }
 }

@@ -165,7 +165,7 @@ def load_bluetooth_page(settings):
 
 def load_power_page(settings):
     settings.values["power_profile"] = run_capture(["powerprofilesctl", "get"]).stdout.strip()
-    settings.options["power_profile"] = run_capture(library_command("system/powerprofiles.sh")).stdout.splitlines()
+    settings.options["power_profile"] = run_capture(library_command("system/power-profiles.sh")).stdout.splitlines()
     result = run_capture(["brightnessctl", "-m"]).stdout.strip().split(",")
     settings.values["brightness"] = int(result[3].rstrip("%")) if len(result) > 3 else None
     settings.values["dnd"] = run_capture(["dunstctl", "is-paused"]).stdout.strip() == "true"

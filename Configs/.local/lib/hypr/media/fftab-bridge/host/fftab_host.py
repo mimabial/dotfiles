@@ -28,6 +28,7 @@ BUS_PREFIX = "org.mpris.MediaPlayer2.fftab_t"
 OBJ_PATH = "/org/mpris/MediaPlayer2"
 ROOT_IFACE = "org.mpris.MediaPlayer2"
 PLAYER_IFACE = "org.mpris.MediaPlayer2.Player"
+URI_SCHEMES = ("http", "https")
 SEEK_SIGNAL_THRESHOLD = 2.0
 MESSAGE_LENGTH_PREFIX = struct.Struct("<I")
 
@@ -241,7 +242,7 @@ class TabPlayer:
                 "HasTrackList": GLib.Variant("b", False),
                 "Identity": GLib.Variant("s", f"Firefox tab {self.tab_id}"),
                 "DesktopEntry": GLib.Variant("s", "firefox"),
-                "SupportedUriSchemes": GLib.Variant("as", []),
+                "SupportedUriSchemes": GLib.Variant("as", URI_SCHEMES),
                 "SupportedMimeTypes": GLib.Variant("as", []),
             }.get(prop)
         return {
@@ -277,6 +278,12 @@ class TabPlayer:
             command = {"command": "seek", "offset": params.unpack()[0] / 1e6}
         elif method == "SetPosition":
             command = {"command": "setposition", "position": params.unpack()[1] / 1e6}
+        elif method == "OpenUri":
+            url = params.unpack()[0]
+            if urlparse(url).scheme not in URI_SCHEMES:
+                invocation.return_dbus_error("org.freedesktop.DBus.Error.InvalidArgs", "Unsupported URI scheme")
+                return
+            command = {"command": "openuri", "url": url}
         if command:
             send_to_extension({"type": "command", "tabId": self.tab_id, **command})
         invocation.return_value(None)

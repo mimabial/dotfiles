@@ -205,6 +205,43 @@ class TerminalInput:
             curses.curs_set(0)
 
 
+def handle_settings_key(settings, key):
+    if hasattr(settings, "handle_key") and settings.handle_key(key):
+        return True
+
+    rows = settings.active_rows
+    row = rows[settings.row_index] if 0 <= settings.row_index < len(rows) else None
+
+    # Not ESC: ncurses cannot tell a bare Escape from the first byte of an
+    # escape sequence, so it holds it for ESCDELAY (1s by default) and
+    # closing looked like a hang.
+    if key == ord("q"):
+        return False
+    if key in (curses.KEY_UP, ord("k")):
+        settings.move_row(-1)
+    elif key in (curses.KEY_DOWN, ord("j")):
+        settings.move_row(1)
+    elif key in (curses.KEY_LEFT, ord("h")):
+        if row:
+            settings.adjust(row, -1)
+    elif key in (curses.KEY_RIGHT, ord("l")):
+        if row:
+            settings.adjust(row, 1)
+    elif key == ord("\t"):
+        settings.move_section(1)
+    elif key == curses.KEY_BTAB:
+        settings.move_section(-1)
+    elif key in (ord(" "), curses.KEY_ENTER, curses.ascii.NL, curses.ascii.CR):
+        if row and row["type"] == "bool":
+            settings.toggle_row(row)
+        elif row:
+            settings.adjust(row, 1)
+    elif key in (curses.KEY_BACKSPACE, curses.ascii.DEL, curses.ascii.BS):
+        if row:
+            settings.reset_row(row)
+    return True
+
+
 def run_settings(window, settings_type=VisualSettings):
     curses.curs_set(0)
     initialize_terminal_colors()
@@ -229,47 +266,12 @@ def run_settings(window, settings_type=VisualSettings):
             curses.doupdate()
             key = window.getch()
 
-            if key == -1:
+            if key == curses.ERR:
                 events.wait()
                 continue
 
-            if hasattr(settings, "handle_key") and settings.handle_key(key):
-                settings.save_pending_changes()
-                continue
-
-            rows = settings.active_rows
-            row = rows[settings.row_index] if 0 <= settings.row_index < len(rows) else None
-
-            # Not ESC: ncurses cannot tell a bare Escape from the first byte of an
-            # escape sequence, so it holds it for ESCDELAY (1s by default) and
-            # closing looked like a hang.
-            if key == ord("q"):
+            if not handle_settings_key(settings, key):
                 break
-            elif key in (curses.KEY_UP, ord("k")):
-                settings.move_row(-1)
-            elif key in (curses.KEY_DOWN, ord("j")):
-                settings.move_row(1)
-            elif key in (curses.KEY_LEFT, ord("h")):
-                if row:
-                    settings.adjust(row, -1)
-            elif key in (curses.KEY_RIGHT, ord("l")):
-                if row:
-                    settings.adjust(row, 1)
-            elif key == ord("\t"):
-                settings.move_section(1)
-            elif key == curses.KEY_BTAB:
-                settings.move_section(-1)
-            elif key in (ord(" "), curses.KEY_ENTER, curses.ascii.NL, curses.ascii.CR):
-                if row and row["type"] == "bool":
-                    settings.toggle_row(row)
-                elif row:
-                    settings.adjust(row, 1)
-            elif key in (curses.KEY_BACKSPACE, curses.ascii.DEL, curses.ascii.BS):
-                if row:
-                    settings.reset_row(row)
-            elif key == curses.KEY_RESIZE:
-                pass
-
             settings.save_pending_changes()
 
     finally:

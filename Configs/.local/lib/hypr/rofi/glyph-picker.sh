@@ -2,7 +2,7 @@
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/rofi/picker.common.bash"
-rofi_picker_toggle_off_if_open "$@"
+rofi_picker_toggle_off_and_exit_if_open "$@"
 rofi_picker_load_environment || exit 1
 
 declare -A picker_paths=()
@@ -14,8 +14,11 @@ GLYPH_EXIT_COPY_NAME=10
 # A cell stacks glyph, prefix and the name split over two lines, across six
 # reserved rows (~6.5em) against the ~2.1em a plain row costs.
 GLYPH_CELL_ROWS=6
-GLYPH_ROW_EM=6.5
-GLYPH_CHROME_EM=9.4
+GLYPH_TILE_PADDING_Y_EM=0.25
+GLYPH_TILE_GAP_EM=0.3
+GLYPH_HINT_MARGIN_EM=0.7
+GLYPH_HINT_PADDING_EM=0.3
+GLYPH_FRAME_CHROME_EM=6.6
 # 5:4 tiles, over the mainbox and listview padding the theme puts either side of the grid.
 GLYPH_TILE_ASPECT=1.25
 GLYPH_GRID_PADDING_EM=2
@@ -62,21 +65,29 @@ glyph_save_recent_record() {
   rofi_picker_save_recent_entry "${recent_data}" "glyph_recent" "${glyph_line}" "${ROFI_PICKER_RECENT_LIMIT}" glyph_clean_recent_records
 }
 
-glyph_grid_size() {
-  awk -v w="$1" -v h="$2" -v e="$3" -v r="${GLYPH_ROW_EM}" -v chrome="${GLYPH_CHROME_EM}" \
-    -v fill="${GLYPH_SCREEN_FILL}" -v aspect="${GLYPH_TILE_ASPECT}" -v pad="${GLYPH_GRID_PADDING_EM}" \
-    -v cmin="${GLYPH_COLUMNS_MIN}" -v cmax="${GLYPH_COLUMNS_MAX}" -v lmin="${GLYPH_LINES_MIN}" -v lmax="${GLYPH_LINES_MAX}" '
+glyph_grid_layout() {
+  awk -v monitor_width_px="$1" -v monitor_height_px="$2" -v em_px="$3" -v columns_override="$4" -v lines_override="$5" \
+    -v cell_rows="${GLYPH_CELL_ROWS}" -v tile_padding_y="${GLYPH_TILE_PADDING_Y_EM}" -v tile_gap="${GLYPH_TILE_GAP_EM}" \
+    -v tile_aspect="${GLYPH_TILE_ASPECT}" -v grid_padding="${GLYPH_GRID_PADDING_EM}" -v screen_fill="${GLYPH_SCREEN_FILL}" \
+    -v frame_chrome="${GLYPH_FRAME_CHROME_EM}" -v hint_margin="${GLYPH_HINT_MARGIN_EM}" -v hint_padding="${GLYPH_HINT_PADDING_EM}" \
+    -v columns_min="${GLYPH_COLUMNS_MIN}" -v columns_max="${GLYPH_COLUMNS_MAX}" -v lines_min="${GLYPH_LINES_MIN}" -v lines_max="${GLYPH_LINES_MAX}" '
+    function clamp(value, low, high) { return value < low ? low : (value > high ? high : value) }
+    function tiles_fitting(available_em, tile_em) { return int((available_em + tile_gap) / (tile_em + tile_gap)) }
+    function tiles_span(count, tile_em) { return count * (tile_em + tile_gap) - tile_gap }
     BEGIN {
-      c = int((w * fill - pad * e) / (r * aspect * e))
-      l = int((h * fill - chrome * e) / (r * e))
-      printf "%d %d\n", (c < cmin ? cmin : (c > cmax ? cmax : c)), (l < lmin ? lmin : (l > lmax ? lmax : l))
+      tile_height = cell_rows + 2 * tile_padding_y
+      tile_width = tile_height * tile_aspect
+      chrome = frame_chrome + hint_margin + 2 * hint_padding
+      columns = columns_override != "" ? columns_override : clamp(tiles_fitting(monitor_width_px * screen_fill / em_px - grid_padding, tile_width), columns_min, columns_max)
+      lines = lines_override != "" ? lines_override : clamp(tiles_fitting(monitor_height_px * screen_fill / em_px - chrome, tile_height), lines_min, lines_max)
+      printf "%d %d %.1f %.1f\n", columns, lines, tiles_span(columns, tile_width) + grid_padding, tiles_span(lines, tile_height) + chrome
     }'
 }
 
 glyph_resolve_layout_into() {
   local -n picker_layout_ref="$1"
   local logical_width logical_height
-  local em_px="" calc_cols="" calc_lines="" default_width="" glyph_window_height_em=""
+  local em_px="" columns_override="" lines_override="" default_width="" glyph_window_height_em=""
 
   rofi_resolve_style_into "$1" \
     "${ROFI_GLYPH_SCALE:-}" "${ROFI_GLYPH_FONT:-${ROFI_FONT:-}}" wallbox same
@@ -88,22 +99,16 @@ glyph_resolve_layout_into() {
   # the grid has to divide the real pixel budget, not font_scale.
   em_px="$(rofi_length_em_to_px 1 "${font_name}" "${font_scale}" 2>/dev/null || true)"
   [[ "${em_px}" =~ ^[0-9]+$ ]] && ((em_px > 0)) || em_px=$((font_scale * 3 / 2))
-  read -r calc_cols calc_lines <<<"$(glyph_grid_size "${logical_width}" "${logical_height}" "${em_px}")"
+  [[ "${ROFI_GLYPH_COLUMNS:-}" =~ ^[0-9]+$ ]] && columns_override="${ROFI_GLYPH_COLUMNS}"
+  [[ "${ROFI_GLYPH_LINES:-}" =~ ^[0-9]+$ ]] && lines_override="${ROFI_GLYPH_LINES}"
+  read -r "picker_layout_ref[columns]" "picker_layout_ref[lines]" default_width glyph_window_height_em \
+    <<<"$(glyph_grid_layout "${logical_width}" "${logical_height}" "${em_px}" "${columns_override}" "${lines_override}")"
 
-  picker_layout_ref[columns]="${ROFI_GLYPH_COLUMNS:-}"
-  [[ "${picker_layout_ref[columns]}" =~ ^[0-9]+$ ]] || picker_layout_ref[columns]=${calc_cols}
-  picker_layout_ref[lines]="${ROFI_GLYPH_LINES:-}"
-  [[ "${picker_layout_ref[lines]}" =~ ^[0-9]+$ ]] || picker_layout_ref[lines]=${calc_lines}
-
-  default_width="$(awk -v c="${picker_layout_ref[columns]}" -v r="${GLYPH_ROW_EM}" -v aspect="${GLYPH_TILE_ASPECT}" -v pad="${GLYPH_GRID_PADDING_EM}" \
-    'BEGIN { printf "%.1f\n", (c * r * aspect) + pad }')"
   picker_layout_ref[width_em]="${ROFI_GLYPH_WIDTH_EM:-${default_width}}"
   [[ "${picker_layout_ref[width_em]}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || picker_layout_ref[width_em]=${default_width}
-  glyph_window_height_em="$(rofi_picker_listview_height_em "${picker_layout_ref[lines]}" "${GLYPH_ROW_EM}" "${GLYPH_CHROME_EM}")"
   rofi_resolve_window_geometry_into "$1" \
     "${picker_layout_ref[width_em]}" "${glyph_window_height_em}" \
     $((logical_width / 2)) $((logical_height * 3 / 4))
-
 }
 
 glyph_build_rofi_args_into() {
@@ -119,9 +124,9 @@ glyph_build_rofi_args_into() {
     -theme "$(rofi_resolve_theme "${ROFI_GLYPH_STYLE:-clipboard}")"
     -theme-str "${picker_layout_ref[position_theme]}"
     -theme-str "${picker_layout_ref[font_theme]}"
-    -theme-str "listview {flow: horizontal; fixed-columns: true;} element {padding: 0.25em 0.5em;} element-text {horizontal-align: 0.5;}"
-    -theme-str 'listview {scrollbar: false; spacing: 5px;} message {enabled: true; margin: 12px 0px 0px 0px; padding: 0px; border: 0px solid; border-radius: 0px; border-color: @border; background-color: transparent; text-color: @separator;} textbox {padding: 6px; border: 0px solid; border-radius: 8px; border-color: @border; background-color: transparent; text-color: inherit; vertical-align: 0.5; horizontal-align: 0.5;}'
-    -theme-str "${picker_layout_ref[size_theme]}"
+    -theme-str "listview {flow: horizontal; fixed-columns: true;} element {padding: ${GLYPH_TILE_PADDING_Y_EM}em 0.5em;} element-text {horizontal-align: 0.5;}"
+    -theme-str "listview {scrollbar: false; spacing: ${GLYPH_TILE_GAP_EM}em;} message {enabled: true; margin: ${GLYPH_HINT_MARGIN_EM}em 0em 0em 0em; padding: 0px; border: 0px; background-color: transparent; text-color: @separator;} textbox {padding: ${GLYPH_HINT_PADDING_EM}em; border: 0px; background-color: transparent; text-color: inherit; vertical-align: 0.5; horizontal-align: 0.5;}"
+    -theme-str "${picker_layout_ref[width_theme]}"
     -theme-str "${picker_layout_ref[window_theme]}"
   )
   rofi_picker_header_args_into "$1" Glyph "" "$2"

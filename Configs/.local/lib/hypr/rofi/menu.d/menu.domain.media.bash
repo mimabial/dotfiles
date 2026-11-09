@@ -25,12 +25,29 @@ media_pick_album_genres() {
 
   case "${selection}" in
     "${empty_label}" | "")
-      menu_exit_or_show media
+      menu_show_then_exit media
       ;;
     *)
       menu_present_terminal hyprshell media/tag_genres "${library}/${selection}"
       ;;
   esac
+}
+
+media_pick_transcode() {
+  local empty_label="No pictures or videos in ~/Pictures or ~/Videos"
+  local files="" input="" preset="" format="" resolution=""
+
+  files="$(
+    find "${HOME}/Pictures" "${HOME}/Videos" -name '.*' -prune -o -type f -regextype posix-extended \
+      -iregex '.*\.(jpe?g|png|webp|gif|heic|avif|mp4|mov|m4v|mkv|webm|avi)' -printf '%T@\t%p\n' 2>/dev/null |
+      sort -rn | cut -f2-
+  )"
+  input="$(menu "Transcode" "${files:-${empty_label}}")"
+  [[ -f "${input}" ]] || menu_show_then_exit media
+  preset="$(menu "Transcode to" "$(hyprshell media/transcode --presets "${input}")")"
+  [[ -n "${preset}" ]] || menu_show_then_exit media
+  read -r format resolution <<<"${preset}"
+  exec hyprshell media/transcode "${input}" "${format}" "${resolution}"
 }
 
 menu_register_domain_media() {
@@ -41,6 +58,7 @@ menu_register_domain_media() {
   menu_add_item media "󰈔  Fetch Lyrics" action media_fetch_lyrics
   menu_add_item media "󰚰  Relink Orphan Lyrics" action media_relink_lyrics
   menu_add_item media "󰉋  Library Folder" action media_library
+  menu_add_item media "󰈫  Transcode" action media_transcode
 }
 
 menu_run_action_media() {
@@ -53,6 +71,7 @@ menu_run_action_media() {
     media_fetch_lyrics) menu_present_terminal hyprshell media/fetch_all_lyrics ;;
     media_relink_lyrics) menu_present_terminal hyprshell media/lyrics_relink ;;
     media_library) menu_present_terminal hyprshell media/music_library_config ;;
+    media_transcode) media_pick_transcode ;;
     *) return "${MENU_ACTION_UNKNOWN}" ;;
   esac
 }

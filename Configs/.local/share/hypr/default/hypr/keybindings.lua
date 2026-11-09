@@ -1,32 +1,12 @@
 local vars = require("vars")
+local binds = require("binds")
+local bind, exec = binds.bind, binds.exec
 
 local mod = vars.get("mainMod", "SUPER")
 local terminal = vars.get("TERMINAL", "alacritty")
 local explorer = vars.get("EXPLORER", "dolphin")
 local browser = vars.get("BROWSER", "firefox")
 local editor = vars.get("EDITOR", "nvim")
-local bind_actions = {__probe = hl.dsp.no_op()}
-_G.HYPR_BIND_ACTIONS = bind_actions
-
-local function chord(modifiers, key)
-    local parts = {}
-    for item in tostring(modifiers or ""):gsub("%+", " "):gmatch("%S+") do
-        parts[#parts + 1] = item
-    end
-    parts[#parts + 1] = key
-    return table.concat(parts, " + ")
-end
-
-local function bind(modifiers, key, description, dispatcher, options)
-    options = options or {}
-    options.description = description
-    bind_actions[description] = dispatcher
-    hl.bind(chord(modifiers, key), dispatcher, options)
-end
-
-local function exec(modifiers, key, description, command, options)
-    bind(modifiers, key, description, hl.dsp.exec_cmd(command), options)
-end
 
 bind(mod, "Q", "[Window Management] close focused window", hl.dsp.window.close())
 bind("ALT", "F4", "[Window Management] close focused window", hl.dsp.window.close())
@@ -44,31 +24,43 @@ bind(mod, "LEFT", "[Window Management|Focus] focus left", hl.dsp.focus({directio
 bind(mod, "RIGHT", "[Window Management|Focus] focus right", hl.dsp.focus({direction = "right"}))
 bind(mod, "UP", "[Window Management|Focus] focus up", hl.dsp.focus({direction = "up"}))
 bind(mod, "DOWN", "[Window Management|Focus] focus down", hl.dsp.focus({direction = "down"}))
-bind("ALT", "TAB", "[Window Management|Focus] cycle next", hl.dsp.window.cycle_next())
-bind("ALT SHIFT", "TAB", "[Window Management|Focus] cycle previous", hl.dsp.window.cycle_next({next = false}))
-bind("ALT", "TAB", "[Window Management|Focus] reveal active window", hl.dsp.window.bring_to_top())
-bind("ALT SHIFT", "TAB", "[Window Management|Focus] reveal active window", hl.dsp.window.bring_to_top())
 
-bind(mod .. " SHIFT", "RIGHT", "[Window Management|Resize] resize right", hl.dsp.window.resize({x = 30, y = 0, relative = true}), {repeating = true})
-bind(mod .. " SHIFT", "LEFT", "[Window Management|Resize] resize left", hl.dsp.window.resize({x = -30, y = 0, relative = true}), {repeating = true})
-bind(mod .. " SHIFT", "UP", "[Window Management|Resize] resize up", hl.dsp.window.resize({x = 0, y = -30, relative = true}), {repeating = true})
-bind(mod .. " SHIFT", "DOWN", "[Window Management|Resize] resize down", hl.dsp.window.resize({x = 0, y = 30, relative = true}), {repeating = true})
+require("switcher")
 
-local function move_window(direction, x, y)
+local WINDOW_STEP_PX = 30
+local WINDOW_STEPS = {
+    left = {x = -WINDOW_STEP_PX, y = 0},
+    right = {x = WINDOW_STEP_PX, y = 0},
+    up = {x = 0, y = -WINDOW_STEP_PX},
+    down = {x = 0, y = WINDOW_STEP_PX},
+}
+
+local function resize_window(direction)
+    local step = WINDOW_STEPS[direction]
+    return hl.dsp.window.resize({x = step.x, y = step.y, relative = true})
+end
+
+local function move_window(direction)
+    local step = WINDOW_STEPS[direction]
     return function()
         local window = hl.get_active_window()
         if window and window.floating then
-            hl.dispatch(hl.dsp.window.move({x = x, y = y, relative = true}))
+            hl.dispatch(hl.dsp.window.move({x = step.x, y = step.y, relative = true}))
         else
             hl.dispatch(hl.dsp.window.move({direction = direction}))
         end
     end
 end
 
-bind(mod .. " ALT", "LEFT", "[Window Management|Move] move left", move_window("left", -30, 0), {repeating = true})
-bind(mod .. " ALT", "RIGHT", "[Window Management|Move] move right", move_window("right", 30, 0), {repeating = true})
-bind(mod .. " ALT", "UP", "[Window Management|Move] move up", move_window("up", 0, -30), {repeating = true})
-bind(mod .. " ALT", "DOWN", "[Window Management|Move] move down", move_window("down", 0, 30), {repeating = true})
+bind(mod .. " SHIFT", "RIGHT", "[Window Management|Resize] resize right", resize_window("right"), {repeating = true})
+bind(mod .. " SHIFT", "LEFT", "[Window Management|Resize] resize left", resize_window("left"), {repeating = true})
+bind(mod .. " SHIFT", "UP", "[Window Management|Resize] resize up", resize_window("up"), {repeating = true})
+bind(mod .. " SHIFT", "DOWN", "[Window Management|Resize] resize down", resize_window("down"), {repeating = true})
+
+bind(mod .. " ALT", "LEFT", "[Window Management|Move] move left", move_window("left"), {repeating = true})
+bind(mod .. " ALT", "RIGHT", "[Window Management|Move] move right", move_window("right"), {repeating = true})
+bind(mod .. " ALT", "UP", "[Window Management|Move] move up", move_window("up"), {repeating = true})
+bind(mod .. " ALT", "DOWN", "[Window Management|Move] move down", move_window("down"), {repeating = true})
 
 bind(mod, "mouse:272", "[Window Management|Mouse] move window", hl.dsp.window.drag(), {mouse = true})
 bind(mod, "mouse:273", "[Window Management|Mouse] resize window", hl.dsp.window.resize(), {mouse = true})

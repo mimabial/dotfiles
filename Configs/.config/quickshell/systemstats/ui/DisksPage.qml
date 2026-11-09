@@ -26,7 +26,7 @@ Column {
   readonly property color s2: service ? service.series2 : Commons.Color.accent
   readonly property color warn: service ? service.warn : Commons.Color.urgent
   readonly property color danger: service ? service.danger : Commons.Color.urgent
-  readonly property color calm: Commons.Util.alpha(foreground, Commons.Style.mutedTextAlpha)
+  readonly property color calm: Commons.Util.scaleAlpha(foreground, Commons.Style.mutedTextAlpha)
 
   readonly property var disks: snap.disks || ({})
   readonly property var perDisk: disks.perDisk || ({})
@@ -330,7 +330,7 @@ Column {
       upColor: root.s2
       downColor: root.s1
       minimumCeiling: Model.DISK_SCALE_FLOOR
-      midlineColor: Commons.Util.alpha(root.foreground, 0.18)
+      midlineColor: Commons.Util.scaleAlpha(root.foreground, 0.18)
     }
 
     Legend {

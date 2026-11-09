@@ -9,7 +9,7 @@ Item {
   property real value: 0
   property color color: Commons.Color.accent
   property color foreground: Commons.Color.popups.text
-  property color trackColor: Commons.Util.alpha(foreground, 0.12)
+  property color trackColor: Commons.Util.scaleAlpha(foreground, 0.12)
   property real size: Commons.Style.space(16)
   property real thickness: Commons.Style.spaceReal(2.4)
   property real animatedValue: Math.max(0, Math.min(1, value))

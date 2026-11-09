@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import argparse
 import ctypes
 import curses
 import fcntl
@@ -13,31 +12,22 @@ import subprocess
 import sys
 import termios
 import time
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, NamedTuple, TypedDict
+from typing import Any, NamedTuple
 
 HYPR_LIB_DIR = Path(__file__).resolve().parent.parent / "lib/hypr"
 sys.path.insert(0, str(HYPR_LIB_DIR))
 from pyutils.xdg_base_dirs import xdg_cache_home
-
-
-class UsageRecord(TypedDict, total=False):
-    id: str
-    name: str
-    tierLabel: str
-    usageStatusText: str
-    goStatus: str
-    updatedAt: str
-    limits: list[dict[str, Any]]
-    recentDays: list[dict[str, Any]]
-    modelUsage: dict[str, dict[str, int]]
+from system.agents.usage_records import LimitRecord, ModelTokens, TokenParts, UsageRecord
 
 
 class AgentSpec(NamedTuple):
     name: str
     command: str
     shortcut: str
+    app_id: str
 
 
 class DashboardLayout(NamedTuple):
@@ -63,29 +53,30 @@ class ChartRow(NamedTuple):
     value_attr: int
 
 
+class Section(NamedTuple):
+    title: str
+    rows: list[Any]
+    draw_rows: Callable[..., None]
+
+
 DEFAULT_APP_SCRIPT = HYPR_LIB_DIR / "setup/default-app.sh"
 CACHE_FILE = Path(os.environ.get("HYPR_CACHE_HOME") or xdg_cache_home() / "hypr") / "agents" / "usage.json"
 CLAUDE_CREDENTIALS = (
     Path(os.environ.get("CLAUDE_CONFIG_DIR") or "~/.claude").expanduser() / ".credentials.json"
 )
 AGENTS = {
-    "claude": AgentSpec("Claude Code", "claude", "c"),
-    "codex": AgentSpec("Codex", "codex", "x"),
-    "opencode": AgentSpec("OpenCode", "opencode", "o"),
+    "claude": AgentSpec("Claude Code", "claude", "c", "org.agent.Claude"),
+    "codex": AgentSpec("Codex", "codex", "x", "org.agent.Codex"),
+    "opencode": AgentSpec("OpenCode", "opencode", "o", "org.agent.OpenCode"),
 }
-TOKEN_PART_FIELDS = (
-    "inputTokens",
-    "outputTokens",
-    "cacheCreationInputTokens",
-    "cacheReadInputTokens",
-)
+TOKEN_PART_FIELDS = tuple(TokenParts.__annotations__)
 
-# The rendered terminal ANSI slots keep this palette theme-aware.
 PAIR_ACCENT = 1
 PAIR_DIM = 2
 PAIR_ERROR = 3
-PAIR_BAR = 4
+PAIR_HIGHLIGHT = 4
 BRIGHT_BLACK = 8
+WINSIZE_STRUCT = struct.Struct("HHHH")
 
 PERCENT_WIDTH = 5
 RESET_WIDTH = 10
@@ -95,29 +86,47 @@ RIGHT_MARGIN = 2
 LABEL_COLUMN = 3
 LABEL_WIDTH_DIVISOR = 4
 COLUMN_GAP = 2
-USAGE_BAR_SEGMENTS = {"hourly": 5, "weekly": 7}
-USAGE_WINDOWS = ("hourly", "weekly")
-TAB_ROW = 2
+SHORT_WINDOW = "short"
+LONG_WINDOW = "long"
+USAGE_BAR_SEGMENTS = {SHORT_WINDOW: 5, LONG_WINDOW: 7}
+USAGE_WINDOWS = (SHORT_WINDOW, LONG_WINDOW)
+USAGE_SUMMARY_LABELS = {SHORT_WINDOW: "5h", LONG_WINDOW: "weekly"}
+TITLE_ROW = 0
+TITLE_RULE_ROW = TITLE_ROW + 1
+TAB_ROW = TITLE_RULE_ROW + 1
+CURRENT_SIZE_ROW = TITLE_RULE_ROW + 1
 HEAD_ROW = TAB_ROW + 2
-FIRST_SECTION_ROW = HEAD_ROW + 2
+RECOMMENDED_ROW = HEAD_ROW + 1
+FIRST_SECTION_ROW = RECOMMENDED_ROW + 1
+SECTION_TITLE_ROWS = 1
+FOOTER_GAP_ROWS = 1
 FOOTER_ROWS = 3
 MIN_ROWS = 24
 MIN_COLS = 72
 MIN_LABEL_WIDTH = 16
 MAX_LABEL_WIDTH = 24
-SECTION_COUNT = 3
 SECTION_GAP_MIN = 1
 SECTION_GAP_MAX = 2
 MODEL_ROWS = 5
 MIN_BAR_WIDTH = 8
 APP_TITLE = "Agent Hub"
+USAGE = (
+    "Usage: agent-tui [--size]\n"
+    "AI coding subscription dashboard.\n"
+    "  --size  print the terminal columns and rows needed for the current dashboard"
+)
+AGENT_HUB_APP_ID = "org.tui.AgentHub"
 HEADER_GAP = 4
 SECTION_RULE_GAP = 1
 ALERT_FRACTION = 0.9
 REFRESH_NOTE_SECONDS = 60
+SECONDS_PER_MINUTE = 60
+MINUTES_PER_HOUR = 60
 HOURS_PER_DAY = 24
-MINUTES_PER_DAY = HOURS_PER_DAY * 60
+MINUTES_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR
 CACHE_MAX_AGE_SECONDS = 900
+HYPRCTL_TIMEOUT_SECONDS = 1
+DEFAULT_APP_TIMEOUT_SECONDS = 2
 IN_CLOSE_WRITE = 0x00000008
 IN_MOVED_FROM = 0x00000040
 IN_MOVED_TO = 0x00000080
@@ -140,7 +149,7 @@ def init_colors():
     curses.init_pair(PAIR_ACCENT, accent, -1)
     curses.init_pair(PAIR_DIM, dim_color_index, -1)
     curses.init_pair(PAIR_ERROR, curses.COLOR_RED, -1)
-    curses.init_pair(PAIR_BAR, curses.COLOR_CYAN, -1)
+    curses.init_pair(PAIR_HIGHLIGHT, curses.COLOR_CYAN, -1)
 
 
 def load_records() -> list[UsageRecord]:
@@ -155,17 +164,17 @@ def load_records() -> list[UsageRecord]:
         return []
 
 
-def window_kind(limit):
-    label = str(limit.get("label") or limit.get("title") or "").lower()
+def limit_window(limit: LimitRecord) -> str:
+    label = str(limit.get("label") or "").lower()
     compact_label = label.replace(" ", "")
     if "week" in label or "day" in label:
-        return "weekly"
+        return LONG_WINDOW
     if (
         "hour" in label
         or "session" in label
         or any(f"{n}h" in compact_label for n in range(1, HOURS_PER_DAY + 1))
     ):
-        return "hourly"
+        return SHORT_WINDOW
     return ""
 
 
@@ -197,39 +206,38 @@ def parse_time(value):
         return None
 
 
-def limit_usage_fraction(limit):
-    """Stale readings stay until a collector updates them."""
+def reported_usage_fraction(limit: LimitRecord) -> float | None:
     try:
-        return float(limit.get("usageFraction", -1))
+        return float(limit.get("usageFraction"))
     except (TypeError, ValueError):
-        return -1.0
+        return None
 
 
-def limit_expired(limit):
+def limit_expired(limit: LimitRecord) -> bool:
     reset = parse_time(limit.get("resetsAt"))
     return bool(reset and reset <= datetime.now().astimezone())
 
 
-def peak_window_usage(record, kind, reset_expired=False):
+def peak_window_usage(record: UsageRecord, window: str, reset_expired: bool = False) -> float | None:
     fractions = [
-        min(1.0, 0.0 if reset_expired and limit_expired(limit) else limit_usage_fraction(limit))
+        0.0 if reset_expired and limit_expired(limit) else reported_usage_fraction(limit)
         for limit in record.get("limits") or []
-        if window_kind(limit) == kind
+        if limit_window(limit) == window
     ]
-    return max((fraction for fraction in fractions if fraction >= 0), default=None)
+    return max((min(1.0, fraction) for fraction in fractions if fraction is not None), default=None)
 
 
-def reports_go_plan_limits(record):
-    return record.get("id") == "opencode"
+def is_go_plan_record(record):
+    return "goStatus" in record
 
 
 def recommended_agent(records: list[UsageRecord]) -> UsageRecord | None:
     best_score = None
     best_agent = None
     for record in records:
-        if reports_go_plan_limits(record):
+        if is_go_plan_record(record):
             continue
-        usage = [peak_window_usage(record, kind, reset_expired=True) for kind in USAGE_WINDOWS]
+        usage = [peak_window_usage(record, window, reset_expired=True) for window in USAGE_WINDOWS]
         known_usage = [value for value in usage if value is not None]
         if not known_usage:
             continue
@@ -254,9 +262,9 @@ def resets_in(value):
     target = parse_time(value)
     if not target:
         return ""
-    minutes = max(0, round((target - datetime.now().astimezone()).total_seconds() / 60))
+    minutes = max(0, round((target - datetime.now().astimezone()).total_seconds() / SECONDS_PER_MINUTE))
     days, minutes = divmod(minutes, MINUTES_PER_DAY)
-    hours, minutes = divmod(minutes, 60)
+    hours, minutes = divmod(minutes, MINUTES_PER_HOUR)
     if days:
         return f"{days}d {hours}h"
     if hours:
@@ -266,14 +274,14 @@ def resets_in(value):
 
 def usage_summary(record):
     parts = []
-    for kind, label in (("hourly", "5h"), ("weekly", "weekly")):
-        value = peak_window_usage(record, kind)
+    for window, label in USAGE_SUMMARY_LABELS.items():
+        value = peak_window_usage(record, window)
         if value is not None:
             parts.append(f"{round(value * 100)}% {label} used")
     return DOT_SEPARATOR.join(parts)
 
 
-def token_total(usage):
+def token_total(usage: ModelTokens) -> int:
     return int(usage.get("totalTokens") or 0) or sum(int(usage.get(field) or 0) for field in TOKEN_PART_FIELDS)
 
 
@@ -285,23 +293,36 @@ def model_totals(record):
 
 
 def go_limit_status(record):
-    if reports_go_plan_limits(record) and not record.get("limits"):
+    if is_go_plan_record(record) and not record.get("limits"):
         return str(record.get("goStatus") or "No OpenCode Go key configured")
     return ""
 
 
-def content_height(record, title_gap=1):
-    sections = (
-        len(record.get("limits") or []) or bool(go_limit_status(record)),
-        len(record.get("recentDays") or []),
-        len(model_totals(record)[:MODEL_ROWS]),
+def limits_section(record: UsageRecord) -> Section:
+    title = "GO LIMITS" if is_go_plan_record(record) else "LIMITS"
+    if status := go_limit_status(record):
+        return Section(title, [status], Dashboard.draw_status_rows)
+    readings = [
+        (limit, fraction)
+        for limit in record.get("limits") or []
+        if (fraction := reported_usage_fraction(limit)) is not None
+    ]
+    return Section(title, readings, Dashboard.draw_limit_rows)
+
+
+def dashboard_sections(record: UsageRecord) -> tuple[Section, ...]:
+    return (
+        limits_section(record),
+        Section("TOKENS BY DAY", record.get("recentDays") or [], Dashboard.draw_day_rows),
+        Section("TOKENS BY MODEL", model_totals(record)[:MODEL_ROWS], Dashboard.draw_model_rows),
     )
-    total = FIRST_SECTION_ROW
-    for count in sections:
-        total += SECTION_GAP_MIN + 1
-        if count:
-            total += title_gap + count
-    return total + FOOTER_ROWS
+
+
+def content_height(record, title_gap=1):
+    return FIRST_SECTION_ROW + FOOTER_ROWS + sum(
+        SECTION_GAP_MIN + SECTION_TITLE_ROWS + title_gap + len(section.rows)
+        for section in dashboard_sections(record)
+    )
 
 
 def tallest_content(records, title_gap=1):
@@ -323,7 +344,7 @@ def installed_agent_paths():
 def required_terminal_size(records, agent_paths):
     return (
         max(MIN_COLS, max(map(len, footer_hint(agent_paths))) + RIGHT_MARGIN),
-        max(MIN_ROWS, tallest_content(records) + 1),
+        max(MIN_ROWS, tallest_content(records) + FOOTER_GAP_ROWS),
     )
 
 
@@ -368,7 +389,6 @@ class Dashboard:
         curses.curs_set(0)
         self.screen.nodelay(True)
         self.screen.keypad(True)
-        # Avoid curses' click-delay because this UI does not distinguish drags.
         curses.mousemask(curses.BUTTON1_PRESSED | curses.BUTTON1_CLICKED)
         curses.mouseinterval(0)
         if curses.has_colors():
@@ -380,19 +400,19 @@ class Dashboard:
         if rows >= needed_rows and columns >= needed_columns:
             return
         try:
-            _, _, text_width, text_height = struct.unpack(
-                "HHHH", fcntl.ioctl(sys.stdin.fileno(), termios.TIOCGWINSZ, b"\0" * 8)
+            _, _, text_width, text_height = WINSIZE_STRUCT.unpack(
+                fcntl.ioctl(sys.stdin.fileno(), termios.TIOCGWINSZ, bytes(WINSIZE_STRUCT.size))
             )
             if not text_width or not text_height:
                 return
             response = subprocess.check_output(
                 ["hyprctl", "-j", "--batch", "clients;monitors"],
-                stderr=subprocess.DEVNULL, timeout=1,
+                stderr=subprocess.DEVNULL, timeout=HYPRCTL_TIMEOUT_SECONDS,
             )
             clients, monitors = [json.loads(chunk) for chunk in response.split(b"\n\n", 1)]
             window = next((client for client in clients
                            if client.get("pid") == os.getppid()
-                           and client.get("class") == "org.tui.AgentHub"
+                           and client.get("class") == AGENT_HUB_APP_ID
                            and client.get("floating")), None)
             if window is None:
                 return
@@ -410,7 +430,7 @@ class Dashboard:
             center = f"hl.dsp.window.center({{window={selector}, respect_reserved=true}})"
             subprocess.run(
                 ["hyprctl", "-q", "--batch", f"dispatch {resize};dispatch {center}"],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1, check=False,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=HYPRCTL_TIMEOUT_SECONDS, check=False,
             )
         except (OSError, ValueError, KeyError, subprocess.SubprocessError):
             return
@@ -425,7 +445,7 @@ class Dashboard:
                 [DEFAULT_APP_SCRIPT, "agent"],
                 capture_output=True,
                 text=True,
-                timeout=2,
+                timeout=DEFAULT_APP_TIMEOUT_SECONDS,
                 check=False,
             ).stdout.strip()
         except (OSError, subprocess.TimeoutExpired):
@@ -521,7 +541,7 @@ class Dashboard:
                 [
                     HYPR_LIB_DIR / "launch/tui.sh",
                     "--app-id",
-                    f"org.agent.{agent_id.title()}",
+                    spec.app_id,
                     "--title",
                     spec.name,
                     "--",
@@ -567,20 +587,19 @@ class Dashboard:
         except curses.error:
             pass
 
-    def draw_section(self, y, title, title_gap=1):
+    def draw_section_title(self, y, title):
         self.draw_text(y, LEFT_MARGIN, title, curses.color_pair(PAIR_ACCENT) | curses.A_BOLD)
         self.draw_text(y, LEFT_MARGIN + len(title) + SECTION_RULE_GAP, RULE_GLYPH * self.screen.getmaxyx()[1], curses.color_pair(PAIR_DIM))
-        return y + 1 + title_gap
 
     def draw_header(self, record, width, accent, dim):
-        self.draw_text(0, LEFT_MARGIN, APP_TITLE, accent | curses.A_BOLD)
+        self.draw_text(TITLE_ROW, LEFT_MARGIN, APP_TITLE, accent | curses.A_BOLD)
         updated = ""
         if record and record.get("updatedAt"):
             stamp = parse_time(record.get("updatedAt"))
             if stamp:
                 updated = "updated " + stamp.astimezone().strftime("%H:%M")
-        self.draw_text(0, max(LEFT_MARGIN + len(APP_TITLE) + HEADER_GAP, width - len(updated) - RIGHT_MARGIN), updated, dim)
-        self.draw_text(1, LEFT_MARGIN, RULE_GLYPH * width, dim)
+        self.draw_text(TITLE_ROW, max(LEFT_MARGIN + len(APP_TITLE) + HEADER_GAP, width - len(updated) - RIGHT_MARGIN), updated, dim)
+        self.draw_text(TITLE_RULE_ROW, LEFT_MARGIN, RULE_GLYPH * width, dim)
 
         x = LEFT_MARGIN
         self.tab_spans = []
@@ -612,55 +631,50 @@ class Dashboard:
         if chosen:
             name = chosen.get("name", chosen.get("id", "Agent"))
             self.draw_text(
-                HEAD_ROW + 1,
+                RECOMMENDED_ROW,
                 LEFT_MARGIN,
                 f"Recommended  {name}{DOT_SEPARATOR}{usage_summary(chosen)}",
-                curses.color_pair(PAIR_BAR),
+                curses.color_pair(PAIR_HIGHLIGHT),
             )
 
-    def section_spacing(self, height):
+    def section_spacing(self, height, section_count):
         for title_gap in (1, 0):
             needed = tallest_content(self.records, title_gap)
             if needed <= height:
                 break
-        return title_gap, min(SECTION_GAP_MAX, SECTION_GAP_MIN + max(0, height - needed) // SECTION_COUNT)
+        return title_gap, min(SECTION_GAP_MAX, SECTION_GAP_MIN + max(0, height - needed) // section_count)
 
-    def draw_limits(self, record, y, layout):
-        y = self.draw_section(y, "GO LIMITS" if reports_go_plan_limits(record) else "LIMITS", layout.title_gap)
-        if status := go_limit_status(record):
-            self.draw_text(y, layout.label_x, status, layout.dim)
-            return y + 1
-        for limit in record.get("limits") or []:
-            if y >= layout.bottom:
-                break
-            fraction = max(0.0, min(1.0, limit_usage_fraction(limit)))
+    def draw_status_rows(self, y, statuses, layout):
+        for row_y, status in zip(range(y, layout.bottom), statuses):
+            self.draw_text(row_y, layout.label_x, status, layout.dim)
+
+    def draw_limit_rows(self, y, readings, layout):
+        for row_y, (limit, reading) in zip(range(y, layout.bottom), readings):
+            fraction = max(0.0, min(1.0, reading))
             gauge = curses.color_pair(PAIR_ERROR) if fraction >= ALERT_FRACTION else layout.accent
             self.draw_text(
-                y,
+                row_y,
                 layout.label_x,
                 str(limit.get("label") or "Limit"),
                 0,
                 layout.label_width,
             )
-            divisions = USAGE_BAR_SEGMENTS.get(window_kind(limit), 1)
-            self.draw_text(y, layout.bar_x, format_progress_bar(fraction, layout.limit_bar_width, divisions), gauge)
+            divisions = USAGE_BAR_SEGMENTS.get(limit_window(limit), 1)
+            self.draw_text(row_y, layout.bar_x, format_progress_bar(fraction, layout.limit_bar_width, divisions), gauge)
             self.draw_text(
-                y, layout.percent_x, f"{fraction:.0%}".rjust(PERCENT_WIDTH), gauge | curses.A_BOLD
+                row_y, layout.percent_x, f"{fraction:.0%}".rjust(PERCENT_WIDTH), gauge | curses.A_BOLD
             )
             self.draw_text(
-                y,
+                row_y,
                 layout.reset_x,
                 resets_in(limit.get("resetsAt")).rjust(RESET_WIDTH),
                 layout.dim,
             )
-            y += 1
-        return y
 
-    @staticmethod
-    def day_chart_rows(record, dim):
+    def draw_day_rows(self, y, days, layout):
         today = datetime.now().astimezone().strftime("%Y-%m-%d")
         rows = []
-        for day in record.get("recentDays") or []:
+        for day in days:
             value = int(day.get("tokenCount") or 0)
             date = str(day.get("date") or "")
             try:
@@ -670,27 +684,25 @@ class Dashboard:
                     else datetime.fromisoformat(date).strftime("%a")
                 )
             except ValueError:
-                label = date[-5:]
-            live = curses.A_BOLD if date == today else 0
-            rows.append(ChartRow(label, value, live, live or dim))
-        return rows
+                label = date[-len("MM-DD"):]
+            today_attr = curses.A_BOLD if date == today else 0
+            rows.append(ChartRow(label, value, today_attr, today_attr or layout.dim))
+        self.draw_chart_rows(y, rows, layout)
 
-    def draw_chart(self, y, title, rows, layout):
-        y = self.draw_section(y, title, layout.title_gap)
+    def draw_model_rows(self, y, models, layout):
+        self.draw_chart_rows(y, [ChartRow(name, value, 0, curses.A_BOLD) for name, value in models], layout)
+
+    def draw_chart_rows(self, y, rows, layout):
         peak = max((row.value for row in rows), default=0)
-        for row in rows:
-            if y >= layout.bottom:
-                break
-            self.draw_text(y, layout.label_x, row.label, row.label_attr, layout.label_width)
+        for row_y, row in zip(range(y, layout.bottom), rows):
+            self.draw_text(row_y, layout.label_x, row.label, row.label_attr, layout.label_width)
             self.draw_text(
-                y,
+                row_y,
                 layout.bar_x,
                 format_progress_bar(row.value / peak if peak else 0, layout.chart_bar_width),
                 layout.accent,
             )
-            self.draw_text(y, layout.chart_value_x, f"{format_compact_number(row.value):>{CHART_VALUE_WIDTH}}", row.value_attr)
-            y += 1
-        return y
+            self.draw_text(row_y, layout.chart_value_x, f"{format_compact_number(row.value):>{CHART_VALUE_WIDTH}}", row.value_attr)
 
     def draw(self):
         self.screen.erase()
@@ -702,7 +714,8 @@ class Dashboard:
             record = self.current()
             self.draw_header(record, width, accent, dim)
             if record:
-                self.draw_sections(record, self.dashboard_layout(height, width, accent, dim))
+                sections = dashboard_sections(record)
+                self.draw_sections(sections, self.dashboard_layout(height, width, accent, dim, len(sections)))
             else:
                 self.draw_empty(dim)
             self.draw_footer(height, width)
@@ -710,12 +723,12 @@ class Dashboard:
 
     def draw_too_small(self, height, width, dim):
         self.draw_text(
-            0,
+            TITLE_ROW,
             LEFT_MARGIN,
             f"{APP_TITLE} needs at least {MIN_COLS} columns x {MIN_ROWS} rows.",
             curses.color_pair(PAIR_ERROR) | curses.A_BOLD,
         )
-        self.draw_text(2, LEFT_MARGIN, f"Current terminal: {width} x {height}", dim)
+        self.draw_text(CURRENT_SIZE_ROW, LEFT_MARGIN, f"Current terminal: {width} x {height}", dim)
         self.draw_text(height - 1, LEFT_MARGIN, CLOSE_HINT, dim)
 
     def draw_empty(self, dim):
@@ -727,10 +740,10 @@ class Dashboard:
             dim,
         )
 
-    def dashboard_layout(self, height, width, accent, dim):
+    def dashboard_layout(self, height, width, accent, dim, section_count):
         label_width = max(MIN_LABEL_WIDTH, min(MAX_LABEL_WIDTH, width // LABEL_WIDTH_DIVISOR))
         bar_x = LABEL_COLUMN + label_width + COLUMN_GAP
-        title_gap, section_gap = self.section_spacing(height)
+        title_gap, section_gap = self.section_spacing(height, section_count)
         chart_value_x = width - RIGHT_MARGIN - CHART_VALUE_WIDTH
         reset_x = width - RIGHT_MARGIN - RESET_WIDTH
         percent_x = reset_x - PERCENT_WIDTH
@@ -750,32 +763,27 @@ class Dashboard:
             dim=dim,
         )
 
-    def draw_sections(self, record, layout):
-        y = self.draw_limits(record, FIRST_SECTION_ROW + layout.section_gap, layout)
-        y = self.draw_chart(
-            y + layout.section_gap,
-            "TOKENS BY DAY",
-            self.day_chart_rows(record, layout.dim),
-            layout,
-        )
-        if y + layout.section_gap + layout.title_gap + 1 < layout.bottom:
-            model_rows = [
-                ChartRow(name, value, 0, curses.A_BOLD)
-                for name, value in model_totals(record)[:MODEL_ROWS]
-            ]
-            self.draw_chart(
-                y + layout.section_gap, "TOKENS BY MODEL", model_rows, layout
-            )
+    def draw_sections(self, sections, layout):
+        y = FIRST_SECTION_ROW
+        for section in sections:
+            title_row = y + layout.section_gap
+            body_row = title_row + SECTION_TITLE_ROWS + layout.title_gap
+            if body_row >= layout.bottom:
+                return
+            self.draw_section_title(title_row, section.title)
+            section.draw_rows(self, body_row, section.rows, layout)
+            y = body_row + len(section.rows)
 
     def draw_footer(self, height, width):
         first_hint, second_hint = footer_hint(self.agent_paths)
-        self.draw_text(height - FOOTER_ROWS, LEFT_MARGIN, RULE_GLYPH * width, curses.color_pair(PAIR_DIM))
-        self.draw_text(height - 2, LEFT_MARGIN, first_hint, curses.color_pair(PAIR_DIM))
+        rule_row, hint_row, status_row = range(height - FOOTER_ROWS, height)
+        self.draw_text(rule_row, LEFT_MARGIN, RULE_GLYPH * width, curses.color_pair(PAIR_DIM))
+        self.draw_text(hint_row, LEFT_MARGIN, first_hint, curses.color_pair(PAIR_DIM))
         if self.message and time.monotonic() < self.message_until:
-            attr = curses.color_pair(PAIR_ERROR if self.message_error else PAIR_BAR)
-            self.draw_text(height - 1, LEFT_MARGIN, self.message, attr | curses.A_BOLD)
+            attr = curses.color_pair(PAIR_ERROR if self.message_error else PAIR_HIGHLIGHT)
+            self.draw_text(status_row, LEFT_MARGIN, self.message, attr | curses.A_BOLD)
             return
-        self.draw_text(height - 1, LEFT_MARGIN, second_hint, curses.color_pair(PAIR_DIM))
+        self.draw_text(status_row, LEFT_MARGIN, second_hint, curses.color_pair(PAIR_DIM))
 
     def move_selection(self, offset):
         if self.records:
@@ -850,7 +858,7 @@ class Dashboard:
                     self.finish_refresh()
                 if stdin_fd in ready:
                     key = self.screen.getch()
-                    while key != -1:
+                    while key != curses.ERR:
                         if not self.handle_key(key):
                             return
                         key = self.screen.getch()
@@ -867,20 +875,22 @@ class Dashboard:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="AI coding subscription dashboard")
-    parser.add_argument(
-        "--size",
-        action="store_true",
-        help="print the terminal columns and rows needed for the current dashboard",
-    )
-    args = parser.parse_args()
-    if args.size:
+    arguments = sys.argv[1:]
+    if arguments in (["-h"], ["--help"]):
+        print(USAGE)
+        return 0
+    if arguments == ["--size"]:
         print(*required_terminal_size(load_records(), installed_agent_paths()))
-        return
+        return 0
+    if arguments:
+        print(USAGE, file=sys.stderr)
+        return 2
     if not sys.stdin.isatty() or not sys.stdout.isatty():
-        parser.error("the interactive dashboard requires a terminal")
+        print("agent-tui: the interactive dashboard requires a terminal", file=sys.stderr)
+        return 2
     curses.wrapper(lambda screen: Dashboard(screen).run())
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

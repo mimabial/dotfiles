@@ -19,24 +19,18 @@ uniform sampler2D tex;
 const float VIBRANCE = VIBRANCE_INTENSITY;
 const float SKIN_TONE_PROTECTION = SHADER_VIBRANCE_SKIN_TONE_PROTECTION;
 const vec3 REC709_LUMA = vec3(0.2126, 0.7152, 0.0722);
+const vec3 SKIN_TONE_MIN = vec3(0.4, 0.2, 0.1);
+const vec3 SKIN_TONE_MAX = vec3(0.85, 0.7, 0.5);
 
 
 float getLuminance(vec3 color) {
     return dot(color, REC709_LUMA);
 }
 
-float skinToneLikelihood(vec3 color) {
-    float r = color.r;
-    float g = color.g;
-    float b = color.b;
-
-    bool warmChannelOrder = r > g && g > b;
-    float inSkinRange = 0.0;
-    if (r >= 0.4 && r <= 0.85 && g >= 0.2 && g <= 0.7 && b >= 0.1 && b <= 0.5) {
-        inSkinRange = 1.0;
-    }
-
-    return float(warmChannelOrder) * inSkinRange;
+float skinToneMask(vec3 color) {
+    bool warmChannelOrder = color.r > color.g && color.g > color.b;
+    bool inSkinRange = all(greaterThanEqual(color, SKIN_TONE_MIN)) && all(lessThanEqual(color, SKIN_TONE_MAX));
+    return float(warmChannelOrder && inSkinRange);
 }
 
 float getSaturation(vec3 color) {
@@ -59,7 +53,7 @@ void main() {
     float luma = getLuminance(color);
 
     float vibranceAmount = (1.0 - saturation) * abs(VIBRANCE);
-    float skinProtection = skinToneLikelihood(color) * SKIN_TONE_PROTECTION;
+    float skinProtection = skinToneMask(color) * SKIN_TONE_PROTECTION;
 
     vec3 result;
 

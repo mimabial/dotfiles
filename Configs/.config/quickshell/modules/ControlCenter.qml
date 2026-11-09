@@ -10,7 +10,7 @@ import "StatusSymbols.js" as StatusSymbols
 
 BarButton {
     id: root
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     property bool statusIcons: false
     readonly property real badgeSize: Style.px(30)
     readonly property var sink: Pipewire.defaultAudioSink
@@ -76,7 +76,7 @@ BarButton {
     }
     PwObjectTracker { objects: [root.sink].filter(Boolean) }
     PopupCard {
-        anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: "controlcenter"
+        anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: "controlcenter"
         contentWidth: Style.px(320); contentHeight: panel.implicitHeight + padding * 2; keyboardHint: ""
         onOpenChanged: if (open) root.shell.refreshMenuState()
         Column {
@@ -107,7 +107,7 @@ BarButton {
             }
             PopupSlider {
                 width: parent.width; shell: root.shell; label: "Sound"
-                maximum: root.shell.volumeLimit; value: root.sink?.audio?.volume ?? 0
+                maximum: root.shell.volumeRange.limit; value: root.sink?.audio?.volume ?? 0
                 onChanged: value => { if (root.sink?.audio) root.sink.audio.volume = value }
             }
             PopupRow {

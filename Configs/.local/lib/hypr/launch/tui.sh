@@ -2,6 +2,8 @@
 usage() {
   cat <<EOF
 Usage: ${0##*/} [--app-id ID] [--title TITLE] -- <command>
+
+Run a command in a terminal window with the given app id and title.
 EOF
 }
 

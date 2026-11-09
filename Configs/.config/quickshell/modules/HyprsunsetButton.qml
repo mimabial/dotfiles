@@ -3,7 +3,7 @@ import ".."
 
 BarButton {
     id: root
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     property bool activeOnly: false
     readonly property bool sunsetActive: shell.sunsetEnabled === "1"
     css: "hyprsunset"
@@ -16,5 +16,5 @@ BarButton {
         ? shell.run(["hyprshell", "hyprsunset", "-t", "-q"])
         : shell.togglePopup("hyprsunset")
 
-    HyprsunsetPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }
+    HyprsunsetPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }
 }

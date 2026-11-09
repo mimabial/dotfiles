@@ -6,7 +6,7 @@ import ".."
 GridLayout {
     id: root
     required property var shell
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     readonly property var readouts: Weather.readouts()
     flow: GridLayout.LeftToRight
     rowSpacing: 0; columnSpacing: 0
@@ -25,5 +25,5 @@ GridLayout {
             onClicked: root.shell.togglePopup("weather")
         }
     }
-    WeatherPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }
+    WeatherPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }
 }

@@ -1,7 +1,7 @@
 local windowSpeed, exitSpeed, fadeSpeed = 2.5, 1.67, 0.83
 local windowScale = "popin 90%"
 
-require("runtime").config("animations.enabled", true)
+require("runtime").config_if_supported("animations.enabled", true)
 hl.curve("windowsEntrance", {type = "bezier", points = {{0, 0}, {0, 1}}})
 hl.curve("windowsMove", {type = "bezier", points = {{0.55, 0.55}, {0, 1}}})
 hl.curve("windowsFade", {type = "bezier", points = {{0, 0}, {1, 1}}})

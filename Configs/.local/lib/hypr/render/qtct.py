@@ -3,12 +3,12 @@ import json
 import sys
 from pathlib import Path
 
-from _common import RENDER_OUTPUT_DIR, atomic_write, cache_hit, cache_store, hex_to_rgb, palette_path
+from _common import RENDER_OUTPUT_DIR, atomic_write, cache_hit, cache_store, hex_to_rgb, palette_path_from_argv
 from _roles import qt_roles_from_palette, qt_role_inputs_digest
 
 from _kvantum import resolve_kvantum_color_files
 
-PALETTE = palette_path()
+PALETTE = palette_path_from_argv()
 KDE_FILE = RENDER_OUTPUT_DIR / "qtct" / "Hypr.colors"
 
 

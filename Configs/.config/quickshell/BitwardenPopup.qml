@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
 import "BitwardenModel.js" as Model
+import "Units.js" as Units
 
 PopupCard {
     id: root
@@ -55,9 +56,9 @@ PopupCard {
     readonly property var actions: page === "list" ? [
             { glyph: "\u{f0415}", hint: "New item", run: () => root.edit(Model.blank(Model.LOGIN_TYPE)) },
             { glyph: "\u{f076e}", hint: "Generator", run: () => root.openGenerator(false) },
-            { glyph: "\u{f048a}", hint: "Send", run: () => root.go("send") },
+            { glyph: "\u{f048a}", hint: "Send", run: () => root.showView("send") },
             { glyph: "\u{f0450}", hint: "Sync", run: () => root.vault.sync() },
-            { glyph: "\u{f0493}", hint: "Settings", run: () => root.go("settings") },
+            { glyph: "\u{f0493}", hint: "Settings", run: () => root.showView("settings") },
             { glyph: "\u{f033e}", hint: "Lock", run: () => root.vault.lock() }]
         : page === "item" ? [backAction].concat(Model.editable(current) ? [
             { glyph: "\u{f03eb}", hint: "Edit", run: () => root.edit(JSON.parse(JSON.stringify(root.current))) },
@@ -65,16 +66,16 @@ PopupCard {
               run: () => { if (root.confirming) root.remove(); else root.confirming = true } }] : [])
         : vault.status === "unlocked" ? [backAction] : []
 
-    function go(next) { vault.error = ""; vault.notice = ""; confirming = false; view = next }
+    function showView(next) { vault.error = ""; vault.notice = ""; confirming = false; view = next }
     function back() {
-        if (page === "form") go(draft.id ? "item" : "list")
-        else if (page === "generator" && generatorForForm) go("form")
-        else if (page !== "list" && vault.status === "unlocked") go("list")
+        if (page === "form") showView(draft.id ? "item" : "list")
+        else if (page === "generator" && generatorForForm) showView("form")
+        else if (page !== "list" && vault.status === "unlocked") showView("list")
         else shell.closePopup()
     }
-    function show(item) { current = item; revealed = ({}); totpCode = ""; totpLeft = 0; go("item") }
-    function edit(item) { draft = item; go("form") }
-    function remove() { vault.remove(current); go("list") }
+    function show(item) { current = item; revealed = ({}); totpCode = ""; totpLeft = 0; showView("item") }
+    function edit(item) { draft = item; showView("form") }
+    function remove() { vault.remove(current); showView("list") }
     function activate(item) {
         if (!Model.read(item, "login.password")) return show(item)
         vault.copyPassword(item)
@@ -85,7 +86,7 @@ PopupCard {
         vault.save(draft, saved => root.show(saved))
     }
     function setFields(fields) { draft = Object.assign({}, draft, { fields: fields }) }
-    function openGenerator(forForm) { generatorForForm = forForm; go("generator") }
+    function openGenerator(forForm) { generatorForForm = forForm; showView("generator") }
     function setOption(key, value) { generator = Object.assign({}, generator, { [key]: value }); regenerate() }
     function regenerate() { vault.generate(generator, value => root.generated = value) }
     function listKey(event) {
@@ -113,14 +114,14 @@ PopupCard {
         const window = Hyprland.activeToplevel
         windowTitle = window ? String(window.title || "") : ""
         windowClass = window && window.lastIpcObject ? String(window.lastIpcObject.class || "") : ""
-        go("list")
+        showView("list")
         query = ""; typeFilter = 0; current = null; draft = null
         vault.prepare()
     }
 
     Timer {
         id: totpCountdown
-        interval: 1000; repeat: true; triggeredOnStart: true
+        interval: Units.MS_PER_SECOND; repeat: true; triggeredOnStart: true
         running: root.open && root.page === "item" && Model.read(root.current, "login.totp") !== ""
         onTriggered: {
             const period = Model.totpPeriod(Model.read(root.current, "login.totp"))
@@ -285,7 +286,7 @@ PopupCard {
         Column {
             spacing: Style.sm
             Note { text: "The Bitwarden CLI (bw) is not installed." }
-            PopupRow { width: parent.width; shell: root.shell; icon: "\u{f01da}"; title: "Install bitwarden-cli"; detail: "Runs in a terminal"; onClicked: root.vault.install() }
+            PopupRow { width: parent.width; shell: root.shell; icon: "\u{f01da}"; title: "Install bitwarden-cli"; detail: "Runs in a terminal"; onClicked: { root.shell.closePopup(); root.vault.install() } }
         }
     }
     Component {
@@ -293,8 +294,8 @@ PopupCard {
         Column {
             spacing: Style.sm
             Note { text: "Logging in runs bw in a terminal, so two-step login, SSO and new-device checks all work there." }
-            PopupField { id: server; width: parent.width; shell: root.shell; placeholderText: "Server URL (blank for bitwarden.com)"; onAccepted: root.vault.authenticate("login", text) }
-            PopupRow { width: parent.width; shell: root.shell; icon: "\u{f0342}"; title: "Log in"; onClicked: root.vault.authenticate("login", server.text) }
+            PopupField { id: server; width: parent.width; shell: root.shell; placeholderText: "Server URL (blank for bitwarden.com)"; onAccepted: { root.shell.closePopup(); root.vault.authenticate("login", text) } }
+            PopupRow { width: parent.width; shell: root.shell; icon: "\u{f0342}"; title: "Log in"; onClicked: { root.shell.closePopup(); root.vault.authenticate("login", server.text) } }
         }
     }
     Component {
@@ -321,7 +322,7 @@ PopupCard {
                 icon: unlock.method === "fido2" ? "\u{f129e}" : "\u{f0237}"
                 title: root.vault.prompt || "Scan again"; onClicked: root.vault.scan()
             }
-            PopupRow { width: parent.width; shell: root.shell; icon: "\u{f018d}"; title: "Unlock in a terminal"; detail: "For SSO and key-connector accounts"; onClicked: root.vault.authenticate("unlock", "") }
+            PopupRow { width: parent.width; shell: root.shell; icon: "\u{f018d}"; title: "Unlock in a terminal"; detail: "For SSO and key-connector accounts"; onClicked: { root.shell.closePopup(); root.vault.authenticate("unlock", "") } }
         }
     }
     Component {
@@ -486,7 +487,7 @@ PopupCard {
             PopupRow { width: parent.width; shell: root.shell; icon: "\u{f018f}"; title: "Copy"; onClicked: root.vault.copy(root.generated, "Password") }
             PopupRow {
                 visible: root.generatorForForm; width: parent.width; shell: root.shell; icon: "\u{f012c}"; title: "Use in item"
-                onClicked: { Model.write(root.draft, "login.password", root.generated); root.go("form") }
+                onClicked: { Model.write(root.draft, "login.password", root.generated); root.showView("form") }
             }
             Setting { label: root.generator.passphrase ? "Words" : "Length"; Count {
                 amount: root.generator.passphrase ? root.generator.words : root.generator.length

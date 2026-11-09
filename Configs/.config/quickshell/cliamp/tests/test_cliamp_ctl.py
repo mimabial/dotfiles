@@ -192,6 +192,13 @@ class CliampTests(unittest.TestCase):
             self.assertEqual(track["thumb"], str(cover))
             launch.assert_not_called()
 
+    def test_queue_art_finds_thumbnail_cached_after_queueing(self):
+        video_id = "f9l5Z5Vu_c0"
+        with TemporaryDirectory() as directory, patch.object(cliamp, "AUDIO_CACHE_DIR", directory):
+            entry = cliamp.queue_entry(f"https://www.youtube.com/watch?v={video_id}", "Track", "")
+            Path(cliamp.youtube_thumb_path(video_id)).write_bytes(b"thumb")
+            self.assertEqual(cliamp.attach_track_art([entry])[0]["thumb"], cliamp.youtube_thumb_path(video_id))
+
 
 if __name__ == "__main__":
     unittest.main()

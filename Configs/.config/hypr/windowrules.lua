@@ -1,4 +1,5 @@
 local window_profiles = require("window_profiles")
+local kio_job_title = "^(Copying|Moving|Deleting|Creating directory|Examining|Transferring) — "
 
 hl.window_rule({
 	["name"] = "video-idle-inhibit",
@@ -6,6 +7,7 @@ hl.window_rule({
 	["idle_inhibit"] = "fullscreen",
 })
 hl.window_rule({ ["name"] = "center-new-floating-windows", ["match"] = { ["float"] = true }, ["center"] = true })
+hl.window_rule({ ["name"] = "suppress-maximize-requests", ["match"] = { ["class"] = ".*" }, ["suppress_event"] = "maximize" })
 hl.window_rule({
 	["name"] = "tag-picture-in-picture",
 	["match"] = { ["title"] = "^([Pp]icture[-\\s]?[Ii]n[-\\s]?[Pp]icture)(.*)$" },
@@ -54,6 +56,12 @@ hl.window_rule({
 	["opacity"] = "0.80 override 0.80 override 1",
 })
 hl.window_rule({
+	["name"] = "kio-job-progress",
+	["match"] = { ["initial_title"] = kio_job_title },
+	["float"] = true,
+	["size"] = window_profiles.rule_size("overlay"),
+})
+hl.window_rule({
 	["name"] = "ark",
 	["match"] = { ["class"] = "^(org\\.kde\\.ark)$" },
 	["opacity"] = "0.80 override 0.80 override 1",
@@ -76,6 +84,7 @@ hl.window_rule({
 	["match"] = { ["class"] = "^(blueman-manager)$" },
 	["opacity"] = "0.80 override 0.70 override 1",
 	["float"] = true,
+	["size"] = window_profiles.rule_size("overlay"),
 })
 hl.window_rule({
 	["name"] = "translucent-dialogs",
@@ -111,7 +120,11 @@ hl.window_rule({
 })
 hl.window_rule({
 	["name"] = "gwenview-maximized",
-	["match"] = { ["class"] = "^(org\\.kde\\.gwenview)$", ["modal"] = false },
+	["match"] = {
+		["class"] = "^(org\\.kde\\.gwenview)$",
+		["modal"] = false,
+		["initial_title"] = "negative:" .. kio_job_title,
+	},
 	["maximize"] = true,
 })
 hl.window_rule({

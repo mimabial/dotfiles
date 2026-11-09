@@ -29,7 +29,7 @@ rofi_picker_help_requested() {
   return 1
 }
 
-rofi_picker_toggle_off_if_open() {
+rofi_picker_toggle_off_and_exit_if_open() {
   rofi_picker_help_requested "$@" && return 0
   rofi_close_running && exit 0
   (($? == ROFI_NOT_RUNNING)) || exit 1

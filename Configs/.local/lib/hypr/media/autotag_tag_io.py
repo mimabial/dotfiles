@@ -8,7 +8,7 @@ from mutagen.flac import FLAC, Picture
 from mutagen.id3 import APIC, ID3, ID3NoHeaderError
 from mutagen.oggopus import OggOpus
 from audio_tags import VORBIS, read_tags
-from autotag_identity import MIN_TITLE_SIMILARITY, drop_redundant_feat, existing, missing_credit_names, parse_filename, title_similarity, track_identity
+from autotag_identity import drop_redundant_feat, drop_track_number, existing, missing_credit_names, parse_filename, title_agrees, track_identity
 
 
 PICTURE_TYPE_FRONT_COVER = 3
@@ -127,6 +127,9 @@ def prepare_metadata(
 ) -> dict:
     """Forced writes must not narrow the credits."""
     prepared = dict(meta)
+    local_track = existing(tags, "tracknumber")
+    if local_track.split("/", 1)[0] == prepared.get("tracknumber"):
+        prepared["tracknumber"] = local_track
     if not prepared.get("title"):
         return prepared
     current_artist = existing(tags, "artist")
@@ -139,7 +142,7 @@ def prepare_metadata(
         file_artist, file_title = parse_filename(path)
         if file_artist and file_title and (
             not proposed_title
-            or title_similarity(file_title, proposed_title) >= MIN_TITLE_SIMILARITY
+            or title_agrees(file_title, proposed_title)
         ):
             local_candidates.append((file_artist, file_title))
 
@@ -172,11 +175,20 @@ def tidy_title(path: Path, dry_run: bool, tags=None) -> str:
     if tags is None:
         tags = read_tags(path)
     title = existing(tags, "title")
-    tidied = drop_redundant_feat(title, existing(tags, "artist"))
+    tidied = drop_redundant_feat(drop_track_number(title, path, tags), existing(tags, "artist"))
     if not tidied or tidied == title:
         return ""
+    tags["TITLE" if path.suffix.lower() in VORBIS else "title"] = tidied
     if not dry_run:
-        tags["TITLE" if path.suffix.lower() in VORBIS else "title"] = tidied
         tags.save()
     return tidied
+
+
+def clear_track_number(tags, dry_run: bool) -> str:
+    track = existing(tags, "tracknumber")
+    if track:
+        del tags["tracknumber"]
+        if not dry_run:
+            tags.save()
+    return track
 

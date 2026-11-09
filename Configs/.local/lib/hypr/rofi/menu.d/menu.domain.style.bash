@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-style_pick_font() {
+style_apply_or_copy_picked_font() {
   local font_list=""
   local current_font=""
   local font=""
@@ -12,7 +12,7 @@ style_pick_font() {
   menu_exit=$?
 
   if [[ -z "${font}" ]]; then
-    menu_exit_or_show style
+    menu_show_then_exit style
     return 0
   fi
 
@@ -184,7 +184,7 @@ menu_run_action_style() {
   local layout_name=""
 
   case "${action_id}" in
-    style_font) style_pick_font ;;
+    style_font) style_apply_or_copy_picked_font ;;
     style_theme_menu) hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh -s ;;
     style_launcher) hyprshell rofi/run-after-close.sh -- hyprshell rofi/rofi-launch.sh -s ;;
     style_theme) hyprshell rofi/run-after-close.sh -- hyprshell theme/theme.select.sh ;;
@@ -232,7 +232,7 @@ menu_active_style() {
     style_workflow_*) menu_choice_matches "${target}" style_workflow_ state_get HYPR_WORKFLOW default ;;
     style_animations_*) menu_choice_matches "${target}" style_animations_ state_get HYPR_ANIMATION default ;;
     style_shaders_*) menu_choice_matches "${target}" style_shaders_ state_get HYPR_SHADER neutral ;;
-    style_text_size_*) menu_choice_matches "${target}" style_text_size_ state_get TEXT_SIZE "${ROFI_TEXT_SIZE_AT_DEFAULT_SCALE_PX}" ;;
+    style_text_size_*) menu_choice_matches "${target}" style_text_size_ state_get TEXT_SIZE "${TEXT_SIZE_BASE_PX}" ;;
     style_color_mode_source_*) menu_choice_matches "${target}" style_color_mode_source_ state_get selected_color_source theme ;;
     style_color_mode_*) menu_cached_state_reply selected_color_mode state_get selected_color_mode "${STATE_COLOR_MODE_DARK}" && [[ "${target#style_color_mode_}" == "${color_modes[REPLY]:-}" ]] ;;
     style_bar_blur) menu_json_flag_is_true "${bar}" barBlur true ;;

@@ -45,7 +45,8 @@ menu_content_theme_override() {
   local lines_per_row="${2:-1}"
   local footer_mode="${3:-}"
   local extents="" content_px="" text_px="" cap_px="" rows_max="" footer="" footer_px=0 footer_width=0 footer_height=0 mon_width="" mon_height=""
-  local row_newlines="${rows%$'\n'}" row_count=0 height_px=0
+  local row_count=0 height_px=0
+  local -a row_lines=()
 
   case "${footer_mode}" in
     tree) footer="${MENU_NAV_HINT}" ;;
@@ -84,8 +85,9 @@ menu_content_theme_override() {
     printf ' listview { lines: %s; }' "${rows_max}"
   fi
 
-  row_newlines="${row_newlines//[!$'\n']/}"
-  [[ -z "${rows}" ]] || row_count=$((${#row_newlines} + 1))
+  mapfile -t row_lines <<<"${rows}"
+  [[ -n "${row_lines[-1]}" ]] || unset 'row_lines[-1]'
+  row_count="${#row_lines[@]}"
   [[ -z "${rows_max}" ]] || ((row_count <= rows_max)) || row_count="${rows_max}"
   height_px=$((MENU_VERTICAL_CHROME_PX + 2 * text_px + footer_px + row_count * (text_px * lines_per_row + MENU_ROW_CHROME_PX)))
   rofi_window_position_theme "${content_px}" "${height_px}"

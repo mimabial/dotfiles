@@ -6,12 +6,11 @@ import "StatusSymbols.js" as StatusSymbols
 
 AudioButton {
     id: root
-    property bool popupsAllowed: true
     property bool mediaCard: false
     css: (portKey ? "volume." + portKey : "volume") + (muted ? ".muted" : "")
     readonly property var devices: Pipewire.nodes.values.filter(node => node?.audio && !node.isStream)
     readonly property var inputs: devices.filter(node => !node.isSink)
-    popupName: "sound-menu"; popupEnabled: popupsAllowed
+    popupName: "sound-menu"
     settingsPopupName: popupName + "-settings"
     text: !sink ? "󰖁" : muted ? mutedPortIcon || "󰝟" : portIcon && !zeroVolume ? portIcon
         : (sink.audio?.volume ?? 0) < .34 ? "󰕿" : sink.audio.volume < .67 ? "󰖀" : "󰕾"
@@ -26,7 +25,7 @@ AudioButton {
         iconColor: modelData === current ? root.shell.accent : root.shell.alpha(root.shell.foreground, .55)
     }
     MacCard {
-        anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: root.popupName; settings: "Sound"; settingsPopup: root.settingsPopupName
+        anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: root.popupName; settings: "Sound"; settingsPopupName: root.settingsPopupName
         Column {
             width: parent.width; spacing: Style.xs; visible: root.mediaCard
             PopupRow {
@@ -47,7 +46,7 @@ AudioButton {
             PopupSeparator { shell: root.shell }
         }
         PopupSlider {
-            width: parent.width; shell: root.shell; label: "Sound"; maximum: root.shell.volumeLimit
+            width: parent.width; shell: root.shell; label: "Sound"; maximum: root.shell.volumeRange.limit
             value: root.sink?.audio?.volume ?? 0
             onChanged: value => { if (root.sink?.audio) root.sink.audio.volume = value }
         }
@@ -63,7 +62,7 @@ AudioButton {
         }
     }
     LazyPopup {
-        shell: root.shell; popup: "media"; owners: ["mediaplayer", "nowplaying"]; popupsAllowed: root.mediaCard && root.popupsAllowed
-        sourceComponent: Component { MediaPopup { anchorItem: root; shell: root.shell; popupEnabled: root.mediaCard && root.popupsAllowed } }
+        shell: root.shell; popupName: "media"; owners: ["mediaplayer", "nowplaying"]; popupEnabled: root.mediaCard && root.popupEnabled
+        sourceComponent: Component { MediaPopup { anchorItem: root; shell: root.shell; popupEnabled: root.mediaCard && root.popupEnabled } }
     }
 }

@@ -103,6 +103,7 @@
   },
   "tray": {
     "backgroundColor": ["alt_bg", 0.1],
+    "popupBorderWidth": 0,
     "iconSize": 13,
     "margin": [3, 6, 3, 6],
     "padding": [0, 6, 0, 6],
@@ -219,8 +220,7 @@
     "symbol": {
       "󰻠": "devices/cpu",
       "󰢮": "devices/gpu",
-      "󰔏": "status/temperature",
-      "󰈐": "devices/fan"
+      "󰔏": "status/temperature"
     }
   },
   "systemstats.battery": {

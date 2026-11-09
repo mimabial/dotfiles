@@ -1,1 +1,0 @@
-weather-fields.sh

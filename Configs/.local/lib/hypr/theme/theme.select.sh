@@ -38,7 +38,7 @@ list_style_menu_entries() {
     done | sort -n
 }
 
-show_style_selector() {
+select_and_save_style() {
   local font_scale=""
   local font_name=""
   local font_override=""
@@ -62,13 +62,12 @@ show_style_selector() {
       -select "${ROFI_THEME_STYLE}"
   )"
 
-  [[ -n "${selection}" ]] || exit 0
+  [[ -n "${selection}" ]] || return 0
 
   state_set "ROFI_THEME_STYLE" "${selection}" "staterc"
   style_icon="$(rofi_resolve_asset "theme_style_${selection}.png")"
   [[ -f "${style_icon}" ]] || style_icon="preferences-desktop-theme"
   theme_select_notify "${style_icon}" "Style ${selection} applied..."
-  exit 0
 }
 
 enqueue_missing_theme_thumbnails() {
@@ -148,7 +147,7 @@ theme_menu_entries() {
   done
 }
 
-show_theme_selector() {
+select_and_apply_theme() {
   local font_scale=""
   local font_name=""
   local font_override=""
@@ -179,18 +178,18 @@ show_theme_selector() {
       -select "${HYPR_THEME}"
   )"
 
-  [[ -n "${selection}" ]] || exit 0
+  [[ -n "${selection}" ]] || return 0
   "${HYPR_LIB_DIR}/theme/theme.switch.sh" -s "${selection}"
 }
 
 case "${1:-}" in
   -m | -s | --select-menu)
-    show_style_selector
+    select_and_save_style
     ;;
   -*)
     theme_selector_usage
     ;;
   *)
-    show_theme_selector
+    select_and_apply_theme
     ;;
 esac

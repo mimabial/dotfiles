@@ -67,7 +67,7 @@ Column {
       showGaps: root.historyRange > 0
       series: [root.hist.powerTotal || []]
       colors: [root.s1]
-      baselineColor: Commons.Util.alpha(root.foreground, 0.14)
+      baselineColor: Commons.Util.scaleAlpha(root.foreground, 0.14)
     }
   }
 
@@ -150,7 +150,7 @@ Column {
       showGaps: root.historyRange > 0
       series: [root.hist.cpuPower || []]
       colors: [root.s1]
-      baselineColor: Commons.Util.alpha(root.foreground, 0.14)
+      baselineColor: Commons.Util.scaleAlpha(root.foreground, 0.14)
     }
 
     Repeater {
@@ -171,7 +171,7 @@ Column {
           showGaps: root.historyRange > 0
           series: [root.hist.gpuPowers[Model.gpuId(gpuDraw.device)] || []]
           colors: [root.s2]
-          baselineColor: Commons.Util.alpha(root.foreground, 0.14)
+          baselineColor: Commons.Util.scaleAlpha(root.foreground, 0.14)
         }
       }
     }

@@ -33,14 +33,14 @@ if [[ "--remove" == "${1:-}" ]]; then
   fi
 
   print_auth_info "Removing FIDO2 packages..."
-  hyprshell pm --noconfirm remove libfido2 pam-u2f
+  hyprshell package-manager --noconfirm remove libfido2 pam-u2f
 
   print_auth_success "FIDO2 authentication has been completely removed."
 else
   print_auth_success "Setting up FIDO2 device for authentication.\n"
 
   print_auth_info "Installing required packages..."
-  hyprshell pm add libfido2 pam-u2f
+  hyprshell package-manager add libfido2 pam-u2f
 
   if ! check_fido2_hardware; then
     exit 1

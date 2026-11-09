@@ -5,6 +5,8 @@ source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/applications/desktop-exec.
 usage() {
   cat <<EOF
 Usage: ${0##*/} <url> [browser-args...]
+
+Open a URL as a standalone app window of a Chromium-family browser.
 EOF
 }
 
@@ -21,8 +23,9 @@ case "${browser_desktop_id}" in
   *) browser_desktop_id="chromium.desktop" ;;
 esac
 
-desktop_entry_exec_resolve "${browser_desktop_id}" || exit 1
+browser_argv=() browser_workdir=""
+desktop_entry_exec_resolve_into browser_argv browser_workdir "${browser_desktop_id}" || exit 1
 
-[[ -z "${DESKTOP_ENTRY_WORKDIR}" ]] || cd "${DESKTOP_ENTRY_WORKDIR}" || exit 1
+[[ -z "${browser_workdir}" ]] || cd "${browser_workdir}" || exit 1
 
-exec "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/app2unit.sh" -- "${DESKTOP_ENTRY_ARGV[@]}" "--app=$1" "${@:2}"
+exec "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/app2unit.sh" -- "${browser_argv[@]}" "--app=$1" "${@:2}"

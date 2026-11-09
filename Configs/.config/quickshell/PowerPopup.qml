@@ -98,7 +98,7 @@ PopupCard {
         if (!configDirty) return
         managerFile.setText(JSON.stringify(draftConfig, null, 2) + "\n")
         managerConfig = JSON.parse(JSON.stringify(draftConfig))
-        shell.run(["hyprshell", "system/powerprofiles", "--restore"])
+        shell.run(["hyprshell", "system/power-profiles", "--restore"])
         shell.run(["hyprshell", "system/power-manager", "idle-rearm"])
     }
     function upowerDeviceCall(method, argument) {
@@ -256,7 +256,7 @@ PopupCard {
                             visible: modelData !== PowerProfile.Performance || PowerProfiles.hasPerformanceProfile
                             shell: root.shell; icon: root.profileIcon(modelData); text: root.shell.profileName(modelData)
                             selected: modelData === PowerProfiles.profile
-                            onClicked: root.shell.run(["hyprshell", "system/powerprofiles", "--set", root.profileId(modelData)])
+                            onClicked: root.shell.run(["hyprshell", "system/power-profiles", "--set", root.profileId(modelData)])
                         }
                     }
                 }
@@ -280,7 +280,7 @@ PopupCard {
                             visible: modelData !== PowerProfile.Performance || PowerProfiles.hasPerformanceProfile
                             shell: root.shell; icon: root.profileIcon(modelData); text: root.shell.profileName(modelData)
                             selected: modelData === PowerProfiles.profile
-                            onClicked: root.shell.run(["hyprshell", "system/powerprofiles", "--set", root.profileId(modelData)])
+                            onClicked: root.shell.run(["hyprshell", "system/power-profiles", "--set", root.profileId(modelData)])
                         }
                     }
                 }

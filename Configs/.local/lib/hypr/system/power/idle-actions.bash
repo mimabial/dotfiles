@@ -1,4 +1,5 @@
 MINUTES_PER_DAY=1440
+TIMEOUT_EXIT_STATUS=124
 
 power_idle_plan() {
   local state="" action="" minutes=""
@@ -54,7 +55,7 @@ power_rearm_idle() {
 }
 
 power_wait_idle() {
-  local token="$1" delay_seconds="$2" action="$3" daemon_pid="$4" active="" current_pid="" waiter_pid="" wait_status=124
+  local token="$1" delay_seconds="$2" action="$3" daemon_pid="$4" active="" current_pid="" waiter_pid="" wait_status="${TIMEOUT_EXIT_STATUS}"
   [[ "$delay_seconds" =~ ^[0-9]+$ ]] || return 2
   power_valid_action "$action" || return 2
   if ((delay_seconds)); then
@@ -72,7 +73,7 @@ power_wait_idle() {
   [[ "$active" == "$token" ]] || return 0
   rm -f -- "$power_runtime_dir/idle.token" "$power_runtime_dir/idle.pid"
   exec {idle_lock}>&-
-  [[ "$wait_status" == 124 ]] || return 0
+  [[ "$wait_status" == "$TIMEOUT_EXIT_STATUS" ]] || return 0
   power_manager_enabled || return 0
   power_sleep_held && return 0
   read -r current_pid < <(hypr_user_pgrep -x hypridle) || return 0

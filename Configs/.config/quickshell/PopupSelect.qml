@@ -65,7 +65,7 @@ ComboBox {
         popupType: Popup.Item
         background: Rectangle {
             radius: root.shell.rounding; color: root.shell.alpha(Style.popupTinted(root.shell.role("bg", root.shell.background)), .98)
-            border.width: 1; border.color: root.shell.alpha(Style.popupBorder(root.shell.role("alt_br", root.shell.foreground)), .45)
+            border.width: 1; border.color: Style.popupBorder(root.shell.role("alt_br", root.shell.foreground), .45)
         }
         contentItem: ListView {
             id: list; clip: true; model: root.popup.visible ? root.delegateModel : null

@@ -4,6 +4,9 @@ set -euo pipefail
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 
 usage="Usage: hyprshell system/language install|remove|system|display [LOCALE]
+
+Install, remove or choose the system and display languages.
+
 Without LOCALE, list the locales the action accepts.
   install  generate LOCALE and install its spell-check dictionaries
   remove   drop LOCALE and the dictionaries no remaining locale uses
@@ -58,13 +61,13 @@ case "${action}:${locale}" in
   install:*)
     toggle_locale '#' ''
     mapfile -t packages < <(dictionaries -Slq "${locale}" | awk -F- '!seen[$1]++')
-    ((${#packages[@]} == 0)) || hyprshell pm add "${packages[@]}"
+    ((${#packages[@]} == 0)) || hyprshell package-manager add "${packages[@]}"
     ;;
   remove:*)
     toggle_locale '' '#'
     mapfile -t remaining < <(utf8_locales '')
     mapfile -t packages < <(dictionaries -Qq "${locale}" | grep -vxFf <(dictionaries -Qq "${remaining[@]}"))
-    ((${#packages[@]} == 0)) || hyprshell pm --noconfirm remove "${packages[@]}"
+    ((${#packages[@]} == 0)) || hyprshell package-manager --noconfirm remove "${packages[@]}"
     ;;
   system:*)
     pkexec sed -i -e "\$a LANG=${locale}" -e '/^LANG=/d' "${locale_conf}"

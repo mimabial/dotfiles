@@ -23,17 +23,17 @@ general {
     gaps_in = 7
     gaps_out = 14
     border_size = 4
-    col.active_border = rgba(FADA16ff) 
-    col.inactive_border = rgba(1F5322ff)
+    col.active_border = rgba(FADA16ff) rgba(4DBD4Fff) 90deg
+    col.inactive_border = rgba(5032ACff) rgba(1F5322ff) 90deg
     layout = dwindle
     resize_on_border = true
 }
 
 group {
-    col.border_active = rgba(5032acff)
-    col.border_inactive = rgba(4DBD4Fff)
-    col.border_locked_active = rgba(5032acff)
-    col.border_locked_inactive = rgba(4DBD4Fff)
+    col.border_active = rgba(4DBD4Fff)
+    col.border_inactive = rgba(1F5322ff)
+    col.border_locked_active = rgba(4DBD4Fff)
+    col.border_locked_inactive = rgba(1F5322ff)
 }
 
 decoration {
@@ -44,7 +44,8 @@ decoration {
         range = 0
         offset = 5 5
         render_power = 4
-        color = 0xe6e5e4e2
+        color = 0xe6FFA6C2
+        # color_inactive = 0xe6e5e4e2
     }
 
 

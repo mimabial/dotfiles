@@ -4,7 +4,9 @@ set -euo pipefail
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 declare -F hypr_svc_user >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/services.bash" || exit 1
 
-hypr_help_guard "Usage: hyprshell service/control <start|stop|restart|status|is-active|enable|disable|reset-failed> <service>" "$@"
+hypr_help_guard "Usage: hyprshell service/control <start|stop|restart|status|is-active|enable|disable|reset-failed> <service>
+
+Start, stop or query a user service through the active service manager." "$@"
 [[ "$#" -eq 2 ]] || exit 2
 case "$1" in start | stop | restart | status | is-active | enable | disable | reset-failed) ;; *) exit 2 ;; esac
 hypr_svc_user "$1" "$2"

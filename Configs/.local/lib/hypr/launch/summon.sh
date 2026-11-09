@@ -13,6 +13,8 @@ usage() {
   cat <<'EOF'
 Usage: hyprshell launch/summon.sh [options] <window-pattern> -- <command> [args...]
 
+Bring a matching window to the current workspace, or run the command to open one there.
+
 Window pattern may be plain text, class:<class-pattern>, or title:<title-pattern>.
 
 Options:
@@ -103,7 +105,6 @@ main() {
   local -a launch_cmd=()
   local target_workspace=""
   local window_address=""
-  local hypr_snapshot_json=""
   local clients_json=""
   local monitors_json=""
   local workspace_has_other_window="false"
@@ -114,20 +115,24 @@ main() {
   }
 
   {
-    read -r hypr_snapshot_json
+    read -r target_workspace
     read -r clients_json
     read -r monitors_json
-  } < <(hyprctl --batch -j 'activeworkspace;clients;monitors all' | jq -sc '., (.[1] // []), (.[2] // [])')
+  } < <(hyprctl --batch -j 'activeworkspace;clients;monitors all' | jq -src '
+      (.[2] // []) as $monitors
+      | ($monitors | map(select(.focused))[0].specialWorkspace.name // "") as $shown_special
+      | (if $shown_special != "" then $shown_special else .[0].name // "" end), (.[1] // []), $monitors')
   hypr_monitors_json_prime "${monitors_json}"
 
   summon_resolve_geometry options || return $?
 
   window_address="$(launch_resolve_window_address "${options[pattern]}" "${clients_json}")"
-  if ((options[float_if_occupied] == 1)); then
-    IFS=$'\t' read -r _ workspace_has_other_window \
-      < <(launch_active_workspace_occupancy "${window_address}" "${hypr_snapshot_json}") || return 1
+  if ((options[float_if_occupied] == 1 || options[empty_workspace] == 1)); then
+    workspace_has_other_window="$(launch_workspace_has_other_window "${target_workspace}" "${window_address}" "${clients_json}")" || return 1
   fi
-  target_workspace="$(launch_prepare_target_workspace "${options[empty_workspace]}" "${window_address}" "${hypr_snapshot_json}")"
+  if ((options[empty_workspace] == 1)) && [[ "${workspace_has_other_window}" == "true" ]]; then
+    target_workspace="$(launch_focus_empty_workspace)" || return 1
+  fi
   [[ -n "${target_workspace}" ]] || return 1
 
   if [[ -z "${window_address}" ]]; then

@@ -83,10 +83,10 @@ rofi_picker_run_indexed() {
   # shellcheck disable=SC2016 # Awk program is literal.
   selection_index="$(
     awk -F $'\t' -v stacked_glyph_rows="${stacked_glyph_rows}" '
-      function e(t) {gsub(/&/,"\\&amp;",t); gsub(/</,"\\&lt;",t); gsub(/>/,"\\&gt;",t); return t}
-      {l = ($2 == $1) ? "" : $2; n = index(l, "-"); t = substr(l, n + 1); u = index(t, "_")}
-      stacked_glyph_rows {printf "<span size=\"220%%\">%s</span>\n%s\n%s\n%s%c", e($1), e(substr(l, 1, n)), e(u ? substr(t, 1, u) : t), e(u ? substr(t, u + 1) : ""), 0; next}
-      {print $1 (l == "" ? "" : " " l)}
+      function escape_markup(text) {gsub(/&/,"\\&amp;",text); gsub(/</,"\\&lt;",text); gsub(/>/,"\\&gt;",text); return text}
+      {label = ($2 == $1) ? "" : $2; prefix_length = index(label, "-"); remainder = substr(label, prefix_length + 1); stem_length = index(remainder, "_")}
+      stacked_glyph_rows {printf "<span size=\"220%%\">%s</span>\n%s\n%s\n%s%c", escape_markup($1), escape_markup(substr(label, 1, prefix_length)), escape_markup(stem_length ? substr(remainder, 1, stem_length) : remainder), escape_markup(stem_length ? substr(remainder, stem_length + 1) : ""), 0; next}
+      {print $1 (label == "" ? "" : " " label)}
     ' "${data_file}" |
       rofi_with_background_theme -dmenu -format 'i' "$@"
   )" || rofi_exit=$?
@@ -180,5 +180,6 @@ rofi_resolve_window_geometry_into() {
   [[ "${geometry_ref[height_px]}" =~ ^[0-9]+$ ]] || geometry_ref[height_px]="${fallback_height_px}"
 
   geometry_ref[position_theme]="$(rofi_window_position_theme "${geometry_ref[width_px]}" "${geometry_ref[height_px]}")"
+  geometry_ref[width_theme]="window { width: ${geometry_ref[width_px]}px; }"
   geometry_ref[size_theme]="window { width: ${geometry_ref[width_px]}px; height: ${geometry_ref[height_px]}px; }"
 }

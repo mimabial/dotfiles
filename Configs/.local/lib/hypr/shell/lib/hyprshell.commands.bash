@@ -37,6 +37,12 @@ Commands:
   version                       : Show version information
   init                          : Print shell initialization code
   list                          : List script entrypoints
+  app [options] [--] TARGET     : Launch TARGET in its own unit (system/app2unit; app -h for options)
+  pip [args]                    : Run pip inside the managed Python environment
+  logout                        : End the Hyprland session
+  resolve <command>             : Print the script a command runs
+  --list-script                 : Print every script command name
+  --list-script-path            : Print every script file path
 
 Available commands:
 

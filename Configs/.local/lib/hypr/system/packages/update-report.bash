@@ -10,11 +10,11 @@ trap 'updates_remove_check_database "$?"' EXIT
 trap 'updates_handle_signal 130' INT
 trap 'updates_handle_signal 143' TERM
 
-updates_capture_query_into repo_update_lines pacman updates_query_repository "$update_database_dir"
+updates_capture_query_into repo_update_lines system_update_errors pacman updates_query_repository "$update_database_dir"
 repo_update_count=$(updates_count_lines <<<"$repo_update_lines")
 
 if [[ -n "${update_aur_helper}" ]]; then
-  updates_capture_query_into aur_update_lines aur updates_query_aur "${update_aur_helper}"
+  updates_capture_query_into aur_update_lines system_update_errors aur updates_query_aur "${update_aur_helper}"
   aur_update_count=$(updates_count_lines <<<"$aur_update_lines")
 else
   aur_update_lines=""
@@ -22,7 +22,7 @@ else
 fi
 
 if pkg_installed flatpak; then
-  updates_capture_query_into flatpak_update_lines flatpak updates_query_flatpak
+  updates_capture_query_into flatpak_update_lines system_update_errors flatpak updates_query_flatpak
   flatpak_update_count=$(updates_count_lines <<<"$flatpak_update_lines")
 else
   flatpak_update_count=0

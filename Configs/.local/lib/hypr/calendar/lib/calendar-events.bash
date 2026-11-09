@@ -31,7 +31,7 @@ read_calendar_title_filters() {
 }
 
 filter_events_by_calendar_title() {
-  jq -c --argjson filters "$(read_calendar_title_filters)" '
+  jq -c --argjson filters "$(read_calendar_title_filters)" "${1:-.}"' |=
     map(select(
       ($filters[(.calendar // "")] // "") as $re
       | $re == "" or (try ((.title // "") | test($re)) catch true)

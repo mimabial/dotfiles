@@ -31,7 +31,7 @@ print_usage() {
   local runtime_names=("${DEV_ENV_RUNTIMES[@]%%|*}")
   local IFS='|'
   local runtime_list="${runtime_names[*]}"
-  printf 'Usage: hyprshell install/dev-env.sh <%s>\n' "${runtime_list}"
+  printf 'Usage: hyprshell install/dev-env.sh <%s>\n\nInstall a language runtime and its development tools.\n' "${runtime_list}"
 }
 
 runtime="${1:-}"

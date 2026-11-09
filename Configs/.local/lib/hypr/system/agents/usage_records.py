@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypedDict
 import datetime as dt
 import hashlib
 import math
@@ -9,6 +9,66 @@ MILLISECOND_EPOCH_THRESHOLD = 10_000_000_000
 CACHE_KEY_LENGTH = 16
 ROLLING_MONTH_DAYS = 30
 RECENT_DAYS = 7
+
+
+class LimitRecord(TypedDict, total=False):
+  label: str
+  usageFraction: float
+  resetsAt: str
+  limitDollars: float
+
+
+class DayRecord(TypedDict, total=False):
+  date: str
+  tokenCount: int
+  cost: float
+
+
+class TokenParts(TypedDict, total=False):
+  inputTokens: int
+  outputTokens: int
+  cacheReadInputTokens: int
+  cacheCreationInputTokens: int
+
+
+class ModelTokens(TokenParts, total=False):
+  totalTokens: int
+
+
+class LimitReport(TypedDict, total=False):
+  limits: list[LimitRecord]
+  limitsObservedAt: int
+  usageStatusText: str
+  authHelpText: str
+  tierLabel: str
+  retryAdvised: bool
+
+
+class UsageStats(TypedDict, total=False):
+  todayPrompts: int
+  todaySessions: int
+  todayTotalTokens: int
+  todayTokensByModel: dict[str, int]
+  recentDays: list[DayRecord]
+  modelUsage: dict[str, ModelTokens]
+  totalPrompts: int
+  totalSessions: int
+  activeDays: int
+  activeDates: list[str]
+  costDays: dict[str, dict[str, list[dict[str, Any]]]]
+
+
+class UsageRecord(UsageStats, LimitReport, total=False):
+  id: str
+  name: str
+  updatedAt: str
+  ready: bool
+  hasLocalStats: bool
+  goStatus: str
+  providerUsage: list[dict[str, Any]]
+  costPeriods: dict[str, Any]
+  pricingStatus: str
+
 
 def epoch_seconds(value: float) -> float:
     return value / 1000 if value > MILLISECOND_EPOCH_THRESHOLD else value
@@ -71,25 +131,20 @@ def rounded_token_count(value: Any) -> int:
     return 0
 
 
-def empty_token_totals() -> dict[str, int]:
-  return {
-    "inputTokens": 0,
-    "outputTokens": 0,
-    "cacheReadInputTokens": 0,
-    "cacheCreationInputTokens": 0,
-  }
+def empty_token_totals() -> TokenParts:
+  return dict.fromkeys(TokenParts.__annotations__, 0)
 
 
 class UsageTotals:
   def __init__(self) -> None:
     self.today = local_date_string()
     self.recent_dates = recent_date_strings()
-    self.recent = {day: {"date": day, "tokenCount": 0} for day in self.recent_dates}
+    self.recent: dict[str, DayRecord] = {day: {"date": day, "tokenCount": 0} for day in self.recent_dates}
     self.sessions: set[str] = set()
     self.active_days: set[str] = set()
     self.today_sessions: set[str] = set()
     self.today_tokens_by_model: dict[str, int] = {}
-    self.token_totals_by_model: dict[str, dict[str, int]] = {}
+    self.token_totals_by_model: dict[str, TokenParts] = {}
     self.total_prompts = 0
     self.today_prompts = 0
     self.today_total_tokens = 0
@@ -119,7 +174,7 @@ class UsageTotals:
       self.today_total_tokens += total
       self.today_tokens_by_model[model] = self.today_tokens_by_model.get(model, 0) + total
 
-  def as_stats(self) -> dict[str, Any]:
+  def as_stats(self) -> UsageStats:
     return {
       "todayPrompts": self.today_prompts,
       "todaySessions": len(self.today_sessions),
@@ -135,7 +190,7 @@ class UsageTotals:
     }
 
 
-def merge_stats(base: dict[str, Any], extra: dict[str, Any]) -> dict[str, Any]:
+def merge_stats(base: UsageStats, extra: UsageStats) -> UsageStats:
   merged = dict(base)
   for key in ("todayPrompts", "todaySessions", "todayTotalTokens", "totalPrompts", "totalSessions"):
     merged[key] = rounded_token_count(base.get(key)) + rounded_token_count(extra.get(key))

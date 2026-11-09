@@ -7,7 +7,7 @@ VpnButton {
     settingsPopupName: popupName + "-settings"
     symbol: String(output.class) === "connected" ? "network-vpn" : "network-vpn-disconnected"
     MacCard {
-        anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: root.popupName; settings: "VPN"; settingsPopup: root.settingsPopupName
+        anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: root.popupName; settings: "VPN"; settingsPopupName: root.settingsPopupName
         PopupToggleRow {
             width: parent.width; shell: root.shell; title: "VPN"; checked: String(root.output.class) === "connected"
             detail: String(root.output.tooltip || "").replace(/<[^>]+>/g, "").split("\n").slice(1).join(" · ")

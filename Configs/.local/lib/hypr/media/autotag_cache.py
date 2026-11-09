@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Rescans should not repeat an unchanged lookup. Successful metadata changes
 # slowly; misses and temporary provider blocks are retried after one hour.
-CACHE_VERSION = 1
+CACHE_VERSION = 3
 
 
 CACHE_SUCCESS_TTL_SECONDS = 99 * 24 * 60 * 60

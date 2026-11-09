@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import shutil
 import subprocess
 import time
@@ -114,6 +115,42 @@ class FfTabHostCapabilityTests(unittest.TestCase):
 
 
 class PlaylistNavigationTests(unittest.TestCase):
+    def test_open_uri_navigates_only_the_requested_media_tab(self):
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("node is unavailable")
+        player = bare_player()
+        url = "https://www.youtube.com/watch?v=other&list=playlist&index=2"
+        invocation = Mock()
+        with patch.object(fftab_host, "send_to_extension") as send:
+            player._on_method_call(None, None, None, fftab_host.PLAYER_IFACE,
+                                   "OpenUri", fftab_host.GLib.Variant("(s)", (url,)), invocation)
+        invocation.return_value.assert_called_once_with(None)
+        script = r"""
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+const updates = [];
+const context = vm.createContext({
+  message: JSON.parse(process.argv[2]),
+  browser: {
+    tabs: { update(...args) { updates.push(args); return Promise.resolve(); } },
+    runtime: { onConnect: { addListener() {} } },
+  },
+});
+vm.runInContext(fs.readFileSync(process.argv[1], "utf8"), context);
+vm.runInContext("routeHostCommand(message)", context);
+assert.equal(updates.length, 0);
+vm.runInContext("mediaPortsByTab.set(message.tabId, new Map()); routeHostCommand(message)", context);
+process.stdout.write(JSON.stringify(updates));
+"""
+        result = subprocess.run(
+            [node, "-e", script, str(BRIDGE_DIR / "extension" / "background.js"),
+             json.dumps(send.call_args.args[0])],
+            check=True, text=True, capture_output=True,
+        )
+        self.assertEqual(json.loads(result.stdout), [[player.tab_id, {"url": url}]])
+
     def test_youtube_playlist_navigation(self):
         node = shutil.which("node")
         if node is None:

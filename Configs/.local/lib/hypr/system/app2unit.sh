@@ -27,16 +27,17 @@ source "$system_dir/applications/targets.bash"
 source "$system_dir/applications/process.bash"
 
 [[ -z "${APP2UNIT_PART_OF_GST:-}" ]] || { join_graphical_session=false; app_launch_is_true "$APP2UNIT_PART_OF_GST" && join_graphical_session=true; }
-[[ "$launch_unit_type" == scope || "$launch_unit_type" == service ]] || app_launch_fail "Invalid unit type: $launch_unit_type"
+[[ "$launch_unit_type" == scope || "$launch_unit_type" == service ]] || app_launch_die "Invalid unit type: $launch_unit_type"
 app_launch_parse_args "$@"
 launch_slice="${launch_slice:-$(app_launch_resolve_slice)}"
-$open_with_default_app && app_launch_resolve_open_target
-((${#target_arguments[@]})) || $launch_in_terminal || app_launch_fail 'Target required'
-app_launch_resolve_hyprshell_target
-app_launch_apply_terminal
+$open_with_default_app && app_launch_resolve_open_target target_arguments
+((${#target_arguments[@]})) || $launch_in_terminal || app_launch_die 'Target required'
+app_launch_resolve_hyprshell_target target_arguments
+app_launch_apply_terminal target_arguments
 qt_environment=()
-app_launch_load_qt_env
-app_launch_build_uwsm_command
+app_launch_load_qt_env_into qt_environment
+launch_command=()
+app_launch_build_uwsm_command_into launch_command
 
 if $print_launch_command; then
   printf 'Command and arguments:\n'

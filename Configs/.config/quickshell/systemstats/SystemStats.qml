@@ -13,10 +13,11 @@ Item {
 
   required property var shell
   property Item popupAnchor: root
-  property bool popupsAllowed: true
+  property bool popupEnabled: true
   property var settings: ({})
   property string currentTab: "cpu"
   readonly property int historyRange: Model.historyRange(Model.settingValue(settings, "historySpan"))
+  readonly property int scrollStep: Commons.Style.space(48)
   property bool processesExpanded: false
   property string processQuery: ""
   property bool searchActive: false
@@ -71,7 +72,7 @@ Item {
   readonly property var moduleTabs: Model.panelTabs(hasGpu, hasBattery, Model.settingValue(settings, "tabs"))
   readonly property var panelTabs: moduleTabs.concat(["alerts", "settings"])
   readonly property bool processesSearchable: currentTab === "cpu" || currentTab === "disks" || currentTab === "network"
-  readonly property string barSensors: String(Model.settingValue(settings, "barSensors") || "cpu")
+  readonly property string barSensors: String(Model.settingValue(settings, "barSensors"))
   readonly property string barLabels: {
     const value = String(Model.settingValue(settings, "barLabels")).toLowerCase()
     return value === "icon" || value === "inline" || value === "none" ? value : "text"
@@ -134,9 +135,9 @@ Item {
     showTab(panelTabs[index])
   }
 
-  function scrollBy(steps) {
+  function scrollBy(pixels) {
     var limit = Math.max(0, scrollArea.contentHeight - scrollArea.height)
-    scrollArea.contentY = Math.max(0, Math.min(limit, scrollArea.contentY + steps * Commons.Style.space(48)))
+    scrollArea.contentY = Math.max(0, Math.min(limit, scrollArea.contentY + pixels))
   }
 
   function setProcessesExpanded(value) {
@@ -165,8 +166,8 @@ Item {
     if (event.key === Qt.Key_Escape) { close(); return true }
     if (event.key === Qt.Key_Left || text === "h") { cycleTab(-1); return true }
     if (event.key === Qt.Key_Right || text === "l") { cycleTab(1); return true }
-    if (event.key === Qt.Key_Up || text === "k") { scrollBy(-1); return true }
-    if (event.key === Qt.Key_Down || text === "j") { scrollBy(1); return true }
+    if (event.key === Qt.Key_Up || text === "k") { scrollBy(-scrollStep); return true }
+    if (event.key === Qt.Key_Down || text === "j") { scrollBy(scrollStep); return true }
     if (text === "r") { if (publicIpEnabled) service.requestPublicIp(true); return true }
     if (text === "s" || text === ",") { showTab("settings"); return true }
     if (text === "a") { showTab("alerts"); return true }
@@ -232,7 +233,10 @@ Item {
           labelMode: root.barLabels
           onActivated: function(id, button) {
             if (button === Qt.LeftButton) root.toggleModule(id)
-            else if (button === Qt.RightButton && id !== "network") root.shell.run(["hyprshell", "util/sysmon-launch"].concat(Model.tabFor(id) in root.monitorCommands ? ["-e", root.monitorCommands[Model.tabFor(id)]] : []))
+            else if (button === Qt.RightButton && id !== "network" && id !== "cpu") {
+              root.close()
+              root.shell.run(["hyprshell", "util/sysmon-launch"].concat(Model.tabFor(id) in root.monitorCommands ? ["-e", root.monitorCommands[Model.tabFor(id)]] : []))
+            }
             else if (button === Qt.MiddleButton && root.publicIpEnabled) root.service.requestPublicIp(true)
           }
         }
@@ -255,7 +259,7 @@ Item {
     shell: root.shell
     popupName: "systemstats"
     keyboardHint: "←→ Tabs  ↑↓ Scroll  1–" + root.moduleTabs.length + " Tab" + (root.processesSearchable ? "  / Search" : "") + "  Esc"
-    popupEnabled: root.popupsAllowed
+    popupEnabled: root.popupEnabled
     wantsKeyboard: true
     contentWidth: Math.max(Commons.Style.space(420), Math.ceil(tabs.spelledWidth) + padding * 2)
     contentHeight: Commons.Style.space(680)
@@ -305,6 +309,17 @@ Item {
       interactive: contentHeight > height
       boundsBehavior: Flickable.StopAtBounds
       ScrollBar.vertical: PopupScrollBar { shell: root.shell }
+
+      WheelHandler {
+        id: wheelScroll
+        readonly property int anglePerNotch: 120
+        readonly property var styleHints: Qt.styleHints
+        target: null
+        enabled: scrollArea.interactive
+        acceptedDevices: PointerDevice.Mouse
+        onWheel: event => root.scrollBy(-event.pixelDelta.y
+          || -event.angleDelta.y / wheelScroll.anglePerNotch * wheelScroll.styleHints.wheelScrollLines * root.scrollStep)
+      }
 
       Loader {
         id: pageLoader

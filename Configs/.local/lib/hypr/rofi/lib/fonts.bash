@@ -23,11 +23,11 @@ rofi_effective_font_scale() {
     local text_size="${TEXT_SIZE:-}"
     if [[ ! "${text_size}" =~ ^[0-9]+$ ]]; then
       declare -F state_get >/dev/null 2>&1 || hypr_runtime_require state >/dev/null 2>&1 || true
-      text_size="$(state_get TEXT_SIZE "${ROFI_TEXT_SIZE_AT_DEFAULT_SCALE_PX}" 2>/dev/null || true)"
+      text_size="$(state_get TEXT_SIZE "${TEXT_SIZE_BASE_PX}" 2>/dev/null || true)"
     fi
-    [[ "${text_size}" =~ ^[0-9]+$ ]] && scale=$((text_size * ROFI_DEFAULT_FONT_SCALE / ROFI_TEXT_SIZE_AT_DEFAULT_SCALE_PX))
+    [[ "${text_size}" =~ ^[0-9]+$ ]] && scale=$((text_size * TEXT_SIZE_BASE_PT / TEXT_SIZE_BASE_PX))
   fi
-  [[ -n "${scale}" ]] || scale="${ROFI_DEFAULT_FONT_SCALE}"
+  [[ -n "${scale}" ]] || scale="${TEXT_SIZE_BASE_PT}"
   printf '%s\n' "${scale}"
 }
 
@@ -69,7 +69,7 @@ rofi_font_override() {
 }
 
 rofi_font_description() {
-  printf '%s %spx' "$1" "$(($2 * ROFI_TEXT_SIZE_AT_DEFAULT_SCALE_PX / ROFI_DEFAULT_FONT_SCALE))"
+  printf '%s %spx' "$1" "$(($2 * TEXT_SIZE_BASE_PX / TEXT_SIZE_BASE_PT))"
 }
 
 rofi_length_em_to_px() {

@@ -67,18 +67,6 @@ def youtube_credit_metadata(url: str, timeout: int = 45) -> dict[str, str]:
     return {"artist": artist, "title": title}
 
 
-def filename_credit_loss(path: Path, tags) -> list[str]:
-    file_artist, file_title = parse_filename(path)
-    if not file_artist or not file_title:
-        return []
-    return missing_credit_names(
-        file_artist,
-        file_title,
-        existing(tags, "artist"),
-        existing(tags, "title"),
-    )
-
-
 def recovered_youtube_artist(path: Path, tags) -> str:
     purl = existing(tags, "purl")
     if not purl:

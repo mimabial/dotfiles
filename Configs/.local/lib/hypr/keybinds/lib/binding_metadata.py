@@ -117,13 +117,11 @@ def annotate_bindings_with_display_metadata(binds_data):
         bind["key_display"] = display_key_name(bind["key"])
         bind["mod_display"] = display_modifiers(bind["modmask"])
 
-        # Handle submaps. The Lua config plugin routes every bind through its own
-        # handler, so hyprctl reports dispatcher "__lua" and never "submap"; a
+        # Handle submaps. hyprctl reports a Lua bind's dispatcher as the Lua value
+        # ("function: 0x…", "HL.Dispatcher(submap)") and its arg as a line number; a
         # leader declared in Lua is identified by its SUBMAP_MARKER description.
         submap_name = None
-        if bind["dispatcher"] == "submap":
-            submap_name = bind["arg"]
-        elif original_description.startswith(SUBMAP_MARKER):
+        if original_description.startswith(SUBMAP_MARKER):
             submap_name = original_description[len(SUBMAP_MARKER) :].strip()
         if submap_name:
             submap_keys[submap_name] = {

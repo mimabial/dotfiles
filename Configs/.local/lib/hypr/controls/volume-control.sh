@@ -21,6 +21,8 @@ usage() {
   cat <<EOF
 Usage: ${0##*/} -[device] <action> [step]
 
+Raise, lower or mute an input, output or player and show the new level.
+
 Devices:
   -i    Input device (default source)
   -o    Output device (default sink)

@@ -12,8 +12,8 @@ Item {
     property int selectedIndex: 1
     property color background: Commons.Color.background
     property color foreground: Commons.Color.foreground
-    property color scrim: Commons.Util.alpha(Commons.Color.background, 0.7)
-    property color selectedBackground: Commons.Util.alpha(Commons.Color.foreground, 0.08)
+    property color scrim: Commons.Util.scaleAlpha(Commons.Color.background, 0.7)
+    property color selectedBackground: Commons.Util.scaleAlpha(Commons.Color.foreground, 0.08)
     property color selectedText: Commons.Color.accent
     property string fontFamily: Commons.Style.font.family
     property int cornerRadius: Commons.Style.cornerRadius

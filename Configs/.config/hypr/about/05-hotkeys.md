@@ -174,7 +174,7 @@ the bar · `H` toggle the bar · `Shift + H` floating bar · `F` select font ·
 
 `F` file finder · `B` bookmarks · `T` tray · `V` Bitwarden vault ·
 `Shift + V` Bitwarden desktop · `W` LibreOffice Writer ·
-`G` Gimp · `E` Elisa · `M` Mullvad VPN · `Q` qBittorrent · `L` game launcher ·
+`G` Gimp · `E` Elisa · `Q` qBittorrent · `L` game launcher ·
 `Shift + L` Lutris
 
 ### Terminal — `Super + J`

@@ -12,7 +12,7 @@ Item {
     property int cavaFps: 20
     property real cavaGain: 1
     property int cavaSmoothing: 77
-    property bool noIcon: false
+    property bool showIcon: true
     property bool popupEnabled: true
     property int albumArtSize: 18
     property bool showAlbumArt: true
@@ -53,7 +53,7 @@ Item {
         ? (showArtist && idleQuote.author ? idleQuote.author + " — " : "") + idleQuote.text : ""
     readonly property bool cavaAppearance: appearance === "cava"
     readonly property bool mprisAppearance: appearance === "mpris"
-    readonly property bool iconAppearance: appearance === "icon" && !noIcon
+    readonly property bool iconAppearance: appearance === "icon" && showIcon
     readonly property var player: Media.player
     readonly property Item simpleItem: simpleLoader.item as Item
     readonly property bool hasPlayer: player !== null
@@ -62,7 +62,7 @@ Item {
     readonly property bool shown: hasPlayer || showWhenIdle
     readonly property int artSize: Math.max(Style.px(12), Style.px(albumArtSize))
     readonly property int fixedWidth: (transport.visible ? transport.implicitWidth + contents.spacing : 0)
-        + (noIcon ? 0 : artSize + metadata.spacing) + Style.px(12)
+        + (showIcon ? artSize + metadata.spacing : 0) + Style.px(12)
     readonly property string displayText: !hasPlayer ? idleText : showArtist && Media.artist && Media.title
         ? Media.artist + " — " + Media.title : Media.title || Media.artist
 
@@ -113,10 +113,10 @@ Item {
             maxWidth: root.quoteView
                 ? Math.min(Style.px(root.maxLabelWidth), root.fillAvailableWidth ? Math.max(1, root.width) : Style.px(root.maxLabelWidth))
                 : 0
-            leadingIcon: !root.noIcon && root.quoteView ? root.idleIcon : ""
-            text: root.player ? root.cavaAppearance ? (root.noIcon ? "" : Media.icon(root.player)) : (root.noIcon ? Media.remaining(root.player)
+            leadingIcon: root.showIcon && root.quoteView ? root.idleIcon : ""
+            text: root.player ? root.cavaAppearance ? (root.showIcon ? Media.icon(root.player) : "") : (!root.showIcon ? Media.remaining(root.player)
                 : Media.icon(root.player) + (root.iconAppearance ? "" : "  " + Media.remaining(root.player)))
-                : root.quoteView ? root.idleText : root.noIcon ? "" : root.idleIcon
+                : root.quoteView ? root.idleText : root.showIcon ? root.idleIcon : ""
             tooltip: root.cavaAppearance && root.hasPlayer ? root.displayText : ""
             trailingWidth: spectrum.active ? spectrum.width + (text ? Style.sm : 0) : 0
             onHoveredChanged: if (hovered && root.quoteView) root.cycleIdleQuote()
@@ -182,7 +182,7 @@ Item {
           Item {
             id: artContainer
             width: root.artSize; height: root.artSize
-            visible: !root.noIcon
+            visible: root.showIcon
             anchors.verticalCenter: parent.verticalCenter
 
             Rectangle { anchors.fill: parent; radius: Style.px(3); color: root.shell.alpha(root.shell.foreground, .08) }

@@ -19,7 +19,7 @@ QtObject {
     function controlSpec(state, foreground, accent, urgent) {
         const focused = ["focus", "focused", "selected"].includes(state)
         const color = focused ? (accent || foreground)
-                              : Commons.Color.alpha(foreground || Commons.Color.foreground, 0.4)
+                              : Commons.Util.scaleAlpha(foreground || Commons.Color.foreground, 0.4)
         return flat(color, 1)
     }
 

@@ -62,7 +62,7 @@ listbox {
     spacing:                     0em;
     padding:                     0em;
     orientation:                 vertical;
-    children:                    [ "dummy" , "listview" , "dummy" ];
+    children:                    [ "spacer" , "listview" , "spacer" ];
     background-color:            transparent;
 }
 listview {
@@ -81,7 +81,7 @@ listview {
     background-color:            transparent;
     text-color:                  @foreground;
 }
-dummy {
+spacer {
     spacing:                     0em;
     padding:                     0em;
     background-color:            transparent;

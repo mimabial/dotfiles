@@ -8,7 +8,7 @@ setup_pick_input_language() {
   layouts="$(xkbcli list | awk -F"'" '/^option_groups:/ { exit } /^- layout:/ { layout = $2 } /^  variant:/ { variant = $2 }
     layout && /^  description:/ { sub(/^  description: /, ""); print $0 "\t" layout "\t" variant }')"
   selection="$(menu "Input Language" "$(cut -f1 <<<"${layouts}")" --select "$(hyprctl -j devices | jq -r '.keyboards[] | select(.main).active_keymap')")"
-  [[ -n "${selection}" ]] || menu_exit_or_show setup_language
+  [[ -n "${selection}" ]] || menu_show_then_exit setup_language
   IFS=$'\t' read -r _ layout variant < <(awk -F'\t' -v description="${selection}" '$1 == description { print; exit }' <<<"${layouts}")
   hyprshell util/keyboard-layout --select "${layout}" "${variant}" >/dev/null
 }
@@ -21,7 +21,7 @@ setup_fill_power_profiles() {
   local profile="" profile_label=""
   local -A profile_icons=([power-saver]="󰌪" [balanced]="󰗑" [performance]="󱐋")
 
-  for profile in $("${HYPR_LIB_DIR}/system/powerprofiles.sh"); do
+  for profile in $("${HYPR_LIB_DIR}/system/power-profiles.sh"); do
     profile_label="${profile//-/ }"
     menu_add_item setup_power_profile "${profile_icons[${profile}]:-}  ${profile_label^}" action "setup_power_profile_${profile}"
   done
@@ -114,7 +114,7 @@ menu_run_action_setup() {
     setup_default_browser_*) hyprshell setup/default-app.sh browser "${action_id#setup_default_browser_}" ;;
     setup_default_terminal_*) hyprshell setup/default-app.sh terminal "${action_id#setup_default_terminal_}" ;;
     setup_default_editor_*) hyprshell setup/default-app.sh editor "${action_id#setup_default_editor_}" ;;
-    setup_power_profile_*) hyprshell system/powerprofiles.sh --set "${action_id#setup_power_profile_}" ;;
+    setup_power_profile_*) hyprshell system/power-profiles.sh --set "${action_id#setup_power_profile_}" ;;
     setup_audio) menu_present_terminal --hypr-profile tui --app-id org.tui.Wiremix --title Wiremix -- wiremix ;;
     setup_wifi) rfkill unblock wifi && menu_present_terminal --hypr-profile tui --app-id org.tui.Impala --title Impala -- impala ;;
     setup_bluetooth) hyprshell launch/bluetooth ;;

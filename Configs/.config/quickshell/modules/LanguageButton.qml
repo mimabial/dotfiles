@@ -4,7 +4,7 @@ import ".."
 
 ScriptButton {
     id: root
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     property string popupName: "language"
     property string settingsPopupName: popupName
     property alias settingsPanel: panel
@@ -12,7 +12,6 @@ ScriptButton {
     readonly property bool shown: layouts.length > 1
     css: "language"
     command: ["hyprshell", "util/keyboard-layout"]
-    polling: false
     Component.onCompleted: refresh()
     onClicked: button => {
         if (button !== Qt.RightButton) return root.shell.togglePopup(root.popupName)
@@ -26,5 +25,5 @@ ScriptButton {
             if (name.indexOf("activelayout") !== -1 || name === "configreloaded") root.refresh()
         }
     }
-    LanguagePopup { id: panel; anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: root.settingsPopupName; onModuleRefreshRequested: root.refresh() }
+    LanguagePopup { id: panel; anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: root.settingsPopupName; onModuleRefreshRequested: root.refresh() }
 }

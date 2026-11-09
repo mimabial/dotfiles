@@ -3,7 +3,9 @@ set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 
-usage='Usage: hyprshell system/monitor-profile {start|manage|unmanage|restart|service-enabled|service-active}'
+usage='Usage: hyprshell system/monitor-profile {start|manage|unmanage|restart|service-enabled|service-active}
+
+Run or manage the hyprmoncfg monitor profile daemon and its generated config.'
 hypr_help_guard "${usage}" "$@"
 
 HYPRMONCFGD_EXIT_WAIT_S=1

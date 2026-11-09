@@ -1,9 +1,4 @@
-if rawget(_G, "__switcher") then
-  return true
-end
-
 local switcher = { holding = false, alt = {}, down = {} }
-_G.__switcher = switcher
 
 local function send(name)
   hl.dispatch(hl.dsp.global("switcher:" .. name))
@@ -123,5 +118,3 @@ pcall(hl.layer_rule, {
   blur = true,
   ignore_alpha = 0.3,
 })
-
-return true

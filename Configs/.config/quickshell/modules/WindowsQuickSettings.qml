@@ -12,7 +12,7 @@ import "StatusSymbols.js" as StatusSymbols
 
 BarButton {
     id: root
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     readonly property var popupStyle: shell.style.box("quick-settings.popup")
     readonly property var actionStyle: shell.style.box("quick-settings.action")
     readonly property var tileStyle: shell.style.box("quick-settings.tile")
@@ -31,9 +31,9 @@ BarButton {
     readonly property var outputs: Pipewire.nodes.values.filter(node => node.audio && node.isSink && !node.isStream)
     readonly property bool airplaneMode: !Networking.wifiEnabled && !adapter?.enabled
     readonly property var pages: ({
-        wifi: { title: "Wi-Fi", settings: "More Wi-Fi settings", popup: "network" },
-        bluetooth: { title: "Bluetooth", settings: "More Bluetooth settings", popup: "bluetooth" },
-        sound: { title: "Sound output", settings: "More sound settings", popup: "audio" }
+        wifi: { title: "Wi-Fi", settings: "More Wi-Fi settings", popupName: "network" },
+        bluetooth: { title: "Bluetooth", settings: "More Bluetooth settings", popupName: "bluetooth" },
+        sound: { title: "Sound output", settings: "More sound settings", popupName: "audio" }
     })
     property string actionError: ""
     property var actionNetwork: null
@@ -171,7 +171,7 @@ BarButton {
     PopupCard {
         id: panel
         property string page: ""
-        anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: "controlcenter"
+        anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: "controlcenter"
         contentWidth: Style.px(root.popupStyle.width); padding: 0
         contentHeight: body.implicitHeight; keyboardHint: ""
         onPageChanged: { clearCursor(); Qt.callLater(rebuildRows) }
@@ -227,7 +227,7 @@ BarButton {
                             Tile { title: "Wi-Fi"; iconName: StatusSymbols.wifi(Networking.wifiEnabled, root.network); checked: Networking.wifiEnabled; submenu: "wifi"; enabled: !!root.wifi; onClicked: Networking.wifiEnabled = !Networking.wifiEnabled }
                             Tile { title: "Bluetooth"; iconName: root.adapter?.enabled ? "bluetooth-active" : "bluetooth-disabled"; checked: !!root.adapter?.enabled; submenu: "bluetooth"; enabled: !!root.adapter && !settingAction.running; onClicked: root.runSetting([root.hyprLib + "bluetooth/power.sh", "toggle"]) }
                             Tile { title: "Airplane mode"; iconName: "airplane-mode"; checked: root.airplaneMode; enabled: (!!root.wifi || !!root.adapter) && !settingAction.running; onClicked: root.setAirplaneMode(!root.airplaneMode) }
-                            Tile { title: "Energy saver"; iconName: "power-profile-power-saver"; checked: PowerProfiles.profile === PowerProfile.PowerSaver; enabled: !settingAction.running; onClicked: root.runSetting([root.hyprLib + "system/powerprofiles.sh", "--set", checked ? "balanced" : "power-saver"]) }
+                            Tile { title: "Energy saver"; iconName: "power-profile-power-saver"; checked: PowerProfiles.profile === PowerProfile.PowerSaver; enabled: !settingAction.running; onClicked: root.runSetting([root.hyprLib + "system/power-profiles.sh", "--set", checked ? "balanced" : "power-saver"]) }
                             Tile { title: "Night light"; iconName: "night-light"; checked: root.shell.sunsetEnabled === "1"; enabled: !settingAction.running; onClicked: root.runSetting(["bash", root.hyprLib + "system/hyprsunset.sh", "-t", "-q"]) }
                             Tile { title: "Do not disturb"; iconName: "notifications-disabled"; checked: Notifications.report.paused === true; onClicked: root.shell.run([root.hyprLib + "notify/notifications.py", "--toggle"], Notifications.refresh) }
                         }
@@ -275,7 +275,7 @@ BarButton {
                     }
                     Level {
                         width: parent.width; title: "Volume"; iconName: StatusSymbols.volume(root.sink, !!root.sink?.audio?.muted)
-                        enabled: !!root.sink?.audio; canMute: true; value: root.sink?.audio?.volume ?? 0; maximum: root.shell.volumeLimit
+                        enabled: !!root.sink?.audio; canMute: true; value: root.sink?.audio?.volume ?? 0; maximum: root.shell.volumeRange.limit
                         onMuteRequested: root.sink.audio.muted = !root.sink.audio.muted
                         onChanged: value => { if (root.sink?.audio) root.sink.audio.volume = value }
                     }
@@ -324,7 +324,7 @@ BarButton {
                     title: panel.page === "wifi" ? Networking.wifiEnabled ? "Searching for networks…" : "Wi-Fi is off"
                         : panel.page === "bluetooth" ? root.adapter?.enabled ? "No paired devices" : "Bluetooth is off" : "No sound outputs"
                 }
-                PopupRow { width: parent.width; shell: root.shell; title: root.pages[panel.page]?.settings ?? ""; onClicked: root.shell.togglePopup(root.pages[panel.page].popup) }
+                PopupRow { width: parent.width; shell: root.shell; title: root.pages[panel.page]?.settings ?? ""; onClicked: root.shell.togglePopup(root.pages[panel.page].popupName) }
             }
             PopupHint {
                 shell: root.shell; error: true
@@ -350,29 +350,29 @@ BarButton {
     }
     LazyPopup {
         id: networkSettings
-        shell: root.shell; popup: "network"; owners: ["wifi"]; popupsAllowed: root.popupsAllowed
+        shell: root.shell; popupName: "network"; owners: ["wifi"]; popupEnabled: root.popupEnabled
         function activateRequested() {
             const popup = item as NetworkPopup
             if (popup && root.requestedNetwork) { popup.activate(root.requestedNetwork); root.requestedNetwork = null }
         }
         onLoaded: activateRequested()
-        sourceComponent: Component { NetworkPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        sourceComponent: Component { NetworkPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     LazyPopup {
-        shell: root.shell; popup: "bluetooth"; owners: ["bluetooth"]; popupsAllowed: root.popupsAllowed
-        sourceComponent: Component { BluetoothPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        shell: root.shell; popupName: "bluetooth"; owners: ["bluetooth"]; popupEnabled: root.popupEnabled
+        sourceComponent: Component { BluetoothPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     LazyPopup {
-        shell: root.shell; popup: "audio"; owners: ["volume"]; popupsAllowed: root.popupsAllowed
-        sourceComponent: Component { AudioPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        shell: root.shell; popupName: "audio"; owners: ["volume"]; popupEnabled: root.popupEnabled
+        sourceComponent: Component { AudioPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     LazyPopup {
-        shell: root.shell; popup: "microphone"; owners: ["microphone"]; popupsAllowed: root.popupsAllowed
-        sourceComponent: Component { AudioPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; microphoneMode: true } }
+        shell: root.shell; popupName: "microphone"; owners: ["microphone"]; popupEnabled: root.popupEnabled
+        sourceComponent: Component { AudioPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; microphoneMode: true } }
     }
     LazyPopup {
-        shell: root.shell; popup: "vpn"; owners: ["vpn"]; popupsAllowed: root.popupsAllowed
-        sourceComponent: Component { VpnPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        shell: root.shell; popupName: "vpn"; owners: ["vpn"]; popupEnabled: root.popupEnabled
+        sourceComponent: Component { VpnPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     Loader {
         id: displaySettings
@@ -380,21 +380,21 @@ BarButton {
         Connections {
             target: root.shell
             function onPopupNameChanged() {
-                if (root.popupsAllowed && root.shell.popupName === "monitor" && !root.shell.liveModules.includes("display") && !displaySettings.source.toString())
+                if (root.popupEnabled && root.shell.popupName === "monitor" && !root.shell.liveModules.includes("display") && !displaySettings.source.toString())
                     displaySettings.setSource(Qt.resolvedUrl("../monitor/DisplayPanel.qml"), {anchorItem: root, shell: root.shell, popupName: "monitor"})
             }
         }
     }
     LazyPopup {
-        shell: root.shell; popup: "power"; owners: ["powerprofile"]; popupsAllowed: root.popupsAllowed
-        sourceComponent: Component { PowerPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        shell: root.shell; popupName: "power"; owners: ["powerprofile"]; popupEnabled: root.popupEnabled
+        sourceComponent: Component { PowerPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     LazyPopup {
-        shell: root.shell; popup: "wifiqr"; owners: ["wifi"]; popupsAllowed: root.popupsAllowed
-        sourceComponent: Component { WifiQrPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        shell: root.shell; popupName: "wifiqr"; owners: ["wifi"]; popupEnabled: root.popupEnabled
+        sourceComponent: Component { WifiQrPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     LazyPopup {
-        shell: root.shell; popup: "media"; owners: ["mediaplayer", "nowplaying"]; popupsAllowed: root.popupsAllowed
-        sourceComponent: Component { MediaPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        shell: root.shell; popupName: "media"; owners: ["mediaplayer", "nowplaying"]; popupEnabled: root.popupEnabled
+        sourceComponent: Component { MediaPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
 }

@@ -18,7 +18,7 @@ PopupCard {
     property int timerHours: 0
     property int timerMinutes: 0
     property int timerSeconds: 0
-    readonly property date alarmDefault: new Date(Date.now() + CalendarMath.MS_PER_HOUR)
+    readonly property date alarmDefault: new Date(Date.now() + Units.MS_PER_HOUR)
     property int alarmHours: alarmDefault.getHours()
     property int alarmMinutes: alarmDefault.getMinutes()
     property var alarmDays: [alarmDefault.getDay()]
@@ -105,7 +105,7 @@ PopupCard {
         alarmLabel.text = ""
     }
     function resetAlarm() {
-        const target = new Date(Date.now() + CalendarMath.MS_PER_HOUR)
+        const target = new Date(Date.now() + Units.MS_PER_HOUR)
         alarmHours = target.getHours(); alarmMinutes = target.getMinutes()
         alarmDays = [target.getDay()]
         alarmLabel.text = ""; error = ""

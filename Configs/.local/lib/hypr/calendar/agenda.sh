@@ -8,6 +8,12 @@ parse_agenda_options "$@" || exit 1
 source "${calendar_library}/calendar-events.bash"
 source "${calendar_library}/todo-actions.bash"
 
+if [[ "${upcoming_mode}" -eq 1 ]]; then
+  python3 "${calendar_library}/upcoming_events.py" 2>/dev/null | filter_events_by_calendar_title .events ||
+    printf '{"dirs":[],"events":[]}\n'
+  exit 0
+fi
+
 if [[ "${todos_mode}" -eq 1 || "${todo_add}" -eq 1 ]] || [[ -n "${todo_done}${todo_delete}${todo_open}${todo_edit}" ]]; then
   if ! todoman_available; then
     printf '{"todos":[],"unavailable":true}\n'
@@ -134,7 +140,11 @@ if [[ "${add}" -eq 1 ]]; then
   declare -a new_args=(new)
   [[ -n "${calendar}" ]] && new_args+=(-a "${calendar}")
   [[ -n "${location}" ]] && new_args+=(-l "${location}")
-  [[ -n "${alarm}" ]] && new_args+=(-m "${alarm}")
+  if [[ "${alarm}" == none ]]; then
+    new_args+=(-m "")
+  elif [[ -n "${alarm}" ]]; then
+    new_args+=(-m "${alarm}")
+  fi
   [[ -n "${repeat}" ]] && new_args+=(-r "${repeat}")
   if [[ -n "${start}" ]]; then
     new_args+=("${day} ${start}")

@@ -4,7 +4,7 @@ import ".."
 
 BarButton {
     id: root
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     property bool activeOnly: false
     readonly property var players: Mpris.players ? Mpris.players.values : []
     readonly property bool audioPlaying: {
@@ -25,5 +25,5 @@ BarButton {
         ? shell.run(["hyprshell", "session/toggle-keep-awake.sh"])
         : shell.togglePopup("caffeine")
 
-    CaffeinePopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }
+    CaffeinePopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }
 }

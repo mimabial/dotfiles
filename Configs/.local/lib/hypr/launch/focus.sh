@@ -7,6 +7,8 @@ source "${BASH_SOURCE[0]%/*}/lib/window-launch.bash"
 usage() {
   cat <<EOF
 Usage: hyprshell launch/focus.sh <window-pattern> -- <command> [args...]
+
+Focus a window matching the pattern, or run the command to open one.
 EOF
 }
 

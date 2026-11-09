@@ -7,8 +7,7 @@ hypr_runtime_require state || exit 1
 declare -F hypr_svc_user >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/services.bash" || exit 1
 
 state_get_into selected_color_mode selected_color_mode ""
-state_get_into background_mode BACKGROUND_MODE dark
-state_resolve_color_mode_into selected_color_mode "${selected_color_mode}" "${background_mode}"
+state_resolve_color_mode_into selected_color_mode "${selected_color_mode}"
 
 warn_startup() {
   declare -F print_log >/dev/null 2>&1 && print_log -sec "auto-theme" -warn "startup" "$1"

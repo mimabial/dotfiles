@@ -57,7 +57,7 @@ archive_add() {
 }
 
 append_and_prune_archive_locked() {
-  printf '%s\n' "$1" >>"${archive}"
+  printf '%s\n' "$1" >>"${ARCHIVE_FILE}"
   prune_archive_locked || true
 }
 
@@ -66,7 +66,7 @@ archive_list() {
   [[ "${limit}" =~ ^[0-9]+$ ]] || limit="${ARCHIVE_DEFAULT_LIMIT}"
   ensure_notification_archive
   jq -Rcn --argjson limit "${limit}" \
-    '[inputs | fromjson?] | reverse | .[:$limit]' <"${archive}" 2>/dev/null \
+    '[inputs | fromjson?] | reverse | .[:$limit]' <"${ARCHIVE_FILE}" 2>/dev/null \
     || printf '[]\n'
 }
 
@@ -98,8 +98,8 @@ archive_seen() {
       printf '{"ok":false,"error":"not a timestamp"}\n'
       return 1
     }
-    printf '%s\n' "$1" >"${seen_file}"
-    chmod 600 "${seen_file}" 2>/dev/null || true
+    printf '%s\n' "$1" >"${ARCHIVE_SEEN_FILE}"
+    chmod 600 "${ARCHIVE_SEEN_FILE}" 2>/dev/null || true
   fi
   read_archive_seen_timestamp_into seen
   printf '{"ok":true,"seen":%s}\n' "${seen}"
@@ -111,7 +111,7 @@ archive_unread() {
   read_archive_seen_timestamp_into seen
   printf '{"ok":true,"unread":%s}\n' \
     "$(jq -Rn --argjson seen "${seen}" \
-      '[inputs | fromjson? | select(.ts > $seen)] | length' <"${archive}")"
+      '[inputs | fromjson? | select(.ts > $seen)] | length' <"${ARCHIVE_FILE}")"
 }
 
 archive_snapshot() {
@@ -121,5 +121,5 @@ archive_snapshot() {
   read_archive_seen_timestamp_into seen
   jq -Rcn --argjson limit "${limit}" --argjson seen "${seen}" \
     '[inputs | fromjson?] | {seen: $seen, unread: ([.[] | select(.ts > $seen)] | length), entries: (reverse | .[:$limit])}' \
-    <"${archive}" 2>/dev/null || printf '{"seen":0,"unread":0,"entries":[]}\n'
+    <"${ARCHIVE_FILE}" 2>/dev/null || printf '{"seen":0,"unread":0,"entries":[]}\n'
 }

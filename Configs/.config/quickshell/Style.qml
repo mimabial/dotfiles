@@ -47,8 +47,12 @@ Singleton {
     readonly property real maxPopupTint: 0.3
     property color popupTint: "transparent"
     function popupTinted(base) { return Qt.tint(base, popupTint) }
+    property bool popupBorders: true
     property color popupBorderOverride: "transparent"
-    function popupBorder(base) { return popupBorderOverride.a > 0 ? popupBorderOverride : base }
+    function popupBorder(base, opacity) {
+        const color = popupBorderOverride.a > 0 ? popupBorderOverride : base
+        return Qt.rgba(color.r, color.g, color.b, popupBorders ? (opacity ?? color.a) : 0)
+    }
 
     readonly property real hoverFillAlpha: popupStyle.hoverFillAlpha
     readonly property real hoverBorderAlpha: 0.55
@@ -65,6 +69,7 @@ Singleton {
     readonly property int hoverDuration: duration(180)
     readonly property int tooltipDelay: 400
     readonly property int focusPrimeDelay: 150
+    readonly property int confirmationShownMs: 1400
 
     readonly property int defaultTextSize: popupStyle.defaultTextSize
     property int textSize: defaultTextSize

@@ -20,7 +20,7 @@ source "${desktop_sync_lib}" || exit 1
 sync_mode="full"
 
 desktop_sync_usage() {
-  printf '%s\n' "Usage: hyprshell theme/desktop.sync [--full|--static-only|--runtime-only] [--quiet]"
+  printf 'Usage: hyprshell theme/desktop.sync [--full|--static-only|--runtime-only] [--quiet]\n\nPush the active theme into GTK, Qt and the other desktop settings.\n'
 }
 
 while (($#)); do

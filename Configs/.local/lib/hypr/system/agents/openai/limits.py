@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from agents.usage_records import LimitRecord
+from agents.usage_records import LimitReport
 from agents.usage_records import integer_token_count
 from datetime import datetime
 from datetime import timezone
@@ -62,7 +64,7 @@ def rpc_request(proc, pending, request_id, method, params=None, timeout=8):
   raise TimeoutError(method)
 
 
-def limit_window(window):
+def limit_window(window) -> LimitRecord | None:
   if not isinstance(window, dict):
     return None
   used = window.get("usedPercent")
@@ -85,8 +87,8 @@ def limit_window(window):
   }
 
 
-def fetch_codex_rpc():
-  result = {"limits": [], "tierLabel": "", "usageStatusText": "", "authHelpText": AUTH_HELP}
+def fetch_codex_rpc() -> LimitReport:
+  result: LimitReport = {"limits": [], "tierLabel": "", "usageStatusText": "", "authHelpText": AUTH_HELP}
   codex = find_command("codex")
   if not codex:
     result["usageStatusText"] = "Codex unavailable"

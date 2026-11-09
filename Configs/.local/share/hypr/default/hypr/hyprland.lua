@@ -13,7 +13,9 @@ local state_home = vars.get("XDG_STATE_HOME")
 runtime.load(config_home .. "/hypr/themes/theme.lua")
 runtime.load(config_home .. "/hypr/userfonts.lua", true)
 require("gpu")
-runtime.load(state_home .. "/hypr/animations.lua", true)
+if not runtime.load(state_home .. "/hypr/animations.lua", true) then
+    require("animations.default")
+end
 runtime.load(state_home .. "/hypr/shaders.lua", true)
 
 hl.config({misc = {font_family = vars.get("FONT", "Cantarell")}})
@@ -63,7 +65,10 @@ runtime.load(state_home .. "/hypr/monitor-toggles.lua", true)
 runtime.load(state_home .. "/hypr/touchpads-disabled.lua", true)
 runtime.load(state_home .. "/hypr/window-layout.lua", true)
 runtime.load(state_home .. "/hypr/workflows.lua", true)
+require("gestures")
 require("workspaces")
 
 -- Generated monitor rules must load last.
-do local path = config_home .. "/hypr/hyprmoncfg-monitors.lua"; local file = io.open(path, "r"); if file then file:close(); dofile(path) end end
+runtime.load(config_home .. "/hypr/hyprmoncfg-monitors.lua", true)
+
+vars.publish(vars.get("XDG_RUNTIME_DIR") .. "/hypr/" .. os.getenv("HYPRLAND_INSTANCE_SIGNATURE") .. "/vars.json")

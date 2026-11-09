@@ -2,7 +2,7 @@ require_cmd() {
   local cmd="$1"
   command -v "$cmd" >/dev/null 2>&1 || {
     echo "Missing required command: $cmd" >&2
-    exit 1
+    return 1
   }
 }
 

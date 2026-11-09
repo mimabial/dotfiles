@@ -65,13 +65,34 @@ NOTIFICATION_FEATURES = {
 
 ERR_INVALID_SUBID = 0x01
 HIDPP_CONNECTION_SUB_ID = 0x41
+HIDPP_ERROR_SUB_ID = 0x8F
+HIDPP2_ERROR_FEATURE_INDEX = 0xFF
+GET_REGISTER, GET_LONG_REGISTER = 0x81, 0x83
+RECEIVER_INDEX = DIRECT_DEVICE_INDEX = 0xFF
+BLUETOOTH_REPLY_INDEX = 0x00
+ROOT_FEATURE_INDEX = 0x00
+ROOT_GET_FEATURE, ROOT_PING = 0, 1
+UNIFYING_PAIRING_INFO, UNIFYING_DEVICE_NAME = 0x20, 0x40
+BOLT_PAIRING_INFO, BOLT_DEVICE_NAME = 0x50, 0x60
+DEVICE_KIND_MASK = 0x0F
+RECEIVER_SLOTS = range(1, 7)
 HIDPP_HEADER_BYTES = 4
+SHORT_PARAM_BYTES = SHORT_LEN - HIDPP_HEADER_BYTES
+DPI_WORD_BYTES = 2
+DPI_STEP_FLAG = 0xE000
+DPI_STEP_MASK = 0x1FFF
+MAX_DPI_CHOICES = 2000
 HIDPP_USAGE_PAGE = b"\x06\x00\xff"
 HIDPP_BLE_USAGE_PAGE = b"\x06\x43\xff"
 HIDPP_SHORT_REPORT_ID = b"\x85\x10"
 HIDPP_LONG_REPORT_ID = b"\x85\x11"
 BUS_USB = 0x03
 BUS_BLUETOOTH = 0x05
+BLUEZ_OBJECT_PREFIX = "/org/bluez/"
+
+BATTERY_CRITICAL_PERCENT = 5
+BATTERY_LOW_PERCENT = 20
+BATTERY_FULL_PERCENT = 90
 
 VOLTAGE_CURVE = [(4186, 100), (4067, 90), (3989, 80), (3922, 70), (3859, 60), (3811, 50),
                  (3778, 40), (3751, 30), (3717, 20), (3671, 10), (3646, 5), (3579, 2), (3500, 0)]
@@ -95,6 +116,10 @@ UDEV_MONITOR = [
 ]
 UDEV_KERNEL_EVENT_PREFIX = b"KERNEL["
 PR_SET_PDEATHSIG = 1
+
+
+def function_address(function):
+    return (function << 4) | SOFTWARE_ID
 
 
 class HidppError(Exception):
@@ -208,11 +233,11 @@ class Node:
                 return
             self.note_event(data)
 
-    def request(self, dev, b2, b3, params=b"", long=False, timeout=1.5, echo=None):
+    def request(self, dev, sub_id, address, params=b"", long=False, timeout=1.5, echo=None):
         params = bytes(params)
-        long = long or self.long_reports_only or len(params) > 3
+        long = long or self.long_reports_only or len(params) > SHORT_PARAM_BYTES
         size = LONG_LEN if long else SHORT_LEN
-        msg = bytes([LONG if long else SHORT, dev, b2, b3]) + params
+        msg = bytes([LONG if long else SHORT, dev, sub_id, address]) + params
         msg = msg + b"\0" * (size - len(msg))
         self.drain()
         os.write(self.fd, msg)
@@ -221,23 +246,26 @@ class Node:
             left = deadline - time.monotonic()
             if left <= 0:
                 raise Timeout()
-            r = self._read(left)
-            if not r or len(r) < 7 or r[0] not in (SHORT, LONG):
-                if r:
-                    self.note_event(r)
+            report = self._read(left)
+            if not report or len(report) < SHORT_LEN or report[0] not in (SHORT, LONG):
+                if report:
+                    self.note_event(report)
                 continue
-            if r[1] != dev and r[1] != dev ^ 0xFF:
-                self.note_event(r)
+            _, reply_device, reply_sub_id, reply_address = report[:HIDPP_HEADER_BYTES]
+            payload = report[HIDPP_HEADER_BYTES:]
+            if reply_device != dev and not (dev == DIRECT_DEVICE_INDEX and reply_device == BLUETOOTH_REPLY_INDEX):
+                self.note_event(report)
                 continue
-            if r[2] == 0x8F and r[3] == b2 and r[4] == b3:
-                raise HidppError(r[5])
-            if r[2] == 0xFF and r[3] == b2 and r[4] == b3:
-                raise HidppError(r[5], v2=True)
-            if r[2] == b2 and r[3] == b3:
-                if echo is not None and r[4] != echo:
+            if reply_sub_id in (HIDPP_ERROR_SUB_ID, HIDPP2_ERROR_FEATURE_INDEX):
+                failed_sub_id = reply_address
+                failed_address, error_code, *_ = payload
+                if failed_sub_id == sub_id and failed_address == address:
+                    raise HidppError(error_code, v2=reply_sub_id == HIDPP2_ERROR_FEATURE_INDEX)
+            if reply_sub_id == sub_id and reply_address == address:
+                if echo is not None and payload[0] != echo:
                     continue
-                return r[4:]
-            self.note_event(r)
+                return payload
+            self.note_event(report)
 
 
 class Receiver:
@@ -246,9 +274,9 @@ class Receiver:
         self.family = family
 
     def read_register(self, reg, params=b"", long=True):
-        sub = 0x83 if long else 0x81
+        sub_id = GET_LONG_REGISTER if long else GET_REGISTER
         params = bytes(params)
-        return self.node.request(0xFF, sub, reg, params + b"\0" * (3 - len(params)),
+        return self.node.request(RECEIVER_INDEX, sub_id, reg, params + b"\0" * (SHORT_PARAM_BYTES - len(params)),
                                  echo=params[0] if params else None, timeout=1.0)
 
     def connected_count(self):
@@ -259,24 +287,24 @@ class Receiver:
 
     def paired(self):
         out = []
-        for slot in range(1, 7):
+        for slot in RECEIVER_SLOTS:
             try:
                 if self.family == "bolt":
-                    info = self.read_register(REG_INFO, [0x50 + slot])
-                    kind = info[1] & 0x0F
+                    info = self.read_register(REG_INFO, [BOLT_PAIRING_INFO + slot])
+                    kind = info[1] & DEVICE_KIND_MASK
                     wpid = (info[3] << 8) | info[2]
                     try:
-                        nm = self.read_register(REG_INFO, [0x60 + slot, 0x01])
-                        codename = clean(nm[3:3 + min(14, nm[2])])
+                        name_reply = self.read_register(REG_INFO, [BOLT_DEVICE_NAME + slot, 0x01])
+                        codename = clean(name_reply[3:3 + min(14, name_reply[2])])
                     except (HidppError, Timeout):
                         codename = ""
                 else:
-                    info = self.read_register(REG_INFO, [0x20 + slot - 1])
+                    info = self.read_register(REG_INFO, [UNIFYING_PAIRING_INFO + slot - 1])
                     wpid = (info[3] << 8) | info[4]
-                    kind = info[7] & 0x0F
+                    kind = info[7] & DEVICE_KIND_MASK
                     try:
-                        nm = self.read_register(REG_INFO, [0x40 + slot - 1])
-                        codename = clean(nm[2:2 + min(16, nm[1])])
+                        name_reply = self.read_register(REG_INFO, [UNIFYING_DEVICE_NAME + slot - 1])
+                        codename = clean(name_reply[2:2 + min(16, name_reply[1])])
                     except (HidppError, Timeout):
                         codename = ""
             except (HidppError, Timeout):
@@ -297,7 +325,7 @@ class Device:
     def ping(self):
         mark = int(time.monotonic() * 1000) & 0xFF
         try:
-            r = self.node.request(self.index, 0x00, 0x10 | SOFTWARE_ID, [0, 0, mark], timeout=2.0)
+            r = self.node.request(self.index, ROOT_FEATURE_INDEX, function_address(ROOT_PING), [0, 0, mark], timeout=2.0)
         except HidppError as e:
             if e.code == ERR_INVALID_SUBID and not e.v2:
                 return 1.0
@@ -309,7 +337,7 @@ class Device:
     def feature(self, fid):
         if fid not in self.features:
             try:
-                r = self.node.request(self.index, 0x00, 0x00 | SOFTWARE_ID, [fid >> 8, fid & 0xFF, 0])
+                r = self.node.request(self.index, ROOT_FEATURE_INDEX, function_address(ROOT_GET_FEATURE), [fid >> 8, fid & 0xFF, 0])
                 self.features[fid] = r[0] or None
             except HidppError:
                 self.features[fid] = None
@@ -319,7 +347,7 @@ class Device:
         idx = self.feature(fid)
         if not idx:
             raise HidppError(0x02, v2=True)
-        return self.node.request(self.index, idx, (fn << 4) | SOFTWARE_ID, params, timeout=2.0)
+        return self.node.request(self.index, idx, function_address(fn), params, timeout=2.0)
 
     def has(self, fid):
         try:
@@ -454,11 +482,11 @@ class Device:
 def level_for(pct):
     if pct is None:
         return "unknown"
-    if pct <= 5:
+    if pct <= BATTERY_CRITICAL_PERCENT:
         return "critical"
-    if pct <= 20:
+    if pct <= BATTERY_LOW_PERCENT:
         return "low"
-    if pct >= 90:
+    if pct >= BATTERY_FULL_PERCENT:
         return "full"
     return "good"
 
@@ -475,23 +503,21 @@ def voltage_percent(mv):
 
 
 def parse_dpi_list(raw):
+    words = iter(int.from_bytes(raw[offset:offset + DPI_WORD_BYTES], "big")
+                 for offset in range(0, len(raw) - 1, DPI_WORD_BYTES))
     values = []
-    i = 0
-    while i + 1 < len(raw):
-        val = (raw[i] << 8) | raw[i + 1]
-        if val == 0:
+    for word in words:
+        if word == 0:
             break
-        if val >> 13 == 0b111:
-            step = val & 0x1FFF
-            if i + 3 >= len(raw) or not values or step <= 0:
+        if word & DPI_STEP_FLAG == DPI_STEP_FLAG:
+            step = word & DPI_STEP_MASK
+            last = next(words, None)
+            if last is None or not values or step <= 0:
                 break
-            last = (raw[i + 2] << 8) | raw[i + 3]
             values.extend(range(values[-1] + step, last + 1, step))
-            i += 4
         else:
-            values.append(val)
-            i += 2
-    return values[:2000]
+            values.append(word)
+    return values[:MAX_DPI_CHOICES]
 
 
 def dpi_range(choices):
@@ -549,8 +575,8 @@ def bt_adapters(sysfs=SYSFS_BLUETOOTH):
 
 
 def adapter_of(native_path, adapters):
-    if native_path.startswith("/org/bluez/"):
-        part = native_path.split("/")[3] if len(native_path.split("/")) > 3 else ""
+    if native_path.startswith(BLUEZ_OBJECT_PREFIX):
+        part = native_path.removeprefix(BLUEZ_OBJECT_PREFIX).split("/")[0]
         if part.startswith("hci"):
             return part
     return adapters[0]["id"] if adapters else None
@@ -615,7 +641,7 @@ def parse_upower(text):
         if pct == 0 and coarse is None and state in ("unknown", ""):
             continue
         name = clean(fields.get("model", "")) or clean(fields.get("vendor", "")) or kind.capitalize()
-        bluetooth = native.startswith("/org/bluez/") or "bluez" in native or \
+        bluetooth = native.startswith(BLUEZ_OBJECT_PREFIX) or "bluez" in native or \
             (native.startswith("hid-") and native.count(":") == 5)
         charging = state in ("charging", "pending-charge")
         out.append({
@@ -749,7 +775,7 @@ class Monitor:
                     receivers.append(rec_entry)
                 else:
                     did = f"{info['node']}-direct"
-                    dev = self.device_for(did, node, 0xFF)
+                    dev = self.device_for(did, node, DIRECT_DEVICE_INDEX)
                     entry = self.read_device(dev, did, info["product"], "device", info["hid_name"])
                     entry.update({"receiver": None, "slot": None, "address": info["address"],
                                   "connection": "bluetooth" if info["bus"] == "bluetooth" else "usb"})

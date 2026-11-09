@@ -1,5 +1,3 @@
-"""Qt/KDE roles map the selected Kvantum shell's literals to the active palette."""
-
 import hashlib
 import os
 import re

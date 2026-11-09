@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
+import QtQml.Models
 
 Loader {
     id: root
@@ -14,6 +15,7 @@ Loader {
     readonly property string moduleId: typeof moduleEntry === "string" ? moduleEntry : String(moduleEntry.id || "")
     readonly property string moduleKey: shell.trayKey(sectionName, moduleEntry)
     readonly property var moduleProps: typeof moduleEntry === "string" ? null : (moduleEntry.props || null)
+    readonly property string modulePropKeys: JSON.stringify(Object.keys(moduleProps || {}))
     readonly property bool spacer: moduleId === "spacer"
     readonly property bool customSource: !registry[moduleId] && !!moduleEntry.source
     readonly property point dragPosition: handle.centroid.scenePosition
@@ -35,18 +37,25 @@ Loader {
         if (customSource) setSource(Qt.resolvedUrl(moduleEntry.source), Object.assign({ shell }, moduleProps || {}))
         else if (!spacer && !sourceComponent) console.warn("unknown bar module: " + moduleId)
     }
-    onLoaded: if (moduleProps && !customSource) for (const key in moduleProps) {
+    onLoaded: if (moduleProps) for (const key in moduleProps)
         if (!(key in item)) console.warn("unknown bar module prop: " + moduleId + "." + key)
-        item[key] = moduleProps[key]
+    Instantiator {
+        model: JSON.parse(root.modulePropKeys)
+        delegate: Binding {
+            required property string modelData
+            target: root.item
+            property: modelData
+            value: root.moduleProps ? root.moduleProps[modelData] : undefined
+            when: root.item !== null && modelData in root.item
+        }
     }
     Component {
         id: commandModule
         ScriptButton {
             shell: root.shell
             command: Array.isArray(root.moduleEntry.exec) ? root.moduleEntry.exec : ["/bin/sh", "-lc", String(root.moduleEntry.exec)]
-            interval: root.moduleEntry.interval || 60000
-            polling: root.moduleEntry.polling !== false
-            Component.onCompleted: if (!polling) refresh()
+            interval: root.moduleEntry.interval ?? 0
+            Component.onCompleted: if (!interval) refresh()
         }
     }
     DragHandler {

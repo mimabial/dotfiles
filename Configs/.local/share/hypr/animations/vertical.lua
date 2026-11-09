@@ -1,5 +1,4 @@
 hl.curve("fluent_decel", {type = "bezier", points = {{0, 0.2}, {0.4, 1}}})
-hl.curve("easeOutCirc", {type = "bezier", points = {{0, 0.55}, {0.45, 1}}})
 hl.curve("easeOutCubic", {type = "bezier", points = {{0.33, 1}, {0.68, 1}}})
 hl.curve("easeinoutsine", {type = "bezier", points = {{0.37, 0}, {0.63, 1}}})
 hl.animation({["leaf"] = "windowsIn", ["enabled"] = true, ["speed"] = 1.5, ["bezier"] = "easeinoutsine", ["style"] = "popin 60%"})

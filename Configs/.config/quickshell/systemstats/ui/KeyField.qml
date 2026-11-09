@@ -78,7 +78,7 @@ Item {
         : (root.horizontalAlignment === Text.AlignRight ? inner.width - implicitWidth - caret.width
           : (root.horizontalAlignment === Text.AlignHCenter ? (inner.width - implicitWidth) / 2 : 0))
       text: root.text !== "" ? root.text : root.placeholderText
-      color: root.text !== "" ? root.foreground : Commons.Util.alpha(root.foreground, Commons.Style.mutedTextAlpha)
+      color: root.text !== "" ? root.foreground : Commons.Util.scaleAlpha(root.foreground, Commons.Style.mutedTextAlpha)
       font.family: Commons.Style.font.menuFamily
       font.pixelSize: Commons.Style.font.body
     }

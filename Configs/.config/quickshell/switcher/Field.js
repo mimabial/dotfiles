@@ -152,12 +152,6 @@ function reselect(order, index, previousOrder) {
     return order[0];
 }
 
-function workspaceKey(entry) {
-    if (entry.workspaceId !== null && entry.workspaceId !== undefined && isFinite(entry.workspaceId))
-        return "id:" + entry.workspaceId;
-    return "name:" + String(entry.workspaceName || "");
-}
-
 function workspaceRank(group) {
     if (group.special) return 2;
     if (isFinite(group.id) && group.id > 0 && !/^name:/.test(group.name || "")) return 0;
@@ -182,8 +176,7 @@ function workspaceGroups(entries, extra, onScreenIds, closed) {
     var groups = [];
 
     function groupFor(id, name, monitor) {
-        var probe = { workspaceId: id, workspaceName: name };
-        var key = workspaceKey(probe);
+        var key = String(name || "");
         if (!byKey[key]) {
             var numeric = id !== null && id !== undefined && isFinite(id) ? Number(id) : null;
             byKey[key] = {

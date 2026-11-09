@@ -9,9 +9,6 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from mutagen import File as MutagenFile
-from mutagen import MutagenError
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
@@ -19,11 +16,12 @@ if str(SCRIPT_DIR) not in sys.path:
 from audio_tags import parse_extensions
 from autotag_identity import parse_filename
 from lyrics_io import save_lrc
-from lyrics_paths import lrc_path_for, music_library_dir
+from lyrics_metadata import DEFAULT_EXTENSIONS, get_audio_metadata
+from lyrics_paths import absolute_path, lrc_path_for, music_library_dir
 from lyrics_provider import fetch_lyrics
+from lyrics_relink import LyricsMirrorTidy, tidy_lyrics_mirror
 from lyrics_text import is_lrc_synced, text_similarity
 
-DEFAULT_EXTENSIONS = "mp3,flac,m4a,ogg,opus"
 LEADING_ARTIST_SIMILARITY = 0.5
 BUCKET = re.compile(r"\s*\[(?P<kind>[gc])\]\s*$", re.IGNORECASE)
 GENERIC_ALBUM_ARTISTS = {
@@ -112,46 +110,6 @@ def build_artist_candidates(
         add(album_artist)
     add(fallback)
     return candidates
-
-
-def _first_tag(tags, *wanted: str) -> str:
-    normalized = {
-        re.sub(r"[\s_-]+", "", str(key).casefold()): value
-        for key, value in tags.items()
-    }
-    for key in wanted:
-        value = normalized.get(re.sub(r"[\s_-]+", "", key.casefold()))
-        if isinstance(value, (list, tuple)):
-            value = value[0] if value else ""
-        if value is not None and str(value).strip():
-            return str(value).strip()
-    return ""
-
-
-def get_audio_metadata(file_path: str | Path) -> dict[str, Any]:
-    empty = {
-        "title": "",
-        "artist": "",
-        "album_artist": "",
-        "album": "",
-        "duration": 0.0,
-    }
-    try:
-        audio = MutagenFile(file_path, easy=True)
-        if audio is None:
-            return empty
-        tags = audio.tags or {}
-        info = getattr(audio, "info", None)
-        return {
-            "title": _first_tag(tags, "title"),
-            "artist": _first_tag(tags, "artist"),
-            "album_artist": _first_tag(tags, "albumartist", "album_artist"),
-            "album": _first_tag(tags, "album"),
-            "duration": float(getattr(info, "length", 0.0) or 0.0),
-        }
-    except (MutagenError, OSError, TypeError, ValueError) as exc:
-        print(f"Warning: Could not read metadata for {file_path}: {exc}", file=sys.stderr)
-        return empty
 
 
 def build_title_candidates(
@@ -391,6 +349,7 @@ def dry_run(
     force: bool,
     upgrade_plain: bool,
     synced_only: bool,
+    mirror: LyricsMirrorTidy,
 ) -> int:
     groups: dict[Path, list[Path]] = defaultdict(list)
     for path in audio_files:
@@ -437,6 +396,8 @@ def dry_run(
     print(f"  Untimed lyrics:          {state_counts[LrcState.UNTIMED]}")
     print(f"  Lyrics missing:          {state_counts[LrcState.MISSING]}")
     print(f"  Would fetch:             {selected}")
+    print(f"  Would relink:            {mirror.relinked}")
+    print(f"  Would delete orphans:    {mirror.deleted}")
     print(f"  Tagged identities:       {tagged}")
     print(f"  Filename fallbacks:      {fallback}")
     print(f"  Unusable identities:     {unusable}")
@@ -518,18 +479,20 @@ def fetch_all(audio_files: list[Path], scan_root: Path, args: argparse.Namespace
     return results
 
 
-def print_summary(file_count: int, results: Counter[ProcessResult]) -> None:
+def print_summary(file_count: int, results: Counter[ProcessResult], mirror: LyricsMirrorTidy) -> None:
     print("Summary")
     print(f"  Audio files:   {file_count}")
+    print(f"  Relinked:      {mirror.relinked}")
     print(f"  Saved:         {results[ProcessResult.SAVED]}")
     print(f"  Kept existing: {results[ProcessResult.KEPT]}")
     print(f"  Skipped:       {results[ProcessResult.SKIPPED]}")
     print(f"  Failed:        {results[ProcessResult.FAILED]}")
+    print(f"  Orphans deleted: {mirror.deleted}")
 
 
 def main() -> int:
     parser, args = parse_args()
-    scan_root = Path(args.directory).expanduser()
+    scan_root = absolute_path(args.directory)
     if not scan_root.is_dir():
         print(f"Error: '{scan_root}' is not a directory", file=sys.stderr)
         return 2
@@ -547,6 +510,7 @@ def main() -> int:
     print(f"  Audio files: {len(audio_files)}")
     print()
 
+    mirror = tidy_lyrics_mirror(scan_root, args.recursive, extensions, args.dry_run)
     if args.dry_run:
         return dry_run(
             audio_files,
@@ -555,10 +519,11 @@ def main() -> int:
             args.force,
             args.upgrade_plain,
             args.synced_only,
+            mirror,
         )
 
     results = fetch_all(audio_files, scan_root, args)
-    print_summary(len(audio_files), results)
+    print_summary(len(audio_files), results, mirror)
     return 1 if results[ProcessResult.FAILED] else 0
 
 if __name__ == "__main__":

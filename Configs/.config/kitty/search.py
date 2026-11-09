@@ -2,7 +2,6 @@ import json
 import re
 import subprocess
 from gettext import gettext as _
-from pathlib import Path
 from subprocess import PIPE, run
 
 from kittens.tui.handler import Handler
@@ -62,9 +61,6 @@ def reindex(
         raise ValueError
 
     return m.span()
-
-
-SCROLLMARK_FILE = Path(__file__).parent.absolute() / "scroll_mark.py"
 
 
 class Search(Handler):
@@ -239,14 +235,12 @@ class Search(Handler):
                 end -= 1
         self.edit("right", end)
 
-    def scroll_match(self, direction: str = "") -> None:
+    def scroll_match(self, direction: str) -> None:
         for match_arg in self.match_args():
-            call_remote_control(
-                ["kitten", match_arg, str(SCROLLMARK_FILE), *([direction] if direction else [])]
-            )
+            call_remote_control(["action", match_arg, "scroll_to_mark", direction])
 
     def previous_match(self) -> None:
-        self.scroll_match()
+        self.scroll_match("prev")
 
     def next_match(self) -> None:
         self.scroll_match("next")
@@ -293,32 +287,26 @@ class Search(Handler):
         self.quit_loop(return_code)
 
 
+def target_windows(window_id: int, all_windows: bool) -> tuple[list[int], str]:
+    if not all_windows:
+        return [window_id], ""
+    ls_output = run(["kitty", "@", "ls"], stdout=PIPE, check=False)
+    for os_window in json.loads(ls_output.stdout.decode()):
+        for tab in os_window["tabs"]:
+            if any(kitty_window["id"] == window_id for kitty_window in tab["windows"]):
+                return [w["id"] for w in tab["windows"] if not w["is_focused"]], ""
+    return [window_id], "Error: Could not find the window id provided."
+
+
 def main(args: list[str]) -> None:
     call_remote_control(
         ["resize-window", "--self", "--axis=vertical", "--increment", "-100"]
     )
 
-    error = ""
     if len(args) < 2 or not args[1].isdigit():
-        error = "Error: Window id must be provided as the first argument."
-
-    window_id = int(args[1])
-    window_ids = [window_id]
-    if len(args) > 2 and args[2] == "--all-windows":
-        ls_output = run(["kitty", "@", "ls"], stdout=PIPE, check=False)
-        ls_json = json.loads(ls_output.stdout.decode())
-        current_tab = None
-        for os_window in ls_json:
-            for tab in os_window["tabs"]:
-                for kitty_window in tab["windows"]:
-                    if kitty_window["id"] == window_id:
-                        current_tab = tab
-        if current_tab:
-            window_ids = [
-                w["id"] for w in current_tab["windows"] if not w["is_focused"]
-            ]
-        else:
-            error = "Error: Could not find the window id provided."
+        window_ids, error = [], "Error: Window id must be provided as the first argument."
+    else:
+        window_ids, error = target_windows(int(args[1]), args[2:3] == ["--all-windows"])
 
     loop = Loop()
     with cached_values_for("search") as cached_values:

@@ -22,7 +22,7 @@ fi
 
 sysinfo_dir="${BASH_SOURCE[0]%/*}"
 source "$sysinfo_dir/battery/readings.bash"
-battery_read_all || exit 0
+battery_refresh_readings || exit 0
 battery_status="${battery_statuses[0]}"
 source "$sysinfo_dir/battery/render.bash"
 capacity_icon_index=$((battery_percent * (${#discharging_icons[@]} - 1) / 100))

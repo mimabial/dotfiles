@@ -25,8 +25,8 @@ Column {
   readonly property color s3: service ? service.tertiary : Commons.Color.accent
   readonly property color warn: service ? service.warn : Commons.Color.urgent
   readonly property color danger: service ? service.danger : Commons.Color.urgent
-  readonly property color track: Commons.Util.alpha(foreground, 0.16)
-  readonly property color reclaimable: Commons.Util.alpha(s2, 0.35)
+  readonly property color track: Commons.Util.scaleAlpha(foreground, 0.16)
+  readonly property color reclaimable: Commons.Util.scaleAlpha(s2, 0.35)
 
   readonly property var mem: snap.mem || ({})
   readonly property var procs: snap.procs || null
@@ -34,7 +34,7 @@ Column {
   readonly property real usedPercent: Model.num(mem.used) / total * 100
   readonly property real pressureSome: Model.num(mem.pressureSome)
   readonly property real pressureFull: Model.num(mem.pressureFull)
-  readonly property color swapColor: Commons.Util.alpha(foreground, Commons.Style.mutedTextAlpha)
+  readonly property color swapColor: Commons.Util.scaleAlpha(foreground, Commons.Style.mutedTextAlpha)
   readonly property bool hasCompression: Model.num(mem.compressed) >= 1024 * 1024
   readonly property bool hasSwap: Model.num(mem.swapTotal) > 0
   readonly property real swapTotal: Model.num(mem.swapTotal)
@@ -126,7 +126,7 @@ Column {
       series: [root.hist.memUsed || []]
       colors: [root.s1]
       ceiling: 100
-      baselineColor: Commons.Util.alpha(root.foreground, 0.14)
+      baselineColor: Commons.Util.scaleAlpha(root.foreground, 0.14)
     }
     SectionTitle { text: "Memory pressure"; fontFamily: root.fontFamily }
     HistoryGraph {
@@ -137,7 +137,7 @@ Column {
       series: [root.hist.memPressure || []]
       colors: [root.s2]
       ceiling: 100
-      baselineColor: Commons.Util.alpha(root.foreground, 0.14)
+      baselineColor: Commons.Util.scaleAlpha(root.foreground, 0.14)
     }
   }
 

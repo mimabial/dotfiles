@@ -1,4 +1,3 @@
-"""Where each agent CLI keeps the local data the usage scanners read."""
 from __future__ import annotations
 
 from pathlib import Path

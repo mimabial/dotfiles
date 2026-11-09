@@ -15,7 +15,7 @@ local function sync_workspace_swipe()
     set_workspace_swipe(enabled and "workspace" or function() end)
 end
 
-local function count_expose_layers(step)
+local function count_expose_layers_and_sync_swipe(step)
     return function(layer)
         if layer.namespace ~= expose_namespace then return end
         expose_layers = math.max(0, expose_layers + step)
@@ -23,8 +23,8 @@ local function count_expose_layers(step)
     end
 end
 
-hl.on("layer.opened", count_expose_layers(1))
-hl.on("layer.closed", count_expose_layers(-1))
+hl.on("layer.opened", count_expose_layers_and_sync_swipe(1))
+hl.on("layer.closed", count_expose_layers_and_sync_swipe(-1))
 sync_workspace_swipe()
 if workspace_axis == "vertical" then
     hl.gesture({fingers = 3, direction = "horizontal", action = "scroll_move"})

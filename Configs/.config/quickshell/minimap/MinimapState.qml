@@ -23,9 +23,19 @@ Singleton {
     property int numberFlash: 0
     property real notifiedThrough: Date.now()
     readonly property bool hasAlerts: Object.keys(alerts).length > 0
-    readonly property string activeAddress: Minimap.normalizeAddress(Hyprland.activeToplevel?.address
-        ?? Hyprland.toplevels.values.find(top => top.lastIpcObject.focusHistoryID === 0 && top.lastIpcObject.workspace?.id === Hyprland.focusedWorkspace?.id)?.address)
+    property var openSpecialByMonitor: ({})
+    readonly property var shownWorkspace: {
+        const monitor = Hyprland.focusedMonitor
+        const special = openSpecialByMonitor[monitor?.name] ?? monitor?.lastIpcObject?.specialWorkspace?.name
+        return special && Hyprland.workspaces.values.find(workspace => workspace.name === special) || Hyprland.focusedWorkspace
+    }
+    readonly property var activeAddress: Minimap.normalizeAddress(Hyprland.activeToplevel?.address
+        ?? Hyprland.toplevels.values.find(top => top.lastIpcObject.focusHistoryID === 0 && top.lastIpcObject.workspace?.name === shownWorkspace?.name)?.address)
 
+    function recordOpenSpecial(eventData) {
+        const comma = eventData.lastIndexOf(",")
+        openSpecialByMonitor = Object.assign({}, openSpecialByMonitor, { [eventData.slice(comma + 1)]: eventData.slice(0, comma) })
+    }
     function alertTarget() { return Minimap.pickAlertTarget(alerts) }
     function setAnimStyle(style) {
         if (themeAnimStyle) settings.themeAnimStyles = Object.assign({}, settings.themeAnimStyles, { [themeName]: style })
@@ -57,7 +67,10 @@ Singleton {
     Timer { id: flashTimer; interval: root.flashDuration; onTriggered: root.numberFlash = 0 }
     Connections {
         target: Hyprland
-        function onRawEvent(event) { if (event.name === "urgent") root.addAlert(Minimap.normalizeAddress(event.data), Minimap.MINOR) }
+        function onRawEvent(event) {
+            if (event.name === "urgent") root.addAlert(Minimap.normalizeAddress(event.data), Minimap.MINOR)
+            else if (event.name === "activespecial") root.recordOpenSpecial(event.data)
+        }
     }
     Connections {
         target: Hyprland.toplevels

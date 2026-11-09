@@ -83,7 +83,7 @@ def save_session(name: str, verbose: bool) -> None:
 
         if initial_class.lower() in EDITOR_WINDOW_CLASSES:
             project = editor_project_name(str(client.get("title") or "")) or str(client.get("title") or "")
-            key = (pid, int((client.get("workspace") or {}).get("id") or 0), project)
+            key = (pid, (client.get("workspace") or {}).get("name", ""), project)
             if key in seen_multi:
                 continue
             seen_multi.add(key)

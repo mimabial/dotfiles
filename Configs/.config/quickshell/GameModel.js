@@ -12,12 +12,12 @@ function parse(raw) {
     return options
 }
 
-function value(options, key, fallback) {
+function optionValue(options, key, fallback) {
     return Object.prototype.hasOwnProperty.call(options, key) ? options[key] : fallback
 }
 
 function enabled(options, key) {
-    return !["0", "false", "off", "no"].includes(String(value(options, key, "0")).toLowerCase())
+    return !["0", "false", "off", "no"].includes(String(optionValue(options, key, "0")).toLowerCase())
 }
 
 function valid(key, value) {
@@ -30,7 +30,7 @@ function valid(key, value) {
     return false
 }
 
-function update(raw, key, value) {
+function withOption(raw, key, value) {
     const next = String(value)
     if (!valid(key, next)) return String(raw || "")
     const lines = String(raw || "").split(/\r?\n/)

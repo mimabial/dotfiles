@@ -54,16 +54,26 @@ hyprshell_print_script_paths() {
     -type f \( -name '*.sh' -o -name '*.py' \) -print
 }
 
-# A script that declares hypr_help_guard is announcing itself as user-facing;
-# the line after its "Usage:" is its summary. Scripts without one are pipeline
-# hooks other scripts invoke. One awk pass over every candidate, not one grep
-# per file.
+# A script with a usage contract (hypr_help_guard, a usage variable, a usage/help
+# function, a --help branch or argparse) is user-facing; the line after its
+# "Usage:" is its summary. Scripts without one are pipeline hooks other scripts
+# invoke. One awk pass over every candidate, not one grep per file.
 hyprshell_extract_script_summaries() {
   awk '
     FNR == 1 { seen[FILENAME] = 1; in_help_function = 0 }
-    # A "Usage:" inside a help/usage function is a declared contract; the same
-    # string in an error message is not, so only the former is trusted.
-    /^[a-zA-Z_]*(usage|help)[a-zA-Z_]*\(\) *\{/ { in_help_function = 1 }
+    # A "Usage:" inside a help function or --help branch is a declared contract;
+    # the same string in an error message is not, so only the former is trusted.
+    /^[a-zA-Z_]*(usage|help)[a-zA-Z_]*\(\) *\{/ || /^[ \t]*[-a-z"* |]*--help[-a-z"* |]*\)/ { in_help_function = 1 }
+    FNR <= 3 && /^"""/ { line = $0; sub(/^"""/, "", line); sub(/""".*$/, "", line); docstrings[FILENAME] = line }
+    /description=__doc__/ && docstrings[FILENAME] != "" && !(FILENAME in summaries) { summaries[FILENAME] = docstrings[FILENAME] }
+    /hypr_help_guard ["\047]\$\{[A-Za-z_]+\}[ \t]*$/ && !(FILENAME in summaries) {
+      quote = substr($0, index($0, "${") - 1, 1)
+      if ((getline line) > 0 && index(line, quote) > 1) {
+        line = substr(line, 1, index(line, quote) - 1)
+        gsub(/^[ \t]+|[ \t]+$/, "", line)
+        summaries[FILENAME] = line
+      }
+    }
     /description="/ && /ArgumentParser|^ *description="/ && !(FILENAME in summaries) {
       line = $0
       sub(/^.*description="/, "", line)
@@ -71,12 +81,13 @@ hyprshell_extract_script_summaries() {
       if (line != "") summaries[FILENAME] = line
       next
     }
-    (/hypr_help_guard "Usage:/ || (in_help_function && /Usage:/)) && !(FILENAME in summaries) {
+    (/hypr_help_guard ["\047]Usage:/ || /^[ \t]*(readonly |local )?[A-Za-z_]*([Uu]sage|USAGE)[A-Za-z_]*[ \t]*=[ \t]*["\047]Usage:/ || (in_help_function && /Usage:/)) && !(FILENAME in summaries) {
       summary_text = ""
       usage_text = substr($0, index($0, "Usage:"))
       quote = substr($0, index($0, "Usage:") - 1, 1)
       if ((quote == "\"" || quote == "\047") && index(substr(usage_text, 7), quote)) {
         if (match(usage_text, /\\n\\n[^\\]+/)) summary_text = substr(usage_text, RSTART + 4, RLENGTH - 4)
+        if (index(summary_text, quote)) summary_text = substr(summary_text, 1, index(summary_text, quote) - 1)
       } else if (usage_text !~ /^Usage:[ \t]*$/) {
         # the summary runs until the closing quote of the usage string
         while ((getline line) > 0) {
@@ -84,10 +95,12 @@ hyprshell_extract_script_summaries() {
           # only a prose summary counts: an options table or another heading is not one
           if (line ~ /^[ \t]*-/ && line ~ /[ \t][ \t]/) break
           if (line ~ /^[ \t]+[^ \t]/ && line ~ /[^ \t][ \t][ \t]+[^ \t]/) break
+          if (line ~ /^[ \t]*$/ && summary_text == "") continue
           if (line ~ /^[ \t]*$/ || line ~ /^[ \t]*(cat|printf|echo|EOF|HELP|EOT)/) break
           if (line ~ /^[ \t]*(Options|Usage|Commands|Arguments|Examples|Flags)[: ]/) break
-          summary_finished = (line ~ /" *"\$@"/)
-          sub(/" *"\$@".*$/, "", line)
+          if (line ~ /^[ \t]*[A-Za-z]+:[ \t]*$/ || line ~ /^[ \t]*•/) break
+          summary_finished = ((quote == "\"" || quote == "\047") && index(line, quote) > 0)
+          if (summary_finished) line = substr(line, 1, index(line, quote) - 1)
           gsub(/^[ \t]+|[ \t]+$/, "", line)
           summary_text = (summary_text == "" ? line : summary_text " " line)
           if (summary_finished) break
@@ -95,7 +108,7 @@ hyprshell_extract_script_summaries() {
       }
       if (summary_text != "") summaries[FILENAME] = summary_text
     }
-    in_help_function && /\}[ \t]*$/ { in_help_function = 0 }
+    in_help_function && /(\}|;;)[ \t]*$/ { in_help_function = 0 }
     END { for (source_file in seen) printf "%s\t%s\n", source_file, (source_file in summaries ? summaries[source_file] : "") }
   ' "$@"
 }

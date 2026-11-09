@@ -1,1 +1,0 @@
-../settings/visual_app.py

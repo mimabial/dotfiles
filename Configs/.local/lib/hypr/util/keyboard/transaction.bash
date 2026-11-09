@@ -10,9 +10,9 @@ keyboard_set_disable_autoreload() {
 keyboard_pause_autoreload() {
   local was_disabled=""
   was_disabled=$(keyboard_disable_autoreload_value) \
-    || keyboard_error 'Hyprland autoreload state could not be read; nothing was changed.'
+    || keyboard_die 'Hyprland autoreload state could not be read; nothing was changed.'
   keyboard_set_disable_autoreload true \
-    || keyboard_error 'Hyprland autoreload could not be paused safely; nothing was changed.'
+    || keyboard_die 'Hyprland autoreload could not be paused safely; nothing was changed.'
   keyboard_autoreload_restore_value="${was_disabled}"
 }
 
@@ -76,8 +76,8 @@ keyboard_commit_settings() {
 
   if [[ -n "${pre_apply_index}" ]] && ! keyboard_switch_all_devices "${pre_apply_index}"; then
     keyboard_switch_all_devices "${rollback_index}" \
-      || keyboard_error "The keyboards could not be moved to a safe layout, and some may remain on layout index ${pre_apply_index}."
-    keyboard_error 'The keyboards could not be moved to a safe layout; nothing was changed.'
+      || keyboard_die "The keyboards could not be moved to a safe layout, and some may remain on layout index ${pre_apply_index}."
+    keyboard_die 'The keyboards could not be moved to a safe layout; nothing was changed.'
   fi
 
   mv -f -- "${temp_config}" "${keyboard_config_path}"
@@ -85,7 +85,7 @@ keyboard_commit_settings() {
     keyboard_restore_config "${old_config}" "${had_config}"
     keyboard_apply_live_config "${previous_layout_settings}" || true
     [[ -z "${pre_apply_index}" ]] || keyboard_restore_typing_devices "${rollback_index}"
-    keyboard_error 'Hyprland rejected the keyboard configuration; the previous settings were restored.'
+    keyboard_die 'Hyprland rejected the keyboard configuration; the previous settings were restored.'
   fi
 
   keyboard_restore_typing_devices "${requested_index}"
@@ -97,5 +97,5 @@ keyboard_commit_settings() {
 
 keyboard_acquire_config_lock() {
   state_acquire_lock "${keyboard_config_path}" keyboard_config_lock_fd \
-    || keyboard_error 'Keyboard settings are busy; try again in a moment.'
+    || keyboard_die 'Keyboard settings are busy; try again in a moment.'
 }

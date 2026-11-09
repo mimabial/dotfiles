@@ -3,13 +3,14 @@ import QtQuick
 import Quickshell.Io
 import "../CalendarMath.js" as CalendarMath
 import ".."
+import "../Units.js" as Units
 
 ClockButton {
     id: root
     property var notifications: []
     readonly property date today: shell.clock.date
     readonly property date firstShown: CalendarMath.startOfWeek(new Date(today.getFullYear(), today.getMonth(), 1), Qt.locale().firstDayOfWeek)
-    readonly property int weeks: Math.ceil((Math.round((new Date(today.getFullYear(), today.getMonth() + 1, 0) - firstShown) / CalendarMath.MS_PER_DAY) + 1) / 7)
+    readonly property int weeks: Math.ceil((Math.round((new Date(today.getFullYear(), today.getMonth() + 1, 0) - firstShown) / Units.MS_PER_DAY) + 1) / 7)
     readonly property color dim: shell.alpha(shell.foreground, .45)
     popupName: "notification-center"
     calendarPopupName: popupName + "-calendar"
@@ -17,7 +18,7 @@ ClockButton {
     function archive(args) { shell.run(["hyprshell", "notify/archive"].concat(args), () => history.running = true) }
     NotificationPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: root.settingsPopupName }
     MacCard {
-        anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: root.popupName; settings: "Notification"; settingsPopup: root.settingsPopupName
+        anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: root.popupName; settings: "Notification"; settingsPopupName: root.settingsPopupName
         onOpenChanged: if (open) history.running = true
         Rectangle {
             id: calendar

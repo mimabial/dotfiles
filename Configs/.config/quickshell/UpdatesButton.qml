@@ -1,14 +1,14 @@
 import QtQuick
-import Quickshell.Io
 import "CalendarMath.js" as CalendarMath
+import "Units.js" as Units
 
 ScriptButton {
     id: root
     css: "updates"
     tooltip: ""
-    command: ["hyprshell", "system/system.update.sh"]
+    command: ["hyprshell", "system/package-updates.sh"]
     indicator: "updates"
-    interval: CalendarMath.MS_PER_DAY
+    interval: Units.MS_PER_DAY
     fallback: ""
     property bool popupEnabled: true
     property bool hideWhenCurrent: true
@@ -34,14 +34,5 @@ ScriptButton {
         : root.shell.togglePopup("updates")
     refreshKey: shell.popupName === "updates"
 
-    property Process recheckProcess: Process {
-        command: ["hyprshell", "system/system.update.sh", "--refresh"]
-        onRunningChanged: if (!running) root.refresh()
-    }
-
-    UpdatesPopup {
-        anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled
-        report: root.output; checking: root.recheckProcess.running
-        onRecheck: root.recheckProcess.running = true
-    }
+    UpdatesPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }
 }

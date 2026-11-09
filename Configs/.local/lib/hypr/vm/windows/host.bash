@@ -17,7 +17,7 @@ windows_require_host_capacity() {
     echo "  sudo modprobe kvm-intel  # for Intel CPUs"
     echo "  sudo modprobe kvm-amd    # for AMD CPUs"
     dunstify -u critical -t "${NOTIFY_ERROR_MS}" -i "computer" "Windows VM" "KVM virtualization not available"
-    exit 1
+    return 1
   fi
 
   available_space=$(windows_available_storage_gb)
@@ -25,7 +25,7 @@ windows_require_host_capacity() {
     echo "❌ Insufficient disk space!"
     echo "   Available: ${available_space}GB"
     echo "   Required: ${required_space}GB (${disk_size_gb}GB disk + ${WINDOWS_IMAGE_RESERVE_GB}GB for Windows image)"
-    exit 1
+    return 1
   fi
 }
 

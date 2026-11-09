@@ -2,12 +2,14 @@
 
 wallpaper_catalog_prepare_runtime() {
   local ensure_thumbs="${1:-0}"
-  if ! wallpaper_theme_sources; then
+  if ! wallpaper_theme_sources_into wallpaper_source_paths; then
     echo "ERROR: \"${HYPR_THEME_DIR}\" does not exist"
     return 2
   fi
 
-  wallpaper_hashmap_cached "${wallpaper_source_paths[@]}" || return 1
+  wallpaper_hash_by_path=()
+  wallpaper_paths=()
+  wallpaper_hashmap_cached_into wallpaper_hash_by_path wallpaper_paths "${wallpaper_source_paths[@]}" || return 1
   [[ "${ensure_thumbs}" -eq 1 ]] && wallpaper_enqueue_missing_thumbnails "sqre"
   return 0
 }

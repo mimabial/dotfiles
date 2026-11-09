@@ -7,9 +7,9 @@ PanelWindow {
     id: root
     required property var shell
     property bool active: false
-    readonly property bool popupsAllowed: active && (!Hyprland.focusedMonitor
+    readonly property bool popupEnabled: active && (!Hyprland.focusedMonitor
         || !screen || Hyprland.focusedMonitor.name === screen.name)
-    readonly property bool popupOpen: shell.popupName !== "" && popupsAllowed
+    readonly property bool popupOpen: shell.popupName !== "" && popupEnabled
     readonly property string focusRequest: popupOpen
         ? shell.popupName + (shell.popupCard && shell.popupCard.wantsKeyboard ? ":input" : "") : ""
     property bool acquiringKeyboardFocus: false

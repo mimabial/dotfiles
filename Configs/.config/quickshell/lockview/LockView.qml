@@ -137,7 +137,7 @@ Item {
         title: "Lock Layouts"
         implicitWidth: Math.min(Commons.Style.space(1560), window.monitor.width * 0.9)
         implicitHeight: window.monitor.height * 0.9
-        color: Commons.Color.alpha(Commons.Style.popupTinted(root.background), Commons.Style.popupSurfaceOpacity)
+        color: Commons.Util.scaleAlpha(Commons.Style.popupTinted(root.background), Commons.Style.popupSurfaceOpacity)
         onClosed: root.close()
 
         Item {
@@ -488,8 +488,9 @@ Item {
                 Text {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "Arrows Browse  Space Preview  Enter Select  T Test  R Reload  Esc Close"
-                    color: root.muted
+                    textFormat: Text.StyledText
+                    text: Commons.Util.keyHintMarkup("Arrows Browse  Space Preview  Enter Select  T Test  R Reload  Esc Close", root.muted)
+                    color: root.accent
                     font.family: root.fontFamily
                     font.pixelSize: Commons.Style.font.bodySmall
                 }

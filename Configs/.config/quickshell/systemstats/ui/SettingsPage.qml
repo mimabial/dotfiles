@@ -60,6 +60,8 @@ Column {
   readonly property var barSensorIds: Model.parseList(Model.settingValue(settings, "barSensors"))
   readonly property bool lightTheme: foreground.hslLightness < 0.5
   property int focusedColorEditors: 0
+  property var draggedRow: null
+  property point dragPosition: Qt.point(0, 0)
 
   function gpuOrder(id) {
     var at = gpuOptions.findIndex(function(card) { return Model.gpuId(card) === id })
@@ -122,6 +124,18 @@ Column {
     set("tabs", list.join(","))
   }
 
+  Item {
+    id: dragMarker
+    parent: root.Window.contentItem
+    width: Commons.Style.spacing.hairline
+    height: width
+    x: root.dragPosition.x
+    y: root.dragPosition.y
+    Drag.source: root.draggedRow
+    Drag.keys: ["systemstats-module"]
+    Drag.proposedAction: Qt.MoveAction
+  }
+
   width: parent ? parent.width : implicitWidth
   spacing: Commons.Style.space(10)
   Card {
@@ -133,7 +147,7 @@ Column {
     Text {
       textFormat: Text.PlainText
       width: parent.width
-      text: "Readouts shown in the bar, in this order. Each can show a mini graph, a figure, or both."
+      text: "Drag a readout's handle to change the bar order. Each can show a mini graph, a figure, or both."
       color: root.foreground
       opacity: Commons.Style.mutedTextAlpha
       font.family: root.fontFamily
@@ -144,7 +158,7 @@ Column {
     Repeater {
       model: root.orderedModules.length
 
-      delegate: Column {
+      delegate: DropArea {
         id: moduleRow
         required property int index
         readonly property string moduleId: String(root.orderedModules[index] || "")
@@ -153,153 +167,212 @@ Column {
         readonly property bool moduleEnabled: position !== -1
 
         width: parent.width
-        spacing: Commons.Style.space(4)
-        topPadding: Commons.Style.space(4)
+        height: moduleContent.implicitHeight
+        keys: ["systemstats-module"]
+        onEntered: drag => {
+          if (drag.source !== root.draggedRow || !moduleEnabled || drag.source === moduleRow) drag.accepted = false
+        }
+        onDropped: drop => {
+          if (drop.source !== root.draggedRow || !moduleEnabled || drop.source === moduleRow) return
+          const from = root.barModules.indexOf(root.draggedRow.moduleId)
+          const to = position + (drop.y >= height / 2 ? 1 : 0) - (from < position ? 1 : 0)
+          const modules = Model.moveInList(root.barModules, root.draggedRow.moduleId, to - from).join(",")
+          drop.acceptProposedAction()
+          Qt.callLater(() => root.set("modules", modules))
+        }
 
-        Item {
+        Rectangle {
+          z: 1
+          visible: moduleRow.containsDrag
           width: parent.width
-          height: Commons.Style.space(26)
-
-          ShellUi.ToggleSwitch {
-            id: moduleSwitch
-            shell: root.host ? root.host.shell : null
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            checked: moduleRow.moduleEnabled
-            onToggled: root.setModuleEnabled(moduleRow.moduleId, !moduleRow.moduleEnabled)
-          }
-
-          Text {
-            textFormat: Text.PlainText
-            anchors.left: moduleSwitch.right
-            anchors.leftMargin: Commons.Style.space(12)
-            anchors.right: reorder.left
-            anchors.rightMargin: Commons.Style.space(8)
-            anchors.verticalCenter: parent.verticalCenter
-            text: moduleRow.def.label
-            color: root.foreground
-            opacity: moduleRow.moduleEnabled ? 1 : 0.5
-            font.family: root.fontFamily
-            font.pixelSize: Commons.Style.font.body
-            font.bold: moduleRow.moduleEnabled
-            elide: Text.ElideRight
-          }
-
-          Row {
-            id: reorder
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: Commons.Style.space(2)
-            visible: moduleRow.moduleEnabled
-
-            PanelActionButton {
-              iconText: "󰁝"
-              enabled: moduleRow.position > 0
-              foreground: root.foreground
-              fontFamily: root.fontFamily
-              size: Commons.Style.space(22)
-              onClicked: root.set("modules", Model.moveInList(root.barModules, moduleRow.moduleId, -1).join(","))
-            }
-
-            PanelActionButton {
-              iconText: "󰁅"
-              enabled: moduleRow.position < root.barModules.length - 1
-              foreground: root.foreground
-              fontFamily: root.fontFamily
-              size: Commons.Style.space(22)
-              onClicked: root.set("modules", Model.moveInList(root.barModules, moduleRow.moduleId, 1).join(","))
-            }
-          }
-        }
-
-        ChoiceMenu {
-          visible: moduleRow.moduleEnabled && (moduleRow.def.graph === true || moduleRow.def.ring === true)
-          x: Commons.Style.space(12) + moduleSwitch.width + Commons.Style.space(12)
-          width: parent.width - x
-          label: "Look"
-          options: Model.styleOptions(moduleRow.moduleId)
-          value: Model.moduleStyle(root.settings, moduleRow.moduleId)
-          onChanged: function(value) { root.set(moduleRow.moduleId + "Style", value) }
+          height: Commons.Style.spacing.hairline
+          y: moduleRow.drag.y >= moduleRow.height / 2 ? parent.height - height : 0
+          color: Commons.Color.accent
         }
 
         Column {
-          visible: moduleRow.moduleEnabled && moduleRow.moduleId === "disks"
-          x: Commons.Style.space(12) + moduleSwitch.width + Commons.Style.space(12)
-          width: parent.width - x
-          spacing: 0
+          id: moduleContent
+          width: parent.width
+          spacing: Commons.Style.space(4)
+          topPadding: Commons.Style.space(4)
 
-          Repeater {
-            model: moduleRow.moduleId === "disks" ? root.diskOptions.length : 0
+          Item {
+            width: parent.width
+            height: Commons.Style.space(26)
 
-            delegate: Column {
-              id: diskRow
-              required property int index
-              readonly property var option: root.diskOptions[index] || ({})
-              readonly property string disk: String(option.value || "")
-              readonly property int position: root.diskIndex(disk)
-              width: parent ? parent.width : 0
-              spacing: 0
+            ShellUi.ToggleSwitch {
+              id: moduleSwitch
+              shell: root.host ? root.host.shell : null
+              anchors.left: parent.left
+              anchors.verticalCenter: parent.verticalCenter
+              checked: moduleRow.moduleEnabled
+              onToggled: root.setModuleEnabled(moduleRow.moduleId, !moduleRow.moduleEnabled)
+            }
 
-              FlagRow {
-                label: String(diskRow.option.label || "")
-                checked: diskRow.position !== -1
-                onToggled: root.setBarDisk(diskRow.disk, !checked, "")
+            Text {
+              textFormat: Text.PlainText
+              anchors.left: moduleSwitch.right
+              anchors.leftMargin: Commons.Style.space(12)
+              anchors.right: reorder.left
+              anchors.rightMargin: Commons.Style.space(8)
+              anchors.verticalCenter: parent.verticalCenter
+              text: moduleRow.def.label
+              color: root.foreground
+              opacity: moduleRow.moduleEnabled ? 1 : 0.5
+              font.family: root.fontFamily
+              font.pixelSize: Commons.Style.font.body
+              font.bold: moduleRow.moduleEnabled
+              elide: Text.ElideRight
+            }
+
+            Row {
+              id: reorder
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: Commons.Style.space(2)
+              visible: moduleRow.moduleEnabled
+
+              PanelActionButton {
+                iconText: "󰁝"
+                enabled: moduleRow.position > 0
+                foreground: root.foreground
+                fontFamily: root.fontFamily
+                size: Commons.Style.space(22)
+                onClicked: root.set("modules", Model.moveInList(root.barModules, moduleRow.moduleId, -1).join(","))
               }
 
-              ChoiceRow {
-                visible: diskRow.position !== -1
-                indent: Commons.Style.space(14)
-                label: "Show"
-                options: Model.DISK_SHOWS
-                value: diskRow.position === -1 ? "speed" : root.barDiskList[diskRow.position].show
-                onChanged: function(value) { root.setBarDisk(diskRow.disk, true, value) }
+              PanelActionButton {
+                iconText: "󰁅"
+                enabled: moduleRow.position < root.barModules.length - 1
+                foreground: root.foreground
+                fontFamily: root.fontFamily
+                size: Commons.Style.space(22)
+                onClicked: root.set("modules", Model.moveInList(root.barModules, moduleRow.moduleId, 1).join(","))
+              }
+
+              PanelActionButton {
+                iconText: "⠿"
+                tooltipText: "Drag to reorder"
+                foreground: root.foreground
+                fontFamily: root.fontFamily
+                size: Commons.Style.space(22)
+                focusable: false
+
+                DragHandler {
+                  target: null
+                  enabled: moduleRow.moduleEnabled
+                  cursorShape: active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                  onActiveChanged: if (active) {
+                    root.draggedRow = moduleRow
+                    root.dragPosition = centroid.scenePosition
+                    dragMarker.Drag.active = true
+                  }
+                  onCentroidChanged: if (active) root.dragPosition = centroid.scenePosition
+                  onGrabChanged: transition => {
+                    if (root.draggedRow !== moduleRow) return
+                    if (transition === PointerDevice.UngrabExclusive) {
+                      dragMarker.Drag.drop()
+                      root.draggedRow = null
+                    } else if (transition === PointerDevice.CancelGrabExclusive) {
+                      dragMarker.Drag.cancel()
+                      root.draggedRow = null
+                    }
+                  }
+                }
+              }
+
+            }
+          }
+
+          ChoiceMenu {
+            visible: moduleRow.moduleEnabled && (moduleRow.def.graph === true || moduleRow.def.ring === true)
+            x: Commons.Style.space(12) + moduleSwitch.width + Commons.Style.space(12)
+            width: parent.width - x
+            label: "Look"
+            options: Model.styleOptions(moduleRow.moduleId)
+            value: Model.moduleStyle(root.settings, moduleRow.moduleId)
+            onChanged: function(value) { root.set(moduleRow.moduleId + "Style", value) }
+          }
+
+          Column {
+            visible: moduleRow.moduleEnabled && moduleRow.moduleId === "disks"
+            x: Commons.Style.space(12) + moduleSwitch.width + Commons.Style.space(12)
+            width: parent.width - x
+            spacing: 0
+
+            Repeater {
+              model: moduleRow.moduleId === "disks" ? root.diskOptions.length : 0
+
+              delegate: Column {
+                id: diskRow
+                required property int index
+                readonly property var option: root.diskOptions[index] || ({})
+                readonly property string disk: String(option.value || "")
+                readonly property int position: root.diskIndex(disk)
+                width: parent ? parent.width : 0
+                spacing: 0
+
+                FlagRow {
+                  label: String(diskRow.option.label || "")
+                  checked: diskRow.position !== -1
+                  onToggled: root.setBarDisk(diskRow.disk, !checked, "")
+                }
+
+                ChoiceRow {
+                  visible: diskRow.position !== -1
+                  indent: Commons.Style.space(14)
+                  label: "Show"
+                  options: Model.DISK_SHOWS
+                  value: diskRow.position === -1 ? "speed" : root.barDiskList[diskRow.position].show
+                  onChanged: function(value) { root.setBarDisk(diskRow.disk, true, value) }
+                }
               }
             }
           }
-        }
 
-        Column {
-          visible: moduleRow.moduleEnabled && moduleRow.moduleId === "gpu" && root.gpuOptions.length > 1
-          x: Commons.Style.space(12) + moduleSwitch.width + Commons.Style.space(12)
-          width: parent.width - x
-          spacing: 0
+          Column {
+            visible: moduleRow.moduleEnabled && moduleRow.moduleId === "gpu" && root.gpuOptions.length > 1
+            x: Commons.Style.space(12) + moduleSwitch.width + Commons.Style.space(12)
+            width: parent.width - x
+            spacing: 0
 
-          Repeater {
-            model: moduleRow.moduleId === "gpu" ? root.gpuOptions.length : 0
+            Repeater {
+              model: moduleRow.moduleId === "gpu" ? root.gpuOptions.length : 0
 
-            delegate: FlagRow {
-              required property int index
-              readonly property var card: root.gpuOptions[index] || ({})
-              label: Model.gpuTitle(card)
-              checked: root.selectedGpuIds.indexOf(Model.gpuId(card)) !== -1
-              onToggled: root.setBarGpu(Model.gpuId(card), !checked)
+              delegate: FlagRow {
+                required property int index
+                readonly property var card: root.gpuOptions[index] || ({})
+                label: Model.gpuTitle(card)
+                checked: root.selectedGpuIds.indexOf(Model.gpuId(card)) !== -1
+                onToggled: root.setBarGpu(Model.gpuId(card), !checked)
+              }
             }
           }
-        }
 
-        FlagRow {
-          visible: moduleRow.moduleEnabled && moduleRow.moduleId === "gpu" && root.gpuOptions.some(function(card) { return Model.gpuMemoryPercent(card) !== null })
-          indent: Commons.Style.space(12) + moduleSwitch.width + Commons.Style.space(12)
-          label: "Show VRAM in bar"
-          checked: Model.flag(root.settings, "showGpuMemory")
-          onToggled: root.set("showGpuMemory", !checked)
-        }
+          FlagRow {
+            visible: moduleRow.moduleEnabled && moduleRow.moduleId === "gpu" && root.gpuOptions.some(function(card) { return Model.gpuMemoryPercent(card) !== null })
+            indent: Commons.Style.space(12) + moduleSwitch.width + Commons.Style.space(12)
+            label: "Show VRAM in bar"
+            checked: Model.flag(root.settings, "showGpuMemory")
+            onToggled: root.set("showGpuMemory", !checked)
+          }
 
-        Column {
-          visible: moduleRow.moduleEnabled && moduleRow.moduleId === "sensors"
-          x: Commons.Style.space(12) + moduleSwitch.width + Commons.Style.space(12)
-          width: parent.width - x
-          spacing: 0
+          Column {
+            visible: moduleRow.moduleEnabled && moduleRow.moduleId === "sensors"
+            x: Commons.Style.space(12) + moduleSwitch.width + Commons.Style.space(12)
+            width: parent.width - x
+            spacing: 0
 
-          Repeater {
-            model: moduleRow.moduleId === "sensors" ? root.sensorOptions.length : 0
+            Repeater {
+              model: moduleRow.moduleId === "sensors" ? root.sensorOptions.length : 0
 
-            delegate: FlagRow {
-              required property int index
-              readonly property var option: root.sensorOptions[index] || ({})
-              label: String(option.label || "")
-              checked: root.barSensorIds.indexOf(String(option.value)) !== -1
-              onToggled: root.setBarSensor(String(option.value), !checked)
+              delegate: FlagRow {
+                required property int index
+                readonly property var option: root.sensorOptions[index] || ({})
+                label: String(option.label || "")
+                checked: root.barSensorIds.indexOf(String(option.value)) !== -1
+                onToggled: root.setBarSensor(String(option.value), !checked)
+              }
             }
           }
         }
@@ -756,7 +829,7 @@ Column {
       height: width
       radius: Commons.Style.space(3)
       color: colorRow.settingColor
-      border.color: Commons.Util.alpha(root.foreground, 0.25)
+      border.color: Commons.Util.scaleAlpha(root.foreground, 0.25)
       border.width: Commons.Style.normalBorderWidth
     }
 

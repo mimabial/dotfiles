@@ -6,7 +6,7 @@ import "StatusSymbols.js" as StatusSymbols
 
 BarButton {
     id: root
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     property string popupName: "network"
     property string settingsPopupName: popupName
     property string qrPopupName: "wifiqr"
@@ -25,6 +25,6 @@ BarButton {
     onClicked: button => button === Qt.RightButton
         ? Networking.wifiEnabled = !Networking.wifiEnabled
         : root.shell.togglePopup(root.popupName)
-    NetworkPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: root.settingsPopupName; qrPopupName: root.qrPopupName }
-    WifiQrPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: root.qrPopupName }
+    NetworkPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: root.settingsPopupName; qrPopupName: root.qrPopupName }
+    WifiQrPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: root.qrPopupName }
 }

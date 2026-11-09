@@ -9,5 +9,5 @@ Rectangle {
     implicitWidth: 100
     implicitHeight: 1
     height: 1
-    color: Commons.Util.alpha(foreground, strength)
+    color: Commons.Util.scaleAlpha(foreground, strength)
 }

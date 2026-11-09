@@ -5,10 +5,10 @@ import json
 import sys
 from pathlib import Path
 
-from _common import (ANSI_COLOR_COUNT, CONFIG_HOME, RENDER_OUTPUT_DIR, atomic_write, cache_hit, cache_store, palette_path,
+from _common import (ANSI_COLOR_COUNT, CONFIG_HOME, RENDER_OUTPUT_DIR, atomic_write, cache_hit, cache_store, palette_path_from_argv,
                      short_digest)
 
-PALETTE = palette_path()
+PALETTE = palette_path_from_argv()
 TEMPLATE_DIR = CONFIG_HOME / "templates"
 OUT_DIR = RENDER_OUTPUT_DIR / "rmpc"
 TEMPLATES = {

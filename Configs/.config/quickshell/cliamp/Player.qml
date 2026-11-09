@@ -8,11 +8,7 @@ import "visualizers/bars.js" as VisBars
 import "visualizers/bricks.js" as VisBricks
 import "visualizers/classic_led.js" as VisClassicLED
 import "visualizers/peaks.js" as VisPeaks
-import "visualizers/stereo.js" as VisStereo
-import "visualizers/correlation.js" as VisCorrelation
 import "visualizers/ascii.js" as VisAscii
-import "visualizers/wave.js" as VisWave
-import "visualizers/sine.js" as VisSine
 import "visualizers/mirror.js" as VisMirror
 import "visualizers/soundcloud_wave.js" as VisSoundCloudWave
 import "visualizers/telegram_wave.js" as VisTelegramWave
@@ -21,7 +17,6 @@ import "visualizers/heatmap_wave.js" as VisHeatmapWave
 import "visualizers/grounded_wave.js" as VisGroundedWave
 import "visualizers/scatter.js" as VisScatter
 import "visualizers/butterfly.js" as VisButterfly
-import "visualizers/plasma.js" as VisPlasma
 import "visualizers/cyber_tunnel.js" as VisCyberTunnel
 import "visualizers/red_sector.js" as VisRedSector
 import "visualizers/background.js" as VisBackground
@@ -114,7 +109,7 @@ Item {
     lyricsProcess.running = true
   }
 
-  function parseLyrics(raw) {
+  function applyLyrics(raw) {
     if (!raw || typeof raw !== "string") {
       lyricsLines = []
       return
@@ -165,14 +160,13 @@ Item {
   readonly property var visualizerRenderers: ({
     "bars": VisBars.render, "bricks": VisBricks.render,
     "classic_led": VisClassicLED.render,
-    "peaks": VisPeaks.render, "stereo": VisStereo.render,
-    "correlation": VisCorrelation.render, "ascii": VisAscii.render,
-    "wave": VisWave.render, "sine": VisSine.render, "mirror": VisMirror.render,
+    "peaks": VisPeaks.render, "ascii": VisAscii.render,
+    "mirror": VisMirror.render,
     "soundcloud_wave": VisSoundCloudWave.render, "telegram_wave": VisTelegramWave.render,
     "led_scrubber": VisLEDScrubber.render,
     "heatmap_wave": VisHeatmapWave.render, "grounded_wave": VisGroundedWave.render,
     "scatter": VisScatter.render,
-    "butterfly": VisButterfly.render, "plasma": VisPlasma.render,
+    "butterfly": VisButterfly.render,
     "cyber_tunnel": VisCyberTunnel.render, "red_sector": VisRedSector.render
   })
 
@@ -182,13 +176,13 @@ Item {
 
   readonly property var visualizerLabels: ({
     "bars": "Bars", "bricks": "Bricks", "classic_led": "Classic LED",
-    "peaks": "Peaks", "stereo": "Stereo", "correlation": "Correlation", "ascii": "Ascii",
-    "wave": "Wave", "sine": "Sine Wave", "mirror": "Mirror",
+    "peaks": "Peaks", "ascii": "Ascii",
+    "mirror": "Mirror",
     "soundcloud_wave": "SoundCloud Wave", "telegram_wave": "Telegram Wave",
     "led_scrubber": "LED Scrubber",
     "heatmap_wave": "Heatmap Wave", "grounded_wave": "Baseline Wave",
     "scatter": "Scatter",
-    "butterfly": "Butterfly", "plasma": "Liquid Plasma",
+    "butterfly": "Butterfly",
     "cyber_tunnel": "3D Cyber Tunnel", "red_sector": "Red Sector"
   })
 
@@ -216,7 +210,6 @@ Item {
     return {
       bands: root.controller.visBands, bandsFine: root.controller.visBandsFine, bandsDb: root.controller.visBandsDb, bandEdges: root.controller.visBandEdges,
       rawBands: root.controller.visBandsRaw, bandsStereo: root.controller.visBandsStereo,
-      wave: root.controller.visWave, waveStereo: root.controller.visWaveStereo, stereo: root.controller.visStereo,
       analysis: root.controller.visAnalysis, frame: root.controller.visFrame,
       playing: root.controller.isPlaying, width: w, height: h, S: 2, fontSize: Commons.Style.font.caption,
       count: count, barW: Math.floor((w - (count - 1) * gap) / count), gap: gap,
@@ -684,8 +677,8 @@ Item {
         root.lyricsLoading = false
         try {
           var lyrics = JSON.parse(text || "{}")
-          if (lyrics.synced) root.parseLyrics(lyrics.synced)
-          else if (lyrics.plain) root.parseLyrics(lyrics.plain)
+          if (lyrics.synced) root.applyLyrics(lyrics.synced)
+          else if (lyrics.plain) root.applyLyrics(lyrics.plain)
           else root.lyricsLines = []
         } catch (e) { root.lyricsLines = [] }
       }

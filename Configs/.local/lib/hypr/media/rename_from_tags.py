@@ -16,8 +16,7 @@ from autotag_identity import (
     MIN_ALBUM_SIMILARITY,
     drop_redundant_feat,
     existing,
-    missing_credit_names,
-    parse_filename,
+    filename_credit_loss,
     similarity,
     split_leading_artist,
 )
@@ -86,18 +85,6 @@ def default_pattern_for(path: Path, tags) -> str:
         similarity(path.parent.name, album) >= MIN_ALBUM_SIMILARITY
     )
     return DEFAULT_ALBUM_PATTERN if numbered_album or album_folder else DEFAULT_PATTERN
-
-
-def credit_loss_for_rename(path: Path, values: dict) -> list[str]:
-    file_artist, file_title = parse_filename(path)
-    if not file_artist or not file_title:
-        return []
-    return missing_credit_names(
-        file_artist,
-        file_title,
-        values.get("artist", ""),
-        values.get("title", ""),
-    )
 
 
 def collect_audio_files(paths: list[str], wanted: set[str]) -> list[Path]:
@@ -172,7 +159,7 @@ def rename_target(path: Path, pattern_override: str, allow_credit_loss: bool) ->
     if missing:
         raise SkipRename(f"?? {path.name}: no {', '.join(missing)} tag")
 
-    lost_credits = credit_loss_for_rename(path, values)
+    lost_credits = filename_credit_loss(path, values.get("artist", ""), values.get("title", ""))
     if lost_credits and not allow_credit_loss:
         raise SkipRename(f"!! {path.name}: would remove credit(s): {', '.join(lost_credits)}")
 

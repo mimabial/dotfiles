@@ -7,13 +7,14 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from urllib.parse import urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from pyutils.xdg_base_dirs import xdg_config_home
 from typing import NamedTuple
 import requests
-from autotag_identity import MIN_ARTIST_SIMILARITY, MIN_TITLE_SIMILARITY, album_agrees, album_similarity, artist_agrees, candidate_agrees, credit_similarity, match_score, primary_artist, search_variants, same_script, similarity, strip_release_suffix, title_similarity, track_identity
+from autotag_identity import MIN_ARTIST_SIMILARITY, MIN_TITLE_SIMILARITY, album_agrees, album_similarity, artist_agrees, candidate_agrees, credit_similarity, match_score, primary_artist, search_variants, same_script, similarity, strip_release_suffix, title_agrees, track_identity
 from title_cleanup import clean_title
 from autotag_models import TrackTags, Unidentified
 from autotag_cache import ResolutionCache
@@ -121,7 +122,7 @@ def acoustid_key() -> str:
     return ""
 
 
-def configure_persistent_cache(cache: ResolutionCache | None) -> None:
+def configure_persistent_cache_and_deezer_cooldown(cache: ResolutionCache | None) -> None:
     global _deezer_blocked, _persistent_cache
     _persistent_cache = cache
     _deezer_blocked = bool(cache and cache.state_active(DEEZER_BLOCKED_STATE))
@@ -140,18 +141,16 @@ class RateLimiter:
 
 
 def http_get(url: str, params: dict, limiter: RateLimiter, attempts: int = 4):
-    """MusicBrainz answers 503 when throttled or busy; that is worth retrying."""
-    delay = 2.0
-    response = None
+    """A busy 429 or 503 is retried only after the wait the server names in Retry-After."""
     for attempt in range(attempts):
         limiter.wait()
         response = HTTP_SESSION.get(url, params=params, timeout=HTTP_TIMEOUT_SECONDS)
-        if response.status_code in (429, 503) and attempt < attempts - 1:
-            retry_after = response.headers.get("Retry-After", "")
-            time.sleep(float(retry_after) if retry_after.isdigit() else delay)
-            delay *= 2
-            continue
-        break
+        if response.status_code not in (429, 503):
+            break
+        retry_after = response.headers.get("Retry-After", "")
+        if not retry_after.isdigit() or attempt == attempts - 1:
+            raise Unidentified(f"{urlsplit(url).hostname} busy (HTTP {response.status_code})")
+        time.sleep(float(retry_after))
     response.raise_for_status()
     return response
 
@@ -219,7 +218,7 @@ def rank_recordings_by_candidates(
         for artist, title in candidates:
             _, wanted_credit, _ = track_identity(artist, title)
             if (
-                title_similarity(recording["title"], title) >= MIN_TITLE_SIMILARITY
+                title_agrees(recording["title"], title)
                 and artist_agrees(credited, wanted_credit)
             ):
                 agreements.append(match_score(credited, recording["title"], artist, title))

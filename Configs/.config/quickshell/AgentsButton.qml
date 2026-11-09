@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "CalendarMath.js" as CalendarMath
+import "Units.js" as Units
 
 BarButton {
     id: root
@@ -60,7 +61,7 @@ BarButton {
         }
     }
     Process { id: usageCollector; command: ["bash", root.usageScript, "--write"] }
-    Timer { interval: 15 * CalendarMath.MS_PER_MINUTE; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
+    Timer { interval: 15 * Units.MS_PER_MINUTE; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
 
     AgentsPopup {
         id: panel

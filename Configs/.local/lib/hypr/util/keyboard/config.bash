@@ -1,4 +1,4 @@
-keyboard_error() {
+keyboard_die() {
   printf '%s\n' "$1" >&2
   exit 1
 }
@@ -15,10 +15,10 @@ keyboard_option_string() {
 
 keyboard_current_settings() {
   local layouts="" variants="" options=""
-  layouts=$(keyboard_option_string input:kb_layout) || keyboard_error 'The active keyboard layouts could not be read.'
+  layouts=$(keyboard_option_string input:kb_layout) || keyboard_die 'The active keyboard layouts could not be read.'
   variants=$(keyboard_option_string input:kb_variant 2>/dev/null || true)
   options=$(keyboard_option_string input:kb_options 2>/dev/null || true)
-  [[ -n "${layouts}" ]] || keyboard_error 'Hyprland did not report a keyboard layout.'
+  [[ -n "${layouts}" ]] || keyboard_die 'Hyprland did not report a keyboard layout.'
 
   jq -cn --arg layouts "${layouts}" --arg variants "${variants}" --arg options "${options}" '
     ($layouts | split(",")) as $layoutList

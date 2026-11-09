@@ -136,7 +136,7 @@ test_index_helpers() (
   refute catalog_adjacent_index 0 x 3
 )
 
-test_select_adjacent() (
+test_apply_adjacent() (
   source "${WALLPAPER_DIR%/wallpaper}/core/wallpaper.catalog.bash"
   source "${WALLPAPER_DIR}/lib/catalog.bash"
   source "${WALLPAPER_DIR}/lib/apply.bash"
@@ -149,20 +149,20 @@ test_select_adjacent() (
   local -a wallpaper_paths=(/w/a.jpg /w/b.jpg /w/c.jpg)
 
   current_link_target=/w/b.jpg
-  wallpaper_select_adjacent n
+  wallpaper_apply_adjacent n
   [[ "${applied}" == /w/c.jpg ]]
 
   current_link_target=/w/c.jpg
-  wallpaper_select_adjacent n
+  wallpaper_apply_adjacent n
   [[ "${applied}" == /w/a.jpg ]]
 
   current_link_target=/w/a.jpg
-  wallpaper_select_adjacent p
+  wallpaper_apply_adjacent p
   [[ "${applied}" == /w/c.jpg ]]
 
   # unknown current wallpaper falls back to the first entry
   current_link_target=/w/gone.jpg
-  wallpaper_select_adjacent n
+  wallpaper_apply_adjacent n
   [[ "${applied}" == /w/a.jpg ]]
 )
 
@@ -173,7 +173,7 @@ test_json_cache_freshness
 test_trash_selection
 test_queue
 test_index_helpers
-test_select_adjacent
+test_apply_adjacent
 
 test_prune_unreferenced() (
   print_log() { :; }

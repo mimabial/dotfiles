@@ -33,6 +33,8 @@ wallcache_show_help() {
   cat <<EOF
 Usage: hyprshell wallpaper/wallcache.daemon [mode] [options]
 
+Queue wallpaper cache jobs and run the daemon that builds them.
+
 Modes:
   --enqueue               Enqueue jobs (default)
   --start                 Start daemon if not running

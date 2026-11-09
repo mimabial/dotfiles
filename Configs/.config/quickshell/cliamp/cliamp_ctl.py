@@ -21,6 +21,10 @@ try:
 except ImportError:
     tomllib = None
 
+HYPR_LIB_DIR = os.path.expanduser("~/.local/lib/hypr")
+sys.path.insert(0, HYPR_LIB_DIR)
+from pyutils import child_process
+
 RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR")
 if RUNTIME_DIR and os.path.isdir(RUNTIME_DIR):
     RUN_DIR = os.path.join(RUNTIME_DIR, "cliamp")
@@ -60,6 +64,8 @@ EXTERNAL_QUEUE_CACHE_PATH = os.path.join(CACHE_DIR, "external_queue.json")
 EXTERNAL_QUEUE_CACHE_SECONDS = 600
 MPD_ADDRESS = ("127.0.0.1", 6600)
 YOUTUBE_REQUEST_SECONDS = 12
+YTDLP_LOOKUP_SECONDS = 6
+RMPC_REPLY_SECONDS = 2
 HISTORY_TAIL_BYTES = 2048
 DEFAULT_VOLUME = 80
 FOLDER_TRACK_LIMIT = 500
@@ -67,6 +73,8 @@ PLAYLIST_IMPORT_LIMIT = 500
 COVER_EXTRACTION_LIMIT = 8
 COVER_THUMBNAIL_WIDTH = 96
 COVER_EXTRACTION_SECONDS = 2.5
+HISTORY_COVER_EXTRACTION_SECONDS = 1.5
+SEARCH_COVER_EXTRACTION_SECONDS = 1.0
 TERM_GRACE_SECONDS = 0.3
 MPV_START_SECONDS = 3
 SPECTRUM_START_SECONDS = 3
@@ -80,6 +88,9 @@ def unlink(path):
     except OSError: pass
 
 STREAM_URL_TTL_SECONDS = 4 * 3600
+STREAM_CACHE_MAX_ENTRIES = 100
+STREAM_CACHE_EVICT_ENTRIES = 20
+PROC_STAT_STARTTIME_INDEX = 19
 
 
 def get_cached_stream_url(url):
@@ -111,8 +122,8 @@ def set_cached_stream_url(url, direct_url):
             "direct_url": direct_url,
             "timestamp": time.time()
         }
-        if len(cache) > 100:
-            oldest = sorted(cache.keys(), key=lambda k: cache[k].get("timestamp", 0))[:20]
+        if len(cache) > STREAM_CACHE_MAX_ENTRIES:
+            oldest = sorted(cache.keys(), key=lambda k: cache[k].get("timestamp", 0))[:STREAM_CACHE_EVICT_ENTRIES]
             for k in oldest:
                 cache.pop(k, None)
         with open(STREAM_CACHE_PATH, "w", encoding="utf-8") as f:
@@ -136,8 +147,8 @@ def process_start_ticks(pid):
         rparen = stat_content.rfind(")")
         if rparen != -1:
             fields = stat_content[rparen + 2:].split()
-            if len(fields) >= 20:
-                return int(fields[19])
+            if len(fields) > PROC_STAT_STARTTIME_INDEX:
+                return int(fields[PROC_STAT_STARTTIME_INDEX])
     except Exception:
         pass
     return None
@@ -282,11 +293,18 @@ def youtube_id(url):
     match = YOUTUBE_ID.search(str(url or ""))
     return match.group(1) if match else ""
 
+def youtube_thumb_path(video_id):
+    return os.path.join(AUDIO_CACHE_DIR, f"{video_id}.jpg")
+
+def youtube_thumb_url(video_id):
+    return f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
+
+def cached_youtube_thumb(video_id):
+    thumb = youtube_thumb_path(video_id)
+    return thumb if video_id and os.path.exists(thumb) else ""
+
 def queue_entry(url, title, artist, playlist_id=None):
-    video_id = youtube_id(url)
-    thumb = os.path.join(AUDIO_CACHE_DIR, f"{video_id}.jpg") if video_id else ""
-    return {"url": url, "title": title, "artist": artist,
-            "thumb": thumb if thumb and os.path.exists(thumb) else "", "playlist_id": playlist_id}
+    return {"url": url, "title": title, "artist": artist, "playlist_id": playlist_id}
 
 def foreign_entry(entry):
     stem = os.path.splitext(os.path.basename(entry["filename"]))[0]
@@ -482,6 +500,11 @@ def attach_covers(tracks, budget_seconds=COVER_EXTRACTION_SECONDS, track_path_ke
             unlink(cover)
     return tracks
 
+def attach_track_art(tracks, budget_seconds=COVER_EXTRACTION_SECONDS, track_path_key="url"):
+    for track in tracks:
+        track["thumb"] = cached_youtube_thumb(youtube_id(track.get(track_path_key)))
+    return attach_covers(tracks, budget_seconds, track_path_key)
+
 def dir_tracks(rel="", limit=FOLDER_TRACK_LIMIT):
     base = MUSIC_DIR
     target = os.path.realpath(os.path.join(base, rel)) if rel else base
@@ -559,15 +582,17 @@ def browse_library(rel=""):
 
 def read_mpd_queue():
     try:
-        status = subprocess.run(["rmpc", "status"], capture_output=True, text=True, timeout=2.0)
+        status = child_process.run(["rmpc", "status"], capture_output=True, text=True, timeout=RMPC_REPLY_SECONDS)
         current = json.loads(status.stdout or "{}").get("song")
-        result = subprocess.run(["rmpc", "queue"], capture_output=True, text=True, timeout=2.0)
+        result = child_process.run(["rmpc", "queue"], capture_output=True, text=True, timeout=RMPC_REPLY_SECONDS)
         items = []
         for index, song in enumerate(json.loads(result.stdout or "[]")):
             meta = song.get("metadata") or {}
             position = int(meta.get("pos", index))
-            items.append({"backend": "mpd", "position": position, "current": position == current, "url": song.get("file", ""),
-                "title": meta.get("title") or os.path.splitext(os.path.basename(song.get("file", "")))[0],
+            song_file = song.get("file", "")
+            items.append({"backend": "mpd", "position": position, "current": position == current,
+                "url": song_file, "path": os.path.join(MUSIC_DIR, song_file),
+                "title": meta.get("title") or os.path.splitext(os.path.basename(song_file))[0],
                 "artist": meta.get("artist", ""), "duration_secs": int((song.get("duration") or {}).get("secs", 0))})
         return items
     except Exception:
@@ -802,12 +827,7 @@ def unique_history(items, limit, local_only=False):
 
 def parse_history(limit=500, local_only=False):
     entries = unique_history(read_history(), limit, local_only)
-    for item in entries:
-        video_id = youtube_id(item.get("path"))
-        thumb = os.path.join(AUDIO_CACHE_DIR, f"{video_id}.jpg") if video_id else ""
-        if thumb and os.path.exists(thumb):
-            item["thumb"] = thumb
-    return attach_covers(entries, budget=1.5, track_path_key="path")
+    return attach_track_art(entries, budget_seconds=HISTORY_COVER_EXTRACTION_SECONDS, track_path_key="path")
 
 def most_played(items, limit=HISTORY_PLAYLIST_LIMIT):
     ranked = {}
@@ -909,7 +929,7 @@ def youtube_tracks(url, limit=100):
         if vid:
             tracks.append({"id": vid, "title": title or "Track", "artist": artist, "duration": duration,
                 "url": f"https://www.youtube.com/watch?v={vid}" + (f"&list={urllib.parse.quote(list_id)}" if list_id else ""),
-                "thumb": f"https://img.youtube.com/vi/{vid}/mqdefault.jpg"})
+                "thumb": youtube_thumb_url(vid)})
     return tracks
 
 def read_youtube_queue(url):
@@ -957,7 +977,7 @@ def import_playlist(url, custom_name=None):
         try:
             if not pl_name:
                 t_cmd = ["yt-dlp", "--flat-playlist", "--print", "%(playlist_title)s", "--playlist-items", "1", "--", url]
-                t_res = subprocess.run(t_cmd, capture_output=True, text=True, timeout=6.0)
+                t_res = child_process.run(t_cmd, capture_output=True, text=True, timeout=YTDLP_LOOKUP_SECONDS)
                 pl_name = t_res.stdout.strip().splitlines()[0] if t_res.stdout.strip() else ""
             
             tracks = youtube_tracks(url, PLAYLIST_IMPORT_LIMIT)
@@ -1051,12 +1071,12 @@ EQ_CACHE_FILE = os.path.join(CACHE_DIR, "eq.json")
 VIS_MODE_FILE = os.path.join(CACHE_DIR, "vis_mode.txt")
 VIS_MODES = {
     "bars", "bricks", "classic_led",
-    "peaks", "stereo", "correlation", "ascii",
-    "wave", "sine", "mirror",
+    "peaks", "ascii",
+    "mirror",
     "soundcloud_wave", "telegram_wave",
     "led_scrubber", "heatmap_wave", "grounded_wave",
     "scatter", "butterfly",
-    "plasma", "cyber_tunnel", "red_sector",
+    "cyber_tunnel", "red_sector",
 }
 DEFAULT_VIS_MODE = "bars"
 
@@ -1283,11 +1303,7 @@ def get_status():
         if np_url:
             vid_id = youtube_id(np_url)
             if vid_id:
-                thumb_f = os.path.join(AUDIO_CACHE_DIR, f"{vid_id}.jpg")
-                if os.path.exists(thumb_f):
-                    art_path = thumb_f
-                else:
-                    art_path = f"https://img.youtube.com/vi/{vid_id}/mqdefault.jpg"
+                art_path = cached_youtube_thumb(vid_id) or youtube_thumb_url(vid_id)
             elif os.path.isabs(os.path.expanduser(np_url)) and os.path.exists(os.path.expanduser(np_url)):
                 folder = os.path.dirname(os.path.expanduser(np_url))
                 for cover_name in ("cover.jpg", "cover.png", "folder.jpg", "folder.png", "album.jpg", "art.jpg"):
@@ -1405,7 +1421,7 @@ def search_youtube_innertube(query, limit=10):
                     artist = video.get("ownerText", {}).get("runs", [{}])[0].get("text", "")
                     dur = video.get("lengthText", {}).get("simpleText", "")
                     thumbs = video.get("thumbnail", {}).get("thumbnails", [])
-                    thumb_url = thumbs[-1].get("url", "") if thumbs else f"https://img.youtube.com/vi/{vid}/mqdefault.jpg"
+                    thumb_url = thumbs[-1].get("url", "") if thumbs else youtube_thumb_url(vid)
                     results.append({
                         "id": vid,
                         "url": f"https://www.youtube.com/watch?v={vid}",
@@ -1435,7 +1451,7 @@ def search_tracks(query, limit=10):
             for ext in ext_list:
                 fd_cmd.extend(["-e", ext])
             fd_cmd.extend([term, MUSIC_DIR])
-            found = subprocess.run(fd_cmd, capture_output=True, text=True, timeout=1.5)
+            found = child_process.run(fd_cmd, capture_output=True, text=True, timeout=1.5)
             for line in (found.stdout or "").splitlines():
                 path = line.strip()
                 if path and os.path.isfile(path):
@@ -1474,7 +1490,7 @@ def search_tracks(query, limit=10):
             "thumb": ""
         })
 
-    attach_covers(results, budget=1.0)
+    attach_covers(results, budget_seconds=SEARCH_COVER_EXTRACTION_SECONDS)
 
     if "spotify.com/track/" in term:
         spot = resolve_spotify_url(term)
@@ -1493,7 +1509,7 @@ def search_tracks(query, limit=10):
                 f"ytsearch{remaining}:{term}"
             ]
             try:
-                res = subprocess.run(cmd, capture_output=True, text=True, timeout=6.0)
+                res = child_process.run(cmd, capture_output=True, text=True, timeout=YTDLP_LOOKUP_SECONDS)
                 for line in (res.stdout or "").splitlines():
                     parts = line.split("\t")
                     if len(parts) >= 2:
@@ -1507,7 +1523,7 @@ def search_tracks(query, limit=10):
                             "title": title,
                             "artist": uploader,
                             "duration": dur,
-                            "thumb": os.path.join(AUDIO_CACHE_DIR, f"{vid}.jpg")
+                            "thumb": youtube_thumb_url(vid)
                         })
             except Exception:
                 pass
@@ -1548,7 +1564,7 @@ os.makedirs(LYRICS_DIR, mode=0o700, exist_ok=True)
 
 LYRICS_CACHE = {}
 NEGATIVE_TTL = 7 * 86400
-LYRICS_LIB = os.path.expanduser("~/.local/lib/hypr/media")
+LYRICS_LIB = os.path.join(HYPR_LIB_DIR, "media")
 
 def read_local_lrc(path):
     if not path or not os.path.isfile(path):
@@ -1629,14 +1645,13 @@ def save_youtube_meta(url, title, artist):
                 json.dump({"title": title or "", "artist": artist or ""}, f)
         except Exception:
             pass
-        thumb_f = os.path.join(AUDIO_CACHE_DIR, f"{vid_id}.jpg")
-        if not os.path.exists(thumb_f):
-            launch_prefetch("thumb", vid_id, thumb_f)
+        if not cached_youtube_thumb(vid_id):
+            launch_prefetch("thumb", vid_id, youtube_thumb_path(vid_id))
 
 def download_thumbnail(vid_id, dest):
     temporary = dest + ".tmp"
     try:
-        with urllib.request.urlopen(f"https://img.youtube.com/vi/{vid_id}/mqdefault.jpg", timeout=5) as source, open(temporary, "wb") as target:
+        with urllib.request.urlopen(youtube_thumb_url(vid_id), timeout=5) as source, open(temporary, "wb") as target:
             shutil.copyfileobj(source, target)
         os.replace(temporary, dest)
     except Exception:
@@ -1649,7 +1664,7 @@ def resolve_youtube_stream_url(url):
     if cached:
         return cached
     try:
-        r = subprocess.run([
+        r = child_process.run([
             "yt-dlp", "--no-warnings",
             "--extractor-args", "youtube:player_client=android,web",
             "-f", "18/bestaudio/best",
@@ -1872,11 +1887,11 @@ if __name__ == "__main__":
     elif action in ["queue_list", "get_queue"]:
         source = sys.argv[2] if len(sys.argv) > 2 else ""
         if source == "mpd":
-            print(json.dumps({"source": "mpd", "items": read_mpd_queue()}))
+            print(json.dumps({"source": "mpd", "items": attach_track_art(read_mpd_queue(), track_path_key="path")}))
         elif "list=" in source and is_youtube_url(source):
             print(json.dumps(read_youtube_queue(source)))
         else:
-            print(json.dumps({"source": "cliamp", "items": upcoming(sync_mirror())}))
+            print(json.dumps({"source": "cliamp", "items": attach_track_art(upcoming(sync_mirror()))}))
     elif action == "files":
         print(json.dumps(browse_library(sys.argv[2] if len(sys.argv) > 2 else "")))
     elif action == "queue_dir":
@@ -1884,7 +1899,7 @@ if __name__ == "__main__":
     elif action == "play_dir":
         print(json.dumps(play_dir(sys.argv[2] if len(sys.argv) > 2 else "")))
     elif action == "mpd_play":
-        subprocess.run(["rmpc", "play", str(int(sys.argv[2]))], timeout=2.0)
+        child_process.run(["rmpc", "play", str(int(sys.argv[2]))], timeout=RMPC_REPLY_SECONDS)
         print(json.dumps({"success": True}))
     elif action == "queue_play":
         print(json.dumps(play_queued(int(sys.argv[2]))))

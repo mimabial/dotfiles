@@ -9,26 +9,27 @@ source "${HYPR_LIB_DIR}/fonts/lib/font-consumers.bash"
 
 used_fonts=()
 
-detect_used_fonts() {
+detect_used_fonts_into() {
+  local -n used_fonts_ref="$1"
   local kitty_conf="${XDG_CONFIG_HOME:-$HOME/.config}/kitty/kitty.conf"
   local kind variable font_name
 
-  used_fonts=()
+  used_fonts_ref=()
   hypr_config_layer_cache_load
   for kind in mono bar bar-icon menu terminal; do
-    used_fonts+=("$(font_sync_resolve_font_value "${kind}")")
+    used_fonts_ref+=("$(font_sync_resolve_font_value "${kind}")")
   done
   for variable in FONT DOCUMENT_FONT; do
     hypr_config_value_from_layers_into font_name "${variable}" 2>/dev/null || true
-    [[ -n "${font_name}" ]] && used_fonts+=("${font_name}")
+    [[ -n "${font_name}" ]] && used_fonts_ref+=("${font_name}")
   done
   if [[ -f "${kitty_conf}" ]]; then
     while IFS= read -r font_name; do
-      [[ -n "${font_name}" ]] && used_fonts+=("${font_name}")
+      [[ -n "${font_name}" ]] && used_fonts_ref+=("${font_name}")
     done < <(sed -nE 's/^[[:space:]]*font_family[[:space:]]+//p' "${kitty_conf}")
   fi
 
-  mapfile -t used_fonts < <(printf '%s\n' "${used_fonts[@]}" | sort -u)
+  mapfile -t used_fonts_ref < <(printf '%s\n' "${used_fonts_ref[@]}" | sort -u)
 }
 
 font_package_family_names() {
@@ -59,7 +60,7 @@ is_font_in_use() {
 
 list_unused_nerd_fonts() {
   local pkg
-  detect_used_fonts
+  detect_used_fonts_into used_fonts
   while IFS= read -r pkg; do
     [[ -n "${pkg}" ]] || continue
     if ! is_font_in_use "${pkg}"; then
@@ -71,6 +72,8 @@ list_unused_nerd_fonts() {
 usage() {
   cat <<'HELP'
 Usage: hyprshell fonts/font-nerd-remove.sh <mode> [packages...]
+
+List installed or unused Nerd Font packages, or remove them.
 
 Modes:
   --list-installed     List installed Nerd Font packages

@@ -13,7 +13,7 @@ Item {
   property var segments: []
   property color foreground: Commons.Color.popups.text
   property color valueColor: foreground
-  property color trackColor: Commons.Util.alpha(foreground, 0.10)
+  property color trackColor: Commons.Util.scaleAlpha(foreground, 0.10)
   property string fontFamily: Commons.Style.font.family
   property string topText: ""
   property string valueText: ""

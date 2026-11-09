@@ -5,4 +5,4 @@ if ! command -v powerprofilesctl >/dev/null 2>&1; then
 	echo "power-profile-auto: powerprofilesctl not found; idling"
 	exec sleep infinity
 fi
-exec "$HOME/.local/lib/hypr/system/powerprofiles.auto.sh"
+exec "$HOME/.local/lib/hypr/system/power-profile-auto.sh"

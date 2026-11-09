@@ -122,7 +122,7 @@ PopupCard {
         Rectangle {
             anchors.fill: parent
             color: flyout.menu.shell.alpha(Commons.Style.popupTinted(flyout.menu.background), flyout.menu.surfaceOpacity)
-            border.color: flyout.menu.shell.alpha(Commons.Style.popupBorder(flyout.menu.borderColor), flyout.menu.borderOpacity)
+            border.color: Commons.Style.popupBorder(flyout.menu.borderColor, flyout.menu.borderOpacity)
             border.width: flyout.menu.shell.borderWidth
             radius: flyout.menu.shell.rounding
             Entries {

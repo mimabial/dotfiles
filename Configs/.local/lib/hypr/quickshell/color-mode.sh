@@ -5,10 +5,9 @@ declare -F state_resolve_color_mode_into >/dev/null || source "${HYPR_LIB_DIR:-$
 
 state_get_into selected_color_source selected_color_source ""
 state_get_into selected_color_mode selected_color_mode ""
-state_get_into background_mode BACKGROUND_MODE dark
 
 state_resolve_color_source_into selected_color_source "${selected_color_source}" "${selected_color_mode}"
-state_resolve_color_mode_into selected_color_mode "${selected_color_mode}" "${background_mode}"
+state_resolve_color_mode_into selected_color_mode "${selected_color_mode}"
 
 case "${selected_color_mode}" in
   "${STATE_COLOR_MODE_AUTO}") selected_color_mode_label="Auto" icon="󰔎" ;;

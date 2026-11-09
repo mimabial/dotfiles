@@ -16,7 +16,7 @@ if ${configured}; then
   exit 0
 fi
 
-command -v docker >/dev/null 2>&1 || hyprshell pm add docker
+command -v docker >/dev/null 2>&1 || hyprshell package-manager add docker
 printf 'WARNING: the docker group grants passwordless root-equivalent access to every process running as your user.\n\n'
 gum confirm 'Enable sudoless Docker?' || exit 0
 sudo usermod -aG docker "${USER}"

@@ -20,11 +20,11 @@ BorderSurface {
     implicitWidth: label.implicitWidth + horizontalPadding * 2
     implicitHeight: label.implicitHeight + verticalPadding * 2
     radius: Commons.Style.cornerRadius
-    color: selected || mouse.containsMouse || activeFocus
-        ? Commons.Util.alpha(accent, selected ? 0.24 : 0.14)
+    color: selected ? Commons.Style.selectedFillFor(foreground, accent)
+        : mouse.containsMouse || activeFocus ? Commons.Style.hoverFillFor(foreground, accent)
         : "transparent"
     borderSpec: bordered
-        ? Commons.Border.flat(Commons.Util.alpha(foreground, 0.38), Commons.Style.normalBorderWidth)
+        ? Commons.Border.flat(Commons.Util.scaleAlpha(foreground, Commons.Style.normalBorderAlpha), Commons.Style.normalBorderWidth)
         : Commons.Border.none()
 
     Keys.onReturnPressed: root.clicked()

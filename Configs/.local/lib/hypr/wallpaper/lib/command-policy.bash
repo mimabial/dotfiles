@@ -43,7 +43,7 @@ wallpaper_acquire_lock_if_needed() {
       flock "${wallpaper_lock_fd}"
     else
       print_log -sec "wallpaper" -stat "drop" "Another wallpaper operation is already in progress"
-      exit 0
+      return 1
     fi
   fi
 }
@@ -57,6 +57,6 @@ wallpaper_require_backend() {
     print_log -sec "wallpaper" -err "No backend specified"
     print_log -sec "wallpaper" " Please specify a backend, try '--backend awww'"
     print_log -sec "wallpaper" " See available commands: '--help | -h'"
-    exit 1
+    return 1
   fi
 }

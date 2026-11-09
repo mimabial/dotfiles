@@ -1,5 +1,6 @@
 upgrade_owns_idle_inhibition=0
 upgrade_report_refreshed=0
+upgrade_reboot_reason=""
 upgrade_lock_fd=""
 
 # Cover the entire upgrade, not only pacman's transaction.
@@ -105,26 +106,30 @@ upgrade_compositor_replaced() {
   [[ "$(readlink "/proc/${pid}/exe" 2>/dev/null || true)" == *"(deleted)"* ]]
 }
 
-upgrade_prompt_restart() {
-  local reason="" reply=""
-
+upgrade_flag_required_reboot() {
   if upgrade_kernel_replaced; then
-    reason="The kernel was replaced"
+    upgrade_reboot_reason="The kernel was replaced"
   elif upgrade_compositor_replaced; then
-    reason="Hyprland was replaced"
+    upgrade_reboot_reason="Hyprland was replaced"
   else
     return 0
   fi
 
-  hyprshell util/state.sh set reboot-required
-  printf '\n%s; a reboot is required.\n' "${reason}"
+  hyprshell util/state-flags.sh set reboot-required
+}
+
+upgrade_await_close() {
+  local reply=""
+
   [[ -t 0 ]] || return 0
+  if [[ -z "${upgrade_reboot_reason}" ]]; then
+    read -r -n 1 -p $'\nDone. Press any key to close.' _ || true
+    return 0
+  fi
 
-  read -r -p "Reboot now? [y/N] " reply || reply=""
-  [[ "${reply}" =~ ^[Yy] ]] || return 0
-
-  upgrade_release_idle
-  exec hyprshell system/powerctl.sh reboot
+  printf '\n%s; a reboot is required.\n' "${upgrade_reboot_reason}"
+  IFS= read -r -p "Update complete. Type 'reboot' to restart now, or press Enter to close: " reply || reply=""
+  [[ "${reply}" != reboot ]] || exec hyprshell system/powerctl.sh reboot
 }
 
 upgrade_refresh_report() {
@@ -141,6 +146,7 @@ upgrade_finish() {
   upgrade_release_idle || true
   ((upgrade_report_refreshed)) || rm -f "${update_cache_path}" 2>/dev/null || true
   quickshell ipc call indicators refresh updates >/dev/null 2>&1 || true
+  upgrade_await_close
   return "${exit_code}"
 }
 
@@ -151,7 +157,8 @@ upgrade_run() {
   trap 'exit 143' TERM
 
   updates_require_cached_report || return 1
-  updates_read_cached_counts || return 1
+  local repo_update_count="" aur_update_count="" flatpak_update_count=""
+  updates_read_cached_counts_into repo_update_count aur_update_count flatpak_update_count || return 1
   if [[ "${update_source}" != flatpak ]]; then
     upgrade_require_free_space || return 1
   fi
@@ -170,6 +177,6 @@ upgrade_run() {
 
   "${HYPR_LIB_DIR}/system/package-manager.sh" --pm "${update_aur_helper:-pacman}" upgrade "${update_source}" || return
   upgrade_refresh_report
-  [[ "${update_source}" == flatpak ]] || upgrade_prompt_restart
+  [[ "${update_source}" == flatpak ]] || upgrade_flag_required_reboot
 }
 

@@ -8,9 +8,10 @@ hypr_runtime_require rofi || exit 1
 source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash"
 
 declare -A lutris_wine_servers_by_prefix=()
-scan_active_lutris_wine_prefixes() {
+scan_active_lutris_wine_prefixes_into() {
+  local -n servers_by_prefix_ref="$1"
   local environment_file environment_entry wine_prefix wine_loader lutris_uuid
-  lutris_wine_servers_by_prefix=()
+  servers_by_prefix_ref=()
   for environment_file in /proc/[0-9]*/environ; do
     wine_prefix="" wine_loader="" lutris_uuid=""
     while IFS= read -r -d '' environment_entry; do
@@ -26,12 +27,12 @@ scan_active_lutris_wine_prefixes() {
       "${XDG_DATA_HOME}/Steam/compatibilitytools.d/"*) [[ -n "${lutris_uuid}" ]] || continue ;;
       *) continue ;;
     esac
-    lutris_wine_servers_by_prefix["${wine_prefix}"]="${wine_loader%/*}/wineserver"
+    servers_by_prefix_ref["${wine_prefix}"]="${wine_loader%/*}/wineserver"
   done
 }
 
 (($# == 0)) || exit 2
-scan_active_lutris_wine_prefixes
+scan_active_lutris_wine_prefixes_into lutris_wine_servers_by_prefix
 prefixes=("${!lutris_wine_servers_by_prefix[@]}")
 
 if ((${#prefixes[@]} == 0)); then

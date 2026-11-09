@@ -3,8 +3,16 @@ import QtQuick
 import Quickshell
 
 QtObject {
-    function alpha(color, opacity) {
-        return Qt.rgba(color.r, color.g, color.b, (color.a === undefined ? 1 : color.a) * opacity)
+    function scaleAlpha(color, factor) {
+        return Qt.rgba(color.r, color.g, color.b, (color.a === undefined ? 1 : color.a) * factor)
+    }
+
+    function keyHintMarkup(hint, labelColor) {
+        const label = "<font color=\"" + labelColor + "\">"
+        return hint.split("\n").map(line => line.split(/ {2,}/).map(pair => {
+            const gap = pair.indexOf(" ")
+            return gap < 0 ? pair : pair.slice(0, gap) + " " + label + pair.slice(gap + 1) + "</font>"
+        }).join("&nbsp; ")).join("<br>")
     }
 
     function shellQuote(value) {

@@ -14,6 +14,7 @@ from pyutils.xdg_base_dirs import xdg_cache_home
 
 ROFI_FIELD_SEPARATOR = ":::"
 LUA_ACTION_DISPATCHER = "__lua_action"
+HYPRCTL_LUA_DISPATCHER_PREFIXES = ("function: ", "HL.Dispatcher(")
 MIN_COLLAPSED_SERIES = 3
 
 HINT_ARROW_ORDER = {"LEFT": 0, "RIGHT": 1, "UP": 2, "DOWN": 3}
@@ -172,7 +173,7 @@ def rofi_bind_line(bind, delimiter, key_width):
     displayed_keys = bind["displayed_keys"]
     dispatcher = bind["dispatcher"]
     arg = bind["arg"]
-    if dispatcher == "__lua":
+    if dispatcher.startswith(HYPRCTL_LUA_DISPATCHER_PREFIXES):
         dispatcher = LUA_ACTION_DISPATCHER
         arg = base64.urlsafe_b64encode(bind.get("action_key", "").encode("utf-8")).decode("ascii")
     headers = " ".join(bind.get(key, "") for key in HEADER_KEYS)

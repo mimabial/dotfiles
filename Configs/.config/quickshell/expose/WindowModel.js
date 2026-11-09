@@ -45,11 +45,6 @@ function isOnWorkspace(toplevel, workspace) {
     if (ipcFor(toplevel).pinned === true || toplevelWorkspace === workspace)
         return true;
 
-    var toplevelId = Number(toplevelWorkspace.id);
-    var workspaceId = Number(workspace.id);
-    if (isFinite(toplevelId) && isFinite(workspaceId) && toplevelId !== 0 && workspaceId !== 0)
-        return toplevelId === workspaceId;
-
     var workspaceName = String(workspace.name || "");
     return Boolean(workspaceName) && String(toplevelWorkspace.name || "") === workspaceName;
 }
@@ -191,12 +186,12 @@ function composeStrips(toplevels, width, height, rowGap, padding, footerHeight, 
         var ipc = ipcFor(toplevels[index]), monitor = toplevels[index].monitor;
         if (!ipc.at || !ipc.workspace || !monitor)
             continue;
-        var special = ipc.workspace.id < 0;
+        var special = String(ipc.workspace.name).indexOf("special:") === 0;
         var id = special ? Infinity : ipc.workspace.id;
         var strip = strips[id] = strips[id] || { id: id, screenLeft: monitor.x, screenWidth: monitor.width / monitor.scale, columns: {}, cards: [] };
-        if (special && !(ipc.workspace.id in specialScreenOffsets))
-            specialScreenOffsets[ipc.workspace.id] = Object.keys(specialScreenOffsets).length * strip.screenWidth;
-        var screenX = ipc.at[0] + (special ? specialScreenOffsets[ipc.workspace.id] : 0);
+        if (special && !(ipc.workspace.name in specialScreenOffsets))
+            specialScreenOffsets[ipc.workspace.name] = Object.keys(specialScreenOffsets).length * strip.screenWidth;
+        var screenX = ipc.at[0] + (special ? specialScreenOffsets[ipc.workspace.name] : 0);
         var column = strip.columns[screenX] = strip.columns[screenX] || { screenX: screenX, screenRight: -Infinity, width: 0, cards: [] };
         var card = {
             index: index,

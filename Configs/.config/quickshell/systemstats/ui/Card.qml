@@ -14,9 +14,9 @@ Rectangle {
   width: parent ? parent.width : implicitWidth
   implicitHeight: column.implicitHeight + padding * 2
   radius: Commons.Style.cornerRadius
-  color: Commons.Util.alpha(foreground, 0.035)
+  color: Commons.Util.scaleAlpha(foreground, 0.035)
   border.width: 1
-  border.color: Commons.Util.alpha(foreground, 0.09)
+  border.color: Commons.Util.scaleAlpha(foreground, 0.09)
 
   Column {
     id: column

@@ -19,13 +19,6 @@ REQUIRED_BIND_FIELDS = {
 }
 
 
-def parse_bool(value):
-    normalized = value.casefold()
-    if normalized not in {"true", "false"}:
-        raise ValueError(f"invalid boolean value from hyprctl: {value!r}")
-    return normalized == "true"
-
-
 def validate_binds(binds):
     if not isinstance(binds, list):
         raise ValueError("hyprctl binds did not return a list")
@@ -56,27 +49,16 @@ def parse_hyprctl_binds_text(output):
                 "incomplete bind from hyprctl text output; missing "
                 + ", ".join(missing)
             )
+        current["has_description"] = bool(current["description"])
         binds.append(current)
 
     for raw_line in output.splitlines():
         line = raw_line.strip()
         if not line:
             continue
-        if raw_line == raw_line.lstrip() and line.startswith("bind"):
+        if raw_line == line == "bind":
             finish_current()
-            flags = line.removeprefix("bind")
-            current = {
-                "locked": "l" in flags,
-                "mouse": "m" in flags,
-                "release": "r" in flags,
-                "repeat": "e" in flags,
-                "longPress": "o" in flags,
-                "non_consuming": "n" in flags,
-                "auto_consuming": False,
-                "has_description": "d" in flags,
-                "submap_universal": "",
-                "allow_input_capture": False,
-            }
+            current = {}
             continue
         if current is None or ":" not in line:
             continue
@@ -85,8 +67,8 @@ def parse_hyprctl_binds_text(output):
         expected_type = REQUIRED_BIND_FIELDS.get(field)
         if expected_type is not None:
             current[field] = expected_type(value)
-        elif field == "catchall":
-            current["catch_all"] = parse_bool(value)
+        elif field == "flags":
+            current.update((flag, True) for flag in value.split(", ") if flag)
 
     finish_current()
     if not binds:

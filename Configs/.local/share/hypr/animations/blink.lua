@@ -1,6 +1,6 @@
 local runtime = require("runtime")
 
-runtime.config("animations.enabled", true)
+runtime.config_if_supported("animations.enabled", true)
 hl.curve("bounceOut", {type = "bezier", points = {{0.16, 1.18}, {0.3, 1}}})
 hl.curve("bounceSettle", {type = "bezier", points = {{0.14, 0.78}, {0.18, 1}}})
 hl.curve("bounceIn", {type = "bezier", points = {{0.4, 0}, {0.8, 0.18}}})

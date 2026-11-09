@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import "CalendarMath.js" as CalendarMath
+import "Units.js" as Units
 
 PopupCard {
     id: root
@@ -58,8 +59,8 @@ PopupCard {
         const today = new Date()
         const midnight = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
         if (timestamp >= midnight) return "Today"
-        if (timestamp >= midnight - CalendarMath.MS_PER_DAY) return "Yesterday"
-        if (timestamp >= midnight - 6 * CalendarMath.MS_PER_DAY) return Qt.formatDateTime(when, "dddd")
+        if (timestamp >= midnight - Units.MS_PER_DAY) return "Yesterday"
+        if (timestamp >= midnight - 6 * Units.MS_PER_DAY) return Qt.formatDateTime(when, "dddd")
         if (when.getFullYear() === today.getFullYear()) return Qt.formatDateTime(when, "d MMMM")
         return Qt.formatDateTime(when, "d MMMM yyyy")
     }
@@ -210,13 +211,13 @@ PopupCard {
                 }
                 PopupIconButton {
                     shell: root.shell
-                    glyph: "\u{f039f}"
+                    glyph: "\u{f02da}"
                     hint: "Show the most recent notification again"
                     onClicked: root.act(["dunstctl", "history-pop"])
                 }
                 PopupIconButton {
                     shell: root.shell
-                    glyph: "\u{f0a7a}"
+                    glyph: "\u{f039f}"
                     hint: "Clear the archive"
                     onClicked: root.clearAll()
                 }

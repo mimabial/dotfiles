@@ -33,15 +33,11 @@ list_animation_names() {
   hypr_visual_preset_list_names "lua" "${animations_user_dir}" "${animations_shared_dir}" "disable" "theme"
 }
 
-# Keep workflow-compatible tab-separated fields, including empty metadata.
 list_animations() {
-  local name=""
   {
     printf 'disable\n'
     list_animation_names
-  } | sed '/^$/d' | while IFS= read -r name; do
-    printf '%s\t\t\n' "${name}"
-  done
+  } | hypr_visual_preset_print_list_rows
 }
 
 write_animation_state() {

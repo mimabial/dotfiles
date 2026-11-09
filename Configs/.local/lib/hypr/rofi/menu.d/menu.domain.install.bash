@@ -19,7 +19,7 @@ install_pick_fonts() {
 
   case "${selection}" in
     "${empty_label}" | "")
-      menu_exit_or_show install
+      menu_show_then_exit install
       return 0
       ;;
   esac
@@ -56,7 +56,7 @@ install() {
     desktop_id="$2"
     shift 2
     printf "Installing %s...\n" "$name"
-    hyprshell pm add "$@" && { [[ -z "$desktop_id" ]] || setsid -f gtk-launch "$desktop_id" >/dev/null 2>&1; }
+    hyprshell package-manager add "$@" && { [[ -z "$desktop_id" ]] || setsid -f gtk-launch "$desktop_id" >/dev/null 2>&1; }
   ' _ "${name}" "${desktop_id}" "${packages[@]}"
 }
 
@@ -73,7 +73,7 @@ aur_install() {
     name="$1"
     shift
     printf "Installing %s from AUR...\n" "$name"
-    exec hyprshell pm aur-add "$@"
+    exec hyprshell package-manager aur-add "$@"
   ' _ "${name}" "${packages[@]}"
 }
 
@@ -99,6 +99,7 @@ menu_register_domain_install() {
   menu_add_item install_ai "󱙺  OpenAI Codex" action install_ai_openai
   menu_add_item install_ai "󱚤  Ollama" action install_ai_ollama
   menu_add_item install_ai "󰚩  opencode" action install_ai_opencode
+  menu_add_item install_ai "󰍬  Dictation" action install_ai_dictation
 
   menu_define install_gaming "Install"
   menu_add_item install_gaming "  Steam" action install_gaming_steam
@@ -146,8 +147,8 @@ menu_run_action_install() {
   case "${action_id}" in
     install_font) install_pick_fonts ;;
     install_language) menu_pick_language install install ;;
-    install_package) menu_launch_shell_terminal hyprshell pm install-repo ;;
-    install_aur) menu_launch_shell_terminal hyprshell pm install-aur ;;
+    install_package) menu_launch_shell_terminal hyprshell package-manager install-repo ;;
+    install_aur) menu_launch_shell_terminal hyprshell package-manager install-aur ;;
     install_ai_claude) install "Claude Code" "claude-code" ;;
     install_ai_openai) install "OpenAI Codex" "openai-codex-bin" ;;
     install_ai_ollama)
@@ -159,6 +160,7 @@ menu_run_action_install() {
       install "Ollama" "${ollama_pkg}"
       ;;
     install_ai_opencode) install "opencode" "opencode" ;;
+    install_ai_dictation) menu_present_terminal hyprshell capture/dictation setup ;;
     install_webapp) menu_present_terminal hyprshell install/webapp.sh ;;
     install_tui) menu_present_terminal hyprshell install/tui.sh ;;
     install_windows) menu_present_terminal hyprshell vm/windows.sh install ;;

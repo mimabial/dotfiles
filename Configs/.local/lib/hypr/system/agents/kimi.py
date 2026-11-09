@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from agents.cache import read_cached_json, read_fresh_cached_json, usage_cache_dir, write_cached_json
-from agents.usage_records import UsageTotals, cache_key, epoch_seconds, local_date_from_timestamp, rounded_token_count
+from agents.usage_records import LimitRecord, LimitReport, UsageRecord, UsageStats, UsageTotals, cache_key, epoch_seconds, local_date_from_timestamp, rounded_token_count
 from datetime import datetime, timezone
 from pathlib import Path
 import argparse
@@ -18,7 +18,7 @@ PROBE_TIMEOUT_SECONDS = 10
 TIME_UNITS = {"TIME_UNIT_SECOND": 1, "TIME_UNIT_MINUTE": 60, "TIME_UNIT_HOUR": 3600, "TIME_UNIT_DAY": 86400, "TIME_UNIT_WEEK": 604800}
 
 
-def usage_limits(payload):
+def usage_limits(payload) -> list[LimitRecord]:
     limits = []
     rows = [(payload.get("usage") or {}, "Weekly limit")]
     for entry in payload.get("limits") or []:
@@ -46,8 +46,8 @@ def usage_limits(payload):
     return limits
 
 
-def collect_limits():
-    result = {"limits": [], "limitsObservedAt": 0, "usageStatusText": "Sign in with kimi login"}
+def collect_limits() -> LimitReport:
+    result: LimitReport = {"limits": [], "limitsObservedAt": 0, "usageStatusText": "Sign in with kimi login"}
     credentials = read_cached_json(KIMI_HOME / "credentials" / "kimi-code.json")
     if not isinstance(credentials, dict):
         return result
@@ -101,7 +101,7 @@ def parse_wire(path):
     return rows
 
 
-def local_usage():
+def local_usage() -> UsageStats:
     totals = UsageTotals()
     path = usage_cache_dir() / f"kimi-files-{cache_key(str(KIMI_HOME))}.json"
     cached = read_cached_json(path) or {}
@@ -128,8 +128,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--force", action="store_true")
     parser.parse_args()
-    record = dict(local_usage(), schemaVersion=1, id="kimi", name="Kimi Code",
-                  updatedAt=datetime.now(timezone.utc).isoformat(), hasLocalStats=True)
+    record: UsageRecord = dict(local_usage(), id="kimi", name="Kimi Code",
+                               updatedAt=datetime.now(timezone.utc).isoformat(), hasLocalStats=True)
     record.update(collect_limits())
     record["ready"] = bool(record["totalPrompts"] or record["limits"])
     print(json.dumps(record, separators=(",", ":")))

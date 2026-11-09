@@ -16,6 +16,8 @@ usage() {
   cat <<EOF
 Usage: ${cmd} <action> [step]
 
+Raise or lower the screen brightness and show the new level.
+
 Actions:
   i | -i   Increase brightness
   d | -d   Decrease brightness

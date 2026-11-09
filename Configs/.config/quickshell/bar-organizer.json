@@ -110,7 +110,7 @@
                 "appearance": "cava",
                 "fillAvailableWidth": false,
                 "showAlbumArt": false,
-                "noIcon": true,
+                "showIcon": false,
                 "maxLabelWidth": 360,
                 "showControls": false,
                 "showArtist": false,
@@ -136,7 +136,7 @@
             {
               "id": "bluetooth",
               "props": {
-                "showReadout": false
+                "showBadge": false
               }
             },
             {

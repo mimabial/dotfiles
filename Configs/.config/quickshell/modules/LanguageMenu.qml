@@ -9,7 +9,7 @@ LanguageButton {
     settingsPopupName: popupName + "-settings"
     property bool macInputItems: true
     MacCard {
-        anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: root.popupName; settings: root.macInputItems ? "Keyboard" : ""; settingsPopup: root.settingsPopupName
+        anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: root.popupName; settings: root.macInputItems ? "Keyboard" : ""; settingsPopupName: root.settingsPopupName
         onOpenChanged: if (open) root.settingsPanel.ensureCatalog()
         Repeater {
             model: root.output.configured ?? []

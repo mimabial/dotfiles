@@ -17,7 +17,6 @@ Item {
   property int windows: 0
   property var windowList: []
   readonly property var tooltipWindows: windowList || []
-  property bool active: false
   property bool pinned: false
 
   signal activateRequested(string appId)
@@ -64,17 +63,15 @@ Item {
 
   readonly property bool urgent: {
     if (!item.dock.showUrgentHint) return false
-    if (item.active || item.isFocused) return false
-    if (item.appId && item.dock.urgentMap[item.appId]) return true
     var list = item.windowList || []
     for (var window of list) {
       var addr = window ? window.address : ""
-      if (addr && item.dock.urgentMap[addr]) return true
+      if (addr && addr !== item.dock.activeWindowAddress && item.dock.urgentMap[addr]) return true
     }
     return false
   }
 
-  readonly property bool minimized: DockModel.allWindowsMinimized(item.windowList, item.dock.liveWsNameOf, item.dock.isMinimizedWorkspace)
+  readonly property bool minimized: DockModel.allWindowsMinimized(item.windowList, item.dock.liveWsNameOf)
 
   readonly property bool onFocusedWorkspace: {
     var list = item.windowList || []
@@ -186,7 +183,7 @@ Item {
         anchors.margins: Commons.Style.space(4)
         height: Commons.Style.space(4)
         radius: height / 2
-        color: Commons.Util.alpha(Commons.Color.bar.background, 0.85)
+        color: Commons.Util.scaleAlpha(Commons.Color.bar.background, 0.85)
 
         Rectangle {
           width: parent.width * (item.progress || 0)
@@ -250,7 +247,8 @@ Item {
 
   Grid {
     id: indicatorRow
-    columns: Math.max(1, indicatorRow.visibleChildren.length)
+    rows: 1
+    verticalItemAlignment: Grid.AlignVCenter
     x: (item.width - width) / 2
     y: item.dock.indicatorY(item.height, height)
     spacing: item.dynamicSpacing
@@ -273,12 +271,12 @@ Item {
           ? Commons.Color.bar.active
           : (winMinimized
               ? "transparent"
-              : (item.urgent ? Commons.Color.urgent : Commons.Util.alpha(Commons.Color.bar.text, 0.88)))
+              : (item.urgent ? Commons.Color.urgent : Commons.Util.scaleAlpha(Commons.Color.bar.text, 0.88)))
 
         border.color: winActive
           ? Qt.rgba(0, 0, 0, 0.45)
           : (winMinimized
-              ? (item.urgent ? Commons.Color.urgent : Commons.Util.alpha(Commons.Color.bar.text, 0.88))
+              ? (item.urgent ? Commons.Color.urgent : Commons.Util.scaleAlpha(Commons.Color.bar.text, 0.88))
               : Qt.rgba(0, 0, 0, 0.45))
 
         border.width: winMinimized ? 1.5 : 1
@@ -302,7 +300,7 @@ Item {
         width: overflowText.implicitWidth + Commons.Style.space(4)
         height: Commons.Style.space(5)
         radius: height / 2
-        color: Commons.Util.alpha(Commons.Color.bar.text, 0.20)
+        color: Commons.Util.scaleAlpha(Commons.Color.bar.text, 0.20)
         border.color: Qt.rgba(0, 0, 0, 0.35)
         border.width: 1
 

@@ -205,7 +205,7 @@ Item {
                 width: actionIcon.implicitWidth + Commons.Style.spacing.xs * 2
                 height: width
                 radius: Commons.Style.cornerRadius
-                color: Commons.Util.alpha(Commons.Style.popupTinted(Commons.Color.menu.background), Commons.Style.popupSurfaceOpacity)
+                color: Commons.Util.scaleAlpha(Commons.Style.popupTinted(Commons.Color.menu.background), Commons.Style.popupSurfaceOpacity)
                 border.width: Commons.Style.normalBorderWidth
                 border.color: Commons.Style.popupBorder(Commons.Color.menu.border)
                 visible: !card.dragging && (card.hovered || card.selected || card.actionHovered)

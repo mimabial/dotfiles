@@ -23,6 +23,9 @@ while [[ $# -gt 0 ]]; do
     -h | --help)
       cat <<USAGE
 Usage: hyprshell util/wifi-pass [options] [SSID]
+
+Show the saved password of a Wi-Fi network, the connected one by default.
+
 Options:
   -c, --copy   Copy password to clipboard (wl-copy)
   -q, --quiet  Suppress informational messages

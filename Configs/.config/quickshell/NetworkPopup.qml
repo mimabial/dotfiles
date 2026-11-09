@@ -20,6 +20,7 @@ PopupCard {
     property var connectionSettings: ({bands: [], selectedBand: "auto", dnsMode: "DHCP", dnsServers: ""})
     property bool settingsOpen: false
     property bool editingCustomDns: false
+    readonly property var dnsModes: ["DHCP", "Cloudflare", "Google", "Custom"]
     property bool statusPending: false
     property bool statsHeld: false
     property var speedResult: ({})
@@ -43,6 +44,11 @@ PopupCard {
         actionError = ""
         settingsAction.command = command
         settingsAction.running = true
+    }
+    function chooseDnsMode(mode) {
+        editingCustomDns = mode === "Custom"
+        if (editingCustomDns) customDns.forceActiveFocus()
+        else setConnectionSetting("dns", mode)
     }
     function setConnectionSetting(action, value, servers) {
         runSetting([shell.home + "/.local/lib/hypr/system/network-settings.py", action,
@@ -280,7 +286,7 @@ PopupCard {
             Column {
                 visible: root.settingsOpen
                 width: parent.width; spacing: Style.sm
-                PopupSelect { width: parent.width; shell: root.shell; choices: ["DHCP", "Cloudflare", "Google", "Custom"].map(label => ({label: label, value: label})); selectedIndex: root.editingCustomDns ? 3 : Math.max(0, ["DHCP", "Cloudflare", "Google", "Custom"].indexOf(root.connectionSettings.dnsMode)); enabled: !root.settingsAction.running; onActivated: index => { root.editingCustomDns = index === 3; if (index === 3) customDns.forceActiveFocus(); else root.setConnectionSetting("dns", choices[index].value) } }
+                PopupSelect { width: parent.width; shell: root.shell; choices: root.dnsModes.map(mode => ({label: mode, value: mode})); selectedIndex: Math.max(0, root.dnsModes.indexOf(root.editingCustomDns ? "Custom" : root.connectionSettings.dnsMode)); enabled: !root.settingsAction.running; onActivated: index => root.chooseDnsMode(root.dnsModes[index]) }
                 PopupField { id: customDns; visible: root.editingCustomDns || root.connectionSettings.dnsMode === "Custom"; width: parent.width; shell: root.shell; placeholderText: "DNS server addresses"; enabled: !root.settingsAction.running; onAccepted: root.setConnectionSetting("dns", "Custom", text) }
                 PopupRow { visible: customDns.visible; width: parent.width; shell: root.shell; title: "Apply custom DNS"; enabled: customDns.text.trim() !== "" && !root.settingsAction.running; onClicked: root.setConnectionSetting("dns", "Custom", customDns.text) }
                 PopupSection { visible: root.connectionSettings.bands.length > 1 || root.connectionSettings.selectedBand !== "auto"; shell: root.shell; text: "WI-FI BAND" }

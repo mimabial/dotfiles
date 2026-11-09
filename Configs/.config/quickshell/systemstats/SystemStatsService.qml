@@ -62,7 +62,7 @@ Item {
   readonly property string samplerPath: Qt.resolvedUrl("systemstats_sampler.py").toString().replace(/^file:\/\//, "")
 
   readonly property int maxLineLength: 512 * 1024
-  readonly property int publicIpMinIntervalMs: 10 * 60 * 1000
+  readonly property int publicIpMinIntervalMs: 10 * Units.MS_PER_MINUTE
   readonly property int maxRestartDelayMs: 30000
 
   function ingest(line) {
@@ -550,7 +550,7 @@ Item {
 
   Timer {
     id: backoffResetTimer
-    interval: 60 * 1000
+    interval: Units.MS_PER_MINUTE
     repeat: true
     running: root.ready
     onTriggered: root.restartCount = 0

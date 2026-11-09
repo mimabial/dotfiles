@@ -7,7 +7,7 @@ $NVIM_BACKGROUND = dark
 $NVIM_TRANSPARENCY = false
 
 $CURSOR_THEME = HackCursor
-$CURSOR_SIZE = 30
+$CURSOR_SIZE = 20
 
 general {
     gaps_in = 6

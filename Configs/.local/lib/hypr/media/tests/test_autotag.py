@@ -14,11 +14,11 @@ sys.path.insert(0, str(MEDIA_DIR))
 
 import autotag
 from autotag_cache import (CACHE_MISS_TTL_SECONDS, CACHE_SUCCESS_TTL_SECONDS, ResolutionCache)
-from autotag_catalogs import (DEEZER_COOLDOWN_SECONDS, RateLimiter, from_acoustid, from_itunes, from_musicbrainz)
+from autotag_catalogs import (DEEZER_COOLDOWN_SECONDS, RateLimiter, from_acoustid, from_itunes, from_musicbrainz, http_get)
 from autotag import (ScannedAudioFile, restore_youtube_credit_tags)
 from autotag_models import (Unidentified)
-from autotag_identity import (album_context, candidate_agrees, derive_candidates, drop_redundant_feat, first_artist_fallbacks, match_score, missing_credit_names, search_variants, split_featured_title)
-from autotag_youtube_credits import (filename_credit_loss, recovered_youtube_artist, youtube_credit_metadata)
+from autotag_identity import (album_context, candidate_agrees, derive_candidates, drop_redundant_feat, drop_track_number, existing, filename_credit_loss, first_artist_fallbacks, match_score, missing_credit_names, parse_filename, search_variants, split_featured_title)
+from autotag_youtube_credits import (recovered_youtube_artist, youtube_credit_metadata)
 from autotag_tag_io import (prepare_metadata)
 from autotag_resolver import (Resolver)
 
@@ -129,10 +129,32 @@ class AlbumMatchingTests(unittest.TestCase):
         self.assertEqual(
             {key: result[key] for key in ("artist", "title", "album", "date", "tracknumber")},
             {"artist": "Shan'L", "title": "Tchizabengué", "album": "Tchizabengué",
-             "date": "20180426", "tracknumber": "1/1"},
+             "date": "20180426", "tracknumber": ""},
         )
         self.assertEqual(result["artwork_url"], "")
         self.assertEqual(itunes.call_count, 2)
+
+
+class BusyProviderTests(unittest.TestCase):
+    def response(self, status, retry_after=""):
+        return SimpleNamespace(status_code=status, headers={"Retry-After": retry_after} if retry_after else {}, raise_for_status=lambda: None)
+
+    @patch("autotag_catalogs.time.sleep")
+    @patch("autotag_catalogs.HTTP_SESSION")
+    def test_busy_without_retry_after_stands_down(self, session, sleep):
+        session.get.return_value = self.response(503)
+        with self.assertRaisesRegex(Unidentified, "musicbrainz.org busy"):
+            http_get("https://musicbrainz.org/ws/2/recording", {}, RateLimiter(0))
+        self.assertEqual(session.get.call_count, 1)
+        sleep.assert_not_called()
+
+    @patch("autotag_catalogs.time.sleep")
+    @patch("autotag_catalogs.HTTP_SESSION")
+    def test_retry_after_is_honoured(self, session, sleep):
+        answered = self.response(200)
+        session.get.side_effect = [self.response(429, "3"), answered]
+        self.assertIs(http_get("https://itunes.apple.com/search", {}, RateLimiter(0)), answered)
+        sleep.assert_called_once_with(3.0)
 
 
 class CachePolicyTests(unittest.TestCase):
@@ -399,6 +421,72 @@ class AcoustIDTests(unittest.TestCase):
             )
 
 
+class TrackNumberTitleTests(unittest.TestCase):
+    def test_filename_disc_and_track_prefix_is_dropped(self):
+        self.assertEqual(parse_filename(Path("1-12 Dans ma bulle.opus")), ("", "Dans ma bulle"))
+        self.assertEqual(parse_filename(Path("12 Heures.opus")), ("", "12 Heures"))
+
+    def test_title_number_dropped_only_at_own_track_position(self):
+        path = Path("/music/Main/Album/Song.opus")
+        self.assertEqual(drop_track_number("07 Faya", path, {"tracknumber": ["7/13"]}), "Faya")
+        self.assertEqual(drop_track_number("1-12 Dans ma bulle", path, {"tracknumber": ["12"]}), "Dans ma bulle")
+        self.assertEqual(drop_track_number("12 Heures", path, {"tracknumber": ["8/18"]}), "12 Heures")
+        self.assertEqual(drop_track_number("15. Idiot", Path("/music/15. Idiot.opus"), {}), "Idiot")
+        self.assertEqual(drop_track_number("15 Idiot", Path("/music/15 Idiot.opus"), {}), "15 Idiot")
+
+    def test_other_track_on_album_does_not_agree(self):
+        self.assertFalse(candidate_agrees("Main", "La dot", "Main", "Idiot"))
+        self.assertTrue(candidate_agrees("Main", "E.T.T.E", "Main", "E.T.T.E"))
+
+    def test_shared_version_marker_does_not_agree(self):
+        self.assertFalse(candidate_agrees("Main", "Beauty and the Beast (B.A.T.B.) [Acoustic]", "Main", "Say Less (Acoustic)"))
+        self.assertFalse(candidate_agrees("Main", "Testimony (Bonus)", "Main", "Alingo (Bonus)"))
+        self.assertTrue(candidate_agrees("Main", "Kubali (Acoustic)", "Main", "Kubali"))
+
+
+class SavedTags(dict):
+    saves = 0
+
+    def save(self):
+        self.saves += 1
+
+
+class AlbumFolderTrackNumberTests(unittest.TestCase):
+    root = Path("/music")
+    complete = {"title": ["Song"], "artist": ["Main"], "album": ["Album"], "date": ["2020"], "genre": ["Pop"]}
+
+    def tag(self, path, tags, metadata=None):
+        args = SimpleNamespace(
+            force=False, replace_artwork=False, artwork=False, dry_run=False,
+            fill_fields=list(autotag.FILL_FIELDS), allow_credit_loss=False,
+        )
+        resolver = SimpleNamespace(args=args, cache=None, resolve=lambda *_: dict(metadata))
+        with patch("autotag.read_tags", return_value=tags), contextlib.redirect_stdout(io.StringIO()):
+            return autotag.tag_file(path, self.root, resolver, {})
+
+    def test_track_number_cleared_outside_album_folder_without_lookup(self):
+        for path in (Path("/music/Zouk [G]/Main - Song.opus"), Path("/music/Main/Main - Song.opus"), Path("/music/Main - Song.opus")):
+            tags = SavedTags(self.complete, tracknumber=["4/15"])
+            self.assertEqual(self.tag(path, tags), "skipped")
+            self.assertNotIn("tracknumber", tags)
+            self.assertEqual(tags.saves, 1)
+
+    def test_album_folder_keeps_and_fills_track_number(self):
+        tags = SavedTags(self.complete, tracknumber=["1/12"])
+        self.assertEqual(self.tag(Path("/music/Main/Album/01 - Main - Song.opus"), tags), "skipped")
+        self.assertEqual((tags["tracknumber"], tags.saves), (["1/12"], 0))
+        tags = SavedTags(self.complete)
+        self.tag(Path("/music/Main/Album/01 - Main - Song.opus"), tags, {"title": "Song", "tracknumber": "1/12"})
+        self.assertEqual(tags["TRACKNUMBER"], "1/12")
+
+    def test_lookup_outside_album_folder_writes_no_track_number(self):
+        tags = SavedTags(self.complete)
+        del tags["genre"]
+        self.tag(Path("/music/Zouk [G]/Main - Song.opus"), tags, {"title": "Song", "genre": "Zouk", "tracknumber": "1/1"})
+        self.assertEqual(tags["GENRE"], "Zouk")
+        self.assertNotIn("TRACKNUMBER", tags)
+
+
 class FeatureCreditIdentityTests(unittest.TestCase):
     def test_extracts_bracketed_and_plain_trailing_features(self):
         self.assertEqual(
@@ -659,6 +747,11 @@ class FeatureCreditOutputTests(unittest.TestCase):
         self.assertEqual(prepared["artist"], "Didi B, Zlatan, Chley")
         self.assertEqual(prepared["_preserved_credits"], "Zlatan, Chley")
 
+    def test_force_keeps_track_total_when_provider_has_same_position_only(self):
+        tags = {"title": ["Song"], "tracknumber": ["3/16"]}
+        self.assertEqual(prepare_metadata(tags, {"title": "Song", "tracknumber": "3"}, force=True)["tracknumber"], "3/16")
+        self.assertEqual(prepare_metadata(tags, {"title": "Song", "tracknumber": "4"}, force=True)["tracknumber"], "4")
+
     def test_force_recovers_richer_credit_still_present_in_filename(self):
         prepared = prepare_metadata(
             {"artist": ["Didi B"], "title": ["Je m'appelle"]},
@@ -786,7 +879,7 @@ class YouTubeCreditRecoveryTests(unittest.TestCase):
 
     def test_filename_signals_missing_artist_credits(self):
         self.assertEqual(
-            filename_credit_loss(self.path, self.tags),
+            filename_credit_loss(self.path, existing(self.tags, "artist"), existing(self.tags, "title")),
             ["Zlatan", "Chley"],
         )
 

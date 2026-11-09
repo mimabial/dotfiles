@@ -27,7 +27,7 @@ Commands:
 EOF
 }
 
-run_daemon() {
+run_daemon_script() {
   local python="${XDG_STATE_HOME}/hypr/pip_env/bin/python"
   [[ -x "${python}" ]] || python=python3
   "$python" "$DAEMON_SCRIPT" "$@"
@@ -53,7 +53,7 @@ signal_daemon_or_run_once() {
     printf '%s signal sent to daemon\n' "${action^}"
   else
     printf 'Daemon not running, applying %s once...\n' "${action}"
-    run_daemon "${run_once_flag}"
+    run_daemon_script "${run_once_flag}"
   fi
 }
 
@@ -65,7 +65,7 @@ main() {
     status)
       service_call status || true
       printf '\n'
-      run_daemon --status
+      run_daemon_script --status
       ;;
     toggle)
       signal_daemon_or_run_once USR1 --toggle toggle
@@ -74,7 +74,7 @@ main() {
       signal_daemon_or_run_once USR2 --once refresh
       ;;
     once)
-      run_daemon --once
+      run_daemon_script --once
       ;;
     config)
       "${EDITOR:-nvim}" "${XDG_CONFIG_HOME}/hypr/auto_theme.conf"

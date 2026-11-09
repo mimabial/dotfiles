@@ -29,7 +29,7 @@ dev_env_php_configure_composer_path() {
 
 dev_env_install_php_runtime() {
   printf 'Installing PHP...\n\n'
-  hyprshell pm add php composer php-sqlite xdebug
+  hyprshell package-manager add php composer php-sqlite xdebug
   dev_env_php_configure_composer_path
   dev_env_php_enable_xdebug
   dev_env_php_enable_extensions
@@ -46,6 +46,6 @@ dev_env_install_laravel() {
 dev_env_install_symfony() {
   printf 'Installing PHP and Symfony...\n\n'
   dev_env_install_php_runtime
-  hyprshell pm add symfony-cli
+  hyprshell package-manager add symfony-cli
   printf '\nYou can now run: symfony new --webapp myproject\n'
 }

@@ -9,7 +9,7 @@ DisplayButton {
     text: "󰃠"
     symbol: StatusSymbols.brightness(Backlight.percent / 100)
     MacCard {
-        anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: root.popupName; settings: "Display"; settingsPopup: root.settingsPopupName
+        anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: root.popupName; settings: "Display"; settingsPopupName: root.settingsPopupName
         PopupSlider {
             width: parent.width; shell: root.shell; label: "Display"; visible: Backlight.device !== ""
             minimum: .05; value: Backlight.percent / 100

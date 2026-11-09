@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
+import qs.Commons as Commons
 
 PopupWindow {
     id: root
@@ -110,7 +111,7 @@ PopupWindow {
             if (root.shell.popupCard) event.accepted = root.shell.popupCard.handleKey(event)
         }
         color: root.shell.alpha(Style.popupTinted(root.shell.role("bg", "#0c1021")), Style.popupSurfaceOpacity)
-        border.color: root.shell.alpha(Style.popupBorder(root.shell.role("alt_br", root.shell.foreground)), .45)
+        border.color: Style.popupBorder(root.shell.role("alt_br", root.shell.foreground), .45)
         border.width: 1
         radius: root.shell.rounding
 
@@ -168,10 +169,11 @@ PopupWindow {
                 }
             }
             Text {
-                width: parent.width; text: "↑↓ Move  → Open  ← Back  Esc"
+                width: parent.width; textFormat: Text.StyledText
+                text: Commons.Util.keyHintMarkup("↑↓ Move  → Open  ← Back  Esc", root.shell.mutedText)
                 wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter
                 fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Style.caption - 2)
-                color: root.shell.alpha(root.shell.foreground, .55)
+                color: root.shell.accent
                 font.family: root.shell.fontFamily; font.pixelSize: Style.caption
             }
         }

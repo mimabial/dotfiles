@@ -53,7 +53,7 @@ entry {
 listbox {
     spacing:                     0em;
     padding:                     0em;
-    children:                    [ "dummy" , "listview" , "dummy" ];
+    children:                    [ "spacer" , "listview" , "spacer" ];
     background-color:            transparent;
     border-radius:               0em 1em 1em 0em;
 }
@@ -75,7 +75,7 @@ listview {
     background-color:            transparent;
     text-color:                  @foreground;
 }
-dummy {
+spacer {
     background-color:            transparent;
 }
 

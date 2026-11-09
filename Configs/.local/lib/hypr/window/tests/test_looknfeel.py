@@ -58,8 +58,8 @@ class ReaderTest(unittest.TestCase):
         )
         self.assertIn(["a", "windows", "true", "6", "wind", "slide", ""], records)
 
-    def test_runtime_config_is_recorded_like_hl_config(self):
-        records = read('local r = require("runtime") r.config("general.gaps_out", 7)')
+    def test_runtime_config_if_supported_is_recorded_like_hl_config(self):
+        records = read('local r = require("runtime") r.config_if_supported("general.gaps_out", 7)')
         self.assertIn(["k", "general:gaps_out", "number", "7"], records)
 
     def test_reads_theme_variables(self):
@@ -447,10 +447,10 @@ class RenderTest(unittest.TestCase):
 
     def test_parse_theme_config_reads_the_live_theme(self):
         parsed = lua.parse_theme_config(
-            'runtime.config("general.gaps_in", 4)\n'
-            'runtime.config("general.layout", "dwindle")\n'
-            'runtime.config("general.resize_on_border", true)\n'
-            'runtime.config("decoration.active_opacity", 0.95)\n'
+            'runtime.config_if_supported("general.gaps_in", 4)\n'
+            'runtime.config_if_supported("general.layout", "dwindle")\n'
+            'runtime.config_if_supported("general.resize_on_border", true)\n'
+            'runtime.config_if_supported("decoration.active_opacity", 0.95)\n'
         )
         self.assertEqual(parsed["general:gaps_in"], 4)
         self.assertEqual(parsed["general:layout"], "dwindle")

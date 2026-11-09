@@ -11,7 +11,7 @@ import ".."
 RowLayout {
     id: root
     required property var shell
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     readonly property var focused: ToplevelManager.activeToplevel ? Hyprland.activeToplevel : null
     readonly property string appId: focused ? appIdOf(focused) : ""
     readonly property bool dolphinFocused: appId === "org.kde.dolphin" || appId === "dolphin"
@@ -126,7 +126,7 @@ RowLayout {
         command: ["python3", root.shell.home + "/.local/lib/hypr/quickshell/recent-items.py", "folders"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.recentFolders = JSON.parse(text) }
     }
-    Binding { target: root.shell; property: "menuBarHeadings"; value: root.headings; when: root.popupsAllowed && root.shell.layoutName === "macos" }
+    Binding { target: root.shell; property: "menuBarHeadings"; value: root.headings; when: root.popupEnabled && root.shell.layoutName === "macos" }
     Repeater {
         model: root.headings
         BarButton {
@@ -139,7 +139,7 @@ RowLayout {
             onClicked: shell.togglePopup(menu.popupName)
             MenuBarPopup {
                 id: menu
-                anchorItem: title; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: "appmenu:" + title.modelData
+                anchorItem: title; shell: root.shell; popupEnabled: root.popupEnabled; popupName: "appmenu:" + title.modelData
                 items: open ? root.menuItems(title.modelData) : []
             }
             Connections {

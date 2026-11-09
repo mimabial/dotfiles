@@ -4,10 +4,10 @@ import ".."
 
 ScriptButton {
     id: root
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     readonly property string script: root.shell.home + "/.local/lib/hypr/system/printers.sh"
     css: "printers"
-    command: ["bash", root.script, "--bar"]; polling: false
+    command: ["bash", root.script, "--bar"]
     onClicked: root.shell.togglePopup("printers")
     Process {
         command: ["bash", root.script, "--watch"]
@@ -19,5 +19,5 @@ ScriptButton {
             if (popup.open) popup.refresh()
         } }
     }
-    PrintersPopup { id: popup; anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }
+    PrintersPopup { id: popup; anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }
 }

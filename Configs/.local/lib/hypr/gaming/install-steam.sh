@@ -13,10 +13,10 @@ echo "Installing Steam..."
 if ! grep -q "^\[multilib\]" /etc/pacman.conf; then
     echo "Enabling multilib repository..."
     sudo sed -i '/\[multilib\]/,/Include/s/^#//' /etc/pacman.conf
-    hyprshell pm fetch
+    hyprshell package-manager fetch
 fi
 
-hyprshell pm add steam ttf-liberation lib32-fontconfig
+hyprshell package-manager add steam ttf-liberation lib32-fontconfig
 
 echo ""
 echo "Steam installation complete!"

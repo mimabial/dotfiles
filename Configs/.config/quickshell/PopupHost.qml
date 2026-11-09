@@ -5,36 +5,40 @@ Item {
     id: root
     required property var shell
     required property Item anchorItem
-    required property bool popupsAllowed
+    required property bool popupEnabled
 
-    component Host: LazyPopup { shell: root.shell; popupsAllowed: root.popupsAllowed }
+    component Host: LazyPopup { shell: root.shell; popupEnabled: root.popupEnabled }
 
     Host {
-        popup: "desktop"; owners: ["barlayout", "windowlayout", "gnome-quick-settings"]
-        sourceComponent: Component { DesktopPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        popupName: "desktop"; owners: ["barlayout", "windowlayout", "gnome-quick-settings"]
+        sourceComponent: Component { DesktopPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     Host {
-        popup: "sudoku"; owners: ["sudoku"]
-        sourceComponent: Component { SudokuPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        popupName: "sudoku"; owners: ["sudoku"]
+        sourceComponent: Component { SudokuPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     Host {
-        popup: "cliphist"; owners: ["capture"]
-        sourceComponent: Component { CliphistPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        popupName: "cliphist"; owners: ["capture"]
+        sourceComponent: Component { CliphistPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     Host {
-        popup: "bitwarden"; owners: ["bitwarden"]
-        sourceComponent: Component { BitwardenPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        popupName: "bitwarden"; owners: ["bitwarden"]
+        sourceComponent: Component { BitwardenPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     Host {
-        popup: "spotlight"; owners: ["menu"]
-        sourceComponent: Component { StartPopup { popupName: "spotlight"; anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        popupName: "spotlight"; sharedWith: ["start"]; owners: ["menu"]
+        sourceComponent: Component { StartPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     Host {
-        popup: "windowinfo"; owners: []
-        sourceComponent: Component { WindowInfoPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        popupName: "windowinfo"; owners: []
+        sourceComponent: Component { WindowInfoPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     Host {
-        popup: "bookmarks"; owners: ["menu"]
-        sourceComponent: Component { Bookmarks { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        popupName: "updates"; owners: ["updates"]
+        sourceComponent: Component { UpdatesPopup { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupEnabled } }
+    }
+    Host {
+        popupName: "bookmarks"; owners: ["menu"]
+        sourceComponent: Component { Bookmarks { anchorItem: root.anchorItem; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
 }

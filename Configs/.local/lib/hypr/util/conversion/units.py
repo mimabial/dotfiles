@@ -1,43 +1,49 @@
 import math
+from typing import NamedTuple
 
-# name: (symbol, multiplier to the category's base unit)
+
+class Unit(NamedTuple):
+    symbol: str
+    to_base: float
+
+
 UNIT_CATEGORIES = {
     "Length": [
-        ("m", 1), ("km", 1000), ("cm", .01), ("mm", .001), ("mi", 1609.344),
-        ("ft", .3048), ("in", .0254), ("yd", .9144), ("nmi", 1852),
+        Unit("m", 1), Unit("km", 1000), Unit("cm", .01), Unit("mm", .001), Unit("mi", 1609.344),
+        Unit("ft", .3048), Unit("in", .0254), Unit("yd", .9144), Unit("nmi", 1852),
     ],
     "Mass": [
-        ("kg", 1), ("lb", .45359237), ("g", .001), ("oz", .028349523125),
-        ("mg", 1e-6), ("t", 1000), ("st", 6.35029318),
+        Unit("kg", 1), Unit("lb", .45359237), Unit("g", .001), Unit("oz", .028349523125),
+        Unit("mg", 1e-6), Unit("t", 1000), Unit("st", 6.35029318),
     ],
     "Area": [
-        ("m²", 1), ("ft²", .09290304), ("km²", 1e6), ("cm²", 1e-4),
-        ("acre", 4046.8564224), ("ha", 10000), ("yd²", .83612736),
-        ("in²", .00064516), ("mi²", 2589988.110336),
+        Unit("m²", 1), Unit("ft²", .09290304), Unit("km²", 1e6), Unit("cm²", 1e-4),
+        Unit("acre", 4046.8564224), Unit("ha", 10000), Unit("yd²", .83612736),
+        Unit("in²", .00064516), Unit("mi²", 2589988.110336),
     ],
     "Volume": [
-        ("l", 1), ("gal", 3.785411784), ("ml", .001), ("cup", .2365882365),
-        ("m³", 1000), ("cl", .01), ("floz", .0295735295625), ("pt", .473176473),
-        ("qt", .946352946), ("tbsp", .01478676478125), ("tsp", .00492892159375),
+        Unit("l", 1), Unit("gal", 3.785411784), Unit("ml", .001), Unit("cup", .2365882365),
+        Unit("m³", 1000), Unit("cl", .01), Unit("floz", .0295735295625), Unit("pt", .473176473),
+        Unit("qt", .946352946), Unit("tbsp", .01478676478125), Unit("tsp", .00492892159375),
     ],
-    "Speed": [("km/h", 1 / 3.6), ("mph", .44704), ("m/s", 1), ("kn", .514444444444), ("ft/s", .3048)],
+    "Speed": [Unit("km/h", 1 / 3.6), Unit("mph", .44704), Unit("m/s", 1), Unit("kn", .514444444444), Unit("ft/s", .3048)],
     "Time": [
-        ("min", 60), ("h", 3600), ("s", 1), ("day", 86400), ("week", 604800), ("ms", .001),
+        Unit("min", 60), Unit("h", 3600), Unit("s", 1), Unit("day", 86400), Unit("week", 604800), Unit("ms", .001),
     ],
     "Data": [
-        ("MB", 1e6), ("GB", 1e9), ("MiB", 1048576), ("GiB", 1073741824),
-        ("KB", 1000), ("KiB", 1024), ("byte", 1), ("bit", .125), ("TB", 1e12),
+        Unit("MB", 1e6), Unit("GB", 1e9), Unit("MiB", 1048576), Unit("GiB", 1073741824),
+        Unit("KB", 1000), Unit("KiB", 1024), Unit("byte", 1), Unit("bit", .125), Unit("TB", 1e12),
     ],
     "Energy": [
-        ("kWh", 3.6e6), ("kJ", 1000), ("J", 1), ("kcal", 4184),
-        ("cal", 4.184), ("Wh", 3600), ("BTU", 1055.05585262),
+        Unit("kWh", 3.6e6), Unit("kJ", 1000), Unit("J", 1), Unit("kcal", 4184),
+        Unit("cal", 4.184), Unit("Wh", 3600), Unit("BTU", 1055.05585262),
     ],
-    "Power": [("W", 1), ("kW", 1000), ("hp", 745.699871582)],
+    "Power": [Unit("W", 1), Unit("kW", 1000), Unit("hp", 745.699871582)],
     "Pressure": [
-        ("bar", 100000), ("psi", 6894.75729317), ("kPa", 1000), ("Pa", 1),
-        ("atm", 101325), ("mmHg", 133.322387415),
+        Unit("bar", 100000), Unit("psi", 6894.75729317), Unit("kPa", 1000), Unit("Pa", 1),
+        Unit("atm", 101325), Unit("mmHg", 133.322387415),
     ],
-    "Angle": [("deg", math.pi / 180), ("rad", 1)],
+    "Angle": [Unit("deg", math.pi / 180), Unit("rad", 1)],
 }
 
 

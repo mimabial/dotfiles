@@ -17,6 +17,6 @@ Item {
     anchors.rightMargin: Commons.Style.space(6)
     anchors.verticalCenter: parent.verticalCenter
     height: 1
-    color: Commons.Util.alpha(Commons.Color.menu.border, 0.45)
+    color: Commons.Util.scaleAlpha(Commons.Color.menu.border, 0.45)
   }
 }

@@ -28,23 +28,26 @@ internal_notify() {
   fi
 }
 
-internal_monitor_required() {
-  internal_monitor="$(monitor_internal_name)"
-  if [[ -z "${internal_monitor}" ]]; then
+require_internal_monitor_into() {
+  local -n internal_monitor_ref="$1"
+  internal_monitor_ref="$(monitor_internal_name)"
+  if [[ -z "${internal_monitor_ref}" ]]; then
     internal_notify "Monitor" "No internal laptop display found"
     return 1
   fi
 }
 
 internal_on() {
-  internal_monitor_required || return 1
+  local internal_monitor=""
+  require_internal_monitor_into internal_monitor || return 1
   monitor_remove_fragment "${toggle_name}"
   monitor_reload
   internal_notify "Laptop display enabled" "${internal_monitor}"
 }
 
 internal_off() {
-  internal_monitor_required || return 1
+  local internal_monitor=""
+  require_internal_monitor_into internal_monitor || return 1
 
   if ! monitor_has_active_external; then
     internal_notify "Can't disable laptop display" "No active external display is enabled"
@@ -61,7 +64,8 @@ internal_off() {
 }
 
 internal_status() {
-  internal_monitor_required || return 1
+  local internal_monitor=""
+  require_internal_monitor_into internal_monitor || return 1
   if monitor_fragment_exists "${toggle_name}"; then
     printf 'off\n'
   else

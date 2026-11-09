@@ -19,7 +19,7 @@ battery_percentage_into() {
   printf -v "$output_name" '%s' "$percentage"
 }
 
-battery_read_all() {
+battery_refresh_readings() {
   local battery_path percentage_value total_percent=0
   battery_percentages=() battery_statuses=()
   for battery_path in /sys/class/power_supply/BAT*; do
@@ -34,7 +34,7 @@ battery_read_all() {
 }
 
 battery_refresh_state() {
-  battery_read_all || return 1
+  battery_refresh_readings || return 1
   battery_status="${battery_statuses[-1]}"
   if ((battery_percent >= full_threshold_percent)) && [[ "$battery_status" != Discharging* ]]; then
     battery_status=Full

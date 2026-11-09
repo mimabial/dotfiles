@@ -145,12 +145,6 @@ wallpaper_hashmap_cached_into() {
   wallpaper_catalog_replace_if_changed "${tmp_cache}" "${cache_file}"
 }
 
-wallpaper_hashmap_cached() {
-  wallpaper_hash_by_path=()
-  wallpaper_paths=()
-  wallpaper_hashmap_cached_into wallpaper_hash_by_path wallpaper_paths "$@"
-}
-
 wallpaper_catalog_load_file() {
   local path="" hash=""
   path="$(wallpaper_resolve_path "$1")"
@@ -193,22 +187,17 @@ wallpaper_list_into() {
   [[ ${#list_ref[@]} -gt 0 ]]
 }
 
-wallpaper_list() {
-  wallpaper_hash_by_path=()
-  wallpaper_paths=()
-  wallpaper_list_into wallpaper_paths "$@"
-}
-
 wallpaper_ensure_catalog() {
   [[ ${#wallpaper_paths[@]} -gt 0 ]] && return 0
 
-  if ! wallpaper_theme_sources; then
+  if ! wallpaper_theme_sources_into wallpaper_source_paths; then
     print_log -err "wallpaper" "\"${HYPR_THEME_DIR}\" does not exist"
-    exit 1
+    return 1
   fi
 
-  if ! wallpaper_list "${wallpaper_source_paths[@]}"; then
+  wallpaper_hash_by_path=()
+  if ! wallpaper_list_into wallpaper_paths "${wallpaper_source_paths[@]}"; then
     print_log -err "wallpaper" "No compatible wallpapers found in theme paths"
-    exit 1
+    return 1
   fi
 }

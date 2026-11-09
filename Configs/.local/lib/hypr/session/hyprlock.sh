@@ -44,6 +44,8 @@ usage() {
   cat <<EOF
 Usage: hyprshell session/hyprlock --[arg]
 
+Prepare the lock screen background and answer its media queries and controls.
+
 arguments:
   --background -b    - Converts and ensures background to be a png
   --mpris            - Returns MPRIS song title, or fails if nothing is playing

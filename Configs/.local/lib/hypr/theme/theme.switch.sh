@@ -99,26 +99,28 @@ sanitize_hypr_theme() {
   rm -f -- "${buffer_file}"
 }
 
-select_adjacent_theme() {
-  local direction="$1"
+select_adjacent_theme_into() {
+  local -n adjacent_theme_ref="$1"
+  local direction="$2"
 
   if [[ ! "${direction}" =~ ^[np]$ ]]; then
-    print_log -sec "theme" -err "select_adjacent_theme" "invalid direction '${direction}' (expected 'n' or 'p')"
+    print_log -sec "theme" -err "select_adjacent_theme_into" "invalid direction '${direction}' (expected 'n' or 'p')"
     return 1
   fi
 
-  local index=""
+  local index="" selected_theme_index=""
   if index="$(catalog_index_of theme_names "${HYPR_THEME}")"; then
     selected_theme_index="$(catalog_adjacent_index "${index}" "${direction}" "${#theme_names[@]}")" || return 1
   else
-    print_log -sec "theme" -warn "select_adjacent_theme" "current theme '${HYPR_THEME}' not found in theme list"
+    print_log -sec "theme" -warn "select_adjacent_theme_into" "current theme '${HYPR_THEME}' not found in theme list"
     selected_theme_index=0
   fi
-  selected_theme="${theme_names[selected_theme_index]}"
+  adjacent_theme_ref="${theme_names[selected_theme_index]}"
 }
 
-select_rotation_theme() {
-  local order="$1" index="" name="" step=0
+select_rotation_theme_into() {
+  local -n rotation_theme_ref="$1"
+  local order="$2" index="" name="" step=0
   local count="${#theme_names[@]}"
   local -a candidates=()
   local -A polarity=()
@@ -134,9 +136,7 @@ select_rotation_theme() {
     print_log -sec "theme.switch" -stat "skip" "No other ${polarity[${HYPR_THEME}]} theme to rotate to"
     exit 0
   fi
-  [[ "${order}" == next ]] && selected_theme="${candidates[0]}" || selected_theme="${candidates[RANDOM % ${#candidates[@]}]}"
-  theme_switch_selection_requested=1
-  theme_switch_rotate=1
+  [[ "${order}" == next ]] && rotation_theme_ref="${candidates[0]}" || rotation_theme_ref="${candidates[RANDOM % ${#candidates[@]}]}"
 }
 
 theme_notify_finish() {
@@ -230,8 +230,8 @@ EOF
 parse_theme_switch_args() {
   while (($#)); do
     case "$1" in
-      -n | --next) theme_switch_selection_requested=1; select_adjacent_theme n ;;
-      -p | --previous | --prev) theme_switch_selection_requested=1; select_adjacent_theme p ;;
+      -n | --next) theme_switch_selection_requested=1; select_adjacent_theme_into selected_theme n ;;
+      -p | --previous | --prev) theme_switch_selection_requested=1; select_adjacent_theme_into selected_theme p ;;
       -s | --set)
         shift
         [[ -n "${1:-}" ]] || { theme_switch_usage >&2; exit 1; }
@@ -239,7 +239,7 @@ parse_theme_switch_args() {
         selected_theme="$1"
         ;;
       -s?*) theme_switch_selection_requested=1; selected_theme="${1#-s}" ;;
-      -r | --rotate) shift; select_rotation_theme "${1:-}" ;;
+      -r | --rotate) shift; select_rotation_theme_into selected_theme "${1:-}"; theme_switch_selection_requested=1; theme_switch_rotate=1 ;;
       -q | --quiet) quiet=true ;;
       --regen | --force-regenerate) theme_switch_cache_args+=(--force-regenerate) ;;
       --no-cache) theme_switch_cache_args+=(--no-cache) ;;
@@ -291,16 +291,17 @@ update_nvim_mapping() {
 }
 
 resolve_theme_selection() {
+  local -n theme_selection_ref="$1"
   local theme_name=""
 
   for theme_name in "${theme_names[@]}"; do
-    [[ "${theme_name}" == "${selected_theme}" ]] && return 0
+    [[ "${theme_name}" == "${theme_selection_ref}" ]] && return 0
   done
   if ((theme_switch_selection_requested)); then
-    print_log -sec "theme" -err "select" "Unknown theme: ${selected_theme}"
+    print_log -sec "theme" -err "select" "Unknown theme: ${theme_selection_ref}"
     exit 1
   fi
-  selected_theme="${HYPR_THEME}"
+  theme_selection_ref="${HYPR_THEME}"
 }
 
 set_active_theme() {
@@ -347,7 +348,7 @@ main() {
     print_log -sec "theme.switch" -stat "skip" "Auto mode is no longer active"
     return 0
   fi
-  resolve_theme_selection
+  resolve_theme_selection selected_theme
   theme_switch_reconcile_color_mode
   set_active_theme
   update_nvim_mapping || exit 1

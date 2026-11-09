@@ -153,9 +153,11 @@ def normalize_daily_forecast(daily, hours_by_date):
 
 def normalize_open_meteo_forecast(payload, city, country):
     """Rewrite an Open-Meteo response into the j1 layout the getters expect."""
+    from .astronomy import annotate_astronomy
+
     hourly = payload.get("hourly", {})
     current_condition = normalize_current_condition(payload["current"], hourly)
-    return {
+    return annotate_astronomy({
         "current_condition": [current_condition],
         "weather": normalize_daily_forecast(payload["daily"], normalize_hours_by_date(hourly)),
         "nearest_area": [
@@ -164,7 +166,7 @@ def normalize_open_meteo_forecast(payload, city, country):
                 "country": [{"value": country}],
             }
         ],
-    }
+    }, payload["latitude"], payload["longitude"], payload["timezone"])
 
 
 def fetch_open_meteo_forecast(location, city, country):

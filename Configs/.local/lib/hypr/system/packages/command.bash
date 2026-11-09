@@ -1,10 +1,10 @@
-package_error() {
+package_die() {
   printf '%s: %s\n' "${0##*/}" "$1" >&2
   exit 1
 }
 
 package_require_arguments() {
-  (($# > 0)) || package_error "missing argument"
+  (($# > 0)) || package_die "missing argument"
 }
 
 package_command_exists() {
@@ -15,7 +15,7 @@ package_parse_arguments() {
   while (($# > 0)); do
     case "$1" in
       --pm)
-        (($# >= 2)) || package_error "missing value for --pm"
+        (($# >= 2)) || package_die "missing value for --pm"
         requested_package_manager="$2"
         shift 2
         ;;
@@ -32,7 +32,7 @@ package_parse_arguments() {
         break
         ;;
       -*)
-        package_error "unknown flag: $1"
+        package_die "unknown flag: $1"
         ;;
       *)
         break
@@ -81,9 +81,9 @@ package_dispatch() {
     clean-cache) package_clean_cache ;;
     remove-orphans) package_remove_orphans ;;
     which) package_selected_manager ;;
-    which-aur) package_aur_helper || package_error "no AUR helper found; install yay or paru" ;;
+    which-aur) package_aur_helper || package_die "no AUR helper found; install yay or paru" ;;
     help | h | -h | --help) usage ;;
-    *) package_error "unknown command: ${package_command}" ;;
+    *) package_die "unknown command: ${package_command}" ;;
   esac
 }
 

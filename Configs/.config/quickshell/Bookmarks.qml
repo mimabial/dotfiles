@@ -40,7 +40,7 @@ Item {
   property string importPickerPath: ""
 
   readonly property string helperPath:
-    Quickshell.env("HOME") + "/.local/lib/hypr/bookmarks/bookmark_helper.py"
+    Quickshell.env("HOME") + "/.local/lib/hypr/bookmarks/commands.py"
 
   readonly property string settingsPath:
     store.dataDir + "/settings.json"
@@ -1119,26 +1119,23 @@ Item {
 
         PopupHint {
           id: errorHint
+          readonly property string status: store.error || (store.saving ? "Saving…" : root.statusMessage)
+          readonly property color quietText: Commons.Util.scaleAlpha(Commons.Color.menu.text, 0.48)
           shell: Commons.Style.shell; error: store.error !== ""
           width: parent.width
           height: errorHint.error ? Math.max(Commons.Style.space(48), errorHint.implicitHeight) : Commons.Style.space(48)
 
           text:
-            store.error
-              ? store.error
-              : store.saving
-                ? "Saving…"
-                : root.statusMessage
-                  ? root.statusMessage
-                  : root.viewMode === "tags"
-                    ? "Enter Set  Ctrl+Enter Append  ↑↓ Select\nTab Keywords  Shift+Tab Bookmarks"
-                    : root.viewMode === "keywords"
-                      ? "Enter Set  Ctrl+Enter Append  ↑↓ Select\nTab Bookmarks  Shift+Tab Tags"
-                      : "Enter Open  Ctrl+C Copy  Ctrl+T Window  Ctrl+Tab Browser\nTab Tags  Ctrl+V Paste  Ctrl+I Import  Ctrl+N Add  Ctrl+E Edit  Ctrl+, Web"
-          textFormat: Text.PlainText
+            errorHint.status
+              || Commons.Util.keyHintMarkup(root.viewMode === "tags"
+                ? "Enter Set  Ctrl+Enter Append  ↑↓ Select\nTab Keywords  Shift+Tab Bookmarks"
+                : root.viewMode === "keywords"
+                  ? "Enter Set  Ctrl+Enter Append  ↑↓ Select\nTab Bookmarks  Shift+Tab Tags"
+                  : "Enter Open  Ctrl+C Copy  Ctrl+T Window  Ctrl+Tab Browser\nTab Tags  Ctrl+V Paste  Ctrl+I Import  Ctrl+N Add  Ctrl+E Edit  Ctrl+, Web",
+                errorHint.quietText)
+          textFormat: errorHint.status ? Text.PlainText : Text.StyledText
 
-          color: errorHint.error ? errorHint.shell.foreground : Commons.Color.menu.text
-          opacity: store.error ? 1 : 0.48
+          color: errorHint.error ? errorHint.shell.foreground : errorHint.status ? errorHint.quietText : Commons.Color.accent
 
           font.family: Commons.Style.font.menuFamily
           font.pixelSize: errorHint.error ? Commons.Style.font.bodySmall : Commons.Style.font.caption
@@ -1242,7 +1239,7 @@ Item {
 
         background: Commons.Color.menu.background
         foreground: Commons.Color.menu.text
-        scrim: Commons.Util.alpha(Commons.Color.menu.background, 0.76)
+        scrim: Commons.Util.scaleAlpha(Commons.Color.menu.background, 0.76)
         selectedBackground: Commons.Color.menu.selectedBackground
         selectedText: Commons.Color.menu.selectedText
         fontFamily: Commons.Style.font.menuFamily
@@ -1261,7 +1258,7 @@ Item {
         busy: bookmarkBackend.networkSettingProcess.running
         background: Commons.Color.menu.background
         foreground: Commons.Color.menu.text
-        scrim: Commons.Util.alpha(Commons.Color.menu.background, 0.76)
+        scrim: Commons.Util.scaleAlpha(Commons.Color.menu.background, 0.76)
         selectedBackground: Commons.Color.menu.selectedBackground
         selectedText: Commons.Color.menu.selectedText
         fontFamily: Commons.Style.font.menuFamily

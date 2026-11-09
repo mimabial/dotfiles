@@ -1,6 +1,6 @@
 local windowSpeed, springSpeed, mass = 1.5, 1, 1
 
-require("runtime").config("animations.enabled", true)
+require("runtime").config_if_supported("animations.enabled", true)
 for name, stiffness in pairs({niriMove = 800, niriWorkspace = 1000}) do
     hl.curve(name, {type = "spring", mass = mass, stiffness = stiffness, dampening = 2 * math.sqrt(mass * stiffness)})
 end

@@ -2,7 +2,9 @@
 set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
-hypr_help_guard "Usage: hyprshell window/snap [window-address]" "$@"
+hypr_help_guard "Usage: hyprshell window/snap [window-address]
+
+Pick a placement for a window from a rofi menu and move it there." "$@"
 snap_address="${1:-$(hyprctl -j activewindow | jq -r '.address // empty')}"
 [[ "${snap_address}" =~ ^0x[[:xdigit:]]+$ ]] || exit 0
 hypr_runtime_load_shell_environment || exit 1

@@ -21,9 +21,11 @@ case "${1:-}" in
   -v | --verbose)
     verbose_enabled=true
     ;;
-  -*)
+  -h | --help | -*)
     cat <<HELP
 Usage: $0 [options]
+
+Watch the battery and send the notifications its settings call for.
 
 [-i|--info]                    Display configuration information
 [-v|--verbose]                 Debugging mode

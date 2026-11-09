@@ -76,7 +76,7 @@ Item {
           ? Commons.Style.selectedFillFor(root.foreground, Commons.Color.accent)
           : (slot.hot ? Commons.Style.hoverFillFor(root.foreground, Commons.Color.accent) : "transparent")
         border.width: slot.active ? 1 : 0
-        border.color: Commons.Util.alpha(root.foreground, 0.12)
+        border.color: Commons.Util.scaleAlpha(root.foreground, 0.12)
 
         Behavior on color { ColorAnimation { duration: 90 } }
       }

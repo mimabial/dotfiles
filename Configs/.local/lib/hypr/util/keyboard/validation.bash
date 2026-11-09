@@ -31,25 +31,25 @@ keyboard_layout_has_latin_letters() {
 
 keyboard_validate_candidate() {
   local layout_settings="$1" catalog="" option="" shortcut="" first_layout="" first_variant=""
-  keyboard_validate_settings_shape "${layout_settings}" || keyboard_error 'Invalid keyboard-layout state; nothing was changed.'
+  keyboard_validate_settings_shape "${layout_settings}" || keyboard_die 'Invalid keyboard-layout state; nothing was changed.'
   shortcut=$(jq -r '.switchOption' <<<"${layout_settings}")
   if [[ -n "${shortcut}" ]] \
     && { [[ "${shortcut}" =~ _switch(_|$) ]] \
       || [[ "${shortcut}" != grp:toggle && ! "${shortcut}" =~ _toggle(_|$) && ! "${shortcut}" =~ _select$ ]]; }; then
-    keyboard_error 'Choose a supported XKB layout-switching shortcut; nothing was changed.'
+    keyboard_die 'Choose a supported XKB layout-switching shortcut; nothing was changed.'
   fi
 
   catalog=$(xkbcli list --load-exotic 2>/dev/null) \
-    || keyboard_error 'The installed XKB catalog could not be read; nothing was changed.'
+    || keyboard_die 'The installed XKB catalog could not be read; nothing was changed.'
   while IFS= read -r option; do
     [[ -z "${option}" ]] && continue
     grep -Fqx "  - name: '${option}'" <<<"${catalog}" \
-      || keyboard_error "XKB does not provide option '${option}'; nothing was changed."
+      || keyboard_die "XKB does not provide option '${option}'; nothing was changed."
   done < <(jq -r '.nonGroupOptions[], .switchOption' <<<"${layout_settings}")
-  keyboard_compile_layout "${layout_settings}" || keyboard_error 'XKB rejected that layout, variant, or shortcut; nothing was changed.'
+  keyboard_compile_layout "${layout_settings}" || keyboard_die 'XKB rejected that layout, variant, or shortcut; nothing was changed.'
 
   first_layout=$(jq -r '.layouts[0].layout' <<<"${layout_settings}")
   first_variant=$(jq -r '.layouts[0].variant' <<<"${layout_settings}")
   keyboard_layout_has_latin_letters "${first_layout}" "${first_variant}" \
-    || keyboard_error 'Keep a Latin layout first so letter keybindings remain usable.'
+    || keyboard_die 'Keep a Latin layout first so letter keybindings remain usable.'
 }

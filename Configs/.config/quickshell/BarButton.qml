@@ -32,7 +32,7 @@ Item {
     readonly property bool symbolic: resolvedSymbol !== ""
     readonly property SymbolicIcon symbolIcon: symbolLoader.item as SymbolicIcon
     readonly property SymbolicIcon leadingSymbolIcon: leadingSymbolLoader.item as SymbolicIcon
-    readonly property bool inlineSymbolic: symbol === "" && styledSymbol !== "" && !usesIconFont
+    readonly property bool inlineSymbolic: symbol === "" && styledSymbol !== "" && firstGlyph !== "" && !usesIconFont
     readonly property string renderedText: inlineSymbolic ? text.replace(firstGlyph, "").replace(/^ /, "") : text
     readonly property string renderedLeadingIcon: inlineSymbolic ? firstGlyph : leadingIcon
     readonly property string leadingSymbol: inlineSymbolic ? styledSymbol : typeof box.leadingSymbol === "string" ? box.leadingSymbol : box.leadingSymbol?.[leadingIcon] ?? ""

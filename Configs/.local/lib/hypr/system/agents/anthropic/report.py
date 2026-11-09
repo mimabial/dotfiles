@@ -9,6 +9,7 @@ from agents.anthropic.limits import collect_limits
 from agents.anthropic.limits import oauth_login
 from agents.anthropic.opencode_sessions import scan_opencode_usage
 from agents.anthropic.pi_sessions import scan_pi_usage
+from agents.usage_records import UsageRecord
 from agents.usage_records import merge_stats
 from agents.usage_records import rounded_token_count
 import argparse
@@ -47,8 +48,7 @@ def main() -> int:
   login = oauth_login(claude_dir)
   limits = collect_limits(login.access_token, login.expires_at_ms)
 
-  record = {
-    "schemaVersion": 1,
+  record: UsageRecord = {
     "id": AGENT_ID,
     "name": AGENT_NAME,
     "updatedAt": dt.datetime.now(dt.timezone.utc).isoformat(),

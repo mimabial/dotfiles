@@ -23,9 +23,9 @@ BorderSurface {
     implicitHeight: size
     activeFocusOnTab: focusable
     radius: Commons.Style.cornerRadius
-    color: hot ? Commons.Util.alpha(hoverColor, 0.14) : "transparent"
+    color: hot ? Commons.Util.scaleAlpha(hoverColor, 0.14) : "transparent"
     borderSpec: bordered && hot
-        ? Commons.Border.flat(Commons.Util.alpha(hoverColor, 0.55), 1)
+        ? Commons.Border.flat(Commons.Util.scaleAlpha(hoverColor, 0.55), 1)
         : Commons.Border.none()
     readonly property bool hot: enabled && (mouse.containsMouse || hasCursor || cursored || activeFocus)
     function activateKeyboard() { clicked() }
@@ -38,7 +38,7 @@ BorderSurface {
         anchors.centerIn: parent
         text: root.iconText
         color: root.enabled ? (root.hot ? root.hoverColor : root.foreground)
-                            : Commons.Util.alpha(root.foreground, 0.35)
+                            : Commons.Util.scaleAlpha(root.foreground, 0.35)
         font.family: root.fontFamily
         font.pixelSize: root.fontSize * Commons.Style.iconScale(root.iconText)
     }

@@ -4,7 +4,7 @@ import ".."
 
 BarButton {
     id: root
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     property string lastColor: ""
     function loadColor(raw) {
         const color = String(raw).trim().split("\n")[0] || ""
@@ -21,5 +21,5 @@ BarButton {
     onClicked: root.shell.togglePopup("colorpicker")
     onWheeled: delta => root.shell.run(["hyprshell", "rofi/color-picker", delta > 0 ? "-u" : "-d"])
 
-    ColorPickerPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }
+    ColorPickerPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }
 }

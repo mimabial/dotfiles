@@ -15,7 +15,7 @@ command_needs_hold_prompt() {
   fi
 
   case "${command_name}" in
-    nvim | vim | htop | btop | bottom | nano | less | more | bat | about.sh | agent-tui | calc-tui.py | rmpc | nvtop | dua | wiremix | bluetui | oryx | claude | codex | opencode)
+    nvim | vim | htop | btop | bottom | nano | less | more | bat | about.sh | package-updates.sh | agent-tui | calc-tui.py | rmpc | nvtop | dua | wiremix | bluetui | oryx | claude | codex | opencode)
       return 1
       ;;
     *)

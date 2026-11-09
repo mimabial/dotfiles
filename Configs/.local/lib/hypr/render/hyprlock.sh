@@ -7,7 +7,7 @@ LOCK_SCREEN_RADIUS_SCALE=2
 
 font_name="$("${BASH_SOURCE[0]%/*}/../fonts/font-get.sh" bar 2>/dev/null || true)"
 # Doubled: lock screen panels dwarf a window, so the theme's radius reads as square.
-corner_radius="$(sed -nE 's/.*runtime\.config\("decoration\.rounding", *([0-9]+)\).*/\1/p' \
+corner_radius="$(sed -nE 's/.*runtime\.config_if_supported\("decoration\.rounding", *([0-9]+)\).*/\1/p' \
   "${RENDER_CONFIG_DIR}/themes/theme.lua" 2>/dev/null | head -n1 || true)"
 corner_radius="$((${corner_radius:-0} * LOCK_SCREEN_RADIUS_SCALE))"
 layout_dirs=("${RENDER_CONFIG_DIR}/hyprlock"

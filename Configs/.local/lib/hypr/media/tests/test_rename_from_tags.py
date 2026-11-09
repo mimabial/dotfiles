@@ -10,7 +10,8 @@ sys.path.insert(0, str(MEDIA_DIR))
 
 import rename_from_tags
 from audio_tags import SUPPORTED
-from rename_from_tags import credit_loss_for_rename, default_pattern_for, filename_fields_from_tags
+from autotag_identity import filename_credit_loss
+from rename_from_tags import default_pattern_for, filename_fields_from_tags
 
 
 class RenameCreditSafetyTests(unittest.TestCase):
@@ -18,20 +19,14 @@ class RenameCreditSafetyTests(unittest.TestCase):
 
     def test_detects_credits_removed_from_complete_target(self):
         self.assertEqual(
-            credit_loss_for_rename(
-                self.path,
-                {"artist": "Didi B", "title": "Je m'appelle"},
-            ),
+            filename_credit_loss(self.path, "Didi B", "Je m'appelle"),
             ["Zlatan", "Chley"],
         )
 
     def test_guest_moved_into_title_is_not_lost(self):
         path = Path("/music/Main, Guest - Song.opus")
         self.assertEqual(
-            credit_loss_for_rename(
-                path,
-                {"artist": "Main", "title": "Song (feat. Guest)"},
-            ),
+            filename_credit_loss(path, "Main", "Song (feat. Guest)"),
             [],
         )
 

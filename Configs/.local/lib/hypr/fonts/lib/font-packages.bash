@@ -43,7 +43,7 @@ change_nerd_font_packages() {
 
   package_label="$(font_packages_label "${packages[@]}")"
 
-  if hyprshell pm "${pm_args[@]}" "${packages[@]}"; then
+  if hyprshell package-manager "${pm_args[@]}" "${packages[@]}"; then
     echo
     echo "Refreshing font cache..."
     refresh_font_cache

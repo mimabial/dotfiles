@@ -14,7 +14,7 @@ BluetoothButton {
         return kind.includes("audio") ? "󰋋" : kind.includes("mouse") ? "󰍽" : kind.includes("keyboard") ? "󰌌" : kind.includes("phone") ? "󰏲" : "󰂯"
     }
     MacCard {
-        anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: root.popupName; settings: "Bluetooth"; settingsPopup: root.settingsPopupName
+        anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: root.popupName; settings: "Bluetooth"; settingsPopupName: root.settingsPopupName
         PopupToggleRow { width: parent.width; shell: root.shell; title: "Bluetooth"; checked: root.power !== "off"; onToggled: root.shell.run(["hyprshell", "bluetooth/power", "toggle"]) }
         Repeater {
             model: root.power === "off" ? [] : root.paired

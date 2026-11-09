@@ -16,7 +16,7 @@ WifiButton {
     qrPopupName: popupName + "-qr"
     symbol: StatusSymbols.wifi(Networking.wifiEnabled, connectedNetwork)
     MacCard {
-        anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: root.popupName; settings: "Wi-Fi"; settingsPopup: root.settingsPopupName
+        anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: root.popupName; settings: "Wi-Fi"; settingsPopupName: root.settingsPopupName
         PopupToggleRow { width: parent.width; shell: root.shell; title: "Wi-Fi"; checked: Networking.wifiEnabled; onToggled: Networking.wifiEnabled = !Networking.wifiEnabled }
         Repeater {
             model: Networking.wifiEnabled ? root.networks : []

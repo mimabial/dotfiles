@@ -5,8 +5,7 @@ BarButton {
     id: root
     property var command: []
     property var processEnvironment: ({})
-    property int interval: 60000
-    property bool polling: true
+    property int interval: 0
     property bool streaming: false
     property var icons: ({})
     property string fallback: ""
@@ -66,7 +65,7 @@ BarButton {
     }
     Timer {
         id: providerPollTimer
-        interval: root.interval; running: root.polling && !root.streaming; repeat: true; triggeredOnStart: true
+        interval: root.interval; running: root.interval > 0 && !root.streaming; repeat: true; triggeredOnStart: true
         onTriggered: root.startProvider()
     }
     Component.onCompleted: if (streaming) refresh()

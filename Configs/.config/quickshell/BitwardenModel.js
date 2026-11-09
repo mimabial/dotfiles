@@ -1,5 +1,6 @@
 .pragma library
 .import "CalendarMath.js" as CalendarMath
+.import "Units.js" as Units
 
 var TYPES = {
     1: { label: "Login", icon: "\u{f0306}", part: "login" },
@@ -96,7 +97,7 @@ function send(name, text, days, maxViews, password) {
     return {
         object: "send", type: 0, name: name || "Untitled Send", notes: null, file: null,
         text: { text: text, hidden: false }, maxAccessCount: maxViews > 0 ? maxViews : null,
-        deletionDate: new Date(Date.now() + Math.max(1, days) * CalendarMath.MS_PER_DAY).toISOString(), expirationDate: null,
+        deletionDate: new Date(Date.now() + Math.max(1, days) * Units.MS_PER_DAY).toISOString(), expirationDate: null,
         password: password || null, emails: null, disabled: false, hideEmail: false
     }
 }

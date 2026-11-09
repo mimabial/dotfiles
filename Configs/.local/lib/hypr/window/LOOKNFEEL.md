@@ -93,7 +93,6 @@ before a window takes focus.
   settings/paths.py            library, config and state paths
   settings/main.py             Settings application
   settings/visual_app.py       standalone visual application
-  lib/looknfeel_tui.py          compatibility symlink to visual_app.py
   lib/visual-presets.bash       preset discovery, state writing and application
   lib/shader-compiler.bash      shader compilation and activation
   looknfeel-read.lua        recording-stub reader
@@ -191,11 +190,12 @@ Three jobs `getoption` cannot do:
    keywords, not options; `getoption` cannot enumerate them.
 
 Config files here are not free-standing — they `require("runtime")` and
-`require("vars")` and call `runtime.config(path, value)`. Rather than setting
-`LUA_PATH` and executing the real modules, the reader shims `require` to return
-stub tables. `runtime.load` recursion is what makes the baseline work: reading
-`$XDG_STATE_HOME/hypr/animations.lua` follows the chain into the active preset
-and reports the effective set. The baseline is re-read whenever the animation
+`require("vars")` and call `runtime.config_if_supported(path, value)`. Rather
+than setting `LUA_PATH` and executing the real modules, the reader shims
+`require` to return stub tables. `runtime.load` recursion is what makes the
+baseline work: reading `$XDG_STATE_HOME/hypr/animations.lua` (the `default`
+preset when none is selected) follows the chain into the active preset and
+reports the effective set. The baseline is re-read whenever the animation
 preset row changes, since the shipped speeds the multiplier scales change with it.
 
 Output stays one tab-separated record per line, as upstream: `k` for a config

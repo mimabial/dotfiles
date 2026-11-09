@@ -114,7 +114,7 @@ list_launcher_styles() {
   done | sort -V
 }
 
-launcher_style_select() {
+launcher_style_select_and_save() {
   local font_scale=""
   local font_name=""
   local font_override=""
@@ -173,7 +173,7 @@ configure_mode() {
       ;;
     s | -s | --select-style)
       rofi_ensure_closed || exit 1
-      launcher_style_select
+      launcher_style_select_and_save
       exit 0
       ;;
     h | --help)
@@ -183,9 +183,10 @@ configure_mode() {
   esac
 }
 
-build_runtime_overrides() {
-  local font_scale="$1"
-  local font_name="$2"
+append_runtime_overrides_into() {
+  local -n launch_args_ref="$1"
+  local font_scale="$2"
+  local font_name="$3"
   local font_override=""
   local icon_override=""
   local window_override=""
@@ -195,14 +196,14 @@ build_runtime_overrides() {
   font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
   icon_override="$(rofi_icon_theme_override)"
 
-  rofi_args+=(-theme-str "${font_override}" -theme-str "${icon_override}" -theme-str "${window_override}")
+  launch_args_ref+=(-theme-str "${font_override}" -theme-str "${icon_override}" -theme-str "${window_override}")
 
   if ! rofi_theme_is_fullscreen "${rofi_config}"; then
     width_override="$(rofi_wallpaper_width_override "${rofi_config}" "${font_name}" "${font_scale}")"
-    rofi_args+=(-theme-str "${width_override:-$(rofi_window_position_theme)}")
+    launch_args_ref+=(-theme-str "${width_override:-$(rofi_window_position_theme)}")
   fi
 
-  rofi_args+=(-theme "${rofi_config}")
+  launch_args_ref+=(-theme "${rofi_config}")
 }
 
 launch_rofi() {
@@ -212,7 +213,7 @@ launch_rofi() {
   rofi_hypr_snapshot
   font_scale="$(rofi_effective_font_scale "${ROFI_LAUNCH_SCALE}")"
   font_name="$(rofi_effective_font_name "${ROFI_LAUNCH_FONT:-$ROFI_FONT}")"
-  build_runtime_overrides "${font_scale}" "${font_name}"
+  append_runtime_overrides_into rofi_args "${font_scale}" "${font_name}"
   rofi_with_background_theme -show "${rofi_mode}" "${rofi_args[@]}" &
   disown
 }

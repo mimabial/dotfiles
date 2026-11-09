@@ -5,7 +5,7 @@ source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 declare -F hypr_svc_user >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/services.bash" || exit 1
 
 usage() {
-  printf 'Usage: hyprshell install/sshd.sh [--key PUBLIC_KEY | --gh-keys USERNAME]\n'
+  printf 'Usage: hyprshell install/sshd.sh [--key PUBLIC_KEY | --gh-keys USERNAME]\n\nInstall and enable the SSH server, authorizing a public key or the keys of a GitHub user.\n'
 }
 
 is_valid_ssh_public_key() {
@@ -61,7 +61,7 @@ if [[ -z "${key}${github_user}" ]]; then
 fi
 
 printf 'Installing and starting OpenSSH server...\n'
-hyprshell pm add openssh
+hyprshell package-manager add openssh
 sudo sshd -t
 case "$(hypr_detect_init_system)" in
   systemd) sudo systemctl enable --now sshd.service ;;

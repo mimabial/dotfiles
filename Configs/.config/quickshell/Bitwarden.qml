@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pam
 import "BitwardenModel.js" as Model
+import "Units.js" as Units
 
 // The vault, once per shell; every bar's popup is a view of it. Secrets reach
 // bw through the environment or stdin, never argv. Both runtime files live in
@@ -48,7 +49,7 @@ Item {
     function failed(code, err) {
         if (!code) return false
         error = Model.lastLine(err) || "bw exited with " + code
-        if (/locked|not logged in/i.test(error)) probe()
+        if (/locked|not logged in/i.test(error)) syncToVaultStatus()
         return true
     }
     Component { id: jobComponent; Process { stdout: StdioCollector {} stderr: StdioCollector {} } }
@@ -73,7 +74,7 @@ Item {
         touch()
         if (status === "unlocked") { if (!items.length) load() }
         else if (status === "locked") scan()
-        else probe()
+        else syncToVaultStatus()
     }
     readonly property int exitNotArmed: 3
     readonly property int exitArmFailed: 4
@@ -81,7 +82,7 @@ Item {
     readonly property int exitCommandMissing: 127
     readonly property int maxPinFailures: 3
     function release() { if (pam.active) pam.abort(); notice = ""; touch() }
-    function probe() {
+    function syncToVaultStatus() {
         runBitwardenCommand(["status"], (code, out) => {
             if (code === exitCommandMissing) { status = "missing"; return }
             const state = JSON.parse(out)
@@ -116,7 +117,7 @@ Item {
         terminal("Bitwarden " + verb, '[ -z "$2" ] || bw config server "$2" || exit; umask 077; bw "$1" --raw > "$3"',
             [verb, server, sessionFile.path])
     }
-    function install() { terminal("Install Bitwarden CLI", "hyprshell pm add bitwarden-cli") }
+    function install() { terminal("Install Bitwarden CLI", "hyprshell package-manager add bitwarden-cli") }
 
     function unlock(env, fromArmedSecret, armAs) {
         error = ""
@@ -231,9 +232,9 @@ Item {
         }
         onError: error => root.error = PamError.toString(error)
     }
-    Timer { id: idleLock; interval: Math.max(1, root.settings.autoLockMinutes) * 60000; onTriggered: root.lock() }
-    Timer { id: clipboardClear; interval: root.settings.clearClipboardSeconds * 1000; onTriggered: root.clearClipboard() }
-    Timer { id: totpFollowUp; property var item; interval: root.settings.autoCopyTotpSeconds * 1000; onTriggered: root.copyTotp(item) }
+    Timer { id: idleLock; interval: Math.max(1, root.settings.autoLockMinutes) * Units.MS_PER_MINUTE; onTriggered: root.lock() }
+    Timer { id: clipboardClear; interval: root.settings.clearClipboardSeconds * Units.MS_PER_SECOND; onTriggered: root.clearClipboard() }
+    Timer { id: totpFollowUp; property var item; interval: root.settings.autoCopyTotpSeconds * Units.MS_PER_SECOND; onTriggered: root.copyTotp(item) }
 
     IpcHandler {
         target: "bitwarden"

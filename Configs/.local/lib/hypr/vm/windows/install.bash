@@ -7,7 +7,7 @@ windows_choose_gigabyte_size() {
   echo "$options" | tr ' ' '\n' | fzf --prompt="$prompt" --header="$header" --reverse --select-1 --query="$query"
 }
 
-windows_cancel_installation() {
+windows_installation_cancelled_die() {
   echo "Installation cancelled by user"
   exit 1
 }
@@ -17,7 +17,7 @@ windows_choose_ram() {
   local choices=""
   choices=$(windows_gigabyte_size_choices "${host_resources[memory_gb]}" "${WINDOWS_RAM_SIZES_GB[@]}")
   installation_settings[ram_size]=$(windows_choose_gigabyte_size "$choices" "Select RAM > " "How much RAM for Windows VM?" "${WINDOWS_DEFAULT_RAM_GB}G")
-  [[ -n "${installation_settings[ram_size]}" ]] || windows_cancel_installation
+  [[ -n "${installation_settings[ram_size]}" ]] || windows_installation_cancelled_die
 }
 
 windows_choose_cpu_cores() {
@@ -42,13 +42,13 @@ windows_choose_disk() {
     echo "❌ Insufficient disk space for Windows VM!"
     echo "   Available: ${available_gb}GB"
     echo "   Minimum required: $((minimum_gb + WINDOWS_IMAGE_RESERVE_GB))GB (${minimum_gb}GB disk + ${WINDOWS_IMAGE_RESERVE_GB}GB for Windows image)"
-    exit 1
+    return 1
   fi
   choices=$(windows_gigabyte_size_choices "$maximum_gb" "${WINDOWS_DISK_SIZES_GB[@]}")
   default_size="${WINDOWS_DEFAULT_DISK_GB}G"
   [[ " $choices " == *" $default_size "* ]] || default_size="${minimum_gb}G"
   installation_settings[disk_size]=$(windows_choose_gigabyte_size "$choices" "Select Disk Size > " "Disk space for Windows VM (${WINDOWS_DEFAULT_DISK_GB}GB+ recommended)" "$default_size")
-  [[ -n "${installation_settings[disk_size]}" ]] || windows_cancel_installation
+  [[ -n "${installation_settings[disk_size]}" ]] || windows_installation_cancelled_die
   windows_require_host_capacity "${installation_settings[disk_size]%G}"
 }
 
@@ -81,7 +81,7 @@ windows_confirm_installation() {
   echo ""
   read -r -n 1 -p "Proceed with this configuration? (y/N): " REPLY
   echo
-  [[ $REPLY =~ ^[Yy]$ ]] || windows_cancel_installation
+  [[ $REPLY =~ ^[Yy]$ ]] || windows_installation_cancelled_die
 }
 
 windows_start_installation() {
@@ -99,7 +99,7 @@ windows_start_installation() {
     echo "   - Docker daemon not running: start your Docker service"
     echo "   - Port already in use: check if another VM is running"
     echo "   - Permission issues: make sure you're in the docker group"
-    exit 1
+    return 1
   fi
 }
 
@@ -123,7 +123,7 @@ windows_show_installation_started() {
 windows_install() {
   local -A installation=() host=()
   trap 'echo ""; echo "Installation cancelled by user"; exit 1' INT
-  windows_require_host_capacity "${WINDOWS_DISK_SIZES_GB[0]}"
+  windows_require_host_capacity "${WINDOWS_DISK_SIZES_GB[0]}" || exit 1
   "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/system/package-manager.sh" add freerdp openbsd-netcat fzf docker-compose jq
   windows_prepare_directories
   windows_install_desktop_assets
@@ -131,11 +131,11 @@ windows_install() {
   windows_show_host_resources host
   windows_choose_ram installation host
   windows_choose_cpu_cores installation host
-  windows_choose_disk installation
+  windows_choose_disk installation || exit 1
   windows_choose_credentials installation
   windows_show_installation_settings installation
   windows_confirm_installation
   windows_write_compose_config installation
-  windows_start_installation
+  windows_start_installation || exit 1
   windows_show_installation_started
 }

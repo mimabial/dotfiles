@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -u
 
-usage() { printf 'Usage: %s {list|add KIND EPOCH [LABEL]|cancel ID|restore}\n' "${0##*/}"; }
+usage() { printf 'Usage: %s {list|add KIND EPOCH [LABEL]|cancel ID|restore}\n\nList, add, cancel and restore the alarms and timers behind the calendar popup.\n' "${0##*/}"; }
 [[ "${1:-}" == -h || "${1:-}" == --help ]] && { usage; exit; }
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/notify.bash"
@@ -22,13 +22,13 @@ update_timer_state_under_lock() {
 }
 
 timer_process_is_alive() {
+  local pid="$1" id="$2" joined=""
   local -a cmdline=()
-  local joined=""
 
-  [[ "$1" =~ ^[0-9]+$ && -r "/proc/$1/cmdline" ]] || return 1
-  mapfile -d '' cmdline <"/proc/$1/cmdline"
+  [[ "${pid}" =~ ^[0-9]+$ && -r "/proc/${pid}/cmdline" ]] || return 1
+  mapfile -d '' cmdline <"/proc/${pid}/cmdline"
   printf -v joined '%s ' "${cmdline[@]}"
-  [[ "${joined}" == *"${timer_script_path} fire $2 "* ]]
+  [[ "${joined}" == *"${timer_script_path} fire ${id} "* ]]
 }
 
 start_timer_wait_process() {

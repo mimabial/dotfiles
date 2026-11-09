@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 declare -F hypr_monitors_json >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/geometry.bash" || return 1
+[[ -v TEXT_SIZE_BASE_PT ]] || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/text-size.bash" || return 1
 
 rofi_lookup_dirs_into() {
   local -n lookup_dirs_ref="$1"
@@ -122,15 +123,13 @@ rofi_focused_monitor_geometry_into() {
 # scale in tenths (TEXT_SIZE 12 -> 10), so one em is approximated at twice it.
 # rofi_font_text_height_px measures the real value when the font is known.
 ROFI_EM_PX_PER_SCALE=2
-ROFI_DEFAULT_FONT_SCALE=10
-ROFI_TEXT_SIZE_AT_DEFAULT_SCALE_PX=12
 
 rofi_default_window_size() {
   local width_name="$1"
   local height_name="$2"
   local -n width_ref="${width_name}"
   local -n height_ref="${height_name}"
-  local font_scale="${ROFI_SCALE:-${ROFI_DEFAULT_FONT_SCALE}}"
+  local font_scale="${ROFI_SCALE:-${TEXT_SIZE_BASE_PT}}"
 
   if [[ "${width_ref}" -eq 0 && "${height_ref}" -eq 0 ]]; then
     local default_width_em=23
@@ -156,17 +155,18 @@ rofi_cursor_position() {
 }
 
 rofi_monitor_under_cursor_into() {
-  rofi_monitor_geometry_into "$1" '
+  local geometry_name="$1" cursor_x="$2" cursor_y="$3"
+  rofi_monitor_geometry_into "${geometry_name}" '
     (
       .[] | select(
-        ($cx >= .x) and
-        ($cx < (.x + logical_width_px)) and
-        ($cy >= .y) and
-        ($cy < (.y + logical_height_px))
+        ($cursor_x >= .x) and
+        ($cursor_x < (.x + logical_width_px)) and
+        ($cursor_y >= .y) and
+        ($cursor_y < (.y + logical_height_px))
       )
     ),
     (.[] | select(.focused == true))
-  ' --argjson cx "$2" --argjson cy "$3"
+  ' --argjson cursor_x "${cursor_x}" --argjson cursor_y "${cursor_y}"
 }
 
 rofi_window_position_theme() {

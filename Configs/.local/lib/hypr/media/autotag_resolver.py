@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import NamedTuple
 from audio_tags import read_tags
-from autotag_identity import album_context, derive_candidates, existing, first_artist_fallbacks, folder_hints, match_score, normalize_identity_tokens
+from autotag_identity import album_context, derive_candidates, existing, first_artist_fallbacks, in_album_folder, match_score, normalize_identity_tokens
 from autotag_models import Unidentified
 from autotag_cache import CACHE_MISS_TTL_SECONDS, CACHE_SUCCESS_TTL_SECONDS, CACHE_VERSION, ResolutionCache
 from autotag_catalogs import EXACT_MATCH_SCORE, from_acoustid, from_deezer, from_itunes, from_musicbrainz
@@ -175,7 +175,7 @@ class Resolver:
             artist=existing(context.tags, "artist") or metadata.get("artist", ""),
             album=context.album,
             date=existing(context.tags, "date"),
-            tracknumber=existing(context.tags, "tracknumber") or "1/1",
+            tracknumber=existing(context.tags, "tracknumber"),
             artwork_url="",
         )
         metadata.pop("musicbrainz_releasegroupid", None)
@@ -228,7 +228,7 @@ class Resolver:
         album = album_context(path, tags, root).album
         single_release = bool(
             album
-            and not folder_hints(path, root)[1]
+            and not in_album_folder(path, root)
             and normalize_identity_tokens(album) == normalize_identity_tokens(existing(tags, "title"))
         )
         cache_key = (

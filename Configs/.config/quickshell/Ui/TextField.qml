@@ -12,17 +12,17 @@ TextField {
     font.family: Commons.Style.font.menuFamily
     font.pixelSize: Commons.Style.font.body
     color: foreground
-    selectionColor: Commons.Util.alpha(accent, 0.45)
+    selectionColor: Commons.Util.scaleAlpha(accent, 0.45)
     selectedTextColor: foreground
-    placeholderTextColor: Commons.Util.alpha(foreground, 0.52)
+    placeholderTextColor: Commons.Util.scaleAlpha(foreground, 0.52)
     leftPadding: Commons.Style.space(10)
     rightPadding: Commons.Style.space(10)
     topPadding: verticalPadding
     bottomPadding: verticalPadding
 
     background: Rectangle {
-        color: root.activeFocus || root.hovered ? Commons.Util.alpha(root.accent, 0.10) : "transparent"
-        border.color: root.activeFocus ? root.accent : Commons.Util.alpha(root.foreground, 0.38)
+        color: root.activeFocus || root.hovered ? Commons.Style.hoverFillFor(root.foreground, root.accent) : "transparent"
+        border.color: root.activeFocus ? root.accent : Commons.Util.scaleAlpha(root.foreground, Commons.Style.normalBorderAlpha)
         border.width: Commons.Style.normalBorderWidth
         radius: Commons.Style.cornerRadius
     }

@@ -12,7 +12,7 @@ import ".."
 
 BarButton {
     id: root
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     readonly property string hyprLib: shell.home + "/.local/lib/hypr/"
     readonly property var devices: Array.from(Networking.devices.values)
     readonly property var wifi: devices.find(device => device.type === DeviceType.Wifi)
@@ -56,12 +56,12 @@ BarButton {
     readonly property var submenus: ({
         wifi: {
             title: "Wi-Fi", icon: StatusSymbols.wifi(Networking.wifiEnabled, network), checked: Networking.wifiEnabled,
-            settings: "All Networks", popup: "network"
+            settings: "All Networks", popupName: "network"
         },
-        bluetooth: { title: "Bluetooth", icon: "bluetooth-active", checked: !!adapter?.enabled, settings: "Bluetooth Settings", popup: "bluetooth" },
-        power: { title: "Power Mode", icon: profileIcon, checked: !balanced, settings: "Power Settings", popup: "power" },
-        sound: { title: "Sound Output", icon: "audio-headphones", context: "devices", settings: "Sound Settings", popup: "audio" },
-        microphone: { title: "Sound Input", icon: "audio-input-microphone", context: "devices", settings: "Sound Settings", popup: "microphone" },
+        bluetooth: { title: "Bluetooth", icon: "bluetooth-active", checked: !!adapter?.enabled, settings: "Bluetooth Settings", popupName: "bluetooth" },
+        power: { title: "Power Mode", icon: profileIcon, checked: !balanced, settings: "Power Settings", popupName: "power" },
+        sound: { title: "Sound Output", icon: "audio-headphones", context: "devices", settings: "Sound Settings", popupName: "audio" },
+        microphone: { title: "Sound Input", icon: "audio-input-microphone", context: "devices", settings: "Sound Settings", popupName: "microphone" },
         session: { title: "Power Off", icon: "system-shutdown", context: "actions" },
         background: { title: "Background Apps", icon: "application-x-executable", context: "mimetypes" }
     })
@@ -70,7 +70,7 @@ BarButton {
     Component.onDestruction: --GnomeStatus.readers
     css: "controlcenter"; text: ""; trailingWidth: indicators.implicitWidth
     onClicked: shell.togglePopup("controlcenter")
-    function setProfile(value) { shell.run([hyprLib + "system/powerprofiles.sh", "--set", value]) }
+    function setProfile(value) { shell.run([hyprLib + "system/power-profiles.sh", "--set", value]) }
     function setAirplaneMode(enabled) {
         shell.run(["nmcli", "radio", "all", enabled ? "off" : "on"])
         if (adapter) adapter.enabled = !enabled
@@ -95,13 +95,13 @@ BarButton {
     }
     component Icon: SymbolicIcon {
         id: statusIcon
-        property string popup: "controlcenter"
+        property string popupName: "controlcenter"
         property string title: "Quick Settings"
         size: root.symbolSize; color: root.contentColor; directory: root.box.symbols ?? ""
-        enabled: root.popupsAllowed; activeFocusOnTab: true
+        enabled: root.popupEnabled; activeFocusOnTab: true
         Accessible.role: Accessible.Button; Accessible.name: title
         Accessible.onPressAction: statusIcon.activateKeyboard()
-        function activateKeyboard() { root.shell.togglePopup(statusIcon.popup) }
+        function activateKeyboard() { root.shell.togglePopup(statusIcon.popupName) }
         Keys.onReturnPressed: statusIcon.activateKeyboard()
         Keys.onEnterPressed: statusIcon.activateKeyboard()
         Keys.onSpacePressed: statusIcon.activateKeyboard()
@@ -119,24 +119,24 @@ BarButton {
         Icon { visible: Privacy.camera.length > 0; name: "camera-web"; context: "devices"; color: root.shell.role("warning", root.shell.foreground) }
         Icon {
             visible: Privacy.microphone.length > 0; color: root.shell.role("warning", root.shell.foreground)
-            popup: "microphone"; title: "Microphone"
+            popupName: "microphone"; title: "Microphone"
             name: StatusSymbols.volume(root.source, !!root.source?.audio?.muted, "microphone-sensitivity")
         }
         Icon { visible: Privacy.location; name: "location-services-active" }
-        Icon { visible: root.nightLight; name: "night-light"; popup: "hyprsunset"; title: "Night Light" }
-        Icon { visible: root.vpn.state === "connected"; name: "network-vpn"; popup: "vpn"; title: "VPN" }
+        Icon { visible: root.nightLight; name: "night-light"; popupName: "hyprsunset"; title: "Night Light" }
+        Icon { visible: root.vpn.state === "connected"; name: "network-vpn"; popupName: "vpn"; title: "VPN" }
         Icon {
             visible: !!root.wired?.connected || !root.airplaneMode && !!root.wifi
-            popup: "network"; title: "Network"
+            popupName: "network"; title: "Network"
             name: root.wired?.connected ? "network-wired" : StatusSymbols.wifi(Networking.wifiEnabled, root.network)
             context: root.wired?.connected ? "devices" : "status"
         }
-        Icon { visible: root.doNotDisturb; name: "notifications-disabled"; popup: "notifications"; title: "Notifications" }
-        Icon { visible: root.connectedBluetooth.length > 0; name: "bluetooth-active"; popup: "bluetooth"; title: "Bluetooth" }
+        Icon { visible: root.doNotDisturb; name: "notifications-disabled"; popupName: "notifications"; title: "Notifications" }
+        Icon { visible: root.connectedBluetooth.length > 0; name: "bluetooth-active"; popupName: "bluetooth"; title: "Bluetooth" }
         Icon { visible: root.airplaneMode && (!!root.wifi || !!root.adapter); name: "airplane-mode" }
-        Icon { name: StatusSymbols.volume(root.sink, !!root.sink?.audio?.muted); popup: "audio"; title: "Sound" }
-        Icon { visible: !root.balanced; name: root.profileIcon; popup: "power"; title: "Power Mode" }
-        Icon { visible: UPower.displayDevice.isPresent; name: StatusSymbols.battery(UPower.displayDevice, UPower.onBattery); popup: "power"; title: "Battery" }
+        Icon { name: StatusSymbols.volume(root.sink, !!root.sink?.audio?.muted); popupName: "audio"; title: "Sound" }
+        Icon { visible: !root.balanced; name: root.profileIcon; popupName: "power"; title: "Power Mode" }
+        Icon { visible: UPower.displayDevice.isPresent; name: StatusSymbols.battery(UPower.displayDevice, UPower.onBattery); popupName: "power"; title: "Battery" }
     }
     component Action: PopupIconButton {
         id: action
@@ -230,7 +230,7 @@ BarButton {
         id: panel
         property string expanded: ""
         property real submenuY: 0
-        anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: "controlcenter"
+        anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: "controlcenter"
         contentWidth: Style.px(400); keyboardHint: ""
         contentHeight: Math.max(content.implicitHeight, submenuCard.visible ? submenuCard.y + submenuCard.height : 0) + padding * 2
         onOpenChanged: if (open) { root.shell.refreshMenuState(); GnomeStatus.refresh(); GnomeStatus.refreshKeyboard() }
@@ -284,7 +284,7 @@ BarButton {
                 Level {
                     width: parent.width; title: "Sound"; iconName: StatusSymbols.volume(root.sink, muted); submenu: "sound"
                     canMute: !!root.sink?.audio; muted: !!root.sink?.audio?.muted; available: !!root.sink?.audio
-                    value: root.sink?.audio?.volume ?? 0; maximum: root.shell.volumeLimit
+                    value: root.sink?.audio?.volume ?? 0; maximum: root.shell.volumeRange.limit
                     onMuteRequested: root.sink.audio.muted = !root.sink.audio.muted
                     onChanged: value => { if (root.sink?.audio) root.sink.audio.volume = value }
                 }
@@ -455,7 +455,7 @@ BarButton {
                 PopupSeparator { shell: root.shell; visible: !!root.openSubmenu?.settings }
                 PopupRow {
                     width: parent.width; shell: root.shell; visible: !!root.openSubmenu?.settings; title: root.openSubmenu?.settings ?? ""
-                    onClicked: root.shell.togglePopup(root.openSubmenu.popup)
+                    onClicked: root.shell.togglePopup(root.openSubmenu.popupName)
                 }
             }
         }
@@ -470,66 +470,66 @@ BarButton {
             onConfirmed: { const action = root.pendingSessionAction; root.pendingSessionAction = null; root.runSessionAction(action) }
         }
     }
-    component Host: LazyPopup { shell: root.shell; popupsAllowed: root.popupsAllowed; owners: [] }
+    component Host: LazyPopup { shell: root.shell; popupEnabled: root.popupEnabled; owners: [] }
     Host {
-        popup: "tray"; owners: ["tray"]
+        popupName: "tray"; owners: ["tray"]
         sourceComponent: Component {
             TrayMenu {
-                anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed
+                anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled
                 handle: root.appMenuItem?.menu ?? null; label: root.appMenuItem ? root.appMenuItem.title || root.appMenuItem.id : ""
             }
         }
     }
     Host {
-        popup: "network"; owners: ["wifi"]
-        sourceComponent: Component { NetworkPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        popupName: "network"; owners: ["wifi"]
+        sourceComponent: Component { NetworkPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     Host {
-        popup: "wifiqr"; owners: ["wifi"]
-        sourceComponent: Component { WifiQrPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        popupName: "wifiqr"; owners: ["wifi"]
+        sourceComponent: Component { WifiQrPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     Host {
-        popup: "bluetooth"; owners: ["bluetooth"]
-        sourceComponent: Component { BluetoothPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        popupName: "bluetooth"; owners: ["bluetooth"]
+        sourceComponent: Component { BluetoothPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     Host {
-        popup: "audio"; owners: ["volume"]
-        sourceComponent: Component { AudioPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        popupName: "audio"; owners: ["volume"]
+        sourceComponent: Component { AudioPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     Host {
-        popup: "microphone"; owners: ["microphone"]
-        sourceComponent: Component { AudioPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; microphoneMode: true } }
+        popupName: "microphone"; owners: ["microphone"]
+        sourceComponent: Component { AudioPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; microphoneMode: true } }
     }
     Host {
-        popup: "power"; owners: ["powerprofile"]
-        sourceComponent: Component { PowerPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        popupName: "power"; owners: ["powerprofile"]
+        sourceComponent: Component { PowerPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     Host {
-        popup: "powermenu"; owners: ["powerbutton"]
-        sourceComponent: Component { PowerMenuPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        popupName: "powermenu"; owners: ["powerbutton"]
+        sourceComponent: Component { PowerMenuPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     Host {
-        popup: "screenshot"; owners: ["screenshot"]
-        sourceComponent: Component { ScreenshotPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        popupName: "screenshot"; owners: ["screenshot"]
+        sourceComponent: Component { ScreenshotPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     Host {
-        popup: "desktop"; owners: ["windowlayout"]
-        sourceComponent: Component { DesktopPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        popupName: "desktop"; owners: ["windowlayout"]
+        sourceComponent: Component { DesktopPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     Host {
-        popup: "vpn"; owners: ["vpn"]
-        sourceComponent: Component { VpnPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        popupName: "vpn"; owners: ["vpn"]
+        sourceComponent: Component { VpnPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     Host {
-        popup: "hyprsunset"; owners: ["hyprsunset"]
-        sourceComponent: Component { HyprsunsetPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        popupName: "hyprsunset"; owners: ["hyprsunset"]
+        sourceComponent: Component { HyprsunsetPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     Host {
-        popup: "caffeine"; owners: ["caffeine"]
-        sourceComponent: Component { CaffeinePopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        popupName: "caffeine"; owners: ["caffeine"]
+        sourceComponent: Component { CaffeinePopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     Host {
-        id: monitorHost; popup: "monitor"; owners: ["display"]; asynchronous: true
+        id: monitorHost; popupName: "monitor"; owners: ["display"]; asynchronous: true
         onActiveChanged: if (active && String(source) === "") setSource(Qt.resolvedUrl("../monitor/DisplayPanel.qml"), { anchorItem: root, shell: root.shell })
     }
 }

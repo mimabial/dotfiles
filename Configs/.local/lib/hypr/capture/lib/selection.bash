@@ -52,14 +52,14 @@ capture_visible_workspace_rectangles() {
         .[0] as \$monitors
         | (.[1] // []) as \$workspace_data
         | (.[2] // []) as \$clients
-        | (\$workspace_data | map(select(.hasfullscreen) | .id)) as \$fullscreen_workspaces
-        | (\$monitors | map((if .specialWorkspace.name == \"\" then .activeWorkspace else .specialWorkspace end).id)) as \$workspaces
+        | (\$workspace_data | map(select(.hasfullscreen) | .name)) as \$fullscreen_workspaces
+        | (\$monitors | map((if .specialWorkspace.name == \"\" then .activeWorkspace else .specialWorkspace end).name)) as \$workspaces
         | (\$monitors[] | format_geo),
           (
             \$clients
             | map(select(
-                ([.workspace.id] | inside(\$workspaces))
-                and (([.workspace.id] | inside(\$fullscreen_workspaces) | not) or .fullscreen > 0)
+                (.workspace.name | IN(\$workspaces[]))
+                and ((.workspace.name | IN(\$fullscreen_workspaces[]) | not) or .fullscreen > 0)
               ))
             | .[]
             | \"\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])\"

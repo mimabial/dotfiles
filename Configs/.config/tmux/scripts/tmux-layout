@@ -7,8 +7,8 @@ list_layouts() {
   local file
   for file in "$layouts_dir"/*.zsh; do
     [[ -e "$file" ]] || return 0
-    [[ "$(basename "$file")" == _* ]] && continue
-    basename "${file%.zsh}"
+    [[ "${file:t}" == _* ]] && continue
+    print -r -- "${file:t:r}"
   done
 }
 

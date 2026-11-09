@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import "Units.js" as Units
 
 Item {
     id: root
@@ -39,15 +40,15 @@ Item {
     property int pomodoroCompletedCycles: 0
     property bool pomodoroSessionStarted: false
 
-    readonly property int intervalDurationMs: Math.max(1000, intervalMinutes * 60000 + intervalSeconds * 1000)
+    readonly property int intervalDurationMs: Math.max(Units.MS_PER_SECOND, intervalMinutes * Units.MS_PER_MINUTE + intervalSeconds * Units.MS_PER_SECOND)
     readonly property string intervalDurationText: pad2(intervalMinutes) + ":" + pad2(intervalSeconds)
-    readonly property double pomodoroWorkMs: Math.max(1, pomodoroWorkMinutes) * 60000
-    readonly property double pomodoroShortBreakMs: Math.max(1, pomodoroShortBreakMinutes) * 60000
-    readonly property double pomodoroLongBreakMs: Math.max(1, pomodoroLongBreakMinutes) * 60000
+    readonly property double pomodoroWorkMs: Math.max(1, pomodoroWorkMinutes) * Units.MS_PER_MINUTE
+    readonly property double pomodoroShortBreakMs: Math.max(1, pomodoroShortBreakMinutes) * Units.MS_PER_MINUTE
+    readonly property double pomodoroLongBreakMs: Math.max(1, pomodoroLongBreakMinutes) * Units.MS_PER_MINUTE
     readonly property double pomodoroPhaseDurationMs: pomodoroPhaseKind === "long-break"
         ? pomodoroLongBreakMs : pomodoroPhaseKind === "short-break" ? pomodoroShortBreakMs : pomodoroWorkMs
     readonly property double targetMs: mode === countdownMode
-        ? Math.max(0, countdownMinutes * 60000 + countdownSeconds * 1000)
+        ? Math.max(0, countdownMinutes * Units.MS_PER_MINUTE + countdownSeconds * Units.MS_PER_SECOND)
         : mode === intervalsMode ? Math.max(1, intervalRounds) * intervalDurationMs
         : mode === pomodoroMode ? pomodoroPhaseDurationMs : 0
     readonly property double elapsedMs: Math.max(0, Math.round(running ? storedElapsedMs + nowMs - startedAt : storedElapsedMs))

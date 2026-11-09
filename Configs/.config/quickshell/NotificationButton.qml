@@ -9,7 +9,7 @@ ScriptButton {
     tooltip: ""
     readonly property string script: shell.home + "/.local/lib/hypr/notify/notifications.py"
     command: [root.script, "--watch"]
-    polling: false; streaming: true
+    streaming: true
     property bool popupEnabled: true
     property bool activeOnly: false
     property bool showBadge: true

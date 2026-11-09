@@ -9,7 +9,7 @@ windows_remove_container() {
 windows_require_compose_config() {
   if [ ! -f "$WINDOWS_COMPOSE_PATH" ]; then
     echo "Windows VM not configured. Please run: hyprshell vm/windows.sh install"
-    exit 1
+    return 1
   fi
 }
 
@@ -41,7 +41,7 @@ windows_remove() {
 }
 
 windows_stop() {
-  windows_require_compose_config
+  windows_require_compose_config || exit 1
   echo "Stopping Windows VM..."
   windows_remove_container
   echo "Windows VM stopped."
@@ -50,7 +50,7 @@ windows_stop() {
 windows_status() {
   local container_status
 
-  windows_require_compose_config
+  windows_require_compose_config || exit 1
   container_status=$(windows_container_state || true)
 
   if [ -z "$container_status" ]; then

@@ -1,1 +1,0 @@
-power-profile-auto.sh

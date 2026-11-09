@@ -24,6 +24,13 @@ const int TRITANOPIA = 3;
 const int MODE = COLOR_VISION_MODE;
 const float INTENSITY = COLOR_VISION_INTENSITY;
 
+const vec3 REC709_LUMA = vec3(0.2126, 0.7152, 0.0722);
+const float MAX_SATURATION_GAIN = 1.5;
+
+const vec3 PROTANOPIA_ERROR_SHIFT = vec3(0.0, 0.7, 0.3);
+const vec3 DEUTERANOPIA_ERROR_SHIFT = vec3(0.7, 0.0, 0.3);
+const vec3 TRITANOPIA_ERROR_SHIFT = vec3(0.5, 0.5, 0.0);
+
 const float protanopia_r = 2.02344;
 const float protanopia_g = -2.52581;
 
@@ -74,11 +81,11 @@ vec3 daltonize(vec3 color, vec3 simulation) {
     vec3 error = color - simulation;
     vec3 correction = vec3(0.0);
     if (MODE == PROTANOPIA) {
-        correction = vec3(0.0, error.r * 0.7, error.r * 0.3);
+        correction = error.r * PROTANOPIA_ERROR_SHIFT;
     } else if (MODE == DEUTERANOPIA) {
-        correction = vec3(error.g * 0.7, 0.0, error.g * 0.3);
+        correction = error.g * DEUTERANOPIA_ERROR_SHIFT;
     } else if (MODE == TRITANOPIA) {
-        correction = vec3(error.b * 0.5, error.b * 0.5, 0.0);
+        correction = error.b * TRITANOPIA_ERROR_SHIFT;
     }
     return color + correction;
 }
@@ -99,13 +106,9 @@ void main() {
     // The sign of INTENSITY picks the effect: in normal vision positive saturates and
     // negative desaturates; in a CVD mode positive simulates and negative daltonizes.
     if (MODE == NORMAL_VISION) {
-        if (INTENSITY >= 0.0) {
-            vec3 luminance = vec3(dot(color, vec3(0.2126, 0.7152, 0.0722)));
-            result = mix(color, mix(luminance, color * 1.5, 1.0), INTENSITY);
-        } else {
-            vec3 luminance = vec3(dot(color, vec3(0.2126, 0.7152, 0.0722)));
-            result = mix(color, luminance, -INTENSITY);
-        }
+        vec3 luminance = vec3(dot(color, REC709_LUMA));
+        float saturation = INTENSITY >= 0.0 ? mix(1.0, MAX_SATURATION_GAIN, INTENSITY) : 1.0 + INTENSITY;
+        result = mix(luminance, color, saturation);
     } else if (INTENSITY >= 0.0) {
         result = mix(color, simulated, INTENSITY);
     } else {

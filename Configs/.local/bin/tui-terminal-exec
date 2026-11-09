@@ -3,10 +3,16 @@ set -euo pipefail
 
 TERMINAL_TUI="${TERMINAL_TUI:-alacritty}"
 WINDOW_OPEN_TIMEOUT_SECONDS=8
+KITTY_ONLY_APP_ID=org.tui.Rmpc
+ALACRITTY_UNIT_RULE="alacritty takes cells for both sides or neither"
 
 usage() {
-  printf 'Usage: %s [--hypr-profile NAME] [--hypr-size WIDTH HEIGHT] [--hypr-cells COLUMNS ROWS] [--app-id ID] [--title TITLE] [--] [command [args...]]\n' "${0##*/}"
-  printf 'WIDTH and HEIGHT each accept pixels (900), percent (55%%) or cells (40c).\n'
+  cat <<USAGE
+Usage: ${0##*/} [--hypr-profile NAME] [--hypr-size WIDTH HEIGHT] [--hypr-cells COLUMNS ROWS] [--app-id ID] [--title TITLE] [TERMINAL-OPTION...] [--] [command [args...]]
+NAME is overlay, compact, standard or large (tui = standard, dialog = compact); an explicit size overrides it.
+WIDTH and HEIGHT each accept pixels (900), percent (55%) or cells (40c); ${ALACRITTY_UNIT_RULE}.
+Any other option starting with - goes to the terminal (${TERMINAL_TUI##*/}); app id ${KITTY_ONLY_APP_ID} always runs in kitty.
+USAGE
 }
 
 require_option_args() {
@@ -144,7 +150,7 @@ resolve_percentages() {
 
 app_requires_kitty() {
   local app_id="$1"
-  [[ "${app_id}" == org.tui.Rmpc ]]
+  [[ "${app_id}" == "${KITTY_ONLY_APP_ID}" ]]
 }
 
 validate_exec_command() {
@@ -177,7 +183,7 @@ build_terminal_command() {
           launch_ref+=(-o "window.dimensions.columns=${launch_options[width]%c}")
           launch_ref+=(-o "window.dimensions.lines=${launch_options[height]%c}")
           ;;
-        *c:* | *:*c) printf 'alacritty requires width and height in the same unit\n' >&2; return 2 ;;
+        *c:* | *:*c) printf '%s\n' "${ALACRITTY_UNIT_RULE}" >&2; return 2 ;;
       esac
       ((${#command_ref[@]} == 0)) || launch_ref+=(-e "${command_ref[@]}")
       ;;
@@ -185,7 +191,6 @@ build_terminal_command() {
       [[ -n "${launch_options[app_id]}" ]] && launch_ref+=("--app-id=${launch_options[app_id]}")
       [[ -n "${launch_options[title]}" ]] && launch_ref+=("--title=${launch_options[title]}")
       if [[ -n "${launch_options[width]}" && -n "${launch_options[height]}" ]]; then
-        # Lua size rules are inert; kitty accepts pixels and per-axis cell suffixes.
         launch_ref+=(-o "remember_window_size=no" -o "initial_window_width=${launch_options[width]}" -o "initial_window_height=${launch_options[height]}")
       fi
       launch_ref+=("${command_ref[@]}")
@@ -207,15 +212,15 @@ alacritty_window_address() {
   printf '%s\n' "${address}"
 }
 
-resize_alacritty_window() {
-  local pid="$1" width="$2" height="$3" address="" window_lua=""
+size_and_center_alacritty_window() {
+  local terminal_pid="$1" width="$2" height="$3" address="" window_lua=""
   [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] || return 0
   [[ -n "${width}" && -n "${height}" && "${width}" != *c && "${height}" != *c ]] || return 0
   declare -F hypr_lua_quote hypr_lua_batch >/dev/null \
     || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/lua.bash" || return 0
   declare -F hypr_wait_for >/dev/null \
     || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/events.bash" || return 0
-  address="$(hypr_wait_for "${WINDOW_OPEN_TIMEOUT_SECONDS}" 'openwindow>>*' alacritty_window_address "${pid}")" || return 0
+  address="$(hypr_wait_for "${WINDOW_OPEN_TIMEOUT_SECONDS}" 'openwindow>>*' alacritty_window_address "${terminal_pid}")" || return 0
   window_lua="$(hypr_lua_quote "address:${address}")"
   hypr_lua_batch \
     "hl.dsp.window.resize({x=${width}, y=${height}, exact=true, window=${window_lua}})" \
@@ -238,8 +243,9 @@ main() {
   validate_exec_command command || return $?
   build_terminal_command options terminal_args command launch_command
 
+  local -r terminal_pid=$$
   [[ "${TERMINAL_TUI##*/}" != alacritty ]] \
-    || (resize_alacritty_window "$$" "${options[width]}" "${options[height]}" &)
+    || (size_and_center_alacritty_window "${terminal_pid}" "${options[width]}" "${options[height]}" &)
   exec "${launch_command[@]}"
 }
 

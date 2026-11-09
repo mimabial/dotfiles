@@ -10,6 +10,9 @@ hypr_runtime_load_desktop_environment || exit 1
 show_help() {
   cat <<HELP
 Usage: hyprshell util/sysmon-launch --[option]
+
+Open a system monitor such as htop or btop in a terminal.
+
     -h, --help      Display this help and exit
     -e, --execute   Explicit command to execute, arguments included ("dua i")
 

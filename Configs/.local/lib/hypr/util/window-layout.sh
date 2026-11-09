@@ -21,6 +21,8 @@ show_help() {
   cat <<'HELP'
 Usage: window-layout.sh [--toggle|--toggle-reverse|--set <name>|--list|--bar|--help]
 
+Show, cycle or set the Hyprland window layout.
+
   --toggle           Cycle to the next layout
   --toggle-reverse   Cycle to the previous layout
   --set <name>       Apply a specific layout

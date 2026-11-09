@@ -11,7 +11,7 @@ Rectangle {
     property real borderOpacity: root.shell.style.box("popup").borderOpacity ?? Commons.Style.popupBorderOpacity
 
     color: root.shell.alpha(Commons.Style.popupTinted(root.background), root.surfaceOpacity)
-    border.color: root.shell.alpha(Commons.Style.popupBorder(root.borderColor), root.borderOpacity)
+    border.color: Commons.Style.popupBorder(root.borderColor, root.borderOpacity)
     border.width: root.shell.borderWidth
     radius: root.shell.rounding
 }

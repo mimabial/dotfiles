@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
+import "Units.js" as Units
 
 Singleton {
     id: root
@@ -178,10 +179,10 @@ Singleton {
         return {path: order[step], cycle: order, cycleIndex: step, changed: order[step] !== root.current}
     }
     function elapsed() { return root.nowEpoch - Math.max(0, root.lastChangeEpoch) }
-    function isDue() { return root.rotationEnabled && Math.max(0, root.elapsed()) >= root.intervalMinutes * 60000 }
+    function isDue() { return root.rotationEnabled && Math.max(0, root.elapsed()) >= root.intervalMinutes * Units.MS_PER_MINUTE }
     function minutesUntil() {
         if (!root.enabled) return -1
-        return Math.ceil(Math.max(1, root.intervalMinutes * 60000 - root.elapsed()) / 60000)
+        return Math.ceil(Math.max(1, root.intervalMinutes * Units.MS_PER_MINUTE - root.elapsed()) / Units.MS_PER_MINUTE)
     }
 
     function setEnabled(value) {
@@ -343,7 +344,7 @@ Singleton {
         onExited: code => root.finishSwitch(code, setErr.text)
     }
     property Timer scheduleTimer: Timer {
-        interval: Math.max(1, root.intervalMinutes * 60000 - root.elapsed())
+        interval: Math.max(1, root.intervalMinutes * Units.MS_PER_MINUTE - root.elapsed())
         onTriggered: root.updateCurrent()
     }
     property IpcHandler ipc: IpcHandler {

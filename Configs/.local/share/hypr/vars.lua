@@ -16,7 +16,7 @@ local values = {
     XDG_DATA_HOME = os.getenv("XDG_DATA_HOME") or (home .. "/.local/share"),
     XDG_STATE_HOME = os.getenv("XDG_STATE_HOME") or (home .. "/.local/state"),
     XDG_RUNTIME_DIR = os.getenv("XDG_RUNTIME_DIR") or ("/run/user/" .. current_uid()),
-    scrPath = home .. "/.local/lib/hypr",
+    HYPR_LIB_DIR = home .. "/.local/lib/hypr",
     mainMod = "SUPER",
     BROWSER = "firefox",
     EDITOR = "nvim",
@@ -24,24 +24,27 @@ local values = {
     TERMINAL = "alacritty",
     TERMINAL_TUI = "alacritty",
     LOCKSCREEN = "hyprlock",
+    ["start.ACTIVATION_ENVIRONMENT"] = "dbus-update-activation-environment --systemd --all",
     ["start.USER_SUPERVISOR"] = "command -v runsvdir >/dev/null && [ ! -d /run/systemd/system ] && exec hypr-runsvdir",
     ["start.XDG_PORTAL_RESET"] = "hyprshell reset-xdg-portal.sh",
     ["start.KEYBIND_SYNC"] = "hyprshell keyboard-switch.sh --sync-current --quiet",
     ["start.SUBMAP_HINT"] = "hyprshell app -u hyprland-submap-hint.service -t service -- hyprshell keybinds/submap-hint",
     ["start.FFTAB_BRIDGE"] = "hyprshell media/fftab-bridge/ensure",
     ["start.DISPLAY_PROFILES"] = "hyprshell system/monitor-profile start",
-    ["start.AUTH_DIALOGUE"] = "hyprshell app -t service -- hyprshell session/polkit-kde-auth",
+    ["start.AUTH_DIALOGUE"] = "hyprshell app -t service -- hyprshell session/polkit-agent",
     ["start.LOCATION_AGENT"] = "hyprshell system/start-if-available.sh HYPR_START_LOCATION_AGENT /usr/lib/geoclue-2.0/demos/agent -- hyprshell app -t service -- /usr/lib/geoclue-2.0/demos/agent",
     ["start.QUICKSHELL"] = "hyprshell system/start-if-available.sh HYPR_START_QUICKSHELL quickshell -- hyprshell service/control start hyprland-quickshell",
     ["start.STYLE_MAP"] = "hyprshell app -t service -- hyprshell quickshell/style-map-watch",
     ["start.WALLPAPER"] = "hyprshell app -u hyprland-wallpaper.service -t service -- hyprshell wallpaper start --global",
     ["start.NOTIFICATIONS"] = "hyprshell app -t service dunst",
+    ["start.XSETTINGS"] = "hyprshell app -t service xsettingsd",
     ["start.TEXT_CLIPBOARD"] = "hyprshell app -t service wl-paste --type text --watch cliphist store",
     ["start.IMAGE_CLIPBOARD"] = "hyprshell app -t service wl-paste --type image --watch cliphist store",
     ["start.CLIPBOARD_PERSIST"] = "hyprshell app -t service wl-clip-persist --clipboard regular",
     ["start.APPTRAY_BLUETOOTH"] = "hyprshell system/start-if-available.sh HYPR_START_BLUETOOTH_APPLET blueman-applet -- hyprshell app -t service blueman-applet",
     ["start.BATTERY_NOTIFY"] = "hyprshell app -t service -- hyprshell sysinfo/battery-notify",
-    ["start.LOGIND_INHIBITOR"] = "hyprshell app -t service -- $scrPath/session/logind-inhibitor.py",
+    ["start.DESKTOP_SYNC"] = "hyprshell theme/desktop.sync",
+    ["start.LOGIND_INHIBITOR"] = "hyprshell app -t service -- $HYPR_LIB_DIR/session/logind-inhibitor.py",
     ["start.AUTO_THEME"] = "hyprshell auto-theme-startup",
     ["start.IDLE_MANAGER"] = "hyprshell service/control start hyprland-idle-manager",
     ["start.POWER_PROFILE_AUTO"] = "hyprshell service/control start power-profile-auto",
@@ -70,7 +73,7 @@ local values = {
 }
 
 function M.set(name, value)
-    values[name] = tostring(value or "")
+    values[name] = value == nil and "" or tostring(value)
 end
 
 function M.get(name, fallback)
@@ -105,6 +108,22 @@ end
 
 function M.all()
     return values
+end
+
+local function json_string(text)
+    return '"' .. text:gsub('[%c"\\]', function(char) return ("\\u%04x"):format(char:byte()) end) .. '"'
+end
+
+function M.publish(path)
+    local fields = {}
+    for name, value in pairs(values) do
+        fields[#fields + 1] = json_string(name) .. ":" .. json_string(value)
+    end
+    local staging = path .. ".tmp"
+    local file = assert(io.open(staging, "w"))
+    file:write("{", table.concat(fields, ","), "}\n")
+    file:close()
+    assert(os.rename(staging, path))
 end
 
 return M

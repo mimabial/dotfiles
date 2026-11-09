@@ -14,8 +14,11 @@ Commands:
   show                Print the selected host profile
   list                List available host profiles from dotfiles
   set <profile>       Select a host profile and create its dotfiles directory
-  apply [profile]     Apply a host profile onto the live config paths
-  apply --dry-run     Preview host profile changes without writing
+  apply [--dry-run] [profile]
+                      Copy hosts/<profile>/ onto the live config (default: the selected profile);
+                      --dry-run previews without writing. A host entry the profile lacks is deleted
+                      live, except the files Hyprland loads (${!HYPRLAND_REQUIRED_HOST_FILES[*]}),
+                      which are emptied instead
   help                Show this help
 USAGE
 }
@@ -68,7 +71,7 @@ apply_profile() {
   host_dir="$(profile_dir "${profile}")"
   [[ -d "${host_dir}" ]] || die "Host profile directory does not exist: ${host_dir}"
 
-  require_rsync
+  require_rsync || exit 1
   read_sync_manifest manifest_records || exit 1
   manifest_host_paths manifest_records host_targets
 

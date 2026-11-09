@@ -279,7 +279,7 @@ PopupCard {
             action = ""
         }
     }
-    property Timer copiedTimer: Timer { interval: 1400; onTriggered: root.ipCopied = false }
+    property Timer copiedTimer: Timer { interval: Style.confirmationShownMs; onTriggered: root.ipCopied = false }
 
     Column {
         id: vpnColumn

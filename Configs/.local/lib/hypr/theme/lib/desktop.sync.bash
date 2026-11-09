@@ -42,6 +42,7 @@ theme_desktop_write_generated_file() {
 }
 
 source "${BASH_SOURCE[0]%/*}/desktop.settings.bash" || return 1
+[[ -v TEXT_SIZE_BASE_PT ]] || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/text-size.bash" || return 1
 
 theme_desktop_sync_gtk_theme_links() {
   local -n desktop_settings_ref="$1"
@@ -243,41 +244,46 @@ theme_desktop_notify_kde_fonts_changed() {
     || print_log -sec "theme" -warn "kde" "font notification failed"
 }
 
+THEME_DESKTOP_KDE_ICON_GROUPS=(desktop toolbar main-toolbar small panel dialog)
+
 theme_desktop_notify_kde_icons_changed() {
   local group=""
 
   command -v dbus-send >/dev/null 2>&1 || return 0
-  for group in {0..5}; do
+  for group in "${!THEME_DESKTOP_KDE_ICON_GROUPS[@]}"; do
     dbus-send --session --type=signal \
       /KIconLoader org.kde.KIconLoader.iconChanged "int32:${group}" \
       >/dev/null 2>&1 \
-      || print_log -sec "theme" -warn "kde" "icon notification failed for group ${group}"
+      || print_log -sec "theme" -warn "kde" "icon notification failed for ${THEME_DESKTOP_KDE_ICON_GROUPS[group]} icons"
   done
 }
 
-THEME_DESKTOP_TEXT_SIZE_BASE_PX=12
-THEME_DESKTOP_UI_FONT_PT=10
 THEME_DESKTOP_SMALL_FONT_PT=8
+THEME_DESKTOP_QFONT_REGULAR_FIELDS=(
+  pixelSize=-1 styleHint=5 weight=400 style=0 underline=0 strikeOut=0 fixedPitch=0 rawMode=0
+  capitalization=0 letterSpacingType=0 letterSpacing=0 wordSpacing=0 stretch=0 styleStrategy=1
+)
 
 # Match Quickshell's px-to-point conversion.
 theme_desktop_kde_font_entries() {
   local -n desktop_settings_ref="$1"
   shift
   local -n font_entries_ref="$1"
-  local text_size="" ui_size="" small_size="" regular="-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
+  local text_size="" ui_size="" small_size="" regular=""
 
-  text_size="$(state_get TEXT_SIZE "${THEME_DESKTOP_TEXT_SIZE_BASE_PX}" 2>/dev/null || true)"
-  [[ ${text_size} =~ ^[0-9]+$ ]] || text_size="${THEME_DESKTOP_TEXT_SIZE_BASE_PX}"
-  read -r ui_size small_size < <(awk -v px="${text_size}" -v base="${THEME_DESKTOP_TEXT_SIZE_BASE_PX}" \
-    -v ui="${THEME_DESKTOP_UI_FONT_PT}" -v small="${THEME_DESKTOP_SMALL_FONT_PT}" \
+  printf -v regular ',%s' "${THEME_DESKTOP_QFONT_REGULAR_FIELDS[@]#*=}"
+  text_size="$(state_get TEXT_SIZE "${TEXT_SIZE_BASE_PX}" 2>/dev/null || true)"
+  [[ ${text_size} =~ ^[0-9]+$ ]] || text_size="${TEXT_SIZE_BASE_PX}"
+  read -r ui_size small_size < <(awk -v px="${text_size}" -v base="${TEXT_SIZE_BASE_PX}" \
+    -v ui="${TEXT_SIZE_BASE_PT}" -v small="${THEME_DESKTOP_SMALL_FONT_PT}" \
     'BEGIN { printf "%.2f %.2f\n", px * ui / base, px * small / base }')
   font_entries_ref=(
-    "General:font=${desktop_settings_ref[FONT]},${ui_size},${regular}"
-    "General:menuFont=${desktop_settings_ref[FONT]},${ui_size},${regular}"
-    "General:toolBarFont=${desktop_settings_ref[FONT]},${ui_size},${regular}"
-    "General:fixed=${desktop_settings_ref[MONOSPACE_FONT]},${ui_size},${regular}"
-    "General:smallestReadableFont=${desktop_settings_ref[FONT]},${small_size},${regular}"
-    "WM:activeFont=${desktop_settings_ref[FONT]},${ui_size},${regular}"
+    "General:font=${desktop_settings_ref[FONT]},${ui_size}${regular}"
+    "General:menuFont=${desktop_settings_ref[FONT]},${ui_size}${regular}"
+    "General:toolBarFont=${desktop_settings_ref[FONT]},${ui_size}${regular}"
+    "General:fixed=${desktop_settings_ref[MONOSPACE_FONT]},${ui_size}${regular}"
+    "General:smallestReadableFont=${desktop_settings_ref[FONT]},${small_size}${regular}"
+    "WM:activeFont=${desktop_settings_ref[FONT]},${ui_size}${regular}"
   )
 }
 

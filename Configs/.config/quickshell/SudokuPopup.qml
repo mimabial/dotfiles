@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import "SudokuModel.js" as Game
+import "Units.js" as Units
 
 PopupCard {
     id: root
@@ -71,7 +72,7 @@ PopupCard {
 
     onGameChanged: if (game.status === Game.STATUS_WON) saveBest()
     onOpenChanged: if (!open) confirmNew = false
-    property Timer gameClock: Timer { interval: 1000; running: root.open && root.game.status === Game.STATUS_PLAYING; repeat: true; onTriggered: root.elapsed++ }
+    property Timer gameClock: Timer { interval: Units.MS_PER_SECOND; running: root.open && root.game.status === Game.STATUS_PLAYING; repeat: true; onTriggered: root.elapsed++ }
 
     component GameButton: BarButton {
         property bool selected: false

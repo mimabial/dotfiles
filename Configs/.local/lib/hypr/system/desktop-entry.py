@@ -185,7 +185,7 @@ def main():
     mode, spec, *values = sys.argv[1:]
     if mode == "tokenize":
         words = tokenize(spec)
-        emit("ok", words[0].rsplit("/", 1)[-1], *words)
+        emit("ok", *words)
         return
     workdir, commands = resolve(spec, values)
     if mode == "run":
@@ -199,7 +199,7 @@ def main():
         raise SystemExit(max(process.wait() for process in processes))
     if len(commands) != 1:
         raise ValueError("Multiple Exec iterations are not supported here")
-    emit("ok", workdir, commands[0][0].rsplit("/", 1)[-1], *commands[0])
+    emit("ok", workdir, *commands[0])
 
 
 if __name__ == "__main__":

@@ -41,21 +41,28 @@ def read_store_items(path: str) -> list[dict[str, Any]]:
     return source
 
 
+def stored_bookmark(raw_item: Any) -> dict[str, Any] | None:
+    item = normalize_bookmark(raw_item, favicon_policy="stored")
+    identifier = (
+        str(raw_item.get("id") or "").strip()
+        if isinstance(raw_item, dict)
+        else ""
+    )
+    if item is None or not identifier or len(identifier) > MAX_IDENTIFIER_CHARS:
+        return None
+    item["id"] = identifier
+    return item
+
+
 def load_store_document(path: str) -> dict[str, Any]:
     source = read_store_items(path)
     bookmarks: list[dict[str, Any]] = []
     invalid = 0
     for raw_item in source:
-        item = normalize_bookmark(raw_item, favicon_policy="stored")
-        identifier = (
-            str(raw_item.get("id") or "").strip()
-            if isinstance(raw_item, dict)
-            else ""
-        )
-        if item is None or not identifier or len(identifier) > MAX_IDENTIFIER_CHARS:
+        item = stored_bookmark(raw_item)
+        if item is None:
             invalid += 1
             continue
-        item["id"] = identifier
         bookmarks.append(item)
     return {
         "ok": True,

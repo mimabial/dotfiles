@@ -1,6 +1,6 @@
 workflow_write_layout_flags() {
   local layout bar_layouts
-  layout="$(sed -n 's/^[[:space:]]*runtime\.config("general\.layout",[[:space:]]*"\([^"]*\)").*/\1/p' "${active_workflow_path}" | head -n1)"
+  layout="$(sed -n 's/^[[:space:]]*runtime\.config_if_supported("general\.layout",[[:space:]]*"\([^"]*\)").*/\1/p' "${active_workflow_path}" | head -n1)"
   [[ "${active_workflow_name}" == windows || "${active_workflow_name}" == macos ]] && layout=""
   state_set WORKFLOW_WINDOW_LAYOUT "${layout}" staterc
   bar_layouts="$(workflow_read_bar_layouts "${active_workflow_path}")"
@@ -25,7 +25,7 @@ workflow_apply_selection() {
   workflow_write_layout_flags
   hyprctl reload config-only -q
   workflow_apply_bar_layout
-  if [[ "${active_workflow_name}" != windows ]]; then windows_restore || return 1; fi
+  if [[ "${active_workflow_name}" != windows ]]; then windows_restore "${active_workflow_name}" "${workflow_previous_theme_override}" "${workflow_previous_layout_changed}" || return 1; fi
   if [[ "${active_workflow_name}" == macos && "${workflow_previous_name}" != macos ]]; then
     state_set selected_color_source theme staterc
     "${HYPR_LIB_DIR}/theme/theme.switch.sh" --set Tundra --quiet

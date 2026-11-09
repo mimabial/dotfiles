@@ -111,7 +111,7 @@ rollback_profile() {
     --argjson sinks "${original_ref[sink_states]}" --argjson sources "${original_ref[source_states]}" \
     '"\($sinks | length) \($sources | length)"')
   revert_card_profile "$1" || return 1
-  wait_for_profile_topology "$1" "${card_ref[previous_profile]}" "$original_sink_count" "$original_source_count" \
+  wait_for_profile_topology_muting_new_endpoints "$1" "${card_ref[previous_profile]}" "$original_sink_count" "$original_source_count" \
     "${transition_ref[events_fd]}" restored unused_failure || return 1
   restore_topology_endpoints "$2" restored
 }

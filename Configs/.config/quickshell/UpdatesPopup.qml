@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell.Io
 import "Units.js" as Units
 
 PopupCard {
@@ -10,8 +11,36 @@ PopupCard {
     contentHeight: updatesColumn.implicitHeight + padding * 2
 
     property var report: ({})
-    property bool checking: false
-    signal recheck()
+    property bool reportRefreshPending: false
+    readonly property bool checking: recheckProcess.running
+
+    function refresh() {
+        if (reportProcess.running) reportRefreshPending = true
+        else reportProcess.running = true
+    }
+    onOpenChanged: if (open) refresh()
+
+    property Process reportProcess: Process {
+        command: ["hyprshell", "system/package-updates.sh"]
+        onRunningChanged: if (!running && root.reportRefreshPending) {
+            root.reportRefreshPending = false
+            root.refresh()
+        }
+        stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
+            try { root.report = JSON.parse(text) || ({}) }
+            catch (error) { root.report = ({}) }
+        } }
+    }
+    property Process recheckProcess: Process {
+        command: ["hyprshell", "system/package-updates.sh", "--refresh"]
+        onRunningChanged: if (!running) root.shell.refreshIndicators("updates")
+    }
+    Connections {
+        target: root.shell
+        function onIndicatorRefreshSerialChanged() {
+            if (root.open && ["all", "updates"].includes(root.shell.indicatorRefreshTarget)) root.refresh()
+        }
+    }
 
     readonly property var packages: report && report.packages ? report.packages : ({})
     readonly property var errors: report && report.errors ? report.errors : []
@@ -66,7 +95,7 @@ PopupCard {
                 icon: "󰑐"; title: "Check now"
                 detail: root.checking ? "Checking…" : "Query pacman, AUR and flatpak now"
                 active: root.checking
-                onClicked: if (!root.checking) root.recheck()
+                onClicked: if (!root.checking) root.recheckProcess.running = true
             }
         }
 
@@ -107,7 +136,7 @@ PopupCard {
                     icon: ""; title: "Update " + groupColumn.modelData.label; detail: "Opens a terminal"
                     onClicked: {
                         root.shell.closePopup()
-                        root.shell.run(["hyprshell", "system/system.update.sh", "up", groupColumn.modelData.source])
+                        root.shell.run(["hyprshell", "system/package-updates.sh", "up", groupColumn.modelData.source])
                     }
                 }
             }
@@ -137,7 +166,7 @@ PopupCard {
                 icon: ""; title: "Run all upgrades"; detail: "Opens a terminal"
                 onClicked: {
                     root.shell.closePopup()
-                    root.shell.run(["hyprshell", "system/system.update.sh", "up"])
+                    root.shell.run(["hyprshell", "system/package-updates.sh", "up"])
                 }
             }
         }

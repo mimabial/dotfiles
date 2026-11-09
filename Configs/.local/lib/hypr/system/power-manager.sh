@@ -26,6 +26,6 @@ case "${1:-}" in
   lid-choice) power_lid_choice ;;
   lid-set) power_set_lid_choice "${2:-}" ;;
   perform) power_perform_action "${2:-}" "${3:-}" ;;
-  -h|--help) printf 'Usage: hyprshell system/power-manager <state|enabled|apply-profile|idle-plan|idle-arm|idle-rearm|idle-cancel|idle-legacy|idle-wait TOKEN DELAY ACTION PID|lid-action|lid-choice|lid-set keep-running|ACTION|perform ACTION [--locked]>\n' ;;
+  -h|--help) printf 'Usage: hyprshell system/power-manager <state|enabled|apply-profile|idle-plan|idle-arm|idle-rearm|idle-cancel|idle-legacy|idle-wait TOKEN DELAY ACTION PID|lid-action|lid-choice|lid-set keep-running|ACTION|perform ACTION [--locked]>\n\nApply power profiles and run the idle and lid actions behind the power settings.\n' ;;
   *) exit 2 ;;
 esac

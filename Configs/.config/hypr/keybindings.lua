@@ -1,14 +1,17 @@
 local vars = require("vars")
 local refill_scrolling_pair = require("core").refill_scrolling_pair
+local expand_scrolling_column = require("core").expand_scrolling_column
 local usable_edges = require("core").usable_edges
+local floating_area = require("core").floating_area
+local binds = require("binds")
+local bind_actions, chord, bind, exec = binds.actions, binds.chord, binds.bind, binds.exec
 
 local mod = vars.get("mainMod", "SUPER")
 local terminal = vars.get("TERMINAL", "alacritty")
 local explorer = vars.get("EXPLORER", "dolphin")
 local browser = vars.get("BROWSER", "firefox")
 local editor = vars.get("EDITOR", "nvim")
-local bind_actions = { __probe = hl.dsp.no_op() }
-_G.HYPR_BIND_ACTIONS = bind_actions
+local lib_dir = vars.get("HYPR_LIB_DIR")
 
 -- Modifier meanings, applied to letters, arrows and workspace numbers:
 --   mod        primary action for the key, or a submap leader
@@ -16,26 +19,6 @@ _G.HYPR_BIND_ACTIONS = bind_actions
 --   mod ALT    same action, without following the window
 --   mod CTRL   relative/scoped navigation
 -- Function, XF86, mouse and Print keys are a hardware class and sit outside it.
-
-local function chord(modifiers, key)
-	local parts = {}
-	for item in tostring(modifiers or ""):gsub("%+", " "):gmatch("%S+") do
-		parts[#parts + 1] = item
-	end
-	parts[#parts + 1] = key
-	return table.concat(parts, " + ")
-end
-
-local function bind(modifiers, key, description, dispatcher, options)
-	options = options or {}
-	options.description = description
-	bind_actions[description] = dispatcher
-	hl.bind(chord(modifiers, key), dispatcher, options)
-end
-
-local function exec(modifiers, key, description, command, options)
-	bind(modifiers, key, description, hl.dsp.exec_cmd(command), options)
-end
 
 -- Long-lived apps need their own unit: in the compositor's, oomd kills Hyprland
 -- for their memory and their stop jobs stall the next login.
@@ -52,7 +35,7 @@ end
 -- level-1 keysym, and AZERTY puts . / [ ] above level 1, where it cannot reach.
 local SUBMAP_MARKER = "[Submap] "
 -- Binds a submap re-exposes from the global set: they work, but the submap hint
--- already has enough rows. submap_hint.py filters on this same string.
+-- already has enough rows. keybinds/lib/submap_bindings.py filters on this same string.
 local HIDDEN_MARKER = "[Hidden] "
 
 -- Digits share the punctuation problem above -- AZERTY reaches them at level 2 --
@@ -62,9 +45,9 @@ local function workspace_code(workspace)
 	return "code:" .. tostring(KEYCODE_DIGIT_1 + workspace - 1)
 end
 
--- The leader is tagged with SUBMAP_MARKER because the Lua plugin reports every
--- bind as dispatcher "__lua"; keybinds_hint pairs inner binds back to the key
--- that enters them via this description, not via hyprctl's dispatcher field.
+-- The leader is tagged with SUBMAP_MARKER because hyprctl reports a Lua bind's
+-- dispatcher as the Lua value (function: 0x..., HL.Dispatcher(submap)), never the submap
+-- name; keybinds_hint pairs inner binds back to the key that enters them via this description.
 local function submap_leader(name, modifiers, key, body, exit_on_unbound)
 	bind(modifiers, key, SUBMAP_MARKER .. name, hl.dsp.submap(name))
 	hl.define_submap(name, function()
@@ -193,29 +176,13 @@ local function cycle_monocle(step)
 	end
 end
 
-local function usable_area(monitor)
-	local scale = monitor.scale
-	if not scale or scale <= 0 then
-		scale = 1
-	end
-
-	local width, height = monitor.size.width / scale, monitor.size.height / scale
-	if (monitor.transform or 0) % 2 == 1 then
-		width, height = height, width
-	end
-
-	local reserved = monitor.reserved
-	local border = hl.get_config("general:border_size") or 0
-	return width - reserved.left - reserved.right - 2 * border, height - reserved.top - reserved.bottom - 2 * border
-end
-
 -- Hyprland only sometimes restores a window's pre-tile floating size, so one tiled
 -- alone re-floats at the whole usable area. Keep our own record, keyed by address.
 local float_geometry = {}
 local FLOAT_FALLBACK_FRACTION = 0.9
 
 local function clamp_floating_size(window, selector)
-	local max_width, max_height = usable_area(window.monitor)
+	local _, _, max_width, max_height = floating_area(window.monitor)
 	local width = math.min(window.size.x, max_width)
 	local height = math.min(window.size.y, max_height)
 	if width == window.size.x and height == window.size.y then
@@ -237,7 +204,7 @@ local function restore_float_size(window, selector)
 		return
 	end
 
-	local max_width, max_height = usable_area(window.monitor)
+	local _, _, max_width, max_height = floating_area(window.monitor)
 	local width = math.min(window.size.x, math.floor(max_width * FLOAT_FALLBACK_FRACTION))
 	local height = math.min(window.size.y, math.floor(max_height * FLOAT_FALLBACK_FRACTION))
 	hl.dispatch(hl.dsp.window.resize({ x = width, y = height, relative = false, window = selector }))
@@ -276,7 +243,7 @@ local function toggle_fullscreen()
 	end
 	local window = hl.get_active_window()
 	if window then
-		hl.dispatch(hl.dsp.exec_cmd("python3 " .. vars.get("scrPath") .. "/window/mac-spaces.py toggle " .. window.address))
+		hl.dispatch(hl.dsp.exec_cmd("python3 " .. lib_dir .. "/window/mac-spaces.py toggle " .. window.address))
 	end
 end
 bind(mod, "F", "[Window Management] toggle fullscreen", toggle_fullscreen)
@@ -297,12 +264,20 @@ local function niri_or(niri_action, action)
 	end
 end
 
-bind(mod, "LEFT", "[Window Management|Focus] focus left", hl.dsp.focus({ direction = "left" }))
-bind(mod, "RIGHT", "[Window Management|Focus] focus right", hl.dsp.focus({ direction = "right" }))
+local function focus_window(direction)
+	return function()
+		local window = hl.get_active_window()
+		hl.dispatch(active_tiled_layout() == "scrolling" and window and not window.floating
+			and hl.dsp.layout("focus " .. direction:sub(1, 1)) or hl.dsp.focus({ direction = direction }))
+	end
+end
+
+bind(mod, "LEFT", "[Window Management|Focus] focus left", focus_window("left"))
+bind(mod, "RIGHT", "[Window Management|Focus] focus right", focus_window("right"))
 bind(mod, "UP", "[Window Management|Focus] focus up or previous workspace in niri", niri_or(hl.dsp.focus({ workspace = "r-1" }), hl.dsp.focus({ direction = "up" })))
 bind(mod, "DOWN", "[Window Management|Focus] focus down or next workspace in niri", niri_or(hl.dsp.focus({ workspace = "r+1" }), hl.dsp.focus({ direction = "down" })))
 
-dofile(os.getenv("HOME") .. "/.config/hypr/switcher.lua")
+require("switcher")
 
 local WINDOW_STEP_PX = 30
 local WINDOW_STEPS = {
@@ -334,7 +309,7 @@ local function resize_window(direction)
 		end
 
 		if window.floating then
-			local max_width, max_height = usable_area(window.monitor)
+			local _, _, max_width, max_height = floating_area(window.monitor)
 			local width = math.min(window.size.x + step.x, max_width)
 			local height = math.min(window.size.y + step.y, max_height)
 			hl.dispatch(hl.dsp.window.resize({ x = width, y = height, relative = false }))
@@ -411,12 +386,8 @@ local function summon_app(class, workspace, command, focus_when_opened)
 		local shown = hl.get_active_special_workspace()
 		for _, window in ipairs(hl.get_windows() or {}) do
 			if window.class == class or window.initial_class == class then
-				local on_shown_scratchpad = scratchpad
-					and shown
-					and window.workspace
-					and window.workspace.name == shown.name
-				if on_shown_scratchpad then
-					hl.dispatch(hl.dsp.workspace.toggle_special(shown.name:match("^special:(.*)$") or ""))
+				if scratchpad and window.workspace and window.workspace.name == workspace then
+					hl.dispatch(hl.dsp.workspace.toggle_special(scratchpad))
 				else
 					hl.dispatch(hl.dsp.focus({ window = "address:" .. window.address }))
 				end
@@ -487,30 +458,30 @@ exec("CTRL", "F2", "[Launcher|Menus] focus menu bar", "quickshell ipc call bar m
 exec(mod, "V", "[Launcher|Menus] clipboard", "quickshell ipc call bar popup cliphist")
 exec(mod, "S", "[Launcher|Menus] spotlight", "quickshell ipc call bar popup spotlight")
 
-exec(mod, "F10", "[Hardware|Audio] mute output", vars.get("scrPath") .. "/controls/volume-control.sh -o m", { locked = true })
+exec(mod, "F10", "[Hardware|Audio] mute output", lib_dir .. "/controls/volume-control.sh -o m", { locked = true })
 exec(mod .. " CTRL", "F10", "[Hardware|Audio] mute focused window", "hyprshell window-mute.py", { locked = true })
-exec("", "XF86AudioMute", "[Hardware|Audio] mute output", vars.get("scrPath") .. "/controls/volume-control.sh -o m", { locked = true })
+exec("", "XF86AudioMute", "[Hardware|Audio] mute output", lib_dir .. "/controls/volume-control.sh -o m", { locked = true })
 exec(
 	mod,
 	"F11",
 	"[Hardware|Audio] volume down",
-	vars.get("scrPath") .. "/controls/volume-control.sh -o d",
+	lib_dir .. "/controls/volume-control.sh -o d",
 	{ locked = true, repeating = true }
 )
-exec(mod, "F12", "[Hardware|Audio] volume up", vars.get("scrPath") .. "/controls/volume-control.sh -o i", { locked = true, repeating = true })
-exec("", "XF86AudioMicMute", "[Hardware|Audio] mute microphone", vars.get("scrPath") .. "/controls/volume-control.sh -i m", { locked = true })
+exec(mod, "F12", "[Hardware|Audio] volume up", lib_dir .. "/controls/volume-control.sh -o i", { locked = true, repeating = true })
+exec("", "XF86AudioMicMute", "[Hardware|Audio] mute microphone", lib_dir .. "/controls/volume-control.sh -i m", { locked = true })
 exec(
 	"",
 	"XF86AudioLowerVolume",
 	"[Hardware|Audio] volume down",
-	vars.get("scrPath") .. "/controls/volume-control.sh -o d",
+	lib_dir .. "/controls/volume-control.sh -o d",
 	{ locked = true, repeating = true }
 )
 exec(
 	"",
 	"XF86AudioRaiseVolume",
 	"[Hardware|Audio] volume up",
-	vars.get("scrPath") .. "/controls/volume-control.sh -o i",
+	lib_dir .. "/controls/volume-control.sh -o i",
 	{ locked = true, repeating = true }
 )
 
@@ -522,14 +493,14 @@ exec(
 	"",
 	"XF86MonBrightnessUp",
 	"[Hardware|Brightness] increase",
-	vars.get("scrPath") .. "/controls/brightness-control.sh i",
+	lib_dir .. "/controls/brightness-control.sh i",
 	{ locked = true, repeating = true }
 )
 exec(
 	"",
 	"XF86MonBrightnessDown",
 	"[Hardware|Brightness] decrease",
-	vars.get("scrPath") .. "/controls/brightness-control.sh d",
+	lib_dir .. "/controls/brightness-control.sh d",
 	{ locked = true, repeating = true }
 )
 exec("", "XF86PowerOff", "[Hardware|Power] logout menu", "hyprshell logout-launch.sh")
@@ -575,7 +546,7 @@ submap_leader("window", mod, "W", function()
 	)
 	submap_action("G", "[Window Mode|State] toggle group", hl.dsp.group.toggle())
 	submap_exec("P", "[Window Mode|State] toggle pin", "hyprshell window/windowpin.sh")
-	submap_exec("C", "[Window Mode|Placement] snap placement menu", vars.get("scrPath") .. "/window/snap.sh")
+	submap_exec("SHIFT + P", "[Window Mode|Placement] snap placement menu", lib_dir .. "/window/snap.sh")
 	submap_exec("D", "[Window Mode|State] show desktop", "quickshell ipc call dock showDesktop")
 
 	for workspace = 1, 10 do
@@ -619,7 +590,7 @@ submap_leader("window", mod, "W", function()
 	layout_submap_action("scrolling", "SHIFT + C", "scroll view to previous column", hl.dsp.layout("move -col"))
 	layout_submap_action("scrolling", "Z", "grow column", resize_column(1))
 	layout_submap_action("scrolling", "SHIFT + Z", "shrink column", resize_column(-1))
-	layout_submap_action("scrolling", "X", "expand column", hl.dsp.layout("fit expand"))
+	layout_submap_action("scrolling", "X", "expand column", expand_scrolling_column)
 	layout_submap_action("scrolling", "V", "promote window", hl.dsp.layout("promote"))
 	layout_submap_action("scrolling", "B", "consume into column", hl.dsp.layout("consume"))
 	layout_submap_action("scrolling", "SHIFT + B", "expel from column", hl.dsp.layout("expel"))
@@ -635,8 +606,8 @@ submap_leader("window", mod, "W", function()
 	layout_submap_action("master", "SHIFT + A", "remove master", hl.dsp.layout("removemaster"))
 	layout_submap_action("master", "O", "cycle orientation", hl.dsp.layout("orientationcycle"))
 	layout_submap_action("master", "SHIFT + O", "center orientation", hl.dsp.layout("orientationcenter"))
-	layout_submap_action("master", "K", "roll next", hl.dsp.layout("rollnext"))
-	layout_submap_action("master", "SHIFT + K", "roll previous", hl.dsp.layout("rollprev"))
+	layout_submap_action("master", "R", "roll next", hl.dsp.layout("rollnext"))
+	layout_submap_action("master", "SHIFT + R", "roll previous", hl.dsp.layout("rollprev"))
 	layout_submap_action("master", "Z", "grow master", hl.dsp.layout("mfact +" .. LAYOUT_RATIO_STEP))
 	layout_submap_action("master", "SHIFT + Z", "shrink master", hl.dsp.layout("mfact -" .. LAYOUT_RATIO_STEP))
 
@@ -668,13 +639,13 @@ submap_leader("theming", mod, "T", function()
 	submap_exec("SHIFT + C", "[Theming] cycle bar layout backward", "hyprshell quickshell/layout previous")
 	submap_exec("H", "[Theming] toggle bar", "hyprshell quickshell/visibility toggle")
 	submap_exec("SHIFT + H", "[Theming] toggle floating bar", "quickshell ipc call bar floating")
-	submap_exec("L", "[Theming] look and feel", "hyprshell window/settings.sh")
+	submap_exec("S", "[Theming] Settings", "hyprshell window/settings.sh")
 	submap_exec("A", "[Theming] select animation", menu("style_animations"))
-	submap_exec("S", "[Theming] select shader", menu("style_shaders"))
+	submap_exec("SHIFT + S", "[Theming] select shader", menu("style_shaders"))
 	submap_exec("M", "[Theming] color mode", menu("style_color_mode"))
 	submap_exec("R", "[Theming] select rofi theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh -s")
 	submap_exec("SHIFT + R", "[Theming] select launcher style", "hyprshell rofi-launch.sh -s")
-	submap_exec("K", "[Theming] select lock layout", "quickshell ipc call lockview open")
+	submap_exec("L", "[Theming] select lock layout", "quickshell ipc call lockview open")
 	for workspace = 1, 10 do
 		local description, action = numbered_workspace_action(workspace)
 		submap_action(
@@ -705,7 +676,6 @@ submap_leader("open", mod, "O", function()
 	)
 	submap_exec("G", "[Open] Gimp", "hyprshell launch/summon.sh --empty-workspace-if-occupied gimp -- gimp")
 	submap_exec("E", "[Open] Elisa", "hyprshell launch/summon.sh --empty-workspace-if-occupied class:elisa -- elisa")
-	submap_exec("M", "[Open] Mullvad VPN", "hyprshell launch/summon.sh class:mullvad-vpn -- mullvad-vpn")
 	submap_exec(
 		"Q",
 		"[Open] qBittorrent",
@@ -738,7 +708,7 @@ submap_leader("terminal", mod, "J", function()
 	tui_app("U", "Dua", "org.tui.Dua", "dua i")
 	submap_exec("C", "[Terminal] Calculator", "hyprshell util/calc-launch")
 	tui_app("D", "Display layout", "org.tui.Displays", "hyprmoncfg")
-	submap_exec("L", "[Terminal] Look and feel", "hyprshell window/settings.sh")
+	submap_exec("S", "[Terminal] Settings", "hyprshell window/settings.sh")
 	submap_exec("T", "[Terminal] Dropdown terminal", "hyprshell window/dropdown-terminal")
 	submap_exec(
 		"R",
@@ -762,6 +732,7 @@ submap_leader("insert", mod, "I", function()
 	submap_exec("E", "[Insert] emoji picker", "pkill -x rofi || hyprshell emoji-picker.sh")
 	submap_exec("G", "[Insert] glyph picker", "pkill -x rofi || hyprshell glyph-picker.sh")
 	submap_exec("B", "[Insert] box drawing picker", "pkill -x rofi || hyprshell boxdraw-picker.sh")
+	submap_exec("D", "[Insert] dictation", "hyprshell capture/dictation toggle")
 end)
 
 submap_leader("hints", mod, "H", function()

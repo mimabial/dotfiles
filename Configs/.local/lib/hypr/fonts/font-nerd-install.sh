@@ -17,6 +17,8 @@ usage() {
   cat <<'HELP'
 Usage: hyprshell fonts/font-nerd-install.sh <mode> [packages...]
 
+List or install Nerd Font packages.
+
 Modes:
   --list-installable   List Nerd Font packages not currently installed
   --list-all           List all available Nerd Font packages

@@ -29,7 +29,7 @@ HASH_DIR = CACHE_HOME / "render-hashes"
 RENDER_OUTPUT_DIR = CACHE_HOME / "render"
 
 
-def palette_path() -> Path:
+def palette_path_from_argv() -> Path:
     return Path(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1] else STATE_HOME / "active-palette.json"
 
 

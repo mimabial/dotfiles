@@ -69,6 +69,8 @@ MAX_PLAUSIBLE_MILLIDEGREES = 200_000
 KERNEL_COMM_LENGTH = 15
 SENSOR_RESCAN_SECONDS = 30
 DETAIL_REFRESH_SECONDS = 10
+VOLUMES_REFRESH_SECONDS = 10
+PLAIN_NAME_MAX_LENGTH = 128
 IDLE_REFRESH_SECONDS = 30
 MAX_RATE_GAP_SECONDS = 5.0
 SLOW_SAMPLE_SECONDS = 0.95
@@ -200,6 +202,8 @@ def run(cmd: list[str], timeout: float = 2.0) -> str:
     output = bytearray()
     selector = selectors.DefaultSelector()
     selector.register(proc.stdout, selectors.EVENT_READ)
+    exit_watch = os.pidfd_open(proc.pid)
+    selector.register(exit_watch, selectors.EVENT_READ)
     os.set_blocking(proc.stdout.fileno(), False)
     deadline = time.monotonic() + timeout
     eof = False
@@ -211,7 +215,12 @@ def run(cmd: list[str], timeout: float = 2.0) -> str:
                 kill_process_group(proc)
                 proc.wait()
                 return ""
-            for key, _ in selector.select(min(0.05, remaining)):
+            for key, _ in selector.select(remaining):
+                if key.fileobj == exit_watch:
+                    exited = True
+                    selector.unregister(exit_watch)
+                    kill_process_group(proc)
+                    continue
                 try:
                     chunk = os.read(key.fileobj.fileno(), 64 * 1024)
                 except BlockingIOError:
@@ -225,9 +234,7 @@ def run(cmd: list[str], timeout: float = 2.0) -> str:
                     proc.wait()
                     return ""
                 output.extend(chunk)
-            if not exited and proc.poll() is not None:
-                exited = True
-                kill_process_group(proc)
+        proc.wait()
         return output.decode("utf-8")
     except (OSError, UnicodeDecodeError, subprocess.SubprocessError):
         kill_process_group(proc)
@@ -235,6 +242,7 @@ def run(cmd: list[str], timeout: float = 2.0) -> str:
         return ""
     finally:
         selector.close()
+        os.close(exit_watch)
         proc.stdout.close()
 
 
@@ -1038,7 +1046,7 @@ def device_uuid(device: str) -> str | None:
 
 
 def plain_name(value: str | None) -> bool:
-    return bool(value) and len(value) <= 128 and ".." not in value and re.fullmatch(r"[A-Za-z0-9._:/-]+", value) is not None
+    return bool(value) and len(value) <= PLAIN_NAME_MAX_LENGTH and ".." not in value and re.fullmatch(r"[A-Za-z0-9._:/-]+", value) is not None
 
 
 def volume_checks(volume: dict, options: list[str]) -> list[dict]:
@@ -1223,7 +1231,7 @@ class DiskSampler:
         return sorted(volumes.values(), key=lambda volume: (volume["mount"] != "/", volume["mount"]))
 
     def sample(self, elapsed: float, now: float) -> dict:
-        if now - self.volumes_stamp > 10:
+        if now - self.volumes_stamp > VOLUMES_REFRESH_SECONDS:
             self.volumes_cache = self._volumes()
             self.volumes_stamp = now
         current: dict[str, tuple[int, int, int, int, int, int]] = {}

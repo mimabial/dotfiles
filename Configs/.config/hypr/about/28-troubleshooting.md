@@ -39,16 +39,17 @@ the same chord does not override the first. Find it:
 rg -n '"F"' ~/.config/hypr/keybindings.lua
 ```
 
-To see the live set, parse the plain output — `hyprctl binds -j` is unusable here,
-it exits 5 and emits misaligned JSON:
+To see the live set, parse the plain output — `hyprctl binds -j` is unreliable here:
+it drops or misreports the bind flags and blanks the key of keycode binds:
 
 ```bash
 hyprctl binds | awk '/^\tmodmask:/{m=$2} /^\tsubmap:/{s=$2} /^\tkey:/{k=$2} \
   /^\tdescription:/{sub(/^\tdescription: /,"");print m"\t"k"\t"s"\t"$0}' | sort
 ```
 
-Note that the Lua plugin reports every bind as dispatcher `__lua`, so you will
-never see `submap` in that output. Submap leaders are identified by the
+Note that hyprctl reports a Lua bind's dispatcher as the Lua value (`function: 0x…`
+or `HL.Dispatcher(submap)`) with a line number as its arg, so you will never see a
+submap name in that output. Submap leaders are identified by the
 `[Submap] ` marker in their description instead.
 
 ## The bar

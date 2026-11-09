@@ -6,5 +6,5 @@ vars.set("WORKFLOW_DESCRIPTION", "macOS-style desktop // menu bar, bottom dock, 
 vars.set("WORKFLOW_QUICKSHELL_LAYOUT", "macos")
 
 local layout = vars.get("WORKFLOW_LAYOUT_OVERRIDE", "")
-runtime.config("general.layout", layout ~= "" and layout or "master")
+runtime.config_if_supported("general.layout", layout ~= "" and layout or "master")
 require("animations.macos")

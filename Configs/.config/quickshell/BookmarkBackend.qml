@@ -65,7 +65,7 @@ Item {
         if (exitCode !== 0 || !result.ok) {
           backend.controller.showStatus(String(result.error || "Could not add clipboard bookmark"))
         } else if (result.duplicate) {
-          backend.controller.viewMode = 0
+          backend.controller.viewMode = "bookmarks"
           backend.controller.query = ""
           backend.controller.selectBookmarkById(result.id)
           backend.controller.showStatus("That URL is already bookmarked")

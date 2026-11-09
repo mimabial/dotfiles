@@ -1,9 +1,17 @@
 from __future__ import annotations
 
-from .profiles import DEFAULT_GROUP_SIZE, DEFAULT_MAX_WORKSPACES
+from typing import TypedDict
+
+from .profiles import DEFAULT_GROUP_SIZE, DEFAULT_MAX_WORKSPACES, Profile
 
 
-def target_keys(profile: dict) -> list[str]:
+class PlannedWorkspaces(TypedDict):
+    output_key: str
+    output_name: str
+    workspaces: list[str]
+
+
+def target_keys(profile: Profile) -> list[str]:
     settings = profile.get("workspaces", {}) or {}
     enabled = [
         o.get("key", "")
@@ -14,13 +22,13 @@ def target_keys(profile: dict) -> list[str]:
     return order + [k for k in enabled if k not in order]
 
 
-def _output_name(profile: dict, key: str) -> str:
+def _output_name(profile: Profile, key: str) -> str:
     return next(
         (o.get("name", "") for o in profile.get("outputs", []) if o.get("key") == key), ""
     )
 
 
-def plan(profile: dict) -> list[dict]:
+def plan(profile: Profile) -> list[PlannedWorkspaces]:
     keys = target_keys(profile)
     rows = {key: [] for key in keys}
     settings = profile.get("workspaces", {}) or {}
@@ -50,7 +58,7 @@ def plan(profile: dict) -> list[dict]:
     ]
 
 
-def rules(profile: dict) -> list[dict]:
+def rules(profile: Profile) -> list[dict]:
     seen, out = set(), []
     for row in plan(profile):
         for workspace in row["workspaces"]:

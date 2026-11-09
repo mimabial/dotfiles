@@ -62,12 +62,7 @@ classify_match_kind_into() {
 }
 
 matches_ignoring_case() {
-  local status=1
-
-  shopt -s nocasematch
-  [[ "$1" =~ $2 ]] && status=0
-  shopt -u nocasematch
-  return "${status}"
+  [[ "${1,,}" =~ ${2,,} ]]
 }
 
 record_best_match() {
@@ -156,8 +151,6 @@ collect_font_reference_lines() {
   local -A seen_patterns=() reference_contents=()
 
   FONT_REFERENCE_LINES=()
-  FONT_REFERENCE_CONTENT_FILE="$(mktemp)"
-  trap 'rm -f -- "${FONT_REFERENCE_CONTENT_FILE}"' EXIT
 
   for pkg in "${INSTALLED_FONT_PACKAGES[@]}"; do
     package_families "$pkg" >/dev/null

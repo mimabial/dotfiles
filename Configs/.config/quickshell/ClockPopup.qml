@@ -3,19 +3,23 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell.Io
 import "CalendarMath.js" as CalendarMath
+import "Units.js" as Units
 
 PopupCard {
     id: root
     readonly property string agendaScript: root.shell.home + "/.local/lib/hypr/calendar/agenda.sh"
     readonly property int minLocationQuery: 3
     popupName: "clock"
-    keyboardHint: "Arrows Day  PgUp/PgDn Month  Home Today  W Week  Esc"
-    readonly property int calendarWidth: weekNumberColumnWidth + 7 * (dayCellWidth + monthGrid.spacing)
-    readonly property int agendaWidth: Style.px(440) - padding * 2
+    keyboardHint: quickAddFocused ? "Enter Add  Shift+Enter Full form  Esc Back"
+        : "Arrows Day  PgUp/PgDn Month  Home Today  W Week  "
+        + (agendaVisible ? "J/K Event  Enter Open  N Quick add  E Edit  " : "") + "Esc"
+    readonly property int calendarWidth: weekNumberColumnWidth + weekGutterWidth + 7 * (dayCellWidth + monthGrid.spacing)
+    readonly property int agendaWidth: Style.px(330)
     readonly property int choiceColumn: Style.px(84)
-    readonly property int paneGap: Style.px(16)
+    readonly property int paneGap: Style.sectionGap
+    readonly property int dividerWidth: 1
     property bool agendaVisible: false
-    contentWidth: calendarWidth + padding * 2 + (agendaVisible ? agendaWidth + paneGap : 0)
+    contentWidth: calendarWidth + padding * 2 + (agendaVisible ? agendaWidth + paneGap * 2 + dividerWidth : 0)
     contentHeight: Math.max(calendar.implicitHeight, agendaVisible ? agendaPane.height : 0) + Style.px(32)
 
     readonly property date today: root.shell.clock.date
@@ -36,22 +40,23 @@ PopupCard {
         return (first - weekStart + 7) % 7
     }
 
-    readonly property int weekNumberColumnWidth: Style.px(26)
-    readonly property int dayCellWidth: Style.px(36)
-    readonly property int weekdayHeaderHeight: Style.px(18)
+    readonly property int weekNumberColumnWidth: Style.px(32)
+    readonly property int weekGutterWidth: Style.xxxl
+    readonly property int dayCellWidth: Style.px(52)
+    readonly property int dayCellHeight: Style.px(34)
+    readonly property int weekdayHeaderHeight: Style.px(16)
+    readonly property color secondaryText: root.shell.alpha(root.shell.foreground, Style.secondaryTextAlpha)
+    readonly property color structureLine: root.shell.alpha(root.shell.foreground, Style.fieldBorderAlpha)
 
     function moveMonth(delta) { visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + delta, 1) }
     function moveYear(delta) { visibleMonth = new Date(visibleMonth.getFullYear() + delta, visibleMonth.getMonth(), 1) }
-    function goToToday() {
-        selectedDate = today
-        visibleMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+    function showDay(day) {
+        selectedDate = day
+        if (day.getFullYear() !== visibleMonth.getFullYear() || day.getMonth() !== visibleMonth.getMonth())
+            visibleMonth = new Date(day.getFullYear(), day.getMonth(), 1)
     }
-    function moveDay(days) {
-        const next = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate() + days)
-        selectedDate = next
-        if (next.getFullYear() !== visibleMonth.getFullYear() || next.getMonth() !== visibleMonth.getMonth())
-            visibleMonth = new Date(next.getFullYear(), next.getMonth(), 1)
-    }
+    function goToToday() { showDay(today) }
+    function moveDay(days) { showDay(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate() + days)) }
     property var settingsSnapshot: ({})
     property bool settingsLoaded: false
     function persist() {
@@ -99,15 +104,115 @@ PopupCard {
             root.shell.role("act_br", root.shell.accent))
     }
     readonly property var selectedDayEvents: selectedDayAgenda.events || []
+    readonly property var allDayEvents: selectedDayEvents.filter(event => event.allDay)
+    readonly property var timedEvents: selectedDayEvents.filter(event => !event.allDay)
+    readonly property var dayItems: allDayEvents.concat(timedEvents)
+    readonly property string dayHeading: [Qt.formatDate(selectedDate, "dddd, MMMM d"),
+        CalendarMath.relativeDayLabel(CalendarMath.isoDay(selectedDate), today)].filter(part => part !== "").join("  ·  ")
+    readonly property string daySummary: [timedEvents.length ? timedEvents.length + (timedEvents.length === 1 ? " event" : " events") : "",
+        allDayEvents.length ? allDayEvents.length + " all day" : ""].filter(part => part !== "").join("  ·  ")
+    readonly property bool selectedIsToday: CalendarMath.sameDay(selectedDate, today)
+    readonly property int nowSeconds: today.getHours() * Units.SECONDS_PER_HOUR + today.getMinutes() * Units.SECONDS_PER_MINUTE
+    readonly property int nowLineIndex: {
+        if (!selectedIsToday) return -1
+        const index = timedEvents.findIndex(event => eventBounds(event).start > nowSeconds)
+        return index < 0 ? timedEvents.length : index
+    }
+    function clockSeconds(clock) {
+        const parts = String(clock).split(":")
+        return Number(parts[0]) * Units.SECONDS_PER_HOUR + Number(parts[1]) * Units.SECONDS_PER_MINUTE
+    }
+    function eventBounds(event) {
+        const start = clockSeconds(event.start), end = clockSeconds(event.end)
+        return { start: start, end: end > start ? end : end + Units.SECONDS_PER_DAY }
+    }
+    function eventPhase(event) {
+        const day = CalendarMath.isoDay(selectedDate), current = CalendarMath.isoDay(today)
+        if (day !== current) return day < current ? "past" : "later"
+        const bounds = eventBounds(event)
+        return nowSeconds >= bounds.end ? "past" : nowSeconds >= bounds.start ? "now" : "later"
+    }
+    function countdownText(event) {
+        const phase = eventPhase(event), bounds = eventBounds(event)
+        if (!selectedIsToday || phase === "past") return ""
+        return phase === "now" ? "now  ·  " + root.shell.duration(bounds.end - nowSeconds) + " left"
+            : "in " + root.shell.duration(bounds.start - nowSeconds)
+    }
+    function startsSoon(event) {
+        const phase = eventPhase(event)
+        return selectedIsToday && (phase === "now" || phase === "later"
+            && eventBounds(event).start - nowSeconds <= root.shell.upcomingEvents.announceLeadMinutes * Units.SECONDS_PER_MINUTE)
+    }
+    function openUpcoming(event) {
+        showDay(new Date(event.start * Units.MS_PER_SECOND))
+        openEvent(event)
+    }
+    property int selectedEventIndex: -1
+    readonly property var selectedEvent: agendaVisible && agendaMode === "day" ? dayItems[selectedEventIndex] || null : null
+    onSelectedDayEventsChanged: selectedEventIndex = -1
+    function stepEvent(delta) {
+        const count = dayItems.length
+        if (agendaMode !== "day" || count === 0) return
+        agendaVisible = true
+        selectedEventIndex = selectedEventIndex < 0 ? (delta > 0 ? 0 : count - 1)
+            : Math.max(0, Math.min(count - 1, selectedEventIndex + delta))
+    }
+    function focusCalendar() { calendar.forceActiveFocus() }
+
+    readonly property string quickAddScript: root.shell.home + "/.local/lib/hypr/calendar/lib/quick_add.py"
+    property string quickText: ""
+    property bool quickAddFocused: false
+    property var quickParse: ({})
+    readonly property string quickRequest: CalendarMath.isoDay(selectedDate) + "\t" + quickText.trim()
+    readonly property bool quickParseCurrent: quickParse.request === quickRequest
+    readonly property bool quickParsed: quickParseCurrent && !quickParse.error
+    readonly property string quickError: eventEditorError || (quickParseCurrent && quickParse.error) || ""
+    readonly property var quickRows: {
+        if (!quickParsed) return []
+        const rows = [{ label: "TITLE", value: quickParse.title },
+            { label: "STARTS", value: dayName(quickParse.day) + ", " + (quickParse.allDay ? "all day" : quickParse.start) }]
+        if (!quickParse.allDay)
+            rows.push({ label: "ENDS", value: (quickParse.endDay ? dayName(quickParse.endDay) + ", " : "") + quickParse.end
+                + "  ·  " + root.shell.duration(spanSeconds(quickParse.day, quickParse.start, quickParse.endDay || quickParse.day, quickParse.end)) })
+        else if (quickParse.endDay) rows.push({ label: "UNTIL", value: dayName(quickParse.endDay) })
+        if (quickParse.description) rows.push({ label: "NOTES", value: quickParse.description })
+        return rows
+    }
+    signal quickAddRequested()
+    signal eventSaved()
+    onQuickRequestChanged: requestQuickParse()
+    function dayName(iso) { return CalendarMath.relativeDayLabel(iso, today) || Qt.formatDate(CalendarMath.fromIsoDay(iso), "ddd d MMM") }
+    function requestQuickParse() { if (quickText.trim() !== "" && quickParser.running) quickParser.write(quickRequest + "\n") }
+    function quickAdd() {
+        if (!quickParsed) return
+        const args = ["--add", "--day", quickParse.day, "--title", quickParse.title]
+        if (!quickParse.allDay) args.push("--start", quickParse.start, "--end", quickParse.end)
+        if (quickParse.endDay) args.push("--end-day", quickParse.endDay)
+        if (quickParse.description) args.push("--description", quickParse.description)
+        saveEvent(args)
+    }
+    function editQuickAdd() {
+        const values = quickParsed ? quickParse : null
+        if (values) showDay(CalendarMath.fromIsoDay(values.day))
+        openNewEventEditor(values)
+    }
+    property Process quickParser: Process {
+        command: ["python3", root.quickAddScript]
+        running: root.open && root.quickAddFocused
+        stdinEnabled: true
+        onStarted: root.requestQuickParse()
+        stdout: SplitParser { onRead: data => {
+            try { root.quickParse = JSON.parse(data) } catch (error) { root.quickParse = ({}) }
+        } }
+    }
 
     property var calendars: ({})
     property string defaultCalendar: ""
     property var locations: []
-    property var locationSearchResults: []
     property string locationQuery: ""
     property int locationSelectionIndex: 0
-    property string activeLocationQuery: ""
     property bool locationSuggestionsDismissed: false
+    readonly property int maxLocationSuggestions: 6
     onLocationQueryChanged: {
         locationSelectionIndex = 0
         locationSuggestionsDismissed = false
@@ -120,35 +225,49 @@ PopupCard {
             ? [] : locations.filter(known => String(known).toLowerCase().startsWith(prefix))
         const out = []
         const seen = ({})
-        for (const candidate of mine.concat(locationSearchResults)) {
+        for (const candidate of mine.concat(addressSearch.results, placeSearch.results)) {
             const value = String(candidate)
             const key = value.toLowerCase()
             if (value === "" || value === typed || seen[key] === true) continue
             seen[key] = true
             out.push(value)
         }
-        return out.slice(0, 6)
+        return out.slice(0, root.maxLocationSuggestions)
     }
     function searchLocations() {
-        if (root.locationQuery.length < root.minLocationQuery) {
-            root.locationSearchResults = []
-            return
-        }
-        if (root.locationSearchProcess.running) return
-        root.activeLocationQuery = root.locationQuery
-        root.locationSearchProcess.command = [root.shell.home + "/.local/lib/hypr/calendar/places.sh", root.locationQuery]
-        root.locationSearchProcess.running = true
+        addressSearch.refresh()
+        placeSearch.refresh()
     }
-    property Process locationSearchProcess: Process {
-        onRunningChanged: if (!running && root.activeLocationQuery !== root.locationQuery) Qt.callLater(root.searchLocations)
+    component PlaceSearch: Process {
+        id: search
+        required property string source
+        property string activeQuery: ""
+        property var results: []
+        function refresh() {
+            if (root.locationQuery.length < root.minLocationQuery) {
+                search.results = []
+                return
+            }
+            if (search.running) return
+            search.activeQuery = root.locationQuery
+            search.command = [root.shell.home + "/.local/lib/hypr/calendar/places.sh", search.source, root.locationQuery]
+            search.running = true
+        }
+        function clear() {
+            search.running = false
+            search.results = []
+        }
+        onRunningChanged: if (!running && search.activeQuery !== root.locationQuery) Qt.callLater(search.refresh)
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
-            if (root.activeLocationQuery !== root.locationQuery) return
-            try { root.locationSearchResults = JSON.parse(text) || [] } catch (error) { root.locationSearchResults = [] }
+            if (search.activeQuery !== root.locationQuery) return
+            try { search.results = JSON.parse(text) || [] } catch (error) { search.results = [] }
         } }
     }
+    property PlaceSearch addressSearch: PlaceSearch { source: "ban" }
+    property PlaceSearch placeSearch: PlaceSearch { source: "photon" }
     function clearLocationSearch() {
-        locationSearchProcess.running = false
-        locationSearchResults = []
+        addressSearch.clear()
+        placeSearch.clear()
         locationQuery = ""
         locationSelectionIndex = 0
         locationSuggestionsDismissed = false
@@ -189,12 +308,9 @@ PopupCard {
             root.shell.alpha(root.shell.foreground, .55))
     }
 
-    function monthEntryForDate(date) { return monthMarkersByDate[CalendarMath.isoDay(date)] || ({}) }
-    function timedCalendarsOnDate(date) { return monthEntryForDate(date).timed || [] }
-    function dayNumberColor(date) {
-        const marks = monthEntryForDate(date).allDay || []
-        return marks.length === 0 ? root.shell.foreground
-            : calendarColor(String(marks[0]), root.shell.role("act_br", root.shell.accent))
+    function calendarsOnDate(date) {
+        const entry = monthMarkersByDate[CalendarMath.isoDay(date)] || ({})
+        return (entry.allDay || []).concat(entry.timed || []).filter((name, index, all) => all.indexOf(name) === index)
     }
 
     function loadSelectedDay() {
@@ -222,20 +338,25 @@ PopupCard {
         persist()
     }
     property bool eventEditorOpen: false
+    readonly property string noAlarm: "none"
+    readonly property int timeStepSeconds: 15 * Units.SECONDS_PER_MINUTE
     readonly property var alarmChoices: [
-        { label: "None", value: "" }, { label: "Start", value: "0m" },
-        { label: "10m", value: "10m" }, { label: "1h", value: "1h" },
-        { label: "1d", value: "1d" }
+        { label: "No alert", value: noAlarm }, { label: "At start", value: "0m" },
+        { label: "10 minutes before", value: "10m" }, { label: "1 hour before", value: "1h" },
+        { label: "1 day before", value: "1d" }
     ]
     readonly property var repeatChoices: [
-        { label: "Never", value: "" }, { label: "Day", value: "daily" },
-        { label: "Week", value: "weekly" }, { label: "Month", value: "monthly" },
-        { label: "Year", value: "yearly" }
+        { label: "Does not repeat", value: "" }, { label: "Every day", value: "daily" },
+        { label: "Every week", value: "weekly" }, { label: "Every month", value: "monthly" },
+        { label: "Every year", value: "yearly" }
     ]
-    property bool draftAllDay: false
-    property string draftAlarm: ""
-    property string draftRepeat: ""
-    property string draftCalendar: ""
+    property string defaultAlarm: ""
+    property string defaultDayAlarm: ""
+    property int defaultEventSeconds: Units.SECONDS_PER_HOUR
+    property var draft: ({})
+    readonly property string effectiveAlarm: draft.alarm ? draft.alarm : draft.allDay ? defaultDayAlarm : defaultAlarm
+    readonly property var draftAlarmChoices: effectiveAlarm === "" || alarmChoices.some(choice => choice.value === effectiveAlarm) ? alarmChoices
+        : alarmChoices.concat({ label: effectiveAlarm, value: effectiveAlarm })
     readonly property var writableCalendars: {
         const out = []
         for (const name in calendars)
@@ -245,10 +366,48 @@ PopupCard {
     }
     signal saveRequested()
     property string editedEventUid: ""
-    property var draftValues: ({})
     function alarmValueForTrigger(trigger) {
-        const map = { "-PT0S": "0m", "PT0S": "0m", "-PT10M": "10m", "-PT1H": "1h", "-P1D": "1d" }
-        return map[String(trigger)] || ""
+        const iso = /^([+-]?)P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(String(trigger))
+        if (!iso) return noAlarm
+        const delta = [[Number(iso[2] || 0) * 7 + Number(iso[3] || 0), "d"], [Number(iso[4] || 0), "h"], [Number(iso[5] || 0), "m"], [Number(iso[6] || 0), "s"]]
+            .filter(part => part[0] > 0).map(part => part[0] + part[1]).join(" ")
+        return delta === "" ? "0m" : (iso[1] === "-" ? "" : "-") + delta
+    }
+    function clockText(seconds) {
+        return String(Math.floor(seconds / Units.SECONDS_PER_HOUR)).padStart(2, "0") + ":"
+            + String(Math.floor(seconds % Units.SECONDS_PER_HOUR / Units.SECONDS_PER_MINUTE)).padStart(2, "0")
+    }
+    function shiftedDay(iso, days) {
+        const day = CalendarMath.fromIsoDay(iso)
+        day.setDate(day.getDate() + days)
+        return CalendarMath.isoDay(day)
+    }
+    function daysBetween(fromIso, toIso) { return Math.round((CalendarMath.fromIsoDay(toIso) - CalendarMath.fromIsoDay(fromIso)) / Units.MS_PER_DAY) }
+    function spanSeconds(startDay, startTime, endDay, endTime) {
+        return daysBetween(startDay, endDay) * Units.SECONDS_PER_DAY + clockSeconds(endTime) - clockSeconds(startTime)
+    }
+    function endingAfter(startDay, startSeconds, lengthSeconds) {
+        const end = startSeconds + lengthSeconds
+        return { endDate: shiftedDay(startDay, Math.floor(end / Units.SECONDS_PER_DAY)), endTime: clockText(end % Units.SECONDS_PER_DAY) }
+    }
+    function nextStepSeconds() { return Math.min(nowSeconds + timeStepSeconds - nowSeconds % timeStepSeconds, Units.SECONDS_PER_DAY - timeStepSeconds) }
+    function timeChoices(current, afterSeconds) {
+        const values = []
+        for (let seconds = afterSeconds >= 0 ? afterSeconds + timeStepSeconds - afterSeconds % timeStepSeconds : 0; seconds < Units.SECONDS_PER_DAY; seconds += timeStepSeconds)
+            values.push(clockText(seconds))
+        if (current && values.indexOf(current) < 0) values.push(current)
+        values.sort()
+        return values.map(value => ({ value: value, label: afterSeconds >= 0 ? value + "  ·  " + root.shell.duration(clockSeconds(value) - afterSeconds) : value }))
+    }
+    readonly property var startTimeChoices: timeChoices(draft.startTime, -1)
+    readonly property var endTimeChoices: timeChoices(draft.endTime, draft.startDate === draft.endDate ? clockSeconds(draft.startTime) : -1)
+    function updateDraft(patch) { draft = Object.assign({}, draft, patch) }
+    function draftLengthSeconds() { return spanSeconds(draft.startDate, draft.startTime, draft.endDate, draft.endTime) }
+    function setDraftStartDate(day) { updateDraft({ startDate: day, endDate: shiftedDay(draft.endDate, daysBetween(draft.startDate, day)) }) }
+    function setDraftEndDate(day) { updateDraft({ endDate: day < draft.startDate ? draft.startDate : day }) }
+    function setDraftStartTime(value) {
+        const length = draftLengthSeconds()
+        updateDraft(Object.assign({ startTime: value }, endingAfter(draft.startDate, clockSeconds(value), length > 0 ? length : defaultEventSeconds)))
     }
     function openEvent(event) {
         const uid = String(event.uid || "")
@@ -288,31 +447,42 @@ PopupCard {
                 root.eventDetailsOpen = true
                 return
             }
+            const startDate = CalendarMath.rawDate(payload.startRaw) || CalendarMath.isoDay(root.selectedDate)
+            const fallback = root.endingAfter(startDate, root.nextStepSeconds(), root.defaultEventSeconds)
             root.editedEventUid = root.requestedEventUid
-            root.draftCalendar = root.requestedEventCalendar
-            root.draftAllDay = payload.allDay === true
-            root.draftRepeat = String(payload.repeat || "")
-            root.draftAlarm = root.alarmValueForTrigger(payload.alarm)
-            root.draftValues = values
+            root.draft = {
+                title: values.title, location: values.location, description: values.description,
+                allDay: payload.allDay === true,
+                startDate: startDate, startTime: values.start || root.clockText(root.nextStepSeconds()),
+                endDate: values.endDay || startDate, endTime: values.end || fallback.endTime,
+                alarm: root.alarmValueForTrigger(payload.alarm), repeat: String(payload.repeat || ""),
+                calendar: root.requestedEventCalendar
+            }
             root.eventEditorError = ""
             root.eventEditorOpen = true
         } }
     }
-    function openNewEventEditor() {
+    function openNewEventEditor(values) {
         clearLocationSearch()
         eventDetailsOpen = false
         editedEventUid = ""
-        draftValues = ({})
         eventEditorError = ""
-        draftAllDay = false
-        draftAlarm = ""
-        draftRepeat = ""
-        draftCalendar = defaultCalendar
+        const timed = !(values && values.allDay)
+        const startDate = values ? values.day : CalendarMath.isoDay(selectedDate)
+        const startSeconds = values && timed ? clockSeconds(values.start) : nextStepSeconds()
+        const fallback = endingAfter(startDate, startSeconds, defaultEventSeconds)
+        draft = {
+            title: values ? values.title : "", location: "", description: values ? values.description : "",
+            allDay: !timed, startDate: startDate, startTime: clockText(startSeconds),
+            endDate: values ? values.endDay || values.day : fallback.endDate,
+            endTime: values && timed ? values.end : fallback.endTime,
+            alarm: "", repeat: "", calendar: defaultCalendar
+        }
         eventEditorOpen = true
     }
     function closeEventPanels() {
         clearLocationSearch()
-        eventEditorOpen = false; editedEventUid = ""; draftValues = ({}); eventEditorError = ""
+        eventEditorOpen = false; editedEventUid = ""; draft = ({}); eventEditorError = ""
         closeEventDetails()
     }
     property bool eventDetailsOpen: false
@@ -330,69 +500,30 @@ PopupCard {
         return end !== "" ? start + " – " + end : start
     }
     property string eventEditorError: ""
-    function validateAndSaveEvent(fields) {
-        const title = String(fields.title).trim()
-        if (title === "") {
+    function saveDraft(title, location, description) {
+        const name = String(title).trim()
+        if (name === "") {
             eventEditorError = "A title is required"
             return
         }
-        const timed = /^\d{1,2}:\d{2}$/
-        const dated = /^\d{4}-\d{2}-\d{2}$/
-        const startText = CalendarMath.enteredValue(fields.start)
-        const endText = CalendarMath.enteredValue(fields.end)
-        const endDay = CalendarMath.enteredValue(fields.endDay)
-
-        if (endDay !== "" && !dated.test(endDay)) {
-            eventEditorError = "Last day must look like 2026-08-18"
+        if (draft.endDate < draft.startDate || !draft.allDay && draftLengthSeconds() <= 0) {
+            eventEditorError = "The event ends before it starts"
             return
         }
-        if (endDay !== "" && endDay < CalendarMath.isoDay(selectedDate)) {
-            eventEditorError = "Last day is before the first"
-            return
-        }
-        const spansDays = endDay !== "" && endDay !== CalendarMath.isoDay(selectedDate)
-
-        if (!draftAllDay) {
-            if (startText === "" && endText === "") {
-                eventEditorError = "Set a start time, or switch on All day"
-                return
-            }
-            if (startText === "") {
-                eventEditorError = "An end time needs a start time"
-                return
-            }
-            if (!timed.test(startText)) {
-                eventEditorError = "Start time must look like 09:00"
-                return
-            }
-            if (endText !== "") {
-                if (!timed.test(endText)) {
-                    eventEditorError = "End time must look like 10:00"
-                    return
-                }
-                if (!spansDays && endText <= startText) {
-                    eventEditorError = "Ends before it starts \u2014 set Last day for overnight"
-                    return
-                }
-            }
-        }
-
-        const args = ["--add", "--day", CalendarMath.isoDay(selectedDate), "--title", title]
-        if (!draftAllDay) {
-            args.push("--start", startText)
-            if (endText !== "") args.push("--end", endText)
-        }
-        if (spansDays) args.push("--end-day", endDay)
-        const where = String(fields.location).trim()
+        const args = ["--add", "--day", draft.startDate, "--title", name]
+        if (!draft.allDay) args.push("--start", draft.startTime, "--end", draft.endTime)
+        if (draft.endDate !== draft.startDate) args.push("--end-day", draft.endDate)
+        const where = String(location).trim()
         if (where !== "") args.push("--location", where)
-        const notes = String(fields.description).trim()
+        const notes = String(description).trim()
         if (notes !== "") args.push("--description", notes)
-        if (draftAlarm !== "") args.push("--alarm", draftAlarm)
-        if (draftRepeat !== "") args.push("--repeat", draftRepeat)
-        if (draftCalendar !== "") args.push("--calendar", draftCalendar)
-
+        if (draft.alarm) args.push("--alarm", draft.alarm)
+        if (draft.repeat) args.push("--repeat", draft.repeat)
+        if (draft.calendar) args.push("--calendar", draft.calendar)
         if (editedEventUid !== "") args.push("--delete", editedEventUid)
-
+        saveEvent(args)
+    }
+    function saveEvent(args) {
         eventEditorError = ""
         saveEventProcess.running = false
         saveEventProcess.command = ["bash", root.agendaScript].concat(args)
@@ -424,6 +555,8 @@ PopupCard {
             root.eventEditorOpen = false
             root.editedEventUid = ""
             root.selectedDayAgenda = payload
+            root.eventSaved()
+            if (payload.day !== CalendarMath.isoDay(root.selectedDate)) root.showDay(CalendarMath.fromIsoDay(payload.day))
             root.loadVisibleMonth()
         } }
     }
@@ -452,6 +585,9 @@ PopupCard {
             try { payload = JSON.parse(text) || ({}) } catch (error) { payload = ({}) }
             root.calendars = payload.calendars || ({})
             root.defaultCalendar = String(payload.default || "")
+            root.defaultAlarm = String(payload.defaultAlarm || "")
+            root.defaultDayAlarm = String(payload.defaultDayAlarm || "")
+            root.defaultEventSeconds = Number(payload.defaultEventSeconds) || Units.SECONDS_PER_HOUR
             root.locations = payload.locations || []
         } }
     }
@@ -509,53 +645,104 @@ PopupCard {
             case Qt.Key_PageDown: event.modifiers & Qt.ShiftModifier ? root.moveYear(1) : root.moveMonth(1); break
             case Qt.Key_Home:     root.goToToday(); break
             case Qt.Key_W:        root.toggleWeekStart(); break
+            case Qt.Key_J:        root.stepEvent(1); break
+            case Qt.Key_K:        root.stepEvent(-1); break
+            case Qt.Key_N:        root.agendaVisible = true; root.quickAddRequested(); break
+            case Qt.Key_E:        if (root.selectedEvent && !root.eventIsReadOnly(root.selectedEvent)) root.openEvent(root.selectedEvent); break
+            case Qt.Key_Return:
+            case Qt.Key_Enter:    if (!root.selectedEvent) return; root.openEvent(root.selectedEvent); break
+            case Qt.Key_Escape:   if (!root.selectedEvent) return; root.selectedEventIndex = -1; break
             default: return
             }
             event.accepted = true
         }
 
-        Text {
-            width: parent.width; text: "󰃭  " + Qt.formatDate(root.today, "MMMM d")
-            color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.displayLarge; font.bold: true
-            horizontalAlignment: Text.AlignHCenter
+        Item {
+            id: hero
+            readonly property bool showsToday: root.selectedIsToday && root.visibleMonth.getMonth() === root.today.getMonth()
+                && root.visibleMonth.getFullYear() === root.today.getFullYear()
+            readonly property color tint: heroArea.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.foreground
+            width: parent.width; height: heroRow.implicitHeight
+            Row {
+                id: heroRow
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: Style.xxxl
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "󰃭"; color: hero.tint
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.heroIcon
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Qt.formatDate(root.today, "MMMM d"); color: hero.tint
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.heroIcon; font.bold: true
+                }
+            }
+            MouseArea {
+                id: heroArea
+                anchors.fill: heroRow
+                enabled: !hero.showsToday
+                hoverEnabled: enabled; cursorShape: Qt.PointingHandCursor
+                onClicked: root.goToToday()
+            }
         }
         Item {
-            id: yearBar
-            width: parent.width; height: Style.px(18)
+            id: yearRail
+            width: parent.width; height: Math.max(yearLabel.implicitHeight, Style.md)
             readonly property real progress: (root.today - new Date(root.today.getFullYear(), 0, 1)) / (new Date(root.today.getFullYear() + 1, 0, 1) - new Date(root.today.getFullYear(), 0, 1))
 
-            Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: root.today.getFullYear(); color: root.shell.mutedText; font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
-            Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: Math.floor(yearBar.progress * 100) + "%"; color: root.shell.foreground; font.family: root.shell.fontFamily; font.pixelSize: Style.caption }
-            Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: Style.px(42); anchors.rightMargin: Style.px(34); anchors.verticalCenter: parent.verticalCenter; height: Style.px(5); radius: 3; color: root.shell.alpha(root.shell.foreground, .12); Rectangle { width: parent.width * yearBar.progress; height: parent.height; radius: parent.radius; color: root.shell.role("act_br", root.shell.accent) } }
+            Text {
+                id: yearLabel
+                anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                text: root.today.getFullYear(); color: root.secondaryText
+                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall; font.letterSpacing: 1
+            }
+            Text {
+                id: yearPercent
+                anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                text: Math.floor(yearRail.progress * 100) + "%"; color: root.shell.foreground
+                font.family: root.shell.fontFamily; font.pixelSize: Style.bodySmall
+            }
+            Rectangle {
+                anchors.left: yearLabel.right; anchors.right: yearPercent.left
+                anchors.leftMargin: Style.xxl; anchors.rightMargin: Style.xxl
+                anchors.verticalCenter: parent.verticalCenter
+                height: Style.md; radius: root.shell.rounding > 0 ? height / 2 : 0
+                color: root.structureLine
+                Rectangle { width: parent.width * yearRail.progress; height: parent.height; radius: parent.radius; color: root.shell.role("act_br", root.shell.accent) }
+            }
         }
 
         Item {
             width: parent.width; height: monthGrid.implicitHeight
 
             Rectangle {
-                x: root.weekNumberColumnWidth + monthGrid.spacing
+                x: root.weekNumberColumnWidth + Math.round(root.weekGutterWidth / 2)
                 y: root.weekdayHeaderHeight + monthGrid.spacing
-                width: 1; height: monthGrid.implicitHeight - root.weekdayHeaderHeight - monthGrid.spacing
-                color: root.shell.alpha(root.shell.foreground, .1)
+                width: root.dividerWidth; height: monthGrid.implicitHeight - root.weekdayHeaderHeight - monthGrid.spacing
+                color: root.structureLine
             }
 
         Grid {
             id: monthGrid
-            width: parent.width; columns: 8; spacing: 2
+            width: parent.width; columns: 8; spacing: Style.xxs
 
-            Rectangle {
-                width: root.weekNumberColumnWidth; height: root.weekdayHeaderHeight; radius: root.shell.rounding
-                color: weekStartMouse.containsMouse ? root.shell.hoverFill() : "transparent"
-                Text {
-                    anchors.centerIn: parent; text: "W"
-                    color: weekStartMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : Qt.darker(root.shell.foreground, 1.9)
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.caption
-                    font.bold: true; font.letterSpacing: 1
-                }
-                MouseArea {
-                    id: weekStartMouse; anchors.fill: parent
-                    hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                    onClicked: root.toggleWeekStart()
+            Item {
+                width: root.weekNumberColumnWidth + root.weekGutterWidth; height: root.weekdayHeaderHeight
+                Rectangle {
+                    width: root.weekNumberColumnWidth; height: parent.height; radius: root.shell.rounding
+                    color: weekStartMouse.containsMouse ? root.shell.hoverFill() : "transparent"
+                    Text {
+                        anchors.centerIn: parent; text: "W"
+                        color: weekStartMouse.containsMouse ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.mutedText
+                        font.family: root.shell.fontFamily; font.pixelSize: Style.caption
+                        font.bold: true; font.letterSpacing: 1
+                    }
+                    MouseArea {
+                        id: weekStartMouse; anchors.fill: parent
+                        hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: root.toggleWeekStart()
+                    }
                 }
             }
             Repeater {
@@ -563,8 +750,8 @@ PopupCard {
                 Text {
                     required property var modelData
                     width: root.dayCellWidth; height: root.weekdayHeaderHeight; text: modelData
-                    color: root.shell.faintText
-                    font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true
+                    color: root.secondaryText
+                    font.family: root.shell.fontFamily; font.pixelSize: Style.caption; font.bold: true; font.letterSpacing: 1
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
@@ -583,11 +770,12 @@ PopupCard {
 
                     readonly property bool hovered: !isWeek && dayArea.containsMouse
                     readonly property bool weekHovered: isWeek && dayArea.containsMouse
+                    readonly property bool inMonth: day.getMonth() === root.visibleMonth.getMonth()
+                    readonly property var dots: isWeek ? [] : root.calendarsOnDate(day)
 
-                    width: isWeek ? root.weekNumberColumnWidth : root.dayCellWidth
-                    height: Style.px(31); radius: root.shell.rounding
-                    color: hovered || focused ? root.shell.hoverFill()
-                        : current ? root.shell.selectedFill() : "transparent"
+                    width: isWeek ? root.weekNumberColumnWidth + root.weekGutterWidth : root.dayCellWidth
+                    height: root.dayCellHeight; radius: root.shell.rounding
+                    color: hovered ? root.shell.hoverFill() : focused ? root.shell.selectedFill() : "transparent"
                     Behavior on color { ColorAnimation { duration: Style.hoverDuration; easing.type: Easing.OutCubic } }
 
                     MouseArea {
@@ -612,32 +800,33 @@ PopupCard {
                         }
                     }
 
-                    Row {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        anchors.bottom: parent.bottom; anchors.bottomMargin: 3
-                        spacing: 3
-                        Repeater {
-                            model: dayCell.isWeek ? [] : root.timedCalendarsOnDate(dayCell.day)
-                            Rectangle {
-                                required property var modelData
-                                width: Style.px(4); height: Style.px(4); radius: 2
-                                color: root.shell.alpha(root.calendarColor(String(modelData),
-                                    root.shell.role("act_br", root.shell.accent)), .9)
-                            }
-                        }
-                    }
                     Text {
-                        anchors.centerIn: parent
+                        id: dayNumber
+                        x: Math.round(((dayCell.isWeek ? root.weekNumberColumnWidth : dayCell.width) - width) / 2)
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.verticalCenterOffset: dayCell.dots.length > 0 ? -Style.xs : 0
                         text: dayCell.isWeek ? CalendarMath.isoWeek(dayCell.day) : dayCell.day.getDate()
-                        color: dayCell.isWeek
-                            ? (dayCell.weekHovered
-                                ? root.shell.role("hvr_fg", root.shell.foreground)
-                                : root.shell.alpha(root.shell.foreground, .3))
-                            : dayCell.day.getMonth() !== root.visibleMonth.getMonth() ? root.shell.alpha(root.shell.foreground, .25)
-                            : root.dayNumberColor(dayCell.day)
+                        color: dayCell.isWeek ? (dayCell.weekHovered ? root.shell.role("hvr_fg", root.shell.foreground) : root.shell.mutedText)
+                            : dayCell.current ? root.shell.accent
+                            : !dayCell.inMonth ? root.shell.faintText
+                            : CalendarMath.isWeekend(CalendarMath.isoDay(dayCell.day)) ? root.secondaryText : root.shell.foreground
                         font.family: root.shell.fontFamily
                         font.pixelSize: dayCell.isWeek ? Style.caption : Style.body
                         font.bold: dayCell.current
+                    }
+                    Row {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.top: dayNumber.bottom; anchors.topMargin: Style.px(1)
+                        spacing: Style.px(1)
+                        Repeater {
+                            model: dayCell.dots
+                            Rectangle {
+                                required property var modelData
+                                width: Style.xs; height: width; radius: width / 2
+                                color: root.calendarColor(String(modelData), root.shell.role("act_br", root.shell.accent))
+                                opacity: dayCell.inMonth ? 1 : Style.faintTextAlpha
+                            }
+                        }
                     }
                 }
             }
@@ -650,8 +839,8 @@ PopupCard {
             Text {
                 anchors.centerIn: parent
                 text: Qt.formatDate(root.visibleMonth, "MMMM yyyy").toUpperCase()
-                color: root.shell.alpha(root.shell.foreground, .7)
-                font.family: root.shell.fontFamily; font.pixelSize: Style.body; font.bold: true; font.letterSpacing: 1
+                color: root.secondaryText
+                font.family: root.shell.fontFamily; font.pixelSize: Style.body; font.letterSpacing: 1
                 MouseArea { anchors.fill: parent; anchors.margins: -8; onClicked: root.goToToday() }
             }
             ClockNavButton { popup: root; anchors.right: parent.right; anchors.rightMargin: Style.px(26); anchors.verticalCenter: parent.verticalCenter; glyph: "›"; onActivated: root.moveMonth(1) }
@@ -661,6 +850,11 @@ PopupCard {
         WheelHandler { onWheel: event => { if (event.angleDelta.y) root.moveMonth(event.angleDelta.y > 0 ? -1 : 1) } }
         }
 
+        Rectangle {
+            visible: root.agendaVisible
+            width: root.dividerWidth; height: Math.max(calendar.implicitHeight, agendaPane.height)
+            color: root.structureLine
+        }
         ClockAgendaPane { id: agendaPane; popup: root; calendarHeight: calendar.implicitHeight }
         }
 

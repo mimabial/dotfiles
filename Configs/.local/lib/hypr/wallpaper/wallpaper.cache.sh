@@ -30,6 +30,8 @@ wallpaper_cache_main() {
 
   source "${HYPR_LIB_DIR}/wallpaper/cache/batch.bash" || return 1
   wallcache_acquire_lock
+  [[ -d "${HYPR_THEME_DIR}" ]] || return 1
+  wallcache_source_dir="${HYPR_THEME_DIR}"
   wallcache_prepare_directories
   wallcache_parse_arguments "$@"
 

@@ -5,10 +5,10 @@ helper, and Flatpak at the same time, so you do not have to run three commands t
 find out whether anything needs updating.
 
 ```bash
-hyprshell system/pm upgrade        # repo + AUR + Flatpak
-hyprshell system/pm fetch          # refresh metadata
-hyprshell system/pm count-updates  # how many are pending
-hyprshell system/pm list-updates   # which ones
+hyprshell system/package-manager upgrade        # repo + AUR + Flatpak
+hyprshell system/package-manager fetch          # refresh metadata
+hyprshell system/package-manager count-updates  # how many are pending
+hyprshell system/package-manager list-updates   # which ones
 ```
 
 `count-updates` is what the bar's update module reads, which is why the count in
@@ -17,10 +17,10 @@ the bar is the same count you get in a terminal.
 ## Installing and removing
 
 ```bash
-hyprshell system/pm add <pkg...>        # repo, --needed --noconfirm
-hyprshell system/pm aur-add <pkg...>    # AUR
-hyprshell system/pm install             # fzf picker when given no arguments
-hyprshell system/pm remove              # same, for removal
+hyprshell system/package-manager add <pkg...>        # repo, --needed --noconfirm
+hyprshell system/package-manager aur-add <pkg...>    # AUR
+hyprshell system/package-manager install             # fzf picker when given no arguments
+hyprshell system/package-manager remove              # same, for removal
 ```
 
 The bare `install` and `remove` with no package names open an fzf selector, which
@@ -29,8 +29,8 @@ is usually faster than remembering the exact name.
 ## Housekeeping
 
 ```bash
-hyprshell system/pm clean-cache
-hyprshell system/pm remove-orphans
+hyprshell system/package-manager clean-cache
+hyprshell system/package-manager remove-orphans
 ```
 
 ## Through the menu

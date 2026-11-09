@@ -14,6 +14,7 @@ MENU_MULTI_BALLOT_ON="${MENU_MULTI_BALLOT_ON:-■}"
 MENU_MULTI_BALLOT_OFF="${MENU_MULTI_BALLOT_OFF:-□}"
 
 MENU_WINDOW_BORDER_PX=2
+MENU_CONTENT_INNER_CHROME_PX=0 MENU_CONTENT_CHROME_PX=0 MENU_VERTICAL_CHROME_PX=0 MENU_ROW_CHROME_PX=0 MENU_FOOTER_CHROME_PX=0 MENU_FOOTER_WIDTH_CHROME_PX=0
 MENU_FALLBACK_WIDTH=295px
 MENU_FALLBACK_RADIUS_PX=2
 MENU_MAX_WIDTH_PERCENT=60
@@ -176,10 +177,11 @@ menu_escape_markup_reply() {
 }
 
 menu_json_value_reply() {
-  local pattern="\"$2\"[[:space:]]*:[[:space:]]*\"?([^\",}[:space:]]+)"
+  local json_file="$1" key="$2" fallback="$3"
+  local pattern="\"${key}\"[[:space:]]*:[[:space:]]*\"?([^\",}[:space:]]+)"
 
-  menu_cached_state_reply "$1" cat "$1"
-  [[ "${REPLY}" =~ ${pattern} ]] && REPLY="${BASH_REMATCH[1]}" || REPLY="$3"
+  menu_cached_state_reply "${json_file}" cat "${json_file}"
+  [[ "${REPLY}" =~ ${pattern} ]] && REPLY="${BASH_REMATCH[1]}" || REPLY="${fallback}"
 }
 
 menu_json_flag_is_true() {

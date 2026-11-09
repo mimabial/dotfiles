@@ -71,7 +71,7 @@ def emit_ported_color(name: str, rgb: tuple[int, int, int]) -> None:
 
 def emit_ported_layout_colors(palette: dict) -> None:
     accent_lightness = PORTED_LAYOUT_ACCENT_LIGHTNESS
-    if palette.get("background") == "light":
+    if palette.get("color_variant") == "light":
         accent_lightness = accent_lightness[::-1]
     seeds = (palette["bg"], *(palette["colors"][slot] for slot in PORTED_LAYOUT_SEED_SLOTS))
     for n, seed in enumerate(seeds, 1):

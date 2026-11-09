@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell.Io
 import "TasksModel.js" as TasksModel
 import "CalendarMath.js" as CalendarMath
+import "Units.js" as Units
 
 PopupCard {
     id: root
@@ -19,6 +20,7 @@ PopupCard {
 
     property var todos: []
     property bool unavailable: false
+    property bool refreshQueued: false
     property string view: "today"
     property int cursor: 0
     property string pendingDelete: ""
@@ -103,7 +105,7 @@ PopupCard {
     }
     function isToday(item) {
         const due = dueMillis(item)
-        return due >= startOfToday() && due < startOfToday() + CalendarMath.MS_PER_DAY
+        return due >= startOfToday() && due < startOfToday() + Units.MS_PER_DAY
     }
     readonly property var open_: orderedTodos.filter(item => item.completed !== true)
     readonly property var visibleTasks: {
@@ -198,7 +200,7 @@ PopupCard {
     function dayKey(date) { return Qt.formatDate(date, "yyyy-MM-dd") }
     readonly property string todayKey: dayKey(now)
     readonly property var stats: {
-        const start = startOfToday(), end = start + CalendarMath.MS_PER_DAY
+        const start = startOfToday(), end = start + Units.MS_PER_DAY
         let done = 0, total = 0
         for (const item of orderedTodos) {
             if (isLater(item)) continue
@@ -383,6 +385,7 @@ PopupCard {
         readProcess.command = ["bash", root.agendaScript, "--todos-all"]
         readProcess.running = true
     }
+    function refreshAfterChange() { if (readProcess.running) refreshQueued = true; else refresh() }
     function run(args, laterSummary) {
         pendingDelete = ""
         editingId = ""
@@ -401,7 +404,7 @@ PopupCard {
         if (item.completed_at === null || item.completed_at === undefined) return ""
         const when = new Date(Number(item.completed_at) * 1000)
         const days = Math.round((startOfToday() - new Date(when.getFullYear(),
-            when.getMonth(), when.getDate()).getTime()) / CalendarMath.MS_PER_DAY)
+            when.getMonth(), when.getDate()).getTime()) / Units.MS_PER_DAY)
         if (days <= 0) return "done today"
         if (days === 1) return "done yesterday"
         if (days < 7) return "done " + days + " days ago"
@@ -547,6 +550,11 @@ PopupCard {
             root.unavailable = payload.unavailable === true
             if (root.cursor >= root.listed.length) root.cursor = Math.max(0, root.listed.length - 1)
         } }
+        onExited: if (root.refreshQueued && !root.readProcess.running) { root.refreshQueued = false; root.refresh() }
+    }
+    property Connections listChanges: Connections {
+        target: root.shell.dueTasks
+        function onListsChanged() { if (root.open) root.refreshAfterChange() }
     }
     property FileView orderFile: FileView {
         path: root.shell.home + "/.local/state/quickshell/task-order.json"
@@ -566,10 +574,6 @@ PopupCard {
             }
         }
         onFileChanged: reload()
-    }
-    property Timer taskPollTimer: Timer {
-        interval: 2 * CalendarMath.MS_PER_MINUTE; running: root.open; repeat: true
-        onTriggered: root.refresh()
     }
 
     component HelpRow: Item {

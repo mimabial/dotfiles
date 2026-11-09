@@ -359,7 +359,7 @@ Item {
 
       Rectangle {
         anchors.fill: parent
-        color: Commons.Util.alpha(Commons.Color.background, 0.72)
+        color: Commons.Util.scaleAlpha(Commons.Color.background, 0.72)
       }
 
       MouseArea {

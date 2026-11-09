@@ -13,13 +13,15 @@ font_name_request="${ROFI_GAMELAUNCHER_FONT:-${ROFI_FONT:-}}"
 emit_json=0
 game_catalog_script="${HYPR_LIB_DIR}/gaming/lib/game_catalog.py"
 gamepad_keys_script="${HYPR_LIB_DIR}/gaming/lib/gamepad_keys.py"
-steam_deck_layout() {
+steam_deck_layout_into() {
+  local -n cover_args_ref="$1" theme_ref="$2"
+  local requested_font_name="$3" requested_font_scale="$4" control_padding_y="$5" control_padding_x="$6"
   local columns=6 rows=2 content_gaps=4 line_steps=4
-  local control_padding_y="$1" control_padding_x="$2" font_name font_scale font_description width height radius border_width
+  local font_name font_scale font_description width height radius border_width
   local font_height unit inset card_gap tabs_height hints_height chrome_height tile_width cover_width cover_height cover_radius grid_width
 
-  font_name="$(rofi_effective_font_name "${font_name_request}")"
-  font_scale="$(rofi_effective_font_scale "${font_scale_request}")"
+  font_name="$(rofi_effective_font_name "${requested_font_name}")"
+  font_scale="$(rofi_effective_font_scale "${requested_font_scale}")"
   font_description="$(rofi_font_description "${font_name}" "${font_scale}")"
   read -r width height < <(rofi_focused_monitor_logical_size)
   IFS=$'\t' read -r radius border_width < <(rofi_default_border_metrics)
@@ -37,15 +39,15 @@ steam_deck_layout() {
   cover_height=$(((height - chrome_height - (rows - 1) * card_gap) / rows - 2 * border_width))
   cover_radius=$((radius > border_width ? radius - border_width : 0))
   grid_width=$((columns * tile_width + (columns - 1) * card_gap))
-  deck_cover_args="--cover-size ${cover_width}x${cover_height} --cover-radius ${cover_radius} --title-font \"${font_description}\" --title-padding ${control_padding_x}x${control_padding_y} --title-margin ${inset} --title-radius ${radius}"
+  cover_args_ref="--cover-size ${cover_width}x${cover_height} --cover-radius ${cover_radius} --title-font \"${font_description}\" --title-padding ${control_padding_x}x${control_padding_y} --title-margin ${inset} --title-radius ${radius}"
 
-  printf -v deck_theme '* {font: "%s";\n element-border-radius: %spx; deck-gap: %spx; deck-card-gap: %spx; deck-inset: %spx; deck-border: %spx; deck-cover-height: %spx; deck-grid-width: %spx; deck-columns: %s; deck-rows: %s;}\n' \
+  printf -v theme_ref '* {font: "%s";\n element-border-radius: %spx; deck-gap: %spx; deck-card-gap: %spx; deck-inset: %spx; deck-border: %spx; deck-cover-height: %spx; deck-grid-width: %spx; deck-columns: %s; deck-rows: %s;}\n' \
     "${font_description}" "${radius}" "${unit}" "${card_gap}" "${inset}" \
     "${border_width}" "${cover_height}" "${grid_width}" "${columns}" "${rows}"
 }
 
 usage() {
-  printf 'Usage: hyprshell gaming/launcher [--backend all|steam|lutris] [--style THEME] [--json]\n'
+  printf 'Usage: hyprshell gaming/launcher [--backend all|steam|lutris] [--style THEME] [--json]\n\nPick a game from the Steam and Lutris libraries in rofi and launch it.\n'
 }
 
 while (($# > 0)); do
@@ -92,7 +94,7 @@ case "${style}" in
     rofi_monitor_args_into monitor_args
     popup_theme="$(rofi_popup_theme)"
     [[ "${popup_theme}" =~ control-padding:\ ([0-9]+)px\ ([0-9]+)px ]]
-    steam_deck_layout "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+    steam_deck_layout_into deck_cover_args deck_theme "${font_name_request}" "${font_scale_request}" "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
     library_modes=""
     for library_backend in all steam lutris; do
       library_modes+="${library_modes:+,}${library_backend}:python3 \"${game_catalog_script}\" --backend ${library_backend} --rofi ${deck_cover_args}"

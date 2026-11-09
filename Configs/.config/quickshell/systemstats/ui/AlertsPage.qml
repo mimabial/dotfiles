@@ -18,6 +18,12 @@ Column {
   property string fontFamily: Commons.Style.font.family
 
   readonly property var events: service ? service.alertEvents : []
+  readonly property var alertDefs: Model.ALERTS.concat(Model.sensorTemps(service ? service.snapshot : ({}))
+    .filter(sensor => !!sensor.alertId).map(sensor => ({
+      sensorId: String(sensor.alertId), label: Model.sensorLabel(sensor), reading: sensor.value, unit: "°C",
+      threshold: Math.max(Model.SENSOR_ALERT_MIN, Math.min(Model.SENSOR_ALERT_MAX, Math.ceil((Number(sensor.value) + 2 * Model.SENSOR_ALERT_STEP) / Model.SENSOR_ALERT_STEP) * Model.SENSOR_ALERT_STEP)),
+      min: Model.SENSOR_ALERT_MIN, max: Model.SENSOR_ALERT_MAX, step: Model.SENSOR_ALERT_STEP
+    })))
 
   width: parent ? parent.width : implicitWidth
   spacing: Commons.Style.space(10)
@@ -29,7 +35,7 @@ Column {
 
     Text {
       width: parent.width
-      text: "Metric alerts are enabled here; individual temperature alerts are set on the Sensors page. A reading must reach its limit for three samples before a notification is sent."
+      text: "A reading must reach its limit for three samples before a notification is sent."
       textFormat: Text.PlainText
       wrapMode: Text.WordWrap
       color: root.foreground
@@ -39,14 +45,26 @@ Column {
     }
 
     Repeater {
-      model: Model.ALERTS.length
+      model: root.alertDefs.length
 
       delegate: Column {
         id: alertRow
         required property int index
-        readonly property var def: Model.ALERTS[index]
-        readonly property bool armed: !!root.service && root.service.alertEnabled(def.id)
-        readonly property var reading: root.service ? root.service.alertValue(root.service.snapshot, def.id) : null
+        readonly property var def: root.alertDefs[index]
+        readonly property bool isSensor: !!def.sensorId
+        readonly property real limit: root.service ? isSensor ? root.service.sensorThreshold(def.sensorId) : root.service.alertThreshold(def.id) : -1
+        readonly property bool armed: !!root.service && (isSensor ? limit >= 0 : root.service.alertEnabled(def.id))
+        readonly property var reading: isSensor ? def.reading : root.service ? root.service.alertValue(root.service.snapshot, def.id) : null
+
+        function setThreshold(value) {
+          if (isSensor) root.service.setSensorThreshold(def.sensorId, value)
+          else root.service.setAlertThreshold(def.id, value)
+        }
+
+        function setEnabled(value) {
+          if (isSensor) setThreshold(value ? def.threshold : null)
+          else root.service.setAlertEnabled(def.id, value)
+        }
 
         width: parent.width
         spacing: Commons.Style.space(3)
@@ -61,7 +79,7 @@ Column {
             checked: alertRow.armed
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            onToggled: if (root.service) root.service.setAlertEnabled(alertRow.def.id, !alertRow.armed)
+            onToggled: if (root.service) alertRow.setEnabled(!alertRow.armed)
           }
 
           Text {
@@ -95,7 +113,7 @@ Column {
         }
 
         Row {
-          visible: alertRow.def.threshold !== undefined
+          visible: alertRow.def.threshold !== undefined && (!alertRow.isSensor || alertRow.armed)
           x: alertSwitch.width + Commons.Style.space(12)
           spacing: Commons.Style.space(5)
 
@@ -115,12 +133,12 @@ Column {
             foreground: root.foreground
             fontFamily: root.fontFamily
             size: Commons.Style.space(22)
-            enabled: root.service && root.service.alertThreshold(alertRow.def.id) > alertRow.def.min
-            onClicked: root.service.setAlertThreshold(alertRow.def.id, root.service.alertThreshold(alertRow.def.id) - alertRow.def.step)
+            enabled: root.service && alertRow.limit > alertRow.def.min
+            onClicked: alertRow.setThreshold(alertRow.limit - alertRow.def.step)
           }
 
           Text {
-            text: root.service ? root.service.alertThreshold(alertRow.def.id) + alertRow.def.unit : ""
+            text: root.service ? alertRow.limit + alertRow.def.unit : ""
             textFormat: Text.PlainText
             color: root.foreground
             font.family: root.fontFamily
@@ -135,8 +153,8 @@ Column {
             foreground: root.foreground
             fontFamily: root.fontFamily
             size: Commons.Style.space(22)
-            enabled: root.service && root.service.alertThreshold(alertRow.def.id) < alertRow.def.max
-            onClicked: root.service.setAlertThreshold(alertRow.def.id, root.service.alertThreshold(alertRow.def.id) + alertRow.def.step)
+            enabled: root.service && alertRow.limit < alertRow.def.max
+            onClicked: alertRow.setThreshold(alertRow.limit + alertRow.def.step)
           }
         }
 

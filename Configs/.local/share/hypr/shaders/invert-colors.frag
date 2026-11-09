@@ -1,5 +1,4 @@
 // Known to have some quirks with some frames, example: when exiting an application,animations, and some blur effects
-// TODO: Reduce artifacts during animation and blur transitions.
 
 // Any #ifndef default below can be predefined in invert-colors.inc, which window/shaders.sh compiles in first.
 

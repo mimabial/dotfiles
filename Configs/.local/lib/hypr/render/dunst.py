@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from _common import (CONFIG_HOME, RENDER_OUTPUT_DIR, STATE_HOME, XDG_CONFIG_HOME, atomic_write, cache_hit, cache_store,
-                     palette_path, short_digest)
+                     palette_path_from_argv, short_digest)
 from _dunst_inputs import read_layer_variable, read_theme_variable, read_theme_metric
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -20,7 +20,7 @@ from pyutils.lock_paths import runtime_lock_path_ensure_parent
 from pyutils.shell_env import load_shell_assignments
 from notify.verification import dunst_rules
 
-PALETTE = palette_path()
+PALETTE = palette_path_from_argv()
 CONF_DIR = XDG_CONFIG_HOME / "dunst"
 BASE_CONF = CONF_DIR / "dunst.conf"
 DUNST_CONF = CONF_DIR / "dunstrc"
@@ -67,8 +67,7 @@ FALLBACK_COLORS = {
 }
 
 APP = "dunst"
-# the 1.0 anchor for the text-size knob, matching system/text-size.sh
-BASE_PX = 12
+POPUP_STYLE = XDG_CONFIG_HOME / "quickshell/styles/popup.json"
 # A face carrying no Nerd Font glyphs makes fontconfig pick the fallback per
 # glyph, so a notification body lands in some unrelated proportional font.
 # Miracode is Monocraft's vector reinterpretation and inherits its cell width,
@@ -310,42 +309,36 @@ def resolve_dunst_colors(palette) -> DunstColors:
     return resolved
 
 
-def text_size_px():
+def text_size_px(base_px):
     """system/text-size.sh owns it."""
     try:
-        return int(load_shell_assignments(STATE_FILE).get("TEXT_SIZE", str(BASE_PX)))
+        return int(load_shell_assignments(STATE_FILE).get("TEXT_SIZE", base_px))
     except (OSError, ValueError):
-        return BASE_PX
+        return base_px
 
 
-def text_scale():
-    return text_size_px() / BASE_PX
-
-
-def base_metric(name, default):
-    if BASE_CONF.is_file():
-        for line in BASE_CONF.read_text().splitlines():
-            match = re.match(rf"^\s*{name}\s*=\s*(\d+)", line)
-            if match:
-                return int(match.group(1))
+def base_metric(base, name, default):
+    for line in base.splitlines():
+        match = re.match(rf"^\s*{name}\s*=\s*(\d+)", line)
+        if match:
+            return int(match.group(1))
     return default
 
 
-def base_height():
+def base_height(base, text_scale):
     """dunst also accepts a bare number there, which it reads as the maximum."""
     raw = ""
-    if BASE_CONF.is_file():
-        for line in BASE_CONF.read_text().splitlines():
-            match = re.match(r"^\s*height\s*=\s*(\(?\s*\d+(?:\s*,\s*\d+)?\s*\)?)", line)
-            if match:
-                raw = match.group(1)
-                break
+    for line in base.splitlines():
+        match = re.match(r"^\s*height\s*=\s*(\(?\s*\d+(?:\s*,\s*\d+)?\s*\)?)", line)
+        if match:
+            raw = match.group(1)
+            break
     numbers = [int(value) for value in re.findall(r"\d+", raw)] or list(DEFAULT_HEIGHT)
-    scaled = [max(0, round(value * text_scale())) for value in numbers]
+    scaled = [max(0, round(value * text_scale)) for value in numbers]
     return f"({scaled[0]},{scaled[1]})" if len(scaled) > 1 else str(scaled[0])
 
 
-def resolve_layout():
+def resolve_layout(base, text_scale):
     specs = (
         ("rounding", "decoration:rounding", "5"),
         ("gaps_in", "general:gaps_in", "5"),
@@ -367,7 +360,7 @@ def resolve_layout():
     except ValueError:
         edge_padding = FALLBACK_EDGE_PADDING
 
-    width = max(1, round(base_metric("width", DEFAULT_WIDTH) * text_scale()))
+    width = max(1, round(base_metric(base, "width", DEFAULT_WIDTH) * text_scale))
     origin = f"{bar_edge()}-right"
     return DunstLayout(
         rounding=rounding,
@@ -377,7 +370,7 @@ def resolve_layout():
         edge_padding=edge_padding,
         origin=origin,
         width=width,
-        height=base_height(),
+        height=base_height(base, text_scale),
     )
 
 
@@ -405,7 +398,7 @@ def resolve_icon_theme():
     return icon_theme or "hicolor"
 
 
-def resolve_font():
+def resolve_font(text_size, base_px):
     notification_font = first_nonempty(
         os.environ.get("NOTIFICATION_FONT"),
         read_layer_variable("NOTIFICATION_FONT"),
@@ -424,7 +417,7 @@ def resolve_font():
     # the same way, and the launcher and the notification stack share the same 10pt
     # base - rounding here landed them a point apart at most text sizes.
     notification_font_size = str(
-        max(1, int(notification_font_size) * text_size_px() // BASE_PX)
+        max(1, int(notification_font_size) * text_size // base_px)
     )
     return DunstFont(
         icon_theme=resolve_icon_theme(),
@@ -433,12 +426,11 @@ def resolve_font():
     )
 
 
-def dunst_input_digest(colors: DunstColors, layout: DunstLayout, font: DunstFont):
+def dunst_input_digest(colors: DunstColors, layout: DunstLayout, font: DunstFont, base: str):
     hasher = hashlib.sha256()
     hasher.update(dunst_rules().encode())
     hasher.update(PALETTE.read_bytes())
-    if BASE_CONF.is_file():
-        hasher.update(BASE_CONF.read_bytes())
+    hasher.update(base.encode())
     if colors.theme_pack:
         pack_override = THEMES_DIR / colors.theme_pack / "dunst.theme"
         if pack_override.is_file():
@@ -563,10 +555,13 @@ def render():
     ensure_base_dunst_config()
 
     palette = json.loads(PALETTE.read_text())
+    base = BASE_CONF.read_text()
+    base_px = json.loads(POPUP_STYLE.read_text())["defaultTextSize"]
+    text_size = text_size_px(base_px)
     colors = resolve_dunst_colors(palette)
-    layout = resolve_layout()
-    font = resolve_font()
-    cache_key = dunst_input_digest(colors, layout, font)
+    layout = resolve_layout(base, text_size / base_px)
+    font = resolve_font(text_size, base_px)
+    cache_key = dunst_input_digest(colors, layout, font, base)
     if (
         cache_hit(APP, cache_key)
         and DUNST_CONF.exists()
@@ -575,9 +570,6 @@ def render():
     ):
         return
 
-    base = (
-        BASE_CONF.read_text() if BASE_CONF.is_file() else MINIMAL_BASE_CONFIG
-    )
     content = render_config(base, colors, layout, font)
     for target in (OUT_FILE, DUNST_CONF):
         atomic_write(target, content)

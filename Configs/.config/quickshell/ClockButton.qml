@@ -9,15 +9,24 @@ BarButton {
     property bool timerPopup: false
     property string popupName: "clock"
     property string calendarPopupName: "clock"
-    readonly property bool timing: timerPopup && (shell.activeTimers.length > 0 || shell.clockwork.active)
-    readonly property int timingSeconds: shell.activeTimers.length ? Math.max(0, Number(shell.activeTimers[0].epoch) - shell.timerNow) : 0
-    readonly property string timingText: shell.activeTimers.length ? statusText(timingSeconds)
+    readonly property bool timing: timerPopup && (shell.alarmTimers.timers.length > 0 || shell.clockwork.active)
+    readonly property int timingSeconds: shell.alarmTimers.timers.length ? Math.max(0, Number(shell.alarmTimers.timers[0].epoch) - shell.alarmTimers.now) : 0
+    readonly property string timingText: shell.alarmTimers.timers.length ? statusText(timingSeconds)
         : shell.clockwork.active ? verticalTime(shell.clockwork.barTimeText) : statusText(timingSeconds)
     readonly property var formats: ClockFormats.forKind(kind)
     readonly property var selectedFormat: ClockFormats.selected(kind, shell.prefs[kind + "Clock"])
+    property color idleColor: shell.foreground
+    readonly property var announcement: shell.upcomingEvents.announcement
+    readonly property bool announcing: !timerPopup && !selectedFormat.pattern.includes("\n") && announcement.text !== ""
+    readonly property color phaseColor: announcement.phase === "live" ? shell.role("error", shell.accent) : shell.accent
+    readonly property string announcementMarkup: "  <font color=\"" + shell.faintText + "\">│</font>  <font color=\"" + phaseColor + "\">●</font> "
+        + "<font color=\"" + (announcement.phase === "soon" ? shell.foreground : phaseColor) + "\">"
+        + announcement.text.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</font>"
     text: timing ? timingText : Qt.formatDateTime(shell.clock.date, timerPopup ? "HH\nmm" : selectedFormat.pattern)
+        + (announcing ? announcementMarkup : "")
+    textFormat: announcing ? Text.StyledText : Text.AutoText
     smoothTextColor: !timing
-    textColor: timerPopup ? timing ? shell.alpha(shell.role("c3", shell.accent), blink.phase) : shell.accent : shell.foreground
+    textColor: timerPopup ? timing ? shell.alpha(shell.role("c3", shell.accent), blink.phase) : shell.accent : idleColor
     SequentialAnimation {
         id: blink; property real phase: 1; running: root.timing; loops: Animation.Infinite; onStopped: phase = 1
         NumberAnimation { target: blink; property: "phase"; from: .35; to: 1; duration: 500 }
@@ -43,5 +52,5 @@ BarButton {
     }
 
     ClockPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled && !root.timerPopup; popupName: root.calendarPopupName }
-    AlarmTimerPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled && root.timerPopup; entries: root.shell.activeEntries; now: root.shell.timerNow; onChanged: root.shell.refreshTimers() }
+    AlarmTimerPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled && root.timerPopup; entries: root.shell.alarmTimers.entries; now: root.shell.alarmTimers.now; onChanged: root.shell.alarmTimers.refresh() }
 }

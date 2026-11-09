@@ -18,14 +18,16 @@ QtObject {
     readonly property real popupSurfaceOpacity: Active.Style.popupSurfaceOpacity
     readonly property real popupBorderOpacity: Active.Style.popupBorderOpacity
     function popupTinted(base) { return Active.Style.popupTinted(base) }
-    function popupBorder(base) { return Active.Style.popupBorder(base) }
+    function popupBorder(base, opacity) { return Active.Style.popupBorder(base, opacity) }
     readonly property int hoverDuration: Active.Style.hoverDuration
     readonly property int focusPrimeDelay: Active.Style.focusPrimeDelay
+    readonly property int confirmationShownMs: Active.Style.confirmationShownMs
     readonly property real secondaryTextAlpha: Active.Style.secondaryTextAlpha
     readonly property real mutedTextAlpha: Active.Style.mutedTextAlpha
     readonly property real faintTextAlpha: Active.Style.faintTextAlpha
 
     readonly property int normalBorderWidth: Math.max(1, Active.Style.px(1))
+    readonly property real normalBorderAlpha: 0.38
     readonly property real normalFillAlpha: 0.04
     readonly property real selectedFillAlpha: Active.Style.selectedFillAlpha
     readonly property real pressedFillAlpha: 0.22
@@ -33,24 +35,24 @@ QtObject {
     readonly property real selectionFillAlpha: 0.35
 
     function normalFillFor(foreground, accent) {
-        return Util.alpha(foreground || Commons.Color.foreground, normalFillAlpha)
+        return Util.scaleAlpha(foreground || Commons.Color.foreground, normalFillAlpha)
     }
 
     function hoverFillFor(foreground, accent) {
-        return Util.alpha(accent || foreground || Commons.Color.foreground,
+        return Util.scaleAlpha(accent || foreground || Commons.Color.foreground,
                           Active.Style.hoverFillAlpha)
     }
     function selectedFillFor(foreground, accent) {
-        return Util.alpha(accent || foreground || Commons.Color.foreground, selectedFillAlpha)
+        return Util.scaleAlpha(accent || foreground || Commons.Color.foreground, selectedFillAlpha)
     }
     function pressedFillFor(foreground, accent) {
-        return Util.alpha(accent || foreground || Commons.Color.foreground, pressedFillAlpha)
+        return Util.scaleAlpha(accent || foreground || Commons.Color.foreground, pressedFillAlpha)
     }
     function focusFillFor(foreground, accent) {
-        return Util.alpha(accent || foreground || Commons.Color.foreground, focusFillAlpha)
+        return Util.scaleAlpha(accent || foreground || Commons.Color.foreground, focusFillAlpha)
     }
     function selectionFillFor(foreground, accent) {
-        return Util.alpha(accent || foreground || Commons.Color.foreground, selectionFillAlpha)
+        return Util.scaleAlpha(accent || foreground || Commons.Color.foreground, selectionFillAlpha)
     }
     function hoverStateColor(foreground, accent) { return accent || foreground || Commons.Color.foreground }
     function selectedStateColor(foreground, accent) { return accent || foreground || Commons.Color.foreground }

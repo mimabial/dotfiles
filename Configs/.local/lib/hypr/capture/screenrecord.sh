@@ -124,7 +124,7 @@ case "${recording_options[action]}" in
     stop_recording
     ;;
   status)
-    emit_screenrecord_status_json
+    reconcile_and_emit_screenrecord_status_json
     ;;
   "")
     screenrecord_toggle_flow recording_options

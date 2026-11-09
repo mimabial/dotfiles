@@ -8,7 +8,8 @@ trap 'rm -rf -- "${tmp_dir}"' EXIT
 export XDG_CONFIG_HOME="${tmp_dir}/config" XDG_DATA_HOME="${tmp_dir}/data" XDG_STATE_HOME="${tmp_dir}/state"
 export XDG_CACHE_HOME="${tmp_dir}/cache" HYPR_CONFIG_HOME="${XDG_CONFIG_HOME}/hypr"
 export HYPR_CACHE_HOME="${XDG_CACHE_HOME}/hypr" HYPR_DATA_HOME="${XDG_DATA_HOME}/hypr" HYPR_STATE_HOME="${XDG_STATE_HOME}/hypr"
-mkdir -p "${HYPR_CONFIG_HOME}/themes" "${XDG_DATA_HOME}/hypr"
+mkdir -p "${HYPR_CONFIG_HOME}/themes" "${XDG_DATA_HOME}/hypr" "${XDG_CONFIG_HOME}/quickshell/styles"
+printf '%s\n' '{"defaultTextSize": 12}' >"${XDG_CONFIG_HOME}/quickshell/styles/popup.json"
 
 source "${LIB_DIR}/hypr/core/state.bash"
 source "${LIB_DIR}/hypr/core/system.bash"

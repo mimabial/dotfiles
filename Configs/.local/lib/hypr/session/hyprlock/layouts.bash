@@ -204,11 +204,11 @@ hyprlock_preview_layout() {
   layout_path="$(hyprlock_find_layout "$1" "${layout_name}" || true)"
   if [[ -z "${layout_path}" ]]; then
     print_log -sec "hyprlock" -stat "Error" "Layout ${layout_name} not found."
-    exit 1
+    return 1
   fi
   local runtime_dir=""
   local temp_path=""
-  runtime_dir="$(hypr_ensure_runtime_subdir hypr)" || exit 1
+  runtime_dir="$(hypr_ensure_runtime_subdir hypr)" || return 1
   temp_path="${runtime_dir}/hyprlock-test.conf"
   hyprlock_write_config "$1" "${layout_path}" "${temp_path}"
   hyprlock_append_preview_marker "${temp_path}"

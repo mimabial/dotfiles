@@ -17,7 +17,8 @@ Usage: hyprshell calendar/agenda --day YYYY-MM-DD
            Omitting --start creates an all-day event; --end-day makes it span
            several days.
   --location TEXT   Where the event is
-  --alarm DELTA     Alarm offset khal understands: 0m, 10m, 1h, 1d
+  --alarm DELTA     Alarm offset khal understands (0m, 10m, 1h, 1d), or none for
+                    no alarm; omitted, khal's default_event_alarm applies
   --repeat FREQ     daily, weekly, monthly or yearly
   --calendar NAME   Which calendar to write to (default: khal's first)
   --show UID        Emit one event's full fields, read from its .ics so that
@@ -38,6 +39,11 @@ Usage: hyprshell calendar/agenda --day YYYY-MM-DD
                     PERCENT-COMPLETE and STATUS are undone.
   --todo-edit ID    Update --title and/or --priority on an existing todo
   --todo-delete ID  Remove it
+  --upcoming        Occurrences from today through a week after tomorrow, with
+                    their alarm offsets in seconds, and the directories they
+                    are read from: {"dirs":[PATH],"events":[{uid,title,
+                    location,calendar,allDay,start,end,alarms}]}, start and
+                    end in epoch seconds, end exclusive
   --calendars       Emit the calendar table khal resolves its config to,
                     plus the LOCATION values already used in writable calendars:
                     {"default":NAME,"calendars":{NAME:{path,color,readonly}},
@@ -69,6 +75,7 @@ alarm=""
 repeat=""
 calendar=""
 calendars_mode=0
+upcoming_mode=0
 priority=""
 due_time=""
 declare -a categories=()
@@ -85,6 +92,7 @@ parse_agenda_options() {
     case "$1" in
       --add) add=1; shift; continue ;;
       --calendars) calendars_mode=1; shift; continue ;;
+      --upcoming) upcoming_mode=1; shift; continue ;;
       --todos) todos_mode=1; shift; continue ;;
       --todos-all) todos_mode=1; todos_all=1; shift; continue ;;
       --todo-add) todo_add=1; shift; continue ;;

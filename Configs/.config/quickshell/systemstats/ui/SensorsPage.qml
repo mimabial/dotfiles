@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import qs.Commons as Commons
-import qs.Ui
 import "../Model.js" as Model
 
 Column {
@@ -29,19 +28,8 @@ Column {
   readonly property var cpu: snap.cpu || ({})
   readonly property var gpu: Model.primarySensorGpu(snap)
   readonly property var temps: sortedTemps(Model.sensorTemps(snap))
-  readonly property var fans: Model.sensorFans(snap)
   readonly property real cpuTemp: Model.num(cpu.temp, NaN)
   readonly property real gpuTemp: Model.num(Model.sensorGpuTemp(snap), NaN)
-  readonly property var fanSummary: {
-    var active = 0
-    var sum = 0
-    var peak = 0
-    for (var fan of fans) {
-      var rpm = Model.num(fan.rpm)
-      if (rpm > 0) { active += 1; sum += rpm; peak = Math.max(peak, rpm) }
-    }
-    return { active: active, average: active > 0 ? sum / active : 0, peak: peak }
-  }
 
   function chipRank(chip) {
     var order = ["CPU", "GPU", "NVMe", "Drive", "Memory", "Board", "Ethernet", "Wi-Fi", "ACPI"]
@@ -125,25 +113,12 @@ Column {
           size: Commons.Style.space(84)
         }
 
-        RingGauge {
-          visible: root.fans.length > 0
-          value: root.fanSummary.active > 0 ? Math.min(1, root.fanSummary.average / Model.FAN_FULL_SCALE_RPM) : 0
-          color: root.s2
-          foreground: root.foreground
-          fontFamily: root.fontFamily
-          topText: "Fans"
-          valueText: root.fanSummary.active > 0 ? String(Math.round(root.fanSummary.average)) : "Off"
-          unitText: root.fanSummary.active > 0 ? "rpm" : ""
-          subText: root.fanSummary.active > 0 ? root.fanSummary.active + " of " + root.fans.length + " on" : ""
-          valueSize: root.fanSummary.active > 0 ? Commons.Style.font.heading : Commons.Style.font.title
-          size: Commons.Style.space(84)
-        }
       }
     }
 
     Text {
       textFormat: Text.PlainText
-      visible: !isFinite(root.cpuTemp) && !isFinite(root.gpuTemp) && root.fans.length === 0
+      visible: !isFinite(root.cpuTemp) && !isFinite(root.gpuTemp)
       width: parent.width
       horizontalAlignment: Text.AlignHCenter
       text: "No hardware sensors found"
@@ -169,7 +144,7 @@ Column {
       series: [root.hist.cpuTemp || []]
       colors: [root.s1]
       minimumCeiling: Model.TEMPERATURE_SCALE_FLOOR
-      baselineColor: Commons.Util.alpha(root.foreground, 0.14)
+      baselineColor: Commons.Util.scaleAlpha(root.foreground, 0.14)
     }
     SectionTitle { visible: Model.hasReading(root.hist.gpuTemp); text: "GPU"; fontFamily: root.fontFamily }
     HistoryGraph {
@@ -181,7 +156,7 @@ Column {
       series: [root.hist.gpuTemp || []]
       colors: [root.s2]
       minimumCeiling: Model.TEMPERATURE_SCALE_FLOOR
-      baselineColor: Commons.Util.alpha(root.foreground, 0.14)
+      baselineColor: Commons.Util.scaleAlpha(root.foreground, 0.14)
     }
   }
 
@@ -195,105 +170,26 @@ Column {
     Repeater {
       model: root.temps.length
 
-      delegate: Column {
+      delegate: StatRow {
         id: sensorRow
         required property int index
         readonly property var modelData: root.temps[index] || ({})
         readonly property string sensorId: String(modelData.alertId || "")
         readonly property real threshold: root.service ? root.service.sensorThreshold(sensorId) : -1
         width: parent.width
-        spacing: Commons.Style.space(2)
-
-        StatRow {
-          width: parent.width
-          label: root.displayLabel(sensorRow.modelData)
-          value: Model.tempParts(sensorRow.modelData.value, root.temperatureUnit).value
-          unit: "°"
-          boldValue: false
-          valueColor: sensorRow.threshold >= 0 && sensorRow.modelData.value >= sensorRow.threshold
-            ? root.danger : root.tempTextColor(sensorRow.modelData.value, sensorRow.modelData.critical)
-          foreground: root.foreground
-          fontFamily: root.fontFamily
-          ringValue: root.fraction(sensorRow.modelData.value, sensorRow.modelData.max)
-          ringColor: sensorRow.threshold >= 0 && sensorRow.modelData.value >= sensorRow.threshold
-            ? root.danger : root.tempColor(sensorRow.modelData.value, sensorRow.modelData.max)
-        }
-
-        Row {
-          x: Commons.Style.space(8)
-          spacing: Commons.Style.space(5)
-
-          PanelActionButton {
-            iconText: sensorRow.threshold < 0 ? "󰂚" : "󰂛"
-            tooltipText: sensorRow.threshold < 0 ? "Enable temperature alert" : "Disable temperature alert"
-            enabled: !!sensorRow.sensorId
-            foreground: root.foreground
-            fontFamily: root.fontFamily
-            size: Commons.Style.space(20)
-            onClicked: root.service.setSensorThreshold(sensorRow.sensorId, sensorRow.threshold < 0
-              ? Math.max(Model.SENSOR_ALERT_MIN, Math.min(Model.SENSOR_ALERT_MAX, Math.ceil((Number(sensorRow.modelData.value) + 2 * Model.SENSOR_ALERT_STEP) / Model.SENSOR_ALERT_STEP) * Model.SENSOR_ALERT_STEP)) : null)
-          }
-
-          PanelActionButton {
-            visible: sensorRow.threshold >= 0
-            iconText: "−"
-            enabled: sensorRow.threshold > Model.SENSOR_ALERT_MIN
-            foreground: root.foreground
-            fontFamily: root.fontFamily
-            size: Commons.Style.space(20)
-            onClicked: root.service.setSensorThreshold(sensorRow.sensorId, sensorRow.threshold - Model.SENSOR_ALERT_STEP)
-          }
-
-          Text {
-            text: sensorRow.threshold < 0 ? "Alert off" : "Alert at " + sensorRow.threshold + "°C"
-            textFormat: Text.PlainText
-            color: root.foreground
-            opacity: sensorRow.threshold < 0 ? 0.45 : 0.8
-            font.family: root.fontFamily
-            font.pixelSize: Commons.Style.font.caption
-            height: Commons.Style.space(20)
-            verticalAlignment: Text.AlignVCenter
-          }
-
-          PanelActionButton {
-            visible: sensorRow.threshold >= 0
-            iconText: "+"
-            enabled: sensorRow.threshold < Model.SENSOR_ALERT_MAX
-            foreground: root.foreground
-            fontFamily: root.fontFamily
-            size: Commons.Style.space(20)
-            onClicked: root.service.setSensorThreshold(sensorRow.sensorId, sensorRow.threshold + Model.SENSOR_ALERT_STEP)
-          }
-        }
-      }
-    }
-  }
-
-  Card {
-    visible: root.fans.length > 0 && root.flag("showFans")
-    foreground: root.foreground
-    spacing: Commons.Style.space(2)
-
-    SectionTitle { text: "Fans"; fontFamily: root.fontFamily }
-
-    Repeater {
-      model: root.fans.length
-
-      delegate: StatRow {
-        id: fanRow
-        required property int index
-        readonly property var modelData: root.fans[index] || ({})
-        readonly property var reading: Model.fanParts(modelData)
-        label: String(modelData.label || "Fan")
-        value: reading.value
-        unit: reading.unit
+        label: root.displayLabel(sensorRow.modelData)
+        value: Model.tempParts(sensorRow.modelData.value, root.temperatureUnit).value
+        unit: "°"
         boldValue: false
-        labelOpacity: reading.unit ? 0.85 : 0.5
+        valueColor: sensorRow.threshold >= 0 && sensorRow.modelData.value >= sensorRow.threshold
+          ? root.danger : root.tempTextColor(sensorRow.modelData.value, sensorRow.modelData.critical)
         foreground: root.foreground
         fontFamily: root.fontFamily
-        ringValue: Model.fanFraction(fanRow.modelData)
-        ringColor: root.s2
+        ringValue: root.fraction(sensorRow.modelData.value, sensorRow.modelData.max)
+        ringColor: sensorRow.threshold >= 0 && sensorRow.modelData.value >= sensorRow.threshold
+          ? root.danger : root.tempColor(sensorRow.modelData.value, sensorRow.modelData.max)
       }
     }
   }
+
 }

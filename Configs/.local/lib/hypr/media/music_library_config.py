@@ -96,9 +96,7 @@ def set_music_library(raw_directory: str) -> Path:
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="music-library",
-        description=(
-            "Show or change the XDG music-library directory used by the media tools"
-        ),
+        description="Show or change the XDG music-library directory used by the media tools",
     )
     parser.add_argument(
         "-s",

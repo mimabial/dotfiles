@@ -101,21 +101,23 @@ offer_unused_package_removal() {
 
 report_unused_local_families() {
   local family safe_file_count file_count
+  local -a removable_families=() kept_families=()
+  local -A removable_counts=() provider_counts=()
 
   if ((${#LOCAL_UNUSED_FAMILIES[@]} == 0)); then
     echo "  No unreferenced local font families found."
     return
   fi
 
-  partition_unused_local_families
+  partition_unused_local_families_into removable_families kept_families removable_counts provider_counts "$1"
 
-  if ((${#LOCAL_REMOVABLE_FAMILIES[@]} == 0)); then
+  if ((${#removable_families[@]} == 0)); then
     echo "  No unreferenced removable local font files found."
   else
     echo "  Unreferenced removable files:"
-    for family in "${LOCAL_REMOVABLE_FAMILIES[@]}"; do
-      safe_file_count="${LOCAL_REMOVABLE_FILE_COUNTS[$family]}"
-      file_count="${LOCAL_PROVIDER_FILE_COUNTS[$family]}"
+    for family in "${removable_families[@]}"; do
+      safe_file_count="${removable_counts[$family]}"
+      file_count="${provider_counts[$family]}"
       if ((safe_file_count == file_count)); then
         echo "    ✗ ${family} (${safe_file_count} files)"
       else
@@ -124,19 +126,20 @@ report_unused_local_families() {
     done
   fi
 
-  if ((${#LOCAL_KEPT_PROVIDER_FAMILIES[@]} > 0)); then
+  if ((${#kept_families[@]} > 0)); then
     echo "  Unreferenced aliases in kept font files:"
-    for family in "${LOCAL_KEPT_PROVIDER_FAMILIES[@]}"; do
-      echo "    • ${family} (${LOCAL_PROVIDER_FILE_COUNTS[$family]} provider files)"
+    for family in "${kept_families[@]}"; do
+      echo "    • ${family} (${provider_counts[$family]} provider files)"
     done
   fi
 
 }
 
 offer_unused_local_file_removal() {
+  local -n removable_files_ref="$1"
   local reply=""
 
-  ((${#LOCAL_REMOVABLE_FAMILIES[@]} > 0)) || return 0
+  ((${#removable_files_ref[@]} > 0)) || return 0
 
   if [[ ! -t 0 ]]; then
     echo
@@ -151,11 +154,9 @@ offer_unused_local_file_removal() {
     return 0
   fi
 
-  collect_removable_local_files
-  ((${#REMOVABLE_LOCAL_FILES[@]} > 0)) || return 0
   echo
-  if rm -f -- "${REMOVABLE_LOCAL_FILES[@]}"; then
-    echo "Removed ${#REMOVABLE_LOCAL_FILES[@]} unreferenced local font files."
+  if rm -f -- "${removable_files_ref[@]}"; then
+    echo "Removed ${#removable_files_ref[@]} unreferenced local font files."
   else
     echo "Some unreferenced local font files could not be removed."
   fi
@@ -172,7 +173,7 @@ report_local_families() {
   print_local_family_group "Active:" "✓" LOCAL_ACTIVE_FAMILIES
   print_local_family_group "Used by installed themes/templates:" "•" LOCAL_INSTALLED_CONFIG_FAMILIES
   print_local_family_group "Fallback-only:" "•" LOCAL_FALLBACK_FAMILIES
-  report_unused_local_families
+  report_unused_local_families "$1"
 }
 
 report_required_packages() {

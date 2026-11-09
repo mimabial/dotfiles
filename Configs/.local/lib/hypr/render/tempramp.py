@@ -5,10 +5,10 @@ import sys
 from pathlib import Path
 
 from _common import (RENDER_OUTPUT_DIR, atomic_write, cache_hit, cache_store, hex_to_rgb, linear_to_srgb,
-                     oklab_to_linear_rgb, palette_path, rgb_to_oklab, short_digest)
+                     oklab_to_linear_rgb, palette_path_from_argv, rgb_to_oklab, short_digest)
 
 APP = "tempramp"
-PALETTE = palette_path()
+PALETTE = palette_path_from_argv()
 OUT = RENDER_OUTPUT_DIR / APP / "ramp.psv"
 
 # Ordered outward from the neutral band. 45..59 stays uncoloured: that is the

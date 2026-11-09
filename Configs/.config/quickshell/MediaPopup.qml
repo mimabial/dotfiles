@@ -19,7 +19,7 @@ PopupCard {
   padding: 0
   contentWidth: Commons.Style.space(400)
   contentHeight: Math.min(mainColumn.implicitHeight + Commons.Style.space(16), Commons.Style.space(560))
-  headerHeight: Commons.Style.space(34)
+  headerHeight: resumeBanner.height + root.margin
 
   readonly property color foreground: shell.foreground
   readonly property color urgent: shell.role("error", foreground)
@@ -102,12 +102,12 @@ PopupCard {
   property bool eqPickerOpen: false
   property var visModes: [
     "bars", "bricks", "classic_led",
-    "peaks", "stereo", "correlation", "ascii",
-    "wave", "sine", "mirror",
+    "peaks", "ascii",
+    "mirror",
     "soundcloud_wave", "telegram_wave",
     "led_scrubber", "heatmap_wave", "grounded_wave",
     "scatter", "butterfly",
-    "plasma", "cyber_tunnel", "red_sector"
+    "cyber_tunnel", "red_sector"
   ]
 
   property var visBands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -115,11 +115,8 @@ PopupCard {
   property var visBandsStereo: ({ "left": [], "right": [] })
   property var visBandsFine: []
   property var visPeaks: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-  property var visWave: []
-  property var visWaveStereo: ({ "left": [], "right": [] })
   property var visBandsDb: []
   property var visBandEdges: []
-  property var visStereo: ({ "levels": [0, 0], "peaks": [0, 0] })
   property var visAnalysis: ({})
   property string pendingSpectrumJson: ""
   property double lastSpectrumCaptureEpochMs: 0
@@ -891,11 +888,8 @@ PopupCard {
         root.visBandsFine = (data.bands_fine || []).map((level, index) =>
           root.easeLevel(Number(root.visBandsFine[index]) || 0.0, root.unitLevel(level), spectrumDt))
         root.visBandsStereo = ({ "left": newLeft, "right": newRight })
-        root.visWave = Array.isArray(data.wave) ? data.wave : []
-        root.visWaveStereo = data.wave_stereo || ({ "left": [], "right": [] })
         root.visBandsDb = Array.isArray(data.bands_dbfs) ? data.bands_dbfs : []
         root.visBandEdges = Array.isArray(data.band_edges_hz) ? data.band_edges_hz : []
-        root.visStereo = data.stereo || ({ "levels": [0, 0], "peaks": [0, 0] })
         root.visAnalysis = analysis
         root.visFrame = Math.floor((Date.now() - root.visualizerEpochMs) / root.visualizerFrameMilliseconds)
         if (playerComp) playerComp.requestPaint()
@@ -909,7 +903,6 @@ PopupCard {
     onTriggered: {
       if (root.isPlaying) {
         root.updateSpectrumData(root.pendingSpectrumJson)
-        specFile.reload()
         if (playerComp && playerComp.lyricsVisible && root.lastStatusEpochMs > 0) {
           var elapsed = (Date.now() - root.lastStatusEpochMs) / 1000.0
           playerComp.updateLyricsPosition(root.curSecs + elapsed * root.playbackSpeed)
@@ -923,10 +916,11 @@ PopupCard {
   TapHandler { gesturePolicy: TapHandler.DragThreshold; onTapped: trackList.urlInput.focus = false }
 
   header: BorderSurface {
+    id: resumeBanner
     visible: root.resumeVisible
     anchors.left: parent.left
     anchors.right: parent.right
-    anchors.top: parent.top
+    y: root.position === "top" ? root.margin : 0
     height: Commons.Style.space(28)
     radius: root.shell.rounding
     color: root.shell.alpha(Commons.Style.popupTinted(root.background), root.surfaceOpacity)

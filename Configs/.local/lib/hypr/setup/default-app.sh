@@ -6,7 +6,7 @@ hypr_runtime_require state
 source "${BASH_SOURCE[0]%/*}/default-apps/applications.bash"
 
 default_app_usage() {
-  printf 'Usage: hyprshell setup/default-app.sh agent|browser|terminal|editor [NAME]\n'
+  printf 'Usage: hyprshell setup/default-app.sh agent|browser|terminal|editor [NAME]\n\nShow or set the default agent, browser, terminal or editor.\n'
 }
 
 application_role="${1:-}"

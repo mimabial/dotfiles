@@ -20,7 +20,7 @@ wallpaper_parse_option() {
 wallpaper_require_option_value() {
   [[ -n "${2:-}" ]] || {
     echo "Error: $1 requires a value." >&2
-    exit 1
+    return 1
   }
 }
 
@@ -41,13 +41,13 @@ wallpaper_parse_action() {
     --clean-thumbs | clean) wallpaper_action=clean ;;
     json) wallpaper_action=json ;;
     -s | --set | set)
-      wallpaper_require_option_value "$1" "${2:-}"
+      wallpaper_require_option_value "$1" "${2:-}" || exit 1
       wallpaper_action="set"
       wallpaper_path="$2"
       wallpaper_consumed_arguments=2
       ;;
     -o | --output | output)
-      wallpaper_require_option_value "$1" "${2:-}"
+      wallpaper_require_option_value "$1" "${2:-}" || exit 1
       wallpaper_action=output
       wallpaper_output="$2"
       wallpaper_consumed_arguments=2
@@ -128,17 +128,17 @@ wallpaper_parse_flag() {
 wallpaper_parse_value_option() {
   case "$1" in
     -b | --backend)
-      wallpaper_require_option_value "$1" "${2:-}"
+      wallpaper_require_option_value "$1" "${2:-}" || exit 1
       wallpaper_backend="$2"
       wallpaper_consumed_arguments=2
       ;;
     -t | --filetypes)
-      wallpaper_require_option_value "$1" "${2:-}"
+      wallpaper_require_option_value "$1" "${2:-}" || exit 1
       wallpaper_set_filetype_filter "$2"
       wallpaper_consumed_arguments=2
       ;;
     --notify-body)
-      wallpaper_require_option_value "$1" "${2:-}"
+      wallpaper_require_option_value "$1" "${2:-}" || exit 1
       wallpaper_notify_body="${2}"
       wallpaper_consumed_arguments=2
       ;;

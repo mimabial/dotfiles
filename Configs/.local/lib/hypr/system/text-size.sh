@@ -9,6 +9,9 @@ readonly -a TEXT_SIZES=(9 10 11 12 13 14 15 16 17 18 19 20)
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 
 hypr_help_guard "Usage: hyprshell system/text-size [size|--list|reset]
+
+Show or set the text size used across the desktop.
+
   (no args)   print current desktop text sizes
   <size>      set text size in px (9-20) across the desktop
   --list      print available sizes
@@ -18,8 +21,7 @@ hypr_runtime_require state
 
 readonly MIN="${TEXT_SIZES[0]}"
 readonly MAX="${TEXT_SIZES[-1]}"
-readonly BASE_PX=12
-readonly BASE_PT=10
+source "${HYPR_LIB_DIR}/core/text-size.bash"
 readonly ROFI_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/rofi/config.rasi"
 readonly GKEY_SCHEMA="org.gnome.desktop.interface"
 readonly GKEY_NAME="text-scaling-factor"
@@ -33,13 +35,13 @@ gtk_font_pt() {
 }
 
 term_pt_for() {
-  local scaled=$((($1 * BASE_PT * 100 + BASE_PX / 2) / BASE_PX))
+  local scaled=$((($1 * TEXT_SIZE_BASE_PT * 100 + TEXT_SIZE_BASE_PX / 2) / TEXT_SIZE_BASE_PX))
   printf '%d.%02d' "$((scaled / 100))" "$((scaled % 100))"
 }
 
 # Must match rofi_effective_font_scale's integer division.
 rofi_pt_for() {
-  printf '%d\n' "$(($1 * BASE_PT / BASE_PX))"
+  printf '%d\n' "$(($1 * TEXT_SIZE_BASE_PT / TEXT_SIZE_BASE_PX))"
 }
 
 # Report Dunst's rendered value rather than a potentially stale calculation.
@@ -51,7 +53,7 @@ dunst_pt_now() {
 
 # Quantize GTK scaling so the interface font lands on whole points.
 factor_for() {
-  awk -v size="$1" -v base="${BASE_PX}" -v font="$(gtk_font_pt)" \
+  awk -v size="$1" -v base="${TEXT_SIZE_BASE_PX}" -v font="$(gtk_font_pt)" \
     'BEGIN { printf "%.4f", int(font * size / base + 0.5) / font }'
 }
 
@@ -94,7 +96,7 @@ set_terminal_size() {
 current_size() {
   local size
   size="$(state_get TEXT_SIZE "" 2>/dev/null || true)"
-  [[ ${size} =~ ^[0-9]+$ ]] && printf '%s\n' "${size}" || printf '%s\n' "${BASE_PX}"
+  [[ ${size} =~ ^[0-9]+$ ]] && printf '%s\n' "${size}" || printf '%s\n' "${TEXT_SIZE_BASE_PX}"
 }
 
 report() {
@@ -137,6 +139,6 @@ apply() {
 
 case "${1-}" in
   "") report ;;
-  reset) apply "${BASE_PX}" ;;
+  reset) apply "${TEXT_SIZE_BASE_PX}" ;;
   *) apply "$1" ;;
 esac

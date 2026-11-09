@@ -43,11 +43,14 @@ state_resolve_color_source_into() {
 state_resolve_color_mode_into() {
   local -n color_mode_ref="$1"
   local mode="${2-}"
-  local variant="${3-}"
+  local stored_variant=""
 
   if state_color_mode_is_valid "${mode}"; then
     color_mode_ref="${mode}"
-  elif [[ "${variant}" == "light" ]]; then
+    return 0
+  fi
+  state_get_color_variant_into stored_variant || true
+  if [[ "${stored_variant}" == "light" ]]; then
     color_mode_ref="${STATE_COLOR_MODE_LIGHT}"
   else
     color_mode_ref="${STATE_COLOR_MODE_DARK}"
@@ -67,7 +70,7 @@ state_load_runtime_environment() {
 
 refresh_hypr_runtime_state() {
   state_resolve_color_source_into selected_color_source "${selected_color_source:-}" "${selected_color_mode:-}"
-  state_resolve_color_mode_into selected_color_mode "${selected_color_mode:-}" "${BACKGROUND_MODE:-}"
+  state_resolve_color_mode_into selected_color_mode "${selected_color_mode:-}"
 
   if [[ -z "${HYPR_THEME:-}" ]]; then
     if declare -F print_log >/dev/null 2>&1; then
@@ -291,7 +294,6 @@ state_resolve_color_variant_into() {
     "${STATE_COLOR_MODE_LIGHT}") color_variant_ref=light ;;
     *)
       state_get_color_variant_into color_variant_ref || true
-      [[ "${color_variant_ref}" =~ ^(dark|light)$ ]] || color_variant_ref="${BACKGROUND_MODE:-}"
       [[ "${color_variant_ref}" =~ ^(dark|light)$ ]] || color_variant_ref=dark
       ;;
   esac

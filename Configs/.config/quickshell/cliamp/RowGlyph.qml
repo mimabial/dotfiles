@@ -13,7 +13,7 @@ Text {
   function activateKeyboard() { activated() }
 
   anchors.verticalCenter: parent.verticalCenter
-  opacity: enabled ? 1 : 0
+  visible: enabled
   color: lit || mouse.containsMouse || cursored ? hot : controller.dim
   font.family: controller.fontFamily
   font.pixelSize: Commons.Style.font.caption

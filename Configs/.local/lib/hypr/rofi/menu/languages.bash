@@ -7,7 +7,7 @@ menu_pick_language() {
   rows="$("${script}" "${action}")"
   selection="$(menu "${action^} Language" "${rows:-${empty_label}}" --select "$("${script}" current "${action}")")"
   case "${selection}" in
-    "${empty_label}" | "") menu_exit_or_show "${parent}" ;;
+    "${empty_label}" | "") menu_show_then_exit "${parent}" ;;
   esac
   case "${action}" in
     install | remove) menu_present_terminal --hypr-profile dialog --app-id org.language.Manage --title "${action^} Language" -- hyprshell system/language "${action}" "${selection##* }" ;;

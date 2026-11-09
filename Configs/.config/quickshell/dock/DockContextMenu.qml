@@ -15,9 +15,9 @@ BorderSurface {
 
   component ContextRow: DockMenuRow { menuWidth: contextMenu.rowWidth }
   component MenuDivider: DockMenuDivider { menuWidth: contextMenu.rowWidth }
-  color: Commons.Util.alpha(Commons.Style.popupTinted(Commons.Color.menu.background), Commons.Style.popupSurfaceOpacity)
+  color: Commons.Util.scaleAlpha(Commons.Style.popupTinted(Commons.Color.menu.background), Commons.Style.popupSurfaceOpacity)
   borderSpec: Commons.Border.surfaceSpec("menu", "border",
-    Commons.Util.alpha(Commons.Style.popupBorder(Commons.Color.menu.border), Commons.Style.popupBorderOpacity), 1)
+    Commons.Util.scaleAlpha(Commons.Style.popupBorder(Commons.Color.menu.border), Commons.Style.popupBorderOpacity), 1)
   radius: Commons.Style.cornerRadius
   padding: Commons.Style.space(4)
 
@@ -247,7 +247,7 @@ BorderSurface {
                 color: modelData.color
                 border.color: contextMenu.dock.folderColor === modelData.id
                   ? Commons.Color.bar.active
-                  : Commons.Util.alpha(Commons.Color.menu.border, 0.8)
+                  : Commons.Util.scaleAlpha(Commons.Color.menu.border, 0.8)
                 border.width: contextMenu.dock.folderColor === modelData.id ? 2 : 1
 
                 Rectangle {
@@ -325,6 +325,18 @@ BorderSurface {
           text: "Blur"
           checked: contextMenu.dock.blurred
           onTriggered: contextMenu.dock.setBlur(!contextMenu.dock.blurred)
+        }
+
+        ContextRow {
+          text: "Expand Background"
+          checked: contextMenu.dock.expandBackground
+          onTriggered: contextMenu.dock.setExpandBackground(!contextMenu.dock.expandBackground)
+        }
+
+        ContextRow {
+          text: "Floating"
+          checked: contextMenu.dock.floating
+          onTriggered: contextMenu.dock.setFloating(!contextMenu.dock.floating)
         }
       }
 
@@ -1041,10 +1053,11 @@ BorderSurface {
       }
     }
     Text {
-      width: parent.width; text: "↑↓ Move  Enter Select  ←/Esc Back"
+      width: parent.width; textFormat: Text.StyledText
+      text: Commons.Util.keyHintMarkup("↑↓ Move  Enter Select  ←/Esc Back", Commons.Util.scaleAlpha(Commons.Color.menu.text, Commons.Style.mutedTextAlpha))
       wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter
       fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Commons.Style.font.caption - 2)
-      color: Commons.Util.alpha(Commons.Color.menu.text, .55)
+      color: Commons.Color.accent
       font.family: Commons.Style.font.family; font.pixelSize: Commons.Style.font.caption
     }
   }

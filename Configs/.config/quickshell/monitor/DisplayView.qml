@@ -2092,10 +2092,11 @@ KeyboardPanel {
   }
   Text {
     width: parent.width; anchors.bottom: parent.bottom
-    text: "Tab Move  Arrows Adjust  Enter Select  ? Keys  Esc"
+    textFormat: Text.StyledText
+    text: Commons.Util.keyHintMarkup("Tab Move  Arrows Adjust  Enter Select  ? Keys  Esc", panel.controller.dim)
     wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter
     fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Commons.Style.font.caption - 2)
-    color: panel.controller.dim
+    color: Commons.Color.accent
     font.family: panel.controller.fontFamily; font.pixelSize: Commons.Style.font.caption
   }
 }

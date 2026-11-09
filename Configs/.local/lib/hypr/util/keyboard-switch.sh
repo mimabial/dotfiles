@@ -47,6 +47,8 @@ usage() {
   cat <<'EOF'
 Usage: hyprshell keyboard-switch.sh [--sync-current] [--quiet]
 
+Switch every keyboard to the next layout and show which one is active.
+
 Options:
   --sync-current   Align all keyboards to the current active layout
   --quiet          Suppress the layout notification

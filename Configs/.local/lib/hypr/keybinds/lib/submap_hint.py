@@ -135,6 +135,8 @@ class SubmapHintController:
             raise
         except (OSError, RuntimeError, ValueError) as error:
             LOG.error("%s", error)
+        except LookupError:
+            LOG.exception("hint for submap %r read a Hyprland reply missing a field", name)
 
     async def close(self):
         self.current_submap = ""

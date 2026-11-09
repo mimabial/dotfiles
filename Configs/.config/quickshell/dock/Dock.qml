@@ -25,9 +25,19 @@ Item {
   readonly property string configPath: Quickshell.env("HOME") + "/.config/quickshell/dock/settings.json"
 
   property bool blurred: true
+  property bool expandBackground: false
+  property bool floating: true
 
   function setBlur(value) {
     root.blurred = value
+    root.saveConfig()
+  }
+  function setExpandBackground(value) {
+    root.expandBackground = value
+    root.saveConfig()
+  }
+  function setFloating(value) {
+    root.floating = value
     root.saveConfig()
   }
   function setDockEdge(value) {
@@ -43,6 +53,9 @@ Item {
     : root.dockEdge
   readonly property int awaySign: root.edge === "bottom" ? 1 : -1
   readonly property int floorTransformOrigin: root.edge === "bottom" ? Item.Bottom : Item.Top
+  readonly property real sideGap: root.floating ? root.shell.barFloatGap : 0
+  readonly property real edgeGap: root.floating ? Commons.Style.gapsOut : 0
+  onEdgeGapChanged: root.updateDockOverlap()
 
   readonly property real panelGap: Commons.Style.space(6)
   function panelX(width, at) {
@@ -100,9 +113,12 @@ Item {
 
   readonly property var magnificationPresets: [{ name: "Subtle", scale: 0.6 }, { name: "Medium", scale: 1 }, { name: "Large", scale: 1.6 }]
   property real magnification: 1
-  readonly property real magnifyPeak: 1 + 0.4 * root.magnification
-  readonly property real zoomPeak: 1 + 0.22 * root.magnification
-  readonly property real magnifyRange: root.iconSlot * 2.2
+  readonly property real magnifyGrowthPerScale: 0.4
+  readonly property real zoomGrowthPerScale: 0.22
+  readonly property real magnifyFalloffSlots: 2.2
+  readonly property real magnifyPeak: 1 + root.magnifyGrowthPerScale * root.magnification
+  readonly property real zoomPeak: 1 + root.zoomGrowthPerScale * root.magnification
+  readonly property real magnifyRange: root.iconSlot * root.magnifyFalloffSlots
   readonly property real bounceHeight: Commons.Style.space(13)
   readonly property real magnifiedIconReach: root.iconSize * Math.max(root.magnifyPeak, root.zoomPeak) + root.bounceHeight
 
@@ -112,7 +128,7 @@ Item {
   readonly property int visibleRunningCount: {
     var count = 0
     for (var item of root.runningSection) {
-      if (root.showMinimizedTiles && item && DockModel.allWindowsMinimized(item.windowList, root.liveWsNameOf, root.isMinimizedWorkspace)) continue
+      if (root.showMinimizedTiles && item && DockModel.allWindowsMinimized(item.windowList, root.liveWsNameOf)) continue
       count++
     }
     return count
@@ -121,7 +137,7 @@ Item {
     var count = 0
     for (var i = 0; i < idx && i < root.runningSection.length; i++) {
       var entry = root.runningSection[i]
-      if (!(root.showMinimizedTiles && entry && DockModel.allWindowsMinimized(entry.windowList, root.liveWsNameOf, root.isMinimizedWorkspace))) count++
+      if (!(root.showMinimizedTiles && entry && DockModel.allWindowsMinimized(entry.windowList, root.liveWsNameOf))) count++
     }
     return count
   }
@@ -262,7 +278,7 @@ Item {
     return DockModel.buildEntries(root.pinnedIds,
                                   (ToplevelManager.toplevels ? ToplevelManager.toplevels.values : []),
                                   root.appRows, root.appLibrary, root.hyprToplevelFor,
-                                  root.isMinimizedWorkspace, root.minimizedOrigins,
+                                  root.minimizedOrigins,
                                   recents, root.recentLimit)
   }
 
@@ -343,8 +359,7 @@ Item {
       return ""
     }
   }
-  onActiveIdChanged: if (root.activeId) root.clearUrgentApp(root.activeId, root.activeWindowAddress)
-  onActiveWindowAddressChanged: if (root.activeWindowAddress) root.clearUrgentApp(root.activeId, root.activeWindowAddress)
+  onActiveWindowAddressChanged: root.clearUrgentWindow(root.activeWindowAddress)
 
   readonly property string dockMonitorName: dockScreen ? String(dockScreen.name || "") : ""
   property string dockSpecialWorkspace: ""
@@ -358,11 +373,11 @@ Item {
     ? String(Hyprland.focusedWorkspace.name || Hyprland.focusedWorkspace.id || "")
     : ""
 
-  readonly property string minimizedWorkspacePrefix: "special:minimized"
+  readonly property int pointerLeaveDelayMs: 350
 
   function minimizedWorkspaceFor(address) {
     var addr = String(address || "").replace(/^0x/i, "")
-    return addr ? root.minimizedWorkspacePrefix + "-" + addr : root.minimizedWorkspacePrefix
+    return addr ? DockModel.MINIMIZED_WORKSPACE + "-" + addr : DockModel.MINIMIZED_WORKSPACE
   }
 
   function isScratchpadWorkspace(name) {
@@ -371,9 +386,7 @@ Item {
   }
 
   function isMinimizedWorkspace(name) {
-    var value = String(name || "")
-    return value === root.minimizedWorkspacePrefix
-      || value.indexOf(root.minimizedWorkspacePrefix + "-") === 0
+    return DockModel.isMinimizedWorkspace(name)
   }
   property alias minimizedOrigins: windowState.minimizedOrigins
   property alias parkedAt: windowState.parkedAt
@@ -537,7 +550,7 @@ Item {
 
   Timer {
     id: hideTimer
-    interval: 350
+    interval: root.pointerLeaveDelayMs
     onTriggered: root.dockVisible = false
   }
 
@@ -587,8 +600,8 @@ Item {
     var overlapMargin = 12
     var screenLogicalW = dockMonitor.width / dockMonitor.scale
     var screenLogicalH = dockMonitor.height / dockMonitor.scale
-    var footprintWidth = dockCard.width + Commons.Style.gapsOut * 2
-    var footprintDepth = dockCard.height + Commons.Style.gapsOut * 2 + overlapMargin
+    var footprintWidth = dockCard.width + root.sideGap * 2
+    var footprintDepth = dockCard.height + root.edgeGap * 2 + overlapMargin
     var footprintLeft = dockMonitor.x + (screenLogicalW - footprintWidth) / 2
     var footprintRight = dockMonitor.x + (screenLogicalW + footprintWidth) / 2
     var footprintTop = root.edge === "top" ? dockMonitor.y : dockMonitor.y + screenLogicalH - footprintDepth
@@ -699,7 +712,7 @@ Item {
 
   Timer {
     id: panelLeaveTimer
-    interval: 350
+    interval: root.pointerLeaveDelayMs
     onTriggered: if (!root.pointerOverDock && root.dragAppId === "") root.closePanels()
   }
 
@@ -892,10 +905,6 @@ Item {
             recent[activeAppId] = address
             root.appRecentWindow = recent
           }
-          root.clearUrgentApp(activeAppId, address)
-        } else if (top) {
-          var addressOnly = root.windowAddress(root.hyprToplevelFor(top))
-          if (addressOnly) root.clearUrgentApp("", addressOnly)
         }
       } catch (e) {}
       root.requestDockOverlap()
@@ -952,15 +961,8 @@ Item {
         Qt.callLater(root.syncDockState)
         root.playUrgentChime()
       }
-      if (eventName === "activewindow" || eventName === "activewindowv2") {
-        var eventData = String(event.data || "").trim()
-        if (eventName === "activewindowv2") {
-          root.clearUrgentApp("", DockModel.hyprAddress(eventData.split(",")[0]))
-        } else {
-          var winClass = eventData.split(",")[0].trim()
-          if (winClass) root.clearUrgentApp(winClass, "")
-        }
-      }
+      if (eventName === "activewindowv2")
+        root.clearUrgentWindow(DockModel.hyprAddress(String(event.data || "").split(",")[0]))
       if (eventName === "closewindow") {
         var fullAddr = DockModel.hyprAddress(event.data)
         if (root.recentOpenedWindowAddrs && root.recentOpenedWindowAddrs[fullAddr]) {
@@ -1033,6 +1035,8 @@ Item {
     root.folderColor = parsed && typeof parsed.folderColor === "string" ? parsed.folderColor : "theme"
     root.dockEdge = parsed && parsed.edge === "top" ? "top" : "bottom"
     root.blurred = parsed ? parsed.blur !== false : true
+    root.expandBackground = parsed && parsed.expandBackground === true
+    root.floating = parsed && parsed.floating !== false
     root.itemSpacing = parsed && typeof parsed.itemSpacing === "number" ? parsed.itemSpacing : 4
     if (parsed && typeof parsed.minimizeMode === "string") {
       root.minimizeMode = parsed.minimizeMode
@@ -1210,7 +1214,6 @@ Item {
 
   function focusWindowByAddress(addr, appId) {
     if (!addr) return
-    root.clearUrgentApp(appId || "", addr)
     var handle = root.liveHyprToplevelForAddress(addr)
     if (handle && handle.workspace && root.isMinimizedWorkspace(handle.workspace.name)) root.restoreWindow(addr, appId)
     else root.focusInPlace(addr)
@@ -1467,7 +1470,7 @@ Item {
     root.parkedAt = root.keepLive(root.parkedAt, live, false)
     root.parkSlots = root.keepLive(root.parkSlots, live, false)
     root.appRecentWindow = root.keepLive(root.appRecentWindow, live, true)
-    root.urgentMap = root.keepUrgentLive(root.urgentMap, live)
+    root.urgentMap = root.keepLive(root.urgentMap, live, false)
 
     var now = Date.now()
     var roa = root.recentOpenedWindowAddrs || {}
@@ -1480,60 +1483,13 @@ Item {
     if (roaChanged) root.recentOpenedWindowAddrs = nextRoa
   }
 
-  function keepUrgentLive(map, live) {
-    var keys = Object.keys(map)
-    if (keys.length === 0) return map
-
-    var next = {}
-    var dropped = false
-    for (var key of keys) {
-      if (key.slice(0, 2) === "0x" && !live[key]) dropped = true
-      else next[key] = map[key]
-    }
-    return dropped ? next : map
-  }
-
-  function clearUrgentApp(appId, address) {
-    if (!root.urgentMap || !Object.keys(root.urgentMap).some(function (key) { return root.urgentMap[key] })) return
-
+  function clearUrgentWindow(address) {
+    var addr = DockModel.hyprAddress(address)
+    if (!addr || !root.urgentMap[addr]) return
     var map = DockModel.copyMap(root.urgentMap)
-    var changed = false
-    function forget(key) {
-      if (key && map[key]) { delete map[key]; changed = true }
-    }
-
-    var normAddr = DockModel.hyprAddress(address)
-    forget(normAddr)
-
-    var targetEntries = root.pinnedSection.concat(root.runningSection).filter(function (entry) {
-      if (!entry) return false
-      var entryId = entry.appId || entry.id
-      if (appId && (entryId === appId || DockModel.isAppMatch(entryId, appId))) return true
-      return !!normAddr && (entry.windowList || []).some(function (win) { return win && win.address === normAddr })
-    })
-
-    if (appId) {
-      forget(appId)
-      forget(DockModel.stripDesktop(appId))
-      forget(DockModel.normalizeId(appId))
-    }
-
-    for (const target of targetEntries) {
-      forget(target.id)
-      forget(target.appId)
-      for (const win of target.windowList || []) forget(win && win.address)
-    }
-
-    if (appId) {
-      for (var mKey in map) {
-        if (mKey.slice(0, 2) !== "0x" && DockModel.isAppMatch(mKey, appId)) forget(mKey)
-      }
-    }
-
-    if (changed) {
-      root.urgentMap = map
-      Qt.callLater(root.syncDockState)
-    }
+    delete map[addr]
+    root.urgentMap = map
+    Qt.callLater(root.syncDockState)
   }
 
   function keepLive(map, live, addressesAreValues) {
@@ -1651,6 +1607,8 @@ Item {
     conf.folderColor = root.folderColor
     conf.edge = root.dockEdge
     conf.blur = root.blurred
+    conf.expandBackground = root.expandBackground
+    conf.floating = root.floating
     conf.itemSpacing = root.itemSpacing
     conf.minimizeMode = root.minimizeMode
     conf.clickToMinimize = root.minimizeMode !== "off"
@@ -1679,35 +1637,18 @@ Item {
     function isUrgent(win) { return !!win && !!win.address && !!root.urgentMap[win.address] }
     var urgentWin = visible.find(isUrgent) || null
     var urgentParked = parked.find(isUrgent) || null
-    var hadUrgency = !!urgentWin || !!urgentParked
-
-    if (root.urgentMap[appId]) hadUrgency = true
-    root.clearUrgentApp(appId, "")
 
     if (urgentParked) {
       root.restoreWindow(urgentParked.address || urgentParked, appId)
       return
     }
 
-    if (hadUrgency && focusedIdx < 0) {
-      if (urgentWin && urgentWin.address) {
-        root.focusWindowByAddress(urgentWin.address, appId)
-        return
-      }
-      if (parked.length > 0) {
-        root.restoreWindow(root.oldestParked(parked), appId)
-        return
-      }
-      var target = root.windowHere(visible) || root.recentWindow(appId, visible) || visible[0]
-      if (target && target.address) root.focusWindowByAddress(target.address, appId)
+    if (urgentWin) {
+      root.focusWindowByAddress(urgentWin.address, appId)
       return
     }
 
     if (focusedIdx >= 0) {
-      if (hadUrgency) {
-        return
-      }
-
       if (root.minimizeMode === "all") {
         root.minimizeAllWindows(entry)
         return
@@ -2107,7 +2048,7 @@ Item {
       : root.menuFocusPriming ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
     exclusionMode: (!root.autohide) ? ExclusionMode.Normal : ExclusionMode.Ignore
     exclusiveZone: (!root.autohide)
-      ? Math.round(dockCard.height + Commons.Style.gapsOut)
+      ? Math.round(dockCard.height + root.edgeGap)
       : 0
 
     anchors {
@@ -2116,7 +2057,7 @@ Item {
       left: true
       right: true
     }
-    implicitHeight: dockCard.height + Commons.Style.gapsOut + root.magnifiedIconReach
+    implicitHeight: dockCard.height + root.edgeGap + root.magnifiedIconReach
     Item {
       id: menuKeyCatcher
       anchors.fill: parent
@@ -2148,12 +2089,13 @@ Item {
       }
 
       Rectangle {
+        visible: root.autohide
         x: (parent.width - width) / 2
         y: root.edge === "top" ? 0 : parent.height - height
         width: revealHover.hovered ? Commons.Style.space(48) : Commons.Style.space(24)
         height: Commons.Style.space(3)
         radius: height / 2
-        color: Commons.Util.alpha(Commons.Color.bar.text, revealHover.hovered ? 0.6 : 0.25)
+        color: Commons.Util.scaleAlpha(Commons.Color.bar.text, revealHover.hovered ? 0.6 : 0.25)
         Behavior on width { NumberAnimation { duration: 150 } }
         Behavior on color { ColorAnimation { duration: 150 } }
       }
@@ -2178,9 +2120,9 @@ Item {
     BorderSurface {
       id: dockCard
 
-      color: Commons.Util.alpha(Commons.Color.bar.background, root.effectiveDockOpacity)
+      color: Commons.Util.scaleAlpha(Commons.Color.bar.background, root.effectiveDockOpacity)
       borderSpec: Commons.Border.none()
-      radius: Commons.Style.cornerRadius
+      radius: root.floating ? Commons.Style.cornerRadius : 0
       padding: root.cardPadding
       topPadding: root.edge === "top" ? root.floorPadding : root.cardPadding
       bottomPadding: root.edge === "bottom" ? root.floorPadding : root.cardPadding
@@ -2192,8 +2134,8 @@ Item {
       }
 
       readonly property real edgeOffset: root.dockVisible
-        ? Commons.Style.gapsOut
-        : -(dockCard.height + Commons.Style.gapsOut + 10)
+        ? root.edgeGap
+        : -(dockCard.height + root.edgeGap + 10)
       property real slideOffset: dockCard.edgeOffset
       Behavior on slideOffset { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
@@ -2205,8 +2147,10 @@ Item {
         NumberAnimation { duration: 180 }
       }
 
-      width: row.implicitWidth + contentLeftInset + contentRightInset
+      width: root.expandBackground ? dockWindow.width - root.sideGap * 2
+        : row.implicitWidth + contentLeftInset + contentRightInset
       height: row.implicitHeight + contentTopInset + contentBottomInset
+      onWidthChanged: root.updateDockOverlap()
 
       MouseArea {
         id: cardArea
@@ -2235,10 +2179,7 @@ Item {
         spacing: Commons.Style.space(root.itemSpacing)
         columns: Math.max(1, root.elementTotal)
 
-        anchors.left: parent.left
-        anchors.leftMargin: dockCard.contentLeftInset
-        anchors.right: parent.right
-        anchors.rightMargin: dockCard.contentRightInset
+        anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         anchors.topMargin: dockCard.contentTopInset
         anchors.bottom: parent.bottom
@@ -2261,7 +2202,7 @@ Item {
 
         Repeater {
           id: pinnedRepeater
-          model: root.pinnedSection
+          model: ScriptModel { values: root.pinnedSection; objectProp: "appId"; comparisonMode: ObjectComparison.Identity }
           delegate: DockItem {
             required property var modelData
             required property int index
@@ -2275,7 +2216,6 @@ Item {
             windowList: modelData.windowList
             homeCenter: root.pinnedHomeCenter(index)
             pinned: true
-            active: modelData.appId === root.activeId
             onActivateRequested: function(appId) { root.activate(appId) }
             onNewWindowRequested: function(appId) { root.launchApp(appId, null) }
             onMenuRequested: function(appId, cx) { root.openContext(appId, cx) }
@@ -2348,9 +2288,9 @@ Item {
                 anchors.leftMargin: -Commons.Style.space(3)
                 anchors.bottomMargin: -Commons.Style.space(2)
                 radius: root.tileRadius
-                color: Commons.Util.alpha(Commons.Color.bar.text, 0.16)
+                color: Commons.Util.scaleAlpha(Commons.Color.bar.text, 0.16)
                 border.width: 1
-                border.color: Commons.Util.alpha(Commons.Color.bar.text, 0.38)
+                border.color: Commons.Util.scaleAlpha(Commons.Color.bar.text, 0.38)
               }
               Rectangle {
                 visible: tile.isGroup && tile.groupCount > 2
@@ -2358,17 +2298,17 @@ Item {
                 anchors.leftMargin: -Commons.Style.space(6)
                 anchors.bottomMargin: -Commons.Style.space(4)
                 radius: root.tileRadius
-                color: Commons.Util.alpha(Commons.Color.bar.text, 0.11)
+                color: Commons.Util.scaleAlpha(Commons.Color.bar.text, 0.11)
                 border.width: 1
-                border.color: Commons.Util.alpha(Commons.Color.bar.text, 0.28)
+                border.color: Commons.Util.scaleAlpha(Commons.Color.bar.text, 0.28)
               }
 
               Rectangle {
                 anchors.fill: parent
                 radius: root.tileRadius
-                color: tileArea.containsMouse ? Commons.Color.menu.selectedBackground : Commons.Util.alpha(Commons.Color.bar.text, 0.10)
+                color: tileArea.containsMouse ? Commons.Color.menu.selectedBackground : Commons.Util.scaleAlpha(Commons.Color.bar.text, 0.10)
                 border.width: 1
-                border.color: Commons.Util.alpha(Commons.Color.bar.text, 0.22)
+                border.color: Commons.Util.scaleAlpha(Commons.Color.bar.text, 0.22)
               }
 
               Item {
@@ -2441,7 +2381,7 @@ Item {
                 width: Commons.Style.space(tile.groupCount > 1 ? 18 : 14)
                 height: Commons.Style.space(tile.groupCount > 1 ? 18 : 14)
                 radius: Commons.Style.space(3)
-                color: Commons.Util.alpha(Commons.Color.bar.background, 0.85)
+                color: Commons.Util.scaleAlpha(Commons.Color.bar.background, 0.85)
 
                 Text {
                   anchors.centerIn: parent
@@ -2500,7 +2440,7 @@ Item {
         DockSeparator { dock: root; visible: root.hasSeparator }
 
         Repeater {
-          model: root.runningSection
+          model: ScriptModel { values: root.runningSection; objectProp: "appId"; comparisonMode: ObjectComparison.Identity }
           delegate: DockItem {
             required property var modelData
             required property int index
@@ -2515,7 +2455,6 @@ Item {
             windowList: modelData.windowList
             homeCenter: root.runningHomeCenter(index)
             pinned: false
-            active: modelData.appId === root.activeId
             onActivateRequested: function(appId) { root.activate(appId) }
             onNewWindowRequested: function(appId) { root.launchApp(appId, null) }
             onMenuRequested: function(appId, cx) { root.openContext(appId, cx) }
@@ -2525,7 +2464,7 @@ Item {
             onDragDropped: function(appId) { dock.finishDrag() }
 
             readonly property bool isFullyTiled: root.showMinimizedTiles
-              && DockModel.allWindowsMinimized(modelData.windowList, root.liveWsNameOf, root.isMinimizedWorkspace)
+              && DockModel.allWindowsMinimized(modelData.windowList, root.liveWsNameOf)
             visible: !isFullyTiled
 
             Binding {

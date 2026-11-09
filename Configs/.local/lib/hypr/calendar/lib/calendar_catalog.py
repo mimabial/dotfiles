@@ -1,10 +1,12 @@
 import json
 import os
 
+from khal.parse_datetime import timedelta2str
 from khal.settings import get_config
 
 MAX_EVENT_FILES = 5000
 MAX_USED_LOCATIONS = 50
+NO_ALARM = "none"
 ICAL_TEXT_ESCAPES = ((r"\n", " "), (r"\N", " "), (r"\,", ","), (r"\;", ";"), (r"\\", "\\"))
 
 
@@ -39,6 +41,10 @@ def used_locations_by_frequency(paths):
     return [value for value, _ in ranked[:MAX_USED_LOCATIONS]]
 
 
+def alarm_delta(delta):
+    return timedelta2str(delta) or NO_ALARM
+
+
 config = get_config()
 calendars = {
     name: {
@@ -50,6 +56,9 @@ calendars = {
 }
 print(json.dumps({
     "default": config["default"].get("default_calendar") or "",
+    "defaultAlarm": alarm_delta(config["default"]["default_event_alarm"]),
+    "defaultDayAlarm": alarm_delta(config["default"]["default_dayevent_alarm"]),
+    "defaultEventSeconds": int(config["default"]["default_event_duration"].total_seconds()),
     "calendars": calendars,
     "locations": used_locations_by_frequency(
         values["path"] for values in calendars.values()

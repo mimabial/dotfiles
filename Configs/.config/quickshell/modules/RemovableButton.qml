@@ -5,7 +5,7 @@ import ".."
 
 BarButton {
     id: root
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     property bool showBadge: false
     css: "removable"
     visible: Removable.store.alwaysShow !== false || Removable.present
@@ -15,5 +15,5 @@ BarButton {
     onClicked: button => button === Qt.RightButton ? Removable.rescan()
         : button === Qt.MiddleButton ? Removable.openFirstMounted()
         : root.shell.togglePopup("disks")
-    DisksPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }
+    DisksPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }
 }

@@ -3,7 +3,7 @@ import ".."
 
 BarButton {
     id: root
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     readonly property var themeRotation: shell.themeRotation
     css: "themerotation"
     text: "󰏘"
@@ -15,5 +15,5 @@ BarButton {
         : button === Qt.RightButton ? themeRotation.setEnabled(!themeRotation.enabled)
         : themeRotation.rotate()
 
-    ThemeRotationPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }
+    ThemeRotationPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }
 }

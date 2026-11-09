@@ -17,7 +17,7 @@ PopupCard {
     property var workflows: []
     property var allowedBarLayouts: []
     property bool windowLayoutLocked: false
-    // mirrors workflow_locked() in util/workflows.sh: while one of these owns the
+    // mirrors workflow_locked() in util/workflows/catalog.bash: while one of these owns the
     // workflow, --set refuses, so the rows must not offer a click that no-ops
     readonly property string workflowOwner: root.shell.workflow === "gaming" ? "gamemode"
         : PowerProfiles.profile === PowerProfile.PowerSaver ? "power saver" : ""
@@ -79,6 +79,7 @@ PopupCard {
                 PopupSection { shell: root.shell; text: "POPUPS" }
                 OpacityRow { width: parent.width; shell: root.shell; automaticLabel: Opacity.label({ name: "Default", value: Style.defaultPopupSurfaceOpacity }); selectedOpacity: root.shell.prefs.popupOpacity; onPicked: value => root.shell.prefs.popupOpacity = value }
                 PopupSlider { id: tintSlider; width: parent.width; shell: root.shell; icon: "󰉦"; label: "Accent tint"; value: root.shell.prefs.popupTint; maximum: Style.maxPopupTint; valueText: Math.round(tintSlider.liveValue * 100) + "%"; onReleased: value => root.shell.prefs.popupTint = value }
+                PopupRow { width: parent.width; shell: root.shell; icon: "󰃎"; title: "Borders"; detail: active ? "Enabled" : "Disabled"; active: root.shell.prefs.popupBorders; onClicked: root.shell.prefs.popupBorders = !root.shell.prefs.popupBorders }
                 PopupRow { width: parent.width; shell: root.shell; icon: "󰃎"; title: "Accent border"; detail: active ? "Enabled" : "Disabled"; active: root.shell.prefs.popupAccentBorder; onClicked: root.shell.prefs.popupAccentBorder = !root.shell.prefs.popupAccentBorder }
             }
             PopupSeparator { shell: root.shell }

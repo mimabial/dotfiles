@@ -24,6 +24,6 @@ ClockButton {
         popupName: "notification-center"
         calendarPane: Component { GnomeCalendar { shell: root.shell; anchorItem: root; active: root.shell.popupName === "notification-center"; showWeekNumbers: root.showWeekNumbers } }
     }
-    LazyPopup { shell: root.shell; popup: "notifications"; owners: ["notifications"]; popupsAllowed: root.popupEnabled; sourceComponent: Component { NotificationPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } } }
-    LazyPopup { shell: root.shell; popup: "media"; owners: ["mediaplayer", "nowplaying"]; popupsAllowed: root.popupEnabled; sourceComponent: Component { MediaPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } } }
+    LazyPopup { shell: root.shell; popupName: "notifications"; owners: ["notifications"]; popupEnabled: root.popupEnabled; sourceComponent: Component { NotificationPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } } }
+    LazyPopup { shell: root.shell; popupName: "media"; owners: ["mediaplayer", "nowplaying"]; popupEnabled: root.popupEnabled; sourceComponent: Component { MediaPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } } }
 }

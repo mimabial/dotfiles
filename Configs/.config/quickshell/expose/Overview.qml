@@ -1643,7 +1643,7 @@ Item {
 
                 Rectangle {
                     anchors.fill: parent
-                    color: Commons.Util.alpha(Commons.Color.background, root.workspaceBandTint)
+                    color: Commons.Util.scaleAlpha(Commons.Color.background, root.workspaceBandTint)
                 }
             }
 
@@ -1818,12 +1818,12 @@ Item {
                         visible: root.showFooter
 
                         Text {
-                            text: "Type to filter windows  ←↑↓→ Navigate  Space Preview  "
+                            text: Commons.Util.keyHintMarkup("Type to filter windows  ←↑↓→ Navigate  Space Preview  "
                                 + (root.appFilter ? "Tab Next App  Backspace All Apps" : "Tab Next Workspace  Shift+Tab Previous")
-                                + "  Drag to a workspace to move  Shift+Q Close  Enter Open  Esc Close"
-                            textFormat: Text.PlainText
-                            color: Commons.Color.menu.text
-                            opacity: Commons.Style.mutedTextAlpha
+                                + "  Drag to a workspace to move  Shift+Q Close  Enter Open  Esc Close",
+                                Commons.Util.scaleAlpha(Commons.Color.menu.text, Commons.Style.mutedTextAlpha))
+                            textFormat: Text.StyledText
+                            color: Commons.Color.accent
                             font.family: Commons.Style.font.menuFamily
                             font.pixelSize: Commons.Style.font.bodySmall
                         }

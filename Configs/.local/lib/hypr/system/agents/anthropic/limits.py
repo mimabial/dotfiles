@@ -3,6 +3,8 @@ from __future__ import annotations
 from agents.cache import read_fresh_cached_json
 from agents.cache import usage_cache_dir
 from agents.cache import write_cached_json
+from agents.usage_records import LimitRecord
+from agents.usage_records import LimitReport
 from agents.usage_records import MILLISECOND_EPOCH_THRESHOLD
 from agents.usage_records import rounded_token_count
 from pathlib import Path
@@ -54,10 +56,10 @@ def parse_utilization(value: Any) -> float:
     return float("nan")
 
 
-def normalize_utilization(value: Any, percent_scale: bool) -> float:
+def normalize_utilization(value: Any, percent_scale: bool) -> float | None:
   utilization = parse_utilization(value)
   if not (utilization >= 0):
-    return -1.0
+    return None
   # New payloads use percentages; old ones used fractions.
   if percent_scale or utilization > 1:
     return min(1.0, utilization / 100.0)
@@ -102,11 +104,11 @@ def scoped_window(kind: str) -> str:
 
 
 # Model-scoped limits exist only in this array, not the legacy flat buckets.
-def scoped_limits(payload: dict[str, Any], percent_scale: bool) -> list[dict[str, Any]]:
+def scoped_limits(payload: dict[str, Any], percent_scale: bool) -> list[LimitRecord]:
   entries = payload.get("limits")
   if not isinstance(entries, list):
     return []
-  out: list[dict[str, Any]] = []
+  out: list[LimitRecord] = []
   seen: set[tuple[str, str]] = set()
   for entry in entries:
     if not isinstance(entry, dict):
@@ -120,14 +122,12 @@ def scoped_limits(payload: dict[str, Any], percent_scale: bool) -> list[dict[str
     if name == "" or (name, kind) in seen:
       continue
     usage_fraction = normalize_utilization(entry.get("percent"), percent_scale)
-    if usage_fraction < 0:
+    if usage_fraction is None:
       continue
     seen.add((name, kind))
     window = scoped_window(kind)
-    title = name + " " + window if window else name
     out.append({
-      "label": title,
-      "title": title,
+      "label": name + " " + window if window else name,
       "usageFraction": usage_fraction,
       "resetsAt": normalize_reset_at(entry.get("resets_at")),
     })
@@ -173,11 +173,11 @@ def probe_limits(access_token: str) -> dict[str, Any]:
   limits = []
   if session is not None:
     usage_fraction = normalize_utilization(session.get("utilization"), percent_scale)
-    if usage_fraction >= 0:
+    if usage_fraction is not None:
       limits.append({"label": "Session (5-hour)", "usageFraction": usage_fraction, "resetsAt": normalize_reset_at(session.get("resets_at"))})
   if weekly is not None:
     usage_fraction = normalize_utilization(weekly.get("utilization"), percent_scale)
-    if usage_fraction >= 0:
+    if usage_fraction is not None:
       limits.append({"label": "Weekly (7-day)", "usageFraction": usage_fraction, "resetsAt": normalize_reset_at(weekly.get("resets_at"))})
   limits.extend(scoped_limits(payload, percent_scale))
 
@@ -200,7 +200,7 @@ def limit_window_open(entry: dict[str, Any], now: dt.datetime) -> bool:
   return resets_at > now
 
 
-def usable_cached_limits(cached: dict[str, Any]) -> list[dict[str, Any]]:
+def usable_cached_limits(cached: dict[str, Any]) -> list[LimitRecord]:
   entries = cached.get("limits")
   if not isinstance(entries, list):
     return []
@@ -208,8 +208,8 @@ def usable_cached_limits(cached: dict[str, Any]) -> list[dict[str, Any]]:
   return [entry for entry in entries if isinstance(entry, dict) and limit_window_open(entry, now)]
 
 
-def collect_limits(access_token: str, expires_at_ms: int) -> dict[str, Any]:
-  result = {"limits": [], "usageStatusText": "", "authHelpText": AUTH_HELP}
+def collect_limits(access_token: str, expires_at_ms: int) -> LimitReport:
+  result: LimitReport = {"limits": [], "usageStatusText": "", "authHelpText": AUTH_HELP}
 
   probe_cache = usage_cache_dir() / "claude-limits-v2.json"
   cached = read_fresh_cached_json(probe_cache, float("inf")) or {}

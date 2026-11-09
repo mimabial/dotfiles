@@ -212,14 +212,14 @@ class HyprlangToLuaConverter:
             elif key == "blurls" and not prefix:
                 self.lua_lines.append(f"hl.layer_rule({lua_literal({'name': f'native:blurls:{source}:{line_number}', 'match': {'namespace': self.expand_variables(raw_value.strip())}, 'blur': True})})")
             elif key != "source":
-                self.lua_lines.append(f"runtime.config({lua_literal(full_key)}, {lua_literal(self.parse_config_value(full_key, raw_value))})")
+                self.lua_lines.append(f"runtime.config_if_supported({lua_literal(full_key)}, {lua_literal(self.parse_config_value(full_key, raw_value))})")
 
         self.lua_lines.append("")
         return "\n".join(self.lua_lines)
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Convert a hyprlang config file into Hyprland Lua.")
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--set", action="append", default=[], metavar="NAME=VALUE")

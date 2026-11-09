@@ -1,5 +1,5 @@
 {
-  "modules": "cpu,gpu,memory,network",
+  "modules": "cpu,gpu,memory,network,sensors",
   "style": "both",
   "cpuStyle": "graph",
   "gpuStyle": "graph",
@@ -37,7 +37,6 @@
   "showTotals": true,
   "showAddresses": true,
   "showTemperatures": true,
-  "showFans": true,
   "showHistory": true,
   "showDetails": true,
   "showDevices": true

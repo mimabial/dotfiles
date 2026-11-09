@@ -5,6 +5,8 @@ usage() {
   cat <<'USAGE'
 Usage: hyprshell system/printers [option]
 
+Report printer queues and jobs, watch CUPS events, or manage a queue.
+
   --report        JSON: {"printers":[{name,state,reason,default,transport}],
                          "jobs":[{id,printer,user,size}],"pending":n,"stopped":n}
   --bar           Bar JSON: text, class, tooltip
@@ -162,7 +164,7 @@ case "${1:---report}" in
     ;;
   --switch)
     [[ -n "${2:-}" ]] || { usage >&2; exit 1; }
-    exec bash "${BASH_SOURCE[0]%/*}/printer.connection.switch.sh" -p "$2"
+    exec bash "${BASH_SOURCE[0]%/*}/printer-transport.sh" -p "$2"
     ;;
   --cancel)
     [[ -n "${2:-}" ]] || { usage >&2; exit 1; }

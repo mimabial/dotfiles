@@ -104,9 +104,9 @@ Rectangle {
   Row {
     id: tail
     anchors.right: parent.right
-    anchors.rightMargin: Commons.Style.spacing.sm
+    anchors.rightMargin: Commons.Style.spacing.rowPaddingX
     anchors.verticalCenter: parent.verticalCenter
-    spacing: Commons.Style.spacing.md
+    spacing: Commons.Style.spacing.rowPaddingX
 
     Text {
       visible: text !== ""

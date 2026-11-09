@@ -26,15 +26,15 @@ _tmux_layout_current_session() {
 }
 
 _tmux_layout_project_name() {
-  local cwd="$1"
-  basename "$cwd" | tr '.:' '--'
+  local cwd="$1" name="${1:t}"
+  print -r -- "${${name:-$cwd}//[.:]/-}"
 }
 
 _tmux_layout_diff_watch_command() {
   if command -v hunk >/dev/null 2>&1; then
     print -r -- "hunk diff --watch"
   else
-    print -r -- "watch -n 2 git --no-pager diff --stat"
+    print -r -- "inotifywait -mqre close_write,create,delete,move . | while clear; git --no-optional-locks --no-pager diff --stat && read -r; do while read -rt 0; do :; done; done"
   fi
 }
 

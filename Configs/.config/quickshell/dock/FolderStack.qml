@@ -18,9 +18,9 @@ BorderSurface {
   readonly property real rowStep: Math.max(28, Commons.Style.space(28)) + listView.spacing
   readonly property real rowWidth: stack.dock.menuContentWidth(listView.contentItem)
 
-  color: Commons.Util.alpha(Commons.Style.popupTinted(Commons.Color.menu.background), Commons.Style.popupSurfaceOpacity)
+  color: Commons.Util.scaleAlpha(Commons.Style.popupTinted(Commons.Color.menu.background), Commons.Style.popupSurfaceOpacity)
   borderSpec: Commons.Border.surfaceSpec("menu", "border",
-    Commons.Util.alpha(Commons.Style.popupBorder(Commons.Color.menu.border), Commons.Style.popupBorderOpacity), 1)
+    Commons.Util.scaleAlpha(Commons.Style.popupBorder(Commons.Color.menu.border), Commons.Style.popupBorderOpacity), 1)
   radius: Commons.Style.cornerRadius
   padding: Commons.Style.space(4)
   width: stack.rowWidth + contentLeftInset + contentRightInset
@@ -86,7 +86,7 @@ BorderSurface {
         horizontalAlignment: Text.AlignHCenter
         text: "Folder is empty"
         textFormat: Text.PlainText
-        color: Commons.Util.alpha(Commons.Color.menu.text, 0.45)
+        color: Commons.Util.scaleAlpha(Commons.Color.menu.text, 0.45)
         font.family: Commons.Style.font.family
         font.pixelSize: Commons.Style.font.body
         padding: Commons.Style.space(8)
@@ -131,12 +131,13 @@ BorderSurface {
 
     Text {
       width: stack.rowWidth
-      text: "↑↓ Move  Enter Open  ←/Esc Close"
+      textFormat: Text.StyledText
+      text: Commons.Util.keyHintMarkup("↑↓ Move  Enter Open  ←/Esc Close", Commons.Util.scaleAlpha(Commons.Color.menu.text, Commons.Style.mutedTextAlpha))
       wrapMode: Text.NoWrap
       horizontalAlignment: Text.AlignHCenter
       fontSizeMode: Text.HorizontalFit
       minimumPixelSize: Math.max(10, Commons.Style.font.caption - 2)
-      color: Commons.Util.alpha(Commons.Color.menu.text, .55)
+      color: Commons.Color.accent
       font.family: Commons.Style.font.family
       font.pixelSize: Commons.Style.font.caption
     }

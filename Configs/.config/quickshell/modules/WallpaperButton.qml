@@ -3,7 +3,7 @@ import ".."
 
 BarButton {
     id: root
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     css: "wallpaper"
     text: "󰸉"
     badgeText: Wallpaper.perWorkspace ? "󰝥" : Wallpaper.enabled ? "󰑖" : ""
@@ -16,5 +16,5 @@ BarButton {
         : Wallpaper.applyNext()
     onWheeled: delta => Wallpaper.applyAdjacent(delta > 0 ? 1 : -1)
 
-    WallpaperPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed }
+    WallpaperPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }
 }

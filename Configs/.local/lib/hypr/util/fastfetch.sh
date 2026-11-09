@@ -34,11 +34,12 @@ FASTFETCH_LOGO_DIR="${FASTFETCH_CONFIG_HOME}/logo"
 HYPR_CACHE_HOME="${HYPR_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/hypr}"
 WALLPAPER_CURRENT_DIR="${WALLPAPER_CURRENT_DIR:-${HYPR_CACHE_HOME}/wallpaper/current}"
 distro_logo=${iconDir}/Hypr-Icon/distro/${LOGO:-}
-image_dirs=()
 
 usage() {
   cat <<USAGE
 Usage: fastfetch [commands] [options]
+
+Run fastfetch with the configured logo, or print a random logo.
 
 commands:
   logo    Display a random logo
@@ -185,20 +186,20 @@ fastfetch_select_logo() {
   printf '%s\n' "${selected_path}"
 }
 
-logo_search_paths() {
-  image_dirs=()
-  image_dirs+=("${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/logo")
+logo_search_paths_into() {
+  local -n search_dirs_ref="$1"
+  search_dirs_ref=("${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/logo")
   if [ -n "${HYPR_THEME:-}" ] && [ -d "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${HYPR_THEME}/logo" ]; then
-    image_dirs+=("${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${HYPR_THEME}/logo")
+    search_dirs_ref+=("${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/${HYPR_THEME}/logo")
   fi
-  [ -f "$distro_logo" ] && image_dirs+=("$distro_logo")
-  image_dirs+=("$WALLPAPER_CURRENT_DIR/wall.quad")
-  image_dirs+=("$WALLPAPER_CURRENT_DIR/wall.sqre")
-  [ -f "$HOME/.face.icon" ] && image_dirs+=("$HOME/.face.icon")
+  [ -f "$distro_logo" ] && search_dirs_ref+=("$distro_logo")
+  search_dirs_ref+=("$WALLPAPER_CURRENT_DIR/wall.quad")
+  search_dirs_ref+=("$WALLPAPER_CURRENT_DIR/wall.sqre")
+  [ -f "$HOME/.face.icon" ] && search_dirs_ref+=("$HOME/.face.icon")
 }
 
 find_logo_files() {
-  find -L "${image_dirs[@]}" -maxdepth 1 -type f \
+  find -L "$@" -maxdepth 1 -type f \
     \( -name "wall.quad" -o -name "wall.sqre" -o -name "*.icon" -o -name "*logo*" -o -name "*.png" \) \
     ! -path "*/wall.set*" \
     ! -path "*/wallpaper/current/*.png" \
@@ -206,8 +207,9 @@ find_logo_files() {
 }
 
 random_logo() {
-  logo_search_paths
-  find_logo_files | shuf -n 1
+  local -a logo_dirs=()
+  logo_search_paths_into logo_dirs
+  find_logo_files "${logo_dirs[@]}" | shuf -n 1
 }
 
 logo_usage() {
@@ -229,9 +231,11 @@ Example: ${0##*/} logo --local --os --prof
 HELP
 }
 
-logo_dirs_from_args() {
+logo_dirs_from_args_into() {
+  local -n requested_dirs_ref="$1"
+  shift
   local arg="" logo_source=""
-  image_dirs=()
+  requested_dirs_ref=()
   for arg in "$@"; do
     case "${arg}" in
       --quad) logo_source="$WALLPAPER_CURRENT_DIR/wall.quad" ;;
@@ -243,7 +247,7 @@ logo_dirs_from_args() {
       *) logo_usage >&2; return 1 ;;
     esac
     [[ -n "${logo_source}" && -e "${logo_source}" ]] || { echo "No logo available for ${arg}" >&2; return 1; }
-    image_dirs+=("${logo_source}")
+    requested_dirs_ref+=("${logo_source}")
   done
 }
 
@@ -254,8 +258,9 @@ handle_logo_command() {
   [[ "$1" = "--rand" ]] && { random_logo; return 0; }
   [[ "$1" = *"help"* ]] && { logo_usage; return 0; }
 
-  logo_dirs_from_args "$@" || return 1
-  find_logo_files | shuf -n 1
+  local -a logo_dirs=()
+  logo_dirs_from_args_into logo_dirs "$@" || return 1
+  find_logo_files "${logo_dirs[@]}" | shuf -n 1
 }
 
 case "$1" in

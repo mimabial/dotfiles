@@ -7,7 +7,7 @@ import ".."
 
 BarButton {
     id: root
-    property bool popupsAllowed: true
+    property bool popupEnabled: true
     property bool raisePending: false
     property bool cliampLoaded: false
     readonly property real artSize: Style.px(36)
@@ -18,7 +18,7 @@ BarButton {
     onClicked: shell.togglePopup("nowplaying")
     function appIcon(player) { return player.desktopEntry && DesktopEntries.applications.values.length ? Quickshell.iconPath(DesktopEntries.heuristicLookup(player.desktopEntry)?.icon ?? "", true) : "" }
     PopupCard {
-        anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed; popupName: "nowplaying"
+        anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled; popupName: "nowplaying"
         contentWidth: Style.px(320); contentHeight: sources.implicitHeight + padding * 2; keyboardHint: ""
         onOpenChanged: if (!open) root.raisePending = false
         Column {
@@ -53,7 +53,7 @@ BarButton {
     }
     Loader {
         active: root.cliampLoaded; visible: false
-        sourceComponent: Component { MediaPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupsAllowed } }
+        sourceComponent: Component { MediaPopup { anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled } }
     }
     // Hyprland answers an app's focus request by marking it urgent (focus_on_activate is off),
     // so the window a row click raised is focused here instead

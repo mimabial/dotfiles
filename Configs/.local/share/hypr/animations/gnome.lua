@@ -1,6 +1,6 @@
 local windowSpeed, moveSpeed = 1.5, 2.5
 
-require("runtime").config("animations.enabled", true)
+require("runtime").config_if_supported("animations.enabled", true)
 hl.curve("gnomeOpen", {type = "bezier", points = {{0.16, 1}, {0.3, 1}}})
 hl.curve("gnomeClose", {type = "bezier", points = {{1 / 3, 2 / 3}, {2 / 3, 1}}})
 hl.curve("gnomeWorkspace", {type = "bezier", points = {{1 / 3, 1}, {2 / 3, 1}}})

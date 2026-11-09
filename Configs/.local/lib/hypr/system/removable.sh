@@ -5,6 +5,8 @@ usage() {
   cat <<'USAGE'
 Usage: hyprshell system/removable --unmount-all|--probe-support
 
+Unmount removable volumes before sleep, or list the removable media this system supports.
+
   --unmount-all  Unmount removable volumes before sleep (unless unmountOnSuspend is false);
                  fail on the first that refuses
   --probe-support  List GVFS backends and attached USB device classes

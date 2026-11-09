@@ -212,8 +212,7 @@ Item {
     }
     function windowParked(window) {
         if (shell.dock) return shell.dock.isWinParkedLive(window)
-        const workspace = String(window && window.workspaceName || "")
-        return workspace === "special:minimized" || workspace.startsWith("special:minimized-")
+        return DockModel.isMinimizedWorkspace(window && window.workspaceName)
     }
     function windowRowLabel(window) {
         if (shell.dock) return shell.dock.windowRowLabel(window)

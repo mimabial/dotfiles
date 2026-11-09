@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "CalendarMath.js" as CalendarMath
+import "Units.js" as Units
 
 Item {
   id: root
@@ -20,7 +21,7 @@ Item {
   readonly property string dataPath:
     root.dataDir + "/bookmarks.json"
   readonly property string helperPath:
-    Quickshell.env("HOME") + "/.local/lib/hypr/bookmarks/bookmark_helper.py"
+    Quickshell.env("HOME") + "/.local/lib/hypr/bookmarks/commands.py"
   readonly property string initializerPath:
     Quickshell.env("HOME") + "/.local/lib/hypr/bookmarks/bookmark_store_init.sh"
   readonly property real usageHalfLifeDays: 30
@@ -30,6 +31,8 @@ Item {
   readonly property int maxBookmarks: 50000
   readonly property int maxTitleLength: 2048
   readonly property int maxUrlLength: 8192
+  readonly property int maxHostnameLength: 253
+  readonly property int maxHostnameLabelLength: 63
   readonly property int maxIdLength: 256
   readonly property int maxTags: 64
   readonly property int maxTagLength: 128
@@ -125,6 +128,29 @@ Item {
     return compressionIndex !== -1 ? groupCount < 8 : groupCount === 8
   }
 
+  function validHostname(host) {
+    var comparableHost = host.charAt(host.length - 1) === "."
+      ? host.substring(0, host.length - 1)
+      : host
+    if (!comparableHost
+        || comparableHost.length > root.maxHostnameLength
+        || comparableHost.indexOf("..") !== -1
+        || /[\[\]<>\\^`{|}]/.test(comparableHost)) {
+      return false
+    }
+    if (/^[0-9.]+$/.test(comparableHost) && comparableHost.indexOf(".") !== -1 && !root.validIpv4Address(comparableHost))
+      return false
+    for (var label of comparableHost.split(".")) {
+      if (!label
+          || label.length > root.maxHostnameLabelLength
+          || label.charAt(0) === "-"
+          || label.charAt(label.length - 1) === "-") {
+        return false
+      }
+    }
+    return true
+  }
+
   function normalizeUrl(value) {
     var url = String(value || "").trim()
     if (url.length > root.maxUrlLength)
@@ -163,28 +189,8 @@ Item {
         host = authority.substring(0, colon)
         port = authority.substring(colon + 1)
       }
-      var comparableHost = host.charAt(host.length - 1) === "."
-        ? host.substring(0, host.length - 1)
-        : host
-      if (!comparableHost
-          || comparableHost.length > 253
-          || comparableHost.indexOf("..") !== -1
-          || /[\[\]<>\\^`{|}]/.test(comparableHost)) {
+      if (!root.validHostname(host))
         return ""
-      }
-      if (/^[0-9.]+$/.test(comparableHost) && comparableHost.indexOf(".") !== -1) {
-        if (!root.validIpv4Address(comparableHost))
-          return ""
-      }
-      var labels = comparableHost.split(".")
-      for (var label of labels) {
-        if (!label
-            || label.length > 63
-            || label.charAt(0) === "-"
-            || label.charAt(label.length - 1) === "-") {
-          return ""
-        }
-      }
     }
     if (port) {
       if (!/^\d+$/.test(port))
@@ -279,7 +285,7 @@ Item {
     var now = root.normalizeLastOpenedAt(timestamp) || Date.now()
     if (!score || !lastOpenedAt || now <= lastOpenedAt)
       return score
-    var elapsedDays = (now - lastOpenedAt) / CalendarMath.MS_PER_DAY
+    var elapsedDays = (now - lastOpenedAt) / Units.MS_PER_DAY
     return score * Math.pow(0.5, elapsedDays / root.usageHalfLifeDays)
   }
 
@@ -400,19 +406,6 @@ Item {
     console.warn("Bookmarks:", exception)
   }
 
-  function parse(raw) {
-    usageSaveTimer.stop()
-    root.pendingUsageOpens = 0
-    try {
-      var text = String(raw || "")
-      if (root.utf8ByteLength(text, root.maxStoreBytes) > root.maxStoreBytes)
-        throw new Error("bookmarks.json is too large")
-      root.applyParsedData(JSON.parse(text), 0)
-    } catch (exception) {
-      root.failLoad(exception)
-    }
-  }
-
   function reload() {
     if (!root.storageReady)
       return
@@ -429,10 +422,6 @@ Item {
     root.storeLoadTimedOut = false
     root.storeLoadAttemptActive = true
     storeLoadProcess.running = true
-  }
-
-  function requestReload() {
-    reloadDebounce.restart()
   }
 
   function parseSmallHelperResponse(data) {
@@ -470,10 +459,8 @@ Item {
       root.failLoad("Bounded store reader exceeded its deadline")
     else if (!root.storeLoadResponseReceived)
       root.failLoad("Bounded store reader did not return a response")
-    if (root.reloadPending) {
-      root.reloadPending = false
-      reloadDebounce.restart()
-    }
+    if (root.reloadPending)
+      Qt.callLater(root.reload)
   }
 
   function save(next, createBackup) {
@@ -836,16 +823,9 @@ Item {
 
   Timer {
     id: usageSaveTimer
-    interval: 5 * 60 * 1000
+    interval: 5 * Units.MS_PER_MINUTE
     repeat: false
     onTriggered: root.flushUsage()
-  }
-
-  Timer {
-    id: reloadDebounce
-    interval: 100
-    repeat: false
-    onTriggered: root.reload()
   }
 
   Timer {
@@ -911,7 +891,7 @@ Item {
     printErrors: false
     onFileChanged: {
       if (!root.saving && !root.pendingUsageOpens)
-        root.requestReload()
+        root.reload()
     }
   }
 }

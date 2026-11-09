@@ -33,7 +33,7 @@ store_notification_image() {
   hash="${hash%%[[:space:]]*}"
   [[ -n "${hash}" ]] || return 1
 
-  dest="${images}/${hash}.${ext}"
+  dest="${ARCHIVE_IMAGES_DIR}/${hash}.${ext}"
   if [[ ! -f "${dest}" ]]; then
     if [[ "${ext}" != "svg" ]] && command -v magick >/dev/null 2>&1; then
       magick "${src}" -auto-orient -resize "${ARCHIVE_IMAGE_SHRINK_ONLY_GEOMETRY}" -strip "${dest}" 2>/dev/null \

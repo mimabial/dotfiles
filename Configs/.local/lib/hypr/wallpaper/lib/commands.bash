@@ -11,11 +11,11 @@ wallpaper_execute_action() {
   "wallpaper_action_${wallpaper_action}"
 }
 
-wallpaper_action_next() { wallpaper_ensure_catalog; wallpaper_select_adjacent n; }
-wallpaper_action_previous() { wallpaper_ensure_catalog; wallpaper_select_adjacent p; }
+wallpaper_action_next() { wallpaper_ensure_catalog && wallpaper_apply_adjacent n; }
+wallpaper_action_previous() { wallpaper_ensure_catalog && wallpaper_apply_adjacent p; }
 wallpaper_action_random() {
   local index=""
-  wallpaper_ensure_catalog
+  wallpaper_ensure_catalog || return 1
   index="$(wallpaper_random_index "${#wallpaper_paths[@]}")" || exit 1
   wallpaper_apply_selected "${wallpaper_paths[index]}"
 }
@@ -25,7 +25,7 @@ wallpaper_action_set() {
 }
 wallpaper_action_resume() {
   local chosen_wallpaper=""
-  wallpaper_current_or_first_into chosen_wallpaper "wall.set not in current theme, using first wallpaper"
+  wallpaper_current_or_first_into chosen_wallpaper "wall.set not in current theme, using first wallpaper" || return 1
   wallpaper_apply_selected "${chosen_wallpaper}"
 }
 wallpaper_action_display() {
@@ -34,7 +34,7 @@ wallpaper_action_display() {
 }
 wallpaper_action_notify() {
   local chosen_wallpaper=""
-  wallpaper_current_or_first_into chosen_wallpaper "wall.set not in current theme, using first wallpaper for notification"
+  wallpaper_current_or_first_into chosen_wallpaper "wall.set not in current theme, using first wallpaper for notification" || exit 1
   wallpaper_prepare_notification_payload "${chosen_wallpaper}"
   wallpaper_notify_result
   exit 0
@@ -60,13 +60,14 @@ wallpaper_action_clean() { wallpaper_prune_orphaned_thumbnails; exit 0; }
 wallpaper_action_select() {
   local picked_wallpaper=""
   wallpaper_load_picker || exit 1
-  wallpaper_pick_into picked_wallpaper
+  wallpaper_pick_into picked_wallpaper || exit 1
+  [[ -n "${picked_wallpaper}" ]] || exit 0
   wallpaper_apply_file "${picked_wallpaper}"
 }
 wallpaper_action_link() {
   local theme_wallpaper="${HYPR_THEME_DIR}/wall.set"
   [[ -e "${theme_wallpaper}" ]] || { print_log -err "wallpaper" "No theme wallpaper found: ${theme_wallpaper}"; exit 1; }
-  wallpaper_apply_file "${theme_wallpaper}"
+  wallpaper_apply_file "${theme_wallpaper}" || exit 1
   exit 0
 }
 wallpaper_action_json() { source "${HYPR_LIB_DIR}/wallpaper/lib/catalog-json.bash" || exit 1; wallpaper_json; exit 0; }

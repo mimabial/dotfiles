@@ -20,14 +20,9 @@ updates_count_lines() {
 }
 
 package_capture_updates() {
-  set +e
-  "$@"
-  local rc=$?
-  set -e
-  case "${rc}" in
-    0 | 1 | 2) return 0 ;;
-    *) return "${rc}" ;;
-  esac
+  local rc=0
+  "$@" || rc=$?
+  ((rc <= 2)) || return "${rc}"
 }
 
 package_list_updates() (

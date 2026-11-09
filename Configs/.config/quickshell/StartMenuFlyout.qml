@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
+import qs.Commons as Commons
 
 PopupWindow {
     id: root
@@ -125,10 +126,12 @@ PopupWindow {
             }
             Text {
                 width: parent.width
-                text: "↑↓ Move  → Open  " + (root.items.some(item => root.togglesInPlace(item)) ? "Space Toggle  " : "") + "← Back  Esc"
+                textFormat: Text.StyledText
+                text: Commons.Util.keyHintMarkup("↑↓ Move  → Open  " + (root.items.some(item => root.togglesInPlace(item)) ? "Space Toggle  " : "")
+                    + "← Back  Esc", root.shell.mutedText)
                 wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter
                 fontSizeMode: Text.HorizontalFit; minimumPixelSize: Math.max(10, Style.caption - 2)
-                color: root.shell.alpha(root.shell.foreground, .55)
+                color: root.shell.accent
                 font.family: root.shell.fontFamily; font.pixelSize: Style.caption
             }
         }

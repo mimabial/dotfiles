@@ -13,7 +13,9 @@ case "${action}" in
   *)                   usage >&2; exit 2      ;;
 esac
 
-hyprshell util/state.sh clear 're*-required'
+trap '' HUP
+
+hyprshell util/state-flags.sh clear 're*-required'
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash"
 declare -F hypr_wait_for >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/events.bash" || exit 1

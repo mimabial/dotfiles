@@ -7,6 +7,12 @@ source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
 source "${HYPR_LIB_DIR}/controls/lib/brightness.common.bash"
 
 readonly BRIGHTNESS_DIM_PERCENT=1
+readonly KEYBOARD_BACKLIGHT_DEVICE='*::kbd_backlight'
+
+keyboard_backlight_ctl() {
+  compgen -G "/sys/class/leds/${KEYBOARD_BACKLIGHT_DEVICE}" >/dev/null || return 0
+  brightnessctl -d "${KEYBOARD_BACKLIGHT_DEVICE}" "$@" >/dev/null
+}
 
 usage() {
   printf 'Usage: %s <dim|restore>\n' "${0##*/}"
@@ -55,9 +61,11 @@ main() {
     dim)
       save_idle_brightness "${state_file}" "${runtime_dir}"
       brightnessctl s "${BRIGHTNESS_DIM_PERCENT}%" >/dev/null
+      keyboard_backlight_ctl --save set 0
       ;;
     restore)
       restore_idle_brightness "${state_file}" || brightnessctl -r >/dev/null
+      keyboard_backlight_ctl --restore
       ;;
     *)
       usage >&2

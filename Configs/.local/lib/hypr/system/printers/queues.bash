@@ -4,7 +4,7 @@ printer_require_tool() {
   local cmd="$1"
   if ! command -v "$cmd" >/dev/null 2>&1; then
     echo "Error: required command not found: $cmd" >&2
-    exit 1
+    return 1
   fi
 }
 
@@ -18,7 +18,7 @@ printer_resolve_queue() {
       return 0
     fi
     echo "Error: printer queue '$requested' not found." >&2
-    exit 1
+    return 1
   fi
 
   chosen="$(lpstat -d 2>/dev/null | sed -n 's/^system default destination: //p')"
@@ -34,7 +34,7 @@ printer_resolve_queue() {
   fi
 
   echo "Error: no printer queues found in CUPS." >&2
-  exit 1
+  return 1
 }
 
 printer_uri_host() {

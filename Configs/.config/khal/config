@@ -14,6 +14,7 @@ readonly = True
 
 [default]
 default_calendar = personal
+default_event_alarm = 10m
 
 [locale]
 timeformat = %H:%M

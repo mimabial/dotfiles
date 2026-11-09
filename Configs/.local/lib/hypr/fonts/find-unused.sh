@@ -57,14 +57,14 @@ declare -gA PACKAGE_MATCHES=() PACKAGE_MATCH_FAMILIES=()
 declare -ga LOCAL_ACTIVE_FAMILIES=() LOCAL_INSTALLED_CONFIG_FAMILIES=()
 declare -ga LOCAL_FALLBACK_FAMILIES=() LOCAL_UNUSED_FAMILIES=()
 declare -gA LOCAL_MATCHES=() UNUSED_LOCAL_FAMILY_MAP=()
-declare -ga LOCAL_REMOVABLE_FAMILIES=() LOCAL_KEPT_PROVIDER_FAMILIES=()
-declare -gA LOCAL_REMOVABLE_FILE_COUNTS=() LOCAL_PROVIDER_FILE_COUNTS=()
-declare -ga REMOVABLE_LOCAL_FILES=()
+declare -g FONT_REFERENCE_CONTENT_FILE="" FONT_REFERENCE_CASEFOLDED_TEXT=""
 
 main() {
-  require_cmd pacman
-  require_cmd rg
-  require_cmd fc-scan
+  local -a removable_local_files=()
+  local required_tool=""
+  for required_tool in pacman rg fc-scan; do
+    require_cmd "${required_tool}" || return 1
+  done
 
   collect_search_roots_into ACTIVE_SEARCH_ROOTS
   build_rg_args_into RG_ARGS
@@ -72,6 +72,8 @@ main() {
   collect_installed_font_packages_into INSTALLED_FONT_PACKAGES PACKAGE_FONT_FILES
   print_header
   collect_local_font_families_into LOCAL_FONT_FAMILIES LOCAL_FAMILY_FILES LOCAL_FILE_FAMILIES
+  FONT_REFERENCE_CONTENT_FILE="$(mktemp)"
+  trap 'rm -f -- "${FONT_REFERENCE_CONTENT_FILE}"' EXIT
   collect_font_reference_lines
 
   classify_packages
@@ -86,8 +88,8 @@ main() {
 
   report_unused_packages
   offer_unused_package_removal
-  report_local_families
-  offer_unused_local_file_removal
+  report_local_families removable_local_files
+  offer_unused_local_file_removal removable_local_files
   report_required_packages
   print_notes
 }

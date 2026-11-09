@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-usage="Usage: ${0##*/} COMMAND [ARG...]"
+usage="Usage: ${0##*/} COMMAND [ARG...]
+Run COMMAND on the NVIDIA GPU through PRIME render offload."
 [[ "${1:-}" == -h || "${1:-}" == --help ]] && { printf '%s\n' "${usage}"; exit; }
 [[ $# -gt 0 ]] || { printf '%s\n' "${usage}" >&2; exit 2; }
 __NV_PRIME_RENDER_OFFLOAD=1 \

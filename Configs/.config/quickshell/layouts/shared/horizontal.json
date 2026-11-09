@@ -9,7 +9,7 @@
         "compactStyle": false,
         "activeOnly": true,
         "showAll": false,
-        "numerals": "dots",
+        "numerals": "roman",
         "minimap": true
       }
     },
@@ -35,7 +35,7 @@
         "appearance": "cava",
         "fillAvailableWidth": false,
         "showAlbumArt": false,
-        "noIcon": true,
+        "showIcon": false,
         "maxLabelWidth": 360,
         "showControls": false,
         "showArtist": false,
@@ -57,25 +57,11 @@
     "display",
     "vpn",
     "wifi",
-    {
-      "id": "kdeconnect",
-      "props": {
-        "showBadge": false
-      }
-    },
-    {
-      "id": "bluetooth",
-      "props": {
-        "showReadout": false
-      }
-    },
-    {
-      "id": "removable",
-      "props": {
-        "showBadge": true
-      }
-    },
+    "kdeconnect",
+    "bluetooth",
+    "removable",
     "powerprofile",
+    "tasks",
     {
       "id": "notifications",
       "props": {
@@ -119,14 +105,6 @@
       }
     },
     "themerotation",
-    {
-      "id": "tasks",
-      "trayPosition": {
-        "section": "right",
-        "index": 20,
-        "stringEntry": true
-      }
-    },
     {
       "id": "sudoku",
       "trayPosition": {
