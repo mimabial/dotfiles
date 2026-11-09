@@ -65,7 +65,7 @@ wallpaper_import_into_theme() {
   local theme_wallpapers_dir=""
   wallpaper_theme_source_dir_into theme_wallpapers_dir "${themes_dir}/${selected_theme}"
   cp -- "${selected_wallpaper}" "${theme_wallpapers_dir}/"
-  ln -fs "${theme_wallpapers_dir}/${selected_wallpaper##*/}" "${themes_dir}/${selected_theme}/wall.set"
+  ln -frs "${theme_wallpapers_dir}/${selected_wallpaper##*/}" "${themes_dir}/${selected_theme}/wall.set"
 
   "${HYPR_LIB_DIR}/theme/theme.switch.sh" -s "${selected_theme}"
   send_ephemeral_notif "hypr-wallpaper-kde" -a "Wallpaper" -i "${WALLPAPER_THUMB_DIR}/${incoming_wallpaper_hash}.sqre" -t "${NOTIFY_BRIEF_MS}" "Wallpaper set in ${selected_theme}"

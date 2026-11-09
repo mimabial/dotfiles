@@ -25,10 +25,12 @@ hyprlock_render_background() {
   is_video=0
   [[ $mime_type == video/* ]] && is_video=1
   if ((is_video)); then
-    print_log -sec "wallpaper" -stat "converting video" "${wallpaper_path}"
-    mkdir -p "${image_paths_ref[wallpaper_video]}"
     cached_thumb="${image_paths_ref[wallpaper_video]}/$(hyprlock_file_hash "${wallpaper_path}").png"
-    extract_thumbnail "${wallpaper_path}" "${cached_thumb}"
+    if [[ ! -f "${cached_thumb}" ]]; then
+      print_log -sec "wallpaper" -stat "converting video" "${wallpaper_path}"
+      mkdir -p "${image_paths_ref[wallpaper_video]}"
+      extract_thumbnail "${wallpaper_path}" "${cached_thumb}"
+    fi
     wallpaper_path="${cached_thumb}"
     mime_type="$(file --mime-type -b "${wallpaper_path}" 2>/dev/null || true)"
   fi

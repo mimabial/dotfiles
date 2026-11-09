@@ -7,9 +7,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from style_map.hierarchy import bar_component_registry
 from style_map.layouts import QUICKSHELL_CONFIG_DIR
 from style_map.output import render_layout_style_map
-from style_map.qml import index_qml_components
+from style_map.qml import all_qml_style_keys, index_qml_components
 
 from pyutils.xdg_base_dirs import xdg_cache_home
 
@@ -24,13 +25,15 @@ def main():
     args = parser.parse_args()
 
     index = index_qml_components(QUICKSHELL_CONFIG_DIR)
+    registry = bar_component_registry(index)
+    known_style_keys = all_qml_style_keys(index)
     names = args.layouts or sorted(p.stem for p in (QUICKSHELL_CONFIG_DIR / "layouts").glob("*.json"))
     out = Path(args.out)
     if not args.stdout:
         out.mkdir(parents=True, exist_ok=True)
     for layout in names:
         try:
-            body = render_layout_style_map(layout, index)
+            body = render_layout_style_map(layout, index, registry, known_style_keys)
         except Exception as error:  # a half-saved json must not kill the watcher
             print(f"style-map: {layout}: {error}", file=sys.stderr)
             continue

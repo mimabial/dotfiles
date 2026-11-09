@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from agents.cache import complete_jsonl_lines_from
+from agents.cache import only_appended_since
 from agents.cache import read_cached_json
 from agents.cache import usage_cache_dir
 from agents.cache import write_cached_json
@@ -8,59 +10,73 @@ from agents.usage_records import ROLLING_MONTH_DAYS
 from agents.usage_records import cache_key
 from agents.usage_records import integer_token_count
 from agents.usage_records import local_date_from_timestamp
+from typing import Any
+from typing import NamedTuple
 import json
 import sys
 import time
 
 NATIVE_CACHE_VERSION = 3
 
-def parse_native_codex_file(path, mtime):
+
+class CodexRow(NamedTuple):
+  input_tokens: int
+  output_tokens: int
+  cache_read_tokens: int
+  cache_write_tokens: int
+  pricing: dict[str, Any]
+
+  @property
+  def token_counts(self) -> tuple[int, int, int, int]:
+    return self.input_tokens, self.output_tokens, self.cache_read_tokens, self.cache_write_tokens
+
+
+def parse_native_codex_file(path, mtime, resume_from=None):
   """Carries no today/recent logic, so the result stays valid across midnight and
   can be reused until the file itself changes."""
-  days = {}
-  current_model = "codex"
-  service_tier = None
-  previous_usage = None
-  with path.open(errors="replace") as handle:
-    for raw in handle:
-      try:
-        entry = json.loads(raw)
-      except Exception:
+  parsed = resume_from or {"offset": 0, "parser_state": ["codex", None, None], "days": {}}
+  days = parsed["days"]
+  current_model, service_tier, previous_usage = parsed["parser_state"]
+  offset = parsed["offset"]
+  for offset, raw in complete_jsonl_lines_from(path, offset):
+    try:
+      entry = json.loads(raw)
+    except Exception:
+      continue
+    if entry.get("type") == "turn_context":
+      payload = entry.get("payload") or {}
+      current_model = session_model_name(payload.get("model") or payload.get("model_slug") or current_model)
+      service_tier = payload.get("service_tier")
+      continue
+    payload = entry.get("payload") or entry
+    if entry.get("type") == "response_item" and isinstance(payload, dict):
+      payload = payload.get("payload") or payload
+    if not isinstance(payload, dict):
+      continue
+    if payload.get("type") != "token_count":
+      continue
+    info = payload.get("info") or {}
+    # total_token_usage is cumulative; last_token_usage is per turn.
+    usage = info.get("last_token_usage") or {}
+    cumulative = info.get("total_token_usage")
+    if isinstance(cumulative, dict):
+      signature = [usage, cumulative]
+      if signature == previous_usage:
         continue
-      if entry.get("type") == "turn_context":
-        payload = entry.get("payload") or {}
-        current_model = session_model_name(payload.get("model") or payload.get("model_slug") or current_model)
-        service_tier = payload.get("service_tier")
-        continue
-      payload = entry.get("payload") or entry
-      if entry.get("type") == "response_item" and isinstance(payload, dict):
-        payload = payload.get("payload") or payload
-      if not isinstance(payload, dict):
-        continue
-      if payload.get("type") != "token_count":
-        continue
-      info = payload.get("info") or {}
-      # total_token_usage is cumulative; last_token_usage is per turn.
-      usage = info.get("last_token_usage") or {}
-      cumulative = info.get("total_token_usage")
-      if isinstance(cumulative, dict):
-        signature = (usage, cumulative)
-        if signature == previous_usage:
-          continue
-        previous_usage = signature
-      cache_read = integer_token_count(usage.get("cached_input_tokens"))
-      cache_write = integer_token_count(usage.get("cache_write_input_tokens"))
-      # Cached input is already included in input_tokens.
-      input_tokens = max(0, integer_token_count(usage.get("input_tokens")) - cache_read - cache_write)
-      output_tokens = integer_token_count(usage.get("output_tokens"))
-      if not (input_tokens or output_tokens or cache_read or cache_write):
-        continue
-      day = local_date_from_timestamp(entry.get("timestamp") or mtime)
-      days.setdefault(day, {}).setdefault(current_model, []).append([
-        input_tokens, output_tokens, cache_read, cache_write,
-        {"service_tier": info.get("service_tier") or payload.get("service_tier") or service_tier},
-      ])
-  return days
+      previous_usage = signature
+    cache_read = integer_token_count(usage.get("cached_input_tokens"))
+    cache_write = integer_token_count(usage.get("cache_write_input_tokens"))
+    # Cached input is already included in input_tokens.
+    input_tokens = max(0, integer_token_count(usage.get("input_tokens")) - cache_read - cache_write)
+    output_tokens = integer_token_count(usage.get("output_tokens"))
+    if not (input_tokens or output_tokens or cache_read or cache_write):
+      continue
+    day = local_date_from_timestamp(entry.get("timestamp") or mtime)
+    days.setdefault(day, {}).setdefault(current_model, []).append(CodexRow(
+      input_tokens, output_tokens, cache_read, cache_write,
+      {"service_tier": info.get("service_tier") or payload.get("service_tier") or service_tier},
+    ))
+  return {"offset": offset, "parser_state": [current_model, service_tier, previous_usage], "days": days}
 
 
 def merge_native_days(totals, session_key, days):
@@ -69,8 +85,8 @@ def merge_native_days(totals, session_key, days):
     if not isinstance(models, dict):
       continue
     for model, rows in models.items():
-      for counts in rows:
-        totals.add_tokens(day, session_key, model, tuple(integer_token_count(value) for value in counts[:4]), pricing=counts[4])
+      for row in map(CodexRow._make, rows):
+        totals.add_tokens(day, session_key, model, tuple(map(integer_token_count, row.token_counts)), pricing=row.pricing)
 
 
 def native_cache_file(codex_home):
@@ -111,11 +127,13 @@ def scan_native_codex_sessions(totals):
             and entry.get("mtime") == info.st_mtime_ns
             and entry.get("size") == info.st_size
             and isinstance(entry.get("days"), dict)):
+      resume_from = entry if only_appended_since(entry, info) and isinstance(entry.get("days"), dict) \
+        and isinstance(entry.get("parser_state"), list) else None
       try:
-        days = parse_native_codex_file(path, info.st_mtime)
+        entry = {"mtime": info.st_mtime_ns, "size": info.st_size,
+                 **parse_native_codex_file(path, info.st_mtime, resume_from)}
       except Exception:
         continue
-      entry = {"mtime": info.st_mtime_ns, "size": info.st_size, "days": days}
       dirty = True
     fresh[key] = entry
     merge_native_days(totals, key, entry["days"])

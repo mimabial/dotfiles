@@ -39,7 +39,7 @@ SCRIPT_SUFFIXES = (".sh", ".py")
 
 class CompletionCacheEntry(NamedTuple):
     script_path: str
-    modified_seconds: str
+    modified_ns: str
     size_bytes: str
     options: str
 
@@ -119,9 +119,9 @@ def read_completion_cache() -> dict[str, CompletionCacheEntry]:
     entries: dict[str, CompletionCacheEntry] = {}
     try:
         for line in completion_cache_path().read_text().splitlines():
-            command_name, script_path, modified_seconds, size_bytes, options = (line.split("\t") + ["", "", "", ""])[:5]
+            command_name, script_path, modified_ns, size_bytes, options = (line.split("\t") + ["", "", "", ""])[:5]
             if command_name:
-                entries[command_name] = CompletionCacheEntry(script_path, modified_seconds, size_bytes, options)
+                entries[command_name] = CompletionCacheEntry(script_path, modified_ns, size_bytes, options)
     except OSError:
         pass
     return entries
@@ -141,7 +141,7 @@ def write_completion_cache(entries: dict[str, CompletionCacheEntry]) -> None:
 
 
 def make_completion_cache_entry(script_path: Path, script_stat: os.stat_result, options: set[str]) -> CompletionCacheEntry:
-    return CompletionCacheEntry(str(script_path), str(int(script_stat.st_mtime)), str(script_stat.st_size), " ".join(sorted(options)))
+    return CompletionCacheEntry(str(script_path), str(script_stat.st_mtime_ns), str(script_stat.st_size), " ".join(sorted(options)))
 
 
 def rebuild_completion_cache() -> int:
@@ -175,7 +175,7 @@ def main() -> int:
     entries = read_completion_cache()
     cached = entries.get(command_name)
     script_stat = script_path.stat()
-    if cached and cached.script_path == str(script_path) and cached.modified_seconds == str(int(script_stat.st_mtime)) \
+    if cached and cached.script_path == str(script_path) and cached.modified_ns == str(script_stat.st_mtime_ns) \
             and cached.size_bytes == str(script_stat.st_size):
         print(cached.options)
         return 0

@@ -123,27 +123,34 @@ collect_installed_font_packages_into() {
 
 collect_local_font_families_into() {
   local -n families_ref=$1 family_files_ref=$2 file_families_ref=$3
-  local font_file family
-  local -A seen_families=()
+  local font_file family_list family
+  local -a font_files=() family_names=()
+  local -A seen_families=() seen_file_families=()
 
   families_ref=()
   family_files_ref=()
   file_families_ref=()
   [[ -d "${LOCAL_FONT_ROOT}" ]] || return 0
 
-  while IFS= read -r font_file; do
-    while IFS= read -r family; do
-      [[ -n "${family}" ]] || continue
+  mapfile -d '' -t font_files < <(
+    find "${LOCAL_FONT_ROOT}" -type f -regextype posix-extended -iregex ".*${FONT_EXT_REGEX}" -print0 2>/dev/null | sort -z
+  )
+  ((${#font_files[@]})) || return 0
+  while IFS=$'\t' read -r font_file family_list; do
+    IFS=, read -ra family_names <<<"${family_list}"
+    for family in "${family_names[@]}"; do
+      family="${family#"${family%%[![:space:]]*}"}"
+      family="${family%"${family##*[![:space:]]}"}"
+      [[ -n "${family}" && -z "${seen_file_families["${font_file}"$'\t'"${family,,}"]:-}" ]] || continue
+      seen_file_families["${font_file}"$'\t'"${family,,}"]=1
       family_files_ref["${family}"]+="${font_file}"$'\n'
       file_families_ref["${font_file}"]+="${family}"$'\n'
       if [[ -z "${seen_families[$family]:-}" ]]; then
         seen_families["${family}"]=1
         families_ref+=("${family}")
       fi
-    done < <(fc-scan --format '%{family}\n' "${font_file}" 2>/dev/null | unique_family_names)
-  done < <(
-    find "${LOCAL_FONT_ROOT}" -type f -regextype posix-extended -iregex ".*${FONT_EXT_REGEX}" 2>/dev/null | sort
-  )
+    done
+  done < <(fc-scan --format '%{file}\t%{family}\n' "${font_files[@]}" 2>/dev/null)
 }
 
 family_files() {

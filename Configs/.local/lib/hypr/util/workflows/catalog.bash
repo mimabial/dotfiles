@@ -24,36 +24,35 @@ workflow_list_names() {
   hypr_visual_preset_list_names "lua" "${workflows_user_dir}" "${workflows_shared_dir}"
 }
 
-workflow_read_icon() {
-  local workflow_path="$1"
-  local workflow_icon
-  workflow_icon="$(sed -n 's/^[[:space:]]*vars\.set("WORKFLOW_ICON",[[:space:]]*"\([^"]*\)").*/\1/p' "${workflow_path}" | head -n1)"
-  printf '%s\n' "${workflow_icon:0:1}"
-}
+workflow_read_metadata_into() {
+  local -n metadata_ref="$1"
+  local line="" field=""
+  local metadata_pattern='^[[:space:]]*vars\.set\("WORKFLOW_(ICON|DESCRIPTION|QUICKSHELL_LAYOUT)",[[:space:]]*"([^"]*)"\)'
 
-workflow_read_description() {
-  local workflow_path="$1"
-  local description
-  description="$(sed -n 's/^[[:space:]]*vars\.set("WORKFLOW_DESCRIPTION",[[:space:]]*"\([^"]*\)").*/\1/p' "${workflow_path}" | head -n1)"
-  printf '%s\n' "${description:-No description available}"
-}
-
-workflow_read_bar_layouts() {
-  local workflow_path="$1"
-  sed -n 's/^[[:space:]]*vars\.set("WORKFLOW_QUICKSHELL_LAYOUT",[[:space:]]*"\([^"]*\)").*/\1/p' "${workflow_path}" | head -n1
+  metadata_ref=()
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    [[ "${line}" =~ ${metadata_pattern} ]] || continue
+    field="${BASH_REMATCH[1]}"
+    [[ -n "${metadata_ref[${field}]+set}" ]] || metadata_ref["${field}"]="${BASH_REMATCH[2]}"
+  done <"$2"
+  metadata_ref[ICON]="${metadata_ref[ICON]:0:1}"
+  metadata_ref[DESCRIPTION]="${metadata_ref[DESCRIPTION]:-No description available}"
 }
 
 workflow_list_choices() {
   local name path
+  local -A metadata=()
   while IFS= read -r name; do
     [[ "${name}" =~ ^(gaming|powersaver)$ ]] && continue
     path="$(workflow_resolve_path "${name}")" || continue
-    printf '%s\t%s\t%s\n' "${name}" "$(workflow_read_icon "${path}")" "$(workflow_read_description "${path}")"
+    workflow_read_metadata_into metadata "${path}"
+    printf '%s\t%s\t%s\n' "${name}" "${metadata[ICON]}" "${metadata[DESCRIPTION]}"
   done < <(workflow_list_names)
 }
 
 workflow_load_active() {
   local workflow_path
+  local -A metadata=()
 
   state_get_into active_workflow_name HYPR_WORKFLOW default
 
@@ -63,8 +62,10 @@ workflow_load_active() {
     workflow_path="$(workflow_resolve_path default)"
   fi
 
-  active_workflow_icon="$(workflow_read_icon "${workflow_path}")"
-  active_workflow_description="$(workflow_read_description "${workflow_path}")"
+  workflow_read_metadata_into metadata "${workflow_path}"
+  active_workflow_icon="${metadata[ICON]}"
+  active_workflow_description="${metadata[DESCRIPTION]}"
+  active_workflow_bar_layouts="${metadata[QUICKSHELL_LAYOUT]:-}"
   active_workflow_path="${workflow_path}"
 }
 

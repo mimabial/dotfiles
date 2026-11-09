@@ -33,11 +33,11 @@ detect_used_fonts_into() {
 }
 
 font_package_family_names() {
-  local font_file
+  local -a font_files=()
 
-  pacman -Qlq "$1" 2>/dev/null | grep -E '\.(ttf|otf)$' | while IFS= read -r font_file; do
-    [[ -f "${font_file}" ]] && fc-scan --format '%{family}\n' "${font_file}" 2>/dev/null
-  done | unique_family_names
+  mapfile -t font_files < <(pacman -Qlq "$1" 2>/dev/null | grep -E '\.(ttf|otf)$')
+  ((${#font_files[@]})) || return 0
+  fc-scan --format '%{family}\n' "${font_files[@]}" 2>/dev/null | unique_family_names
 }
 
 is_font_in_use() {

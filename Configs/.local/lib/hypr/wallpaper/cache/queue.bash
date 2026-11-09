@@ -53,19 +53,30 @@ wallcache_recover_running_jobs() {
   fi
 }
 
-wallcache_enqueue_wallpaper() {
-  local wall="${1}"
-  local resolved hash job_name job_pending job_running tmp_job
+wallcache_enqueue_wallpapers() {
+  local -a resolved_walls=()
+  local -A hash_by_path=()
+  local wall resolved enqueue_failed=0
 
-  [[ -n "${wall}" ]] || return 1
-  resolved="$(
-    readlink -f -- "${wall}" 2>/dev/null \
-      || realpath -- "${wall}" 2>/dev/null \
-      || printf '%s' "${wall}"
-  )"
-  [[ -f "${resolved}" ]] || return 1
+  for wall in "$@"; do
+    resolved="$(readlink -f -- "${wall}")" || resolved=""
+    if [[ -f "${resolved}" ]]; then
+      resolved_walls+=("${resolved}")
+    else
+      enqueue_failed=1
+    fi
+  done
+  wallpaper_cached_file_hashes_into hash_by_path "${resolved_walls[@]}"
+  for resolved in "${resolved_walls[@]}"; do
+    wallcache_enqueue_hashed_wallpaper "${hash_by_path[${resolved}]:-}" "${resolved}" || enqueue_failed=1
+  done
+  return "${enqueue_failed}"
+}
 
-  hash="$(wallpaper_file_hash "${resolved}" 2>/dev/null)" || return 1
+wallcache_enqueue_hashed_wallpaper() {
+  local hash="$1" resolved="$2"
+  local job_name job_pending job_running tmp_job
+
   [[ -n "${hash}" ]] || return 1
   wallcache_outputs_are_ready "${hash}" && return 0
 
@@ -92,7 +103,7 @@ wallcache_enqueue_theme() {
   local theme_dir=""
   local -a theme_hashes=()
   local -a theme_walls=()
-  local wall
+  local index
 
   [[ -n "${theme}" ]] || return 1
   if [[ -d "${theme}" ]]; then
@@ -108,8 +119,8 @@ wallcache_enqueue_theme() {
   fi
 
   local enqueue_failed=0
-  for wall in "${theme_walls[@]}"; do
-    wallcache_enqueue_wallpaper "${wall}" || enqueue_failed=1
+  for index in "${!theme_walls[@]}"; do
+    wallcache_enqueue_hashed_wallpaper "${theme_hashes[index]}" "${theme_walls[index]}" || enqueue_failed=1
   done
   return "${enqueue_failed}"
 }

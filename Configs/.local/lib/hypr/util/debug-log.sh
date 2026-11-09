@@ -4,6 +4,7 @@ set -euo pipefail
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/transfers.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell util/debug-log
 Collect a redacted Hyprland/system debug log and view, save, or upload it." "$@"
@@ -99,7 +100,7 @@ case "$selected_action" in
     trap 'cleanup_redacted_log "$?"' EXIT
     redact_debug_log "${debug_log_path}" "${redacted_log}"
     echo "Uploading redacted debug log to 0x0.st..."
-    if upload_url=$(curl --fail --silent --show-error -F "file=@${redacted_log}" -Fexpires="${UPLOAD_LIFETIME_HOURS}" https://0x0.st) && [[ -n "${upload_url}" ]]; then
+    if upload_url=$(curl "${HYPR_CURL_DEADLINE_ARGS[@]}" --fail --silent --show-error -F "file=@${redacted_log}" -Fexpires="${UPLOAD_LIFETIME_HOURS}" https://0x0.st) && [[ -n "${upload_url}" ]]; then
       echo "✓ Log uploaded successfully!"
       echo "Share this URL:"
       echo ""

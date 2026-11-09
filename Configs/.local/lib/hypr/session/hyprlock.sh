@@ -6,6 +6,7 @@ source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/xdg.bash"
 hypr_init_xdg_env
 source "${BASH_SOURCE[0]%/*}/hyprlock/paths.bash"
 source "${BASH_SOURCE[0]%/*}/hyprlock/media.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/transfers.bash"
 source "${BASH_SOURCE[0]%/*}/hyprlock/artwork.bash"
 declare -A HYPRLOCK_PATHS=()
 declare -a HYPRLOCK_MAGICK_ARGS=()

@@ -218,7 +218,7 @@ rofi_theme_window_height_px() {
       return 0
       ;;
     em)
-      font_px="$(rofi_font_text_height_px "${font_name}" "${font_scale}" 2>/dev/null || true)"
+      rofi_font_text_height_px_into font_px "${font_name}" "${font_scale}" 2>/dev/null || return 1
       [[ "${font_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 1
       height_px="$(
         rofi_milli_to_fixed2 "$(
@@ -300,10 +300,10 @@ rofi_cheatsheet_layout_override() {
       'BEGIN { v = (lines * per) + chrome; if (v < min) v = min; if (v > max) v = max; printf "%.1f", v }')"
   fi
 
-  width_px="$(rofi_length_em_to_px "${width}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
-  height_px="$(rofi_length_em_to_px "${height}" "${font_name}" "${font_scale}" 2>/dev/null || true)"
-  [[ "${width_px}" =~ ^[0-9]+$ ]] || width_px="${ROFI_CHEATSHEET_FALLBACK_WIDTH_PX}"
-  [[ "${height_px}" =~ ^[0-9]+$ ]] || height_px="${ROFI_CHEATSHEET_FALLBACK_HEIGHT_PX}"
+  rofi_length_em_to_px_into width_px "${width}" "${font_name}" "${font_scale}" 2>/dev/null \
+    || width_px="${ROFI_CHEATSHEET_FALLBACK_WIDTH_PX}"
+  rofi_length_em_to_px_into height_px "${height}" "${font_name}" "${font_scale}" 2>/dev/null \
+    || height_px="${ROFI_CHEATSHEET_FALLBACK_HEIGHT_PX}"
 
   printf 'window { width: %sem; height: %sem; } listview { lines: %s; } %s\n' \
     "${width}" "${height}" "${lines}" "$(rofi_window_position_theme "${width_px}" "${height_px}")"

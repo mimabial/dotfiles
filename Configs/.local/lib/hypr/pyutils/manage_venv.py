@@ -88,11 +88,11 @@ def install_requirements(environment_dir, requirements_file):
         run_pip_or_raise(pip_executable_in(environment_dir), ["install", "-r", requirements_file], INSTALL_REQUIREMENTS_FAILED)
 
 
-def install_package(environment_dir, package):
+def install_packages(environment_dir, packages):
     remove_broken_environment(environment_dir)
     if not os.path.exists(environment_dir):
         create_environment(environment_dir)
-    run_pip_or_raise(pip_executable_in(environment_dir), ["install", package], "Failed to install package")
+    run_pip_or_raise(pip_executable_in(environment_dir), ["install", *packages], "Failed to install packages")
 
 
 def uninstall_package(environment_dir, package):
@@ -167,8 +167,7 @@ def main(argv) -> int:
         if arguments.command == "create":
             create_environment(environment_dir, REQUIREMENTS_FILE)
         elif arguments.command == "install" and arguments.packages:
-            for package in arguments.packages:
-                install_package(environment_dir, package)
+            install_packages(environment_dir, arguments.packages)
         elif arguments.command == "install":
             install_requirements(environment_dir, arguments.requirements or REQUIREMENTS_FILE)
         elif arguments.command == "uninstall":

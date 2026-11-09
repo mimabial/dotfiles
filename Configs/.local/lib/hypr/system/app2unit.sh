@@ -5,7 +5,8 @@ set -euo pipefail
 launcher_name="${0##*/}"
 case "${BASH_SOURCE[0]}" in
   /*) system_dir="${BASH_SOURCE[0]%/*}" ;;
-  *) system_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)" ;;
+  */*) system_dir="$(cd -- "${BASH_SOURCE[0]%/*}" && pwd -P)" ;;
+  *) system_dir="$(pwd -P)" ;;
 esac
 qt_environment_path="${system_dir%/*}/core/qt-session.env"
 launch_unit_type="${APP2UNIT_TYPE:-scope}"

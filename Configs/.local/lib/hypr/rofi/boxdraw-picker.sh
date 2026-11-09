@@ -45,8 +45,7 @@ boxdraw_resolve_layout_into() {
   # width follows them down, so floor the window at three quarters of the screen
   local default_width_em=$((picker_layout_ref[columns] * BOXDRAW_EM_PER_COLUMN))
   local em_px=""
-  em_px="$(rofi_length_em_to_px 1 "${font_name}" "${font_scale}" 2>/dev/null || true)"
-  if [[ "${em_px}" =~ ^[0-9]+$ ]] && ((em_px > 0)); then
+  if rofi_length_em_to_px_into em_px 1 "${font_name}" "${font_scale}" 2>/dev/null && ((em_px > 0)); then
     local screen_em=$((logical_width * 3 / 4 / em_px))
     ((screen_em > default_width_em)) && default_width_em=${screen_em}
   fi

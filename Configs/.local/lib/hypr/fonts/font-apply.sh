@@ -111,11 +111,6 @@ reload_hyprland_config() {
   fi
 }
 
-refresh_font_cache() {
-  fc-cache -fq 2>/dev/null || return 0
-  append_updated 'Font cache'
-}
-
 show_summary() {
   printf 'UI font set to: %s\n' "${GENERAL_FONT}"
   printf 'Monospace font set to: %s\n\n' "${MONOSPACE_FONT}"
@@ -141,6 +136,5 @@ sync_rofi_fonts
 sync_hyprlock_font
 resync_desktop_settings
 reload_hyprland_config
-refresh_font_cache
 show_summary
 notify_user

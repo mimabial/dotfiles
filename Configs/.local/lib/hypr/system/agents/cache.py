@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 import json
@@ -44,3 +45,20 @@ def write_cached_json(path: Path, payload: Any) -> None:
   except BaseException:
     tmp.unlink(missing_ok=True)
     raise
+
+
+def complete_jsonl_lines_from(path: Path, offset: int) -> Iterator[tuple[int, str]]:
+  with path.open("rb") as handle:
+    handle.seek(offset)
+    for raw in handle:
+      if not raw.endswith(b"\n"):
+        try:
+          json.loads(raw)
+        except ValueError:
+          return
+      offset += len(raw)
+      yield offset, raw.decode("utf-8", errors="replace")
+
+
+def only_appended_since(entry: Any, info: os.stat_result) -> bool:
+  return isinstance(entry, dict) and isinstance(entry.get("offset"), int) and entry.get("size", info.st_size + 1) <= info.st_size

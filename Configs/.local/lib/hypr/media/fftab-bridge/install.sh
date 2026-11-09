@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-bridge_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+bridge_dir="${BASH_SOURCE[0]%/*}"
+[[ "${bridge_dir}" != "${BASH_SOURCE[0]}" ]] || bridge_dir=.
+bridge_dir="$(cd "${bridge_dir}" && pwd)"
 host_path="${bridge_dir}/host/fftab_host.py"
 
 [[ -x "${host_path}" ]] || chmod +x "${host_path}"

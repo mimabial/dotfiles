@@ -4,6 +4,7 @@ set -euo pipefail
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/install/lib/desktop-entry.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/transfers.bash" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 
@@ -25,7 +26,7 @@ download_or_resolve_icon_path() {
   case "$icon_ref" in
     http://* | https://*)
       local icon_path="${DESKTOP_ENTRY_ICON_DIR}/${app_id}.png"
-      curl -fsSL -o "$icon_path" "$icon_ref" || {
+      curl "${HYPR_CURL_DEADLINE_ARGS[@]}" -fsSL -o "$icon_path" "$icon_ref" || {
         echo "Error: Failed to download icon."
         return 1
       }

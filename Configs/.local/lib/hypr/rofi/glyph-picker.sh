@@ -97,8 +97,7 @@ glyph_resolve_layout_into() {
   # Tiles are budgeted in em, and em is line height -- not proportional to point
   # size across fonts (JetBrainsMono 15 is 27px where Miracode 15 is 22px), so
   # the grid has to divide the real pixel budget, not font_scale.
-  em_px="$(rofi_length_em_to_px 1 "${font_name}" "${font_scale}" 2>/dev/null || true)"
-  [[ "${em_px}" =~ ^[0-9]+$ ]] && ((em_px > 0)) || em_px=$((font_scale * 3 / 2))
+  rofi_length_em_to_px_into em_px 1 "${font_name}" "${font_scale}" 2>/dev/null && ((em_px > 0)) || em_px=$((font_scale * 3 / 2))
   [[ "${ROFI_GLYPH_COLUMNS:-}" =~ ^[0-9]+$ ]] && columns_override="${ROFI_GLYPH_COLUMNS}"
   [[ "${ROFI_GLYPH_LINES:-}" =~ ^[0-9]+$ ]] && lines_override="${ROFI_GLYPH_LINES}"
   read -r "picker_layout_ref[columns]" "picker_layout_ref[lines]" default_width glyph_window_height_em \

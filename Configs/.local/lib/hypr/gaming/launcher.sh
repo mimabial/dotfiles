@@ -26,7 +26,7 @@ steam_deck_layout_into() {
   read -r width height < <(rofi_focused_monitor_logical_size)
   IFS=$'\t' read -r radius border_width < <(rofi_default_border_metrics)
   radius=$((radius * ROFI_IMAGE_TILE_RADIUS_MULTIPLIER))
-  font_height="$(rofi_font_text_height_px "${font_name}" "${font_scale}")" || return
+  rofi_font_text_height_px_into font_height "${font_name}" "${font_scale}" || return
   font_height=$((($(rofi_decimal_milli "${font_height}") + ROFI_MILLI - 1) / ROFI_MILLI))
   unit=$(((font_height + line_steps - 1) / line_steps))
   inset=$((2 * unit))

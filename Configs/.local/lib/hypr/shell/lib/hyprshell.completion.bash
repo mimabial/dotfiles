@@ -73,7 +73,7 @@ _hyprshell() {
 
 _hyprshell_script_options() {
     local command_name="\$1" cache_file cache_line
-    local cached_name script_path modified_seconds size_bytes cached_options
+    local cached_name script_path modified_ns size_bytes cached_options
     local -A script_stat
     [[ -n "\$command_name" ]] || return 0
     cache_file="\${HYPR_CACHE_HOME:-\${XDG_CACHE_HOME:-\$HOME/.cache}/hypr}/completion-options"
@@ -82,9 +82,9 @@ _hyprshell_script_options() {
     if [[ -r "\$cache_file" ]]; then
         for cache_line in \${(f)"\$(<\$cache_file)"}; do
             [[ \$cache_line == \$command_name\$'\t'* ]] || continue
-            IFS=\$'\t' read -r cached_name script_path modified_seconds size_bytes cached_options <<<"\$cache_line"
-            if zstat -H script_stat "\$script_path" 2>/dev/null &&
-                [[ \$script_stat[mtime] == \$modified_seconds && \$script_stat[size] == \$size_bytes ]]; then
+            IFS=\$'\t' read -r cached_name script_path modified_ns size_bytes cached_options <<<"\$cache_line"
+            if zstat -s -F '%s%N' -H script_stat "\$script_path" 2>/dev/null &&
+                [[ \$script_stat[mtime] == \$modified_ns && \$script_stat[size] == \$size_bytes ]]; then
                 print -r -- "\$cached_options"
                 return 0
             fi

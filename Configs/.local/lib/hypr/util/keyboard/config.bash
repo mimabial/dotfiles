@@ -3,40 +3,41 @@ keyboard_die() {
   exit 1
 }
 
-keyboard_option_string() {
-  local option_response="" value=""
-  option_response=$(hyprctl -j getoption "$1" 2>/dev/null) || return 1
-  value=$(jq -er 'if (.str? | type) == "string" then .str elif (.string? | type) == "string" then .string else empty end' <<<"${option_response}") || return 1
-  case "${value}" in
-    '[EMPTY]' | '[[EMPTY]]') printf '' ;;
-    *) printf '%s\n' "${value}" ;;
-  esac
+KEYBOARD_LIVE_OPTIONS_BATCH='getoption input:kb_layout ; getoption input:kb_variant ; getoption input:kb_options'
+KEYBOARD_JQ_DEFS='
+  def layout_csv: [.layouts[].layout] | join(",");
+  def variant_csv: [.layouts[].variant] | join(",");
+  def options_csv: [.nonGroupOptions[], .switchOption] | map(select(length > 0)) | join(",");
+  def live_options:
+    split("\n") | map(try fromjson catch empty | select(type == "object" and has("option")))
+    | map({key: .option, value: ((.str // .string // "") | if . == "[EMPTY]" or . == "[[EMPTY]]" then "" else . end)})
+    | from_entries;
+'
+
+keyboard_live_options_jq() {
+  hyprctl -j --batch "${KEYBOARD_LIVE_OPTIONS_BATCH}" 2>/dev/null | jq -R -s "$@"
 }
 
 keyboard_current_settings() {
-  local layouts="" variants="" options=""
-  layouts=$(keyboard_option_string input:kb_layout) || keyboard_die 'The active keyboard layouts could not be read.'
-  variants=$(keyboard_option_string input:kb_variant 2>/dev/null || true)
-  options=$(keyboard_option_string input:kb_options 2>/dev/null || true)
-  [[ -n "${layouts}" ]] || keyboard_die 'Hyprland did not report a keyboard layout.'
-
-  jq -cn --arg layouts "${layouts}" --arg variants "${variants}" --arg options "${options}" '
-    ($layouts | split(",")) as $layoutList
-    | ($variants | split(",")) as $variantList
-    | ($options | split(",") | map(select(length > 0))) as $optionList
+  keyboard_live_options_jq -ce "${KEYBOARD_JQ_DEFS}"'
+    live_options
+    | (.["input:kb_layout"] // "") as $layouts
+    | if $layouts == "" then error("Hyprland did not report a keyboard layout.") else . end
+    | ((.["input:kb_variant"] // "") | split(",")) as $variantList
+    | ((.["input:kb_options"] // "") | split(",") | map(select(length > 0))) as $optionList
     | {
-        layouts: [$layoutList | to_entries[] | {layout: .value, variant: ($variantList[.key] // "")}],
+        layouts: [$layouts | split(",") | to_entries[] | {layout: .value, variant: ($variantList[.key] // "")}],
         switchOption: ([$optionList[] | select(startswith("grp:"))][-1] // ""),
         nonGroupOptions: [$optionList[] | select(startswith("grp:") | not)]
       }
-  '
+  ' || keyboard_die 'The active keyboard layouts could not be read.'
 }
 
-keyboard_layout_csv() { jq -r '[.layouts[].layout] | join(",")' <<<"$1"; }
+keyboard_layout_csv() { jq -r "${KEYBOARD_JQ_DEFS} layout_csv" <<<"$1"; }
 
-keyboard_variant_csv() { jq -r '[.layouts[].variant] | join(",")' <<<"$1"; }
+keyboard_variant_csv() { jq -r "${KEYBOARD_JQ_DEFS} variant_csv" <<<"$1"; }
 
-keyboard_options_csv() { jq -r '[.nonGroupOptions[], .switchOption] | map(select(length > 0)) | join(",")' <<<"$1"; }
+keyboard_options_csv() { jq -r "${KEYBOARD_JQ_DEFS} options_csv" <<<"$1"; }
 
 keyboard_render_config() {
   local layout_settings="$1" target="$2"

@@ -46,7 +46,7 @@ wallpaper_select_icon_em() {
   ((icon_em >= WALLPAPER_ICON_EM_MIN)) || icon_em="${WALLPAPER_ICON_EM_MIN}"
   ((icon_em <= WALLPAPER_ICON_EM_MAX)) || icon_em="${WALLPAPER_ICON_EM_MAX}"
 
-  em_px="$(rofi_font_text_height_px "${font_name}" "${font_scale}" 2>/dev/null || true)"
+  rofi_font_text_height_px_into em_px "${font_name}" "${font_scale}" 2>/dev/null || true
   em_px_milli="$(rofi_decimal_milli "${em_px}" 2>/dev/null || true)"
   if [[ "${em_px_milli}" =~ ^[1-9][0-9]*$ ]]; then
     max_icon_em=$(((monitor_height_px * ROFI_MILLI / em_px_milli) - WALLPAPER_ROW_CHROME_EM))

@@ -72,30 +72,32 @@ rofi_font_description() {
   printf '%s %spx' "$1" "$(($2 * TEXT_SIZE_BASE_PX / TEXT_SIZE_BASE_PT))"
 }
 
-rofi_length_em_to_px() {
-  local em_value="$1"
-  local font_name="$2"
-  local font_scale="$3"
+rofi_length_em_to_px_into() {
+  local -n length_px_ref="$1"
+  local em_value="$2"
+  local font_name="$3"
+  local font_scale="$4"
   local font_px=""
   local em_milli=0
   local font_milli=0
   local px_milli=0
 
   [[ "${em_value}" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 1
-  font_px="$(rofi_font_text_height_px "${font_name}" "${font_scale}" 2>/dev/null || true)"
+  rofi_font_text_height_px_into font_px "${font_name}" "${font_scale}" || return 1
   [[ "${font_px}" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 1
 
   em_milli="$(rofi_decimal_milli "${em_value}")" || return 1
   font_milli="$(rofi_decimal_milli "${font_px}")" || return 1
   px_milli="$(rofi_mul_milli "${em_milli}" "${font_milli}")" || return 1
-  printf '%s\n' $(((px_milli + ROFI_MILLI / 2) / ROFI_MILLI))
+  length_px_ref=$(((px_milli + ROFI_MILLI / 2) / ROFI_MILLI))
 }
 
-rofi_font_text_height_px() {
-  local font_name="$1"
-  local font_scale="$2"
+rofi_font_text_height_px_into() {
+  local -n text_height_px_ref="$1"
+  local font_name="$2"
+  local font_scale="$3"
   local font_desc=""
-  local font_px=""
+  local measured_px=""
 
   [[ -n "${font_name}" ]] || return 1
   rofi_positive_decimal "${font_scale}" || return 1
@@ -103,18 +105,14 @@ rofi_font_text_height_px() {
 
   declare -gA ROFI_FONT_TEXT_HEIGHT_CACHE
   font_desc="$(rofi_font_description "${font_name}" "${font_scale}")"
-  if [[ -v ROFI_FONT_TEXT_HEIGHT_CACHE["${font_desc}"] ]]; then
-    printf '%s\n' "${ROFI_FONT_TEXT_HEIGHT_CACHE["${font_desc}"]}"
-    return 0
+  if [[ ! -v ROFI_FONT_TEXT_HEIGHT_CACHE["${font_desc}"] ]]; then
+    measured_px="$(
+      FONT_DESC="${font_desc}" python3 "${ROFI_PANGO_MEASURE}" height
+    )" || return 1
+    [[ -n "${measured_px}" ]] || return 1
+    ROFI_FONT_TEXT_HEIGHT_CACHE["${font_desc}"]="${measured_px}"
   fi
-
-  font_px="$(
-    FONT_DESC="${font_desc}" python3 "${ROFI_PANGO_MEASURE}" height
-  )" || return 1
-
-  [[ -n "${font_px}" ]] || return 1
-  ROFI_FONT_TEXT_HEIGHT_CACHE["${font_desc}"]="${font_px}"
-  printf '%s\n' "${font_px}"
+  text_height_px_ref="${ROFI_FONT_TEXT_HEIGHT_CACHE["${font_desc}"]}"
 }
 
 # Measured rather than counted so nerd-font glyphs and proportional faces are not

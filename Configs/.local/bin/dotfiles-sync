@@ -57,47 +57,6 @@ path_is_within_root() {
   [[ "${path}" == "${root}" || "${path}" == "${root}/"* ]]
 }
 
-normalize_synced_symlink() {
-  local src_root="$1"
-  local dest_root="$2"
-  local dest_link="$3"
-  local link_target=""
-  local mapped_target=""
-  local relative_target=""
-
-  [[ -L "${dest_link}" ]] || return 0
-  link_target="$(readlink -- "${dest_link}")" || return 1
-  [[ "${link_target}" == /* ]] || return 0
-  path_is_within_root "${link_target}" "${src_root}" || return 0
-
-  mapped_target="${dest_root}${link_target#"${src_root}"}"
-  relative_target="$(realpath -m --relative-to="${dest_link%/*}" "${mapped_target}")"
-  ln -snf -- "${relative_target}" "${dest_link}"
-}
-
-is_itemized_symlink() {
-  [[ "$1" =~ ^.L && "$1" == *" -> "* ]]
-}
-
-normalize_changed_symlinks_from_rsync_output() {
-  local src_root="$1"
-  local dest_root="$2"
-  local rsync_output="$3"
-  local line=""
-  local rel_path=""
-
-  [[ -d "${dest_root}" ]] || return 0
-
-  while IFS= read -r line; do
-    is_itemized_symlink "${line}" || continue
-    rel_path="${line#* }"
-    rel_path="${rel_path%% -> *}"
-    normalize_synced_symlink "${src_root}" "${dest_root}" "${dest_root%/}/${rel_path}"
-  done <<< "${rsync_output}"
-
-  return 0
-}
-
 emit_preview_result() {
   local name="$1"
   local output="$2"
@@ -248,7 +207,6 @@ sync_directory_path() {
     emit_preview_result "$name" "$transfer_output"
     return
   fi
-  normalize_changed_symlinks_from_rsync_output "$src" "$dest" "$transfer_output"
   emit_apply_result "$name" "$transfer_output"
 }
 

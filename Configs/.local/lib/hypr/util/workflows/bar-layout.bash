@@ -18,7 +18,7 @@ workflow_apply_bar_layout() {
   [[ "${active_workflow_name}" == powersaver ]] && return 0
   [[ "${workflow_previous_name}" == powersaver && "${active_workflow_name}" == "$(state_get POWER_PROFILE_WORKFLOW_PREV "")" ]] && return 0
 
-  read -ra allowed <<<"$(workflow_read_bar_layouts "${active_workflow_path}")"
+  read -ra allowed <<<"${active_workflow_bar_layouts}"
   current_layout_name="$(state_get "QUICKSHELL_LAYOUT_NAME" "top")"
   saved_layout="$(state_get "WORKFLOW_QUICKSHELL_PREV_LAYOUT" "")"
   last_applied="$(state_get "WORKFLOW_QUICKSHELL_LAST_APPLIED_LAYOUT" "")"

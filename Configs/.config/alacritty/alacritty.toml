@@ -18,7 +18,7 @@ history = 10000
 multiplier = 6
 
 [font]
-normal = { family = "iMWritingMono Nerd Font" }
+normal = { family = "Monoid Nerd Font" }
 bold = { style = "Bold" }
 italic = { style = "Italic" }
 bold_italic = { style = "Bold Italic" }

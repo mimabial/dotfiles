@@ -4,6 +4,7 @@ set -euo pipefail
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/transfers.bash" || exit 1
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/install/lib/desktop-entry.bash" || exit 1
 
@@ -39,7 +40,7 @@ if [[ ! "$ICON_URL" =~ ^https?:// ]] && [ -f "$ICON_URL" ]; then
 else
   ICON_PATH="$DESKTOP_ENTRY_ICON_DIR/$APP_NAME.png"
   mkdir -p "$DESKTOP_ENTRY_ICON_DIR"
-  if ! curl -sL -o "$ICON_PATH" "$ICON_URL"; then
+  if ! curl "${HYPR_CURL_DEADLINE_ARGS[@]}" -sL -o "$ICON_PATH" "$ICON_URL"; then
     echo "Error: Failed to download icon."
     exit 1
   fi

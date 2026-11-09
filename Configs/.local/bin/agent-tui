@@ -107,6 +107,7 @@ MIN_LABEL_WIDTH = 16
 MAX_LABEL_WIDTH = 24
 SECTION_GAP_MIN = 1
 SECTION_GAP_MAX = 2
+TITLE_GAPS = (1, 0)
 MODEL_ROWS = 5
 MIN_BAR_WIDTH = 8
 APP_TITLE = "Agent Hub"
@@ -370,7 +371,7 @@ def format_progress_bar(value, width, divisions=1):
 class Dashboard:
     def __init__(self, screen):
         self.screen = screen
-        self.records = load_records()
+        self.reload_records()
         self.selected = 0
         self.refresh_process = None
         self.refresh_pidfd = None
@@ -384,6 +385,10 @@ class Dashboard:
         self.configure_screen()
         if self.cache_is_stale():
             self.refresh(force=False)
+
+    def reload_records(self):
+        self.records = load_records()
+        self.content_heights = {title_gap: tallest_content(self.records, title_gap) for title_gap in TITLE_GAPS}
 
     def configure_screen(self):
         curses.curs_set(0)
@@ -493,7 +498,7 @@ class Dashboard:
         mtime = mtime_ns(CACHE_FILE)
         if mtime != self.last_mtime or force:
             current_id = record.get("id") if (record := self.current()) else ""
-            self.records = load_records()
+            self.reload_records()
             self.selected = next(
                 (
                     i
@@ -638,8 +643,8 @@ class Dashboard:
             )
 
     def section_spacing(self, height, section_count):
-        for title_gap in (1, 0):
-            needed = tallest_content(self.records, title_gap)
+        for title_gap in TITLE_GAPS:
+            needed = self.content_heights[title_gap]
             if needed <= height:
                 break
         return title_gap, min(SECTION_GAP_MAX, SECTION_GAP_MIN + max(0, height - needed) // section_count)

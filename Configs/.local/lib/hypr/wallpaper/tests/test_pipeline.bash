@@ -102,9 +102,9 @@ test_queue() (
   WALLCACHE_QUEUE_ROOT="${tmp_dir}/queue"
   WALLCACHE_PENDING_DIR="${WALLCACHE_QUEUE_ROOT}/pending"
   WALLCACHE_RUNNING_DIR="${WALLCACHE_QUEUE_ROOT}/running"
-  WALLPAPER_THUMB_DIR="${tmp_dir}/thumbs"
+  WALLPAPER_THUMB_DIR="${tmp_dir}/thumbs" HYPR_CACHE_HOME="${tmp_dir}/cache"
   wallcache_prepare_queue_directories
-  for i in {1..16}; do wallcache_enqueue_wallpaper "${tmp_dir}/wall.jpg" & done
+  for i in {1..16}; do wallcache_enqueue_wallpapers "${tmp_dir}/wall.jpg" & done
   wait
   pending_count="$(find "${WALLCACHE_PENDING_DIR}" -type f -name '*.job' | wc -l)"
   temp_count="$(find "${WALLCACHE_PENDING_DIR}" -type f -name '.*.job.*' | wc -l)"
@@ -233,11 +233,11 @@ test_link_selected_uses_the_path_it_is_given() (
   local -a wallpaper_paths=(/w/ignored.jpg)
   wallpaper_link_selected "${dir}/chosen.png"
 
-  [[ "$(readlink "${active_wallpaper_link}")" == "${dir}/chosen.png" ]]
+  [[ "$(readlink "${active_wallpaper_link}")" == chosen.png ]]
   [[ "$(readlink "${current_wallpaper_link}")" == "${dir}/chosen.png" ]]
   current_wallpaper_link=""
   wallpaper_link_selected "${dir}/chosen.png"
-  [[ "$(readlink "${active_wallpaper_link}")" == "${dir}/chosen.png" ]]
+  [[ "$(readlink "${active_wallpaper_link}")" == chosen.png ]]
   [[ "${payload_arg}" == "${dir}/chosen.png" ]]
 )
 
@@ -252,7 +252,7 @@ test_theme_catalog_repairs_wall_link() (
   printf 'image\n' >"${wall}"
   theme_catalog_load_and_repair_links_into theme_names theme_wallpapers
   [[ "${theme_names[*]}" == Pack && "${theme_wallpapers[0]}" == "${wall}" ]]
-  [[ "$(readlink "${HYPR_CONFIG_HOME}/themes/Pack/wall.set")" == "${wall}" ]]
+  [[ "$(readlink "${HYPR_CONFIG_HOME}/themes/Pack/wall.set")" == wallpapers/wall.jpg ]]
 )
 
 test_ensure_hash_names_the_map_it_writes

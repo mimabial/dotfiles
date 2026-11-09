@@ -30,8 +30,7 @@ fi
 
 hypr_runtime_load_desktop_environment || exit 1
 [[ -n "${HYPR_THEME}" ]] || { echo "ERROR: unable to detect theme"; exit 1; }
-declare -a theme_names=() theme_wallpapers=()
-theme_catalog_load_and_repair_links_into theme_names theme_wallpapers
+declare -a theme_names=()
 theme_switch_previous_theme="${HYPR_THEME:-}"
 theme_switch_previous_color_mode="${selected_color_mode:-}"
 theme_switch_state_updated=0
@@ -99,6 +98,11 @@ sanitize_hypr_theme() {
   rm -f -- "${buffer_file}"
 }
 
+load_theme_names() {
+  local -a theme_wallpapers=()
+  ((${#theme_names[@]})) || theme_catalog_load_and_repair_links_into theme_names theme_wallpapers
+}
+
 select_adjacent_theme_into() {
   local -n adjacent_theme_ref="$1"
   local direction="$2"
@@ -109,6 +113,7 @@ select_adjacent_theme_into() {
   fi
 
   local index="" selected_theme_index=""
+  load_theme_names
   if index="$(catalog_index_of theme_names "${HYPR_THEME}")"; then
     selected_theme_index="$(catalog_adjacent_index "${index}" "${direction}" "${#theme_names[@]}")" || return 1
   else
@@ -120,12 +125,13 @@ select_adjacent_theme_into() {
 
 select_rotation_theme_into() {
   local -n rotation_theme_ref="$1"
-  local order="$2" index="" name="" step=0
-  local count="${#theme_names[@]}"
+  local order="$2" index="" name="" step=0 count=0
   local -a candidates=()
   local -A polarity=()
 
   [[ "${order}" =~ ^(next|random)$ ]] || { theme_switch_usage >&2; exit 1; }
+  load_theme_names
+  count="${#theme_names[@]}"
   theme_polarities_into polarity "${HYPR_THEME}" "${theme_names[@]}"
   index="$(catalog_index_of theme_names "${HYPR_THEME}")" || index=-1
   for ((step = 1; step <= count; step++)); do
@@ -292,16 +298,16 @@ update_nvim_mapping() {
 
 resolve_theme_selection() {
   local -n theme_selection_ref="$1"
-  local theme_name=""
+  local theme_dir="${HYPR_CONFIG_HOME}/themes/${theme_selection_ref}" selected_wallpaper=""
 
-  for theme_name in "${theme_names[@]}"; do
-    [[ "${theme_name}" == "${theme_selection_ref}" ]] && return 0
-  done
-  if ((theme_switch_selection_requested)); then
-    print_log -sec "theme" -err "select" "Unknown theme: ${theme_selection_ref}"
-    exit 1
+  if ((!theme_switch_selection_requested)); then
+    theme_selection_ref="${HYPR_THEME}"
+    return 0
   fi
-  theme_selection_ref="${HYPR_THEME}"
+  [[ "${theme_selection_ref}" != */* && "${theme_selection_ref}" != .* && -d "${theme_dir}" ]] \
+    && theme_wall_link_repaired_into selected_wallpaper "${theme_dir}" && return 0
+  print_log -sec "theme" -err "select" "Unknown theme: ${theme_selection_ref}"
+  exit 1
 }
 
 set_active_theme() {

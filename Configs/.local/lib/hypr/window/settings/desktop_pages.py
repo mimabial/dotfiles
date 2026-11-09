@@ -2,7 +2,7 @@ import re
 
 from . import compose
 from .paths import CONFIG_DIR, library_command
-from .values import read_text, run_capture
+from .values import read_text
 
 CONFIG = CONFIG_DIR.parent
 
@@ -85,90 +85,115 @@ def load_bar_page(settings):
 
 
 def load_keyboard_page(settings):
-    state = settings.read_json_command(library_command("util/keyboard-layout.sh"), {})
-    if not state:
-        settings.error_text = "Keyboard layout unavailable"
-        return
-    layouts = state.get("configured", [])
-    settings.options["keyboard_layout"] = [
-        entry["layout"] + (":" + entry["variant"] if entry.get("variant") else "")
-        for entry in layouts
-    ]
-    index = state.get("activeIndex", 0)
-    settings.values["keyboard_layout"] = settings.options["keyboard_layout"][index] if layouts else None
+    def show_layouts(state):
+        if not state:
+            settings.error_text = "Keyboard layout unavailable"
+            return
+        layouts = state.get("configured", [])
+        settings.options["keyboard_layout"] = [
+            entry["layout"] + (":" + entry["variant"] if entry.get("variant") else "")
+            for entry in layouts
+        ]
+        index = state.get("activeIndex", 0)
+        settings.values["keyboard_layout"] = settings.options["keyboard_layout"][index] if layouts else None
+    settings.read_json_command(library_command("util/keyboard-layout.sh"), {}, show_layouts)
 
 
 def load_displays_page(settings):
-    monitors = settings.read_json_command(["hyprctl", "monitors", "-j"], [])
-    settings.page("Displays")["rows"] = [
-        item("display_editor", "Display editor", "action", value="open"),
-        *(item("display_" + monitor["name"], monitor["name"], "reading",
-                value=f'{monitor.get("width", 0)}×{monitor.get("height", 0)}  scale {monitor.get("scale", 1)}')
-          for monitor in monitors),
-    ]
+    def show_monitors(monitors):
+        settings.page("Displays")["rows"] = [
+            item("display_editor", "Display editor", "action", value="open"),
+            *(item("display_" + monitor["name"], monitor["name"], "reading",
+                    value=f'{monitor.get("width", 0)}×{monitor.get("height", 0)}  scale {monitor.get("scale", 1)}')
+              for monitor in monitors),
+        ]
+    settings.read_json_command(["hyprctl", "monitors", "-j"], [], show_monitors)
 
 
 def load_workspaces_page(settings):
-    workspaces = settings.read_json_command(["hyprctl", "workspaces", "-j"], [])
-    settings.page("Workspaces")["rows"] = [
-        item("workspace_editor", "Workspace profiles", "action", value="open"),
-        *(item("workspace_" + str(space["id"]), "Workspace " + str(space["id"]),
-                "reading", value=f'{space.get("windows", 0)} windows · {space.get("monitor", "")}')
-          for space in sorted(workspaces, key=lambda space: space["id"])),
-    ]
+    def show_workspaces(workspaces):
+        settings.page("Workspaces")["rows"] = [
+            item("workspace_editor", "Workspace profiles", "action", value="open"),
+            *(item("workspace_" + space["name"], "Workspace " + space["name"],
+                    "reading", value=f'{space.get("windows", 0)} windows · {space.get("monitor", "")}')
+              for space in sorted(workspaces, key=lambda space: (
+                  "id" not in space, space.get("id", 0), space["name"]))),
+        ]
+    settings.read_json_command(["hyprctl", "workspaces", "-j"], [], show_workspaces)
 
 
 def load_audio_page(settings):
     for name, target in (("output", "@DEFAULT_AUDIO_SINK@"),
                          ("input", "@DEFAULT_AUDIO_SOURCE@")):
-        result = run_capture(["wpctl", "get-volume", target])
-        match = re.search(r"([0-9]+(?:\.[0-9]+)?)", result.stdout)
-        settings.values[name + "_volume"] = round(float(match.group(1)) * 100) if match else None
-        settings.values[name + "_mute"] = "MUTED" in result.stdout
+        def show_volume(_code, output, name=name):
+            match = re.search(r"([0-9]+(?:\.[0-9]+)?)", output)
+            settings.values[name + "_volume"] = round(float(match.group(1)) * 100) if match else None
+            settings.values[name + "_mute"] = "MUTED" in output
+        def show_devices(devices, name=name):
+            settings.options[name + "_device"] = [
+                device["name"] for device in devices
+                if name == "output" or not device["name"].endswith(".monitor")
+            ]
+            settings.audio_ids.update({device["name"]: device.get("properties", {}).get("object.id")
+                                   for device in devices})
+        def show_default_device(_code, output, name=name):
+            settings.values[name + "_device"] = output.strip()
         noun = "sinks" if name == "output" else "sources"
-        devices = settings.read_json_command(["pactl", "--format=json", "list", noun], [])
-        settings.options[name + "_device"] = [
-            device["name"] for device in devices
-            if name == "output" or not device["name"].endswith(".monitor")
-        ]
-        settings.audio_ids.update({device["name"]: device.get("properties", {}).get("object.id")
-                               for device in devices})
-        current = run_capture(["pactl", "get-default-" + ("sink" if name == "output" else "source")])
-        settings.values[name + "_device"] = current.stdout.strip()
+        settings.read_command(["wpctl", "get-volume", target], show_volume)
+        settings.read_json_command(["pactl", "--format=json", "list", noun], [], show_devices)
+        settings.read_command(["pactl", "get-default-" + ("sink" if name == "output" else "source")],
+                              show_default_device)
 
 
 def load_network_page(settings):
-    settings.values["wifi"] = run_capture(["nmcli", "-g", "WIFI", "general"]).stdout.strip() == "enabled"
-    devices = run_capture(["nmcli", "-t", "-f", "DEVICE,TYPE,STATE", "device", "status"])
-    wifi = next((line.split(":", 1)[0] for line in devices.stdout.splitlines()
-                 if ":wifi:" in line), "")
-    settings.values["network_name"] = (
-        run_capture(["nmcli", "-g", "GENERAL.CONNECTION", "device", "show", wifi]).stdout.strip()
-        if wifi else "—"
-    )
+    def show_wifi(_code, output):
+        settings.values["wifi"] = output.strip() == "enabled"
+    def show_network_name(_code, output):
+        settings.values["network_name"] = output.strip()
+    def show_devices(_code, output):
+        wifi = next((line.split(":", 1)[0] for line in output.splitlines() if ":wifi:" in line), "")
+        if wifi:
+            settings.read_command(["nmcli", "-g", "GENERAL.CONNECTION", "device", "show", wifi], show_network_name)
+        else:
+            settings.values["network_name"] = "—"
+    settings.read_command(["nmcli", "-g", "WIFI", "general"], show_wifi)
+    settings.read_command(["nmcli", "-t", "-f", "DEVICE,TYPE,STATE", "device", "status"], show_devices)
 
 
 def load_bluetooth_page(settings):
-    settings.values["bluetooth_power"] = run_capture(library_command("bluetooth/power.sh", "is-on")).returncode == 0
-    paired = run_capture(["bluetoothctl", "devices", "Paired"]).stdout.splitlines()
-    connected = run_capture(["bluetoothctl", "devices", "Connected"]).stdout
-    rows = settings.page("Bluetooth")["rows"][:2]
-    for line in paired:
-        match = re.match(r"Device ((?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}) (.+)", line)
-        if match:
-            address, name = match.groups()
-            row_id = "bluetooth_" + address
-            settings.values[row_id] = "connected" if address in connected else "disconnected"
-            rows.append(item(row_id, name, "action", address=address))
-    settings.page("Bluetooth")["rows"] = rows
+    def show_power(code, _output):
+        settings.values["bluetooth_power"] = code == 0
+    def show_devices(paired, connected):
+        rows = settings.page("Bluetooth")["rows"][:2]
+        for line in paired.splitlines():
+            match = re.match(r"Device ((?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}) (.+)", line)
+            if match:
+                address, name = match.groups()
+                row_id = "bluetooth_" + address
+                settings.values[row_id] = "connected" if address in connected else "disconnected"
+                rows.append(item(row_id, name, "action", address=address))
+        settings.page("Bluetooth")["rows"] = rows
+    def read_connected(_code, paired):
+        settings.read_command(["bluetoothctl", "devices", "Connected"],
+                              lambda _code, connected: show_devices(paired, connected))
+    settings.read_command(library_command("bluetooth/power.sh", "is-on"), show_power)
+    settings.read_command(["bluetoothctl", "devices", "Paired"], read_connected)
 
 
 def load_power_page(settings):
-    settings.values["power_profile"] = run_capture(["powerprofilesctl", "get"]).stdout.strip()
-    settings.options["power_profile"] = run_capture(library_command("system/power-profiles.sh")).stdout.splitlines()
-    result = run_capture(["brightnessctl", "-m"]).stdout.strip().split(",")
-    settings.values["brightness"] = int(result[3].rstrip("%")) if len(result) > 3 else None
-    settings.values["dnd"] = run_capture(["dunstctl", "is-paused"]).stdout.strip() == "true"
+    def show_profile(_code, output):
+        settings.values["power_profile"] = output.strip()
+    def show_profiles(_code, output):
+        settings.options["power_profile"] = output.splitlines()
+    def show_brightness(_code, output):
+        fields = output.strip().split(",")
+        settings.values["brightness"] = int(fields[3].rstrip("%")) if len(fields) > 3 else None
+    def show_dnd(_code, output):
+        settings.values["dnd"] = output.strip() == "true"
+    settings.read_command(["powerprofilesctl", "get"], show_profile)
+    settings.read_command(library_command("system/power-profiles.sh"), show_profiles)
+    settings.read_command(["brightnessctl", "-m"], show_brightness)
+    settings.read_command(["dunstctl", "is-paused"], show_dnd)
     settings.read_state_files()
 
 

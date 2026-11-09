@@ -3,6 +3,7 @@ set -euo pipefail
 
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash"
 declare -F hypr_svc_user >/dev/null || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/services.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/transfers.bash" || exit 1
 
 usage() {
   printf 'Usage: hyprshell install/sshd.sh [--key PUBLIC_KEY | --gh-keys USERNAME]\n\nInstall and enable the SSH server, authorizing a public key or the keys of a GitHub user.\n'
@@ -31,7 +32,7 @@ authorize_github_ssh_public_keys() {
   local added=0
 
   [[ "${username}" =~ ^[A-Za-z0-9-]+$ ]] || { printf 'Invalid GitHub username\n' >&2; return 1; }
-  keys="$(curl -fsSL "https://github.com/${username}.keys")"
+  keys="$(curl "${HYPR_CURL_DEADLINE_ARGS[@]}" -fsSL "https://github.com/${username}.keys")"
   [[ -n "${keys}" ]] || { printf 'No SSH keys found for %s\n' "${username}" >&2; return 1; }
   while IFS= read -r key; do
     [[ -n "${key}" ]] || continue

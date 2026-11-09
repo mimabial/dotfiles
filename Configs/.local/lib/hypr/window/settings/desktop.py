@@ -4,7 +4,7 @@ import json
 from . import compose, desktop_pages
 from .compose import write_compose_sequence
 from .desktop_commands import command_for_setting, perform_setting_action
-from .values import read_text, run_capture
+from .values import read_text
 from .visual import VisualSettings
 
 
@@ -64,12 +64,17 @@ class DesktopSettings(VisualSettings):
         if loader:
             loader(self)
 
-    def read_json_command(self, command, fallback):
-        result = run_capture(command)
-        try:
-            return json.loads(result.stdout) if result.returncode == 0 else fallback
-        except json.JSONDecodeError:
-            return fallback
+    def read_command(self, command, on_output):
+        self.events.start(command, on_complete=on_output, capture_output=True)
+
+    def read_json_command(self, command, fallback, on_value):
+        def completed(code, output):
+            try:
+                value = json.loads(output) if code == 0 else fallback
+            except json.JSONDecodeError:
+                value = fallback
+            on_value(value)
+        self.read_command(command, completed)
 
     def page(self, title):
         return next(page for page in self.pages if page["title"] == title)

@@ -4,6 +4,7 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/common.bash" || exit 1
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/notify.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/transfers.bash" || exit 1
 
 hypr_help_guard "Usage: hyprshell system/font resolve <layout-file>
 Download and install fonts referenced by a Hyprland layout file." "$@"
@@ -37,7 +38,7 @@ download_and_install_font() {
   staging_dir="$(mktemp -d "${landing_dir}/font.XXXXXX")" || return 1
   filename="${url%%\?*}"
   filename="${filename##*/}"
-  if [[ -z "${filename}" ]] || ! curl -fLsS -o "${staging_dir}/${filename}" "${url}" \
+  if [[ -z "${filename}" ]] || ! curl "${HYPR_CURL_DEADLINE_ARGS[@]}" -fLsS -o "${staging_dir}/${filename}" "${url}" \
     || ! install_font_file "${name}" "${staging_dir}/${filename}" "${staging_dir}"; then
     result=1
   fi

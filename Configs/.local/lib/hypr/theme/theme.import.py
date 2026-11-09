@@ -374,7 +374,7 @@ def install_wallpapers(images, pack_dir):
     path = pack_dir / WALL_LINK
     if path.is_symlink() or path.exists():
         path.unlink()
-    path.symlink_to(target)
+    path.symlink_to(target.relative_to(pack_dir.resolve()))
     return target
 
 

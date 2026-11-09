@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from pyutils import child_process
 from pyutils.lock_paths import ensure_runtime_root_dir
 
 SECRET_LIFETIME_SECONDS = 60
@@ -85,8 +86,11 @@ def available_codes():
 
 
 def refresh_panel():
-    subprocess.run(["quickshell", "ipc", "call", "notifications", "refresh"],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+    try:
+        child_process.run(["quickshell", "ipc", "call", "notifications", "refresh"],
+                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=REQUEST_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        pass
 
 
 def serve(listener, key, codes):
@@ -108,10 +112,10 @@ def serve(listener, key, codes):
                     codes = []
                     refresh_panel()
                 if clipboard_value and now >= clipboard_deadline:
-                    current = subprocess.run(["wl-paste", "--no-newline"], capture_output=True,
-                                             timeout=REQUEST_TIMEOUT_SECONDS, check=False).stdout
+                    current = child_process.run(["wl-paste", "--no-newline"], capture_output=True,
+                                                timeout=REQUEST_TIMEOUT_SECONDS).stdout
                     if current == clipboard_value.encode():
-                        subprocess.run(["wl-copy", "--clear"], timeout=REQUEST_TIMEOUT_SECONDS, check=True)
+                        child_process.run(["wl-copy", "--clear"], timeout=REQUEST_TIMEOUT_SECONDS, check=True)
                     clipboard_value = ""
                     clipboard_deadline = None
             if listener in ready:
@@ -128,13 +132,13 @@ def serve(listener, key, codes):
                             if not 0 <= index < len(codes):
                                 raise ValueError("Invalid code index")
                             value = codes[index]
-                            subprocess.run(["wl-copy", "--sensitive"], input=value, text=True,
-                                           timeout=REQUEST_TIMEOUT_SECONDS, check=True)
+                            child_process.run(["wl-copy", "--sensitive"], input=value, text=True,
+                                              timeout=REQUEST_TIMEOUT_SECONDS, check=True)
                             clipboard_value = value
                             clipboard_deadline = time.monotonic() + SECRET_LIFETIME_SECONDS
                             copied = index
-                            subprocess.run(["dunstctl", "close", key.rsplit("-", 1)[1]],
-                                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+                            child_process.run(["dunstctl", "close", key.rsplit("-", 1)[1]], stdout=subprocess.DEVNULL,
+                                              stderr=subprocess.DEVNULL, timeout=REQUEST_TIMEOUT_SECONDS)
                         client.sendall((json.dumps({"codes": codes, "expires": expires, "copied": copied}) + "\n").encode())
                     except (OSError, ValueError, subprocess.SubprocessError):
                         pass

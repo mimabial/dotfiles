@@ -12,7 +12,13 @@ import urllib.request
 PRICE_URL = "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
 PRICE_MAX_AGE_SECONDS = 24 * 60 * 60
 PRICE_TIMEOUT_SECONDS = 10
-RATE_FIELDS = ("input_cost_per_token", "output_cost_per_token", "cache_read_input_token_cost", "cache_creation_input_token_cost")
+RATE_FIELD_BY_TOKEN_FIELD = {
+    "inputTokens": "input_cost_per_token",
+    "outputTokens": "output_cost_per_token",
+    "cacheReadInputTokens": "cache_read_input_token_cost",
+    "cacheCreationInputTokens": "cache_creation_input_token_cost",
+}
+RATE_FIELDS = tuple(RATE_FIELD_BY_TOKEN_FIELD.values())
 PERIODS = (1, RECENT_DAYS, ROLLING_MONTH_DAYS)
 CONTEXT_RATE = re.compile(r"input_cost_per_token(_above_(\d+)k_tokens)$")
 TOKENS_PER_K = 1000
@@ -82,7 +88,7 @@ def price_usage(usage, rates, context_tiers):
     assumed |= usage.get("cacheCreationInputTokens", 0) > 0 and not cache and "cache_creation_input_token_cost_above_1hr" in rates
     assumed |= usage.get("inference_geo") == "not_available" and "us" in modifiers
     cost, unpriced = 0.0, 0
-    for field, rate_field in zip(empty_token_totals(), RATE_FIELDS, strict=True):
+    for field, rate_field in RATE_FIELD_BY_TOKEN_FIELD.items():
         count = usage.get(field, 0)
         portions = [(count, rate_field + context + tier_suffix)]
         if field == "cacheCreationInputTokens" and one_hour:

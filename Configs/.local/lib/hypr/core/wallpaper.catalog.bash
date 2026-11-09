@@ -121,34 +121,37 @@ wallpaper_scan_hashes_into() {
   ((${#list_ref[@]} > 0))
 }
 
+theme_wall_link_repaired_into() {
+  local -n repaired_wall_ref="$1"
+  local theme_dir="$2" wall_link_target=""
+  local -a theme_wall_hash=() theme_wall_list=()
+
+  wall_link_target="$(readlink "${theme_dir}/wall.set" 2>/dev/null || true)"
+  repaired_wall_ref=""
+  if [[ "${wall_link_target}" = /* ]]; then
+    repaired_wall_ref="${wall_link_target}"
+  elif [[ -n "${wall_link_target}" ]]; then
+    repaired_wall_ref="${theme_dir}/${wall_link_target}"
+  fi
+  [[ ! -e "${repaired_wall_ref}" ]] || return 0
+
+  wallpaper_scan_hashes_into theme_wall_hash theme_wall_list "${theme_dir}" || return 1
+  printf 'fixing link :: %s/wall.set\n' "${theme_dir}"
+  ln -frs "${theme_wall_list[0]}" "${theme_dir}/wall.set"
+  repaired_wall_ref="${theme_wall_list[0]}"
+}
+
 theme_catalog_load_and_repair_links_into() {
   local -n theme_names_ref="$1" theme_wallpapers_ref="$2"
   theme_names_ref=()
   theme_wallpapers_ref=()
-  local -a theme_dirs=() theme_wall_hash=() theme_wall_list=()
-  local theme_dir real_wall_path wall_link_target
+  local -a theme_dirs=()
+  local theme_dir real_wall_path
 
   mapfile -t theme_dirs < <(find -H "${HYPR_CONFIG_HOME}/themes" -mindepth 1 -maxdepth 1 -type d | LC_ALL=C sort)
 
   for theme_dir in "${theme_dirs[@]}"; do
-    wall_link_target="$(readlink "${theme_dir}/wall.set" 2>/dev/null || true)"
-    if [[ -n "${wall_link_target}" ]]; then
-      if [[ "${wall_link_target}" = /* ]]; then
-        real_wall_path="${wall_link_target}"
-      else
-        real_wall_path="${theme_dir}/${wall_link_target}"
-      fi
-    else
-      real_wall_path=""
-    fi
-
-    if [[ ! -e "${real_wall_path}" ]]; then
-      wallpaper_scan_hashes_into theme_wall_hash theme_wall_list "${theme_dir}" || continue
-      printf 'fixing link :: %s/wall.set\n' "${theme_dir}"
-      ln -fs "${theme_wall_list[0]}" "${theme_dir}/wall.set"
-      real_wall_path="${theme_wall_list[0]}"
-    fi
-
+    theme_wall_link_repaired_into real_wall_path "${theme_dir}" || continue
     theme_names_ref+=("${theme_dir##*/}")
     theme_wallpapers_ref+=("${real_wall_path}")
   done

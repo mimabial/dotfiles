@@ -207,6 +207,7 @@ def edit_profile(profile: profiles.Profile, edit: dict) -> profiles.Profile:
 class Daemon:
     def __init__(self) -> None:
         self.lock = threading.RLock()
+        self.send_lock = threading.Lock()
         self.clients: list[socket.socket] = []
         self.state = _load_state()
         self.preview: dict | None = None
@@ -349,11 +350,25 @@ class Daemon:
         ) + "\n"
         payload = frame.encode()
         with self.lock:
-            for client in list(self.clients):
-                try:
-                    client.sendall(payload)
-                except OSError:
-                    self.clients.remove(client)
+            subscribers = list(self.clients)
+        for client in subscribers:
+            self.send_frame_or_disconnect(client, payload)
+
+    def send_frame_or_disconnect(self, client: socket.socket, payload: bytes) -> None:
+        with self.send_lock:
+            try:
+                sent = client.send(payload, socket.MSG_DONTWAIT)
+            except OSError:
+                sent = 0
+        if sent == len(payload):
+            return
+        with self.lock:
+            if client in self.clients:
+                self.clients.remove(client)
+        try:
+            client.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
 
     def effective(self, profile: profiles.Profile) -> profiles.Profile:
         draft = json.loads(json.dumps(profile))
@@ -593,10 +608,7 @@ class Daemon:
             reply["result"] = result
         except Exception as error:
             reply["error"] = {"message": str(error) or error.__class__.__name__}
-        try:
-            client.sendall((json.dumps(reply) + "\n").encode())
-        except OSError:
-            return
+        self.send_frame_or_disconnect(client, (json.dumps(reply) + "\n").encode())
         if notify:
             self.broadcast()
 

@@ -183,12 +183,14 @@ state_release_lock() {
 state_write_color_variant_file() {
   local state_file="$1"
   local var_value="$2"
-  local tmp_file="${state_file}.tmp"
+  local tmp_file="${state_file}.tmp" stored_variant=""
 
   if [[ -z "${var_value}" ]]; then
     print_log -sec "state" -err "state_set" "color variant value required"
     return 1
   fi
+  [[ -r "${state_file}" ]] && IFS= read -r stored_variant <"${state_file}"
+  [[ "${stored_variant}" != "${var_value}" ]] || return 0
 
   (
     trap 'rm -f "${tmp_file}" 2>/dev/null' EXIT HUP INT TERM
@@ -217,7 +219,8 @@ state_write_key_value_file() {
   local target_kind="$2"
   local var_name="$3"
   local var_value="$4"
-  local tmp_file="" source_file="${state_file}" value_prefix="" quoted_value="" line="" candidate=""
+  local tmp_file="" source_file="${state_file}" value_prefix="" quoted_value="" line="" candidate="" stored_value=""
+  local -a stored_raw_values=() other_lines=()
 
   [[ "${var_name}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || {
     print_log -sec "state" -err "state_set" "invalid variable name '${var_name}'"
@@ -226,22 +229,34 @@ state_write_key_value_file() {
 
   [[ "${target_kind}" == "env-overrides" ]] && value_prefix="export "
   state_quote_value quoted_value "${var_value}" || return 1
+
+  [[ -f "${source_file}" ]] || source_file=/dev/null
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    candidate="${line#"${line%%[![:space:]]*}"}"
+    if [[ "${candidate}" =~ ^export[[:space:]]+ ]]; then
+      candidate="${candidate:${#BASH_REMATCH[0]}}"
+    fi
+    if [[ "${candidate}" == "${var_name}="* ]]; then
+      stored_raw_values+=("${candidate#"${var_name}="}")
+    else
+      other_lines+=("${line}")
+    fi
+  done <"${source_file}"
+  if ((${#stored_raw_values[@]} == 1)); then
+    state_decode_raw_value stored_value "${stored_raw_values[0]}"
+    [[ "${stored_value}" != "${var_value}" ]] || return 0
+  fi
+
   tmp_file="$(mktemp "${state_file}.tmp.XXXXXX")" || {
     print_log -sec "state" -err "state_set" "failed to allocate temp file for ${var_name}"
     return 1
   }
-
-  [[ -f "${source_file}" ]] || source_file=/dev/null
   if (
     trap 'rm -f "${tmp_file}" 2>/dev/null' EXIT HUP INT TERM
-    while IFS= read -r line || [[ -n "${line}" ]]; do
-      candidate="${line#"${line%%[![:space:]]*}"}"
-      if [[ "${candidate}" =~ ^export[[:space:]]+ ]]; then
-        candidate="${candidate:${#BASH_REMATCH[0]}}"
-      fi
-      [[ "${candidate}" == "${var_name}="* ]] || printf '%s\n' "${line}"
-    done <"${source_file}" >"${tmp_file}"
-    printf '%s%s=%s\n' "${value_prefix}" "${var_name}" "${quoted_value}" >>"${tmp_file}"
+    {
+      ((${#other_lines[@]} == 0)) || printf '%s\n' "${other_lines[@]}"
+      printf '%s%s=%s\n' "${value_prefix}" "${var_name}" "${quoted_value}"
+    } >"${tmp_file}"
     mv -f "${tmp_file}" "${state_file}" && trap - EXIT
   ); then
     return 0

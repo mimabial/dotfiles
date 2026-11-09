@@ -65,7 +65,7 @@ signal_recording_stop() {
 wait_for_recording_stop() {
   [[ -n "$1" && "$1" =~ ^[0-9]+$ ]] || return 0
 
-  waitpid -e "$1" 2>/dev/null || true
+  waitpid -e -t "${RECORDING_STOP_DEADLINE_SECONDS}" "$1" 2>/dev/null || true
 }
 
 finalize_recording_stop() {

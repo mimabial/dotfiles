@@ -172,12 +172,15 @@ rofi_resolve_window_geometry_into() {
   local width_em="$2" height_em="$3"
   local fallback_width_px="$4" fallback_height_px="$5"
 
-  rofi_hypr_snapshot
-  geometry_ref[width_px]="$(rofi_length_em_to_px "${width_em}" "${geometry_ref[font_name]}" "${geometry_ref[font_scale]}" 2>/dev/null || true)"
-  [[ "${geometry_ref[width_px]}" =~ ^[0-9]+$ ]] || geometry_ref[width_px]="${fallback_width_px}"
+  local width_px="" height_px=""
 
-  geometry_ref[height_px]="$(rofi_length_em_to_px "${height_em}" "${geometry_ref[font_name]}" "${geometry_ref[font_scale]}" 2>/dev/null || true)"
-  [[ "${geometry_ref[height_px]}" =~ ^[0-9]+$ ]] || geometry_ref[height_px]="${fallback_height_px}"
+  rofi_hypr_snapshot
+  rofi_length_em_to_px_into width_px "${width_em}" "${geometry_ref[font_name]}" "${geometry_ref[font_scale]}" 2>/dev/null \
+    || width_px="${fallback_width_px}"
+  rofi_length_em_to_px_into height_px "${height_em}" "${geometry_ref[font_name]}" "${geometry_ref[font_scale]}" 2>/dev/null \
+    || height_px="${fallback_height_px}"
+  geometry_ref[width_px]="${width_px}"
+  geometry_ref[height_px]="${height_px}"
 
   geometry_ref[position_theme]="$(rofi_window_position_theme "${geometry_ref[width_px]}" "${geometry_ref[height_px]}")"
   geometry_ref[width_theme]="window { width: ${geometry_ref[width_px]}px; }"

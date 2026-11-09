@@ -26,40 +26,6 @@ wallpaper_inventory_sources_into() {
   [[ ${#out_ref[@]} -gt 0 ]]
 }
 
-wallpaper_inventory_signature_file() {
-  local cache_root=""
-  wallpaper_cache_root_into cache_root
-  printf '%s\n' "${cache_root}/.inventory.signature"
-}
-
-wallpaper_inventory_signature() {
-  local -a wall_sources=()
-  local -a supported_extensions=()
-  local src regex_ext
-
-  wallpaper_inventory_sources_into wall_sources || return 1
-  wallpaper_supported_extensions_into supported_extensions
-
-  wallpaper_extensions_regex_into regex_ext "${supported_extensions[@]}"
-
-  {
-    printf '[sources]\n'
-    for src in "${wall_sources[@]}"; do
-      [[ -e "${src}" ]] || continue
-      wallpaper_resolve_path "${src}"
-    done | LC_ALL=C sort
-
-    printf '[filetypes]\n'
-    printf '%s\n' "${supported_extensions[@]}" | LC_ALL=C sort
-
-    # Track actual wallpaper files instead of directory mtimes.
-    # This prevents cache invalidation when symlinks (wall.set) are updated.
-    printf '[files]\n'
-    find -H "${wall_sources[@]}" -type f -regextype posix-extended \
-      -iregex ".*\.(${regex_ext})$" ! -path "*/logo/*" -printf '%p\n' 2>/dev/null | LC_ALL=C sort
-  } | "${HYPR_HASH_COMMAND}" | awk '{print $1}'
-}
-
 wallpaper_load_inventory_catalog() {
   local -a wall_sources=()
   local -a inventory_list=()
@@ -85,36 +51,9 @@ wallpaper_load_inventory_catalog() {
 }
 
 wallpaper_refresh_inventory_and_prune_locked() {
-  local signature_file=""
-  local current_signature=""
-  local saved_signature=""
-
   [[ "${WALLPAPER_INVENTORY_REFRESHED:-0}" -eq 1 ]] && return 0
-
-  signature_file="$(wallpaper_inventory_signature_file)"
-  mkdir -p "${signature_file%/*}"
-
-  current_signature="$(wallpaper_inventory_signature 2>/dev/null || true)"
-  if [[ -f "${signature_file}" ]]; then
-    saved_signature="$(<"${signature_file}")"
-  fi
-
-  if [[ -n "${current_signature}" ]] && [[ "${current_signature}" == "${saved_signature}" ]]; then
-    wallpaper_load_inventory_catalog || {
-      WALLPAPER_INVENTORY_REFRESHED=1
-      return 0
-    }
-    WALLPAPER_INVENTORY_REFRESHED=1
-    wallpaper_run_detached wallpaper_prune_loaded_inventory
-    return 0
-  fi
-
-  if ! wallpaper_load_inventory_catalog; then
-    return 0
-  fi
-  [[ -n "${current_signature}" ]] && printf '%s\n' "${current_signature}" >"${signature_file}"
+  wallpaper_load_inventory_catalog || return 0
   WALLPAPER_INVENTORY_REFRESHED=1
-
   wallpaper_run_detached wallpaper_prune_loaded_inventory
 }
 

@@ -53,7 +53,7 @@ EOF
 }
 
 wallcache_main() {
-  local mode="enqueue" wall="" theme="" enqueue_failed=0
+  local mode="enqueue" theme="" enqueue_failed=0
   local -a enqueue_walls=() enqueue_themes=()
 
   while [[ $# -gt 0 ]]; do
@@ -104,9 +104,7 @@ wallcache_main() {
       for theme in "${enqueue_themes[@]}"; do
         wallcache_enqueue_theme "${theme}" || enqueue_failed=1
       done
-      for wall in "${enqueue_walls[@]}"; do
-        wallcache_enqueue_wallpaper "${wall}" || enqueue_failed=1
-      done
+      ((${#enqueue_walls[@]} == 0)) || wallcache_enqueue_wallpapers "${enqueue_walls[@]}" || enqueue_failed=1
       wallcache_wake_daemon >/dev/null 2>&1 || wallcache_start_daemon >/dev/null 2>&1 || return
       return "${enqueue_failed}"
       ;;

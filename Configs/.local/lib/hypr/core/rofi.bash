@@ -121,7 +121,7 @@ rofi_focused_monitor_geometry_into() {
 
 # Rofi window geometry is budgeted in em but specified in px. font_scale is the
 # scale in tenths (TEXT_SIZE 12 -> 10), so one em is approximated at twice it.
-# rofi_font_text_height_px measures the real value when the font is known.
+# rofi_font_text_height_px_into measures the real value when the font is known.
 ROFI_EM_PX_PER_SCALE=2
 
 rofi_default_window_size() {

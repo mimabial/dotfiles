@@ -3,7 +3,7 @@ workflow_write_layout_flags() {
   layout="$(sed -n 's/^[[:space:]]*runtime\.config_if_supported("general\.layout",[[:space:]]*"\([^"]*\)").*/\1/p' "${active_workflow_path}" | head -n1)"
   [[ "${active_workflow_name}" == windows || "${active_workflow_name}" == macos ]] && layout=""
   state_set WORKFLOW_WINDOW_LAYOUT "${layout}" staterc
-  bar_layouts="$(workflow_read_bar_layouts "${active_workflow_path}")"
+  bar_layouts="${active_workflow_bar_layouts}"
   case "${active_workflow_name}" in niri | windows | macos) bar_layouts="" ;; esac
   state_set WORKFLOW_QUICKSHELL_LAYOUT "${bar_layouts}" staterc
 }

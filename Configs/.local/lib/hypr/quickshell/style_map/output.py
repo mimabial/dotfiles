@@ -1,11 +1,7 @@
 import json
 
-from .hierarchy import (
-    EMPTY_INLINE_COMPONENT, STYLE_BASE_COMPONENTS, bar_component_registry,
-    resolve_module_style,
-)
+from .hierarchy import EMPTY_INLINE_COMPONENT, STYLE_BASE_COMPONENTS, resolve_module_style
 from .layouts import BAR_COMPONENT_TYPES, QUICKSHELL_CONFIG_DIR, layout_modules, read_layout
-from .qml import all_qml_style_keys
 
 def mark_style_keys_used(used, *keys):
     used.update(key for key in keys if key)
@@ -51,12 +47,11 @@ def module_lines(module_id, props, registry, bar, index, used):
     return lines + [""]
 
 
-def unused_style_lines(layout, index, used):
+def unused_style_lines(layout, known, used):
     style = QUICKSHELL_CONFIG_DIR / "styles" / f"{layout}.json"
     if not style.exists():
         return []
     ids = {module_id for module_id, _ in layout_modules(layout)}
-    known = all_qml_style_keys(index)
     keys = (key.strip() for group in json.loads(style.read_text()) for key in group.split(","))
     orphans = []
     for key in dict.fromkeys(keys):
@@ -74,13 +69,12 @@ def unused_style_lines(layout, index, used):
     return [f"unused in styles/{layout}.json"] + orphans + [""] if orphans else []
 
 
-def render_layout_style_map(layout, index):
+def render_layout_style_map(layout, index, registry, known_style_keys):
     bar = BAR_COMPONENT_TYPES[read_layout(layout)["panel"]]
-    registry = bar_component_registry(index)
     lines = [f"{bar}", ""]
     used = set()
     for module_id, props in layout_modules(layout):
         if module_id != "spacer":
             lines += module_lines(module_id, props, registry, bar, index, used)
-    lines += unused_style_lines(layout, index, used)
+    lines += unused_style_lines(layout, known_style_keys, used)
     return "\n".join(lines).rstrip() + "\n"

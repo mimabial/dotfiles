@@ -76,7 +76,7 @@ archive_add
 
             with patch.object(verification, "SECRET_LIFETIME_SECONDS", TEST_LEASE_SECONDS), \
                     patch.object(verification, "ensure_runtime_root_dir", return_value=root), \
-                    patch.object(verification.subprocess, "run", side_effect=run_clipboard):
+                    patch.object(verification.child_process, "run", side_effect=run_clipboard):
                 pid = verification.publish_codes("1000-5", ["482913"])
                 result = verification.request("1000-5", "copy")
                 self.assertEqual(result["copied"], 0)

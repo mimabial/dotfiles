@@ -30,8 +30,21 @@ move_entry_to_newest_and_paste() {
   hypr_runtime_require system || return 1
   entry="$(decode_entry_to_temporary_file "$1" "Clipboard Error")" || return 1
   { rm -f "${entry}"; wl-copy; } <"${entry}" || return 1
-  run_cliphist_for_entry delete "$1"
+  delete_entry "$1"
   paste_clipboard
+}
+
+delete_entry() {
+  local images_dir=""
+  run_cliphist_for_entry delete "$1" || return 1
+  hypr_ensure_runtime_dir_into images_dir hypr/cliphist && rm -f -- "${images_dir}/$1"
+}
+
+wipe_history() {
+  local images_dir=""
+  cliphist wipe || return 1
+  hypr_ensure_runtime_dir_into images_dir hypr/cliphist && rm -f -- "${images_dir}"/*
+  dunstify -t "${NOTIFY_MS}" -i edit-clear "Clipboard history cleared."
 }
 
 add_favorite() {
@@ -105,14 +118,14 @@ action="${1:-}" id="${2:-}"
 case "${action}" in
   --panel-json) emit_clipboard_panel_json ;;
   --panel-move-to-newest-and-paste) move_entry_to_newest_and_paste "${id}" ;;
-  --panel-delete) run_cliphist_for_entry delete "${id}" ;;
+  --panel-delete) delete_entry "${id}" ;;
   --panel-image) cache_entry_image "${id}" ;;
   --panel-fav-add) add_favorite "${id}" ;;
   --panel-fav-copy) sed -n "${id}{p;q}" "${favorites_file}" | base64 --decode | wl-copy ;;
   --panel-fav-remove) sed -i "${id}d" "${favorites_file}" ;;
   --scan-image) recognize_entry_text "${id}" ;;
   --scan-qr) recognize_entry_qr_code "${id}" ;;
-  --wipe) cliphist wipe && dunstify -t "${NOTIFY_MS}" -i edit-clear "Clipboard history cleared." ;;
+  --wipe) wipe_history ;;
   *)
     printf 'cliphist: invalid call: %s\n' "$*" >&2
     exit 2

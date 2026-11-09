@@ -5,6 +5,7 @@ set -euo pipefail
 DEV_ENV_DIR="${BASH_SOURCE[0]%/*}/dev-env"
 # shellcheck source=/dev/null
 source "${DEV_ENV_DIR}/tool-installation.bash"
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/transfers.bash" || exit 1
 
 DEV_ENV_RUNTIMES=(
   "ruby|ruby|dev_env_install_ruby"

@@ -50,7 +50,7 @@ wallpaper_should_apply_colors_async() {
 wallpaper_link_selected() {
   local wallpaper_path="$1"
 
-  ln -fs "${wallpaper_path}" "${active_wallpaper_link}"
+  ln -frs "${wallpaper_path}" "${active_wallpaper_link}"
   [[ -z "${current_wallpaper_link:-}" ]] || ln -fs "${wallpaper_path}" "${current_wallpaper_link}"
   wallpaper_prepare_notification_payload "${wallpaper_path}"
 }

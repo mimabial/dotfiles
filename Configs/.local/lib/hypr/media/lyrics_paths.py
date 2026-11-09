@@ -9,6 +9,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from pyutils.xdg_base_dirs import xdg_config_home
 
+HIDDEN_LYRICS_DIR_NAME = ".lyrics"
+
 
 def absolute_path(path: str | Path) -> Path:
     expanded = os.path.expandvars(os.path.expanduser(os.fspath(path)))
@@ -40,7 +42,7 @@ def music_library_dir() -> Path:
 
 
 def hidden_lyrics_root() -> Path:
-    return music_library_dir() / ".lyrics"
+    return music_library_dir() / HIDDEN_LYRICS_DIR_NAME
 
 
 def is_in_music_library(path: str | Path) -> bool:
@@ -63,14 +65,11 @@ def is_in_hidden_lyrics(path: str | Path) -> bool:
 
 def lrc_path_for(file_path: str | Path) -> Path:
     path = absolute_path(file_path)
-    hidden = hidden_lyrics_root()
-    if is_in_hidden_lyrics(path):
+    library = music_library_dir()
+    hidden = library / HIDDEN_LYRICS_DIR_NAME
+    if path.is_relative_to(hidden) or not path.is_relative_to(library):
         return path.with_suffix(".lrc")
-    try:
-        relative = path.relative_to(music_library_dir())
-    except ValueError:
-        return path.with_suffix(".lrc")
-    return (hidden / relative).with_suffix(".lrc")
+    return (hidden / path.relative_to(library)).with_suffix(".lrc")
 
 
 def prune_empty_lyrics_parents(path: Path) -> None:
@@ -86,8 +85,7 @@ def prune_empty_lyrics_parents(path: Path) -> None:
 
 def lyrics_directory_for(directory: str | Path) -> Path | None:
     path = absolute_path(directory)
-    try:
-        relative = path.relative_to(music_library_dir())
-    except ValueError:
+    library = music_library_dir()
+    if not path.is_relative_to(library):
         return None
-    return hidden_lyrics_root() / relative
+    return library / HIDDEN_LYRICS_DIR_NAME / path.relative_to(library)

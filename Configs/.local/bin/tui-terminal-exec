@@ -214,8 +214,6 @@ alacritty_window_address() {
 
 size_and_center_alacritty_window() {
   local terminal_pid="$1" width="$2" height="$3" address="" window_lua=""
-  [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] || return 0
-  [[ -n "${width}" && -n "${height}" && "${width}" != *c && "${height}" != *c ]] || return 0
   declare -F hypr_lua_quote hypr_lua_batch >/dev/null \
     || source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/lua.bash" || return 0
   declare -F hypr_wait_for >/dev/null \
@@ -244,7 +242,8 @@ main() {
   build_terminal_command options terminal_args command launch_command
 
   local -r terminal_pid=$$
-  [[ "${TERMINAL_TUI##*/}" != alacritty ]] \
+  [[ "${TERMINAL_TUI##*/}" != alacritty || -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" \
+    || -z "${options[width]}" || "${options[width]}" == *c ]] \
     || (size_and_center_alacritty_window "${terminal_pid}" "${options[width]}" "${options[height]}" &)
   exec "${launch_command[@]}"
 }

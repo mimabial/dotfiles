@@ -56,7 +56,6 @@ menu_register_domain_media() {
   menu_add_item media "󰓻  Set Album Genres" action media_genres
   menu_add_item media "󰑕  Rename From Tags" action media_rename
   menu_add_item media "󰈔  Fetch Lyrics" action media_fetch_lyrics
-  menu_add_item media "󰚰  Relink Orphan Lyrics" action media_relink_lyrics
   menu_add_item media "󰉋  Library Folder" action media_library
   menu_add_item media "󰈫  Transcode" action media_transcode
 }
@@ -69,7 +68,6 @@ menu_run_action_media() {
     media_autotag) menu_present_terminal hyprshell media/autotag ;;
     media_rename) menu_present_terminal hyprshell media/rename_from_tags ;;
     media_fetch_lyrics) menu_present_terminal hyprshell media/fetch_all_lyrics ;;
-    media_relink_lyrics) menu_present_terminal hyprshell media/lyrics_relink ;;
     media_library) menu_present_terminal hyprshell media/music_library_config ;;
     media_transcode) media_pick_transcode ;;
     *) return "${MENU_ACTION_UNKNOWN}" ;;

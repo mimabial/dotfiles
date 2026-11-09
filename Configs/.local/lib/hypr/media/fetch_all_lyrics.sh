@@ -3,7 +3,8 @@ set -euo pipefail
 
 # One Python process scans metadata, reuses provider clients and applies the
 # short-lived miss cache across the complete library.
-SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+SCRIPT_PATH="$(realpath "$0")"
+SCRIPT_DIR="${SCRIPT_PATH%/*}"
 LYRICS_FETCHER="$SCRIPT_DIR/fetch_album_lyrics.py"
 LYRICS_RUNTIME_SH="$SCRIPT_DIR/lyrics_runtime.sh"
 

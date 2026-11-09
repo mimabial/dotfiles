@@ -44,10 +44,10 @@ hyprlock_artwork_is_cached() {
 mpris_download_art() {
   local url="$1" output_path="$2" width=""
 
-  curl --fail --location --silent --show-error --output "${output_path}" -- "${url}" 2>/dev/null || return 1
+  curl "${HYPR_CURL_DEADLINE_ARGS[@]}" --fail --location --silent --show-error --output "${output_path}" -- "${url}" 2>/dev/null || return 1
   width="$(identify -format "%w" "${output_path}" 2>/dev/null || true)"
   if [[ "${width}" =~ ^[0-9]+$ ]] && ((width < MPRIS_ART_MIN_WIDTH_PX)) && [[ "${url}" == *youtube* ]]; then
-    curl --fail --location --silent --show-error --output "${output_path}" -- "${url/maxresdefault/hqdefault}" 2>/dev/null
+    curl "${HYPR_CURL_DEADLINE_ARGS[@]}" --fail --location --silent --show-error --output "${output_path}" -- "${url/maxresdefault/hqdefault}" 2>/dev/null
   fi
 }
 

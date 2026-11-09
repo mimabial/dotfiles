@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-bridge_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+bridge_dir="${BASH_SOURCE[0]%/*}"
+[[ "${bridge_dir}" != "${BASH_SOURCE[0]}" ]] || bridge_dir=.
+bridge_dir="$(cd "${bridge_dir}" && pwd)"
 # shellcheck source=/dev/null
 . "${bridge_dir}/manifest.bash"
 set -euo pipefail

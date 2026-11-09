@@ -9,15 +9,16 @@ from mutagen import File as MutagenFile
 from mutagen import MutagenError
 
 DEFAULT_EXTENSIONS = "mp3,flac,m4a,ogg,opus"
+TAG_KEY_SEPARATORS = re.compile(r"[\s_-]+")
 
 
-def _first_tag(tags, *wanted: str) -> str:
-    normalized = {
-        re.sub(r"[\s_-]+", "", str(key).casefold()): value
-        for key, value in tags.items()
-    }
+def normalized_tag_key(key: Any) -> str:
+    return TAG_KEY_SEPARATORS.sub("", str(key).casefold())
+
+
+def _first_tag(normalized_tags: dict[str, Any], *wanted: str) -> str:
     for key in wanted:
-        value = normalized.get(re.sub(r"[\s_-]+", "", key.casefold()))
+        value = normalized_tags.get(normalized_tag_key(key))
         if isinstance(value, (list, tuple)):
             value = value[0] if value else ""
         if value is not None and str(value).strip():
@@ -37,7 +38,7 @@ def get_audio_metadata(file_path: str | Path) -> dict[str, Any]:
         audio = MutagenFile(file_path, easy=True)
         if audio is None:
             return empty
-        tags = audio.tags or {}
+        tags = {normalized_tag_key(key): value for key, value in (audio.tags or {}).items()}
         info = getattr(audio, "info", None)
         return {
             "title": _first_tag(tags, "title"),

@@ -19,7 +19,7 @@ from lyrics_io import save_lrc
 from lyrics_metadata import DEFAULT_EXTENSIONS, get_audio_metadata
 from lyrics_paths import absolute_path, lrc_path_for, music_library_dir
 from lyrics_provider import fetch_lyrics
-from lyrics_relink import LyricsMirrorTidy, tidy_lyrics_mirror
+from lyrics_mirror import LyricsMirrorTidy, tidy_lyrics_mirror
 from lyrics_text import is_lrc_synced, text_similarity
 
 LEADING_ARTIST_SIMILARITY = 0.5
@@ -354,7 +354,7 @@ def dry_run(
     groups: dict[Path, list[Path]] = defaultdict(list)
     for path in audio_files:
         groups[path.parent].append(path)
-    states = {path: lrc_state(lrc_path_for(path)) for path in audio_files}
+    states = {path: lrc_state(mirror.relinked.get(path, lrc_path_for(path))) for path in audio_files}
     selected = print_directory_plan(
         groups,
         states,
@@ -396,7 +396,7 @@ def dry_run(
     print(f"  Untimed lyrics:          {state_counts[LrcState.UNTIMED]}")
     print(f"  Lyrics missing:          {state_counts[LrcState.MISSING]}")
     print(f"  Would fetch:             {selected}")
-    print(f"  Would relink:            {mirror.relinked}")
+    print(f"  Would relink:            {len(mirror.relinked)}")
     print(f"  Would delete orphans:    {mirror.deleted}")
     print(f"  Tagged identities:       {tagged}")
     print(f"  Filename fallbacks:      {fallback}")
@@ -482,7 +482,7 @@ def fetch_all(audio_files: list[Path], scan_root: Path, args: argparse.Namespace
 def print_summary(file_count: int, results: Counter[ProcessResult], mirror: LyricsMirrorTidy) -> None:
     print("Summary")
     print(f"  Audio files:   {file_count}")
-    print(f"  Relinked:      {mirror.relinked}")
+    print(f"  Relinked:      {len(mirror.relinked)}")
     print(f"  Saved:         {results[ProcessResult.SAVED]}")
     print(f"  Kept existing: {results[ProcessResult.KEPT]}")
     print(f"  Skipped:       {results[ProcessResult.SKIPPED]}")

@@ -3,6 +3,7 @@ set -euo pipefail
 
 # shellcheck source=/dev/null
 source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/runtime/init.bash" || exit 1
+source "${HYPR_LIB_DIR:-$HOME/.local/lib/hypr}/core/transfers.bash" || exit 1
 hypr_runtime_require system || exit 1
 
 readonly USAGE="Usage: hyprshell capture/dictation <start|stop|toggle|setup>
@@ -90,7 +91,7 @@ download_model() {
   [[ -s "${path}" ]] && return 0
   mkdir -p "${path%/*}"
   printf 'Downloading %s\n' "${path##*/}"
-  curl -fL --progress-bar -o "${path}.part" "${url}" && mv -f "${path}.part" "${path}"
+  curl "${HYPR_CURL_DEADLINE_ARGS[@]}" -fL --progress-bar -o "${path}.part" "${url}" && mv -f "${path}.part" "${path}"
 }
 
 dictation_setup() {

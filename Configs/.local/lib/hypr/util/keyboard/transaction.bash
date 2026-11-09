@@ -31,9 +31,13 @@ keyboard_apply_live_config() {
 }
 
 keyboard_live_settings_match() {
-  [[ "$(keyboard_option_string input:kb_layout)" == "$(keyboard_layout_csv "$1")" ]] \
-    && [[ "$(keyboard_option_string input:kb_variant)" == "$(keyboard_variant_csv "$1")" ]] \
-    && [[ "$(keyboard_option_string input:kb_options)" == "$(keyboard_options_csv "$1")" ]]
+  keyboard_live_options_jq -e --argjson settings "$1" "${KEYBOARD_JQ_DEFS}"'
+    live_options as $live
+    | $settings
+    | $live["input:kb_layout"] == layout_csv
+      and $live["input:kb_variant"] == variant_csv
+      and $live["input:kb_options"] == options_csv
+  ' >/dev/null
 }
 
 keyboard_restore_config() {

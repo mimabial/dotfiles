@@ -168,7 +168,7 @@ The script library groups related targets under `bookmarks/`, `calendar/`, `capt
 ## Script and Config Conventions
 
 - Bash: use `[[ ... ]]`, quote paths, and prefer explicit fallback handling.
-- `.sh` files are entrypoints and own strict mode; `.bash` files are sourced modules and inherit it. `media/lib/lyrics-paths.bash` is the POSIX sh exception because the rmpc hook sources it.
+- Entrypoints normally use `.sh` and own strict mode; sourced modules use `.bash` and inherit it. `media/lib/lyrics-paths.bash` and the sourced `media/lyrics_runtime.sh` are POSIX sh helpers used by the lyrics hooks.
 - Use absolute paths for config and state references where practical.
 - Keep functions small and composable.
 - Library functions return a status; only an entrypoint or an explicitly named `*_die` helper exits. `require_*` and `need_*` print why and return 1; callers handle failure with `|| exit 1`. Return results through an `_into NAME` output variable or nameref rather than undeclared globals. Declare shared script state once at the top, and name every effect, including applying, waiting, or muting.
