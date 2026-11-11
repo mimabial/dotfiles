@@ -1,15 +1,10 @@
 import QtQuick
-import Quickshell
-import Quickshell.Io
-import "CalendarMath.js" as CalendarMath
-import "Units.js" as Units
 
 BarButton {
     id: root
     property bool popupEnabled: true
-    property var records: []
     property int selected: 0
-    readonly property string usageScript: Quickshell.env("HOME") + "/.local/lib/hypr/system/agent-usage.sh"
+    readonly property var records: AgentsUsage.records
     readonly property real highestUsage: {
         let highest = 0
         for (const record of records)
@@ -24,51 +19,13 @@ BarButton {
     readonly property bool shown: records.length > 0
     text: exhausted ? "󱚢" : alarming ? "󱚞" : "󱚠"
     onClicked: shell.togglePopup("agents")
-    onRecordsChanged: reportLimits()
-
-    function reportLimits() {
-        if (!panel.notifyLimit) return
-        const now = Date.now()
-        for (const record of records) {
-            const observedAt = Number(record.limitsObservedAt)
-            if (!isFinite(observedAt) || observedAt <= 0 || now - observedAt > panel.staleAfterMs) continue
-            for (const limit of (record.limits || [])) {
-                const usage = Number(limit.usageFraction), resetAt = Date.parse(limit.resetsAt)
-                if (!isFinite(usage) || usage < 0 || isFinite(resetAt) && resetAt <= now) continue
-                shell.run(["hyprshell", "system/agent-limit-alert", String(record.id),
-                    String(record.name || record.id), String(limit.label || "Limit"),
-                    String(Math.floor(usage * 1000)), String(limit.resetsAt || ""), String(observedAt)])
-            }
-        }
-    }
-
-    function refresh(force) {
-        if (usageCollector.running) return
-        usageCollector.command = force
-            ? ["bash", root.usageScript, "--write", "--force"]
-            : ["bash", root.usageScript, "--write"]
-        usageCollector.running = true
-    }
-
-    FileView {
-        path: Quickshell.env("HOME") + "/.cache/hypr/agents/usage.json"
-        watchChanges: true
-        printErrors: false
-        onFileChanged: reload()
-        onLoaded: {
-            try { root.records = JSON.parse(text()) || [] }
-            catch (error) { root.records = [] }
-        }
-    }
-    Process { id: usageCollector; command: ["bash", root.usageScript, "--write"] }
-    Timer { interval: 15 * Units.MS_PER_MINUTE; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
+    Component.onCompleted: AgentsUsage.consumers++
+    Component.onDestruction: AgentsUsage.consumers--
 
     AgentsPopup {
         id: panel
         anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled
         records: root.records; selected: root.selected
         onSelect: index => root.selected = index
-        onRefreshRequested: root.refresh(true)
-        onLimitNotificationsEnabled: root.reportLimits()
     }
 }

@@ -2,7 +2,6 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "CalendarMath.js" as CalendarMath
 import "Units.js" as Units
 
 Singleton {
@@ -72,7 +71,7 @@ Singleton {
     }
     Process {
         id: forecastProcess
-        command: ["hyprshell", "weather-status", "--alt"]
+        command: ["python3", Quickshell.env("HOME") + "/.local/lib/hypr/util/weather-status.py", "--alt"]
         stdout: SplitParser { onRead: line => {
             try { root.output = JSON.parse(line) }
             catch (error) { console.warn("weather: " + error) }

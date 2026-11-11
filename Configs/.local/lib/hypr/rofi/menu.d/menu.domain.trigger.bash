@@ -59,7 +59,7 @@ menu_register_domain_trigger() {
   menu_add_item trigger_toggle "󱫖  Caffeine" submenu trigger_caffeine
   menu_add_item trigger_toggle "󰹬  Notifications" action trigger_toggle_notifications
   menu_add_item trigger_toggle "󰍜  Menu Bar" action trigger_toggle_bar
-  menu_add_item trigger_toggle "󱂬  Workspace Layout" submenu trigger_toggle_workspace_layout
+  menu_add_item trigger_toggle "󱂬  Window Layout" submenu trigger_toggle_window_layout
   menu_add_item trigger_toggle "󰊥  Window Gaps" action trigger_toggle_window_gaps
 
   menu_define trigger_caffeine "Caffeine"
@@ -68,14 +68,14 @@ menu_register_domain_trigger() {
   menu_add_item trigger_caffeine "󰝚  Stay Awake While Audio Plays" action trigger_toggle_audio_keep_awake
   menu_add_item trigger_caffeine "󰍹  Stay Awake for Fullscreen Apps and Games" action trigger_toggle_fullscreen_keep_awake
 
-  menu_define_deferred trigger_toggle_workspace_layout "Workspace Layout" choice trigger_fill_workspace_layouts
+  menu_define_deferred trigger_toggle_window_layout "Window Layout" choice trigger_fill_window_layouts
 }
 
-trigger_fill_workspace_layouts() {
+trigger_fill_window_layouts() {
   local name="" icon="" label=""
 
   while IFS=$'\t' read -r name icon label; do
-    menu_add_item trigger_toggle_workspace_layout "${icon}  ${label}" action "trigger_toggle_workspace_layout_${name}"
+    menu_add_item trigger_toggle_window_layout "${icon}  ${label}" action "trigger_toggle_window_layout_${name}"
   done < <("${HYPR_LIB_DIR}/util/window-layout.sh" --list)
 }
 
@@ -108,7 +108,7 @@ menu_run_action_trigger() {
     trigger_toggle_fullscreen_keep_awake) hyprshell session/toggle-fullscreen-keep-awake.sh ;;
     trigger_toggle_notifications) hyprshell notify/notifications --toggle ;;
     trigger_toggle_bar) hyprshell quickshell/visibility.sh toggle ;;
-    trigger_toggle_workspace_layout_*) hyprshell util/window-layout --set "${action_id#trigger_toggle_workspace_layout_}" ;;
+    trigger_toggle_window_layout_*) hyprshell util/window-layout --set "${action_id#trigger_toggle_window_layout_}" ;;
     trigger_toggle_window_gaps) hyprshell window/gaps-toggle.sh ;;
     *) return "${MENU_ACTION_UNKNOWN}" ;;
   esac
@@ -116,7 +116,7 @@ menu_run_action_trigger() {
 
 menu_register_action_handler menu_run_action_trigger
 
-trigger_workspace_layout() {
+trigger_window_layout() {
   local lua="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/window-layout.lua" pattern='layout = "([^"]+)'
 
   [[ -r "${lua}" && "$(<"${lua}")" =~ ${pattern} ]] && printf '%s' "${BASH_REMATCH[1]}"
@@ -133,7 +133,7 @@ menu_active_trigger() {
     trigger_toggle_fullscreen_keep_awake) menu_cached_state_reply HYPR_KEEP_AWAKE_FULLSCREEN state_get HYPR_KEEP_AWAKE_FULLSCREEN 0 && [[ "${REPLY}" == 1 ]] ;;
     trigger_toggle_notifications) menu_cached_state_reply notifications_paused dunstctl is-paused && [[ "${REPLY}" == false ]] ;;
     trigger_toggle_window_gaps) menu_cached_state_reply gaps_out rofi_option_json general:gaps_out && [[ "${REPLY}" =~ ${gaps_on} ]] ;;
-    trigger_toggle_workspace_layout_*) menu_choice_matches "${target}" trigger_toggle_workspace_layout_ trigger_workspace_layout ;;
+    trigger_toggle_window_layout_*) menu_choice_matches "${target}" trigger_toggle_window_layout_ trigger_window_layout ;;
     *) return 1 ;;
   esac
 }

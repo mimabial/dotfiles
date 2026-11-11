@@ -4,7 +4,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell.Io
-import "CalendarMath.js" as CalendarMath
 import "Units.js" as Units
 
 PopupCard {

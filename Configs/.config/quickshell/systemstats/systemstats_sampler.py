@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import itertools
+import errno
 import json
 import os
 import re
 import selectors
 import signal
+import socket
 import subprocess
 import sys
 import threading
@@ -78,6 +80,14 @@ MIN_INTERVAL_SECONDS = 0.1
 MAX_INTERVAL_SECONDS = 30.0
 TOOL_DIRS = ("/usr/bin", "/bin")
 PCI_IDS_PATH = "/usr/share/hwdata/pci.ids"
+POWER_SUPPLY_DIR = "/sys/class/power_supply"
+MAINS_SUPPLY_TYPES = ("Mains", "USB", "USB_PD", "USB_C")
+RTMGRP_IPV4_IFADDR = 0x10
+RTMGRP_IPV4_ROUTE = 0x40
+RTMGRP_IPV6_IFADDR = 0x100
+RTMGRP_IPV6_ROUTE = 0x400
+ROUTING_EVENT_GROUPS = RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE | RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE
+NETLINK_RECEIVE_BYTES = 64 * 1024
 
 
 def encode_payload(payload: dict) -> bytes:
@@ -770,26 +780,33 @@ class GpuSampler:
                         break
         return read_float(f"{hwmon}/{chosen}") if chosen else None
 
-    def _drm_fdinfos(self) -> list[str]:
+    def _drm_clients(self) -> list[tuple[int, dict]]:
         fds = {}
+        found: list[tuple[int, dict]] = []
         for pid in filter(str.isdigit, bounded_directory_names("/proc", PROCESS_SCAN_LIMIT)):
             try:
                 fd_count = os.stat(f"/proc/{pid}/fd").st_size
             except OSError:
                 continue
             cached = self.drm_fds.get(pid)
-            if cached is None or cached[0] != fd_count:
-                cached = fd_count, [f"/proc/{pid}/fdinfo/{fd}" for fd, target in fd_targets(pid) if target.startswith("/dev/dri/")]
-            fds[pid] = cached
+            fds_unchanged = cached is not None and cached[0] == fd_count
+            paths = cached[1] if fds_unchanged else [f"/proc/{pid}/fdinfo/{fd}" for fd, target in fd_targets(pid) if target.startswith("/dev/dri/")]
+            client_paths: dict[tuple[str, str], str] = {}
+            for path in paths:
+                client = parse_drm_fdinfo(read_text(path))
+                if client is not None and (client["pdev"], client["id"]) not in client_paths:
+                    client_paths[client["pdev"], client["id"]] = path
+                    found.append((int(pid), client))
+            stale = fds_unchanged and len(client_paths) != len(paths)
+            if not stale:
+                fds[pid] = fd_count, list(client_paths.values())
         self.drm_fds = fds
-        return [path for _, paths in fds.values() for path in paths]
+        return found
 
     def _sample_clients(self) -> None:
         clients: dict[tuple[str, str], tuple[int, dict]] = {}
-        for path in self._drm_fdinfos():
-            client = parse_drm_fdinfo(read_text(path))
-            if client is not None:
-                clients.setdefault((client["pdev"], client["id"]), (int(path.split("/")[2]), client))
+        for pid, client in self._drm_clients():
+            clients.setdefault((client["pdev"], client["id"]), (pid, client))
         now = time.monotonic_ns()
         elapsed = (now - self.clients_stamp) / 1e9 if self.clients_stamp is not None else 0.0
         usable = 0.0 < elapsed < MAX_RATE_GAP_SECONDS
@@ -1082,6 +1099,7 @@ def parse_diskstats(parts: list[str]) -> tuple[int, int, int, int, int, int]:
         field(6) + field(10) + field(17) + field(19),
         field(12),
         field(13),
+        field(11),
     )
 
 
@@ -1261,6 +1279,7 @@ class DiskSampler:
                 "read": read_rate,
                 "write": write_rate,
                 "temp": round(temp / 1000, 1) if temp else None,
+                "inFlight": counters[6],
                 **(disk_load(prev, counters, elapsed) if prev else {"latency": None, "queue": None, "busy": None}),
             }
             total_read += read_rate
@@ -1282,13 +1301,27 @@ class NetworkSampler:
     def __init__(self) -> None:
         self.prev: dict[str, tuple[int, int]] = {}
         self.addr_cache: dict[str, dict] = {}
-        self.addr_stamp = 0.0
+        self.default_iface = ""
+        self.routing_changed = threading.Event()
+        self.routing_changed.set()
+        threading.Thread(target=self._watch_routing, daemon=True).start()
         self.wifi_cache: dict[str, dict] = {}
         self.wifi_stamp = 0.0
         self.public_ip = ""
         self.public_stamp = 0.0
         self.public_lock = threading.Lock()
         self.public_inflight = False
+
+    def _watch_routing(self) -> None:
+        events = socket.socket(socket.AF_NETLINK, socket.SOCK_RAW, socket.NETLINK_ROUTE)
+        events.bind((0, ROUTING_EVENT_GROUPS))
+        while True:
+            try:
+                events.recv(NETLINK_RECEIVE_BYTES)
+            except OSError as error:
+                if error.errno != errno.ENOBUFS:
+                    raise
+            self.routing_changed.set()
 
     @staticmethod
     def _default_iface() -> str:
@@ -1383,14 +1416,15 @@ class NetworkSampler:
                 continue
             current[name] = (int(parts[0]), int(parts[8]))
         refresh_seconds = DETAIL_REFRESH_SECONDS if detail else IDLE_REFRESH_SECONDS
-        if now - self.addr_stamp > refresh_seconds:
+        if self.routing_changed.is_set():
+            self.routing_changed.clear()
             self._refresh_addresses()
-            self.addr_stamp = now
+            self.default_iface = self._default_iface()
         wireless = [n for n in current if os.path.isdir(f"/sys/class/net/{n}/wireless")]
         if wireless and now - self.wifi_stamp > refresh_seconds:
             self._refresh_wifi(wireless)
             self.wifi_stamp = now
-        default = self._default_iface()
+        default = self.default_iface
         ifaces = []
         total_rx = total_tx = 0.0
         default_rx = default_tx = 0.0
@@ -1589,43 +1623,60 @@ class SensorSampler:
         return {"temps": temps, "fans": fans, "gpuTemp": gpu_temp}
 
 
-def sample_battery() -> dict | None:
-    base = "/sys/class/power_supply"
-    if os.environ.get("SYSTEMSTATS_FAKE_BATTERY"):
-        phase = (time.time() / 4) % 100
-        return {
-            "present": True, "name": "BAT0", "percent": round(35 + phase / 2, 1),
-            "status": "Charging" if int(time.time() / 40) % 2 else "Discharging",
-            "energyNow": 32.1, "energyFull": 56.0, "energyDesign": 57.0, "power": 12.4,
-            "voltage": 11.9, "timeToEmpty": 142, "timeToFull": 0, "cycles": 212,
-            "health": 98.2, "acOnline": bool(int(time.time() / 40) % 2), "model": "Demo Cell",
-            "peripherals": [{"name": "MX Master 3S", "percent": 70, "status": "Discharging"}],
-        }
-    if not os.path.isdir(base):
-        return None
-    system = None
-    peripherals = []
-    ac_online = None
-    for entry in bounded_directory_names(base):
-        path = f"{base}/{entry}"
-        ptype = read_text(f"{path}/type")
-        if ptype in ("Mains", "USB", "USB_PD", "USB_C"):
+class BatterySampler:
+    def __init__(self) -> None:
+        self.entries: list[str] | None = None
+        self.mains: list[str] = []
+        self.peripherals: list[tuple[str, str]] = []
+        self.system: tuple[str, str, str] | None = None
+
+    def _discover(self, entries: list[str]) -> None:
+        self.entries = entries
+        self.mains, self.peripherals, self.system = [], [], None
+        for entry in entries:
+            path = f"{POWER_SUPPLY_DIR}/{entry}"
+            ptype = read_text(f"{path}/type")
+            if ptype in MAINS_SUPPLY_TYPES:
+                self.mains.append(path)
+                continue
+            if ptype != "Battery":
+                continue
+            model = bounded_text(read_text(f"{path}/model_name"))
+            if read_text(f"{path}/scope") == "Device" or entry.startswith(("hid", "wacom")) or (not entry.startswith("BAT") and read_int(f"{path}/present", 1) == 1 and read_int(f"{path}/energy_full") is None and read_int(f"{path}/charge_full") is None):
+                self.peripherals.append((path, model or bounded_text(entry)))
+            elif self.system is None:
+                self.system = (entry, model, bounded_text(read_text(f"{path}/technology")))
+
+    def sample(self) -> dict | None:
+        if os.environ.get("SYSTEMSTATS_FAKE_BATTERY"):
+            phase = (time.time() / 4) % 100
+            return {
+                "present": True, "name": "BAT0", "percent": round(35 + phase / 2, 1),
+                "status": "Charging" if int(time.time() / 40) % 2 else "Discharging",
+                "energyNow": 32.1, "energyFull": 56.0, "energyDesign": 57.0, "power": 12.4,
+                "voltage": 11.9, "timeToEmpty": 142, "timeToFull": 0, "cycles": 212,
+                "health": 98.2, "acOnline": bool(int(time.time() / 40) % 2), "model": "Demo Cell",
+                "peripherals": [{"name": "MX Master 3S", "percent": 70, "status": "Discharging"}],
+            }
+        entries = bounded_directory_names(POWER_SUPPLY_DIR)
+        if entries != self.entries:
+            self._discover(entries)
+        ac_online = None
+        for path in self.mains:
             online = read_int(f"{path}/online")
             if online is not None:
                 ac_online = bool(online) if ac_online is None else (ac_online or bool(online))
-            continue
-        if ptype != "Battery":
-            continue
-        scope = read_text(f"{path}/scope")
+        peripherals = []
+        for path, name in self.peripherals:
+            capacity = read_int(f"{path}/capacity")
+            if capacity is not None and len(peripherals) < PERIPHERAL_LIMIT:
+                peripherals.append({"name": name, "percent": capacity, "status": bounded_text(read_text(f"{path}/status") or "Unknown")})
+        if self.system is None:
+            return {"present": False, "peripherals": peripherals} if peripherals else None
+        entry, model, technology = self.system
+        path = f"{POWER_SUPPLY_DIR}/{entry}"
         capacity = read_int(f"{path}/capacity")
         status = bounded_text(read_text(f"{path}/status") or "Unknown")
-        model = bounded_text(read_text(f"{path}/model_name"))
-        if scope == "Device" or entry.startswith(("hid", "wacom")) or (not entry.startswith("BAT") and read_int(f"{path}/present", 1) == 1 and read_int(f"{path}/energy_full") is None and read_int(f"{path}/charge_full") is None):
-            if capacity is not None and len(peripherals) < PERIPHERAL_LIMIT:
-                peripherals.append({"name": model or bounded_text(entry), "percent": capacity, "status": status})
-            continue
-        if system is not None:
-            continue
         present = read_int(f"{path}/present", 1) == 1
         voltage = (read_int(f"{path}/voltage_now") or 0) / 1_000_000
         energy_now = read_int(f"{path}/energy_now")
@@ -1669,16 +1720,12 @@ def sample_battery() -> dict | None:
             "health": health,
             "acOnline": ac_online,
             "model": model,
-            "technology": bounded_text(read_text(f"{path}/technology")),
+            "technology": technology,
         }
-    if system is None:
-        if peripherals:
-            return {"present": False, "peripherals": peripherals}
-        return None
-    if system["acOnline"] is None:
-        system["acOnline"] = system["status"] in ("Charging", "Full", "Not charging")
-    system["peripherals"] = peripherals
-    return system
+        if system["acOnline"] is None:
+            system["acOnline"] = system["status"] in ("Charging", "Full", "Not charging")
+        system["peripherals"] = peripherals
+        return system
 
 
 def display_name(pid: int, comm: str) -> str:
@@ -1694,7 +1741,8 @@ def display_name(pid: int, comm: str) -> str:
 
 class ProcessSampler:
     def __init__(self) -> None:
-        self.prev: dict[int, tuple[int, int, int, int]] = {}
+        self.prev: dict[int, tuple[int, int, int | None, int | None]] = {}
+        self.io_primed = False
         self.threads = os.cpu_count() or 1
         self.uid = os.getuid()
         self.names: dict[int, str] = {}
@@ -1703,6 +1751,7 @@ class ProcessSampler:
 
     def reset(self) -> None:
         self.prev = {}
+        self.io_primed = False
         self.names = {}
 
     @staticmethod
@@ -1715,7 +1764,7 @@ class ProcessSampler:
         return mounts
 
     def sample(self, elapsed: float, full: bool = False, drives: dict[int, str] | None = None) -> dict:
-        current: dict[int, tuple[int, int, int, int]] = {}
+        current: dict[int, tuple[int, int, int | None, int | None]] = {}
         by_name: dict[str, dict] = {}
         names: dict[int, str] = {}
         for entry in bounded_directory_names("/proc", PROCESS_SCAN_LIMIT):
@@ -1738,8 +1787,9 @@ class ProcessSampler:
                 continue
             ticks = int(fields[11]) + int(fields[12])
             rss = int(fields[21]) * PAGE_SIZE
-            read_bytes = write_bytes = 0
-            for line in (read_raw(f"/proc/{pid}/io", PROC_FILE_LIMIT) or b"").splitlines():
+            io_counters = read_raw(f"/proc/{pid}/io", PROC_FILE_LIMIT) if drives is not None else None
+            read_bytes = write_bytes = None
+            for line in (io_counters or b"").splitlines():
                 if line.startswith(b"read_bytes:"):
                     read_bytes = int(line.split()[1])
                 elif line.startswith(b"write_bytes:"):
@@ -1766,6 +1816,7 @@ class ProcessSampler:
             agg["write"] += io_write
             agg["count"] += 1
         self.prev = current
+        self.io_primed = drives is not None
         self.names = names
         groups = list(by_name.values())
 
@@ -1786,7 +1837,7 @@ class ProcessSampler:
             "cpu": trim(by_cpu, "cpu"),
             "mem": trim(sorted(groups, key=lambda g: g["mem"], reverse=True), "mem"),
             "total": len(groups),
-            "io": [row(group) for group in by_io[:PROC_LIMIT]],
+            "io": [row(group) for group in by_io[:PROC_LIMIT]] if drives is not None else None,
         }
         if drives is not None:
             by_drive: dict[str, list[dict]] = {}
@@ -1902,6 +1953,10 @@ class Controller:
         self.stop = False
         self.wake = threading.Event()
 
+    def pause(self, seconds: float) -> None:
+        self.wake.wait(seconds)
+        self.wake.clear()
+
     def listen(self) -> None:
         for line in bounded_lines(sys.stdin.buffer, CONTROL_LINE_LIMIT):
             parts = line.strip().split()
@@ -1958,6 +2013,7 @@ def main() -> int:
     disks = DiskSampler()
     net = NetworkSampler()
     sensors = SensorSampler()
+    battery = BatterySampler()
     procs = ProcessSampler()
 
     last = time.monotonic()
@@ -1968,7 +2024,7 @@ def main() -> int:
     net.sample(1.0, time.time(), controller.detail != DETAIL_NONE)
     if controller.detail != DETAIL_NONE:
         procs.sample(1.0, controller.detail == DETAIL_ALL_PROCESSES)
-    time.sleep(min(interval, 1.0) if not once else 0.5)
+    controller.pause(min(interval, 1.0) if not once else 0.5)
 
     last_slow: float | None = None
     last_procs: float | None = None
@@ -1988,15 +2044,19 @@ def main() -> int:
             current_interval = controller.interval
         want_network = detail != DETAIL_NONE and focus == "network"
         want_gpu = detail != DETAIL_NONE and focus == "gpu"
-        cold_procs = detail != DETAIL_NONE and last_procs is None
+        io_drives = disks.mount_keys if detail != DETAIL_NONE and focus == "disks" else None
+        cold_procs = detail != DETAIL_NONE and (last_procs is None or io_drives is not None and not procs.io_primed)
         cold_network = want_network and not network_primed
         if cold_procs or cold_network:
             if cold_procs:
-                procs.sample(1.0, False)
+                procs.sample(1.0, False, io_drives)
                 last_procs = time.monotonic()
             if cold_network:
                 procs.network_usage(False)
-            time.sleep(PROCESS_WARM_UP_SECONDS)
+                network_primed = True
+            last_slow = None
+            controller.pause(PROCESS_WARM_UP_SECONDS)
+            continue
         now_mono = time.monotonic()
         elapsed = max(0.02, now_mono - last)
         last = now_mono
@@ -2005,7 +2065,7 @@ def main() -> int:
             net.fetch_public_ip()
 
         payload: dict = {"seq": seq, "t": now, "elapsed": round(elapsed, 3), "interval": current_interval, "errors": []}
-        slow_due = cold_procs or cold_network or last_slow is None or now_mono - last_slow >= SLOW_SAMPLE_SECONDS
+        slow_due = last_slow is None or now_mono - last_slow >= SLOW_SAMPLE_SECONDS
         if slow_due:
             try:
                 sensors_cache = sensors.sample(now)
@@ -2013,14 +2073,14 @@ def main() -> int:
                 sensors_cache = None
                 payload["errors"].append(f"sensors: {error}")
             try:
-                battery_cache = sample_battery()
+                battery_cache = battery.sample()
             except Exception as error:  
                 battery_cache = None
                 payload["errors"].append(f"battery: {error}")
             if detail != DETAIL_NONE:
                 since = elapsed if last_procs is None else max(0.05, now_mono - last_procs)
                 try:
-                    procs_cache = procs.sample(since, detail == DETAIL_ALL_PROCESSES, disks.mount_keys if focus == "disks" else None)
+                    procs_cache = procs.sample(since, detail == DETAIL_ALL_PROCESSES, io_drives)
                 except Exception as error:  
                     procs_cache = None
                     payload["errors"].append(f"procs: {error}")
@@ -2074,8 +2134,7 @@ def main() -> int:
         seq += 1
         if once:
             break
-        controller.wake.wait(max(0.02, current_interval - (time.monotonic() - now_mono)))
-        controller.wake.clear()
+        controller.pause(max(0.02, current_interval - (time.monotonic() - now_mono)))
 
     gpu.stop()
     return 0

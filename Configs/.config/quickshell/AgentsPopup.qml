@@ -1,8 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import Quickshell.Io
 import "systemstats/ui" as Stats
-import "CalendarMath.js" as CalendarMath
 import "Units.js" as Units
 
 PopupCard {
@@ -21,15 +19,9 @@ PopupCard {
     property int selected: 0
     property string expandedProviderId: ""
     property string recommendationId: ""
-    property var notificationSettings: ({notifyRecommendation: false, notifyLimit: false})
-    readonly property bool notifyLimit: notificationSettings.notifyLimit === true
     signal select(int index)
-    signal refreshRequested()
-    signal limitNotificationsEnabled()
-    onNotifyLimitChanged: if (notifyLimit) limitNotificationsEnabled()
 
     readonly property int blockingHorizonMs: 5 * Units.MS_PER_HOUR
-    readonly property int staleAfterMs: 40 * Units.MS_PER_MINUTE
     readonly property int viewportHeight: Style.px(520)
     readonly property real switchMargin: 0.05
 
@@ -37,7 +29,7 @@ PopupCard {
     readonly property bool isOpenCode: provider !== null && provider.id === "opencode"
     readonly property var providerUsage: isOpenCode ? provider.providerUsage || [] : []
     readonly property bool telemetryStale: records.some(record => record.id !== "opencode" &&
-        (record.limits || []).length && Date.now() - (Number(record.limitsObservedAt) || 0) > staleAfterMs)
+        (record.limits || []).length && Date.now() - (Number(record.limitsObservedAt) || 0) > AgentsUsage.staleAfterMs)
     readonly property var candidate: records.filter(record => record.id !== "opencode").map(rank).reduce((best, scored) =>
         scored && (!best || better(scored, best, 0)) ? scored : best, null)
 
@@ -111,13 +103,8 @@ PopupCard {
         return Units.spanText(minutes * Units.SECONDS_PER_MINUTE) || "0m"
     }
     function handleKey(event) {
-        if (event.key === Qt.Key_R) { refreshRequested(); return true }
+        if (event.key === Qt.Key_R) { AgentsUsage.refresh(true); return true }
         return defaultKey(event)
-    }
-    function setNotification(key, enabled) {
-        const next = Object.assign({}, notificationSettings, {[key]: enabled})
-        notificationSettingsFile.setText(JSON.stringify(next, null, 2) + "\n")
-        notificationSettings = next
     }
     onCandidateChanged: {
         if (!candidate) return
@@ -130,22 +117,6 @@ PopupCard {
         const record = records.find(entry => String(entry.id) === recommendationId)
         if (record) shell.run(["hyprshell", "system/agent-recommendation", recommendationId,
             String(record.name || recommendationId), usageSummary(record)])
-    }
-
-    FileView {
-        id: notificationSettingsFile
-        path: root.shell.home + "/.config/quickshell/agents.json"
-        watchChanges: true; atomicWrites: true; printErrors: false
-        onFileChanged: reload()
-        onLoaded: {
-            try {
-                const saved = JSON.parse(text())
-                root.notificationSettings = {
-                    notifyRecommendation: saved.notifyRecommendation === true,
-                    notifyLimit: saved.notifyLimit === true
-                }
-            } catch (error) { root.notificationSettings = ({notifyRecommendation: false, notifyLimit: false}) }
-        }
     }
 
     Flickable {
@@ -404,15 +375,15 @@ PopupCard {
                 width: parent.width; shell: root.shell
                 title: "Recommendation changes"
                 detail: "Notify when the suggested agent changes"
-                checked: root.notificationSettings.notifyRecommendation === true
-                onToggled: root.setNotification("notifyRecommendation", !checked)
+                checked: AgentsUsage.notificationSettings.notifyRecommendation === true
+                onToggled: AgentsUsage.setNotification("notifyRecommendation", !checked)
             }
             PopupToggleRow {
                 width: parent.width; shell: root.shell
                 title: "90% limit"
                 detail: "Notify when any agent nears a limit"
-                checked: root.notifyLimit
-                onToggled: root.setNotification("notifyLimit", !checked)
+                checked: AgentsUsage.notifyLimit
+                onToggled: AgentsUsage.setNotification("notifyLimit", !checked)
             }
         }
 

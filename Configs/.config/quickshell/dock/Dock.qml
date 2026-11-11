@@ -477,8 +477,7 @@ Item {
     clearMenuCursor()
     if (!anyPanelOpen) return
     menuKeyCatcher.forceActiveFocus()
-    menuFocusPriming = true
-    menuFocusTimer.restart()
+    menuFocusPriming = !menuKeyCatcher.Window.active
   }
 
   property int dockCursor: -1
@@ -552,12 +551,6 @@ Item {
     id: hideTimer
     interval: root.pointerLeaveDelayMs
     onTriggered: root.dockVisible = false
-  }
-
-  Timer {
-    id: menuFocusTimer
-    interval: Commons.Style.focusPrimeDelay
-    onTriggered: root.menuFocusPriming = false
   }
 
   Timer {
@@ -2063,7 +2056,7 @@ Item {
       anchors.fill: parent
       focus: true
       Keys.onPressed: event => event.accepted = root.handleMenuKey(event)
-      Window.onActiveChanged: if (!Window.active) root.dockCursor = -1
+      Window.onActiveChanged: if (Window.active) root.menuFocusPriming = false; else root.dockCursor = -1
     }
 
     mask: Region {
@@ -2335,27 +2328,10 @@ Item {
                 height: Math.max(boxHeight, boxWidth / srcAspect)
                 live: false
                 captureSource: tile.win && tile.win.waylandToplevel ? tile.win.waylandToplevel : null
-
-                onCaptureSourceChanged: {
-                  captureRetry.attempts = 0
-                  captureRetry.restart()
-                }
                 onStopped: {
                   var src = captureSource
                   captureSource = null
                   Qt.callLater(function() { captureSource = src })
-                }
-
-                Timer {
-                  id: captureRetry
-                  interval: 140
-                  property int attempts: 0
-                  readonly property int maxAttempts: 6
-                  repeat: attempts < maxAttempts
-                  onTriggered: {
-                    attempts++
-                    if (!tilePreview.hasContent && tilePreview.captureSource) tilePreview.captureFrame()
-                  }
                 }
               }
 

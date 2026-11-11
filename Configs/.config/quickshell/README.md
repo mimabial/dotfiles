@@ -440,9 +440,10 @@ device and has no native path, so sysfs and D-Bus paths come from the
   `~/.cache/hypr/agents/usage.json`; `system/agent-usage.sh` is the only
   producer, so quota and token calculations stay aligned between the bar and
   terminal views. Each surface triggers its own refresh: the TUI on open when
-  the cache is older than its `CACHE_MAX_AGE_SECONDS`, `AgentsButton` on a 15 minute
-  Timer. That Timer only runs on layouts that instantiate the button, so it is
-  not a refresh path anything else may rely on. Pressing R in the popup forces
+  the cache is older than its `CACHE_MAX_AGE_SECONDS`, the bar through the
+  `AgentsUsage` singleton's 15 minute Timer, shared by every screen's button. That
+  Timer only runs while a layout instantiates `AgentsButton`, so it is not a
+  refresh path anything else may rely on. Pressing R in the popup forces
   a local rescan. Providers publish independently as they finish; pricing runs
   separately, retaining the previous costs until each fresh calculation arrives.
   The OpenCode tab reads provider
@@ -491,8 +492,10 @@ device and has no native path, so sysfs and D-Bus paths come from the
   any `rel` that escapes the root back to the root.
 - Local tracks have no cover file on disk, so `attach_covers()` pulls the
   embedded art out with one `ffmpeg` call per track into `~/.cache/cliamp/covers/`,
-  keyed by path and mtime. The pass is parallel and time-boxed; anything that
-  misses the budget lands on the next listing, and cached art costs nothing.
+  keyed by path and mtime. A track `ffmpeg` finds no art in gets a `.missing`
+  marker beside that key, so it is not probed again until the file changes. The
+  pass is parallel and time-boxed; anything that misses the budget lands on the
+  next listing, and cached art costs nothing.
   Files, Recents, and the local half of search all go through it.
 - The queue is mpv's own playlist. `~/.cache/cliamp/mpv_playlist.json` mirrors it,
   adding what mpv lacks (title, artist, thumb, keyed by `playlist_id`) and the

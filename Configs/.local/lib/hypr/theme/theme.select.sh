@@ -31,11 +31,10 @@ HELP
 source "${HYPR_LIB_DIR}/theme/lib/selector.layout.bash" || exit 1
 
 list_style_menu_entries() {
-  rofi_list_asset_files 'theme_style_*' \
-    | awk -F '[_.]' '{print $((NF - 1))}' \
-    | while read -r style_num; do
-      printf '%s\x00icon\x1f%s\n' "${style_num}" "$(rofi_resolve_asset "theme_style_${style_num}.png")"
-    done | sort -n
+  local style_name
+  for style_name in square faded; do
+    printf '%s\x00icon\x1f%s\n' "${style_name}" "$(rofi_resolve_asset "theme_style_${style_name}.png")"
+  done
 }
 
 select_and_save_style() {
@@ -45,13 +44,19 @@ select_and_save_style() {
   local layout_override=""
   local selection=""
   local style_icon=""
+  local current_style="${ROFI_THEME_STYLE:-square}"
+
+  case "${current_style}" in
+    1 | sqre) current_style=square ;;
+    2 | quad) current_style=faded ;;
+  esac
 
   local -A selector_monitor=()
   theme_selector_monitor_metrics_into selector_monitor
   font_scale="$(rofi_effective_font_scale "${ROFI_THEME_SCALE}")"
   font_name="$(rofi_effective_font_name "${ROFI_THEME_MENU_FONT:-$ROFI_FONT}")"
   font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
-  layout_override="$(theme_style_picker_layout "${font_scale}" selector_monitor)"
+  layout_override="$(theme_style_picker_layout selector_monitor)"
 
   selection="$(
     list_style_menu_entries | rofi_with_background_theme -dmenu -i \
@@ -59,7 +64,7 @@ select_and_save_style() {
       -theme "$(rofi_resolve_theme "${ROFI_THEME_MENU_STYLE:-theme_select}")" \
       -theme-str "${font_override}" \
       -theme-str "${layout_override}" \
-      -select "${ROFI_THEME_STYLE}"
+      -select "${current_style}"
   )"
 
   [[ -n "${selection}" ]] || return 0

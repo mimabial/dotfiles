@@ -28,9 +28,9 @@
   "clickToMinimize": true,
   "iconSize": 36,
   "recentApps": [
+    "blueman-manager",
     "kitty",
-    "libreoffice-writer",
-    "signal"
+    "libreoffice-writer"
   ],
   "showRecents": true,
   "showIndicators": true,

@@ -95,13 +95,13 @@ Item {
     function formatTime(milliseconds, showCentiseconds) {
         const safeMilliseconds = Math.max(0, Math.floor(milliseconds))
         const total = showCentiseconds || mode === stopwatchMode
-            ? Math.floor(safeMilliseconds / 1000) : Math.ceil(milliseconds / 1000)
-        const hours = Math.floor(total / 3600)
-        const minutes = Math.floor(total % 3600 / 60)
-        const seconds = total % 60
+            ? Math.floor(safeMilliseconds / Units.MS_PER_SECOND) : Math.ceil(milliseconds / Units.MS_PER_SECOND)
+        const hours = Math.floor(total / Units.SECONDS_PER_HOUR)
+        const minutes = Math.floor(total % Units.SECONDS_PER_HOUR / Units.SECONDS_PER_MINUTE)
+        const seconds = total % Units.SECONDS_PER_MINUTE
         const result = (hours > 0 ? hours + ":" + pad2(minutes) : pad2(minutes)) + ":" + pad2(seconds)
         if (!showCentiseconds) return result
-        const centiseconds = Math.floor(safeMilliseconds % 1000 / 10)
+        const centiseconds = Math.floor(safeMilliseconds % Units.MS_PER_SECOND / 10)
         return result + "." + pad2(centiseconds)
     }
     function selectMode(nextMode) {
@@ -233,7 +233,13 @@ Item {
         Quickshell.execDetached(["dunstify", "-a", "Time Tools", "-h", "string:x-dunst-stack-tag:time-tools", "Time Tools", message])
     }
 
-    Timer { interval: root.mode === root.stopwatchMode ? 10 : 100; repeat: true; running: root.running; onTriggered: root.tick() }
+    Timer {
+        readonly property bool detailed: root.shell.popupName === "timer"
+        interval: detailed ? (root.mode === root.stopwatchMode ? 10 : 100) : Units.MS_PER_SECOND - root.elapsedMs % Units.MS_PER_SECOND
+        repeat: detailed
+        running: root.running
+        onTriggered: { root.tick(); if (!repeat && root.running) restart() }
+    }
     Timer { id: completionBell; interval: 625; onTriggered: root.playNextCompletionBell() }
     Component.onCompleted: {
         pomodoroWorkMinutes = shell.store.clockworkWorkMinutes

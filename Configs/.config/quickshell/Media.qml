@@ -120,7 +120,8 @@ Singleton {
     function remaining(player) {
         tick
         if (!player || !player.lengthSupported || !player.positionSupported) return "LIVE"
-        const total = Math.max(0, Math.ceil(player.length - player.position)), h = Math.floor(total / 3600), m = Math.floor(total % 3600 / 60), s = total % 60
+        const total = Math.max(0, Math.ceil(player.length - player.position)), h = Math.floor(total / Units.SECONDS_PER_HOUR)
+        const m = Math.floor(total % Units.SECONDS_PER_HOUR / Units.SECONDS_PER_MINUTE), s = total % Units.SECONDS_PER_MINUTE
         const pad = value => String(value).padStart(2, "0")
         return h ? pad(h) + ":" + pad(m) + ":" + pad(s) : pad(m) + ":" + pad(s)
     }

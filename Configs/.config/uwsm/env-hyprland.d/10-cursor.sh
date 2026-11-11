@@ -1,22 +1,27 @@
 HYPR_THEME_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/themes/theme.meta"
 
-hypr_cursor_value() {
-  awk -v name="$1" '
-    $0 ~ "^[[:space:]]*[$]" name "[[:space:]]*=" {
+hypr_cursor_values() {
+  awk '
+    /^[[:space:]]*[$]CURSOR_(THEME|SIZE)[[:space:]]*=/ {
+      name = $0
+      sub(/^[[:space:]]*[$]/, "", name)
+      sub(/[[:space:]]*=.*/, "", name)
       value = $0
       sub(/^[^=]*=[[:space:]]*/, "", value)
       sub(/[[:space:]]*#.*/, "", value)
       gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
       sub(/^["\047]/, "", value)
       sub(/["\047]$/, "", value)
+      values[name] = value
     }
-    END { print value }
-  ' "$2" 2>/dev/null
+    END { print values["CURSOR_THEME"]; print values["CURSOR_SIZE"] }
+  ' "$1" 2>/dev/null
 }
 
 if [ -r "$HYPR_THEME_CONF" ]; then
-  _hypr_cursor_theme="$(hypr_cursor_value CURSOR_THEME "$HYPR_THEME_CONF")"
-  _hypr_cursor_size="$(hypr_cursor_value CURSOR_SIZE "$HYPR_THEME_CONF")"
+  { IFS= read -r _hypr_cursor_theme; IFS= read -r _hypr_cursor_size; } <<CURSOR_VALUES
+$(hypr_cursor_values "$HYPR_THEME_CONF")
+CURSOR_VALUES
 
   [ -n "$_hypr_cursor_theme" ] && XCURSOR_THEME="$_hypr_cursor_theme"
   [ -n "$_hypr_cursor_size" ] && XCURSOR_SIZE="$_hypr_cursor_size"

@@ -54,10 +54,11 @@ _tmux_layout_ensure_workspace_panes() {
 }
 
 _tmux_layout_rightmost_pane() {
-  local target="$1"
-  tmux list-panes -t "$target" -F '#{pane_id} #{pane_left}' \
-    | sort -k2,2n \
-    | tail -n1 \
-    | awk '{print $1}'
+  local target="$1" pane rightmost="" rightmost_left=-1
+  for pane in ${(f)"$(tmux list-panes -t "$target" -F '#{pane_left} #{pane_id}')"}; do
+    (( ${pane%% *} >= rightmost_left )) || continue
+    rightmost_left=${pane%% *} rightmost=${pane#* }
+  done
+  print -r -- "$rightmost"
 }
 

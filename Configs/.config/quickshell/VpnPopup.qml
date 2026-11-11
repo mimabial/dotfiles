@@ -114,7 +114,6 @@ PopupCard {
     function loadRelays(force) { if ((force || countries.length === 0) && !relayProcess.running) relayProcess.running = true }
     function loadSettings() {
         if (settingsProcess.running) return
-        settingsProcess.action = "load"
         settingsProcess.command = [root.shell.home + "/.local/lib/hypr/system/vpn-status.sh", "--settings"]
         settingsProcess.running = true
     }
@@ -142,7 +141,7 @@ PopupCard {
     function setLocation(args) {
         if (locationProcess.running) return
         actionError = ""; pendingAction = "changing location"
-        locationProcess.selected = args
+        selectedLocation = args
         locationProcess.command = ["mullvad", "relay", "set", "location"].concat(args)
         locationProcess.running = true
         browsing = ""; filter = ""
@@ -160,7 +159,7 @@ PopupCard {
     }
     function setSetting(name, enabled) {
         if (settingsProcess.running) return
-        settingsError = ""; settingsProcess.action = name
+        settingsError = ""
         settingsProcess.command = [root.shell.home + "/.local/lib/hypr/system/vpn-status.sh", "--set", name, enabled ? "on" : "off"]
         settingsProcess.running = true
     }
@@ -253,13 +252,13 @@ PopupCard {
             root.refresh()
         }
     }
+    property var selectedLocation: []
     property Process locationProcess: Process {
-        property var selected: []
         stderr: StdioCollector { id: locationStderr; waitForEnd: true }
         onExited: (code, status) => {
             root.pendingAction = ""
             if (code === 0) {
-                const args = selected, here = !args.length || args[0] === "any" ? ({kind: "any"})
+                const args = root.selectedLocation, here = !args.length || args[0] === "any" ? ({kind: "any"})
                     : args.length > 1 ? ({kind: "city", country: args[0], city: args[1]})
                     : ({kind: "country", country: args[0]})
                 root.relays = ({countries: root.countries, current: here})
@@ -268,7 +267,6 @@ PopupCard {
         }
     }
     property Process settingsProcess: Process {
-        property string action: ""
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: {
             try { root.settings = JSON.parse(text) || ({}); root.settingsLoaded = true; root.settingsError = "" }
             catch (error) {}
@@ -276,7 +274,6 @@ PopupCard {
         stderr: StdioCollector { id: settingsStderr; waitForEnd: true }
         onExited: (code, status) => {
             if (code !== 0) root.settingsError = String(settingsStderr.text).trim() || "Could not update Mullvad settings"
-            action = ""
         }
     }
     property Timer copiedTimer: Timer { interval: Style.confirmationShownMs; onTriggered: root.ipCopied = false }

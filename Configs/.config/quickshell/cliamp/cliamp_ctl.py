@@ -440,6 +440,9 @@ def cycle_repeat():
     send_mpv_cmds([["set_property", "loop-file", loop_file], ["set_property", "loop-playlist", loop_playlist]])
     return {"success": True}
 
+def missing_cover_marker(cover):
+    return cover + ".missing"
+
 def embedded_cover_cache_path(track):
     try:
         stat = os.stat(track)
@@ -457,7 +460,7 @@ def attach_covers(tracks, budget_seconds=COVER_EXTRACTION_SECONDS, track_path_ke
     for track in local_tracks:
         cover = embedded_cover_cache_path(track[track_path_key])
         track["thumb"] = cover if cover and os.path.exists(cover) else ""
-        if cover and not track["thumb"]:
+        if cover and not track["thumb"] and not os.path.exists(missing_cover_marker(cover)):
             uncached_covers.append((track, cover))
     deadline = time.monotonic() + budget_seconds
     pending, next_cover = {}, 0
@@ -489,6 +492,7 @@ def attach_covers(tracks, budget_seconds=COVER_EXTRACTION_SECONDS, track_path_ke
                     track["thumb"] = cover
                 else:
                     unlink(cover)
+                    open(missing_cover_marker(cover), "a").close()
     finally:
         for pidfd, (process, _, cover) in pending.items():
             os.close(pidfd)
@@ -1444,30 +1448,27 @@ def search_tracks(query, limit=10):
     results = []
 
     ext_list = list(AUDIO_EXTS)
-    found_local = []
+    found_local = None
     if shutil.which("fd") and os.path.isdir(MUSIC_DIR):
         try:
-            fd_cmd = ["fd", "--max-results", str(limit), "--ignore-case"]
+            fd_cmd = ["fd", "--max-results", str(limit), "--ignore-case", "--fixed-strings"]
             for ext in ext_list:
                 fd_cmd.extend(["-e", ext])
             fd_cmd.extend([term, MUSIC_DIR])
             found = child_process.run(fd_cmd, capture_output=True, text=True, timeout=1.5)
-            for line in (found.stdout or "").splitlines():
-                path = line.strip()
-                if path and os.path.isfile(path):
-                    found_local.append(path)
+            if found.returncode == 0:
+                found_local = [path for line in found.stdout.splitlines() if (path := line.strip()) and os.path.isfile(path)]
         except Exception:
             pass
 
-    if not found_local and os.path.isdir(MUSIC_DIR):
+    if found_local is None:
+        found_local = []
         exts = tuple("." + e for e in ext_list)
         try:
             for root, _, files in os.walk(MUSIC_DIR):
                 for f in files:
                     if f.lower().endswith(exts) and term.lower() in f.lower():
-                        full_path = os.path.join(root, f)
-                        if full_path not in found_local:
-                            found_local.append(full_path)
+                        found_local.append(os.path.join(root, f))
                         if len(found_local) >= limit:
                             break
                 if len(found_local) >= limit:

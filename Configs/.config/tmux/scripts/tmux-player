@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 
-now_playing="$(playerctl metadata --format $'{{status}}\n#[default]#[fg=#{@theme_gray}] 󰽯 #[default,italics]{{title}}#[fg=#{@theme_gray}]  #[default]' 2>/dev/null)"
-case "${now_playing%%$'\n'*}" in
-  Playing | Paused) printf '%s\n' "${now_playing#*$'\n'}" ;;
-esac
+exec {events}< <(exec playerctl --follow metadata --format $'{{status}}\t#[default]#[fg=#{@theme_gray}] 󰽯 #[default,italics]{{title}}#[fg=#{@theme_gray}]  #[default]' 2>/dev/null)
+events_pid=$!
+trap 'kill "$events_pid" 2>/dev/null' EXIT
+trap 'exit 143' TERM HUP
+while IFS=$'\t' read -r -u "$events" status now_playing; do
+  case "$status" in
+    Playing | Paused) printf '%s\n' "$now_playing" ;;
+    *) printf '\n' ;;
+  esac
+done

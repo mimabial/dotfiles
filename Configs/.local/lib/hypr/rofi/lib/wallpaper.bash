@@ -11,20 +11,20 @@ ROFI_WALLPAPER_SPLIT_BELOW_RATIO_MILLION=1500000
 # bar, gap and border width once it has been clamped to the monitor.
 rofi_wallpaper_theme_reserves_bar_width() {
   case "$1" in
-    style_1 | style_11) return 0 ;;
+    sidebar | split) return 0 ;;
     *) return 1 ;;
   esac
 }
 
-# Themes that draw no wallpaper preview, so there is no image to take a ratio from.
+# Themes whose window ratio stays fixed instead of following the wallpaper.
 rofi_wallpaper_theme_has_fixed_ratio() {
-  [[ "$1" == "style_11" || "$1" == color_mode_* ]]
+  [[ "$1" == "split" || "$1" == color_mode_* ]]
 }
 
 # Themes that move the list beside the preview once the wallpaper is narrower than
 # 3:2, rather than letting a tall preview push the rows off the window.
 rofi_wallpaper_theme_splits_listbox() {
-  [[ "$1" == "style_1" ]]
+  [[ "$1" == "sidebar" ]]
 }
 
 rofi_wallpaper_post_clamp_reduction_px() {

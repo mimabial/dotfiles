@@ -1,7 +1,7 @@
 # Animations and shaders
 
 Two small pipelines that work the same way: a directory of presets, a picker in
-the menu tree (`Super + T` then `A` or `S`, or Style in `Super + Space`), and a
+the menu tree (`Super + T` then `A` or `Shift + S`, or Style in `Super + Space`), and a
 generated Lua fragment the compositor loads.
 
 ## Animations

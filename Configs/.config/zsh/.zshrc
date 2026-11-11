@@ -50,7 +50,8 @@ Filename template, noise stripping and cover art: ~/.config/yt-dlp/config"
       '-p'|'--playlist') playlist=1; shift ;;
       '-s'|'--split')    split=1; shift ;;
       '-n'|'--no-thumb') nothumb=1; shift ;;
-      '-d'|'--dir')      sub=$2; shift 2 ;;
+      '-d'|'--dir')      (( $# > 1 )) || { print -u2 "yt: $1 needs a <subdir>\n$usage"; return 2 }
+                         sub=$2; shift 2 ;;
       '--')               shift; break ;;
       *)             break ;;
     esac

@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import qs.Commons as Commons
-import qs.Ui
 import "DockModel.js" as DockModel
 
 Item {

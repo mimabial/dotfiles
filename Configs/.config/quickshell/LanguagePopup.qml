@@ -90,7 +90,7 @@ PopupCard {
         busy = true
         statusError = false
         statusText = "Applying keyboard settings…"
-        actionProcess.successMessage = successMessage
+        actionSuccessMessage = successMessage
         actionProcess.command = ["hyprshell", "util/keyboard-layout"].concat(args)
         actionProcess.running = true
     }
@@ -215,8 +215,8 @@ PopupCard {
         }
     }
 
+    property string actionSuccessMessage: ""
     property Process actionProcess: Process {
-        property string successMessage: ""
         stdout: StdioCollector {
             id: actionStdout
             waitForEnd: true
@@ -228,7 +228,7 @@ PopupCard {
         onExited: code => {
             root.busy = false
             if (code === 0 && root.acceptReport(actionStdout.text)) {
-                root.showMain(successMessage)
+                root.showMain(root.actionSuccessMessage)
                 root.moduleRefreshRequested()
                 return
             }

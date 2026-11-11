@@ -506,24 +506,24 @@ exec(
 exec("", "XF86PowerOff", "[Hardware|Power] logout menu", "hyprshell logout-launch.sh")
 exec("", "XF86TouchpadToggle", "[Hardware|Touchpad] toggle touchpad", "hyprshell controls/touchpad-toggle.sh", { locked = true })
 
-exec("", "Print", "[Utilities|Capture] all monitors", "hyprshell screenshot.sh p", { locked = true })
-exec("SHIFT", "Print", "[Utilities|Capture] smart screenshot", "hyprshell screenshot.sh smart", { locked = true })
+exec("", "Print", "[Capture] screenshot all monitors", "hyprshell screenshot.sh p", { locked = true })
+exec("SHIFT", "Print", "[Capture] smart screenshot", "hyprshell screenshot.sh smart", { locked = true })
 -- The compositor sees the switch itself, so locking here needs no init system and
 -- survives caffeine stopping hypridle.
 exec(
 	"",
 	"switch:on:Lid Switch",
-	"[Utilities|Session] lid close: configured action",
+	"[Session] lid close: configured action",
 	"hyprshell session/lid-close.sh",
 	{ locked = true }
 )
 -- Stays top-level and locked: the layout must be switchable on the lock screen.
-exec(mod, "K", "[Utilities] switch keyboard layout", "hyprshell keyboard-switch.sh", { locked = true })
-exec(mod, "L", "[Utilities|Session] lock screen", "hyprshell lock-screen.sh")
+exec(mod, "K", "[Hardware|Keyboard] switch keyboard layout", "hyprshell keyboard-switch.sh", { locked = true })
+exec(mod, "L", "[Session] lock screen", "hyprshell lock-screen.sh")
 
 submap_leader("window", mod, "W", function()
-	submap_action("LEFT", "[Window Mode|Focus] focus left", hl.dsp.focus({ direction = "left" }))
-	submap_action("RIGHT", "[Window Mode|Focus] focus right", hl.dsp.focus({ direction = "right" }))
+	submap_action("LEFT", "[Window Mode|Focus] focus left", focus_window("left"))
+	submap_action("RIGHT", "[Window Mode|Focus] focus right", focus_window("right"))
 	submap_action("UP", "[Window Mode|Focus] focus up", hl.dsp.focus({ direction = "up" }))
 	submap_action("DOWN", "[Window Mode|Focus] focus down", hl.dsp.focus({ direction = "down" }))
 
@@ -547,7 +547,7 @@ submap_leader("window", mod, "W", function()
 	submap_action("G", "[Window Mode|State] toggle group", hl.dsp.group.toggle())
 	submap_exec("P", "[Window Mode|State] toggle pin", "hyprshell window/windowpin.sh")
 	submap_exec("SHIFT + P", "[Window Mode|Placement] snap placement menu", lib_dir .. "/window/snap.sh")
-	submap_exec("D", "[Window Mode|State] show desktop", "quickshell ipc call dock showDesktop")
+	submap_exec("D", "[Window Mode|Workspace] toggle show desktop", "quickshell ipc call dock showDesktop")
 
 	for workspace = 1, 10 do
 		local code = workspace_code(workspace)
@@ -574,7 +574,7 @@ submap_leader("window", mod, "W", function()
 		"[Window Mode|Layout] cycle global layout backward",
 		"hyprshell window/layout-toggle.sh previous"
 	)
-	submap_exec("L", "[Window Mode|Layout] select global layout", menu("trigger_toggle_workspace_layout"))
+	submap_exec("L", "[Window Mode|Layout] select global layout", menu("trigger_toggle_window_layout"))
 	layout_submap_action("dwindle", "S", "toggle window split", hl.dsp.layout("togglesplit"))
 	layout_submap_action("dwindle", "SHIFT + S", "swap split", hl.dsp.layout("swapsplit"))
 	layout_submap_action("dwindle", "R", "rotate split", hl.dsp.layout("rotatesplit"))
@@ -591,9 +591,9 @@ submap_leader("window", mod, "W", function()
 	layout_submap_action("scrolling", "Z", "grow column", resize_column(1))
 	layout_submap_action("scrolling", "SHIFT + Z", "shrink column", resize_column(-1))
 	layout_submap_action("scrolling", "X", "expand column", expand_scrolling_column)
-	layout_submap_action("scrolling", "V", "promote window", hl.dsp.layout("promote"))
-	layout_submap_action("scrolling", "B", "consume into column", hl.dsp.layout("consume"))
-	layout_submap_action("scrolling", "SHIFT + B", "expel from column", hl.dsp.layout("expel"))
+	layout_submap_action("scrolling", "V", "move window into its own column", hl.dsp.layout("promote"))
+	layout_submap_action("scrolling", "B", "pull next column's first window into this column", hl.dsp.layout("consume"))
+	layout_submap_action("scrolling", "SHIFT + B", "move this column's last window into its own column", hl.dsp.layout("expel"))
 	layout_submap_action("scrolling", "I", "fit column into view", hl.dsp.layout("fit_into_view"))
 
 	layout_submap_action("master", "W", "focus master", hl.dsp.layout("focusmaster"))
@@ -606,8 +606,8 @@ submap_leader("window", mod, "W", function()
 	layout_submap_action("master", "SHIFT + A", "remove master", hl.dsp.layout("removemaster"))
 	layout_submap_action("master", "O", "cycle orientation", hl.dsp.layout("orientationcycle"))
 	layout_submap_action("master", "SHIFT + O", "center orientation", hl.dsp.layout("orientationcenter"))
-	layout_submap_action("master", "R", "roll next", hl.dsp.layout("rollnext"))
-	layout_submap_action("master", "SHIFT + R", "roll previous", hl.dsp.layout("rollprev"))
+	layout_submap_action("master", "R", "rotate next window into master", hl.dsp.layout("rollnext"))
+	layout_submap_action("master", "SHIFT + R", "rotate previous window into master", hl.dsp.layout("rollprev"))
 	layout_submap_action("master", "Z", "grow master", hl.dsp.layout("mfact +" .. LAYOUT_RATIO_STEP))
 	layout_submap_action("master", "SHIFT + Z", "shrink master", hl.dsp.layout("mfact -" .. LAYOUT_RATIO_STEP))
 
@@ -635,15 +635,14 @@ submap_leader("theming", mod, "T", function()
 	)
 	submap_exec("B", "[Theming] select bar layout", menu("style_bar_layout"))
 	submap_exec("SHIFT + B", "[Theming] reload bar", "quickshell ipc call bar reload")
-	submap_exec("C", "[Theming] cycle bar layout", "hyprshell quickshell/layout next")
-	submap_exec("SHIFT + C", "[Theming] cycle bar layout backward", "hyprshell quickshell/layout previous")
+	submap_cycle("C", "[Theming] cycle bar layout", "hyprshell quickshell/layout next")
+	submap_cycle("SHIFT + C", "[Theming] cycle bar layout backward", "hyprshell quickshell/layout previous")
 	submap_exec("H", "[Theming] toggle bar", "hyprshell quickshell/visibility toggle")
 	submap_exec("SHIFT + H", "[Theming] toggle floating bar", "quickshell ipc call bar floating")
-	submap_exec("S", "[Theming] Settings", "hyprshell window/settings.sh")
 	submap_exec("A", "[Theming] select animation", menu("style_animations"))
 	submap_exec("SHIFT + S", "[Theming] select shader", menu("style_shaders"))
-	submap_exec("M", "[Theming] color mode", menu("style_color_mode"))
-	submap_exec("R", "[Theming] select rofi theme", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh -s")
+	submap_exec("M", "[Theming] select color source and light/dark mode", menu("style_color_mode"))
+	submap_exec("R", "[Theming] select theme picker style", "hyprshell rofi/run-after-close.sh -- hyprshell theme.select.sh -s")
 	submap_exec("SHIFT + R", "[Theming] select launcher style", "hyprshell rofi-launch.sh -s")
 	submap_exec("L", "[Theming] select lock layout", "quickshell ipc call lockview open")
 	for workspace = 1, 10 do
@@ -657,11 +656,11 @@ submap_leader("theming", mod, "T", function()
 end, false)
 
 submap_leader("open", mod, "O", function()
-	submap_exec("F", "[Open] File finder", "pkill -x rofi || hyprshell launch/file-finder.sh")
-	submap_exec("B", "[Open] Bookmarks", "quickshell ipc call bar bookmarks")
-	submap_exec("N", "[Open] Notifications", "quickshell ipc call bar popup notifications")
-	submap_exec("T", "[Open] Tray", "quickshell ipc call bar tray")
-	submap_exec("L", "[Open] Game launcher", "hyprshell gaming/launcher.sh")
+	submap_exec("F", "[Open] file finder", "pkill -x rofi || hyprshell launch/file-finder.sh")
+	submap_exec("B", "[Open] bookmarks", "quickshell ipc call bar bookmarks")
+	submap_exec("N", "[Open] notifications", "quickshell ipc call bar popup notifications")
+	submap_exec("T", "[Open] tray", "quickshell ipc call bar tray")
+	submap_exec("L", "[Open] game launcher", "hyprshell gaming/launcher.sh")
 	submap_exec(
 		"SHIFT + L",
 		"[Open] Lutris",
@@ -674,7 +673,7 @@ submap_leader("open", mod, "O", function()
 		"[Open] LibreOffice Writer",
 		"hyprshell launch/summon.sh class:libreoffice-writer -- libreoffice --writer"
 	)
-	submap_exec("G", "[Open] Gimp", "hyprshell launch/summon.sh --empty-workspace-if-occupied gimp -- gimp")
+	submap_exec("G", "[Open] GIMP", "hyprshell launch/summon.sh --empty-workspace-if-occupied gimp -- gimp")
 	submap_exec("E", "[Open] Elisa", "hyprshell launch/summon.sh --empty-workspace-if-occupied class:elisa -- elisa")
 	submap_exec(
 		"Q",
@@ -683,16 +682,16 @@ submap_leader("open", mod, "O", function()
 	)
 end)
 
-local function tui_app(key, name, app_id, command, category)
+local function tui_app(key, description, title, app_id, command)
 	submap_exec(
 		key,
-		"[" .. (category or "Terminal") .. "] " .. name,
+		"[Terminal] " .. description,
 		"hyprshell launch/focus.sh "
 			.. app_id
 			.. " -- hyprshell launch/tui.sh --app-id "
 			.. app_id
 			.. " --title '"
-			.. name
+			.. title
 			.. "' -- "
 			.. command
 	)
@@ -700,31 +699,31 @@ end
 
 submap_leader("terminal", mod, "J", function()
 	submap_exec("A", "[Terminal] Agent Hub", "hyprshell system/agent-hub")
-	tui_app("H", "Htop", "org.tui.Htop", "htop")
-	tui_app("N", "Nvtop", "org.tui.Nvtop", "nvtop")
-	tui_app("B", "Bluetui", "org.tui.Bluetui", "bluetui")
-	tui_app("W", "Impala", "org.tui.Impala", "impala")
-	tui_app("V", "Wiremix", "org.tui.Wiremix", "wiremix")
-	tui_app("U", "Dua", "org.tui.Dua", "dua i")
-	submap_exec("C", "[Terminal] Calculator", "hyprshell util/calc-launch")
-	tui_app("D", "Display layout", "org.tui.Displays", "hyprmoncfg")
-	submap_exec("S", "[Terminal] Settings", "hyprshell window/settings.sh")
-	submap_exec("T", "[Terminal] Dropdown terminal", "hyprshell window/dropdown-terminal")
+	tui_app("H", "process monitor (htop)", "Htop", "org.tui.Htop", "htop")
+	tui_app("N", "GPU monitor (nvtop)", "Nvtop", "org.tui.Nvtop", "nvtop")
+	tui_app("B", "Bluetooth (bluetui)", "Bluetui", "org.tui.Bluetui", "bluetui")
+	tui_app("W", "Wi-Fi (impala)", "Impala", "org.tui.Impala", "impala")
+	tui_app("V", "audio mixer (wiremix)", "Wiremix", "org.tui.Wiremix", "wiremix")
+	tui_app("U", "disk usage (dua)", "Dua", "org.tui.Dua", "dua i")
+	submap_exec("C", "[Terminal] calculator", "hyprshell util/calc-launch")
+	tui_app("D", "display layout (hyprmoncfg)", "Display layout", "org.tui.Displays", "hyprmoncfg")
+	submap_exec("S", "[Terminal] settings", "hyprshell window/settings.sh")
+	submap_exec("T", "[Terminal] dropdown terminal", "hyprshell window/dropdown-terminal")
 	submap_exec(
 		"R",
-		"[Terminal] rmpc",
+		"[Terminal] music player (rmpc)",
 		'hyprshell launch/summon.sh --float-if-workspace-occupied class:org.tui.Rmpc -- hyprshell launch/tui.sh --app-id org.tui.Rmpc --title Rmpc -- "$HOME/.config/rmpc/lib/launch"'
 	)
 end)
 
 submap_leader("capture", mod, "R", function()
 	submap_exec("S", "[Capture] smart screenshot", "hyprshell screenshot.sh smart")
-	submap_exec("A", "[Capture] all monitors", "hyprshell screenshot.sh p")
+	submap_exec("A", "[Capture] screenshot all monitors", "hyprshell screenshot.sh p")
 	submap_exec("O", "[Capture] extract text", "hyprshell screenshot.sh ocr")
-	submap_exec("Q", "[Capture] decode qr code", "hyprshell capture/qr")
+	submap_exec("Q", "[Capture] decode QR code", "hyprshell capture/qr")
 	submap_exec("C", "[Capture] color picker", "pkill -x rofi || hyprshell rofi/color-picker.sh")
-	submap_exec("R", "[Capture] toggle monitor recording", "hyprshell screenrecord --toggle --audio --output")
-	submap_exec("W", "[Capture] toggle webcam recording", "hyprshell screenrecord --toggle --audio --with-webcam")
+	submap_exec("R", "[Capture] toggle focused monitor recording", "hyprshell screenrecord --toggle --audio --output")
+	submap_exec("W", "[Capture] toggle recording of a picked source with webcam overlay", "hyprshell screenrecord --toggle --audio --with-webcam")
 	submap_exec("X", "[Capture] stop recording", "hyprshell screenrecord --quit")
 end)
 
@@ -732,7 +731,7 @@ submap_leader("insert", mod, "I", function()
 	submap_exec("E", "[Insert] emoji picker", "pkill -x rofi || hyprshell emoji-picker.sh")
 	submap_exec("G", "[Insert] glyph picker", "pkill -x rofi || hyprshell glyph-picker.sh")
 	submap_exec("B", "[Insert] box drawing picker", "pkill -x rofi || hyprshell boxdraw-picker.sh")
-	submap_exec("D", "[Insert] dictation", "hyprshell capture/dictation toggle")
+	submap_exec("D", "[Insert] toggle dictation", "hyprshell capture/dictation toggle")
 end)
 
 submap_leader("hints", mod, "H", function()
@@ -751,22 +750,21 @@ local function magnify_by(factor)
 end
 
 submap_leader("utilities", mod, "U", function()
-
-	submap_exec("B", "[Notifications] actions", "dunstctl context")
-	submap_exec("SHIFT + B", "[Notifications] dismiss all", "dunstctl close-all")
-	submap_exec("C", "[Notifications] copy latest verification code", "quickshell ipc call notifications copyLatest")
-	submap_exec("Q", "[System] close all windows", "hyprshell window/close-all.sh")
-	submap_exec("N", "[System] toggle nightlight", "hyprshell system/hyprsunset.sh -t")
-	submap_exec("A", "[System] toggle keep awake", "hyprshell session/toggle-keep-awake.sh")
-	submap_exec("SHIFT + A", "[System] toggle keep running with lid closed", "hyprshell session/toggle-system-keep-awake.sh")
-	submap_exec("W", "[System] select workflow", menu("style_workflow"))
-	submap_exec("O", "[System] audio output switcher", "hyprshell controls/volume-control.sh -t")
-	submap_exec("S", "[System] cycle monitor scale", "hyprshell system/monitor-scale.sh")
-	submap_exec("SHIFT + S", "[System] cycle monitor scale backward", "hyprshell system/monitor-scale.sh --reverse")
-	submap_exec("D", "[System] toggle laptop display", "hyprshell system/monitor-internal.sh toggle")
-	submap_exec("M", "[System] toggle mirroring", "hyprshell system/monitor-mirror.sh toggle")
-	submap_repeat_action("Z", "[System] zoom in", magnify_by(magnifier_step))
-	submap_repeat_action("SHIFT + Z", "[System] zoom out", magnify_by(1 / magnifier_step))
+	submap_exec("B", "[Utilities|Notifications] notification actions", "dunstctl context")
+	submap_exec("SHIFT + B", "[Utilities|Notifications] dismiss all notifications", "dunstctl close-all")
+	submap_exec("C", "[Utilities|Notifications] copy latest verification code", "quickshell ipc call notifications copyLatest")
+	submap_exec("Q", "[Utilities|System] close all windows", "hyprshell window/close-all.sh")
+	submap_exec("N", "[Utilities|System] toggle nightlight", "hyprshell system/hyprsunset.sh -t")
+	submap_exec("A", "[Utilities|System] toggle keep awake", "hyprshell session/toggle-keep-awake.sh")
+	submap_exec("SHIFT + A", "[Utilities|System] toggle keep running with lid closed", "hyprshell session/toggle-system-keep-awake.sh")
+	submap_exec("W", "[Utilities|System] select workflow", menu("style_workflow"))
+	submap_exec("O", "[Utilities|System] switch to next audio output", "hyprshell controls/volume-control.sh -t")
+	submap_cycle("S", "[Utilities|System] cycle monitor scale", "hyprshell system/monitor-scale.sh")
+	submap_cycle("SHIFT + S", "[Utilities|System] cycle monitor scale backward", "hyprshell system/monitor-scale.sh --reverse")
+	submap_exec("D", "[Utilities|System] toggle laptop display", "hyprshell system/monitor-internal.sh toggle")
+	submap_exec("M", "[Utilities|System] toggle mirroring", "hyprshell system/monitor-mirror.sh toggle")
+	submap_repeat_action("Z", "[Utilities|System] zoom in", magnify_by(magnifier_step))
+	submap_repeat_action("SHIFT + Z", "[Utilities|System] zoom out", magnify_by(1 / magnifier_step))
 end)
 
 for workspace = 1, 10 do

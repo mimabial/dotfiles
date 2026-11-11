@@ -57,7 +57,7 @@ Item {
     Component { id: mod_microphone; MicrophoneButton { shell: catalog.shell; popupEnabled: catalog.popupEnabled; Layout.fillHeight: true } }
     Component { id: mod_display; DisplayButton { shell: catalog.shell; popupEnabled: catalog.popupEnabled; Layout.fillHeight: true } }
     Component { id: mod_updates; UpdatesButton { shell: catalog.shell; popupEnabled: catalog.popupEnabled; Layout.fillHeight: true } }
-    Component { id: mod_notifications; NotificationButton { shell: catalog.shell; popupEnabled: catalog.popupEnabled; indicator: "dnd"; showBadge: false; Layout.fillHeight: true; Component.onCompleted: refresh() } }
+    Component { id: mod_notifications; NotificationButton { shell: catalog.shell; popupEnabled: catalog.popupEnabled; showBadge: false; Layout.fillHeight: true } }
     Component { id: mod_tasks; TasksButton { shell: catalog.shell; popupEnabled: catalog.popupEnabled; Layout.fillHeight: true } }
     Component { id: mod_wallpaper; WallpaperButton { shell: catalog.shell; popupEnabled: catalog.popupEnabled; Layout.fillHeight: true } }
     Component { id: mod_themerotation; ThemeRotationButton { shell: catalog.shell; popupEnabled: catalog.popupEnabled; Layout.fillHeight: true } }

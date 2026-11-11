@@ -294,8 +294,8 @@ LAYOUT_ROW_RULES = {
     and (len(ctx.tiled) > 1 or (len(ctx.tiled) == 1 and ctx.centers_without_stack)),
     ("Master", "center orientation"): lambda ctx: bool(ctx.window)
     and (len(ctx.tiled) > 1 or (len(ctx.tiled) == 1 and ctx.centers_without_stack)),
-    ("Master", "roll next"): lambda ctx: bool(ctx.active) and ctx.stack > 0,
-    ("Master", "roll previous"): lambda ctx: bool(ctx.active) and ctx.stack > 0,
+    ("Master", "rotate next window into master"): lambda ctx: bool(ctx.active) and ctx.stack > 0,
+    ("Master", "rotate previous window into master"): lambda ctx: bool(ctx.active) and ctx.stack > 0,
     ("Master", "shrink master"): lambda ctx: ctx.master_resizable
     and max(row["perc_master"] for row in ctx.masters) > MFACT_MIN + RATIO_EPSILON,
     ("Master", "grow master"): lambda ctx: ctx.master_resizable
@@ -312,9 +312,9 @@ LAYOUT_ROW_RULES = {
     and ctx.active["column_width"] < max(ctx.column_widths) - RATIO_EPSILON,
     ("Scrolling", "expand column"): lambda ctx: ctx.column_resizable
     and abs(ctx.expanded_column_width() - ctx.active["column_width"]) > RATIO_EPSILON,
-    ("Scrolling", "promote window"): lambda ctx: ctx.stacked,
-    ("Scrolling", "consume into column"): lambda ctx: ctx.has_next_column,
-    ("Scrolling", "expel from column"): lambda ctx: ctx.stacked,
+    ("Scrolling", "move window into its own column"): lambda ctx: ctx.stacked,
+    ("Scrolling", "pull next column's first window into this column"): lambda ctx: ctx.has_next_column,
+    ("Scrolling", "move this column's last window into its own column"): lambda ctx: ctx.stacked,
     ("Scrolling", "fit column into view"): lambda ctx: bool(ctx.active) and not ctx.column_in_view(),
 }
 

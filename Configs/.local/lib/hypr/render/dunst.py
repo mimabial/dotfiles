@@ -98,7 +98,8 @@ class DunstLayout:
     gaps_in: str
     border_size: str
     gap_size: int
-    edge_padding: int
+    offset_x: int
+    offset_y: int
     origin: str
     width: int
     height: str
@@ -137,7 +138,7 @@ def read_hypr_metrics(options):
         return {}
     try:
         values = batch_json(*(f"getoption {option}" for option in options))
-        return {option: str(value.get("int", "")) for option, value in zip(options, values)}
+        return {option: str(value.get("int", value.get("str", ""))) for option, value in zip(options, values)}
     except (OSError, subprocess.SubprocessError, json.JSONDecodeError, TypeError, ValueError):
         return {}
 
@@ -346,7 +347,7 @@ def resolve_layout(base, text_scale):
         ("border_size", "general:border_size", "2"),
     )
     metrics = {key: read_theme_metric(key) for key, _, _ in specs}
-    live = read_hypr_metrics([option for key, option, _ in specs if not metrics[key]])
+    live = read_hypr_metrics(["general:layout", *(option for key, option, _ in specs if not metrics[key])])
     rounding, gaps_in, gaps_out, border_size = (
         metrics[key] or live.get(option) or default for key, option, default in specs
     )
@@ -367,7 +368,8 @@ def resolve_layout(base, text_scale):
         gaps_in=gaps_in,
         border_size=border_size,
         gap_size=gap_size,
-        edge_padding=edge_padding,
+        offset_x=edge_padding + (gap_size // 2 if live.get("general:layout") == "scrolling" else 0),
+        offset_y=edge_padding,
         origin=origin,
         width=width,
         height=base_height(base, text_scale),
@@ -440,7 +442,8 @@ def dunst_input_digest(colors: DunstColors, layout: DunstLayout, font: DunstFont
         layout.gaps_in,
         layout.border_size,
         layout.origin,
-        str(layout.edge_padding),
+        str(layout.offset_x),
+        str(layout.offset_y),
         str(layout.width),
         layout.height,
         font.name,
@@ -518,7 +521,7 @@ def render_config(base, colors, layout, font):
     origin = {layout.origin}
     width = {layout.width}
     height = {layout.height}
-    offset = ({layout.edge_padding},{layout.edge_padding})
+    offset = ({layout.offset_x},{layout.offset_y})
     gap_size = {layout.gap_size}
     frame_width = {layout.border_size}
     progress_bar_corner_radius = {layout.rounding}

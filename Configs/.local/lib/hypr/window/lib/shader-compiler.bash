@@ -35,6 +35,11 @@ compile_and_activate_shader() {
   local source_var inc_file
   local files=()
 
+  if [[ "${selected_shader}" == neutral ]]; then
+    hypr_visual_preset_write_lua "${shaders_state_file}" --config decoration.screen_shader ""
+    return
+  fi
+
   resolved_shader_path="$(resolve_shader_path "${selected_shader}")" || {
     print_log -r "Error" " Shader ${selected_shader} not found"
     return 1

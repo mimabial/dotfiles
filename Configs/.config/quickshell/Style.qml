@@ -68,7 +68,6 @@ Singleton {
     function duration(milliseconds) { return reduceMotion ? 0 : milliseconds }
     readonly property int hoverDuration: duration(180)
     readonly property int tooltipDelay: 400
-    readonly property int focusPrimeDelay: 150
     readonly property int confirmationShownMs: 1400
 
     readonly property int defaultTextSize: popupStyle.defaultTextSize

@@ -90,6 +90,7 @@ set_shader() {
   }
 
   hypr_visual_preset_apply "HYPR_SHADER" "${shader_name}" "hypr-shader" "Shader selected" compile_and_activate_shader
+  hyprctl reload config-only -q
 }
 
 source "${HYPR_LIB_DIR}/window/lib/shader-compiler.bash"

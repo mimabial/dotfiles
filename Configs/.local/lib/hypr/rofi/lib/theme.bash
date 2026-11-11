@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 rofi_normalize_launcher_style() {
-  local style_ref="${1:-style_1}"
+  local style_ref="${1:-sidebar}"
   if [[ "${style_ref}" =~ ^[0-9]+$ ]]; then
-    printf 'style_%s\n' "${style_ref}"
-    return 0
+    style_ref="style_${style_ref}"
   fi
+  case "${style_ref}" in
+    style_1) style_ref=sidebar ;;
+    style_11) style_ref="split" ;;
+  esac
   printf '%s\n' "${style_ref}"
 }
 

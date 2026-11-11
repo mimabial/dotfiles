@@ -41,33 +41,24 @@ theme_selector_grid_counts_into() {
 }
 
 theme_style_picker_layout() {
-  local font_scale="$1" monitor_settings_name="$2"
-  local preview_image_size="${ROFI_THEME_MENU_PREVIEW_SIZE:-192}"
-  local hidpi_scale="${ROFI_THEME_MENU_HIDPI_SCALE:-2}"
+  local -n monitor_metrics_ref="$1"
   local theme_menu_icon_size="${ROFI_THEME_MENU_ICON_SIZE:-20}"
-  local theme_menu_element_padding="${ROFI_THEME_MENU_ELEMENT_PADDING:-0em}"
-  local theme_menu_list_spacing="${ROFI_THEME_MENU_LIST_SPACING:-3em}"
-  local theme_menu_list_padding="${ROFI_THEME_MENU_LIST_PADDING:-1em}"
-  local -A menu_geometry=()
-  [[ "${preview_image_size}" =~ ^[1-9][0-9]*$ ]] || preview_image_size=192
-  [[ "${hidpi_scale}" =~ ^[1-9][0-9]*$ ]] || hidpi_scale=2
+  local -A menu_geometry=([columns]=2 [rows]=1)
   [[ "${theme_menu_icon_size}" =~ ^[0-9]+$ ]] || theme_menu_icon_size=20
-  menu_geometry=(
-    [font_scale]="${font_scale}"
-    [element_width]="$((preview_image_size * hidpi_scale))"
-    [element_height]="$((preview_image_size * hidpi_scale))"
-    [horizontal_padding]=8 [vertical_padding]=16
-    [max_columns]=5 [min_rows]=2 [max_rows]=4
-  )
-  theme_selector_scaled_radii_into menu_geometry "${monitor_settings_name}" \
+  menu_geometry[element_width]=$((monitor_metrics_ref[logical_width] / menu_geometry[columns]))
+  menu_geometry[element_height]="${monitor_metrics_ref[logical_height]}"
+  local icon_size="(${theme_menu_icon_size}em min ${menu_geometry[element_width]}px min ${menu_geometry[element_height]}px)"
+  theme_selector_scaled_radii_into menu_geometry "$1" \
     "${THEME_SELECTOR_MENU_RADIUS_MULTIPLIER}" "${THEME_SELECTOR_MENU_ICON_OFFSET}"
-  theme_selector_grid_counts_into menu_geometry "${monitor_settings_name}" || return 1
 
   cat <<EOF
 window{width:100%;height:100%;fullscreen:true;}
-listview{columns:${menu_geometry[columns]};lines:${menu_geometry[rows]};cycle:true;spacing:${theme_menu_list_spacing};padding:${theme_menu_list_padding};}
-element{orientation:vertical;border-radius:${menu_geometry[element_radius]}px;padding:${theme_menu_element_padding};}
-element-icon{border-radius:${menu_geometry[icon_radius]}px;size:${theme_menu_icon_size}em;}
+mainbox{children:[frame];spacing:0px;}
+frame{spacing:0px;}
+inputbar{enabled:false;}
+listview{columns:${menu_geometry[columns]};lines:${menu_geometry[rows]};cycle:true;fixed-columns:true;fixed-height:true;spacing:0px;padding:0px;scrollbar:false;}
+element{orientation:vertical;border-radius:0px;padding:calc((${menu_geometry[element_height]}px - ${icon_size}) / 2) 0px;}
+element-icon{border-radius:${menu_geometry[icon_radius]}px;size:calc(${icon_size});}
 element-text{enabled:false;}
 EOF
 }
@@ -84,24 +75,38 @@ theme_pack_picker_layout_into() {
   )
   preview_geometry[element_width]=$((preview_geometry[element_width_em] * font_scale * ROFI_EM_PX_PER_SCALE))
   preview_geometry[element_height]=$((preview_geometry[element_height_em] * font_scale * ROFI_EM_PX_PER_SCALE))
-  [[ -n "${theme_style}" ]] || theme_style=1
+  [[ -n "${theme_style}" ]] || theme_style=square
   theme_selector_scaled_radii_into preview_geometry "$5" \
     "${ROFI_IMAGE_TILE_RADIUS_MULTIPLIER}" "${THEME_SELECTOR_PREVIEW_ICON_OFFSET}"
   rofi_theme_ref=selector
 
   case "${theme_style}" in
-    2 | quad)
+    faded | 2 | quad)
       thumbnail_ref=quad
+      declare -F wallcache_write_masked_thumbnail >/dev/null || source "${HYPR_LIB_DIR}/wallpaper/cache/render.bash" || return 1
+      local list_spacing_em=2.5 list_padding_em=1.5 target_columns=3 target_rows=3
+      preview_geometry[horizontal_padding]=$((preview_geometry[horizontal_padding] / 2))
+      preview_geometry[element_width]=$(((monitor_metrics_ref[logical_width] - preview_geometry[horizontal_padding] * font_scale) / target_columns))
+      preview_geometry[element_height]=$(((monitor_metrics_ref[logical_height] - preview_geometry[vertical_padding] * font_scale) / target_rows))
       theme_selector_grid_counts_into preview_geometry "$5" || return 1
-      printf -v layout_ref 'window{width:100%%;height:100%%;fullscreen:true;background-color:#00000003;}\nlistview{columns:%d;lines:%d;cycle:true;}\nelement{border-radius:%dpx;background-color:@background-alpha;}\nelement-icon{size:16em;border-radius:%dpx 0px 0px %dpx;}' \
-        "${preview_geometry[columns]}" "${preview_geometry[rows]}" "${preview_geometry[element_radius]}" "${preview_geometry[icon_radius]}" "${preview_geometry[icon_radius]}"
+      printf -v layout_ref '%s\n' \
+        'window{width:100%;height:100%;fullscreen:true;background-color:#00000003;}' \
+        "frame{expand:false;width:$((preview_geometry[element_width] * preview_geometry[columns]))px;}" \
+        'spacer{expand:true;}' \
+        "listview{columns:${preview_geometry[columns]};lines:${preview_geometry[rows]};cycle:true;spacing:${list_spacing_em}em;padding:${list_padding_em}em;}" \
+        "element{border-radius:${preview_geometry[element_radius]}px;background-color:@background-alpha;}" \
+        "element-icon{size:${preview_geometry[element_height]}px;margin:0px calc(${preview_geometry[element_height]}px * $((WALLCACHE_QUAD_CLEAR_FROM_PX - WALLCACHE_SQUARE_PX)) / ${WALLCACHE_SQUARE_PX}) 0px 0px;border-radius:${preview_geometry[icon_radius]}px 0px 0px ${preview_geometry[icon_radius]}px;}" \
+        'element-text{expand:true;}'
       ;;
     *)
       thumbnail_ref=sqre
+      local target_columns=3 target_rows=3 element_padding_em=0.5
+      preview_geometry[element_width]=$(((monitor_metrics_ref[logical_width] - preview_geometry[horizontal_padding] * font_scale) / target_columns))
+      preview_geometry[element_height]=$(((monitor_metrics_ref[logical_height] - preview_geometry[vertical_padding] * font_scale) / target_rows))
       preview_geometry[min_columns]=2
       theme_selector_grid_counts_into preview_geometry "$5" || return 1
-      printf -v layout_ref 'window{width:100%%;height:100%%;fullscreen:true;border-radius:%dpx;}\nlistview{columns:%d;lines:%d;cycle:true;spacing:2.5em;padding:1.5em;}\nelement{border-radius:%dpx;padding:0.5em;}\nelement-icon{size:15.5em;border-radius:%dpx;}' \
-        "${monitor_metrics_ref[border_radius]}" "${preview_geometry[columns]}" "${preview_geometry[rows]}" "${preview_geometry[element_radius]}" "${preview_geometry[element_radius]}"
+      printf -v layout_ref 'window{width:100%%;height:100%%;fullscreen:true;border-radius:%dpx;}\nlistview{columns:%d;lines:%d;cycle:true;spacing:2.5em;padding:1.5em;}\nelement{border-radius:%dpx;padding:%sem;}\nelement-icon{size:calc(%dpx - %sem * 2);border-radius:%dpx;}' \
+        "${monitor_metrics_ref[border_radius]}" "${preview_geometry[columns]}" "${preview_geometry[rows]}" "${preview_geometry[element_radius]}" "${element_padding_em}" "${preview_geometry[element_height]}" "${element_padding_em}" "${preview_geometry[element_radius]}"
       ;;
   esac
 }

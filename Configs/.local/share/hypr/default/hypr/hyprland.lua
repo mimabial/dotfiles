@@ -18,8 +18,6 @@ if not runtime.load(state_home .. "/hypr/animations.lua", true) then
 end
 runtime.load(state_home .. "/hypr/shaders.lua", true)
 
-hl.config({misc = {font_family = vars.get("FONT", "Cantarell")}})
-
 -- Manifest-less themes must stay on the xcursor path: their hyprcursor
 -- fallback ignores the requested size.
 local function has_hyprcursor_manifest(theme)
@@ -40,6 +38,10 @@ end
 
 require("windowrules")
 require("userprefs")
+hl.config({
+    misc = {font_family = vars.get("FONT", "Cantarell")},
+    group = {groupbar = {font_size = tonumber(vars.get("FONT_SIZE")), font_family = vars.get("GROUPBAR_FONT")}},
+})
 runtime.load(config_home .. "/hypr/keyboard.lua", true)
 runtime.load(state_home .. "/hypr/input.lua", true)
 -- Last of the visual layers, so panel edits win over the theme pack and over

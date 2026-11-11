@@ -305,8 +305,18 @@ Item {
     }
 
     function scheduleBackgroundBlurUpdate() {
-        if (backgroundBlurSession.running && !backgroundBlurUpdate.running)
-            backgroundBlurUpdate.start();
+        if (backgroundBlurSession.running)
+            Qt.callLater(root.updateBackgroundBlur);
+    }
+
+    function updateBackgroundBlur() {
+        if (!backgroundBlurSession.running)
+            return;
+        var requested = root.requestedBackgroundBlur();
+        if (requested === root.lastRequestedBlur)
+            return;
+        root.lastRequestedBlur = requested;
+        root.writeBackgroundBlur(requested);
     }
 
     function prepareOpenSurface() {
@@ -370,7 +380,6 @@ Item {
             root.pendingWorkspaceAction = "";
             Hyprland.dispatch(action);
         }
-        backgroundBlurUpdate.stop();
         if (backgroundBlurSession.running) {
             root.restoringDesktopBlur = true;
             root.backgroundBlurPrimed = false;
@@ -638,15 +647,15 @@ Item {
         root.overviewScreenName = "";
     }
 
-    function scheduleHotCornerRearm() {
+    function leaveHotCorner(targetOnOverviewSurface) {
         hotCornerTimer.stop();
-        hotCornerRearm.restart();
+        if (targetOnOverviewSurface === root.surfaceMounted)
+            root.hotCornerArmed = true;
     }
 
     onHotCornerActiveChanged: {
         if (!root.hotCornerActive) {
             hotCornerTimer.stop();
-            hotCornerRearm.stop();
             root.hotCornerArmed = true;
         }
     }
@@ -1283,32 +1292,9 @@ Item {
     }
 
     Timer {
-        id: backgroundBlurUpdate
-        interval: 16
-        onTriggered: {
-            if (!backgroundBlurSession.running)
-                return;
-            var requested = root.requestedBackgroundBlur();
-            if (requested === root.lastRequestedBlur)
-                return;
-            root.lastRequestedBlur = requested;
-            root.writeBackgroundBlur(requested);
-        }
-    }
-
-    Timer {
         id: hotCornerTimer
         interval: root.hotCornerDelay
         onTriggered: if (root.hotCornerHovered()) root.activateHotCorner()
-    }
-
-    Timer {
-        id: hotCornerRearm
-        interval: 100
-        onTriggered: {
-            if (!root.hotCornerHovered())
-                root.hotCornerArmed = true;
-        }
     }
 
     Process {
@@ -1483,7 +1469,7 @@ Item {
                 onTop: root.hotCornerOnTop
                 onLeft: root.hotCornerOnLeft
                 onEntered: root.triggerHotCorner(String(hotCornerWindow.modelData.name || ""))
-                onExited: root.scheduleHotCornerRearm()
+                onExited: root.leaveHotCorner(false)
             }
         }
     }
@@ -1550,7 +1536,7 @@ Item {
             onTop: root.hotCornerOnTop
             onLeft: root.hotCornerOnLeft
             onEntered: root.triggerHotCorner(String(surface.modelData.name || ""))
-            onExited: root.scheduleHotCornerRearm()
+            onExited: root.leaveHotCorner(true)
         }
     }
 

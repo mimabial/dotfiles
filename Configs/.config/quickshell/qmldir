@@ -123,6 +123,7 @@ WindowInfoPopup 1.0 WindowInfoPopup.qml
 WindowList 1.0 WindowList.qml
 WorkspacePopup 1.0 WorkspacePopup.qml
 Workspaces 1.0 Workspaces.qml
+singleton AgentsUsage 1.0 AgentsUsage.qml
 singleton AudioPorts 1.0 AudioPorts.qml
 singleton Backlight 1.0 Backlight.qml
 singleton Cava 1.0 Cava.qml

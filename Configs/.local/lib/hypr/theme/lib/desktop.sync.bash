@@ -298,6 +298,8 @@ theme_desktop_configure_qt_kde_bridge() {
     "Icons:Theme=${desktop_settings_ref[ICON_THEME]}" \
     "KDE:widgetStyle=${desktop_settings_ref[RESOLVED_QT_STYLE]}" \
     "UiSettings:ColorScheme=" \
+    "General:TerminalApplication=${desktop_settings_ref[TERMINAL]}" \
+    "General:TerminalService=" \
     "${font_entries[@]}" || return 1
 
   theme_desktop_ini_write_batch "${XDG_CONFIG_HOME}/kdedefaults/kdeglobals" \

@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import qs.Commons as Commons
-import qs.Ui
 import "../Model.js" as Model
 import "../../Units.js" as Units
 

@@ -53,7 +53,7 @@ const mat3 LMS2RGB = mat3(
 );
 
 vec3 simulateColorVisionDeficiency(vec3 color) {
-    vec3 lms = RGB2LMS * color;
+    vec3 lms = color * RGB2LMS;
     mat3 m = mat3(1.0);
     if (MODE == PROTANOPIA) {
         m = mat3(
@@ -74,7 +74,7 @@ vec3 simulateColorVisionDeficiency(vec3 color) {
             tritanopia_r, tritanopia_g, 0.0
         );
     }
-    return LMS2RGB * (m * lms);
+    return (lms * m) * LMS2RGB;
 }
 
 vec3 daltonize(vec3 color, vec3 simulation) {

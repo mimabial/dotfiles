@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import qs.Commons as Commons
 import "../dock" as Dock
+import "../PopupNavigation.js" as Navigation
 import ".."
 
 PopupCard {
@@ -22,7 +23,7 @@ PopupCard {
     onOpenChanged: { path = []; select(0, null) }
     function run(item) { shell.closePopup(); typeof item.run === "function" ? item.run() : shell.run(item.run) }
     function depth(items) { return Math.max(0, ...items.filter(item => item?.submenu).map(item => 1 + depth(item.submenu))) }
-    function rowsAt(level) { return collectNavigableRows(level ? (flyouts.objectAt(level - 1) as Flyout).column : entries, []) }
+    function rowsAt(level) { return Navigation.collectRows(level ? (flyouts.objectAt(level - 1) as Flyout).column : entries, []) }
     function select(level, row) { keyLevel = level; keyRow = row }
     function hover(level, row, item) {
         select(level, row)

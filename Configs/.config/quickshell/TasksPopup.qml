@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell.Io
 import "TasksModel.js" as TasksModel
-import "CalendarMath.js" as CalendarMath
 import "Units.js" as Units
 
 PopupCard {
@@ -92,20 +91,24 @@ PopupCard {
     }
     readonly property var orderedTodos: TasksModel.sorted(todos, sortMode, taskOrder)
 
-    function startOfToday() {
-        const now = new Date()
-        return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-    }
+    readonly property double todayStart: new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
     function dueMillis(item) {
-        return (item.due === null || item.due === undefined) ? -1 : Number(item.due) * 1000
+        return (item.due === null || item.due === undefined) ? -1 : Number(item.due) * Units.MS_PER_SECOND
     }
     function isOverdue(item) {
         const due = dueMillis(item)
-        return due >= 0 && due < startOfToday()
+        return due >= 0 && due < todayStart
     }
     function isToday(item) {
         const due = dueMillis(item)
-        return due >= startOfToday() && due < startOfToday() + Units.MS_PER_DAY
+        return due >= todayStart && due < todayStart + Units.MS_PER_DAY
+    }
+    function taskGroup(item) {
+        if (item.completed === true) return "completed"
+        if (isLater(item)) return "later"
+        const due = dueMillis(item)
+        if (due < 0) return Number(item.carries || 0) > 0 ? "carried" : "undated"
+        return due < todayStart ? "overdue" : due < todayStart + Units.MS_PER_DAY ? "today" : "upcoming"
     }
     readonly property var open_: orderedTodos.filter(item => item.completed !== true)
     readonly property var visibleTasks: {
@@ -132,17 +135,16 @@ PopupCard {
         if (effectiveView === "done") { push("COMPLETED", rows); return out }
         if (effectiveView === "overdue") { push("OVERDUE", rows); return out }
         if (effectiveView === "later") { push("LATER", rows); return out }
-        const active = rows.filter(item => item.completed !== true && !isLater(item))
-        push("OVERDUE", active.filter(item => isOverdue(item)))
-        push("TODAY", active.filter(item => isToday(item)))
-        if (["all", "open", "due", "rec"].includes(effectiveView))
-            push("UPCOMING", active.filter(item => !isOverdue(item) && !isToday(item)
-                && dueMillis(item) >= 0))
-        push("CARRIED", active.filter(item => dueMillis(item) < 0 && Number(item.carries || 0) > 0))
-        push("NO DATE", active.filter(item => dueMillis(item) < 0 && Number(item.carries || 0) === 0))
-        if (["all", "open", "due", "rec"].includes(effectiveView))
-            push("LATER", rows.filter(item => item.completed !== true && isLater(item)))
-        if (effectiveView === "all") push("COMPLETED", rows.filter(item => item.completed === true))
+        const groups = { overdue: [], today: [], upcoming: [], carried: [], undated: [], later: [], completed: [] }
+        for (const item of rows) groups[taskGroup(item)].push(item)
+        const listsAhead = ["all", "open", "due", "rec"].includes(effectiveView)
+        push("OVERDUE", groups.overdue)
+        push("TODAY", groups.today)
+        if (listsAhead) push("UPCOMING", groups.upcoming)
+        push("CARRIED", groups.carried)
+        push("NO DATE", groups.undated)
+        if (listsAhead) push("LATER", groups.later)
+        if (effectiveView === "all") push("COMPLETED", groups.completed)
         return out
     }
     readonly property var listed: {
@@ -200,12 +202,12 @@ PopupCard {
     function dayKey(date) { return Qt.formatDate(date, "yyyy-MM-dd") }
     readonly property string todayKey: dayKey(now)
     readonly property var stats: {
-        const start = startOfToday(), end = start + Units.MS_PER_DAY
+        const start = todayStart, end = start + Units.MS_PER_DAY
         let done = 0, total = 0
         for (const item of orderedTodos) {
             if (isLater(item)) continue
             const due = dueMillis(item)
-            const completed = Number(item.completed_at || 0) * 1000
+            const completed = Number(item.completed_at || 0) * Units.MS_PER_SECOND
             if ((!item.completed && (due < 0 || due < end))
                     || (due >= start && due < end)
                     || (completed >= start && completed < end)) {
@@ -239,7 +241,7 @@ PopupCard {
     readonly property var completionsByDay: {
         const counts = ({})
         for (const item of todos) if (Number(item.completed_at || 0) > 0) {
-            const key = dayKey(new Date(Number(item.completed_at) * 1000))
+            const key = dayKey(new Date(Number(item.completed_at) * Units.MS_PER_SECOND))
             counts[key] = (counts[key] || 0) + 1
         }
         return counts
@@ -402,8 +404,8 @@ PopupCard {
     }
     function completedLabel(item) {
         if (item.completed_at === null || item.completed_at === undefined) return ""
-        const when = new Date(Number(item.completed_at) * 1000)
-        const days = Math.round((startOfToday() - new Date(when.getFullYear(),
+        const when = new Date(Number(item.completed_at) * Units.MS_PER_SECOND)
+        const days = Math.round((todayStart - new Date(when.getFullYear(),
             when.getMonth(), when.getDate()).getTime()) / Units.MS_PER_DAY)
         if (days <= 0) return "done today"
         if (days === 1) return "done yesterday"

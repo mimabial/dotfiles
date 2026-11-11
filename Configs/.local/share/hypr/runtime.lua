@@ -33,16 +33,22 @@ function M.load(path, optional)
     end
     local source = file:read("a")
     file:close()
-    local chunk, err = load(source, "@" .. path)
-    if not chunk then
-        if not optional then
-            error(err)
+    local function run()
+        local chunk, syntax_error = load(source, "@" .. path)
+        if not chunk then
+            error(syntax_error, 0)
         end
-        hl.notification.create({text = err, timeout = SKIPPED_LAYER_NOTICE_MS})
-        return nil
+        chunk()
     end
-    chunk()
-    return true
+    if not optional then
+        run()
+        return true
+    end
+    local loaded, err = pcall(run)
+    if not loaded then
+        hl.notification.create({text = err, timeout = SKIPPED_LAYER_NOTICE_MS})
+    end
+    return loaded or nil
 end
 
 return M

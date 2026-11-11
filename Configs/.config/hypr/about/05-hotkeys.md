@@ -158,8 +158,9 @@ leave the submap. `Escape` leaves without acting.
 | `Super + H` | hints — live cheatsheets |
 | `Super + U` | utilities — display, audio, toggles |
 
-One-shot actions leave their submap first. Theming arrows, window layout cycling,
-and utility zoom stay active and repeat; Escape leaves them.
+One-shot actions leave their submap first. Theming arrows, bar layout cycling,
+window layout cycling, monitor scale cycling and utility zoom stay active and
+repeat; Escape leaves them.
 
 ### Theming — `Super + T`
 
@@ -167,32 +168,34 @@ and utility zoom stay active and repeat; Escape leaves them.
 `W` select wallpaper · `Up`/`Down` previous/next wallpaper · `M` color mode ·
 `B` select bar layout · `C` / `Shift + C` cycle bar layout · `Shift + B` reload
 the bar · `H` toggle the bar · `Shift + H` floating bar · `F` select font ·
-`Shift + F` install a Nerd Font · `R` rofi theme · `Shift + R` launcher style ·
-`L` Settings · `A` animation preset · `S` shader · `K` lock layout
+`Shift + F` install a Nerd Font · `R` theme picker style · `Shift + R` launcher style ·
+`A` animation preset · `Shift + S` shader · `L` lock layout
 
 ### Open — `Super + O`
 
-`F` file finder · `B` bookmarks · `T` tray · `V` Bitwarden vault ·
+`F` file finder · `B` bookmarks · `N` notifications · `T` tray · `V` Bitwarden vault ·
 `Shift + V` Bitwarden desktop · `W` LibreOffice Writer ·
-`G` Gimp · `E` Elisa · `Q` qBittorrent · `L` game launcher ·
+`G` GIMP · `E` Elisa · `Q` qBittorrent · `L` game launcher ·
 `Shift + L` Lutris
 
 ### Terminal — `Super + J`
 
-`T` dropdown terminal · `A` Agent Hub · `H` htop · `N` nvtop · `U` dua ·
-`R` rmpc · `V` wiremix · `B` bluetui · `W` impala · `D` display layout ·
-`C` calculator · `L` Settings
+`T` dropdown terminal · `A` Agent Hub · `H` process monitor (htop) ·
+`N` GPU monitor (nvtop) · `U` disk usage (dua) · `R` music player (rmpc) ·
+`V` audio mixer (wiremix) · `B` Bluetooth (bluetui) · `W` Wi-Fi (impala) ·
+`D` display layout (hyprmoncfg) · `C` calculator · `S` settings
 
 ### Capture — `Super + R`
 
-`S` smart screenshot · `A` all monitors · `R` toggle focused-monitor recording
-with desktop audio · `W` toggle webcam recording with desktop audio ·
+`S` smart screenshot · `A` screenshot all monitors · `R` toggle focused-monitor
+recording with desktop audio · `W` toggle recording of a picked source with a
+webcam overlay and desktop audio ·
 `X` stop recording · `C` color picker ·
 `O` extract text · `Q` decode a QR code
 
 ### Insert — `Super + I`
 
-`E` emoji · `G` glyphs · `B` box drawing
+`E` emoji · `G` glyphs · `B` box drawing · `D` toggle dictation
 
 ### Hints — `Super + H`
 
@@ -203,13 +206,14 @@ with desktop audio · `W` toggle webcam recording with desktop audio ·
 `B` notification actions · `Shift + B` dismiss all notifications · `C` copy the latest verification code ·
 `W` select workflow · `O` audio output · `S` / `Shift + S` cycle monitor scale ·
 `D` toggle the laptop display · `M` toggle mirroring · `N` toggle nightlight ·
-`A` keep awake · `Q` close all windows · `Z` zoom in · `Shift + Z` zoom out
+`A` keep awake · `Shift + A` keep running with the lid closed · `Q` close all windows · `Z` zoom in · `Shift + Z` zoom out
 
 ### Window — `Super + W`
 
 Arrows focus, `Shift + Arrow` moves, `Alt + Arrow` resizes, as outside it.
-`F` fullscreen · `Shift + F` float · `M` maximize · `G` group · `P` pin · `T` / `Shift + T` cycle
-the global layout forward/backward · `L` select layout.
+`F` fullscreen · `Shift + F` float · `M` maximize · `G` group · `P` pin · `Shift + P` snap placement menu ·
+`D` toggle show desktop · `T` / `Shift + T` cycle the global layout
+forward/backward · `L` select the global layout.
 Workspace keys work here too.
 
 Then the per-layout keys, which only fire in the layout they belong to:
@@ -219,11 +223,12 @@ Then the per-layout keys, which only fire in the layout they belong to:
 - **Scrolling** — `N` / `Shift + N` focus next and previous column, `J` / `Shift + J`
   swap columns right and left, `C` / `Shift + C` scroll the view to the next and previous column,
   `Z` / `Shift + Z` grow and shrink, `X` expand, `I` fit into view,
-  `B` consume, `Shift + B` expel, `V` promote
+  `B` pull the next column's first window in, `Shift + B` move the column's
+  last window into its own column, `V` move the focused window into its own column
 - **Master** — `W` focus master, `Shift + W` swap with master, `A` /
   `Shift + A` add and remove a master, `N` / `Shift + N` focus next and previous,
-  `J` / `Shift + J` swap, `K` / `Shift + K` roll, `Z` / `Shift + Z` grow and
-  shrink, `O` cycle orientation, `Shift + O` center
+  `J` / `Shift + J` swap, `R` / `Shift + R` rotate the next or previous window
+  into master, `Z` / `Shift + Z` grow and shrink, `O` cycle orientation, `Shift + O` center
 - **Monocle** — `N` / `Shift + N` next and previous
 
 A key means the same thing in every layout that has it: `Z` grows and

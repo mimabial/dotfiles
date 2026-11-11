@@ -1,4 +1,4 @@
-local actions = {__probe = hl.dsp.no_op()}
+local actions = {}
 _G.HYPR_BIND_ACTIONS = actions
 
 local stale_hint_cache = require("vars").get("XDG_RUNTIME_DIR") .. "/hypr/keybinds_hint.rofi"

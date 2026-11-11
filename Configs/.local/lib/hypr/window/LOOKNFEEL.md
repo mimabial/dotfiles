@@ -73,7 +73,7 @@ pattern `bluetooth.sh` uses), not a toggle. There is no layershell surface, no
 keyboard-focus priming sequence, and no participation in the bar's
 one-global-popup rule — it is a window, and the compositor arbitrates.
 
-`submap_exec` in the theming submap is still correct: the submap must be left
+`submap_exec` in the terminal submap is still correct: the submap must be left
 before a window takes focus.
 
 ## Files
@@ -107,7 +107,7 @@ before a window takes focus.
 
 ~/.config/hypr/
   hyprland.lua              runtime.load, after require("userprefs")
-  keybindings.lua           submap_exec in the theming submap
+  keybindings.lua           submap_exec in the terminal submap
 
 ~/.local/lib/hypr/window/animations.sh   --list
 ~/.local/lib/hypr/window/shaders.sh      --list, --set
@@ -348,8 +348,8 @@ The keyboard model is native to the terminal.
 | `Backspace` | reset the row |
 | `q` | close |
 
-Closing flushes a pending write, so an edit made in the last 250 ms still
-reaches the file rather than evaporating at the next reload.
+Each handled input saves pending changes before the next input is read.
+Closing also flushes any pending write.
 
 ## Entry point
 
@@ -361,10 +361,10 @@ hyprshell launch/focus.sh org.tui.Settings -- \
   python3 "${HYPR_LIB_DIR}/window/settings/main.py"
 ```
 
-Bound in the theming submap (`keybindings.lua`) on `L`:
+Bound in the terminal submap (`keybindings.lua`) on `S` (`mod+J S`):
 
 ```lua
-submap_exec("L", "[Theming] look and feel", "hyprshell window/settings.sh")
+submap_exec("S", "[Terminal] settings", "hyprshell window/settings.sh")
 ```
 
 The description is a lookup key for `keybinds_hint.py` — keep it unique and
@@ -374,7 +374,7 @@ stable.
 
 The engine — reader, renderer, schema, slug, pipeline arms, resolver, entry
 point — is covered by `tests/test_looknfeel.py`, stdlib `unittest` following the
-`media/tests/` convention (pytest is not installed):
+`media/tests/` convention:
 
 ```bash
 cd ~/.local/lib/hypr/window/tests && python3 -m unittest discover -q
@@ -403,7 +403,7 @@ Alongside: `python3 -m py_compile` on the Settings modules; `bash -n` on
 `looknfeel.sh`, `animations.sh`, `shaders.sh`; `luac -p` on `looknfeel-read.lua`
 and the resolver; `hyprctl configerrors` after a write.
 
-Then by hand: `mod+T V` opens Settings; adjusting a gaps row changes gaps
+Then by hand: `mod+J S` opens Settings; adjusting a gaps row changes gaps
 immediately; `q` persists across `hyprctl reload`; `Backspace` restores the
 theme's value; switching themes swaps which `looknfeel.d/` file applies and
 returning restores the first theme's overrides. The Cursor section lists

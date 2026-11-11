@@ -119,6 +119,8 @@ PopupCard {
   property var visBandEdges: []
   property var visAnalysis: ({})
   property string pendingSpectrumJson: ""
+  property bool spectrumFresh: false
+  property bool visualizerSettled: true
   property double lastSpectrumCaptureEpochMs: 0
   property double visFrame: 0
   readonly property double visualizerEpochMs: Date.now()
@@ -828,11 +830,11 @@ PopupCard {
   FileView {
     id: specFile
     path: root.spectrumPath
-    watchChanges: true
+    watchChanges: root.open && root.isPlaying
     atomicWrites: true
     printErrors: false
     onFileChanged: reload()
-    onLoaded: root.pendingSpectrumJson = text()
+    onLoaded: { root.pendingSpectrumJson = text(); root.spectrumFresh = true }
     onLoadFailed: {}
   }
 
@@ -850,18 +852,14 @@ PopupCard {
     return levels.map(level => Math.max(0, level * 0.8 - 0.02))
   }
 
-  function updateSpectrumData(raw) {
-    if (!root.open) return
-    if (!root.isPlaying) {
-      root.visBands = decayLevels(root.visBands); root.visPeaks = decayLevels(root.visPeaks); root.visBandsFine = decayLevels(root.visBandsFine)
-      if (playerComp && root.visBands.concat(root.visPeaks, root.visBandsFine).some(level => level > 0)) playerComp.requestPaint()
-      return
-    }
+  function decaySpectrum() {
+    root.visBands = decayLevels(root.visBands); root.visPeaks = decayLevels(root.visPeaks); root.visBandsFine = decayLevels(root.visBandsFine)
+    root.visualizerSettled = !root.visBands.concat(root.visPeaks, root.visBandsFine).some(level => level > 0)
+    if (playerComp) playerComp.requestPaint()
+  }
 
-    var content = raw
-    if (!content && specFile) { try { content = specFile.text() } catch (e) {} }
+  function updateSpectrumData(content) {
     if (!content) return
-
     try {
       var data = JSON.parse(content)
       var bands = data.bands || data
@@ -892,6 +890,7 @@ PopupCard {
         root.visBandEdges = Array.isArray(data.band_edges_hz) ? data.band_edges_hz : []
         root.visAnalysis = analysis
         root.visFrame = Math.floor((Date.now() - root.visualizerEpochMs) / root.visualizerFrameMilliseconds)
+        root.visualizerSettled = false
         if (playerComp) playerComp.requestPaint()
       }
     } catch (e) {}
@@ -899,16 +898,16 @@ PopupCard {
 
   Timer {
     id: visTimer
-    interval: Math.round(root.visualizerFrameMilliseconds); running: root.open; repeat: true
+    interval: Math.round(root.visualizerFrameMilliseconds); running: root.open && (root.isPlaying || !root.visualizerSettled); repeat: true
     onTriggered: {
       if (root.isPlaying) {
-        root.updateSpectrumData(root.pendingSpectrumJson)
+        if (root.spectrumFresh) { root.spectrumFresh = false; root.updateSpectrumData(root.pendingSpectrumJson) }
         if (playerComp && playerComp.lyricsVisible && root.lastStatusEpochMs > 0) {
           var elapsed = (Date.now() - root.lastStatusEpochMs) / 1000.0
           playerComp.updateLyricsPosition(root.curSecs + elapsed * root.playbackSpeed)
         }
       } else {
-        root.updateSpectrumData("")
+        root.decaySpectrum()
       }
     }
   }

@@ -1,5 +1,4 @@
 import QtQuick
-import "CalendarMath.js" as CalendarMath
 import "Units.js" as Units
 
 ScriptButton {

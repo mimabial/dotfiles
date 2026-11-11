@@ -9,19 +9,12 @@ source "${HYPR_LIB_DIR}/rofi/close.bash" || exit 1
 source "${HYPR_LIB_DIR}/rofi/rofi.lib.bash"
 
 LAUNCHER_STYLE_NOTIFY_MS=2200
-GRID_MIN_CELLS=2
-GRID_MAX_COLUMNS=5
-GRID_MAX_ROWS=4
-LAUNCHER_STYLE_PREVIEW_PX=192
-LAUNCHER_STYLE_HIDPI_SCALE=2
 LAUNCHER_STYLE_ICON_EM=20
 LAUNCHER_STYLE_FALLBACK_RADIUS_PX=10
 LAUNCHER_STYLE_RADIUS_SCALE=5
-LAUNCHER_STYLE_MARGIN_X_PER_SCALE=8
-LAUNCHER_STYLE_MARGIN_Y_PER_SCALE=16
 
 resolve_rofi_launcher_theme() {
-  local style_ref="${1:-${ROFI_LAUNCH_STYLE:-style_1}}"
+  local style_ref="${1:-${ROFI_LAUNCH_STYLE:-sidebar}}"
   rofi_resolve_theme "$(rofi_normalize_launcher_style "${style_ref}")"
 }
 
@@ -51,27 +44,14 @@ launcher_style_notification() {
 }
 
 launcher_style_menu_override() {
-  local font_scale="$1"
-  local preview_image_size="${ROFI_LAUNCH_SELECT_PREVIEW_SIZE:-${LAUNCHER_STYLE_PREVIEW_PX}}"
-  local hidpi_scale="${ROFI_LAUNCH_SELECT_HIDPI_SCALE:-${LAUNCHER_STYLE_HIDPI_SCALE}}"
   local launcher_style_icon_size="${ROFI_LAUNCH_SELECT_ICON_SIZE:-${LAUNCHER_STYLE_ICON_EM}}"
-  local launcher_style_element_padding="${ROFI_LAUNCH_SELECT_ELEMENT_PADDING:-0em}"
-  local launcher_style_list_spacing="${ROFI_LAUNCH_SELECT_LIST_SPACING:-3em}"
-  local launcher_style_list_padding="${ROFI_LAUNCH_SELECT_LIST_PADDING:-1em}"
   local hypr_border=""
   local elem_border=0
   local icon_border=0
   local mon_x_res_px=0
   local mon_y_res_px=0
-  local elm_width_px=0
-  local elm_height_px=0
-  local max_avail_x_px=0
-  local max_avail_y_px=0
-  local col_count=0
-  local row_count=0
+  local col_count=3
 
-  [[ "${preview_image_size}" =~ ^[0-9]+$ ]] || preview_image_size="${LAUNCHER_STYLE_PREVIEW_PX}"
-  [[ "${hidpi_scale}" =~ ^[0-9]+$ ]] || hidpi_scale="${LAUNCHER_STYLE_HIDPI_SCALE}"
   [[ "${launcher_style_icon_size}" =~ ^[0-9]+$ ]] || launcher_style_icon_size="${LAUNCHER_STYLE_ICON_EM}"
 
   hypr_border="$(rofi_default_border_radius "${LAUNCHER_STYLE_FALLBACK_RADIUS_PX}")"
@@ -80,18 +60,16 @@ launcher_style_menu_override() {
   [[ "${icon_border}" -lt 0 ]] && icon_border=0
 
   read -r mon_x_res_px mon_y_res_px < <(rofi_focused_monitor_logical_size)
-  elm_width_px=$((preview_image_size * hidpi_scale))
-  elm_height_px=$((preview_image_size * hidpi_scale))
-  max_avail_x_px=$((mon_x_res_px - LAUNCHER_STYLE_MARGIN_X_PER_SCALE * font_scale))
-  max_avail_y_px=$((mon_y_res_px - LAUNCHER_STYLE_MARGIN_Y_PER_SCALE * font_scale))
-  hypr_clamp_into col_count $((max_avail_x_px / elm_width_px)) "${GRID_MIN_CELLS}" "${GRID_MAX_COLUMNS}"
-  hypr_clamp_into row_count $((max_avail_y_px / elm_height_px)) "${GRID_MIN_CELLS}" "${GRID_MAX_ROWS}"
+  local icon_size="(${launcher_style_icon_size}em min $((mon_x_res_px / col_count))px min ${mon_y_res_px}px)"
 
   cat <<EOF
 window{width:100%;height:100%;fullscreen:true;}
-listview{columns:${col_count};lines:${row_count};cycle:true;spacing:${launcher_style_list_spacing};padding:${launcher_style_list_padding};}
-element{orientation:vertical;border-radius:${elem_border}px;padding:${launcher_style_element_padding};}
-element-icon{border-radius:${icon_border}px;size:${launcher_style_icon_size}em;}
+mainbox{children:[frame];spacing:0px;}
+frame{spacing:0px;}
+inputbar{enabled:false;}
+listview{columns:${col_count};lines:1;cycle:true;fixed-columns:true;fixed-height:true;spacing:0px;padding:0px;scrollbar:false;}
+element{orientation:vertical;border-radius:0px;padding:calc((${mon_y_res_px}px - ${icon_size}) / 2) 0px;}
+element-icon{border-radius:${icon_border}px;size:calc(${icon_size});}
 element-text{enabled:false;}
 EOF
 }
@@ -126,8 +104,8 @@ launcher_style_select_and_save() {
   font_scale="$(rofi_effective_font_scale "${ROFI_SELECT_SCALE:-${ROFI_LAUNCH_SCALE:-}}")"
   font_name="$(rofi_effective_font_name "${ROFI_SELECT_FONT:-${ROFI_LAUNCH_FONT:-$ROFI_FONT}}")"
   font_override="$(rofi_font_override "${font_name}" "${font_scale}")"
-  current_style="$(rofi_normalize_launcher_style "${ROFI_LAUNCH_STYLE:-style_1}")"
-  menu_window_override="$(launcher_style_menu_override "${font_scale}")"
+  current_style="$(rofi_normalize_launcher_style "${ROFI_LAUNCH_STYLE:-sidebar}")"
+  menu_window_override="$(launcher_style_menu_override)"
 
   selected_style="$(
     list_launcher_styles | rofi_with_background_theme -dmenu -i \
@@ -146,7 +124,7 @@ launcher_style_select_and_save() {
 
 configure_drun_mode() {
   rofi_mode="drun"
-  rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_DRUN_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
+  rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_DRUN_STYLE:-${ROFI_LAUNCH_STYLE:-sidebar}}")"
   rofi_args+=("${ROFI_LAUNCH_DRUN_ARGS[@]}" "-run-command" "$(launcher_run_command)")
 }
 
@@ -158,17 +136,17 @@ configure_mode() {
     d | --drun | "") configure_drun_mode ;;
     w | --window)
       rofi_mode="window"
-      rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_WINDOW_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
+      rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_WINDOW_STYLE:-${ROFI_LAUNCH_STYLE:-sidebar}}")"
       rofi_args+=("${ROFI_LAUNCH_WINDOW_ARGS[@]}")
       ;;
     f | --filebrowser)
       rofi_mode="filebrowser"
-      rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_FILEBROWSER_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
+      rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_FILEBROWSER_STYLE:-${ROFI_LAUNCH_STYLE:-sidebar}}")"
       rofi_args+=("${ROFI_LAUNCH_FILEBROWSER_ARGS[@]}")
       ;;
     r | --run)
       rofi_mode="run"
-      rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_RUN_STYLE:-${ROFI_LAUNCH_STYLE:-style_1}}")"
+      rofi_config="$(resolve_rofi_launcher_theme "${ROFI_LAUNCH_RUN_STYLE:-${ROFI_LAUNCH_STYLE:-sidebar}}")"
       rofi_args+=("-run-command" "$(launcher_run_command)" "${ROFI_LAUNCH_RUN_ARGS[@]}")
       ;;
     s | -s | --select-style)

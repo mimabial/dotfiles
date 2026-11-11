@@ -403,7 +403,7 @@ ShellRoot {
         }
         const choices = {
             style_bar_layout_: layoutName, style_workflow_: workflow, style_animations_: animation, style_text_size_: Style.textSize,
-            style_color_mode_source_: colorSource, style_color_mode_: colorMode, trigger_toggle_workspace_layout_: windowLayout,
+            style_color_mode_source_: colorSource, style_color_mode_: colorMode, trigger_toggle_window_layout_: windowLayout,
             style_bar_opacity_: Opacity.presetId(prefs.barOpacity), style_dock_opacity_: dock ? Opacity.presetId(dock.dockOpacity) : null,
             setup_power_profile_: PowerProfile.toString(PowerProfiles.profile).replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase(),
             style_expose_hot_corner_: exposeConfig.hotCornerEnabled ? exposeConfig.hotCornerPosition : null

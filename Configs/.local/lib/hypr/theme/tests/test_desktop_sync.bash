@@ -84,6 +84,8 @@ kde_style="$(awk '/^\[KDE\]$/ { found=1; next } /^\[/ { found=0 } found && /^wid
 check "${kde_style}" 'widgetStyle=Breeze' live-kde-style
 kde_font="$(awk '/^\[General\]$/ { found=1; next } /^\[/ { found=0 } found && /^font=/ { print; exit }' "${XDG_CONFIG_HOME}/kdeglobals")"
 check "${kde_font}" 'font=Test Sans,10.00,-1,5,400,0,0,0,0,0,0,0,0,0,0,1' kde-font
+kde_terminal="$(awk '/^\[General\]$/ { found=1; next } /^\[/ { found=0 } found && /^Terminal(Application|Service)=/ { printf "%s;", $0 }' "${XDG_CONFIG_HOME}/kdeglobals")"
+check "${kde_terminal}" 'TerminalApplication=prefs-term;TerminalService=;' kde-terminal
 
 notifications=()
 # shellcheck disable=SC2329

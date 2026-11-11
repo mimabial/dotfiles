@@ -51,7 +51,7 @@ function matches(item, query) {
 
 function sorted(items, mode, order) {
     const ranks = Object.create(null)
-    order.forEach((value, index) => ranks[String(value)] = index)
+    if (mode === "manual") order.forEach((value, index) => ranks[String(value)] = index)
     const due = item => item.due === null || item.due === undefined ? Infinity : Number(item.due)
     const priority = item => Number(item.priority || 0) || Infinity
     return items.map((item, index) => ({item: item, index: index})).sort((left, right) => {

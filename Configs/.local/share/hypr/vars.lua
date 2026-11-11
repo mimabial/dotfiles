@@ -106,10 +106,6 @@ function M.expand(value)
     return expanded
 end
 
-function M.all()
-    return values
-end
-
 local function json_string(text)
     return '"' .. text:gsub('[%c"\\]', function(char) return ("\\u%04x"):format(char:byte()) end) .. '"'
 end

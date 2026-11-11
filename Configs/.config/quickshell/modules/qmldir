@@ -10,6 +10,7 @@ LanguageMenu 1.0 LanguageMenu.qml
 MirroringMenu 1.0 MirroringMenu.qml
 TransportButton 1.0 TransportButton.qml
 PrintersButton 1.0 PrintersButton.qml
+singleton PrinterEvents 1.0 PrinterEvents.qml
 RemovableButton 1.0 RemovableButton.qml
 ScreenRecordButton 1.0 ScreenRecordButton.qml
 ScreenshotButton 1.0 ScreenshotButton.qml

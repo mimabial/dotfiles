@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell.Io
 import ".."
 
 ScriptButton {
@@ -8,16 +7,10 @@ ScriptButton {
     readonly property string script: root.shell.home + "/.local/lib/hypr/system/printers.sh"
     css: "printers"
     command: ["bash", root.script, "--bar"]
+    refreshKey: PrinterEvents.revision
+    onRefreshKeyChanged: if (popup.open) popup.refresh()
     onClicked: root.shell.togglePopup("printers")
-    Process {
-        command: ["bash", root.script, "--watch"]
-        running: true
-        onStarted: root.refresh()
-        stdout: SplitParser { onRead: line => {
-            if (line.indexOf("org.cups.cupsd.Notifier") < 0) return
-            root.refresh()
-            if (popup.open) popup.refresh()
-        } }
-    }
+    Component.onCompleted: { PrinterEvents.consumers++; refresh() }
+    Component.onDestruction: PrinterEvents.consumers--
     PrintersPopup { id: popup; anchorItem: root; shell: root.shell; popupEnabled: root.popupEnabled }
 }

@@ -49,7 +49,6 @@ typeset -ga _FZF_EXCLUDE_FILES=(
 )
 
 typeset -gr _FZF_SYMLINK_DEFAULT_MAXDEPTH=4
-typeset -gr _FZF_RELOAD_DEBOUNCE_SECONDS=0.1
 typeset -gr _FZF_RG_MATCHES_PER_FILE=30
 typeset -gr _FZF_GREP_MAX_RESULTS=1000
 typeset -g _FZF_SYMLINK_EXCLUDE_PWD=""
@@ -268,7 +267,7 @@ _fuzzy_edit_search_content() {
     _refresh_symlink_excludes "$search_root"
     local rg_symlink_globs="$_FZF_SYMLINK_EXCLUDE_RG"
     local find_symlink_excludes="$_FZF_SYMLINK_EXCLUDE_FIND"
-    local preview_cmd='f=$(echo {} | cut -d: -f1); f=${f%\^@}; line=$(echo {} | cut -d: -f2); if command -v "bat" &>/dev/null; then bat --color=always --style=numbers --highlight-line=$line --line-range=$((line > 5 ? line - 5 : 1)): "$f"; else cat -n "$f" | awk -v line=$line "NR>=line-5 && NR<=line+20 {if(NR==line) print \" -> \" \$0; else print \$0}"; fi'
+    local preview_cmd='f={1}; f=${f%\^@}; line={2}; if command -v "bat" &>/dev/null; then bat --color=always --style=numbers --highlight-line=$line --line-range=$((line > 5 ? line - 5 : 1)): "$f"; else cat -n "$f" | awk -v line=$line "NR>=line-5 && NR<=line+20 {if(NR==line) print \" -> \" \$0; else print \$0}"; fi'
     local fzf_mode="$(_fzf_layout_mode)"
     local fzf_height="$(_fzf_height_for "$fzf_mode" dynamic)"
     local fzf_preview_window="$(_fzf_preview_window_for "$fzf_mode" dynamic)"
@@ -290,7 +289,7 @@ _fuzzy_edit_search_content() {
                 --prompt "$_FZF_SEARCH_PROMPT" \
                 --scrollbar "$_FZF_SCROLLBAR" \
                 --bind "start:reload(if [[ -n {q} ]]; then rg --hidden --follow --line-number --column --color=always --smart-case --max-count=$_FZF_RG_MATCHES_PER_FILE $rg_depth $rg_globs $rg_symlink_globs {q} 2>/dev/null; fi || true)" \
-                --bind "change:reload(sleep $_FZF_RELOAD_DEBOUNCE_SECONDS; if [[ -n {q} ]]; then rg --hidden --follow --line-number --column --color=always --smart-case --max-count=$_FZF_RG_MATCHES_PER_FILE $rg_depth $rg_globs $rg_symlink_globs {q} 2>/dev/null || true; fi)" \
+                --bind "change:reload(if [[ -n {q} ]]; then rg --hidden --follow --line-number --column --color=always --smart-case --max-count=$_FZF_RG_MATCHES_PER_FILE $rg_depth $rg_globs $rg_symlink_globs {q} 2>/dev/null || true; fi)" \
                 --header "Dynamic Search | Enter: Edit | Ctrl-O: View"
         )
     else
@@ -310,7 +309,7 @@ _fuzzy_edit_search_content() {
                 --prompt "$_FZF_SEARCH_PROMPT" \
                 --scrollbar "$_FZF_SCROLLBAR" \
                 --bind "start:reload(if [[ -n {q} ]]; then find -L . $find_depth -type f $grep_excludes $find_symlink_excludes -exec grep -Hn --color=always {q} {} + 2>/dev/null | head -$_FZF_GREP_MAX_RESULTS; fi || true)" \
-                --bind "change:reload(sleep $_FZF_RELOAD_DEBOUNCE_SECONDS; if [[ -n {q} ]]; then find -L . $find_depth -type f $grep_excludes $find_symlink_excludes -exec grep -Hn --color=always {q} {} + 2>/dev/null | head -$_FZF_GREP_MAX_RESULTS || true; fi)" \
+                --bind "change:reload(if [[ -n {q} ]]; then find -L . $find_depth -type f $grep_excludes $find_symlink_excludes -exec grep -Hn --color=always {q} {} + 2>/dev/null | head -$_FZF_GREP_MAX_RESULTS || true; fi)" \
                 --header "Dynamic Search | Enter: Edit | Ctrl-O: View"
         )
     fi

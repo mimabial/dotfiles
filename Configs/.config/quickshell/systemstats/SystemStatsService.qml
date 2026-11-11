@@ -156,6 +156,7 @@ Item {
     if (historyLoaded && historyMinute !== previousHistoryMinute)
       historyFile.setText(JSON.stringify({ version: 1, hour: historyHour, day: historyDay }) + "\n")
     root.snapshot = data
+    Removable.applyDiskActivity(disks.perDisk)
     root.seq = Number(data.seq) || 0
     root.ready = true
     root.samplerError = Array.isArray(data.errors) && data.errors.length > 0 ? data.errors.join("; ") : ""
@@ -250,12 +251,6 @@ Item {
 
   function syncAlertSources() {
     if (!alertsReady) return
-    var needsProcesses = alertEnabled("cpuUsage") || alertEnabled("cpuTemp") || alertEnabled("memory")
-    if (needsProcesses !== alertDetailHeld) {
-      alertDetailHeld = needsProcesses
-      if (needsProcesses) acquireDetail()
-      else releaseDetail()
-    }
     Removable.healthAlertsEnabled = alertEnabled("driveHealth")
     if (Removable.healthAlertsEnabled) evaluateDriveHealth()
   }
@@ -305,17 +300,19 @@ Item {
 
   function evaluateMetricAlerts(data) {
     if (!alertsReady) return
-    var now = Date.now(), states = Object.assign({}, alertStates)
+    var now = Date.now(), states = Object.assign({}, alertStates), confirmingWithProcesses = false
     for (var def of Model.ALERTS) {
       if (def.id === "driveHealth" || !alertEnabled(def.id)) continue
       var reading = Model.alertReading(data, def.id), value = reading.value
       var valid = value !== null && value !== undefined && isFinite(Number(value))
       var state = Model.nextAlertState(states[def.id], valid && (def.low ? Number(value) <= alertThreshold(def.id) : Number(value) >= alertThreshold(def.id)), now)
       states[def.id] = state
+      var processRanking = def.id === "memory" ? "mem" : (def.id === "cpuUsage" || def.id === "cpuTemp" ? "cpu" : "")
+      if (processRanking && state.count > 0 && !state.active) confirmingWithProcesses = true
       if (state.fire) {
         var message = (reading.subject ? reading.subject + ": " : "") + Math.round(Number(value)) + def.unit
           + " reached the " + alertThreshold(def.id) + def.unit + " limit"
-        var top = data.procs && (def.id === "memory" ? data.procs.mem : (def.id === "cpuUsage" || def.id === "cpuTemp" ? data.procs.cpu : null))
+        var top = data.procs && data.procs[processRanking]
         if (Array.isArray(top) && top.length) message += " · top process: " + top[0].name
         fireAlert(def.id, def.label, message, data, null)
       }
@@ -337,6 +334,11 @@ Item {
       if (activeKey.indexOf("sensor:") === 0 && !seenSensors[activeKey]) states[activeKey] = Model.nextAlertState(states[activeKey], false, now)
     }
     alertStates = states
+    if (confirmingWithProcesses !== alertDetailHeld) {
+      alertDetailHeld = confirmingWithProcesses
+      if (alertDetailHeld) acquireDetail()
+      else releaseDetail()
+    }
   }
 
   function evaluateDriveHealth() {
@@ -551,7 +553,6 @@ Item {
   Timer {
     id: backoffResetTimer
     interval: Units.MS_PER_MINUTE
-    repeat: true
     running: root.ready
     onTriggered: root.restartCount = 0
   }

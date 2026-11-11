@@ -39,12 +39,10 @@ Singleton {
     property var hooks: ({})
     signal uiRequest(string name, string value)
 
-    property var _samples: ({})
     property var _healthChecked: ({})
     property var _previousDevices: []
     property var _expectedRemovals: ({})
     property bool _seenSnapshot: false
-    property int _quietTicks: 0
     property string _stderr: ""
     property string _stdout: ""
     property string _successMessage: ""
@@ -67,6 +65,8 @@ Singleton {
     readonly property string storePath: Quickshell.env("HOME") + "/.local/state/hypr/removable-drives.json"
     readonly property string hookDir: (Quickshell.env("XDG_RUNTIME_DIR") || "/dev/shm") + "/removable-drives"
     readonly property string helper: Quickshell.env("HOME") + "/.local/lib/hypr/system/drive-filesystem.sh"
+    readonly property string removableScript: Quickshell.env("HOME") + "/.local/lib/hypr/system/removable.sh"
+    readonly property bool tracksActivity: devices.length > 0 || watchClosely && store.showSystem && systemDevices.length > 0
 
     property bool rescanQueued: false
     function rescan() {
@@ -181,23 +181,13 @@ Singleton {
         }
     }
 
-    function sampleActivity() {
-        const visible = devices.concat(watchClosely && store.showSystem ? systemDevices.filter(device => device.tran) : [])
-        if (statsProcess.running || visible.length === 0) return
-        const command = ["head", "-v", "-n", "1"]
-        for (const device of visible) command.push("/sys/block/" + device.name + "/stat")
-        statsProcess.command = command
-        statsProcess.running = true
-    }
-
-    function applyStats(raw) {
-        const next = Model.buildActivity(_samples, Model.parseBlockStats(raw), Date.now())
-        activity = next.activity
-        _samples = next.samples
+    function applyDiskActivity(perDisk) {
+        if (!tracksActivity) return
+        activity = Model.diskActivity(perDisk)
         if (watchClosely) {
             const history = Object.assign({}, activityHistory)
             for (const device of devices.concat(store.showSystem ? systemDevices.filter(item => item.tran) : [])) {
-                const rate = next.activity[device.name]
+                const rate = activity[device.name]
                 if (rate) history[healthKey(device)] = (history[healthKey(device)] || []).slice(-47).concat(rate.readRate + rate.writeRate)
             }
             activityHistory = history
@@ -216,12 +206,12 @@ Singleton {
         if (!pendingEjectPath) return
         const targets = pendingTargets()
         if (!targets.length) { cancelPendingEject(); return }
-        const step = Model.advanceQuiet(targets.some(device => isDeviceBusy(device)), _quietTicks, 2)
-        _quietTicks = step.quietTicks
-        if (step.run) { pendingEjectPath = ""; _quietTicks = 0; runEject(targets) }
+        if (targets.some(device => isDeviceBusy(device))) return
+        pendingEjectPath = ""
+        runEject(targets)
     }
 
-    function cancelPendingEject() { pendingEjectPath = ""; _quietTicks = 0; actionStatus = "" }
+    function cancelPendingEject() { pendingEjectPath = ""; actionStatus = "" }
 
     function setPendingHook(key, pending) {
         const next = Object.assign({}, _pendingHooks)
@@ -233,9 +223,8 @@ Singleton {
         setPendingHook(device.key, false)
         const mounted = Model.mountedVolumes([device])
         hooks = Object.assign({}, hooks, {[device.key]: Model.parseHookProgress("")})
-        Quickshell.execDetached(["bash", "-c", "mkdir -p \"${1%/*}\" && : > \"$1\" || exit; bash -c \"$4\" removable-drives \"$2\" \"$3\" \"$1\"; echo \"exit=$?\" >> \"$1\"",
-            "removable-drives", hookDir + "/" + Model.hookName(device.key), device.path, mounted.length ? mounted[0].mountpoint : "",
-            Model.driveSetting(store, device, "onConnect")])
+        Quickshell.execDetached(["bash", removableScript, "--run-hook", hookDir + "/" + Model.hookName(device.key),
+            device.path, mounted.length ? mounted[0].mountpoint : "", Model.driveSetting(store, device, "onConnect")])
     }
 
     function runAction(command, path, action, successMessage, stdin) {
@@ -284,8 +273,7 @@ Singleton {
         if (!volume.mounted && !Model.isMountable(volume)) return "This volume cannot be mounted"
         const device = deviceOfVolume(volume)
         if (device && isDeviceBusy(device)) return "Wait for writes to finish"
-        const script = "set -e\ndev=$1\nif [ \"$2\" = 1 ]; then udisksctl unmount --no-user-interaction -b \"$dev\" >/dev/null; fi\nudisksctl mount --no-user-interaction -o ro -b \"$dev\" >/dev/null"
-        return runAction(["bash", "-c", script, "removable-drives", volume.fsPath, volume.mounted ? "1" : "0"], volume.fsPath, "mount-ro", "Mounted " + volume.title + " read-only") ? "ok" : "Another action is running"
+        return runAction(["bash", removableScript, "--mount-read-only", volume.fsPath, volume.mounted ? "1" : "0"], volume.fsPath, "mount-ro", "Mounted " + volume.title + " read-only") ? "ok" : "Another action is running"
     }
 
     function filesystemAction(action, volume, type, label, expectedIdentity, zero) {
@@ -325,50 +313,44 @@ Singleton {
         if (!volume || !volume.encrypted || volume.unlocked) return "This volume is not locked"
         if (!passphrase) return "Enter the passphrase first"
         const device = deviceOfVolume(volume), readOnly = !!device && Model.driveSetting(store, device, "readOnly") === true
-        const script = "set -e\nkey=\"${XDG_RUNTIME_DIR:-/dev/shm}/removable-drives.$$.key\"\ntrap 'rm -f \"$key\"' EXIT\numask 077\n"
-            + "IFS= read -r pass; printf %s \"$pass\" > \"$key\"; unset pass\n"
-            + "out=$(udisksctl unlock --no-user-interaction -b \"$1\" --key-file \"$key\"); mapper=${out##* as }\n"
-            + "udisksctl mount --no-user-interaction -b \"${mapper%.}\" ${2:+-o ro} >/dev/null"
-        return runAction(["bash", "-c", script, "removable-drives", volume.path, readOnly ? "1" : ""], volume.fsPath, "unlock",
+        return runAction(["bash", removableScript, "--unlock", volume.path, readOnly ? "1" : "0"], volume.fsPath, "unlock",
             "Unlocked " + volume.title, passphrase + "\n") ? "ok" : "Another action is running"
     }
 
     function lock(volume) {
         if (!volume || !volume.encrypted || !volume.unlocked) return "This volume is not unlocked"
-        const script = "set -e\n[ -z \"$2\" ] || udisksctl unmount --no-user-interaction -b \"$2\" >/dev/null\nudisksctl lock --no-user-interaction -b \"$1\" >/dev/null"
-        return runAction(["bash", "-c", script, "removable-drives", volume.path, volume.mounted ? volume.fsPath : ""], volume.fsPath, "lock",
+        return runAction(["bash", removableScript, "--lock", volume.path, volume.mounted ? volume.fsPath : ""], volume.fsPath, "lock",
             "Locked " + volume.title) ? "ok" : "Another action is running"
     }
 
     function eject(device) {
         if (!device || busy) return
         if (isDeviceBusy(device)) {
-            pendingEjectPath = device.path; _quietTicks = 0
+            pendingEjectPath = device.path
             actionStatus = "Waiting for writes to finish on " + device.title + "…"
         } else runEject([device])
     }
 
     function ejectAll() {
         if (busy || devices.length === 0) return
-        if (anyBusy) { pendingEjectPath = "*"; _quietTicks = 0; actionStatus = "Waiting for writes to finish…" }
+        if (anyBusy) { pendingEjectPath = "*"; actionStatus = "Waiting for writes to finish…" }
         else runEject(devices)
     }
 
     function runEject(targets) {
         if (!targets || !targets.length || busy) return
-        let script = "set -e\n", titles = [], expected = Object.assign({}, _expectedRemovals)
+        const steps = [], titles = [], expected = Object.assign({}, _expectedRemovals)
         for (const device of targets) {
             titles.push(device.title); expected[device.path] = true
             for (const volume of device.volumes) {
-                if (volume.mounted && store.cleanTrashOnEject === true)
-                    script += Model.shellQuote(helper) + " trash " + Model.shellQuote(volume.fsPath) + " " + Model.shellQuote(identityOf(volume)) + " || true\n"
-                if (volume.mounted) script += "udisksctl unmount --no-user-interaction -b " + Model.shellQuote(volume.fsPath) + "\n"
-                if (volume.encrypted && volume.unlocked) script += "udisksctl lock --no-user-interaction -b " + Model.shellQuote(volume.path) + "\n"
+                if (volume.mounted && store.cleanTrashOnEject === true) steps.push("trash", volume.fsPath, identityOf(volume))
+                if (volume.mounted) steps.push("unmount", volume.fsPath)
+                if (volume.encrypted && volume.unlocked) steps.push("lock", volume.path)
             }
-            script += "udisksctl power-off --no-user-interaction -b " + Model.shellQuote(device.path) + " || true\n"
+            steps.push("power-off", device.path)
         }
         _expectedRemovals = expected
-        runAction(["bash", "-c", script], targets.length === 1 ? targets[0].path : "*", "eject", "Safe to remove " + titles.join(", "))
+        runAction(["bash", removableScript, "--eject"].concat(steps), targets.length === 1 ? targets[0].path : "*", "eject", "Safe to remove " + titles.join(", "))
     }
 
     function mountedPathsFor(path) {
@@ -383,9 +365,7 @@ Singleton {
 
     function probeBlockers(paths) {
         if (!paths.length || blockersProcess.running) return
-        const command = ["bash", "-c", "pids=$(fuser -m \"$@\" 2>/dev/null); [ -n \"$pids\" ] && ps -o pid=,comm= -p $pids || true", "removable-drives"]
-        for (let i = 0; i < paths.length; ++i) command.push(paths[i])
-        blockersProcess.command = command; blockersProcess.running = true
+        blockersProcess.command = ["bash", removableScript, "--blockers"].concat(paths); blockersProcess.running = true
     }
 
     function forceUnmountBlocked() { const volume = volumeByPath(blockedFsPath); if (volume) unmount(volume, true) }
@@ -397,8 +377,7 @@ Singleton {
     }
     function unmountNetwork(share) {
         if (!share || !share.mountpoint) return
-        const script = "fusermount3 -u \"$1\" 2>/dev/null || gio mount -u \"$1\" 2>/dev/null || umount \"$1\""
-        runAction(["bash", "-c", script, "drives", share.mountpoint], share.mountpoint, "unmount-network", "Unmounted " + share.source)
+        runAction(["bash", removableScript, "--unmount-network", share.mountpoint], share.mountpoint, "unmount-network", "Unmounted " + share.source)
     }
     function openTerminal(path, usage) {
         if (!path) return false
@@ -466,7 +445,6 @@ Singleton {
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.applySnapshot(text) }
         onExited: code => { if (code !== 0) root.lastError = "lsblk failed"; root.rescanIfQueued() }
     }
-    Process { id: statsProcess; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.applyStats(text) } }
     Process { id: mountsProcess; command: ["cat", "/proc/mounts"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.mountFlags = Model.parseMountFlags(text) } }
     Process { id: networkProcess; command: ["findmnt", "-J", "-l", "-o", "TARGET,SOURCE,FSTYPE,OPTIONS"]; stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.networkShares = Model.parseNetworkMounts(text) } }
     Process {
@@ -518,7 +496,7 @@ Singleton {
     Process { command: ["findmnt", "--poll", "--noheadings", "--output", "TARGET"]; running: root.watchClosely; stdout: SplitParser { onRead: root.rescan() } }
     Process {
         id: supportProcess
-        command: ["bash", Quickshell.env("HOME") + "/.local/lib/hypr/system/removable.sh", "--probe-support"]
+        command: ["bash", root.removableScript, "--probe-support"]
         stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.support = Model.parseSupport(text) }
     }
     Process {
@@ -546,10 +524,10 @@ Singleton {
         onLoadFailed: root.store = Model.parseStore("")
     }
 
-    Timer { interval: Units.MS_PER_SECOND; running: root.devices.length > 0 || root.watchClosely && root.store.showSystem && root.systemDevices.length > 0; repeat: true; triggeredOnStart: true; onTriggered: root.sampleActivity() }
     Timer { interval: root.usageRefreshMs; running: root.watchClosely; repeat: true; onTriggered: if (!lsblkProcess.running) lsblkProcess.running = true }
     Timer { interval: root.healthProbeCloseWatchMs; running: root.watchClosely || root.healthAlertsEnabled; repeat: true; onTriggered: root.autoProbeHealth() }
     onWatchCloselyChanged: if (watchClosely) { rescan(); autoProbeHealth() } else activityHistory = ({})
+    onHooksChanged: advancePendingEject()
     onHealthAlertsEnabledChanged: if (healthAlertsEnabled) { rescan(); autoProbeHealth() }
 
     property IpcHandler ipc: IpcHandler {

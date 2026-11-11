@@ -1,6 +1,6 @@
 $HOME/.config/hypr/themes/theme.meta|> $HOME/.config/hypr/themes/colors.meta
 
-$ICON_THEME = Nordzy
+$ICON_THEME = Nordzy-dark
 $COLOR_SCHEME = prefer-dark
 $NVIM_SCHEME = nord
 $NVIM_BACKGROUND = dark

@@ -5,11 +5,12 @@ LABEL_MAX_CHARS=18
 HOST_MAX_CHARS=14
 AGENT_TITLE_MAX_CHARS=24
 
-plain=0
-if [[ ${1:-} == --plain ]]; then plain=1; shift; fi
+window_name_pane="" stored_border=""
+if [[ ${1:-} == --window-name ]]; then window_name_pane="$2" stored_border="$3"; shift 3; fi
 cmd="${1:-}"
 tty="${2:-}"
-pane_title="${3:-}"
+pane_pid="${3:-}"
+pane_title="${4:-}"
 
 trim_into() {
   local -n trimmed_ref="$1"
@@ -35,7 +36,12 @@ basename_into() {
 
 foreground_process_into() {
   local -n proc_ref="$1" args_ref="$2"
-  local tty="$3" stat="" fields=() last_proc="" last_args=""
+  local tty="$3" pane_pid="$4" stat="" fields=() last_proc="" last_args="" foreground_group="" argv=()
+  if read -r stat <"/proc/${pane_pid}/stat" && read -r _ _ _ _ _ foreground_group _ <<<"${stat##*) }" &&
+    read -r last_proc <"/proc/${foreground_group}/comm" && mapfile -d '' -t argv <"/proc/${foreground_group}/cmdline"; then
+    proc_ref="${last_proc##*/}" args_ref="${argv[*]}"
+    return
+  fi
   while read -r -a fields; do
     stat="${fields[0]}" last_proc="${fields[1]:-}" last_args="${fields[*]:2}"
     [[ $stat =~ ^[^TXZ\ ]*\+ ]] && break
@@ -45,9 +51,9 @@ foreground_process_into() {
 
 resolve_process_into() {
   local -n process_name_ref="$1"
-  local tty="$2" fallback="$3" proc="" args="" script=""
+  local tty="$2" pane_pid="$3" fallback="$4" proc="" args="" script=""
   [[ -n $tty ]] || { process_name_ref="${fallback:-shell}"; return; }
-  foreground_process_into proc args "$tty"
+  foreground_process_into proc args "$tty" "$pane_pid"
   [[ -n $proc || -n $args ]] || { process_name_ref="${fallback:-shell}"; return; }
 
   if [[ $args =~ (^|[[:space:]/])(codex|claude|anthropic|aider)([[:space:]]|$) ]]; then
@@ -82,7 +88,7 @@ resolve_process_into() {
 }
 
 resolved=""
-resolve_process_into resolved "$tty" "$cmd" 2>/dev/null || true
+resolve_process_into resolved "$tty" "$pane_pid" "$cmd" 2>/dev/null || true
 [[ -n $resolved ]] && cmd="$resolved"
 
 case "$cmd" in
@@ -104,4 +110,7 @@ case "$cmd" in
   *) icon=; label="$cmd" ;;
 esac
 
-((plain)) && printf '%s\n' "$label" || printf ' %s %s \n' "$icon" "$label"
+border=" $icon $label "
+[[ -n $window_name_pane ]] || { printf '%s\n' "$border"; exit; }
+[[ $border == "$stored_border" ]] || tmux set -p -t "$window_name_pane" @pane_title_border "$border" || true
+printf '%s\n' "$label"

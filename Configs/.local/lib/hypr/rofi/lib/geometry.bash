@@ -19,7 +19,7 @@ rofi_container_radius_override() {
   theme_name="${theme_name%.rasi}"
 
   case "${theme_name}" in
-    style_11)
+    split)
       printf 'inputbar {border-radius: %spx 0px 0px %spx;} inputbox {border-radius: %spx 0px 0px %spx;} listbox {border-radius: 0px %spx %spx 0px;}' \
         "${base_border_radius}" "${base_border_radius}" \
         "${base_border_radius}" "${base_border_radius}" \

@@ -1,7 +1,6 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "CalendarMath.js" as CalendarMath
 import "Units.js" as Units
 
 Item {

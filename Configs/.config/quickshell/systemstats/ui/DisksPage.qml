@@ -480,7 +480,7 @@ Column {
         { key: "write", kind: "rate", title: "Write" }
       ]
       columnWidth: Commons.Style.space(70)
-      emptyText: root.procs ? (root.selected === "all" ? "No disk activity" : "Nothing here is reading or writing") : "Measuring…"
+      emptyText: root.procs && root.procs.io ? (root.selected === "all" ? "No disk activity" : "Nothing here is reading or writing") : "Measuring…"
       foreground: root.foreground
       fontFamily: root.fontFamily
     }

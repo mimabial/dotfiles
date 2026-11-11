@@ -1,7 +1,6 @@
 .pragma library
 .import "Units.js" as Units
 
-var SECTOR_BYTES = 512
 var MAX_LISTED_BLOCKERS = 3
 var MAX_ERROR_LENGTH = 180
 
@@ -47,7 +46,6 @@ var PHONE_NAME = /iphone|ipad|android|phone|pixel|galaxy|oneplus|xiaomi|nexus|re
 function exact(value) { return String(value === undefined || value === null ? "" : value) }
 function clean(value) { return exact(value).replace(/\s+/g, " ").replace(/^ | $/g, "") }
 function plain(value) { return clean(value).replace(/[<>]/g, "") }
-function shellQuote(value) { return "'" + exact(value).replace(/'/g, "'\\''") + "'" }
 
 function formatBytes(bytes) {
     const value = Number(bytes)
@@ -220,37 +218,13 @@ function isReadOnly(flags, volume) {
     return !!(entry && entry.readOnly)
 }
 
-function parseBlockStats(raw) {
-    const result = {}, lines = String(raw || "").split("\n")
-    let name = ""
-    for (let i = 0; i < lines.length; ++i) {
-        const header = lines[i].match(/^==>\s*\/sys\/block\/([^/]+)\/stat\s*<==/)
-        if (header) { name = header[1]; continue }
-        if (!name) continue
-        const fields = clean(lines[i]).split(" ")
-        if (fields.length >= 9) result[name] = {readSectors: Number(fields[2]), writeSectors: Number(fields[6]), inFlight: Number(fields[8])}
-        name = ""
+function diskActivity(perDisk) {
+    const activity = {}
+    for (const name in perDisk || {}) {
+        const disk = perDisk[name], writeRate = Number(disk.write) || 0, inFlight = Number(disk.inFlight) || 0
+        activity[name] = {writeRate: writeRate, readRate: Number(disk.read) || 0, inFlight: inFlight, busy: writeRate > 0 || inFlight > 0}
     }
-    return result
-}
-
-function rateBetween(previous, current, elapsedMs) {
-    if (previous === null || previous === undefined || !(elapsedMs > 0)) return 0
-    const delta = Number(current) - Number(previous)
-    return isFinite(delta) && delta > 0 ? delta * SECTOR_BYTES / (elapsedMs / 1000) : 0
-}
-
-function buildActivity(previousSamples, stats, now) {
-    const activity = {}, samples = {}
-    for (const name in stats) {
-        const current = stats[name], previous = previousSamples ? previousSamples[name] : null
-        const elapsed = previous ? now - previous.at : 0
-        const writeRate = rateBetween(previous ? previous.writeSectors : null, current.writeSectors, elapsed)
-        const readRate = rateBetween(previous ? previous.readSectors : null, current.readSectors, elapsed)
-        activity[name] = {writeRate: writeRate, readRate: readRate, inFlight: current.inFlight, busy: writeRate > 0 || current.inFlight > 0}
-        samples[name] = {writeSectors: current.writeSectors, readSectors: current.readSectors, at: now}
-    }
-    return {activity: activity, samples: samples}
+    return activity
 }
 
 function formatRate(bytes) { return Number(bytes) >= 1024 ? formatBytes(bytes) + "/s" : "" }
@@ -259,12 +233,6 @@ function activityLabel(entry) {
     return formatRate(entry.writeRate) ? "Writing " + formatRate(entry.writeRate)
         : formatRate(entry.readRate) ? "Reading " + formatRate(entry.readRate)
         : entry.busy ? "Busy" : ""
-}
-
-function advanceQuiet(stillBusy, ticks, required) {
-    if (stillBusy) return {quietTicks: 0, run: false}
-    const next = Number(ticks || 0) + 1
-    return {quietTicks: next, run: next >= required}
 }
 
 function parseBlockers(raw) {

@@ -20,7 +20,6 @@ QtObject {
     function popupTinted(base) { return Active.Style.popupTinted(base) }
     function popupBorder(base, opacity) { return Active.Style.popupBorder(base, opacity) }
     readonly property int hoverDuration: Active.Style.hoverDuration
-    readonly property int focusPrimeDelay: Active.Style.focusPrimeDelay
     readonly property int confirmationShownMs: Active.Style.confirmationShownMs
     readonly property real secondaryTextAlpha: Active.Style.secondaryTextAlpha
     readonly property real mutedTextAlpha: Active.Style.mutedTextAlpha

@@ -62,7 +62,8 @@ LUA
     workflow_load_active
     workflow_write_config || return 1
   fi
-  hyprctl reload config-only -q
+  hyprctl reload config-only -q || return 1
+  "${HYPR_LIB_DIR}/render/dunst.py" >/dev/null 2>&1 || true
 }
 
 step_layout() {
